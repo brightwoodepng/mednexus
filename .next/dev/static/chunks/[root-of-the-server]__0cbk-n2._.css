@@ -4910,6 +4910,16 @@
     border-color: #0000;
   }
 
+  .border-violet-400\/40 {
+    border-color: #a685ff66;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .border-violet-400\/40 {
+      border-color: color-mix(in oklab, var(--color-violet-400) 40%, transparent);
+    }
+  }
+
   .border-violet-400\/50 {
     border-color: #a685ff80;
   }
@@ -6385,14 +6395,6 @@
 
   .pr-12 {
     padding-right: calc(var(--spacing) * 12);
-  }
-
-  .pr-1232 {
-    padding-right: calc(var(--spacing) * 1232);
-  }
-
-  .pr-1247 {
-    padding-right: calc(var(--spacing) * 1247);
   }
 
   .pr-\[0\.2rem\] {
