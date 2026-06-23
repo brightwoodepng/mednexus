@@ -2743,23 +2743,51 @@ __turbopack_context__.s([
     ()=>Dashboard
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/contexts/app-context.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/modules.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/icons.tsx [app-client] (ecmascript)");
 ;
-var _s = __turbopack_context__.k.signature();
+var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature();
 "use client";
 ;
 ;
 ;
-// Greeting based on time of day
-function getGreeting() {
-    const h = new Date().getHours();
-    if (h >= 5 && h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    if (h < 21) return "Good evening";
-    return "Good night";
+;
+// Greeting based on time of day — reactive, updates each hour
+function useGreeting() {
+    _s();
+    function compute() {
+        const h = new Date().getHours();
+        if (h >= 5 && h < 12) return "Good morning";
+        if (h >= 12 && h < 17) return "Good afternoon";
+        if (h >= 17 && h < 21) return "Good evening";
+        return "Good night";
+    }
+    const [greeting, setGreeting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(compute);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "useGreeting.useEffect": ()=>{
+            // Recompute at the top of every hour
+            function scheduleNext() {
+                const now = new Date();
+                const msToNextHour = (60 - now.getMinutes()) * 60_000 - now.getSeconds() * 1000 - now.getMilliseconds();
+                return setTimeout({
+                    "useGreeting.useEffect.scheduleNext": ()=>{
+                        setGreeting(compute());
+                        scheduleNext();
+                    }
+                }["useGreeting.useEffect.scheduleNext"], msToNextHour);
+            }
+            const t = scheduleNext();
+            return ({
+                "useGreeting.useEffect": ()=>clearTimeout(t)
+            })["useGreeting.useEffect"];
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }
+    }["useGreeting.useEffect"], []);
+    return greeting;
 }
+_s(useGreeting, "HXBUhn2ulZIebi1J3zPaMOIMP00=");
 // Motivational subtitle lines (cycles by day)
 const MOTIVATIONS = [
     "Every question builds your clinical edge.",
@@ -2814,8 +2842,9 @@ const CARD_PALETTES = [
     }
 ];
 function Dashboard({ onSelectModule }) {
-    _s();
+    _s1();
     const { user, progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"])();
+    const greeting = useGreeting();
     const subjects = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getSubjects"])();
     const accuracy = progress.totalAnswered ? Math.round(progress.totalCorrect / progress.totalAnswered * 100) : 0;
     const weakAreaQuestions = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getWeakAreaQuestions"])(progress.history);
@@ -2832,21 +2861,21 @@ function Dashboard({ onSelectModule }) {
                         className: "pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10"
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 69,
+                        lineNumber: 88,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/6"
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 70,
+                        lineNumber: 89,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/5"
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 71,
+                        lineNumber: 90,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2857,12 +2886,12 @@ function Dashboard({ onSelectModule }) {
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                         className: "text-sm font-medium opacity-80",
                                         children: [
-                                            getGreeting(),
+                                            greeting,
                                             ","
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 75,
+                                        lineNumber: 94,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -2873,7 +2902,7 @@ function Dashboard({ onSelectModule }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 76,
+                                        lineNumber: 95,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2881,13 +2910,13 @@ function Dashboard({ onSelectModule }) {
                                         children: motivation
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 77,
+                                        lineNumber: 96,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 74,
+                                lineNumber: 93,
                                 columnNumber: 11
                             }, this),
                             progress.streak > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2898,7 +2927,7 @@ function Dashboard({ onSelectModule }) {
                                         children: "🔥"
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 83,
+                                        lineNumber: 102,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2908,7 +2937,7 @@ function Dashboard({ onSelectModule }) {
                                                 children: progress.streak
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 85,
+                                                lineNumber: 104,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2916,31 +2945,31 @@ function Dashboard({ onSelectModule }) {
                                                 children: "day streak"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 86,
+                                                lineNumber: 105,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 84,
+                                        lineNumber: 103,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 82,
+                                lineNumber: 101,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 73,
+                        lineNumber: 92,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 67,
+                lineNumber: 86,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -2956,7 +2985,7 @@ function Dashboard({ onSelectModule }) {
                             color: "bg-sky-50 text-sky-700 border-sky-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 96,
+                            lineNumber: 115,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -2967,7 +2996,7 @@ function Dashboard({ onSelectModule }) {
                             color: "bg-emerald-50 text-emerald-700 border-emerald-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 103,
+                            lineNumber: 122,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -2978,7 +3007,7 @@ function Dashboard({ onSelectModule }) {
                             color: "bg-amber-50 text-amber-700 border-amber-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 110,
+                            lineNumber: 129,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -2989,18 +3018,18 @@ function Dashboard({ onSelectModule }) {
                             color: "bg-rose-50 text-rose-700 border-rose-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 117,
+                            lineNumber: 136,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/dashboard.tsx",
-                    lineNumber: 95,
+                    lineNumber: 114,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 94,
+                lineNumber: 113,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -3015,12 +3044,12 @@ function Dashboard({ onSelectModule }) {
                                     size: 16
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 131,
+                                    lineNumber: 150,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 130,
+                                lineNumber: 149,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -3028,7 +3057,7 @@ function Dashboard({ onSelectModule }) {
                                 children: "Study Modules"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 133,
+                                lineNumber: 152,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -3039,13 +3068,13 @@ function Dashboard({ onSelectModule }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 134,
+                                lineNumber: 153,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 129,
+                        lineNumber: 148,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3065,12 +3094,12 @@ function Dashboard({ onSelectModule }) {
                                                     size: 22
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/dashboard.tsx",
-                                                    lineNumber: 148,
+                                                    lineNumber: 167,
                                                     columnNumber: 17
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 147,
+                                                lineNumber: 166,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
@@ -3078,13 +3107,13 @@ function Dashboard({ onSelectModule }) {
                                                 className: "mt-0.5 text-primary opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 150,
+                                                lineNumber: 169,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 146,
+                                        lineNumber: 165,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -3092,7 +3121,7 @@ function Dashboard({ onSelectModule }) {
                                         children: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ALL_SUBJECTS"]
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 155,
+                                        lineNumber: 174,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3103,7 +3132,7 @@ function Dashboard({ onSelectModule }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 156,
+                                        lineNumber: 175,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3115,12 +3144,12 @@ function Dashboard({ onSelectModule }) {
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 160,
+                                            lineNumber: 179,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 159,
+                                        lineNumber: 178,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3128,13 +3157,13 @@ function Dashboard({ onSelectModule }) {
                                         children: progress.totalAnswered ? `${Math.min(100, Math.round(progress.totalAnswered / (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getQuestionCount"])(__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ALL_SUBJECTS"]) * 100))}% attempted` : "Not started"
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 165,
+                                        lineNumber: 184,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 141,
+                                lineNumber: 160,
                                 columnNumber: 11
                             }, this),
                             weakAreaCount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3151,12 +3180,12 @@ function Dashboard({ onSelectModule }) {
                                                     size: 22
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/dashboard.tsx",
-                                                    lineNumber: 181,
+                                                    lineNumber: 200,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 180,
+                                                lineNumber: 199,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
@@ -3164,13 +3193,13 @@ function Dashboard({ onSelectModule }) {
                                                 className: "mt-0.5 text-rose-500 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 183,
+                                                lineNumber: 202,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 179,
+                                        lineNumber: 198,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -3178,7 +3207,7 @@ function Dashboard({ onSelectModule }) {
                                         children: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["WEAK_AREAS"]
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 188,
+                                        lineNumber: 207,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3191,7 +3220,7 @@ function Dashboard({ onSelectModule }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 189,
+                                        lineNumber: 208,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3201,7 +3230,7 @@ function Dashboard({ onSelectModule }) {
                                                 className: "inline-block h-2 w-2 rounded-full bg-destructive/70"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 193,
+                                                lineNumber: 212,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -3209,19 +3238,19 @@ function Dashboard({ onSelectModule }) {
                                                 children: "Needs attention"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 194,
+                                                lineNumber: 213,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 192,
+                                        lineNumber: 211,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 174,
+                                lineNumber: 193,
                                 columnNumber: 13
                             }, this),
                             subjects.map((subject, i)=>{
@@ -3238,7 +3267,7 @@ function Dashboard({ onSelectModule }) {
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 210,
+                                            lineNumber: 229,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3250,12 +3279,12 @@ function Dashboard({ onSelectModule }) {
                                                         size: 20
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/dashboard.tsx",
-                                                        lineNumber: 216,
+                                                        lineNumber: 235,
                                                         columnNumber: 21
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/dashboard.tsx",
-                                                    lineNumber: 215,
+                                                    lineNumber: 234,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
@@ -3263,13 +3292,13 @@ function Dashboard({ onSelectModule }) {
                                                     className: "mt-0.5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/dashboard.tsx",
-                                                    lineNumber: 218,
+                                                    lineNumber: 237,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 214,
+                                            lineNumber: 233,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -3277,7 +3306,7 @@ function Dashboard({ onSelectModule }) {
                                             children: subject
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 223,
+                                            lineNumber: 242,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3288,45 +3317,46 @@ function Dashboard({ onSelectModule }) {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 224,
+                                            lineNumber: 243,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, subject, true, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 203,
+                                    lineNumber: 222,
                                     columnNumber: 15
                                 }, this);
                             })
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 139,
+                        lineNumber: 158,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 128,
+                lineNumber: 147,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 65,
+        lineNumber: 84,
         columnNumber: 5
     }, this);
 }
-_s(Dashboard, "So5nE0XEXtx5pSlO3/7R5Jgtw+U=", false, function() {
+_s1(Dashboard, "kf7YC2JCHTJ7FtcpOwfDUiACZCY=", false, function() {
     return [
-        __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"]
+        __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"],
+        useGreeting
     ];
 });
 _c = Dashboard;
 // ── Sub-components ──────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        className: `flex flex-col gap-1 rounded-2xl border bg-card p-4 shadow-sm sm:p-5`,
+        className: "flex flex-col gap-1 rounded-2xl border bg-card p-4 shadow-sm sm:p-5",
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "flex items-center justify-between",
@@ -3336,7 +3366,7 @@ function StatCard({ icon, label, value, sub, color }) {
                         children: icon
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 250,
+                        lineNumber: 269,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -3344,13 +3374,13 @@ function StatCard({ icon, label, value, sub, color }) {
                         children: label
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 251,
+                        lineNumber: 270,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 249,
+                lineNumber: 268,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3358,7 +3388,7 @@ function StatCard({ icon, label, value, sub, color }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 255,
+                lineNumber: 274,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3366,13 +3396,13 @@ function StatCard({ icon, label, value, sub, color }) {
                 children: sub
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 256,
+                lineNumber: 275,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 248,
+        lineNumber: 267,
         columnNumber: 5
     }, this);
 }
@@ -6062,102 +6092,169 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$questions$2d$database$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/questions-database.ts [app-client] (ecmascript)");
+// Invalidate the local cache so modules.ts picks up fresh questions
 var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/custom-questions.ts [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature();
 "use client";
 ;
 ;
+;
+const POLL_INTERVAL = 30_000 // 30 s
+;
 const QuestionsContext = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["createContext"])(undefined);
+/** Fetch questions from DB. Returns null if none saved yet. */ async function fetchFromDb() {
+    try {
+        const res = await fetch("/api/questions", {
+            cache: "no-store"
+        });
+        if (!res.ok) return {
+            questions: null,
+            updatedAt: null
+        };
+        const data = await res.json();
+        return {
+            questions: data.questions,
+            updatedAt: data.updatedAt
+        };
+    } catch  {
+        return {
+            questions: null,
+            updatedAt: null
+        };
+    }
+}
+async function pushToDb(questions, token) {
+    try {
+        const res = await fetch("/api/questions", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "x-admin-token": token
+            },
+            body: JSON.stringify({
+                questions
+            })
+        });
+        return res.ok;
+    } catch  {
+        return false;
+    }
+}
 function QuestionsProvider({ children }) {
     _s();
-    const [questions, setQuestions] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
-        "QuestionsProvider.useState": ()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])()
-    }["QuestionsProvider.useState"]);
-    const persist = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "QuestionsProvider.useCallback[persist]": (next)=>{
-            (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["saveActiveQuestions"])(next);
-            setQuestions([
-                ...next
+    const [questions, setQuestions] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([
+        ...__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$questions$2d$database$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["questionsDatabase"]
+    ]);
+    const [lastUpdated, setLastUpdated] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
+    const questionsRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(questions);
+    questionsRef.current = questions;
+    // Sync to custom-questions cache so modules.ts picks up changes
+    function persist(qs) {
+        (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["saveActiveQuestions"])(qs);
+        setQuestions([
+            ...qs
+        ]);
+        questionsRef.current = qs;
+    }
+    // Initial load + polling
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "QuestionsProvider.useEffect": ()=>{
+            let pollTimer = null;
+            async function load() {
+                const { questions: dbQuestions, updatedAt } = await fetchFromDb();
+                if (dbQuestions !== null) {
+                    persist(dbQuestions);
+                    if (updatedAt) setLastUpdated(new Date(updatedAt));
+                }
+                setIsLoading(false);
+            }
+            async function poll() {
+                const { questions: dbQuestions, updatedAt } = await fetchFromDb();
+                if (dbQuestions === null) return;
+                const dbUpdated = updatedAt ? new Date(updatedAt).getTime() : 0;
+                const localUpdated = lastUpdated?.getTime() ?? 0;
+                if (dbUpdated > localUpdated) {
+                    persist(dbQuestions);
+                    setLastUpdated(new Date(updatedAt));
+                }
+            }
+            load().then({
+                "QuestionsProvider.useEffect": ()=>{
+                    pollTimer = setInterval(poll, POLL_INTERVAL);
+                }
+            }["QuestionsProvider.useEffect"]);
+            return ({
+                "QuestionsProvider.useEffect": ()=>{
+                    if (pollTimer) clearInterval(pollTimer);
+                }
+            })["QuestionsProvider.useEffect"];
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }
+    }["QuestionsProvider.useEffect"], []);
+    const saveToDb = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "QuestionsProvider.useCallback[saveToDb]": async (qs, token)=>{
+            const ok = await pushToDb(qs, token);
+            if (ok) setLastUpdated(new Date());
+            return ok;
+        }
+    }["QuestionsProvider.useCallback[saveToDb]"], []);
+    // ── Mutation helpers (update local state; caller must push to DB if admin) ──
+    const addQuestion = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "QuestionsProvider.useCallback[addQuestion]": async (q)=>{
+            persist([
+                ...questionsRef.current,
+                q
             ]);
         }
-    }["QuestionsProvider.useCallback[persist]"], []);
-    const addQuestion = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "QuestionsProvider.useCallback[addQuestion]": (q)=>{
-            const next = [
-                ...(0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])(),
-                q
-            ];
-            persist(next);
-        }
-    }["QuestionsProvider.useCallback[addQuestion]"], [
-        persist
-    ]);
+    }["QuestionsProvider.useCallback[addQuestion]"], []);
     const updateQuestion = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "QuestionsProvider.useCallback[updateQuestion]": (q)=>{
-            const next = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().map({
-                "QuestionsProvider.useCallback[updateQuestion].next": (existing)=>existing.id === q.id ? q : existing
-            }["QuestionsProvider.useCallback[updateQuestion].next"]);
-            persist(next);
+        "QuestionsProvider.useCallback[updateQuestion]": async (q)=>{
+            persist(questionsRef.current.map({
+                "QuestionsProvider.useCallback[updateQuestion]": (e)=>e.id === q.id ? q : e
+            }["QuestionsProvider.useCallback[updateQuestion]"]));
         }
-    }["QuestionsProvider.useCallback[updateQuestion]"], [
-        persist
-    ]);
+    }["QuestionsProvider.useCallback[updateQuestion]"], []);
     const deleteQuestion = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "QuestionsProvider.useCallback[deleteQuestion]": (id)=>{
-            const next = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().filter({
-                "QuestionsProvider.useCallback[deleteQuestion].next": (q)=>q.id !== id
-            }["QuestionsProvider.useCallback[deleteQuestion].next"]);
-            persist(next);
+        "QuestionsProvider.useCallback[deleteQuestion]": async (id)=>{
+            persist(questionsRef.current.filter({
+                "QuestionsProvider.useCallback[deleteQuestion]": (q)=>q.id !== id
+            }["QuestionsProvider.useCallback[deleteQuestion]"]));
         }
-    }["QuestionsProvider.useCallback[deleteQuestion]"], [
-        persist
-    ]);
+    }["QuestionsProvider.useCallback[deleteQuestion]"], []);
     const deleteQuestionsBySubject = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "QuestionsProvider.useCallback[deleteQuestionsBySubject]": (subject)=>{
-            const next = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().filter({
-                "QuestionsProvider.useCallback[deleteQuestionsBySubject].next": (q)=>q.subject !== subject
-            }["QuestionsProvider.useCallback[deleteQuestionsBySubject].next"]);
-            persist(next);
+        "QuestionsProvider.useCallback[deleteQuestionsBySubject]": async (subject)=>{
+            persist(questionsRef.current.filter({
+                "QuestionsProvider.useCallback[deleteQuestionsBySubject]": (q)=>q.subject !== subject
+            }["QuestionsProvider.useCallback[deleteQuestionsBySubject]"]));
         }
-    }["QuestionsProvider.useCallback[deleteQuestionsBySubject]"], [
-        persist
-    ]);
+    }["QuestionsProvider.useCallback[deleteQuestionsBySubject]"], []);
     const deleteModule = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "QuestionsProvider.useCallback[deleteModule]": (subject)=>{
-            const next = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().filter({
-                "QuestionsProvider.useCallback[deleteModule].next": (q)=>q.subject !== subject
-            }["QuestionsProvider.useCallback[deleteModule].next"]);
-            persist(next);
+        "QuestionsProvider.useCallback[deleteModule]": async (subject)=>{
+            persist(questionsRef.current.filter({
+                "QuestionsProvider.useCallback[deleteModule]": (q)=>q.subject !== subject
+            }["QuestionsProvider.useCallback[deleteModule]"]));
         }
-    }["QuestionsProvider.useCallback[deleteModule]"], [
-        persist
-    ]);
+    }["QuestionsProvider.useCallback[deleteModule]"], []);
     const deleteAllQuestions = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "QuestionsProvider.useCallback[deleteAllQuestions]": ()=>{
+        "QuestionsProvider.useCallback[deleteAllQuestions]": async ()=>{
             persist([]);
         }
-    }["QuestionsProvider.useCallback[deleteAllQuestions]"], [
-        persist
-    ]);
+    }["QuestionsProvider.useCallback[deleteAllQuestions]"], []);
     const resetToDefault = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "QuestionsProvider.useCallback[resetToDefault]": ()=>{
-            (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["resetQuestionsToDefault"])();
-            setQuestions([
-                ...(0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])()
+        "QuestionsProvider.useCallback[resetToDefault]": async ()=>{
+            persist([
+                ...__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$questions$2d$database$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["questionsDatabase"]
             ]);
         }
     }["QuestionsProvider.useCallback[resetToDefault]"], []);
-    const refresh = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "QuestionsProvider.useCallback[refresh]": ()=>{
-            setQuestions([
-                ...(0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])()
-            ]);
-        }
-    }["QuestionsProvider.useCallback[refresh]"], []);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(QuestionsContext.Provider, {
         value: {
             questions,
+            lastUpdated,
+            isLoading,
             addQuestion,
             updateQuestion,
             deleteQuestion,
@@ -6165,16 +6262,16 @@ function QuestionsProvider({ children }) {
             deleteModule,
             deleteAllQuestions,
             resetToDefault,
-            refresh
+            saveToDb
         },
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/questions-context.tsx",
-        lineNumber: 74,
+        lineNumber: 144,
         columnNumber: 5
     }, this);
 }
-_s(QuestionsProvider, "r8zYPRzNPqYikLgfz/KYJng91Xs=");
+_s(QuestionsProvider, "qnxDI08e976MsB/8q/jSjP+qLwU=");
 _c = QuestionsProvider;
 function useQuestions() {
     _s1();

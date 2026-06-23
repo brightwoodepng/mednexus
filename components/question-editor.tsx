@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useQuestions } from "@/contexts/questions-context"
+import { useAdmin } from "@/contexts/admin-context"
 import { PdfImportModal } from "@/components/pdf-import-modal"
 import type { Question, QuestionOption } from "@/lib/types"
 import {

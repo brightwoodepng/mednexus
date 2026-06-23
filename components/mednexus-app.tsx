@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useApp } from "@/contexts/app-context"
+import { useAdmin } from "@/contexts/admin-context"
 import type { Screen } from "@/lib/view"
 import type { QuizMode, BlockResult } from "@/lib/types"
 import { AuthScreen } from "@/components/auth-screen"
@@ -13,6 +14,7 @@ import { ResultsScreen } from "@/components/results-screen"
 import { ProfileHistory } from "@/components/profile-history"
 import { ThemeModal } from "@/components/theme-modal"
 import { QuestionEditor } from "@/components/question-editor"
+import { AdminLoginModal } from "@/components/admin-login-modal"
 import { MenuIcon, StethoscopeIcon, PaletteIcon } from "@/components/icons"
 
 interface ActiveQuiz {
@@ -22,13 +24,18 @@ interface ActiveQuiz {
 
 export function MedNexusApp() {
   const { user, authReady } = useApp()
+  const { isAdmin } = useAdmin()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
+  const [adminLoginOpen, setAdminLoginOpen] = useState(false)
   const [pendingSubject, setPendingSubject] = useState<string | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
   const [lastResult, setLastResult] = useState<{ result: BlockResult; moduleName: string } | null>(null)
+
+  // Guard: if on question-editor but not admin, redirect to dashboard
+  const safeScreen = screen === "question-editor" && !isAdmin ? "dashboard" : screen
 
   if (!authReady) {
     return (
@@ -63,7 +70,7 @@ export function MedNexusApp() {
     setScreen("dashboard")
   }
 
-  if (screen === "quiz" && activeQuiz) {
+  if (safeScreen === "quiz" && activeQuiz) {
     return (
       <div className="h-screen bg-background">
         <QuizSimulator
@@ -79,9 +86,10 @@ export function MedNexusApp() {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar
-        screen={screen}
+        screen={safeScreen}
         onNavigate={setScreen}
         onOpenThemes={() => setThemeOpen(true)}
+        onOpenAdminLogin={() => setAdminLoginOpen(true)}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
       />
@@ -112,10 +120,10 @@ export function MedNexusApp() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-5 sm:p-8">
-          {screen === "dashboard" && <Dashboard onSelectModule={setPendingSubject} />}
-          {screen === "profile" && <ProfileHistory />}
-          {screen === "question-editor" && <QuestionEditor />}
-          {screen === "results" && lastResult && (
+          {safeScreen === "dashboard" && <Dashboard onSelectModule={setPendingSubject} />}
+          {safeScreen === "profile" && <ProfileHistory />}
+          {safeScreen === "question-editor" && isAdmin && <QuestionEditor />}
+          {safeScreen === "results" && lastResult && (
             <ResultsScreen
               result={lastResult.result}
               moduleName={lastResult.moduleName}
@@ -128,6 +136,7 @@ export function MedNexusApp() {
 
       <ModeSelectionModal subject={pendingSubject} onClose={() => setPendingSubject(null)} onStart={startQuiz} />
       <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
+      {adminLoginOpen && <AdminLoginModal onClose={() => setAdminLoginOpen(false)} />}
     </div>
   )
 }
