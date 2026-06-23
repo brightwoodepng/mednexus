@@ -1576,6 +1576,10 @@
     left: calc(var(--spacing) * 2);
   }
 
+  .left-3\.5 {
+    left: calc(var(--spacing) * 3.5);
+  }
+
   .left-\[15\%\] {
     left: 15%;
   }
@@ -2480,6 +2484,10 @@
 
   .h-\[calc\(100vh-14rem\)\] {
     height: calc(100vh - 14rem);
+  }
+
+  .h-\[calc\(100vh-17rem\)\] {
+    height: calc(100vh - 17rem);
   }
 
   .h-\[min\(22\.5rem\,var\(--total-size\)\)\] {
@@ -6501,6 +6509,10 @@
     padding-left: calc(var(--spacing) * 8);
   }
 
+  .pl-9 {
+    padding-left: calc(var(--spacing) * 9);
+  }
+
   .pl-\[0\.4rem\] {
     padding-left: .4rem;
   }
@@ -7070,6 +7082,16 @@
 
   .text-muted-foreground {
     color: var(--muted-foreground);
+  }
+
+  .text-muted-foreground\/40 {
+    color: var(--muted-foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-muted-foreground\/40 {
+      color: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+    }
   }
 
   .text-muted-foreground\/50 {

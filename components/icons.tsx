@@ -315,3 +315,10 @@ export const DownloadIcon = (p: IconProps) => (
     <line x1="12" x2="12" y1="15" y2="3" />
   </Svg>
 )
+
+export const SearchIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </Svg>
+)
