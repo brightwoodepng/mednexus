@@ -6871,6 +6871,16 @@
     color: var(--destructive-foreground);
   }
 
+  .text-destructive\/60 {
+    color: var(--destructive);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-destructive\/60 {
+      color: color-mix(in oklab, var(--destructive) 60%, transparent);
+    }
+  }
+
   .text-emerald-600 {
     color: var(--color-emerald-600);
   }
