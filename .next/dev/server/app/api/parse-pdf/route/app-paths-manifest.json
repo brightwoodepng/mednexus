@@ -1,0 +1,3 @@
+{
+  "/api/parse-pdf/route": "app/api/parse-pdf/route.js"
+}
