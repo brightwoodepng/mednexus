@@ -16,6 +16,7 @@ import {
   RefreshCwIcon,
   AlertTriangleIcon,
   CheckSquareIcon,
+  DownloadIcon,
 } from "@/components/icons"
 
 function UploadFileIcon() {
@@ -417,6 +418,17 @@ export function QuestionEditor() {
     })
   }
 
+  function handleExportJSON() {
+    const date = new Date().toISOString().slice(0, 10)
+    const blob = new Blob([JSON.stringify(questions, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `mednexus-questions-${date}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function generateId(): string { return `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
   const totalQuestions = questions.length
 
@@ -440,6 +452,16 @@ export function QuestionEditor() {
           <button type="button" onClick={handleResetToDefault} className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
             <RefreshCwIcon size={15} />
             Reset to Default
+          </button>
+          <button
+            type="button"
+            onClick={handleExportJSON}
+            disabled={questions.length === 0}
+            title="Download all questions as a JSON file"
+            className="flex items-center gap-2 rounded-xl border border-emerald-400/50 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <DownloadIcon size={15} />
+            Export JSON
           </button>
           <button type="button" onClick={() => setPdfImportOpen(true)} className="flex items-center gap-2 rounded-xl border border-violet-400/50 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-500/20 transition-colors shadow-sm">
             <UploadFileIcon />
