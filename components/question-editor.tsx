@@ -17,6 +17,7 @@ import {
   AlertTriangleIcon,
   CheckSquareIcon,
   DownloadIcon,
+  SearchIcon,
 } from "@/components/icons"
 
 function UploadFileIcon() {
@@ -321,6 +322,7 @@ export function QuestionEditor() {
   const [renameOpen, setRenameOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const [importError, setImportError] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFirstRender = useRef(true)
   const jsonInputRef = useRef<HTMLInputElement>(null)
@@ -347,6 +349,18 @@ export function QuestionEditor() {
     () => (selectedSubject ? questions.filter((q) => q.subject === selectedSubject) : []),
     [questions, selectedSubject],
   )
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return []
+    return questions.filter(
+      (item) =>
+        item.vignette.toLowerCase().includes(q) ||
+        item.subject.toLowerCase().includes(q) ||
+        item.options.some((o) => o.text.toLowerCase().includes(q)) ||
+        (item.explanation ?? "").toLowerCase().includes(q),
+    )
+  }, [questions, searchQuery])
+  const isSearching = searchQuery.trim().length > 0
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -541,16 +555,40 @@ export function QuestionEditor() {
           </button>
         </div>
       )}
-      <div className="flex gap-4 h-[calc(100vh-14rem)]">
+      {/* Search bar */}
+      <div className="mb-4 relative">
+        <SearchIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input
+          type="search"
+          placeholder="Search questions across all modules…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full rounded-xl border border-border bg-card px-4 py-2.5 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 shadow-sm"
+        />
+        {isSearching && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <XIcon size={14} />
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-4 h-[calc(100vh-17rem)]">
         {/* Module sidebar */}
         <aside className="hidden w-56 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-sm sm:flex">
           <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Modules</p>
           {subjects.length === 0 && <p className="px-2 text-xs text-muted-foreground italic">No modules yet</p>}
           {subjects.map((subject) => {
-            const count = questions.filter((q) => q.subject === subject).length
-            const active = selectedSubject === subject
+            const count = isSearching
+              ? searchResults.filter((q) => q.subject === subject).length
+              : questions.filter((q) => q.subject === subject).length
+            const active = !isSearching && selectedSubject === subject
             return (
-              <button key={subject} type="button" onClick={() => { setSelectedSubject(subject); exitBulkMode() }}
+              <button key={subject} type="button" onClick={() => { setSelectedSubject(subject); setSearchQuery(""); exitBulkMode() }}
                 className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${active ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-foreground hover:bg-muted"}`}
               >
                 <span className="truncate">{subject}</span>
@@ -564,7 +602,53 @@ export function QuestionEditor() {
 
         {/* Main content panel */}
         <div className="flex flex-1 flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          {!selectedSubject ? (
+          {isSearching ? (
+            /* ── Search results panel ── */
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                <div>
+                  <h2 className="font-bold text-foreground">Search Results</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {searchResults.length} match{searchResults.length !== 1 ? "es" : ""} for &ldquo;{searchQuery.trim()}&rdquo;
+                  </p>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto divide-y divide-border">
+                {searchResults.length === 0 && (
+                  <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+                    <SearchIcon size={28} className="text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">No questions match your search.</p>
+                  </div>
+                )}
+                {searchResults.map((q) => (
+                  <div key={q.id} className="flex items-start gap-4 px-5 py-4 hover:bg-muted/40 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{q.subject}</span>
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">{q.correctAnswer}</span>
+                      </div>
+                      <p className="text-sm text-foreground line-clamp-2">{q.vignette}</p>
+                      <div className="mt-1.5 flex gap-3 flex-wrap">
+                        {q.options.map((o) => (
+                          <span key={o.id} className={`text-xs ${o.id === q.correctAnswer ? "font-semibold text-emerald-700" : "text-muted-foreground"}`}>
+                            {o.id}. {o.text.slice(0, 30)}{o.text.length > 30 ? "…" : ""}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedSubject(q.subject); setSearchQuery(""); setEditingQuestion(q) }}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      aria-label="Edit question"
+                    >
+                      <PencilIcon size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : !selectedSubject ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center p-8">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
                 <BookOpenIcon size={28} />
