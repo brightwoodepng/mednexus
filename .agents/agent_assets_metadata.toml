@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "iwqF00QxWhVRJDF8l77mK"
+uri = "file://mednexus-source.tar.gz"
+type = "unspecified"
+title = "MedNexus — Full Source Code"
