@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useApp } from "@/contexts/app-context"
+import { useAdmin } from "@/contexts/admin-context"
 import {
   StethoscopeIcon,
   LayoutDashboardIcon,
@@ -17,14 +18,14 @@ interface SidebarProps {
   screen: Screen
   onNavigate: (screen: Screen) => void
   onOpenThemes: () => void
+  onOpenAdminLogin: () => void
   mobileOpen: boolean
   onCloseMobile: () => void
 }
 
-const NAV_ITEMS: { id: Screen; label: string; icon: typeof LayoutDashboardIcon }[] = [
+const REGULAR_NAV: { id: Screen; label: string; icon: typeof LayoutDashboardIcon }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
   { id: "profile", label: "Profile & History", icon: UserIcon },
-  { id: "question-editor", label: "Question Editor", icon: DatabaseIcon },
 ]
 
 function LiveClock() {
@@ -51,13 +52,21 @@ function LiveClock() {
   )
 }
 
-export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseMobile }: SidebarProps) {
+export function Sidebar({
+  screen,
+  onNavigate,
+  onOpenThemes,
+  onOpenAdminLogin,
+  mobileOpen,
+  onCloseMobile,
+}: SidebarProps) {
   const { user, cloudEnabled, signOutUser } = useApp()
+  const { isAdmin, logoutAdmin } = useAdmin()
 
   const content = (
     <div className="flex h-full flex-col gap-2 p-4">
       {/* Brand */}
-      <div className="mb-4 flex items-center justify-between px-2 pt-2">
+      <div className="mb-2 flex items-center justify-between px-2 pt-2">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
             <StethoscopeIcon size={20} />
@@ -79,47 +88,52 @@ export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseM
 
       {/* Primary nav */}
       <nav className="mt-1 flex flex-col gap-1">
-        {NAV_ITEMS.map((item) => {
+        {REGULAR_NAV.map((item) => {
           const active = screen === item.id
           const Icon = item.icon
-          const isEditor = item.id === "question-editor"
           return (
             <button
               key={item.id}
               type="button"
-              onClick={() => {
-                onNavigate(item.id)
-                onCloseMobile()
-              }}
+              onClick={() => { onNavigate(item.id); onCloseMobile() }}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                 active
-                  ? isEditor
-                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 shadow-sm ring-1 ring-amber-400/30"
-                    : "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                  : isEditor
-                    ? "text-amber-700/80 dark:text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-400"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               }`}
             >
               <Icon size={18} />
               {item.label}
-              {isEditor && !active && (
-                <span className="ml-auto rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                  Admin
-                </span>
-              )}
             </button>
           )
         })}
+
+        {/* Admin-only: Question Editor */}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => { onNavigate("question-editor"); onCloseMobile() }}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+              screen === "question-editor"
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 shadow-sm ring-1 ring-amber-400/30"
+                : "text-amber-700/80 dark:text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-400"
+            }`}
+          >
+            <DatabaseIcon size={18} />
+            Question Editor
+            {screen !== "question-editor" && (
+              <span className="ml-auto rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                Admin
+              </span>
+            )}
+          </button>
+        )}
 
         <div className="my-1 h-px bg-sidebar-border/60" />
 
         <button
           type="button"
-          onClick={() => {
-            onOpenThemes()
-            onCloseMobile()
-          }}
+          onClick={() => { onOpenThemes(); onCloseMobile() }}
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <PaletteIcon size={18} />
@@ -128,6 +142,32 @@ export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseM
       </nav>
 
       <div className="mt-auto flex flex-col gap-3">
+        {/* Admin badge or login button */}
+        {isAdmin ? (
+          <div className="flex items-center justify-between rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <DatabaseIcon size={14} className="text-amber-600" />
+              <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Admin Mode</span>
+            </div>
+            <button
+              type="button"
+              onClick={logoutAdmin}
+              className="rounded-lg px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-500/20 transition-colors"
+            >
+              Exit
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenAdminLogin}
+            className="flex items-center gap-2 rounded-xl border border-sidebar-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+          >
+            <DatabaseIcon size={13} />
+            Admin Login
+          </button>
+        )}
+
         {/* User card */}
         <div className="flex items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/50 px-3 py-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground">
@@ -138,6 +178,7 @@ export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseM
             <p className="text-xs text-muted-foreground">{cloudEnabled ? "☁ Synced" : "Saving locally…"}</p>
           </div>
         </div>
+
         <button
           type="button"
           onClick={signOutUser}
