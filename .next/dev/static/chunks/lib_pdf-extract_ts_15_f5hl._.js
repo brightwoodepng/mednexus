@@ -13,7 +13,7 @@ async function getPdfjs() {
     if (pdfjsLib) return pdfjsLib;
     pdfjsLib = await __turbopack_context__.A("[project]/node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs [app-client] (ecmascript, async loader)");
     // Use the bundled legacy worker to avoid CORS issues
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
     return pdfjsLib;
 }
 async function extractTextFromPdf(file) {
