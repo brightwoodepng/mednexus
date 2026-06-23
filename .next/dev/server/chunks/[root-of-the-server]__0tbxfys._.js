@@ -61,7 +61,9 @@ var __turbopack_async_dependencies__ = __turbopack_handle_async_dependencies__([
 const pool = new __TURBOPACK__imported__module__$5b$externals$5d2f$pg__$5b$external$5d$__$28$pg$2c$__esm_import$2c$__$5b$project$5d2f$node_modules$2f$pg$29$__["Pool"]({
     connectionString: process.env.DATABASE_URL,
     ssl: false,
-    max: 10
+    max: 10,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 30000
 });
 let initialized = false;
 async function ensureSchema() {
