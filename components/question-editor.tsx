@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useRef } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { PdfImportModal } from "@/components/pdf-import-modal"
@@ -28,21 +28,20 @@ function UploadFileIcon() {
   )
 }
 
+function SparklesIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+    </svg>
+  )
+}
+
 // ── Confirm Dialog ───────────────────────────────────────────────────────────
 function ConfirmDialog({
-  title,
-  message,
-  confirmLabel,
-  onConfirm,
-  onCancel,
-  danger,
+  title, message, confirmLabel, onConfirm, onCancel, danger,
 }: {
-  title: string
-  message: string
-  confirmLabel: string
-  onConfirm: () => void
-  onCancel: () => void
-  danger?: boolean
+  title: string; message: string; confirmLabel: string
+  onConfirm: () => void; onCancel: () => void; danger?: boolean
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
@@ -57,21 +56,46 @@ function ConfirmDialog({
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onCancel} className="rounded-xl px-4 py-2 text-sm font-medium text-foreground border border-border hover:bg-muted transition-colors">Cancel</button>
+          <button type="button" onClick={onConfirm} className={`rounded-xl px-4 py-2 text-sm font-medium text-white transition-colors ${danger ? "bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary/90"}`}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Rename Module Dialog ─────────────────────────────────────────────────────
+function RenameModuleDialog({
+  currentName, onRename, onCancel,
+}: {
+  currentName: string; onRename: (name: string) => void; onCancel: () => void
+}) {
+  const [value, setValue] = useState(currentName)
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+        <div>
+          <h3 className="font-bold text-foreground">Rename Module</h3>
+          <p className="mt-1 text-sm text-muted-foreground">All questions in this module will be updated.</p>
+        </div>
+        <input
+          autoFocus
+          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && value.trim()) onRename(value.trim()) }}
+          placeholder="Module name"
+        />
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="rounded-xl px-4 py-2 text-sm font-medium text-foreground border border-border hover:bg-muted transition-colors">Cancel</button>
           <button
             type="button"
-            onClick={onCancel}
-            className="rounded-xl px-4 py-2 text-sm font-medium text-foreground border border-border hover:bg-muted transition-colors"
+            disabled={!value.trim() || value.trim() === currentName}
+            onClick={() => { if (value.trim()) onRename(value.trim()) }}
+            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={`rounded-xl px-4 py-2 text-sm font-medium text-white transition-colors ${
-              danger ? "bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary/90"
-            }`}
-          >
-            {confirmLabel}
+            <CheckIcon size={14} />
+            Rename
           </button>
         </div>
       </div>
@@ -81,32 +105,20 @@ function ConfirmDialog({
 
 // ── Question Form (Add / Edit) ───────────────────────────────────────────────
 const EMPTY_FORM = {
-  subject: "",
-  vignette: "",
-  optA: "",
-  optB: "",
-  optC: "",
-  optD: "",
-  optE: "",
+  subject: "", vignette: "",
+  optA: "", optB: "", optC: "", optD: "", optE: "",
   correctAnswer: "A",
-  objective: "",
-  details: "",
-  incorrectReasoning: "",
+  objective: "", details: "", incorrectReasoning: "",
 }
-
 type FormState = typeof EMPTY_FORM
 
 function questionToForm(q: Question): FormState {
   const opts: Record<string, string> = {}
   for (const o of q.options) opts[`opt${o.id}`] = o.text
   return {
-    subject: q.subject,
-    vignette: q.vignette,
-    optA: opts.optA ?? "",
-    optB: opts.optB ?? "",
-    optC: opts.optC ?? "",
-    optD: opts.optD ?? "",
-    optE: opts.optE ?? "",
+    subject: q.subject, vignette: q.vignette,
+    optA: opts.optA ?? "", optB: opts.optB ?? "",
+    optC: opts.optC ?? "", optD: opts.optD ?? "", optE: opts.optE ?? "",
     correctAnswer: q.correctAnswer,
     objective: q.explanation.objective,
     details: q.explanation.details,
@@ -116,17 +128,12 @@ function questionToForm(q: Question): FormState {
 
 function formToQuestion(f: FormState, id: string): Question {
   const options: QuestionOption[] = [
-    { id: "A", text: f.optA },
-    { id: "B", text: f.optB },
-    { id: "C", text: f.optC },
-    { id: "D", text: f.optD },
+    { id: "A", text: f.optA }, { id: "B", text: f.optB },
+    { id: "C", text: f.optC }, { id: "D", text: f.optD },
   ]
   if (f.optE.trim()) options.push({ id: "E", text: f.optE })
   return {
-    id,
-    subject: f.subject.trim(),
-    vignette: f.vignette.trim(),
-    options,
+    id, subject: f.subject.trim(), vignette: f.vignette.trim(), options,
     correctAnswer: f.correctAnswer,
     explanation: {
       objective: f.objective.trim(),
@@ -137,19 +144,16 @@ function formToQuestion(f: FormState, id: string): Question {
 }
 
 function QuestionForm({
-  initial,
-  questionId,
-  defaultSubject,
-  onSave,
-  onCancel,
+  initial, questionId, defaultSubject, adminToken, onSave, onCancel,
 }: {
-  initial?: Question
-  questionId: string
-  defaultSubject: string
-  onSave: (q: Question) => void
-  onCancel: () => void
+  initial?: Question; questionId: string; defaultSubject: string
+  adminToken: string | null; onSave: (q: Question) => void; onCancel: () => void
 }) {
-  const [form, setForm] = useState<FormState>(initial ? questionToForm(initial) : { ...EMPTY_FORM, subject: defaultSubject })
+  const [form, setForm] = useState<FormState>(
+    initial ? questionToForm(initial) : { ...EMPTY_FORM, subject: defaultSubject }
+  )
+  const [enhancing, setEnhancing] = useState(false)
+  const [enhanceError, setEnhanceError] = useState("")
 
   function set(key: keyof FormState, val: string) {
     setForm((f) => ({ ...f, [key]: val }))
@@ -159,6 +163,42 @@ function QuestionForm({
     e.preventDefault()
     if (!form.subject.trim() || !form.vignette.trim() || !form.optA.trim() || !form.optB.trim()) return
     onSave(formToQuestion(form, questionId))
+  }
+
+  async function handleEnhance() {
+    if (!form.vignette.trim() || !form.optA.trim() || !form.optB.trim()) {
+      setEnhanceError("Fill in the vignette and answer choices first.")
+      return
+    }
+    setEnhancing(true)
+    setEnhanceError("")
+    try {
+      const options = ["A", "B", "C", "D", "E"]
+        .map((l) => ({ id: l, text: form[`opt${l}` as keyof FormState] as string }))
+        .filter((o) => o.text.trim())
+      const res = await fetch("/api/enhance-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken ?? "" },
+        body: JSON.stringify({
+          vignette: form.vignette,
+          options,
+          correctAnswer: form.correctAnswer,
+          subject: form.subject,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Failed")
+      setForm((f) => ({
+        ...f,
+        objective: data.explanation.objective ?? f.objective,
+        details: data.explanation.details ?? f.details,
+        incorrectReasoning: data.explanation.incorrectReasoning ?? f.incorrectReasoning,
+      }))
+    } catch (err: any) {
+      setEnhanceError(err.message ?? "Enhancement failed. Try again.")
+    } finally {
+      setEnhancing(false)
+    }
   }
 
   const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -192,15 +232,8 @@ function QuestionForm({
         <label className={labelCls}>Correct Answer *</label>
         <div className="flex gap-2 flex-wrap">
           {["A", "B", "C", "D", "E"].map((letter) => (
-            <button
-              key={letter}
-              type="button"
-              onClick={() => set("correctAnswer", letter)}
-              className={`flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-bold transition-colors ${
-                form.correctAnswer === letter
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "border-border text-muted-foreground hover:bg-muted"
-              }`}
+            <button key={letter} type="button" onClick={() => set("correctAnswer", letter)}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-bold transition-colors ${form.correctAnswer === letter ? "bg-primary text-primary-foreground border-primary shadow-sm" : "border-border text-muted-foreground hover:bg-muted"}`}
             >
               {letter}
             </button>
@@ -208,8 +241,31 @@ function QuestionForm({
         </div>
       </div>
 
+      {/* Explanation section with AI Enhance button */}
       <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-4">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Explanation</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Explanation</p>
+          <button
+            type="button"
+            onClick={handleEnhance}
+            disabled={enhancing}
+            className="flex items-center gap-1.5 rounded-lg bg-violet-500/10 border border-violet-400/40 px-3 py-1.5 text-xs font-semibold text-violet-700 dark:text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {enhancing ? (
+              <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+            ) : (
+              <SparklesIcon size={13} />
+            )}
+            {enhancing ? "Enhancing…" : "AI Enhance"}
+          </button>
+        </div>
+
+        {enhanceError && (
+          <p className="text-xs text-destructive flex items-center gap-1.5">
+            <AlertTriangleIcon size={12} /> {enhanceError}
+          </p>
+        )}
+
         <div>
           <label className={labelCls}>Objective</label>
           <input className={inputCls} value={form.objective} onChange={(e) => set("objective", e.target.value)} placeholder="What concept is being tested?" />
@@ -225,9 +281,7 @@ function QuestionForm({
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onCancel} className="rounded-xl px-4 py-2 text-sm font-medium text-foreground border border-border hover:bg-muted transition-colors">
-          Cancel
-        </button>
+        <button type="button" onClick={onCancel} className="rounded-xl px-4 py-2 text-sm font-medium text-foreground border border-border hover:bg-muted transition-colors">Cancel</button>
         <button type="submit" className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
           <CheckIcon size={15} />
           Save Question
@@ -239,7 +293,6 @@ function QuestionForm({
 
 // ── Save status pill ────────────────────────────────────────────────────────
 type SaveStatus = "idle" | "saving" | "saved" | "error"
-
 function SaveStatusPill({ status }: { status: SaveStatus }) {
   if (status === "idle") return null
   const cfg = {
@@ -264,6 +317,7 @@ export function QuestionEditor() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [editingQuestion, setEditingQuestion] = useState<Question | "new" | null>(null)
   const [pdfImportOpen, setPdfImportOpen] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFirstRender = useRef(true)
@@ -280,14 +334,12 @@ export function QuestionEditor() {
     saveTimer.current = setTimeout(async () => {
       const ok = await saveToDb(questions, adminToken)
       setSaveStatus(ok ? "saved" : "error")
-      // Reset to idle after 3 s
       setTimeout(() => setSaveStatus("idle"), 3000)
     }, 800)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
   }, [questions, adminToken, saveToDb])
 
   const subjects = useMemo(() => Array.from(new Set(questions.map((q) => q.subject))).sort(), [questions])
-
   const moduleQuestions = useMemo(
     () => (selectedSubject ? questions.filter((q) => q.subject === selectedSubject) : []),
     [questions, selectedSubject],
@@ -301,34 +353,28 @@ export function QuestionEditor() {
       return next
     })
   }
+  function selectAll() { setSelected(new Set(moduleQuestions.map((q) => q.id))) }
+  function clearSelection() { setSelected(new Set()) }
+  function exitBulkMode() { setBulkMode(false); clearSelection() }
 
-  function selectAll() {
-    setSelected(new Set(moduleQuestions.map((q) => q.id)))
-  }
-
-  function clearSelection() {
-    setSelected(new Set())
-  }
-
-  function exitBulkMode() {
-    setBulkMode(false)
-    clearSelection()
-  }
+  // Rename module — updates subject on all questions in the module
+  const handleRenameModule = useCallback((newName: string) => {
+    if (!selectedSubject || newName === selectedSubject) return
+    moduleQuestions.forEach((q) => updateQuestion({ ...q, subject: newName }))
+    setSelectedSubject(newName)
+    setRenameOpen(false)
+  }, [selectedSubject, moduleQuestions, updateQuestion])
 
   function handleDeleteSelected() {
     if (selected.size === 0) return
     setConfirm({
       title: "Delete selected questions?",
       message: `This will permanently delete ${selected.size} question${selected.size === 1 ? "" : "s"} from "${selectedSubject}".`,
-      confirmLabel: "Delete",
-      danger: true,
+      confirmLabel: "Delete", danger: true,
       action: () => {
         selected.forEach((id) => deleteQuestion(id))
         clearSelection()
-        if (moduleQuestions.length === selected.size) {
-          setSelectedSubject(null)
-          exitBulkMode()
-        }
+        if (moduleQuestions.length === selected.size) { setSelectedSubject(null); exitBulkMode() }
       },
     })
   }
@@ -337,14 +383,9 @@ export function QuestionEditor() {
     if (!selectedSubject) return
     setConfirm({
       title: "Delete all questions in this module?",
-      message: `This will permanently delete all ${moduleQuestions.length} question${moduleQuestions.length === 1 ? "" : "s"} in "${selectedSubject}". The module card will disappear from the dashboard.`,
-      confirmLabel: "Delete All Questions",
-      danger: true,
-      action: () => {
-        deleteQuestionsBySubject(selectedSubject)
-        setSelectedSubject(null)
-        exitBulkMode()
-      },
+      message: `This will permanently delete all ${moduleQuestions.length} question${moduleQuestions.length === 1 ? "" : "s"} in "${selectedSubject}".`,
+      confirmLabel: "Delete All Questions", danger: true,
+      action: () => { deleteQuestionsBySubject(selectedSubject); setSelectedSubject(null); exitBulkMode() },
     })
   }
 
@@ -352,14 +393,9 @@ export function QuestionEditor() {
     if (!selectedSubject) return
     setConfirm({
       title: `Delete module "${selectedSubject}"?`,
-      message: `This will permanently remove all ${moduleQuestions.length} question${moduleQuestions.length === 1 ? "" : "s"} in this module and remove it from the dashboard entirely.`,
-      confirmLabel: "Delete Module",
-      danger: true,
-      action: () => {
-        deleteModule(selectedSubject)
-        setSelectedSubject(null)
-        exitBulkMode()
-      },
+      message: `This will permanently remove all ${moduleQuestions.length} question${moduleQuestions.length === 1 ? "" : "s"} and the module from the dashboard.`,
+      confirmLabel: "Delete Module", danger: true,
+      action: () => { deleteModule(selectedSubject); setSelectedSubject(null); exitBulkMode() },
     })
   }
 
@@ -367,33 +403,21 @@ export function QuestionEditor() {
     setConfirm({
       title: "Delete this question?",
       message: `"${q.vignette.slice(0, 80)}${q.vignette.length > 80 ? "…" : ""}"`,
-      confirmLabel: "Delete",
-      danger: true,
-      action: () => {
-        deleteQuestion(q.id)
-        if (moduleQuestions.length === 1) setSelectedSubject(null)
-      },
+      confirmLabel: "Delete", danger: true,
+      action: () => { deleteQuestion(q.id); if (moduleQuestions.length === 1) setSelectedSubject(null) },
     })
   }
 
   function handleResetToDefault() {
     setConfirm({
       title: "Reset to default questions?",
-      message: "This will discard all your edits and restore the original built-in question bank. This cannot be undone.",
-      confirmLabel: "Reset",
-      danger: true,
-      action: () => {
-        resetToDefault()
-        setSelectedSubject(null)
-        exitBulkMode()
-      },
+      message: "This will discard all your edits and restore the original built-in question bank.",
+      confirmLabel: "Reset", danger: true,
+      action: () => { resetToDefault(); setSelectedSubject(null); exitBulkMode() },
     })
   }
 
-  function generateId(): string {
-    return `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-  }
-
+  function generateId(): string { return `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
   const totalQuestions = questions.length
 
   return (
@@ -413,28 +437,15 @@ export function QuestionEditor() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={handleResetToDefault}
-            className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
-          >
+          <button type="button" onClick={handleResetToDefault} className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
             <RefreshCwIcon size={15} />
             Reset to Default
           </button>
-          <button
-            type="button"
-            onClick={() => setPdfImportOpen(true)}
-            className="flex items-center gap-2 rounded-xl border border-violet-400/50 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-500/20 transition-colors shadow-sm"
-          >
+          <button type="button" onClick={() => setPdfImportOpen(true)} className="flex items-center gap-2 rounded-xl border border-violet-400/50 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-500/20 transition-colors shadow-sm">
             <UploadFileIcon />
             Import PDF
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedSubject(selectedSubject ?? subjects[0] ?? "")
-              setEditingQuestion("new")
-            }}
+          <button type="button" onClick={() => { setSelectedSubject(selectedSubject ?? subjects[0] ?? ""); setEditingQuestion("new") }}
             className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
           >
             <PlusIcon size={15} />
@@ -447,25 +458,13 @@ export function QuestionEditor() {
         {/* Module sidebar */}
         <aside className="hidden w-56 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-sm sm:flex">
           <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Modules</p>
-          {subjects.length === 0 && (
-            <p className="px-2 text-xs text-muted-foreground italic">No modules yet</p>
-          )}
+          {subjects.length === 0 && <p className="px-2 text-xs text-muted-foreground italic">No modules yet</p>}
           {subjects.map((subject) => {
             const count = questions.filter((q) => q.subject === subject).length
             const active = selectedSubject === subject
             return (
-              <button
-                key={subject}
-                type="button"
-                onClick={() => {
-                  setSelectedSubject(subject)
-                  exitBulkMode()
-                }}
-                className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
-                  active
-                    ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-                    : "text-foreground hover:bg-muted"
-                }`}
+              <button key={subject} type="button" onClick={() => { setSelectedSubject(subject); exitBulkMode() }}
+                className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${active ? "bg-primary text-primary-foreground font-semibold shadow-sm" : "text-foreground hover:bg-muted"}`}
               >
                 <span className="truncate">{subject}</span>
                 <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
@@ -489,16 +488,12 @@ export function QuestionEditor() {
                   {subjects.length > 0 ? "Choose a module from the left panel" : "Add a question to create your first module"}
                 </p>
               </div>
-
               {/* Mobile module list */}
               <div className="mt-4 flex flex-col gap-2 w-full max-w-xs sm:hidden">
                 {subjects.map((subject) => {
                   const count = questions.filter((q) => q.subject === subject).length
                   return (
-                    <button
-                      key={subject}
-                      type="button"
-                      onClick={() => setSelectedSubject(subject)}
+                    <button key={subject} type="button" onClick={() => setSelectedSubject(subject)}
                       className="flex items-center justify-between rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm font-medium hover:bg-muted transition-colors"
                     >
                       <span>{subject}</span>
@@ -512,29 +507,29 @@ export function QuestionEditor() {
             <>
               {/* Module header */}
               <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-                <div className="min-w-0">
-                  <h2 className="font-bold text-foreground truncate">{selectedSubject}</h2>
-                  <p className="text-xs text-muted-foreground">{moduleQuestions.length} question{moduleQuestions.length !== 1 ? "s" : ""}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="min-w-0">
+                    <h2 className="font-bold text-foreground truncate">{selectedSubject}</h2>
+                    <p className="text-xs text-muted-foreground">{moduleQuestions.length} question{moduleQuestions.length !== 1 ? "s" : ""}</p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (bulkMode) exitBulkMode()
-                      else setBulkMode(true)
-                    }}
-                    className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                      bulkMode
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "border border-border text-muted-foreground hover:bg-muted"
-                    }`}
+                    onClick={() => setRenameOpen(true)}
+                    title="Rename module"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  >
+                    <PencilIcon size={13} />
+                  </button>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button type="button"
+                    onClick={() => { if (bulkMode) exitBulkMode(); else setBulkMode(true) }}
+                    className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${bulkMode ? "bg-primary text-primary-foreground shadow-sm" : "border border-border text-muted-foreground hover:bg-muted"}`}
                   >
                     <CheckSquareIcon size={14} />
                     {bulkMode ? "Exit Bulk" : "Bulk Edit"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingQuestion("new")}
+                  <button type="button" onClick={() => setEditingQuestion("new")}
                     className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
                   >
                     <PlusIcon size={14} />
@@ -546,20 +541,14 @@ export function QuestionEditor() {
               {/* Bulk action bar */}
               {bulkMode && (
                 <div className="flex flex-wrap items-center gap-2 border-b border-border bg-destructive/5 px-5 py-3">
-                  <span className="text-xs font-medium text-muted-foreground mr-1">
-                    {selected.size} selected
-                  </span>
-                  <button
-                    type="button"
-                    onClick={selected.size === moduleQuestions.length ? clearSelection : selectAll}
+                  <span className="text-xs font-medium text-muted-foreground mr-1">{selected.size} selected</span>
+                  <button type="button" onClick={selected.size === moduleQuestions.length ? clearSelection : selectAll}
                     className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
                   >
                     {selected.size === moduleQuestions.length ? "Deselect All" : "Select All"}
                   </button>
                   {selected.size > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleDeleteSelected}
+                    <button type="button" onClick={handleDeleteSelected}
                       className="flex items-center gap-1.5 rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors"
                     >
                       <TrashIcon size={12} />
@@ -567,17 +556,13 @@ export function QuestionEditor() {
                     </button>
                   )}
                   <div className="ml-auto flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleDeleteAllQuestions}
+                    <button type="button" onClick={handleDeleteAllQuestions}
                       className="flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors"
                     >
                       <TrashIcon size={12} />
                       Delete All Questions
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleDeleteModule}
+                    <button type="button" onClick={handleDeleteModule}
                       className="flex items-center gap-1.5 rounded-lg bg-destructive px-3 py-1.5 text-xs font-semibold text-white hover:bg-destructive/90 transition-colors shadow-sm"
                     >
                       <TrashIcon size={12} />
@@ -592,9 +577,7 @@ export function QuestionEditor() {
                 {moduleQuestions.length === 0 && (
                   <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
                     <p className="text-sm text-muted-foreground">No questions in this module.</p>
-                    <button
-                      type="button"
-                      onClick={() => setEditingQuestion("new")}
+                    <button type="button" onClick={() => setEditingQuestion("new")}
                       className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                     >
                       <PlusIcon size={14} />
@@ -603,17 +586,12 @@ export function QuestionEditor() {
                   </div>
                 )}
                 {moduleQuestions.map((q, i) => (
-                  <div
-                    key={q.id}
+                  <div key={q.id}
                     className={`flex items-start gap-4 px-5 py-4 transition-colors ${bulkMode && selected.has(q.id) ? "bg-primary/5" : "hover:bg-muted/40"}`}
                   >
                     {bulkMode && (
-                      <button
-                        type="button"
-                        onClick={() => toggleSelect(q.id)}
-                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
-                          selected.has(q.id) ? "bg-primary border-primary text-primary-foreground" : "border-border"
-                        }`}
+                      <button type="button" onClick={() => toggleSelect(q.id)}
+                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${selected.has(q.id) ? "bg-primary border-primary text-primary-foreground" : "border-border"}`}
                       >
                         {selected.has(q.id) && <CheckIcon size={11} />}
                       </button>
@@ -621,9 +599,7 @@ export function QuestionEditor() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Q{i + 1}</span>
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                          {q.correctAnswer}
-                        </span>
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">{q.correctAnswer}</span>
                       </div>
                       <p className="text-sm text-foreground line-clamp-2">{q.vignette}</p>
                       <div className="mt-1.5 flex gap-3 flex-wrap">
@@ -636,17 +612,13 @@ export function QuestionEditor() {
                     </div>
                     {!bulkMode && (
                       <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setEditingQuestion(q)}
+                        <button type="button" onClick={() => setEditingQuestion(q)}
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                           aria-label="Edit question"
                         >
                           <PencilIcon size={15} />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteSingleQuestion(q)}
+                        <button type="button" onClick={() => handleDeleteSingleQuestion(q)}
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                           aria-label="Delete question"
                         >
@@ -667,14 +639,11 @@ export function QuestionEditor() {
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-foreground/40 backdrop-blur-sm p-4 pt-8 pb-8">
           <div className="w-full max-w-2xl rounded-2xl bg-card border border-border shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h3 className="font-bold text-foreground">
-                {editingQuestion === "new" ? "Add New Question" : "Edit Question"}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setEditingQuestion(null)}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-              >
+              <div>
+                <h3 className="font-bold text-foreground">{editingQuestion === "new" ? "Add New Question" : "Edit Question"}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Use <span className="font-semibold text-violet-600">AI Enhance</span> to auto-generate explanation from your vignette.</p>
+              </div>
+              <button type="button" onClick={() => setEditingQuestion(null)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
                 <XIcon size={18} />
               </button>
             </div>
@@ -683,6 +652,7 @@ export function QuestionEditor() {
                 initial={editingQuestion === "new" ? undefined : editingQuestion}
                 questionId={editingQuestion === "new" ? generateId() : (editingQuestion as Question).id}
                 defaultSubject={selectedSubject ?? ""}
+                adminToken={adminToken}
                 onSave={(q) => {
                   if (editingQuestion === "new") {
                     addQuestion(q)
@@ -706,11 +676,18 @@ export function QuestionEditor() {
           defaultModule={selectedSubject ?? ""}
           onImport={(importedQuestions) => {
             importedQuestions.forEach((q) => addQuestion(q))
-            if (importedQuestions.length > 0 && !selectedSubject) {
-              setSelectedSubject(importedQuestions[0].subject)
-            }
+            if (importedQuestions.length > 0 && !selectedSubject) setSelectedSubject(importedQuestions[0].subject)
           }}
           onClose={() => setPdfImportOpen(false)}
+        />
+      )}
+
+      {/* Rename module dialog */}
+      {renameOpen && selectedSubject && (
+        <RenameModuleDialog
+          currentName={selectedSubject}
+          onRename={handleRenameModule}
+          onCancel={() => setRenameOpen(false)}
         />
       )}
 
