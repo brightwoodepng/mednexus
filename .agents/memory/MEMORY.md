@@ -1,0 +1,2 @@
+- [Admin Auth System](admin-auth.md) — stateless HMAC-signed token, ADMIN_PASSWORD secret, ADMIN_SECRET env var
+- [DB-backed Questions](db-questions.md) — single-row JSONB in mednexus_questions, polled every 30s by all clients
