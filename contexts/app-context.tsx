@@ -76,7 +76,9 @@ function loadLocal(uid: string): UserProgress {
 
 async function apiGet(uid: string): Promise<{ name: string; progress: UserProgress } | null> {
   try {
-    const res = await fetch(`/api/sync?uid=${encodeURIComponent(uid)}`)
+    const res = await fetch(`/api/sync?uid=${encodeURIComponent(uid)}`, {
+      signal: AbortSignal.timeout(6000),
+    })
     if (!res.ok) return null
     const data = await res.json()
     return { name: data.name, progress: { ...EMPTY_PROGRESS, ...data.progress } }
@@ -91,6 +93,7 @@ async function apiPost(uid: string, name: string, progress: UserProgress): Promi
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ uid, name, progress }),
+      signal: AbortSignal.timeout(6000),
     })
     return res.ok
   } catch {
