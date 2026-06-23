@@ -57,7 +57,9 @@ function loadLocal(uid) {
 }
 async function apiGet(uid) {
     try {
-        const res = await fetch(`/api/sync?uid=${encodeURIComponent(uid)}`);
+        const res = await fetch(`/api/sync?uid=${encodeURIComponent(uid)}`, {
+            signal: AbortSignal.timeout(6000)
+        });
         if (!res.ok) return null;
         const data = await res.json();
         return {
@@ -82,7 +84,8 @@ async function apiPost(uid, name, progress) {
                 uid,
                 name,
                 progress
-            })
+            }),
+            signal: AbortSignal.timeout(6000)
         });
         return res.ok;
     } catch  {
@@ -210,7 +213,7 @@ function AppProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/app-context.tsx",
-        lineNumber: 234,
+        lineNumber: 237,
         columnNumber: 10
     }, this);
 }
