@@ -1,15 +1,13 @@
 import { Pool } from "pg"
 
-const isLocalDb =
-  process.env.DATABASE_URL?.includes("localhost") ||
-  process.env.DATABASE_URL?.includes("127.0.0.1") ||
-  process.env.DATABASE_URL?.includes("PGHOST") ||
-  process.env.PGHOST === "localhost" ||
-  process.env.PGHOST === "127.0.0.1"
+// On Replit the internal Postgres doesn't need SSL.
+// On external hosts (Neon, Supabase, etc.) SSL is required.
+// REPL_ID is only present inside Replit's runtime.
+const isReplit = Boolean(process.env.REPL_ID)
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: isLocalDb ? false : { rejectUnauthorized: false },
+  ssl: isReplit ? false : { rejectUnauthorized: false },
   max: 10,
   connectionTimeoutMillis: 5000,
   idleTimeoutMillis: 30000,
