@@ -4814,6 +4814,16 @@
     border-color: var(--color-emerald-300);
   }
 
+  .border-emerald-400\/50 {
+    border-color: #00d29480;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .border-emerald-400\/50 {
+      border-color: color-mix(in oklab, var(--color-emerald-400) 50%, transparent);
+    }
+  }
+
   .border-input {
     border-color: var(--input);
   }
@@ -5205,6 +5215,16 @@
 
   .bg-emerald-100 {
     background-color: var(--color-emerald-100);
+  }
+
+  .bg-emerald-500\/10 {
+    background-color: #00bb7f1a;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-emerald-500\/10 {
+      background-color: color-mix(in oklab, var(--color-emerald-500) 10%, transparent);
+    }
   }
 
   .bg-foreground {
@@ -9608,6 +9628,18 @@
   }
 
   @media (hover: hover) {
+    .hover\:bg-emerald-500\/20:hover {
+      background-color: #00bb7f33;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-emerald-500\/20:hover {
+        background-color: color-mix(in oklab, var(--color-emerald-500) 20%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:bg-muted:hover {
       background-color: var(--muted);
     }
@@ -13097,6 +13129,12 @@
   @media (prefers-color-scheme: dark) {
     .dark\:text-blue-500 {
       color: var(--color-blue-500);
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dark\:text-emerald-400 {
+      color: var(--color-emerald-400);
     }
   }
 
