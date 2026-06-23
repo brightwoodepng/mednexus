@@ -118,6 +118,7 @@
     --color-emerald-50: #ecfdf5;
     --color-emerald-100: #d0fae5;
     --color-emerald-200: #a4f4cf;
+    --color-emerald-300: #5ee9b5;
     --color-emerald-400: #00d294;
     --color-emerald-600: #009767;
     --color-emerald-700: #007956;
@@ -252,6 +253,7 @@
       --color-emerald-50: lab(97.8462% -6.94966 1.85487);
       --color-emerald-100: lab(94.9004% -17.0769 5.63836);
       --color-emerald-200: lab(90.2247% -31.039 9.47084);
+      --color-emerald-300: lab(83.9203% -48.7124 13.8849);
       --color-emerald-400: lab(75.0771% -60.7313 19.4147);
       --color-emerald-600: lab(55.0481% -49.9246 15.93);
       --color-emerald-700: lab(44.4871% -41.0396 11.0361);
@@ -2109,6 +2111,10 @@
     }
   }
 
+  .border-amber-300 {
+    border-color: var(--color-amber-300);
+  }
+
   .border-amber-400\/30 {
     border-color: #fcbb004d;
   }
@@ -2189,6 +2195,10 @@
     .border-emerald-200\/80 {
       border-color: color-mix(in oklab, var(--color-emerald-200) 80%, transparent);
     }
+  }
+
+  .border-emerald-300 {
+    border-color: var(--color-emerald-300);
   }
 
   .border-input {

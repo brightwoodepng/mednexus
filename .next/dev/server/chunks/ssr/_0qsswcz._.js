@@ -6958,9 +6958,11 @@ __turbopack_context__.s([
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$questions$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/contexts/questions-context.tsx [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$admin$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/contexts/admin-context.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$pdf$2d$import$2d$modal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/pdf-import-modal.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/icons.tsx [app-ssr] (ecmascript)");
 "use client";
+;
 ;
 ;
 ;
@@ -7474,14 +7476,66 @@ function QuestionForm({ initial, questionId, defaultSubject, onSave, onCancel })
         columnNumber: 5
     }, this);
 }
+function SaveStatusPill({ status }) {
+    if (status === "idle") return null;
+    const cfg = {
+        saving: {
+            label: "Saving to cloud…",
+            cls: "bg-amber-100 text-amber-700 border-amber-300"
+        },
+        saved: {
+            label: "Saved to cloud ✓",
+            cls: "bg-emerald-100 text-emerald-700 border-emerald-300"
+        },
+        error: {
+            label: "Save failed — try again",
+            cls: "bg-destructive/10 text-destructive border-destructive/30"
+        }
+    }[status];
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+        className: `inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${cfg.cls}`,
+        children: cfg.label
+    }, void 0, false, {
+        fileName: "[project]/components/question-editor.tsx",
+        lineNumber: 251,
+        columnNumber: 5
+    }, this);
+}
 function QuestionEditor() {
-    const { questions, addQuestion, updateQuestion, deleteQuestion, deleteQuestionsBySubject, deleteModule, deleteAllQuestions, resetToDefault } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$questions$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQuestions"])();
+    const { questions, addQuestion, updateQuestion, deleteQuestion, deleteQuestionsBySubject, deleteModule, deleteAllQuestions, resetToDefault, saveToDb } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$questions$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQuestions"])();
+    const { adminToken } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$admin$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useAdmin"])();
     const [selectedSubject, setSelectedSubject] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [bulkMode, setBulkMode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [selected, setSelected] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(new Set());
     const [editingQuestion, setEditingQuestion] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [pdfImportOpen, setPdfImportOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [saveStatus, setSaveStatus] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("idle");
+    const saveTimer = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(null);
+    const isFirstRender = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(true);
     const [confirm, setConfirm] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    // Auto-save to DB (debounced 800ms) whenever questions array changes
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        if (!adminToken) return;
+        setSaveStatus("saving");
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(async ()=>{
+            const ok = await saveToDb(questions, adminToken);
+            setSaveStatus(ok ? "saved" : "error");
+            // Reset to idle after 3 s
+            setTimeout(()=>setSaveStatus("idle"), 3000);
+        }, 800);
+        return ()=>{
+            if (saveTimer.current) clearTimeout(saveTimer.current);
+        };
+    }, [
+        questions,
+        adminToken,
+        saveToDb
+    ]);
     const subjects = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>Array.from(new Set(questions.map((q)=>q.subject))).sort(), [
         questions
     ]);
@@ -7596,22 +7650,38 @@ function QuestionEditor() {
                                     size: 20
                                 }, void 0, false, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 369,
+                                    lineNumber: 405,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/question-editor.tsx",
-                                lineNumber: 368,
+                                lineNumber: 404,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
-                                        className: "text-2xl font-bold tracking-tight",
-                                        children: "Question Editor"
-                                    }, void 0, false, {
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "flex items-center gap-2.5",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
+                                                className: "text-2xl font-bold tracking-tight",
+                                                children: "Question Editor"
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/question-editor.tsx",
+                                                lineNumber: 409,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SaveStatusPill, {
+                                                status: saveStatus
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/question-editor.tsx",
+                                                lineNumber: 410,
+                                                columnNumber: 15
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
                                         fileName: "[project]/components/question-editor.tsx",
-                                        lineNumber: 372,
+                                        lineNumber: 408,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7623,23 +7693,24 @@ function QuestionEditor() {
                                             " · ",
                                             subjects.length,
                                             " module",
-                                            subjects.length !== 1 ? "s" : ""
+                                            subjects.length !== 1 ? "s" : "",
+                                            " · synced for all users"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/question-editor.tsx",
-                                        lineNumber: 373,
+                                        lineNumber: 412,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/question-editor.tsx",
-                                lineNumber: 371,
+                                lineNumber: 407,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/question-editor.tsx",
-                        lineNumber: 367,
+                        lineNumber: 403,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7654,14 +7725,14 @@ function QuestionEditor() {
                                         size: 15
                                     }, void 0, false, {
                                         fileName: "[project]/components/question-editor.tsx",
-                                        lineNumber: 382,
+                                        lineNumber: 421,
                                         columnNumber: 13
                                     }, this),
                                     "Reset to Default"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/question-editor.tsx",
-                                lineNumber: 377,
+                                lineNumber: 416,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -7671,14 +7742,14 @@ function QuestionEditor() {
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(UploadFileIcon, {}, void 0, false, {
                                         fileName: "[project]/components/question-editor.tsx",
-                                        lineNumber: 390,
+                                        lineNumber: 429,
                                         columnNumber: 13
                                     }, this),
                                     "Import PDF"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/question-editor.tsx",
-                                lineNumber: 385,
+                                lineNumber: 424,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -7693,26 +7764,26 @@ function QuestionEditor() {
                                         size: 15
                                     }, void 0, false, {
                                         fileName: "[project]/components/question-editor.tsx",
-                                        lineNumber: 401,
+                                        lineNumber: 440,
                                         columnNumber: 13
                                     }, this),
                                     "Add Question"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/question-editor.tsx",
-                                lineNumber: 393,
+                                lineNumber: 432,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/question-editor.tsx",
-                        lineNumber: 376,
+                        lineNumber: 415,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/question-editor.tsx",
-                lineNumber: 366,
+                lineNumber: 402,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7726,7 +7797,7 @@ function QuestionEditor() {
                                 children: "Modules"
                             }, void 0, false, {
                                 fileName: "[project]/components/question-editor.tsx",
-                                lineNumber: 410,
+                                lineNumber: 449,
                                 columnNumber: 11
                             }, this),
                             subjects.length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7734,7 +7805,7 @@ function QuestionEditor() {
                                 children: "No modules yet"
                             }, void 0, false, {
                                 fileName: "[project]/components/question-editor.tsx",
-                                lineNumber: 412,
+                                lineNumber: 451,
                                 columnNumber: 13
                             }, this),
                             subjects.map((subject)=>{
@@ -7753,7 +7824,7 @@ function QuestionEditor() {
                                             children: subject
                                         }, void 0, false, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 431,
+                                            lineNumber: 470,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7761,20 +7832,20 @@ function QuestionEditor() {
                                             children: count
                                         }, void 0, false, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 432,
+                                            lineNumber: 471,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, subject, true, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 418,
+                                    lineNumber: 457,
                                     columnNumber: 15
                                 }, this);
                             })
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/question-editor.tsx",
-                        lineNumber: 409,
+                        lineNumber: 448,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7788,12 +7859,12 @@ function QuestionEditor() {
                                         size: 28
                                     }, void 0, false, {
                                         fileName: "[project]/components/question-editor.tsx",
-                                        lineNumber: 445,
+                                        lineNumber: 484,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 444,
+                                    lineNumber: 483,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7803,7 +7874,7 @@ function QuestionEditor() {
                                             children: "Select a module to edit"
                                         }, void 0, false, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 448,
+                                            lineNumber: 487,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7811,13 +7882,13 @@ function QuestionEditor() {
                                             children: subjects.length > 0 ? "Choose a module from the left panel" : "Add a question to create your first module"
                                         }, void 0, false, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 449,
+                                            lineNumber: 488,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 447,
+                                    lineNumber: 486,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7833,7 +7904,7 @@ function QuestionEditor() {
                                                     children: subject
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 465,
+                                                    lineNumber: 504,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7844,25 +7915,25 @@ function QuestionEditor() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 466,
+                                                    lineNumber: 505,
                                                     columnNumber: 23
                                                 }, this)
                                             ]
                                         }, subject, true, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 459,
+                                            lineNumber: 498,
                                             columnNumber: 21
                                         }, this);
                                     })
                                 }, void 0, false, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 455,
+                                    lineNumber: 494,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/question-editor.tsx",
-                            lineNumber: 443,
+                            lineNumber: 482,
                             columnNumber: 13
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
                             children: [
@@ -7877,7 +7948,7 @@ function QuestionEditor() {
                                                     children: selectedSubject
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 477,
+                                                    lineNumber: 516,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7889,13 +7960,13 @@ function QuestionEditor() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 478,
+                                                    lineNumber: 517,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 476,
+                                            lineNumber: 515,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7913,14 +7984,14 @@ function QuestionEditor() {
                                                             size: 14
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/question-editor.tsx",
-                                                            lineNumber: 493,
+                                                            lineNumber: 532,
                                                             columnNumber: 21
                                                         }, this),
                                                         bulkMode ? "Exit Bulk" : "Bulk Edit"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 481,
+                                                    lineNumber: 520,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -7932,26 +8003,26 @@ function QuestionEditor() {
                                                             size: 14
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/question-editor.tsx",
-                                                            lineNumber: 501,
+                                                            lineNumber: 540,
                                                             columnNumber: 21
                                                         }, this),
                                                         "Add"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 496,
+                                                    lineNumber: 535,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 480,
+                                            lineNumber: 519,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 475,
+                                    lineNumber: 514,
                                     columnNumber: 15
                                 }, this),
                                 bulkMode && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7965,7 +8036,7 @@ function QuestionEditor() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 510,
+                                            lineNumber: 549,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -7975,7 +8046,7 @@ function QuestionEditor() {
                                             children: selected.size === moduleQuestions.length ? "Deselect All" : "Select All"
                                         }, void 0, false, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 513,
+                                            lineNumber: 552,
                                             columnNumber: 19
                                         }, this),
                                         selected.size > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -7987,7 +8058,7 @@ function QuestionEditor() {
                                                     size: 12
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 526,
+                                                    lineNumber: 565,
                                                     columnNumber: 23
                                                 }, this),
                                                 "Delete Selected (",
@@ -7996,7 +8067,7 @@ function QuestionEditor() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 521,
+                                            lineNumber: 560,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8011,14 +8082,14 @@ function QuestionEditor() {
                                                             size: 12
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/question-editor.tsx",
-                                                            lineNumber: 536,
+                                                            lineNumber: 575,
                                                             columnNumber: 23
                                                         }, this),
                                                         "Delete All Questions"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 531,
+                                                    lineNumber: 570,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8030,26 +8101,26 @@ function QuestionEditor() {
                                                             size: 12
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/question-editor.tsx",
-                                                            lineNumber: 544,
+                                                            lineNumber: 583,
                                                             columnNumber: 23
                                                         }, this),
                                                         "Delete Module"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 539,
+                                                    lineNumber: 578,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 530,
+                                            lineNumber: 569,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 509,
+                                    lineNumber: 548,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8063,7 +8134,7 @@ function QuestionEditor() {
                                                     children: "No questions in this module."
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 555,
+                                                    lineNumber: 594,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8075,20 +8146,20 @@ function QuestionEditor() {
                                                             size: 14
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/question-editor.tsx",
-                                                            lineNumber: 561,
+                                                            lineNumber: 600,
                                                             columnNumber: 23
                                                         }, this),
                                                         "Add First Question"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/question-editor.tsx",
-                                                    lineNumber: 556,
+                                                    lineNumber: 595,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/question-editor.tsx",
-                                            lineNumber: 554,
+                                            lineNumber: 593,
                                             columnNumber: 19
                                         }, this),
                                         moduleQuestions.map((q, i)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8102,12 +8173,12 @@ function QuestionEditor() {
                                                             size: 11
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/question-editor.tsx",
-                                                            lineNumber: 579,
+                                                            lineNumber: 618,
                                                             columnNumber: 48
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/question-editor.tsx",
-                                                        lineNumber: 572,
+                                                        lineNumber: 611,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8124,7 +8195,7 @@ function QuestionEditor() {
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/components/question-editor.tsx",
-                                                                        lineNumber: 584,
+                                                                        lineNumber: 623,
                                                                         columnNumber: 25
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -8132,13 +8203,13 @@ function QuestionEditor() {
                                                                         children: q.correctAnswer
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/components/question-editor.tsx",
-                                                                        lineNumber: 585,
+                                                                        lineNumber: 624,
                                                                         columnNumber: 25
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/components/question-editor.tsx",
-                                                                lineNumber: 583,
+                                                                lineNumber: 622,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8146,7 +8217,7 @@ function QuestionEditor() {
                                                                 children: q.vignette
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/question-editor.tsx",
-                                                                lineNumber: 589,
+                                                                lineNumber: 628,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8161,18 +8232,18 @@ function QuestionEditor() {
                                                                         ]
                                                                     }, o.id, true, {
                                                                         fileName: "[project]/components/question-editor.tsx",
-                                                                        lineNumber: 592,
+                                                                        lineNumber: 631,
                                                                         columnNumber: 27
                                                                     }, this))
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/question-editor.tsx",
-                                                                lineNumber: 590,
+                                                                lineNumber: 629,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/question-editor.tsx",
-                                                        lineNumber: 582,
+                                                        lineNumber: 621,
                                                         columnNumber: 21
                                                     }, this),
                                                     !bulkMode && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8187,12 +8258,12 @@ function QuestionEditor() {
                                                                     size: 15
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/question-editor.tsx",
-                                                                    lineNumber: 606,
+                                                                    lineNumber: 645,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/question-editor.tsx",
-                                                                lineNumber: 600,
+                                                                lineNumber: 639,
                                                                 columnNumber: 25
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8204,43 +8275,43 @@ function QuestionEditor() {
                                                                     size: 15
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/question-editor.tsx",
-                                                                    lineNumber: 614,
+                                                                    lineNumber: 653,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/question-editor.tsx",
-                                                                lineNumber: 608,
+                                                                lineNumber: 647,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/question-editor.tsx",
-                                                        lineNumber: 599,
+                                                        lineNumber: 638,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, q.id, true, {
                                                 fileName: "[project]/components/question-editor.tsx",
-                                                lineNumber: 567,
+                                                lineNumber: 606,
                                                 columnNumber: 19
                                             }, this))
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 552,
+                                    lineNumber: 591,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true)
                     }, void 0, false, {
                         fileName: "[project]/components/question-editor.tsx",
-                        lineNumber: 441,
+                        lineNumber: 480,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/question-editor.tsx",
-                lineNumber: 407,
+                lineNumber: 446,
                 columnNumber: 7
             }, this),
             editingQuestion !== null && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8256,7 +8327,7 @@ function QuestionEditor() {
                                     children: editingQuestion === "new" ? "Add New Question" : "Edit Question"
                                 }, void 0, false, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 631,
+                                    lineNumber: 670,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8267,18 +8338,18 @@ function QuestionEditor() {
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/components/question-editor.tsx",
-                                        lineNumber: 639,
+                                        lineNumber: 678,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/question-editor.tsx",
-                                    lineNumber: 634,
+                                    lineNumber: 673,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/question-editor.tsx",
-                            lineNumber: 630,
+                            lineNumber: 669,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8300,23 +8371,23 @@ function QuestionEditor() {
                                 onCancel: ()=>setEditingQuestion(null)
                             }, void 0, false, {
                                 fileName: "[project]/components/question-editor.tsx",
-                                lineNumber: 643,
+                                lineNumber: 682,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/question-editor.tsx",
-                            lineNumber: 642,
+                            lineNumber: 681,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/question-editor.tsx",
-                    lineNumber: 629,
+                    lineNumber: 668,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/question-editor.tsx",
-                lineNumber: 628,
+                lineNumber: 667,
                 columnNumber: 9
             }, this),
             pdfImportOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$pdf$2d$import$2d$modal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["PdfImportModal"], {
@@ -8330,7 +8401,7 @@ function QuestionEditor() {
                 onClose: ()=>setPdfImportOpen(false)
             }, void 0, false, {
                 fileName: "[project]/components/question-editor.tsx",
-                lineNumber: 666,
+                lineNumber: 705,
                 columnNumber: 9
             }, this),
             confirm && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ConfirmDialog, {
@@ -8342,13 +8413,13 @@ function QuestionEditor() {
                 onCancel: ()=>setConfirm(null)
             }, void 0, false, {
                 fileName: "[project]/components/question-editor.tsx",
-                lineNumber: 680,
+                lineNumber: 719,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/question-editor.tsx",
-        lineNumber: 364,
+        lineNumber: 400,
         columnNumber: 5
     }, this);
 }

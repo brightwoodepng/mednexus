@@ -237,18 +237,54 @@ function QuestionForm({
   )
 }
 
+// ── Save status pill ────────────────────────────────────────────────────────
+type SaveStatus = "idle" | "saving" | "saved" | "error"
+
+function SaveStatusPill({ status }: { status: SaveStatus }) {
+  if (status === "idle") return null
+  const cfg = {
+    saving: { label: "Saving to cloud…", cls: "bg-amber-100 text-amber-700 border-amber-300" },
+    saved:  { label: "Saved to cloud ✓",  cls: "bg-emerald-100 text-emerald-700 border-emerald-300" },
+    error:  { label: "Save failed — try again", cls: "bg-destructive/10 text-destructive border-destructive/30" },
+  }[status]
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${cfg.cls}`}>
+      {cfg.label}
+    </span>
+  )
+}
+
 // ── Main Question Editor ─────────────────────────────────────────────────────
 export function QuestionEditor() {
-  const { questions, addQuestion, updateQuestion, deleteQuestion, deleteQuestionsBySubject, deleteModule, deleteAllQuestions, resetToDefault } = useQuestions()
+  const { questions, addQuestion, updateQuestion, deleteQuestion, deleteQuestionsBySubject, deleteModule, deleteAllQuestions, resetToDefault, saveToDb } = useQuestions()
+  const { adminToken } = useAdmin()
 
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null)
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [editingQuestion, setEditingQuestion] = useState<Question | "new" | null>(null)
   const [pdfImportOpen, setPdfImportOpen] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isFirstRender = useRef(true)
   const [confirm, setConfirm] = useState<{
     title: string; message: string; confirmLabel: string; action: () => void; danger?: boolean
   } | null>(null)
+
+  // Auto-save to DB (debounced 800ms) whenever questions array changes
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    if (!adminToken) return
+    setSaveStatus("saving")
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(async () => {
+      const ok = await saveToDb(questions, adminToken)
+      setSaveStatus(ok ? "saved" : "error")
+      // Reset to idle after 3 s
+      setTimeout(() => setSaveStatus("idle"), 3000)
+    }, 800)
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+  }, [questions, adminToken, saveToDb])
 
   const subjects = useMemo(() => Array.from(new Set(questions.map((q) => q.subject))).sort(), [questions])
 
@@ -369,8 +405,11 @@ export function QuestionEditor() {
             <DatabaseIcon size={20} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Question Editor</h1>
-            <p className="text-sm text-muted-foreground">{totalQuestions} question{totalQuestions !== 1 ? "s" : ""} · {subjects.length} module{subjects.length !== 1 ? "s" : ""}</p>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-bold tracking-tight">Question Editor</h1>
+              <SaveStatusPill status={saveStatus} />
+            </div>
+            <p className="text-sm text-muted-foreground">{totalQuestions} question{totalQuestions !== 1 ? "s" : ""} · {subjects.length} module{subjects.length !== 1 ? "s" : ""} · synced for all users</p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
