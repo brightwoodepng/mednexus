@@ -320,8 +320,10 @@ export function QuestionEditor() {
   const [pdfImportOpen, setPdfImportOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
+  const [importError, setImportError] = useState("")
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFirstRender = useRef(true)
+  const jsonInputRef = useRef<HTMLInputElement>(null)
   const [confirm, setConfirm] = useState<{
     title: string; message: string; confirmLabel: string; action: () => void; danger?: boolean
   } | null>(null)
@@ -429,6 +431,44 @@ export function QuestionEditor() {
     URL.revokeObjectURL(url)
   }
 
+  function handleImportJSON(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!jsonInputRef.current) return
+    jsonInputRef.current.value = ""
+    if (!file) return
+    setImportError("")
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string)
+        if (!Array.isArray(parsed)) throw new Error("File must contain a JSON array of questions.")
+        if (parsed.length === 0) throw new Error("The file contains no questions.")
+        const invalid = parsed.find(
+          (q) => typeof q.vignette !== "string" || !Array.isArray(q.options) || typeof q.correctAnswer !== "string"
+        )
+        if (invalid) throw new Error("One or more questions have an invalid format.")
+        setConfirm({
+          title: `Import ${parsed.length} question${parsed.length !== 1 ? "s" : ""}?`,
+          message: "This will replace your current question bank with the imported file. Your existing questions will be lost.",
+          confirmLabel: "Import",
+          danger: true,
+          action: async () => {
+            if (!adminToken) return
+            for (const q of parsed) {
+              if (!q.id) q.id = `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+            }
+            await saveToDb(parsed, adminToken)
+            setSelectedSubject(null)
+            exitBulkMode()
+          },
+        })
+      } catch (err) {
+        setImportError(err instanceof Error ? err.message : "Invalid JSON file.")
+      }
+    }
+    reader.readAsText(file)
+  }
+
   function generateId(): string { return `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
   const totalQuestions = questions.length
 
@@ -463,6 +503,22 @@ export function QuestionEditor() {
             <DownloadIcon size={15} />
             Export JSON
           </button>
+          <input
+            ref={jsonInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleImportJSON}
+          />
+          <button
+            type="button"
+            onClick={() => jsonInputRef.current?.click()}
+            title="Upload a previously exported JSON file"
+            className="flex items-center gap-2 rounded-xl border border-emerald-400/50 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-sm"
+          >
+            <UploadFileIcon />
+            Import JSON
+          </button>
           <button type="button" onClick={() => setPdfImportOpen(true)} className="flex items-center gap-2 rounded-xl border border-violet-400/50 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-500/20 transition-colors shadow-sm">
             <UploadFileIcon />
             Import PDF
@@ -476,6 +532,15 @@ export function QuestionEditor() {
         </div>
       </div>
 
+      {importError && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertTriangleIcon size={15} />
+          {importError}
+          <button type="button" onClick={() => setImportError("")} className="ml-auto text-destructive/60 hover:text-destructive">
+            <XIcon size={14} />
+          </button>
+        </div>
+      )}
       <div className="flex gap-4 h-[calc(100vh-14rem)]">
         {/* Module sidebar */}
         <aside className="hidden w-56 shrink-0 flex-col gap-1 overflow-y-auto rounded-2xl border border-border bg-card p-3 shadow-sm sm:flex">
