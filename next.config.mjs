@@ -19,6 +19,10 @@ const nextConfig = {
   },
   devIndicators: false,
   allowedDevOrigins,
+  turbopack: {
+    root: process.cwd(),
+  },
+  serverExternalPackages: ["firebase-admin"],
 }
 
 export default nextConfig
