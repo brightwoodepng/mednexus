@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { useQuestions } from "@/contexts/questions-context"
+import { PdfImportModal } from "@/components/pdf-import-modal"
 import type { Question, QuestionOption } from "@/lib/types"
 import {
   TrashIcon,
@@ -14,8 +15,17 @@ import {
   RefreshCwIcon,
   AlertTriangleIcon,
   CheckSquareIcon,
-  ChevronDownIcon,
 } from "@/components/icons"
+
+function UploadFileIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" x2="12" y1="3" y2="15" />
+    </svg>
+  )
+}
 
 // ── Confirm Dialog ───────────────────────────────────────────────────────────
 function ConfirmDialog({
@@ -234,6 +244,7 @@ export function QuestionEditor() {
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [editingQuestion, setEditingQuestion] = useState<Question | "new" | null>(null)
+  const [pdfImportOpen, setPdfImportOpen] = useState(false)
   const [confirm, setConfirm] = useState<{
     title: string; message: string; confirmLabel: string; action: () => void; danger?: boolean
   } | null>(null)
@@ -369,6 +380,14 @@ export function QuestionEditor() {
           >
             <RefreshCwIcon size={15} />
             Reset to Default
+          </button>
+          <button
+            type="button"
+            onClick={() => setPdfImportOpen(true)}
+            className="flex items-center gap-2 rounded-xl border border-violet-400/50 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-500/20 transition-colors shadow-sm"
+          >
+            <UploadFileIcon />
+            Import PDF
           </button>
           <button
             type="button"
@@ -639,6 +658,20 @@ export function QuestionEditor() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* PDF import modal */}
+      {pdfImportOpen && (
+        <PdfImportModal
+          defaultModule={selectedSubject ?? ""}
+          onImport={(importedQuestions) => {
+            importedQuestions.forEach((q) => addQuestion(q))
+            if (importedQuestions.length > 0 && !selectedSubject) {
+              setSelectedSubject(importedQuestions[0].subject)
+            }
+          }}
+          onClose={() => setPdfImportOpen(false)}
+        />
       )}
 
       {/* Confirm dialog */}

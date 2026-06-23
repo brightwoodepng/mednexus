@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useApp } from "@/contexts/app-context"
 import {
   StethoscopeIcon,
@@ -26,6 +27,30 @@ const NAV_ITEMS: { id: Screen; label: string; icon: typeof LayoutDashboardIcon }
   { id: "question-editor", label: "Question Editor", icon: DatabaseIcon },
 ]
 
+function LiveClock() {
+  const [now, setNow] = useState<Date | null>(null)
+
+  useEffect(() => {
+    setNow(new Date())
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  if (!now) return null
+
+  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+  const date = now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
+
+  return (
+    <div className="flex flex-col items-center rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-3 py-2.5 text-center">
+      <span className="text-lg font-bold tabular-nums tracking-tight text-sidebar-foreground leading-none">
+        {time}
+      </span>
+      <span className="mt-0.5 text-[11px] text-muted-foreground">{date}</span>
+    </div>
+  )
+}
+
 export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseMobile }: SidebarProps) {
   const { user, cloudEnabled, signOutUser } = useApp()
 
@@ -49,8 +74,11 @@ export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseM
         </button>
       </div>
 
+      {/* Live clock */}
+      <LiveClock />
+
       {/* Primary nav */}
-      <nav className="flex flex-col gap-1">
+      <nav className="mt-1 flex flex-col gap-1">
         {NAV_ITEMS.map((item) => {
           const active = screen === item.id
           const Icon = item.icon
