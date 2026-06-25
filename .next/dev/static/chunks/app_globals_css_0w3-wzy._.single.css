@@ -2353,16 +2353,6 @@
     }
   }
 
-  .border-sky-400\/50 {
-    border-color: #00bcfe80;
-  }
-
-  @supports (color: color-mix(in lab, red, red)) {
-    .border-sky-400\/50 {
-      border-color: color-mix(in oklab, var(--color-sky-400) 50%, transparent);
-    }
-  }
-
   .border-slate-200 {
     border-color: var(--color-slate-200);
   }
@@ -2757,16 +2747,6 @@
   @supports (color: color-mix(in lab, red, red)) {
     .bg-primary\/10 {
       background-color: color-mix(in oklab, var(--primary) 10%, transparent);
-    }
-  }
-
-  .bg-primary\/15 {
-    background-color: var(--primary);
-  }
-
-  @supports (color: color-mix(in lab, red, red)) {
-    .bg-primary\/15 {
-      background-color: color-mix(in oklab, var(--primary) 15%, transparent);
     }
   }
 
@@ -4208,10 +4188,6 @@
     animation-play-state: running;
   }
 
-  .running\! {
-    animation-play-state: running !important;
-  }
-
   .slide-in-from-left {
     --tw-enter-translate-x: -100%;
   }
@@ -4812,24 +4788,6 @@
   @media (hover: hover) {
     .hover\:bg-sidebar-accent:hover {
       background-color: var(--sidebar-accent);
-    }
-  }
-
-  @media (hover: hover) {
-    .hover\:bg-sky-500\/20:hover {
-      background-color: #00a5ef33;
-    }
-
-    @supports (color: color-mix(in lab, red, red)) {
-      .hover\:bg-sky-500\/20:hover {
-        background-color: color-mix(in oklab, var(--color-sky-500) 20%, transparent);
-      }
-    }
-  }
-
-  @media (hover: hover) {
-    .hover\:bg-sky-600:hover {
-      background-color: var(--color-sky-600);
     }
   }
 
