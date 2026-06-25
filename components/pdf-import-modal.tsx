@@ -1,452 +1,419 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
-import type { Question } from "@/lib/types"
+import { useState, useRef } from "react"
+import type { Question, QuestionOption } from "@/lib/types"
 import {
-  XIcon,
-  CheckIcon,
-  AlertTriangleIcon,
-  PlusIcon,
-  TrashIcon,
-  RefreshCwIcon,
+  XIcon, CheckIcon, AlertTriangleIcon, PlusIcon, TrashIcon,
+  ChevronDownIcon, ChevronRightIcon, RefreshCwIcon,
 } from "@/components/icons"
 
-// ── Icons inline ─────────────────────────────────────────────────────────────
-function UploadIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="17 8 12 3 7 8" />
-      <line x1="12" x2="12" y1="3" y2="15" />
-    </svg>
-  )
+// ── PDF text extraction (pdfjs-dist, browser-side) ───────────────────────────
+async function extractTextFromPdf(file: File): Promise<string> {
+  const pdfjsLib = await import("pdfjs-dist")
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs"
+  const buffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise
+  const pages: string[] = []
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    // Reconstruct lines by grouping items with the same Y coordinate
+    const yMap = new Map<number, string[]>()
+    for (const item of content.items) {
+      if ("str" in item) {
+        const y = Math.round((item as any).transform[5])
+        if (!yMap.has(y)) yMap.set(y, [])
+        yMap.get(y)!.push((item as any).str)
+      }
+    }
+    const sortedYs = Array.from(yMap.keys()).sort((a, b) => b - a)
+    pages.push(sortedYs.map((y) => yMap.get(y)!.join(" ")).join("\n"))
+  }
+  return pages.join("\n\n")
 }
 
-function SpinnerIcon() {
-  return (
-    <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
-  )
-}
+// ── Parser patterns (each has a human-readable tip) ──────────────────────────
+// These are the ACTUAL patterns the parser uses — tips are derived directly from them.
+const PARSER_PATTERNS = [
+  { re: /^MODULE\s*[:.-]\s*(.+)/i,          tip: 'Start a module section with: MODULE: Module Name on its own line' },
+  { re: /^(?:DISCIPLINE|SUBJECT|TOPIC)\s*[:.-]\s*(.+)/i, tip: 'Start a discipline section with: DISCIPLINE: Name (or SUBJECT: / TOPIC:)' },
+  { re: /^\s*(\d{1,4})[\.\)]\s+\S/,         tip: 'Number questions as: 1. Question text... or 1) Question text...' },
+  { re: /^\s*([A-E])[\.\)]\s+\S/,           tip: 'Format each option as: A. Option text or A) Option text — one per line' },
+  { re: /^(?:correct[\s_]?answer|answer|ans)\s*[:.-]?\s*([A-E])/i, tip: 'Mark the correct answer as: Answer: A or Correct Answer: B on its own line' },
+  { re: /^(?:explanation|rationale|reason|discussion)\s*[:.-]?\s*/i, tip: 'Add explanation starting with: Explanation: ... or Rationale: ...' },
+]
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface ParsedQuestion {
-  subject: string
+// ── Text parser ──────────────────────────────────────────────────────────────
+interface RawQuestion {
+  module: string
+  discipline: string
   vignette: string
-  options: { id: string; text: string }[]
+  options: QuestionOption[]
   correctAnswer: string
-  explanation: { objective: string; details: string; incorrectReasoning: string }
+  explanation: string
 }
 
-type ImportStep = "upload" | "parsing" | "review" | "done"
+function parseText(raw: string): RawQuestion[] {
+  const lines = raw.split(/\r?\n/).map((l) => l.trim())
+  const results: RawQuestion[] = []
 
-interface PdfImportModalProps {
-  defaultModule: string
-  onImport: (questions: Question[]) => void
-  onClose: () => void
-}
+  let currentModule = ""
+  let currentDiscipline = ""
+  let pending: Partial<RawQuestion> | null = null
+  let pendingOptions: QuestionOption[] = []
+  let collectingExplanation = false
 
-function generateId() {
-  return `q-pdf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-}
-
-// ── Step 1: Upload ────────────────────────────────────────────────────────────
-function UploadStep({
-  moduleName,
-  onModuleChange,
-  onFileSelect,
-  error,
-}: {
-  moduleName: string
-  onModuleChange: (v: string) => void
-  onFileSelect: (f: File) => void
-  error: string
-}) {
-  const [dragging, setDragging] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      setDragging(false)
-      const file = e.dataTransfer.files[0]
-      if (file?.type === "application/pdf") onFileSelect(file)
-    },
-    [onFileSelect],
-  )
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-          Target Module / Subject
-        </label>
-        <input
-          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          value={moduleName}
-          onChange={(e) => onModuleChange(e.target.value)}
-          placeholder="e.g. Cardiology"
-        />
-        <p className="mt-1 text-xs text-muted-foreground">Questions will be imported into this module. Creates a new one if it doesn't exist.</p>
-      </div>
-
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
-        className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed py-12 px-6 text-center transition-colors ${
-          dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/30"
-        }`}
-      >
-        <div className="text-muted-foreground">
-          <UploadIcon />
-        </div>
-        <div>
-          <p className="font-semibold text-foreground">Drop your PDF here</p>
-          <p className="mt-0.5 text-sm text-muted-foreground">or click to browse</p>
-        </div>
-        <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">PDF only · up to 10 MB</span>
-      </div>
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".pdf,application/pdf"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) onFileSelect(file)
-        }}
-      />
-
-      {error && (
-        <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-          <AlertTriangleIcon size={16} />
-          {error}
-        </div>
-      )}
-
-      <div className="rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground space-y-1.5">
-        <p className="font-semibold text-foreground text-xs uppercase tracking-wide">Tips for best results</p>
-        <p>• Works best with text-based PDFs (not scanned images)</p>
-        <p>• Questions should be numbered (1., Q1., etc.)</p>
-        <p>• Options labeled A. B. C. D. (or A) B) C) D))</p>
-        <p>• Answer line: "Answer: B" or "Correct answer: B"</p>
-        <p>• Explanation below the answer line</p>
-      </div>
-    </div>
-  )
-}
-
-// ── Step 2: Review ────────────────────────────────────────────────────────────
-function ReviewStep({
-  questions,
-  source,
-  onToggle,
-  selected,
-  onRemove,
-}: {
-  questions: ParsedQuestion[]
-  source: string
-  onToggle: (i: number) => void
-  selected: Set<number>
-  onRemove: (i: number) => void
-}) {
-  if (questions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-          <AlertTriangleIcon size={24} />
-        </div>
-        <div>
-          <p className="font-semibold text-foreground">No questions detected</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            The PDF format wasn't recognized. Try a PDF with clearly numbered MCQs.
-          </p>
-        </div>
-      </div>
-    )
+  const flush = () => {
+    if (pending && pending.vignette && pendingOptions.length >= 2) {
+      results.push({
+        module: pending.module ?? currentModule,
+        discipline: pending.discipline ?? currentDiscipline,
+        vignette: pending.vignette,
+        options: [...pendingOptions],
+        correctAnswer: pending.correctAnswer ?? pendingOptions[0]?.id ?? "A",
+        explanation: pending.explanation ?? "",
+      })
+    }
+    pending = null
+    pendingOptions = []
+    collectingExplanation = false
   }
 
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="font-semibold text-foreground">{questions.length} question{questions.length !== 1 ? "s" : ""} detected</p>
-          <p className="text-xs text-muted-foreground">
-            {source === "ai" ? "✨ Parsed with AI" : "Parsed with pattern recognition"} · {selected.size} selected for import
-          </p>
-        </div>
-      </div>
+  for (const line of lines) {
+    if (!line) continue
 
-      <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
-        {questions.map((q, i) => (
-          <div
-            key={i}
-            className={`rounded-2xl border p-4 transition-colors ${
-              selected.has(i) ? "border-primary/30 bg-primary/5" : "border-border bg-card opacity-60"
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <button
-                type="button"
-                onClick={() => onToggle(i)}
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
-                  selected.has(i) ? "bg-primary border-primary text-primary-foreground" : "border-border"
-                }`}
-              >
-                {selected.has(i) && <CheckIcon size={11} />}
-              </button>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Q{i + 1}</span>
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                    {q.correctAnswer}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {q.subject}
-                  </span>
-                </div>
-                <p className="text-sm text-foreground line-clamp-2">{q.vignette}</p>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                  {q.options.map((o) => (
-                    <span
-                      key={o.id}
-                      className={`text-xs ${o.id === q.correctAnswer ? "font-semibold text-emerald-700" : "text-muted-foreground"}`}
-                    >
-                      {o.id}. {o.text.slice(0, 35)}{o.text.length > 35 ? "…" : ""}
-                    </span>
-                  ))}
-                </div>
-                {q.explanation.details && (
-                  <p className="mt-2 text-xs text-muted-foreground line-clamp-2 italic">
-                    {q.explanation.details}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => onRemove(i)}
-                className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-              >
-                <TrashIcon size={14} />
-              </button>
-            </div>
+    // Module header
+    const modM = PARSER_PATTERNS[0].re.exec(line)
+    if (modM) { flush(); currentModule = modM[1].trim(); continue }
+
+    // Discipline header
+    const discM = PARSER_PATTERNS[1].re.exec(line)
+    if (discM) { flush(); currentDiscipline = discM[1].trim(); continue }
+
+    // Correct answer line
+    const ansM = /^(?:correct[\s_]?answer|answer|ans(?:wer)?)\s*[:.-]?\s*([A-E])/i.exec(line)
+    if (ansM && pending) { pending.correctAnswer = ansM[1].toUpperCase(); collectingExplanation = false; continue }
+
+    // Explanation line
+    const expM = /^(?:explanation|rationale|reason|discussion)\s*[:.-]?\s*(.*)/i.exec(line)
+    if (expM && pending) {
+      collectingExplanation = true
+      pending.explanation = expM[1].trim()
+      continue
+    }
+
+    // Option line
+    const optM = /^\s*([A-E])[\.\)]\s+(.+)/.exec(line)
+    if (optM && pending) {
+      const id = optM[1].toUpperCase()
+      const text = optM[2].trim()
+      pendingOptions.push({ id, text })
+      collectingExplanation = false
+      continue
+    }
+
+    // Question number line
+    const qM = /^\s*(\d{1,4})[\.\)]\s+(.+)/.exec(line)
+    if (qM) {
+      flush()
+      pending = {
+        module: currentModule,
+        discipline: currentDiscipline,
+        vignette: qM[2].trim(),
+        correctAnswer: "A",
+        explanation: "",
+      }
+      continue
+    }
+
+    // Continuation of current state
+    if (pending) {
+      if (collectingExplanation) {
+        pending.explanation = (pending.explanation ?? "") + " " + line
+      } else if (pendingOptions.length === 0) {
+        // Vignette continuation (multi-line question stem)
+        pending.vignette = (pending.vignette ?? "") + " " + line
+      }
+    }
+  }
+
+  flush()
+  return results
+}
+
+// ── Build Question from parsed data ──────────────────────────────────────────
+function makeQuestion(r: RawQuestion, index: number): Question {
+  return {
+    id: `draft-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
+    module: r.module || undefined,
+    subject: r.discipline || r.module || "Imported",
+    vignette: r.vignette,
+    options: r.options,
+    correctAnswer: r.correctAnswer,
+    explanation: {
+      objective: "",
+      details: r.explanation,
+      incorrectReasoning: "",
+    },
+  }
+}
+
+// ── Preview Card ─────────────────────────────────────────────────────────────
+function PreviewCard({ q, index, onRemove }: { q: Question; index: number; onRemove: () => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="overflow-hidden rounded-xl border border-border">
+      <div
+        className="flex cursor-pointer items-start gap-2.5 px-4 py-3 hover:bg-muted/30"
+        onClick={() => setOpen((v) => !v)}
+        role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && setOpen((v) => !v)}
+      >
+        <div className="mt-0.5 text-muted-foreground">
+          {open ? <ChevronDownIcon size={13} /> : <ChevronRightIcon size={13} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Q{index + 1}</span>
+            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{q.correctAnswer}</span>
+            {q.module && <span className="rounded-full bg-violet-100/80 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">{q.module}</span>}
+            <span className="rounded-full bg-sky-100/80 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">{q.subject}</span>
           </div>
-        ))}
+          <p className="line-clamp-1 text-sm text-foreground">{q.vignette}</p>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRemove() }}
+          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+        >
+          <TrashIcon size={12} />
+        </button>
       </div>
+      {open && (
+        <div className="space-y-2 border-t border-border bg-muted/20 px-4 py-3">
+          <p className="text-xs text-foreground leading-relaxed">{q.vignette}</p>
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+            {q.options.map((o) => (
+              <span key={o.id} className={`text-xs ${o.id === q.correctAnswer ? "font-semibold text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                {o.id}. {o.text}
+              </span>
+            ))}
+          </div>
+          {q.explanation.details && (
+            <p className="mt-1 border-t border-border pt-2 text-xs italic text-muted-foreground">{q.explanation.details}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
-export function PdfImportModal({ defaultModule, onImport, onClose }: PdfImportModalProps) {
-  const [step, setStep] = useState<ImportStep>("upload")
-  const [moduleName, setModuleName] = useState(defaultModule)
+interface PdfImportModalProps {
+  defaultModule?: string
+  onImport: (questions: Question[]) => void
+  onClose: () => void
+}
+
+export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImportModalProps) {
+  const [step, setStep] = useState<"upload" | "review">("upload")
+  const [dragOver, setDragOver] = useState(false)
+  const [processing, setProcessing] = useState(false)
   const [error, setError] = useState("")
-  const [fileName, setFileName] = useState("")
-  const [parsedQuestions, setParsedQuestions] = useState<ParsedQuestion[]>([])
-  const [parseSource, setParseSource] = useState<string>("regex")
-  const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [removedIndices, setRemovedIndices] = useState<Set<number>>(new Set())
-  const [progress, setProgress] = useState("")
+  const [showPaste, setShowPaste] = useState(false)
+  const [pasteText, setPasteText] = useState("")
+  const [parsedQuestions, setParsedQuestions] = useState<Question[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = useCallback(
-    async (file: File) => {
-      if (file.size > 10 * 1024 * 1024) {
-        setError("File too large. Please use a PDF under 10 MB.")
-        return
+  async function processFile(file: File) {
+    setError(""); setProcessing(true)
+    try {
+      let text = ""
+      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+        text = await extractTextFromPdf(file)
+      } else {
+        text = await file.text()
       }
-      setError("")
-      setFileName(file.name)
-      setStep("parsing")
-      setProgress("Extracting text from PDF…")
-
-      try {
-        // Dynamic import to avoid SSR issues
-        const { extractTextFromPdf } = await import("@/lib/pdf-extract")
-        const { text, pageCount } = await extractTextFromPdf(file)
-        setProgress(`Extracted ${pageCount} page${pageCount !== 1 ? "s" : ""}. Parsing questions…`)
-
-        if (!text.trim()) {
-          setError("Could not extract text. The PDF may be scanned/image-based.")
-          setStep("upload")
-          return
-        }
-
-        const res = await fetch("/api/parse-pdf", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, moduleName: moduleName.trim() || "Imported Module" }),
-        })
-
-        if (!res.ok) throw new Error("Parse API failed")
-        const data = await res.json()
-
-        const questions: ParsedQuestion[] = data.questions ?? []
-        setParsedQuestions(questions)
-        setParseSource(data.source ?? "regex")
-        setSelected(new Set(questions.map((_, i) => i)))
-        setRemovedIndices(new Set())
-        setStep("review")
-      } catch (err) {
-        console.error(err)
-        setError("Failed to process PDF. Please try again.")
-        setStep("upload")
-      }
-    },
-    [moduleName],
-  )
-
-  function toggleSelect(i: number) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(i)) next.delete(i)
-      else next.add(i)
-      return next
-    })
+      runParser(text)
+    } catch (err: any) {
+      setError(err?.message ?? "Could not read file. Try pasting the text directly.")
+    } finally {
+      setProcessing(false)
+    }
   }
 
-  function removeQuestion(i: number) {
-    setRemovedIndices((prev) => new Set([...prev, i]))
-    setSelected((prev) => {
-      const next = new Set(prev)
-      next.delete(i)
-      return next
+  function runParser(text: string) {
+    setError("")
+    const raw = parseText(text)
+    if (raw.length === 0) {
+      setError("No questions detected. Check the format tips below and try pasting the text directly.")
+      return
+    }
+    const questions = raw.map((r, i) => {
+      const q = makeQuestion(r, i)
+      if (!q.module && defaultModule) q.module = defaultModule
+      return q
     })
+    setParsedQuestions(questions)
+    setStep("review")
   }
 
-  const visibleQuestions = parsedQuestions.filter((_, i) => !removedIndices.has(i))
-  const visibleSelected = new Set(
-    [...selected].filter((i) => !removedIndices.has(i)).map((origIdx) => {
-      return visibleQuestions.indexOf(parsedQuestions[origIdx])
-    }),
-  )
-
-  function handleImport() {
-    const toImport = parsedQuestions
-      .filter((_, i) => selected.has(i) && !removedIndices.has(i))
-      .map((q) => ({
-        id: generateId(),
-        subject: moduleName.trim() || q.subject || "Imported Module",
-        vignette: q.vignette,
-        options: q.options,
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation,
-      }))
-
-    onImport(toImport)
-    setStep("done")
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault(); setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) processFile(file)
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-foreground/40 backdrop-blur-sm p-4 pt-8 pb-8">
-      <div className="w-full max-w-2xl rounded-2xl bg-card border border-border shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <h3 className="font-bold text-foreground">Import from PDF</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {step === "upload" && "Upload a PDF with MCQ questions"}
-              {step === "parsing" && `Processing "${fileName}"…`}
-              {step === "review" && `Review parsed questions from "${fileName}"`}
-              {step === "done" && "Import complete!"}
+            <h3 className="font-bold text-foreground">
+              {step === "upload" ? "Import from PDF / Text" : `Review Parsed Questions (${parsedQuestions.length})`}
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {step === "upload" ? "Questions will be staged as drafts — review before making them live" : "Remove mis-parsed questions, then confirm"}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-          >
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
             <XIcon size={18} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6">
-          {step === "upload" && (
-            <UploadStep
-              moduleName={moduleName}
-              onModuleChange={setModuleName}
-              onFileSelect={handleFileSelect}
-              error={error}
-            />
-          )}
-
-          {step === "parsing" && (
-            <div className="flex flex-col items-center justify-center gap-4 py-16">
-              <SpinnerIcon />
-              <p className="text-sm text-muted-foreground">{progress}</p>
-            </div>
-          )}
-
-          {step === "review" && (
-            <ReviewStep
-              questions={visibleQuestions}
-              source={parseSource}
-              selected={visibleSelected}
-              onToggle={(i) => {
-                const origIdx = parsedQuestions.indexOf(visibleQuestions[i])
-                toggleSelect(origIdx)
-              }}
-              onRemove={(i) => {
-                const origIdx = parsedQuestions.indexOf(visibleQuestions[i])
-                removeQuestion(origIdx)
-              }}
-            />
-          )}
-
-          {step === "done" && (
-            <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
-                <CheckIcon size={28} />
-              </div>
-              <div>
-                <p className="font-bold text-foreground text-lg">Questions imported!</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {selected.size} question{selected.size !== 1 ? "s" : ""} added to "{moduleName}"
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+        <div className="flex-1 overflow-y-auto">
+          {step === "upload" ? (
+            <div className="space-y-5 p-6">
+              {/* Drop zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => !processing && fileInputRef.current?.click()}
+                className={`relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/20"} ${processing ? "pointer-events-none opacity-60" : ""}`}
               >
-                Done
-              </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.txt,application/pdf,text/plain"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) processFile(f); if (fileInputRef.current) fileInputRef.current.value = "" }}
+                />
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  {processing ? (
+                    <svg className="animate-spin" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                  ) : (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="12" x2="12" y1="18" y2="12"/>
+                      <line x1="9" x2="15" y1="15" y2="15"/>
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">{processing ? "Extracting text…" : "Drop your PDF or text file here"}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{processing ? "Please wait" : "Accepts .pdf and .txt · or click to browse"}</p>
+                </div>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertTriangleIcon size={15} className="mt-0.5 shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              {/* Paste fallback */}
+              <div>
+                <button type="button" onClick={() => setShowPaste((v) => !v)} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
+                  {showPaste ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />}
+                  Or paste text directly
+                </button>
+                {showPaste && (
+                  <div className="mt-2 space-y-2">
+                    <textarea
+                      rows={7}
+                      value={pasteText}
+                      onChange={(e) => setPasteText(e.target.value)}
+                      placeholder={"MODULE: Level 400 Clinicals\nDISCIPLINE: Internal Medicine\n\n1. A 45-year-old presents with...\nA. Option A\nB. Option B\nC. Option C\nD. Option D\nAnswer: B\nExplanation: Because..."}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 font-mono text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y"
+                    />
+                    <button
+                      type="button"
+                      disabled={!pasteText.trim()}
+                      onClick={() => runParser(pasteText)}
+                      className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Parse Text
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Dynamic tips — generated directly from PARSER_PATTERNS */}
+              <div className="rounded-2xl border border-border bg-muted/30 p-5">
+                <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tips for Best Results</p>
+                <ul className="space-y-2">
+                  {PARSER_PATTERNS.map((p, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                      <CheckIcon size={11} className="mt-0.5 shrink-0 text-emerald-500" />
+                      {p.tip}
+                    </li>
+                  ))}
+                  <li className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <CheckIcon size={11} className="mt-0.5 shrink-0 text-sky-500" />
+                    Works best with text-based PDFs (not scanned images or photos)
+                  </li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 p-6">
+              {parsedQuestions.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-10 text-center">
+                  <AlertTriangleIcon size={32} className="text-amber-500" />
+                  <p className="font-semibold">All questions removed</p>
+                  <button type="button" onClick={() => setStep("upload")} className="text-sm text-primary hover:underline">Go back to upload</button>
+                </div>
+              ) : (
+                parsedQuestions.map((q, i) => (
+                  <PreviewCard
+                    key={q.id}
+                    q={q}
+                    index={i}
+                    onRemove={() => setParsedQuestions((prev) => prev.filter((_, j) => j !== i))}
+                  />
+                ))
+              )}
             </div>
           )}
         </div>
 
-        {/* Footer actions */}
-        {step === "review" && (
-          <div className="flex items-center justify-between border-t border-border px-6 py-4">
-            <button
-              type="button"
-              onClick={() => { setStep("upload"); setError("") }}
-              className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
-            >
-              <RefreshCwIcon size={14} />
-              Try another file
-            </button>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                {[...selected].filter((i) => !removedIndices.has(i)).length} selected
-              </span>
+        {/* Footer */}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          {step === "review" ? (
+            <>
+              <button type="button" onClick={() => setStep("upload")} className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
+                <RefreshCwIcon size={13} /> Try another file
+              </button>
               <button
                 type="button"
-                onClick={handleImport}
-                disabled={[...selected].filter((i) => !removedIndices.has(i)).length === 0}
-                className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={parsedQuestions.length === 0}
+                onClick={() => { onImport(parsedQuestions); onClose() }}
+                className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <PlusIcon size={14} />
-                Import {[...selected].filter((i) => !removedIndices.has(i)).length} Question{[...selected].filter((i) => !removedIndices.has(i)).length !== 1 ? "s" : ""}
+                Import {parsedQuestions.length} as Draft{parsedQuestions.length !== 1 ? "s" : ""}
               </button>
-            </div>
-          </div>
-        )}
+            </>
+          ) : (
+            <button type="button" onClick={onClose} className="ml-auto rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
