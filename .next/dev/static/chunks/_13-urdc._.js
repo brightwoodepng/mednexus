@@ -6605,52 +6605,68 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
-const CARD_PALETTES = [
+const MODULE_COLORS = [
     {
-        ring: "hover:ring-rose-400/50",
-        icon: "bg-rose-100 text-rose-600",
-        bar: "#f43f5e"
+        bar: "#f43f5e",
+        bg: "bg-rose-500",
+        light: "bg-rose-50 dark:bg-rose-900/20",
+        border: "border-rose-200 dark:border-rose-800/40",
+        text: "text-rose-600 dark:text-rose-400"
     },
     {
-        ring: "hover:ring-sky-400/50",
-        icon: "bg-sky-100 text-sky-600",
-        bar: "#0ea5e9"
+        bar: "#0ea5e9",
+        bg: "bg-sky-500",
+        light: "bg-sky-50 dark:bg-sky-900/20",
+        border: "border-sky-200 dark:border-sky-800/40",
+        text: "text-sky-600 dark:text-sky-400"
     },
     {
-        ring: "hover:ring-violet-400/50",
-        icon: "bg-violet-100 text-violet-600",
-        bar: "#8b5cf6"
+        bar: "#8b5cf6",
+        bg: "bg-violet-500",
+        light: "bg-violet-50 dark:bg-violet-900/20",
+        border: "border-violet-200 dark:border-violet-800/40",
+        text: "text-violet-600 dark:text-violet-400"
     },
     {
-        ring: "hover:ring-emerald-400/50",
-        icon: "bg-emerald-100 text-emerald-600",
-        bar: "#10b981"
+        bar: "#10b981",
+        bg: "bg-emerald-500",
+        light: "bg-emerald-50 dark:bg-emerald-900/20",
+        border: "border-emerald-200 dark:border-emerald-800/40",
+        text: "text-emerald-600 dark:text-emerald-400"
     },
     {
-        ring: "hover:ring-amber-400/50",
-        icon: "bg-amber-100 text-amber-600",
-        bar: "#f59e0b"
+        bar: "#f59e0b",
+        bg: "bg-amber-500",
+        light: "bg-amber-50 dark:bg-amber-900/20",
+        border: "border-amber-200 dark:border-amber-800/40",
+        text: "text-amber-600 dark:text-amber-400"
     },
     {
-        ring: "hover:ring-fuchsia-400/50",
-        icon: "bg-fuchsia-100 text-fuchsia-600",
-        bar: "#d946ef"
+        bar: "#d946ef",
+        bg: "bg-fuchsia-500",
+        light: "bg-fuchsia-50 dark:bg-fuchsia-900/20",
+        border: "border-fuchsia-200 dark:border-fuchsia-800/40",
+        text: "text-fuchsia-600 dark:text-fuchsia-400"
     },
     {
-        ring: "hover:ring-cyan-400/50",
-        icon: "bg-cyan-100 text-cyan-600",
-        bar: "#06b6d4"
+        bar: "#06b6d4",
+        bg: "bg-cyan-500",
+        light: "bg-cyan-50 dark:bg-cyan-900/20",
+        border: "border-cyan-200 dark:border-cyan-800/40",
+        text: "text-cyan-600 dark:text-cyan-400"
     },
     {
-        ring: "hover:ring-orange-400/50",
-        icon: "bg-orange-100 text-orange-600",
-        bar: "#f97316"
+        bar: "#f97316",
+        bg: "bg-orange-500",
+        light: "bg-orange-50 dark:bg-orange-900/20",
+        border: "border-orange-200 dark:border-orange-800/40",
+        text: "text-orange-600 dark:text-orange-400"
     }
 ];
 function ModulesScreen({ onReadyForQuiz, initialModule }) {
     _s();
     const { progress, toggleFavoriteModule } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"])();
-    const [viewingModule, setViewingModule] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(initialModule ?? null);
+    const [openModule, setOpenModule] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(initialModule ?? null);
     const [search, setSearch] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
     const [sort, setSort] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("starred");
     const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModules"])();
@@ -6684,23 +6700,11 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
         sort,
         search
     ]);
-    if (viewingModule) {
-        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ModuleDisciplineView, {
-            module: viewingModule,
-            coverage: coverage,
-            onBack: ()=>setViewingModule(null),
-            onSelectDiscipline: (discipline)=>onReadyForQuiz({
-                    module: viewingModule,
-                    discipline
-                })
-        }, void 0, false, {
-            fileName: "[project]/components/modules-screen.tsx",
-            lineNumber: 69,
-            columnNumber: 7
-        }, this);
+    function toggle(mod) {
+        setOpenModule((prev)=>prev === mod ? null : mod);
     }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        className: "mx-auto max-w-6xl space-y-6",
+        className: "mx-auto max-w-3xl space-y-4",
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "flex flex-wrap items-center gap-3",
@@ -6714,12 +6718,12 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                                     size: 18
                                 }, void 0, false, {
                                     fileName: "[project]/components/modules-screen.tsx",
-                                    lineNumber: 84,
+                                    lineNumber: 78,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 83,
+                                lineNumber: 77,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6729,7 +6733,7 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                                         children: "Study Modules"
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 87,
+                                        lineNumber: 81,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6740,19 +6744,19 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 88,
+                                        lineNumber: 82,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 86,
+                                lineNumber: 80,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/modules-screen.tsx",
-                        lineNumber: 82,
+                        lineNumber: 76,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6766,7 +6770,7 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                                         className: "absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 95,
+                                        lineNumber: 88,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -6777,13 +6781,13 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                                         className: "h-8 rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 w-32"
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 96,
+                                        lineNumber: 89,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 94,
+                                lineNumber: 87,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -6796,7 +6800,7 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                                         children: "Starred First"
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 111,
+                                        lineNumber: 102,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -6804,7 +6808,7 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                                         children: "A → Z"
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 112,
+                                        lineNumber: 103,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -6812,7 +6816,7 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                                         children: "Z → A"
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 113,
+                                        lineNumber: 104,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -6820,25 +6824,25 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                                         children: "Most Questions"
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 114,
+                                        lineNumber: 105,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 106,
+                                lineNumber: 97,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/modules-screen.tsx",
-                        lineNumber: 92,
+                        lineNumber: 86,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/modules-screen.tsx",
-                lineNumber: 81,
+                lineNumber: 75,
                 columnNumber: 7
             }, this),
             filtered.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6849,7 +6853,7 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                         className: "mb-3 text-muted-foreground/40"
                     }, void 0, false, {
                         fileName: "[project]/components/modules-screen.tsx",
-                        lineNumber: 122,
+                        lineNumber: 113,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6857,7 +6861,7 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                         children: "No modules match your search"
                     }, void 0, false, {
                         fileName: "[project]/components/modules-screen.tsx",
-                        lineNumber: 123,
+                        lineNumber: 114,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -6867,455 +6871,347 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
                         children: "Clear search"
                     }, void 0, false, {
                         fileName: "[project]/components/modules-screen.tsx",
-                        lineNumber: 124,
+                        lineNumber: 115,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/modules-screen.tsx",
-                lineNumber: 121,
+                lineNumber: 112,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3",
-                children: filtered.map((mod)=>{
-                    const paletteIndex = modules.indexOf(mod) % CARD_PALETTES.length;
-                    const palette = CARD_PALETTES[paletteIndex];
+                className: "overflow-hidden rounded-2xl border border-border bg-card shadow-sm",
+                children: filtered.map((mod, listIndex)=>{
+                    const colorIdx = modules.indexOf(mod) % MODULE_COLORS.length;
+                    const color = MODULE_COLORS[colorIdx];
                     const total = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModuleQuestionCount"])(mod);
                     const disciplines = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getDisciplinesForModule"])(mod);
                     const isFav = favorites.includes(mod);
-                    const attempted = disciplines.reduce((sum, d)=>{
-                        const cov = coverage[d];
-                        return sum + (cov ? cov.attempted : 0);
-                    }, 0);
+                    const isOpen = openModule === mod;
+                    const isLast = listIndex === filtered.length - 1;
+                    const attempted = disciplines.reduce((sum, d)=>sum + (coverage[d]?.attempted ?? 0), 0);
                     const pct = total > 0 ? Math.round(attempted / total * 100) : 0;
                     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: `group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`,
+                        className: !isLast ? "border-b border-border" : "",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80",
-                                style: {
-                                    background: palette.bar
-                                }
-                            }, void 0, false, {
-                                fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 152,
-                                columnNumber: 17
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "p-5",
+                                className: `flex items-center gap-0 transition-colors ${isOpen ? "bg-muted/40" : "hover:bg-muted/30"}`,
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "mb-3 mt-1 flex items-start justify-between gap-2",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: `flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`,
-                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["LayersIcon"], {
-                                                    size: 18
-                                                }, void 0, false, {
-                                                    fileName: "[project]/components/modules-screen.tsx",
-                                                    lineNumber: 156,
-                                                    columnNumber: 23
-                                                }, this)
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/modules-screen.tsx",
-                                                lineNumber: 155,
-                                                columnNumber: 21
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                                type: "button",
-                                                onClick: (e)=>{
-                                                    e.stopPropagation();
-                                                    toggleFavoriteModule(mod);
-                                                },
-                                                "aria-label": isFav ? "Unstar module" : "Star module",
-                                                className: `flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${isFav ? "text-amber-400 hover:text-amber-500" : "text-muted-foreground/30 hover:text-amber-400"}`,
-                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["StarIcon"], {
-                                                    size: 16,
-                                                    className: isFav ? "fill-amber-400 drop-shadow-sm" : ""
-                                                }, void 0, false, {
-                                                    fileName: "[project]/components/modules-screen.tsx",
-                                                    lineNumber: 166,
-                                                    columnNumber: 23
-                                                }, this)
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/modules-screen.tsx",
-                                                lineNumber: 158,
-                                                columnNumber: 21
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 154,
-                                        columnNumber: 19
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                        className: "font-bold text-foreground leading-snug",
-                                        children: mod
+                                        className: "w-1 self-stretch shrink-0 rounded-l-none",
+                                        style: {
+                                            background: color.bar
+                                        }
                                     }, void 0, false, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 170,
+                                        lineNumber: 138,
                                         columnNumber: 19
                                     }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "mt-0.5 text-sm text-muted-foreground",
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                        type: "button",
+                                        onClick: ()=>toggle(mod),
+                                        className: "flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left",
+                                        "aria-expanded": isOpen,
                                         children: [
-                                            disciplines.length,
-                                            " discipline",
-                                            disciplines.length !== 1 ? "s" : "",
-                                            " · ",
-                                            total,
-                                            "Q"
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 171,
-                                        columnNumber: 19
-                                    }, this),
-                                    pct > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "mt-3 h-1.5 overflow-hidden rounded-full bg-muted",
-                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    className: "h-full rounded-full transition-all",
-                                                    style: {
-                                                        width: `${pct}%`,
-                                                        background: palette.bar
-                                                    }
-                                                }, void 0, false, {
-                                                    fileName: "[project]/components/modules-screen.tsx",
-                                                    lineNumber: 178,
-                                                    columnNumber: 25
-                                                }, this)
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ChevronDownIcon"], {
+                                                size: 16,
+                                                className: `shrink-0 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`
                                             }, void 0, false, {
                                                 fileName: "[project]/components/modules-screen.tsx",
-                                                lineNumber: 177,
-                                                columnNumber: 23
+                                                lineNumber: 147,
+                                                columnNumber: 21
                                             }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                className: "mt-1 text-[11px] text-muted-foreground",
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "min-w-0 flex-1",
                                                 children: [
-                                                    pct,
-                                                    "% attempted"
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "block truncate text-sm font-semibold text-foreground",
+                                                        children: mod
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/components/modules-screen.tsx",
+                                                        lineNumber: 152,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "mt-0.5 flex items-center gap-2 text-xs text-muted-foreground",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                children: [
+                                                                    disciplines.length,
+                                                                    " discipline",
+                                                                    disciplines.length !== 1 ? "s" : ""
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/components/modules-screen.tsx",
+                                                                lineNumber: 154,
+                                                                columnNumber: 25
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                children: "·"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/components/modules-screen.tsx",
+                                                                lineNumber: 155,
+                                                                columnNumber: 25
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                children: [
+                                                                    total,
+                                                                    "Q"
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/components/modules-screen.tsx",
+                                                                lineNumber: 156,
+                                                                columnNumber: 25
+                                                            }, this),
+                                                            pct > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+                                                                children: [
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                        children: "·"
+                                                                    }, void 0, false, {
+                                                                        fileName: "[project]/components/modules-screen.tsx",
+                                                                        lineNumber: 159,
+                                                                        columnNumber: 29
+                                                                    }, this),
+                                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                        children: [
+                                                                            pct,
+                                                                            "% done"
+                                                                        ]
+                                                                    }, void 0, true, {
+                                                                        fileName: "[project]/components/modules-screen.tsx",
+                                                                        lineNumber: 160,
+                                                                        columnNumber: 29
+                                                                    }, this)
+                                                                ]
+                                                            }, void 0, true)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/components/modules-screen.tsx",
+                                                        lineNumber: 153,
+                                                        columnNumber: 23
+                                                    }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/modules-screen.tsx",
-                                                lineNumber: 183,
-                                                columnNumber: 23
-                                            }, this)
-                                        ]
-                                    }, void 0, true),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                        type: "button",
-                                        onClick: ()=>setViewingModule(mod),
-                                        className: "mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all",
-                                        style: {
-                                            background: `${palette.bar}18`,
-                                            color: palette.bar
-                                        },
-                                        children: [
-                                            "Open Module",
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
-                                                size: 13,
-                                                className: "transition-transform group-hover:translate-x-0.5"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/modules-screen.tsx",
-                                                lineNumber: 194,
+                                                lineNumber: 151,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 187,
+                                        lineNumber: 141,
+                                        columnNumber: 19
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                        type: "button",
+                                        onClick: ()=>toggleFavoriteModule(mod),
+                                        "aria-label": isFav ? "Unstar module" : "Star module",
+                                        className: `flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors mr-1 ${isFav ? "text-amber-400" : "text-muted-foreground/30 hover:text-amber-400"}`,
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["StarIcon"], {
+                                            size: 15,
+                                            className: isFav ? "fill-amber-400" : ""
+                                        }, void 0, false, {
+                                            fileName: "[project]/components/modules-screen.tsx",
+                                            lineNumber: 176,
+                                            columnNumber: 21
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/components/modules-screen.tsx",
+                                        lineNumber: 168,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 153,
+                                lineNumber: 136,
                                 columnNumber: 17
+                            }, this),
+                            pct > 0 && !isOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "mx-5 mb-2 h-0.5 overflow-hidden rounded-full bg-muted",
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "h-full rounded-full transition-all",
+                                    style: {
+                                        width: `${pct}%`,
+                                        background: color.bar
+                                    }
+                                }, void 0, false, {
+                                    fileName: "[project]/components/modules-screen.tsx",
+                                    lineNumber: 183,
+                                    columnNumber: 21
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/components/modules-screen.tsx",
+                                lineNumber: 182,
+                                columnNumber: 19
+                            }, this),
+                            isOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "border-t border-border bg-background/50",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(DisciplineRow, {
+                                        label: "All Disciplines",
+                                        sublabel: `${total} questions · all topics`,
+                                        icon: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["GraduationCapIcon"], {
+                                            size: 16
+                                        }, void 0, false, {
+                                            fileName: "[project]/components/modules-screen.tsx",
+                                            lineNumber: 194,
+                                            columnNumber: 29
+                                        }, this),
+                                        iconBg: "bg-primary text-primary-foreground",
+                                        pct: pct,
+                                        barColor: color.bar,
+                                        onClick: ()=>onReadyForQuiz({
+                                                module: mod,
+                                                discipline: null
+                                            }),
+                                        isFirst: true
+                                    }, void 0, false, {
+                                        fileName: "[project]/components/modules-screen.tsx",
+                                        lineNumber: 191,
+                                        columnNumber: 21
+                                    }, this),
+                                    disciplines.map((disc, di)=>{
+                                        const dColor = MODULE_COLORS[di % MODULE_COLORS.length];
+                                        const cov = coverage[disc];
+                                        const dTotal = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getQuestionsForModuleAndDiscipline"])(mod, disc).length;
+                                        const dPct = cov && cov.total > 0 ? Math.round(cov.attempted / cov.total * 100) : 0;
+                                        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(DisciplineRow, {
+                                            label: disc,
+                                            sublabel: `${dTotal} question${dTotal !== 1 ? "s" : ""}${dPct > 0 ? ` · ${dPct}% done` : ""}`,
+                                            icon: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["LayersIcon"], {
+                                                size: 14
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/modules-screen.tsx",
+                                                lineNumber: 212,
+                                                columnNumber: 33
+                                            }, this),
+                                            iconBg: `${dColor.light} ${dColor.text}`,
+                                            pct: dPct,
+                                            barColor: dColor.bar,
+                                            onClick: ()=>onReadyForQuiz({
+                                                    module: mod,
+                                                    discipline: disc
+                                                })
+                                        }, disc, false, {
+                                            fileName: "[project]/components/modules-screen.tsx",
+                                            lineNumber: 208,
+                                            columnNumber: 25
+                                        }, this);
+                                    })
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/components/modules-screen.tsx",
+                                lineNumber: 189,
+                                columnNumber: 19
                             }, this)
                         ]
                     }, mod, true, {
                         fileName: "[project]/components/modules-screen.tsx",
-                        lineNumber: 148,
+                        lineNumber: 134,
                         columnNumber: 15
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/components/modules-screen.tsx",
-                lineNumber: 133,
+                lineNumber: 120,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/modules-screen.tsx",
-        lineNumber: 79,
+        lineNumber: 73,
         columnNumber: 5
     }, this);
 }
-_s(ModulesScreen, "HR4pa4PUUJq62Vss2SdJYxGTIBk=", false, function() {
+_s(ModulesScreen, "BKQhzHxMNskvl/qumtTjcwRLZYU=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"]
     ];
 });
 _c = ModulesScreen;
-// ── Discipline view within modules screen ─────────────────────────────────────
-function ModuleDisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
-    const disciplines = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getDisciplinesForModule"])(module);
-    const totalInModule = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModuleQuestionCount"])(module);
-    const modIndex = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModules"])().indexOf(module) % CARD_PALETTES.length;
-    const palette = CARD_PALETTES[modIndex];
-    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        className: "mx-auto max-w-6xl space-y-6",
+function DisciplineRow({ label, sublabel, icon, iconBg, pct, barColor, onClick, isFirst = false }) {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+        type: "button",
+        onClick: onClick,
+        className: `group flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-muted/50 active:bg-muted ${!isFirst ? "border-t border-border/50" : ""}`,
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "flex items-center gap-3",
+                className: `flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconBg}`,
+                children: icon
+            }, void 0, false, {
+                fileName: "[project]/components/modules-screen.tsx",
+                lineNumber: 256,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "min-w-0 flex-1",
                 children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                        type: "button",
-                        onClick: onBack,
-                        className: "flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ChevronLeftIcon"], {
-                                size: 15
-                            }, void 0, false, {
-                                fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 231,
-                                columnNumber: 11
-                            }, this),
-                            "Back"
-                        ]
-                    }, void 0, true, {
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "truncate text-sm font-medium text-foreground",
+                        children: label
+                    }, void 0, false, {
                         fileName: "[project]/components/modules-screen.tsx",
-                        lineNumber: 226,
+                        lineNumber: 260,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "min-w-0",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                className: "truncate text-xl font-bold tracking-tight",
-                                children: module
-                            }, void 0, false, {
-                                fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 235,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                className: "text-sm text-muted-foreground",
-                                children: [
-                                    totalInModule,
-                                    " questions · ",
-                                    disciplines.length,
-                                    " disciplines"
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 236,
-                                columnNumber: 11
-                            }, this)
-                        ]
-                    }, void 0, true, {
+                        className: "flex items-center gap-2",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            className: "text-xs text-muted-foreground",
+                            children: sublabel
+                        }, void 0, false, {
+                            fileName: "[project]/components/modules-screen.tsx",
+                            lineNumber: 262,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
                         fileName: "[project]/components/modules-screen.tsx",
-                        lineNumber: 234,
+                        lineNumber: 261,
                         columnNumber: 9
+                    }, this),
+                    pct > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "mt-1 h-1 overflow-hidden rounded-full bg-muted",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "h-full rounded-full transition-all",
+                            style: {
+                                width: `${pct}%`,
+                                background: barColor
+                            }
+                        }, void 0, false, {
+                            fileName: "[project]/components/modules-screen.tsx",
+                            lineNumber: 266,
+                            columnNumber: 13
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/components/modules-screen.tsx",
+                        lineNumber: 265,
+                        columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/modules-screen.tsx",
-                lineNumber: 225,
+                lineNumber: 259,
                 columnNumber: 7
             }, this),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3",
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                        type: "button",
-                        onClick: ()=>onSelectDiscipline(null),
-                        className: "group relative overflow-hidden rounded-2xl border-2 border-primary/25 bg-primary/8 p-5 text-left shadow-sm ring-0 transition-all hover:border-primary/50 hover:shadow-md hover:ring-2 hover:ring-primary/30 active:scale-[0.98]",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "mb-4 flex items-start justify-between",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm",
-                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["GraduationCapIcon"], {
-                                            size: 22
-                                        }, void 0, false, {
-                                            fileName: "[project]/components/modules-screen.tsx",
-                                            lineNumber: 249,
-                                            columnNumber: 15
-                                        }, this)
-                                    }, void 0, false, {
-                                        fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 248,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
-                                        size: 18,
-                                        className: "mt-0.5 text-primary opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-                                    }, void 0, false, {
-                                        fileName: "[project]/components/modules-screen.tsx",
-                                        lineNumber: 251,
-                                        columnNumber: 13
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 247,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                className: "font-bold text-foreground",
-                                children: "All Disciplines"
-                            }, void 0, false, {
-                                fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 253,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                className: "mt-0.5 text-sm text-muted-foreground",
-                                children: [
-                                    totalInModule,
-                                    " questions · all topics"
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/components/modules-screen.tsx",
-                                lineNumber: 254,
-                                columnNumber: 11
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/components/modules-screen.tsx",
-                        lineNumber: 242,
-                        columnNumber: 9
-                    }, this),
-                    disciplines.map((disc, i)=>{
-                        const dPalette = CARD_PALETTES[i % CARD_PALETTES.length];
-                        const cov = coverage[disc];
-                        const pct = cov ? Math.round(cov.attempted / cov.total * 100) : 0;
-                        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                            type: "button",
-                            onClick: ()=>onSelectDiscipline(disc),
-                            className: `group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`,
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80",
-                                    style: {
-                                        background: dPalette.bar
-                                    }
-                                }, void 0, false, {
-                                    fileName: "[project]/components/modules-screen.tsx",
-                                    lineNumber: 269,
-                                    columnNumber: 15
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "mb-4 flex items-start justify-between",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: `flex h-11 w-11 items-center justify-center rounded-xl ${dPalette.icon}`,
-                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["GraduationCapIcon"], {
-                                                size: 22
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/modules-screen.tsx",
-                                                lineNumber: 272,
-                                                columnNumber: 19
-                                            }, this)
-                                        }, void 0, false, {
-                                            fileName: "[project]/components/modules-screen.tsx",
-                                            lineNumber: 271,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
-                                            size: 18,
-                                            className: "mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100",
-                                            style: {
-                                                color: dPalette.bar
-                                            }
-                                        }, void 0, false, {
-                                            fileName: "[project]/components/modules-screen.tsx",
-                                            lineNumber: 274,
-                                            columnNumber: 17
-                                        }, this)
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/components/modules-screen.tsx",
-                                    lineNumber: 270,
-                                    columnNumber: 15
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                    className: "font-bold text-foreground leading-snug",
-                                    children: disc
-                                }, void 0, false, {
-                                    fileName: "[project]/components/modules-screen.tsx",
-                                    lineNumber: 276,
-                                    columnNumber: 15
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "mt-0.5 text-sm text-muted-foreground",
-                                    children: cov ? `${cov.total} questions` : "no questions yet"
-                                }, void 0, false, {
-                                    fileName: "[project]/components/modules-screen.tsx",
-                                    lineNumber: 277,
-                                    columnNumber: 15
-                                }, this),
-                                pct > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "mt-3 h-1.5 overflow-hidden rounded-full bg-muted",
-                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "h-full rounded-full transition-all",
-                                                style: {
-                                                    width: `${pct}%`,
-                                                    background: dPalette.bar
-                                                }
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/modules-screen.tsx",
-                                                lineNumber: 283,
-                                                columnNumber: 21
-                                            }, this)
-                                        }, void 0, false, {
-                                            fileName: "[project]/components/modules-screen.tsx",
-                                            lineNumber: 282,
-                                            columnNumber: 19
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                            className: "mt-1 text-[11px] text-muted-foreground",
-                                            children: [
-                                                pct,
-                                                "% attempted"
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/components/modules-screen.tsx",
-                                            lineNumber: 288,
-                                            columnNumber: 19
-                                        }, this)
-                                    ]
-                                }, void 0, true)
-                            ]
-                        }, disc, true, {
-                            fileName: "[project]/components/modules-screen.tsx",
-                            lineNumber: 263,
-                            columnNumber: 13
-                        }, this);
-                    })
-                ]
-            }, void 0, true, {
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
+                size: 15,
+                className: "shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+            }, void 0, false, {
                 fileName: "[project]/components/modules-screen.tsx",
-                lineNumber: 240,
+                lineNumber: 270,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/modules-screen.tsx",
-        lineNumber: 224,
+        lineNumber: 251,
         columnNumber: 5
     }, this);
 }
-_c1 = ModuleDisciplineView;
+_c1 = DisciplineRow;
 var _c, _c1;
 __turbopack_context__.k.register(_c, "ModulesScreen");
-__turbopack_context__.k.register(_c1, "ModuleDisciplineView");
+__turbopack_context__.k.register(_c1, "DisciplineRow");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
