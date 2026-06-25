@@ -66,6 +66,7 @@ export interface UserProgress {
   examScores: ExamScore[]
   notificationsLastRead: number // epoch ms; 0 = never read
   mutedNotificationTypes: string[] // e.g. ["info", "update", "alert"]
+  favoriteModules: string[] // starred module names
 }
 
 /** In-session state for a single quiz block. */

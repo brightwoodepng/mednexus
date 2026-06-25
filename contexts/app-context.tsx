@@ -35,6 +35,7 @@ interface AppContextValue {
   saveExamScore: (score: ExamScore) => void
   markNotificationsRead: () => void
   toggleMuteNotificationType: (type: string) => void
+  toggleFavoriteModule: (module: string) => void
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined)
@@ -49,6 +50,7 @@ const EMPTY_PROGRESS: UserProgress = {
   examScores: [],
   notificationsLastRead: 0,
   mutedNotificationTypes: [],
+  favoriteModules: [],
 }
 
 const LS_UID = "mednexus-uid"
@@ -289,6 +291,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [scheduleSync])
 
+  const toggleFavoriteModule = useCallback((module: string) => {
+    setProgress((prev) => {
+      const favs = prev.favoriteModules ?? []
+      const next: UserProgress = {
+        ...prev,
+        favoriteModules: favs.includes(module)
+          ? favs.filter((m) => m !== module)
+          : [...favs, module],
+      }
+      const u = userRef.current
+      if (u) {
+        saveLocal(u.uid, next)
+        scheduleSync(u.uid, u.name, next)
+      }
+      return next
+    })
+  }, [scheduleSync])
+
   const value: AppContextValue = {
     user,
     authReady,
@@ -302,6 +322,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveExamScore,
     markNotificationsRead,
     toggleMuteNotificationType,
+    toggleFavoriteModule,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

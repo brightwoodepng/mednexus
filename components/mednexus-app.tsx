@@ -52,6 +52,7 @@ export function MedNexusApp() {
   const [adminLoginOpen, setAdminLoginOpen] = useState(false)
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
+  const [dashboardModule, setDashboardModule] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<{
     result: BlockResult
     moduleName: string
@@ -169,6 +170,12 @@ export function MedNexusApp() {
         onOpenAdminLogin={() => setAdminLoginOpen(true)}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
+        onReadyForQuiz={handleReadyForQuiz}
+        onSelectModule={(mod) => {
+          setDashboardModule(mod)
+          setScreen("dashboard")
+          setMobileNavOpen(false)
+        }}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -215,7 +222,11 @@ export function MedNexusApp() {
 
         <main className="flex-1 overflow-y-auto p-5 sm:p-8">
           {safeScreen === "dashboard" && (
-            <Dashboard onReadyForQuiz={handleReadyForQuiz} />
+            <Dashboard
+              onReadyForQuiz={handleReadyForQuiz}
+              requestedModule={dashboardModule}
+              onClearRequestedModule={() => setDashboardModule(null)}
+            />
           )}
           {safeScreen === "profile" && <ProfileHistory />}
           {safeScreen === "question-editor" && isAdmin && <QuestionEditor />}
