@@ -2566,8 +2566,24 @@
     }
   }
 
+  .border-t-\[\#252f37\] {
+    border-top-color: #252f37;
+  }
+
   .border-t-transparent {
     border-top-color: #0000;
+  }
+
+  .border-r-\[\#252f37\] {
+    border-right-color: #252f37;
+  }
+
+  .border-b-\[\#252f37\] {
+    border-bottom-color: #252f37;
+  }
+
+  .border-l-\[\#252f37\] {
+    border-left-color: #252f37;
   }
 
   .border-l-transparent {
@@ -2589,6 +2605,10 @@
   .bg-\[\#e94560\]\/60 {
     background-color: #e9456099;
     background-color: lab(55.1805% 64.5172 23.535 / .6);
+  }
+
+  .bg-\[\#fe9a001a\] {
+    background-color: #fe9a001a;
   }
 
   .bg-\[--color-bg\] {
@@ -3665,6 +3685,10 @@
 
   .whitespace-nowrap {
     white-space: nowrap;
+  }
+
+  .text-\[color\:var\(--sidebar-foreground\)\] {
+    color: var(--sidebar-foreground);
   }
 
   .text-accent-foreground {
