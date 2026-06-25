@@ -322,3 +322,75 @@ export const SearchIcon = (p: IconProps) => (
     <path d="m21 21-4.3-4.3" />
   </Svg>
 )
+
+export const BellIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+  </Svg>
+)
+
+export const ChevronUpIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m18 15-6-6-6 6" />
+  </Svg>
+)
+
+export const ShuffleIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
+    <path d="m18 2 4 4-4 4" />
+    <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" />
+    <path d="m18 22 4-4-4-4" />
+    <path d="M21.8 16.1c-.7 1.1-2 1.9-3.8 1.9h-2.5" />
+  </Svg>
+)
+
+export const LayersIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
+    <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
+    <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
+  </Svg>
+)
+
+export const SendIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m22 2-7 20-4-9-9-4Z" />
+    <path d="M22 2 11 13" />
+  </Svg>
+)
+
+export const MegaphoneIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m3 11 19-9-9 19-2-8-8-2z" />
+  </Svg>
+)
+
+export const TrendingUpIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+    <polyline points="16 7 22 7 22 13" />
+  </Svg>
+)
+
+export const AwardIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526" />
+    <circle cx="12" cy="8" r="6" />
+  </Svg>
+)
+
+export const InfoIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 16v-4" />
+    <path d="M12 8h.01" />
+  </Svg>
+)
+
+export const StarIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </Svg>
+)

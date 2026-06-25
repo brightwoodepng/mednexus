@@ -15,10 +15,11 @@ export interface QuestionExplanation {
   incorrectReasoning: string // Why common distractors are wrong
 }
 
-/** A single Q-Bank question. This is the shape used in `questionsDatabase`. */
+/** A single Q-Bank question. */
 export interface Question {
   id: string
-  subject: string // The subject tag — drives automatic module creation
+  module?: string // Parent module grouping (e.g. "Level 400 Clinicals")
+  subject: string // Discipline tag (e.g. "Internal Medicine")
   vignette: string
   options: QuestionOption[]
   correctAnswer: string // matches a QuestionOption.id
@@ -32,13 +33,26 @@ export type QuizMode = "trial" | "exam"
 export interface HistoryEntry {
   id: string // unique id for the attempt
   questionId: string
-  subject: string
+  module?: string // parent module
+  subject: string // discipline
   vignetteSnippet: string
   mode: QuizMode
   selectedOption: string | null // null = omitted
   correctOption: string
   isCorrect: boolean
   timestamp: number // epoch ms
+}
+
+/** A saved exam session score. */
+export interface ExamScore {
+  id: string
+  moduleName: string
+  discipline: string | null
+  score: number // 0-100 percentage
+  total: number
+  correct: number
+  timeTakenMs: number
+  date: string // ISO date string
 }
 
 /** Aggregated user progress / global stats. */
@@ -49,12 +63,15 @@ export interface UserProgress {
   streak: number
   lastStudyDate: string | null // ISO date string (YYYY-MM-DD)
   history: HistoryEntry[]
+  examScores: ExamScore[]
+  notificationsLastRead: number // epoch ms; 0 = never read
 }
 
 /** In-session state for a single quiz block. */
 export interface QuizSession {
   mode: QuizMode
   moduleName: string
+  discipline: string | null
   questions: Question[]
   currentIndex: number
   answers: Record<string, string | null> // questionId -> selected option
@@ -72,6 +89,7 @@ export interface BlockResult {
   omitted: number
   percentage: number
   rank: ProficiencyRank
+  timeTakenMs?: number
 }
 
 export type ProficiencyRank = "Expert" | "Proficient" | "Competent" | "Novice"
@@ -86,4 +104,13 @@ export interface LabValue {
 export interface LabCategory {
   category: string
   values: LabValue[]
+}
+
+/** An admin-broadcast notification message. */
+export interface AppNotification {
+  id: string
+  title: string
+  body: string
+  type: "info" | "update" | "alert"
+  createdAt: string // ISO string
 }

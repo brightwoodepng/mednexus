@@ -26,7 +26,9 @@ const EMPTY_PROGRESS = {
     flaggedQuestionIds: [],
     streak: 0,
     lastStudyDate: null,
-    history: []
+    history: [],
+    examScores: [],
+    notificationsLastRead: 0
 };
 const LS_UID = "mednexus-uid";
 const LS_NAME = "mednexus-name";
@@ -243,6 +245,50 @@ function AppProvider({ children }) {
     }["AppProvider.useCallback[recordHistory]"], [
         scheduleSync
     ]);
+    const saveExamScore = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "AppProvider.useCallback[saveExamScore]": (score)=>{
+            setProgress({
+                "AppProvider.useCallback[saveExamScore]": (prev)=>{
+                    const next = {
+                        ...prev,
+                        examScores: [
+                            score,
+                            ...prev.examScores ?? []
+                        ].slice(0, 100)
+                    };
+                    const u = userRef.current;
+                    if (u) {
+                        saveLocal(u.uid, next);
+                        scheduleSync(u.uid, u.name, next);
+                    }
+                    return next;
+                }
+            }["AppProvider.useCallback[saveExamScore]"]);
+        }
+    }["AppProvider.useCallback[saveExamScore]"], [
+        scheduleSync
+    ]);
+    const markNotificationsRead = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "AppProvider.useCallback[markNotificationsRead]": ()=>{
+            setProgress({
+                "AppProvider.useCallback[markNotificationsRead]": (prev)=>{
+                    const now = Date.now();
+                    const next = {
+                        ...prev,
+                        notificationsLastRead: now
+                    };
+                    const u = userRef.current;
+                    if (u) {
+                        saveLocal(u.uid, next);
+                        scheduleSync(u.uid, u.name, next);
+                    }
+                    return next;
+                }
+            }["AppProvider.useCallback[markNotificationsRead]"]);
+        }
+    }["AppProvider.useCallback[markNotificationsRead]"], [
+        scheduleSync
+    ]);
     const value = {
         user,
         authReady,
@@ -251,18 +297,20 @@ function AppProvider({ children }) {
         enterApp,
         signOutUser,
         toggleFlag,
-        recordHistory
+        recordHistory,
+        saveExamScore,
+        markNotificationsRead
     };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(AppContext.Provider, {
         value: value,
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/app-context.tsx",
-        lineNumber: 237,
+        lineNumber: 274,
         columnNumber: 10
     }, this);
 }
-_s(AppProvider, "0ZUduuzdPYfas3WN3x9iYIC+JPg=");
+_s(AppProvider, "q07zJhqFzUrV6oHLFmsniz8s9hw=");
 _c = AppProvider;
 function useApp() {
     _s1();
@@ -411,6 +459,10 @@ __turbopack_context__.s([
     ()=>AlertTriangleIcon,
     "ArrowRightIcon",
     ()=>ArrowRightIcon,
+    "AwardIcon",
+    ()=>AwardIcon,
+    "BellIcon",
+    ()=>BellIcon,
     "BookOpenIcon",
     ()=>BookOpenIcon,
     "CalculatorIcon",
@@ -425,6 +477,8 @@ __turbopack_context__.s([
     ()=>ChevronLeftIcon,
     "ChevronRightIcon",
     ()=>ChevronRightIcon,
+    "ChevronUpIcon",
+    ()=>ChevronUpIcon,
     "CircleDotIcon",
     ()=>CircleDotIcon,
     "ClockIcon",
@@ -445,12 +499,18 @@ __turbopack_context__.s([
     ()=>FlaskIcon,
     "GraduationCapIcon",
     ()=>GraduationCapIcon,
+    "InfoIcon",
+    ()=>InfoIcon,
+    "LayersIcon",
+    ()=>LayersIcon,
     "LayoutDashboardIcon",
     ()=>LayoutDashboardIcon,
     "ListChecksIcon",
     ()=>ListChecksIcon,
     "LogOutIcon",
     ()=>LogOutIcon,
+    "MegaphoneIcon",
+    ()=>MegaphoneIcon,
     "MenuIcon",
     ()=>MenuIcon,
     "PaletteIcon",
@@ -465,8 +525,14 @@ __turbopack_context__.s([
     ()=>RotateCcwIcon,
     "SearchIcon",
     ()=>SearchIcon,
+    "SendIcon",
+    ()=>SendIcon,
+    "ShuffleIcon",
+    ()=>ShuffleIcon,
     "SparklesIcon",
     ()=>SparklesIcon,
+    "StarIcon",
+    ()=>StarIcon,
     "StethoscopeIcon",
     ()=>StethoscopeIcon,
     "TargetIcon",
@@ -475,6 +541,8 @@ __turbopack_context__.s([
     ()=>TimerIcon,
     "TrashIcon",
     ()=>TrashIcon,
+    "TrendingUpIcon",
+    ()=>TrendingUpIcon,
     "TrophyIcon",
     ()=>TrophyIcon,
     "UserIcon",
@@ -1675,7 +1743,259 @@ const SearchIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$pro
         columnNumber: 3
     }, ("TURBOPACK compile-time value", void 0));
 _c39 = SearchIcon;
-var _c, _c1, _c2, _c3, _c4, _c5, _c6, _c7, _c8, _c9, _c10, _c11, _c12, _c13, _c14, _c15, _c16, _c17, _c18, _c19, _c20, _c21, _c22, _c23, _c24, _c25, _c26, _c27, _c28, _c29, _c30, _c31, _c32, _c33, _c34, _c35, _c36, _c37, _c38, _c39;
+const BellIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 328,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "M10.3 21a1.94 1.94 0 0 0 3.4 0"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 329,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0))
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 327,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c40 = BellIcon;
+const ChevronUpIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+            d: "m18 15-6-6-6 6"
+        }, void 0, false, {
+            fileName: "[project]/components/icons.tsx",
+            lineNumber: 335,
+            columnNumber: 5
+        }, ("TURBOPACK compile-time value", void 0))
+    }, void 0, false, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 334,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c41 = ChevronUpIcon;
+const ShuffleIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 341,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "m18 2 4 4-4 4"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 342,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "M2 6h1.9c1.5 0 2.9.9 3.6 2.2"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 343,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "m18 22 4-4-4-4"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 344,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "M21.8 16.1c-.7 1.1-2 1.9-3.8 1.9h-2.5"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 345,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0))
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 340,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c42 = ShuffleIcon;
+const LayersIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 351,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 352,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 353,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0))
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 350,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c43 = LayersIcon;
+const SendIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "m22 2-7 20-4-9-9-4Z"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 359,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "M22 2 11 13"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 360,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0))
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 358,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c44 = SendIcon;
+const MegaphoneIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+            d: "m3 11 19-9-9 19-2-8-8-2z"
+        }, void 0, false, {
+            fileName: "[project]/components/icons.tsx",
+            lineNumber: 366,
+            columnNumber: 5
+        }, ("TURBOPACK compile-time value", void 0))
+    }, void 0, false, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 365,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c45 = MegaphoneIcon;
+const TrendingUpIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("polyline", {
+                points: "22 7 13.5 15.5 8.5 10.5 2 17"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 372,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("polyline", {
+                points: "16 7 22 7 22 13"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 373,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0))
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 371,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c46 = TrendingUpIcon;
+const AwardIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 379,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
+                cx: "12",
+                cy: "8",
+                r: "6"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 380,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0))
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 378,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c47 = AwardIcon;
+const InfoIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
+                cx: "12",
+                cy: "12",
+                r: "10"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 386,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "M12 16v-4"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 387,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0)),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                d: "M12 8h.01"
+            }, void 0, false, {
+                fileName: "[project]/components/icons.tsx",
+                lineNumber: 388,
+                columnNumber: 5
+            }, ("TURBOPACK compile-time value", void 0))
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 385,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c48 = InfoIcon;
+const StarIcon = (p)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Svg, {
+        ...p,
+        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("polygon", {
+            points: "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+        }, void 0, false, {
+            fileName: "[project]/components/icons.tsx",
+            lineNumber: 394,
+            columnNumber: 5
+        }, ("TURBOPACK compile-time value", void 0))
+    }, void 0, false, {
+        fileName: "[project]/components/icons.tsx",
+        lineNumber: 393,
+        columnNumber: 3
+    }, ("TURBOPACK compile-time value", void 0));
+_c49 = StarIcon;
+var _c, _c1, _c2, _c3, _c4, _c5, _c6, _c7, _c8, _c9, _c10, _c11, _c12, _c13, _c14, _c15, _c16, _c17, _c18, _c19, _c20, _c21, _c22, _c23, _c24, _c25, _c26, _c27, _c28, _c29, _c30, _c31, _c32, _c33, _c34, _c35, _c36, _c37, _c38, _c39, _c40, _c41, _c42, _c43, _c44, _c45, _c46, _c47, _c48, _c49;
 __turbopack_context__.k.register(_c, "Svg");
 __turbopack_context__.k.register(_c1, "ActivityIcon");
 __turbopack_context__.k.register(_c2, "StethoscopeIcon");
@@ -1716,6 +2036,16 @@ __turbopack_context__.k.register(_c36, "AlertTriangleIcon");
 __turbopack_context__.k.register(_c37, "ChevronDownIcon");
 __turbopack_context__.k.register(_c38, "DownloadIcon");
 __turbopack_context__.k.register(_c39, "SearchIcon");
+__turbopack_context__.k.register(_c40, "BellIcon");
+__turbopack_context__.k.register(_c41, "ChevronUpIcon");
+__turbopack_context__.k.register(_c42, "ShuffleIcon");
+__turbopack_context__.k.register(_c43, "LayersIcon");
+__turbopack_context__.k.register(_c44, "SendIcon");
+__turbopack_context__.k.register(_c45, "MegaphoneIcon");
+__turbopack_context__.k.register(_c46, "TrendingUpIcon");
+__turbopack_context__.k.register(_c47, "AwardIcon");
+__turbopack_context__.k.register(_c48, "InfoIcon");
+__turbopack_context__.k.register(_c49, "StarIcon");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
@@ -2926,23 +3256,82 @@ __turbopack_context__.s([
     ()=>ALL_SUBJECTS,
     "WEAK_AREAS",
     ()=>WEAK_AREAS,
+    "buildCocktail",
+    ()=>buildCocktail,
     "computeResult",
     ()=>computeResult,
+    "getDisciplineCoverage",
+    ()=>getDisciplineCoverage,
+    "getDisciplinesForModule",
+    ()=>getDisciplinesForModule,
+    "getModuleQuestionCount",
+    ()=>getModuleQuestionCount,
+    "getModules",
+    ()=>getModules,
     "getQuestionCount",
     ()=>getQuestionCount,
     "getQuestionsForModule",
     ()=>getQuestionsForModule,
+    "getQuestionsForModuleAndDiscipline",
+    ()=>getQuestionsForModuleAndDiscipline,
     "getSubjects",
     ()=>getSubjects,
     "getWeakAreaQuestions",
     ()=>getWeakAreaQuestions,
     "rankFor",
-    ()=>rankFor
+    ()=>rankFor,
+    "shuffleArray",
+    ()=>shuffleArray
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/custom-questions.ts [app-client] (ecmascript)");
 ;
 const ALL_SUBJECTS = "All Subjects";
 const WEAK_AREAS = "Weak Areas";
+// ---------------------------------------------------------------------------
+// Module helpers (top-level grouping above disciplines)
+// If a question has no `module` set, its module = its subject (backward compat)
+// ---------------------------------------------------------------------------
+function getModuleKey(q) {
+    return q.module?.trim() || q.subject;
+}
+function getModules() {
+    return Array.from(new Set((0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().map(getModuleKey))).sort();
+}
+function getDisciplinesForModule(module) {
+    const qs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().filter((q)=>getModuleKey(q) === module);
+    return Array.from(new Set(qs.map((q)=>q.subject))).sort();
+}
+function getModuleQuestionCount(module) {
+    return (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().filter((q)=>getModuleKey(q) === module).length;
+}
+function getQuestionsForModuleAndDiscipline(module, discipline) {
+    const qs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().filter((q)=>getModuleKey(q) === module);
+    if (discipline) return [
+        ...qs.filter((q)=>q.subject === discipline)
+    ];
+    return [
+        ...qs
+    ];
+}
+function shuffleArray(arr) {
+    for(let i = arr.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [
+            arr[j],
+            arr[i]
+        ];
+    }
+    return arr;
+}
+function buildCocktail(questions, quantity) {
+    const shuffled = shuffleArray([
+        ...questions
+    ]);
+    if (quantity !== null && quantity > 0 && quantity < shuffled.length) {
+        return shuffled.slice(0, quantity);
+    }
+    return shuffled;
+}
 function getSubjects() {
     return Array.from(new Set((0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().map((q)=>q.subject))).sort();
 }
@@ -2980,7 +3369,7 @@ function rankFor(percentage) {
     if (percentage >= 50) return "Competent";
     return "Novice";
 }
-function computeResult(questions, answers) {
+function computeResult(questions, answers, timeTakenMs) {
     let correct = 0;
     let incorrect = 0;
     let omitted = 0;
@@ -2998,8 +3387,35 @@ function computeResult(questions, answers) {
         incorrect,
         omitted,
         percentage,
-        rank: rankFor(percentage)
+        rank: rankFor(percentage),
+        timeTakenMs
     };
+}
+function getDisciplineCoverage(history) {
+    const qs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])();
+    // Group total question counts by discipline
+    const totals = {};
+    for (const q of qs){
+        totals[q.subject] = (totals[q.subject] ?? 0) + 1;
+    }
+    // Compute attempted unique IDs per discipline from history (trial mode)
+    const trialHistory = history.filter((e)=>e.mode === "trial");
+    const attemptedByDiscipline = {};
+    const correctByDiscipline = {};
+    for (const e of trialHistory){
+        if (!attemptedByDiscipline[e.subject]) attemptedByDiscipline[e.subject] = new Set();
+        attemptedByDiscipline[e.subject].add(e.questionId);
+        if (e.isCorrect) correctByDiscipline[e.subject] = (correctByDiscipline[e.subject] ?? 0) + 1;
+    }
+    const result = {};
+    for (const [disc, total] of Object.entries(totals)){
+        result[disc] = {
+            attempted: attemptedByDiscipline[disc]?.size ?? 0,
+            total,
+            correct: correctByDiscipline[disc] ?? 0
+        };
+    }
+    return result;
 }
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);

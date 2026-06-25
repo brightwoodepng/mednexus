@@ -1,0 +1,48 @@
+The app manages questions hierarchically: Modules (e.g., Level 400 Clinicals) contain Disciplines (e.g., Internal Medicine, ENT, Ophthalmology), which contain Questions. Real-Time Notification System
+
+Global UI: Add a Notification Bell icon to the top navigation bar.
+
+Cloud-Triggered Indicators: The bell displays a red badge when the cloud detects unread messages.
+
+Admin Broadcasting: Admins can draft and send broadcast messages. These instantly push to the cloud and update students' feeds in real-time.he Global Toggle Switch (Study Modes) A prominent, top-level toggle switch allows the user to flip between "Trial Mode" and "Exam Mode" at the title bar. Flipping this switch completely changes the dashboard layout, question routing logic, and statistical tracking.
+
+Global Question Quantity & Shuffle Logic
+
+UI: Provide preset suggestion buttons (e.g., 10, 20, 50) and a "Custom" input field.
+
+Shuffle Logic: Once an amount is chosen, the system fetches the required pool from the cloud, shuffles them into a randomized "cocktail" mix, and truncates the array to match the exact user-defined amount.
+
+Dashboard A - Trial Mode (Learning Phase)
+
+Structure: Displays a list of main Modules. Clicking a Module opens a secondary menu displaying specific Disciplines.
+
+Question Logic: Users have two choices:
+
+Specific Discipline: Select a single discipline. The system applies the Global Quantity Logic to pull and shuffle questions exclusively from that discipline.
+
+All Disciplines: Select "All Disciplines". The system applies the Global Quantity Logic to pull from all disciplines within that module, shuffling them into a mixed "cocktail".
+
+Cloud Statistics: Tracks and saves content coverage to the cloud (number of questions attempted per discipline, accuracy percentage).
+
+Dashboard B - Exam Mode (Testing Phase)
+
+Structure: Displays the main Modules.
+
+Question Logic: Bypasses the Discipline layer completely. Clicking a Module instantly triggers the Global Quantity Logic prompt.
+
+Shuffle Logic: Pulls from the entire Module (ignoring discipline tags) and shuffles them into a randomized "cocktail" mock exam of that exact length.
+
+Cloud Statistics: Tracks and saves exam readiness to the cloud (overall mock exam scores, average time per question).Complete Admin Question Editor (CRUD Logic & Import) Build a comprehensive admin dashboard to manage the entire question database connected directly to the cloud.
+
+Global Search & Filter: A searchable list view where admins can find questions by keyword, or filter by specific Module and Discipline.
+
+Manual Creation: A form to create a new question from scratch. Admins must be able to assign the target Module and Discipline, write the question, define the options, select the correct answer, and write an explanation.
+
+Inline Updating: Admins can click on any existing question in the database to edit its text, change the correct answer, rewrite the explanation, or reassign it to a different Module/Discipline.
+
+Deletion: Include a delete button for individual questions (with a safety confirmation prompt).
+
+PDF Import Integration: Include a drag-and-drop zone to import PDFs. The parser extracts text and reads [DISCIPLINE: Name] delimiters to auto-categorize questions. Crucially, imported questions should populate directly into the Editor interface first, allowing the admin to review, fix parsing errors, and manually adjust tags before clicking "Push to Cloud" to make them live for students. json import and export to export all questions in the question bank.
+
+
+Show less

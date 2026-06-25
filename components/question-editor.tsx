@@ -18,6 +18,8 @@ import {
   CheckSquareIcon,
   DownloadIcon,
   SearchIcon,
+  MegaphoneIcon,
+  SendIcon,
 } from "@/components/icons"
 
 function UploadFileIcon() {
@@ -107,7 +109,7 @@ function RenameModuleDialog({
 
 // ── Question Form (Add / Edit) ───────────────────────────────────────────────
 const EMPTY_FORM = {
-  subject: "", vignette: "",
+  module: "", subject: "", vignette: "",
   optA: "", optB: "", optC: "", optD: "", optE: "",
   correctAnswer: "A",
   objective: "", details: "", incorrectReasoning: "",
@@ -118,6 +120,7 @@ function questionToForm(q: Question): FormState {
   const opts: Record<string, string> = {}
   for (const o of q.options) opts[`opt${o.id}`] = o.text
   return {
+    module: q.module ?? "",
     subject: q.subject, vignette: q.vignette,
     optA: opts.optA ?? "", optB: opts.optB ?? "",
     optC: opts.optC ?? "", optD: opts.optD ?? "", optE: opts.optE ?? "",
@@ -134,7 +137,7 @@ function formToQuestion(f: FormState, id: string): Question {
     { id: "C", text: f.optC }, { id: "D", text: f.optD },
   ]
   if (f.optE.trim()) options.push({ id: "E", text: f.optE })
-  return {
+  const q: Question = {
     id, subject: f.subject.trim(), vignette: f.vignette.trim(), options,
     correctAnswer: f.correctAnswer,
     explanation: {
@@ -143,6 +146,8 @@ function formToQuestion(f: FormState, id: string): Question {
       incorrectReasoning: f.incorrectReasoning.trim(),
     },
   }
+  if (f.module.trim()) q.module = f.module.trim()
+  return q
 }
 
 function QuestionForm({
@@ -154,6 +159,7 @@ function QuestionForm({
   const [form, setForm] = useState<FormState>(
     initial ? questionToForm(initial) : { ...EMPTY_FORM, subject: defaultSubject }
   )
+
   const [enhancing, setEnhancing] = useState(false)
   const [enhanceError, setEnhanceError] = useState("")
 
@@ -209,8 +215,13 @@ function QuestionForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className={labelCls}>Module / Subject *</label>
-        <input className={inputCls} value={form.subject} onChange={(e) => set("subject", e.target.value)} placeholder="e.g. Cardiology" required />
+        <label className={labelCls}>Module <span className="normal-case font-normal text-muted-foreground">(optional — groups disciplines)</span></label>
+        <input className={inputCls} value={form.module} onChange={(e) => set("module", e.target.value)} placeholder="e.g. Level 400 Clinicals" />
+      </div>
+
+      <div>
+        <label className={labelCls}>Discipline *</label>
+        <input className={inputCls} value={form.subject} onChange={(e) => set("subject", e.target.value)} placeholder="e.g. Internal Medicine" required />
       </div>
 
       <div>
@@ -329,6 +340,11 @@ export function QuestionEditor() {
   const [confirm, setConfirm] = useState<{
     title: string; message: string; confirmLabel: string; action: () => void; danger?: boolean
   } | null>(null)
+  const [broadcastOpen, setBroadcastOpen] = useState(false)
+  const [broadcastTitle, setBroadcastTitle] = useState("")
+  const [broadcastBody, setBroadcastBody] = useState("")
+  const [broadcastType, setBroadcastType] = useState<"info" | "update" | "alert">("info")
+  const [broadcastStatus, setBroadcastStatus] = useState<"idle" | "sending" | "sent" | "error">("idle")
 
   // Auto-save to DB (debounced 800ms) whenever questions array changes
   useEffect(() => {
@@ -356,8 +372,10 @@ export function QuestionEditor() {
       (item) =>
         item.vignette.toLowerCase().includes(q) ||
         item.subject.toLowerCase().includes(q) ||
+        (item.module ?? "").toLowerCase().includes(q) ||
         item.options.some((o) => o.text.toLowerCase().includes(q)) ||
-        (item.explanation ?? "").toLowerCase().includes(q),
+        item.explanation.objective.toLowerCase().includes(q) ||
+        item.explanation.details.toLowerCase().includes(q),
     )
   }, [questions, searchQuery])
   const isSearching = searchQuery.trim().length > 0
@@ -483,6 +501,28 @@ export function QuestionEditor() {
     reader.readAsText(file)
   }
 
+  async function handleBroadcast(e: React.FormEvent) {
+    e.preventDefault()
+    if (!broadcastTitle.trim() || !broadcastBody.trim() || !adminToken) return
+    setBroadcastStatus("sending")
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        body: JSON.stringify({ title: broadcastTitle.trim(), body: broadcastBody.trim(), type: broadcastType }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      setBroadcastStatus("sent")
+      setBroadcastTitle("")
+      setBroadcastBody("")
+      setBroadcastType("info")
+      setTimeout(() => { setBroadcastStatus("idle"); setBroadcastOpen(false) }, 2000)
+    } catch {
+      setBroadcastStatus("error")
+      setTimeout(() => setBroadcastStatus("idle"), 3000)
+    }
+  }
+
   function generateId(): string { return `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
   const totalQuestions = questions.length
 
@@ -503,6 +543,10 @@ export function QuestionEditor() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <button type="button" onClick={() => setBroadcastOpen(true)} className="flex items-center gap-2 rounded-xl border border-sky-400/50 bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-500/20 transition-colors shadow-sm">
+            <MegaphoneIcon size={15} />
+            Broadcast
+          </button>
           <button type="button" onClick={handleResetToDefault} className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
             <RefreshCwIcon size={15} />
             Reset to Default
@@ -869,6 +913,74 @@ export function QuestionEditor() {
           onConfirm={() => { confirm.action(); setConfirm(null) }}
           onCancel={() => setConfirm(null)}
         />
+      )}
+
+      {/* Broadcast notification modal */}
+      {broadcastOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600">
+                  <MegaphoneIcon size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground">Send Notification</h3>
+                  <p className="text-xs text-muted-foreground">Broadcasts to all users</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setBroadcastOpen(false)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
+                <XIcon size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleBroadcast} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Type</label>
+                <div className="flex gap-2">
+                  {(["info", "update", "alert"] as const).map((t) => (
+                    <button key={t} type="button" onClick={() => setBroadcastType(t)}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold capitalize transition-colors ${broadcastType === t ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Title *</label>
+                <input
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  placeholder="Notification title…"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Message *</label>
+                <textarea
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  rows={3}
+                  value={broadcastBody}
+                  onChange={(e) => setBroadcastBody(e.target.value)}
+                  placeholder="Your message to all users…"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={broadcastStatus === "sending" || broadcastStatus === "sent"}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <SendIcon size={15} />
+                {broadcastStatus === "sending" ? "Sending…"
+                  : broadcastStatus === "sent" ? "Sent ✓"
+                    : broadcastStatus === "error" ? "Failed — try again"
+                      : "Send to All Users"}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )
