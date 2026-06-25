@@ -84,9 +84,20 @@ export function Dashboard({ onReadyForQuiz, onOpenModules }: DashboardProps) {
 
   const firstName = user?.name?.split(" ").pop() ?? "Clinician"
   const motivation = MOTIVATIONS[new Date().getDate() % MOTIVATIONS.length]
-  const accuracy = progress.totalAnswered
-    ? Math.round((progress.totalCorrect / progress.totalAnswered) * 100)
+
+  // Trial-only stats (from history entries with mode="trial")
+  const trialHistory = progress.history.filter((e) => e.mode === "trial")
+  const trialAnswered = trialHistory.filter((e) => e.selectedOption !== null).length
+  const trialCorrect = trialHistory.filter((e) => e.isCorrect).length
+  const trialAccuracy = trialAnswered ? Math.round((trialCorrect / trialAnswered) * 100) : 0
+
+  // Exam-only stats (from saved exam scores)
+  const examScores = progress.examScores ?? []
+  const examsTaken = examScores.length
+  const avgExamScore = examsTaken
+    ? Math.round(examScores.reduce((s, e) => s + e.score, 0) / examsTaken)
     : 0
+  const bestExamScore = examsTaken ? Math.max(...examScores.map((e) => e.score)) : 0
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -113,14 +124,23 @@ export function Dashboard({ onReadyForQuiz, onOpenModules }: DashboardProps) {
         </div>
       </div>
 
-      {/* Stats row */}
+      {/* Stats row — different cards per mode */}
       <section>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <StatCard icon="📋" label="Answered" value={progress.totalAnswered} sub="questions" color="bg-sky-50 text-sky-700 border-sky-200/80" />
-          <StatCard icon="🎯" label="Accuracy" value={`${accuracy}%`} sub={progress.totalAnswered ? `${progress.totalCorrect} correct` : "no data yet"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" />
-          <StatCard icon="🚩" label="Flagged" value={progress.flaggedQuestionIds.length} sub="for review" color="bg-amber-50 text-amber-700 border-amber-200/80" />
-          <StatCard icon="🔥" label="Streak" value={`${progress.streak}d`} sub={progress.lastStudyDate ? `last: ${fmtDate(progress.lastStudyDate)}` : "start today!"} color="bg-rose-50 text-rose-700 border-rose-200/80" />
-        </div>
+        {globalMode === "trial" ? (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <StatCard icon="📋" label="Answered" value={trialAnswered} sub="trial questions" color="bg-sky-50 text-sky-700 border-sky-200/80" />
+            <StatCard icon="🎯" label="Accuracy" value={`${trialAccuracy}%`} sub={trialAnswered ? `${trialCorrect} correct` : "no data yet"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" />
+            <StatCard icon="🚩" label="Flagged" value={progress.flaggedQuestionIds.length} sub="for review" color="bg-amber-50 text-amber-700 border-amber-200/80" />
+            <StatCard icon="🔥" label="Streak" value={`${progress.streak}d`} sub={progress.lastStudyDate ? `last: ${fmtDate(progress.lastStudyDate)}` : "start today!"} color="bg-rose-50 text-rose-700 border-rose-200/80" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <StatCard icon="📝" label="Exams Taken" value={examsTaken} sub="mock exams" color="bg-sky-50 text-sky-700 border-sky-200/80" />
+            <StatCard icon="🎯" label="Avg Score" value={examsTaken ? `${avgExamScore}%` : "—"} sub={examsTaken ? `across ${examsTaken} exam${examsTaken !== 1 ? "s" : ""}` : "no exams yet"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" />
+            <StatCard icon="🏆" label="Best Score" value={examsTaken ? `${bestExamScore}%` : "—"} sub={examsTaken ? "personal best" : "no exams yet"} color="bg-amber-50 text-amber-700 border-amber-200/80" />
+            <StatCard icon="🔥" label="Streak" value={`${progress.streak}d`} sub={progress.lastStudyDate ? `last: ${fmtDate(progress.lastStudyDate)}` : "start today!"} color="bg-rose-50 text-rose-700 border-rose-200/80" />
+          </div>
+        )}
       </section>
 
       {/* Mode-specific content */}
@@ -130,7 +150,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules }: DashboardProps) {
           onOpenModules={onOpenModules}
         />
       ) : (
-        <ExamDashboard onReadyForQuiz={onReadyForQuiz} />
+        <ExamDashboard onReadyForQuiz={onReadyForQuiz} onOpenModules={onOpenModules} />
       )}
     </div>
   )
@@ -466,7 +486,13 @@ function DisciplineView({
 }
 
 // ── Exam Dashboard ────────────────────────────────────────────────────────────
-function ExamDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfig) => void }) {
+function ExamDashboard({
+  onReadyForQuiz,
+  onOpenModules,
+}: {
+  onReadyForQuiz: (c: QuizReadyConfig) => void
+  onOpenModules: (module?: string) => void
+}) {
   const { progress } = useApp()
   const modules = getModules()
   const examScores = (progress.examScores ?? []).slice(0, 5)
@@ -506,9 +532,14 @@ function ExamDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfig
             <TimerIcon size={16} />
           </div>
           <h2 className="text-lg font-bold tracking-tight">Mock Exam Modules</h2>
-          <span className="ml-auto text-xs text-muted-foreground">
-            {modules.length} module{modules.length !== 1 ? "s" : ""} · timed
-          </span>
+          <button
+            type="button"
+            onClick={() => onOpenModules()}
+            className="ml-auto text-xs font-medium text-primary hover:underline flex items-center gap-1"
+          >
+            View all
+            <ArrowRightIcon size={12} />
+          </button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {modules.map((mod, i) => {
