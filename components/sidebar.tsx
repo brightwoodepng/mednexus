@@ -94,6 +94,14 @@ export function Sidebar({
           label="Dashboard"
         />
 
+        {/* Profile */}
+        <NavButton
+          active={screen === "profile"}
+          onClick={() => nav("profile")}
+          icon={<UserIcon size={18} />}
+          label="Profile"
+        />
+
         {/* Admin-only items */}
         {isAdmin && (
           <>
