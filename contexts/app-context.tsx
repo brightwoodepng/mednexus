@@ -33,6 +33,7 @@ interface AppContextValue {
   recordHistory: (entries: HistoryEntry[]) => void
   saveExamScore: (score: ExamScore) => void
   markNotificationsRead: () => void
+  toggleMuteNotificationType: (type: string) => void
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined)
@@ -46,6 +47,7 @@ const EMPTY_PROGRESS: UserProgress = {
   history: [],
   examScores: [],
   notificationsLastRead: 0,
+  mutedNotificationTypes: [],
 }
 
 const LS_UID = "mednexus-uid"
@@ -258,6 +260,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [scheduleSync])
 
+  const toggleMuteNotificationType = useCallback((type: string) => {
+    setProgress((prev) => {
+      const muted = prev.mutedNotificationTypes ?? []
+      const next: UserProgress = {
+        ...prev,
+        mutedNotificationTypes: muted.includes(type)
+          ? muted.filter((t) => t !== type)
+          : [...muted, type],
+      }
+      const u = userRef.current
+      if (u) {
+        saveLocal(u.uid, next)
+        scheduleSync(u.uid, u.name, next)
+      }
+      return next
+    })
+  }, [scheduleSync])
+
   const value: AppContextValue = {
     user,
     authReady,
@@ -269,6 +289,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     recordHistory,
     saveExamScore,
     markNotificationsRead,
+    toggleMuteNotificationType,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
