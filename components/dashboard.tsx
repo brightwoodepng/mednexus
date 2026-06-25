@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import {
@@ -21,8 +21,9 @@ import {
   TrendingUpIcon,
   AwardIcon,
   TimerIcon,
-  ZapIcon,
+  StarIcon,
   ChevronDownIcon,
+  SearchIcon,
 } from "@/components/icons"
 
 interface QuizReadyConfig {
@@ -36,7 +37,6 @@ interface DashboardProps {
   onClearRequestedModule?: () => void
 }
 
-// Greeting based on time of day
 function useGreeting() {
   function compute() {
     const h = new Date().getHours()
@@ -140,7 +140,7 @@ export function Dashboard({ onReadyForQuiz, requestedModule, onClearRequestedMod
   )
 }
 
-// ── Coverage List (compact rows inside a card) ───────────────────────────────
+// ── Coverage List ─────────────────────────────────────────────────────────────
 const COVERAGE_COLLAPSE_THRESHOLD = 8
 
 function CoverageList({ coverage }: { coverage: Record<string, { attempted: number; total: number; correct: number }> }) {
@@ -194,7 +194,11 @@ function CoverageList({ coverage }: { coverage: Record<string, { attempted: numb
   )
 }
 
-// ── Trial Dashboard ──────────────────────────────────────────────────────────
+// ── Sort / Filter types ───────────────────────────────────────────────────────
+type SortMode = "az" | "za" | "most" | "starred"
+type FilterMode = "all" | "starred"
+
+// ── Trial Dashboard ───────────────────────────────────────────────────────────
 function TrialDashboard({
   onReadyForQuiz,
   requestedModule,
@@ -206,19 +210,40 @@ function TrialDashboard({
 }) {
   const { progress } = useApp()
   const [viewingModule, setViewingModule] = useState<string | null>(null)
+  const [search, setSearch] = useState("")
+  const [sort, setSort] = useState<SortMode>("starred")
+  const [filter, setFilter] = useState<FilterMode>("all")
 
   const modules = getModules()
   const weakAreaQuestions = getWeakAreaQuestions(progress.history)
   const weakAreaCount = weakAreaQuestions.length
   const coverage = getDisciplineCoverage(progress.history)
+  const favorites = progress.favoriteModules ?? []
 
-  // When sidebar selects a module, open it in the discipline view
   useEffect(() => {
     if (requestedModule) {
       setViewingModule(requestedModule)
       onClearRequestedModule?.()
     }
   }, [requestedModule, onClearRequestedModule])
+
+  const filtered = useMemo(() => {
+    let list = modules
+    if (filter === "starred") list = list.filter((m) => favorites.includes(m))
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter((m) => m.toLowerCase().includes(q))
+    }
+    return [...list].sort((a, b) => {
+      if (sort === "az") return a.localeCompare(b)
+      if (sort === "za") return b.localeCompare(a)
+      if (sort === "most") return getModuleQuestionCount(b) - getModuleQuestionCount(a)
+      // starred first
+      const aFav = favorites.includes(a) ? 0 : 1
+      const bFav = favorites.includes(b) ? 0 : 1
+      return aFav - bFav || a.localeCompare(b)
+    })
+  }, [modules, favorites, filter, sort, search])
 
   if (viewingModule) {
     return (
@@ -231,100 +256,225 @@ function TrialDashboard({
     )
   }
 
-  // Only disciplines that have been attempted
   const attemptedCoverage = Object.fromEntries(
     Object.entries(coverage).filter(([, v]) => v.attempted > 0)
   )
 
   return (
     <div className="space-y-6">
-      {/* Two-column layout: Coverage left, Modules right (on large screens) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-
-        {/* ── Discipline Coverage ── */}
-        {Object.keys(attemptedCoverage).length > 0 && (
-          <section className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-            <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-              <TrendingUpIcon size={15} className="text-emerald-500 shrink-0" />
-              <h2 className="font-semibold text-sm tracking-tight">Discipline Coverage</h2>
-              <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
-                {Object.keys(attemptedCoverage).length} attempted
-              </span>
-            </div>
-            <CoverageList coverage={attemptedCoverage} />
-          </section>
-        )}
-
-        {/* ── Study Modules ── */}
+      {/* Coverage panel */}
+      {Object.keys(attemptedCoverage).length > 0 && (
         <section className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
           <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-            <LayersIcon size={15} className="text-primary shrink-0" />
-            <h2 className="font-semibold text-sm tracking-tight">Study Modules</h2>
+            <TrendingUpIcon size={15} className="text-emerald-500 shrink-0" />
+            <h2 className="font-semibold text-sm tracking-tight">Discipline Coverage</h2>
             <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
-              {modules.length + (weakAreaCount > 0 ? 1 : 0)} total
+              {Object.keys(attemptedCoverage).length} attempted
             </span>
           </div>
-
-          <ul className="divide-y divide-border">
-            {/* Weak Areas row */}
-            {weakAreaCount > 0 && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onReadyForQuiz({ module: "__weak__", discipline: null })}
-                  className="group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-destructive/5 transition-colors"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
-                    <ActivityIcon size={14} />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">Weak Areas</p>
-                    <p className="text-[11px] text-muted-foreground">{weakAreaCount} to review</p>
-                  </div>
-                  <span className="shrink-0 text-[10px] font-bold text-destructive bg-destructive/10 rounded-full px-2 py-0.5">
-                    Review
-                  </span>
-                  <ArrowRightIcon size={14} className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              </li>
-            )}
-
-            {/* Module rows */}
-            {modules.map((mod, i) => {
-              const palette = CARD_PALETTES[i % CARD_PALETTES.length]
-              const total = getModuleQuestionCount(mod)
-              const disciplines = getDisciplinesForModule(mod)
-              return (
-                <li key={mod}>
-                  <button
-                    type="button"
-                    onClick={() => setViewingModule(mod)}
-                    className="group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
-                  >
-                    <span
-                      className="shrink-0 h-7 w-1 rounded-full"
-                      style={{ background: palette.bar }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{mod}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
-                      </p>
-                    </div>
-                    <ArrowRightIcon size={14} className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
+          <CoverageList coverage={attemptedCoverage} />
         </section>
+      )}
 
+      {/* Study Modules */}
+      <section>
+        {/* Section header */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <LayersIcon size={16} />
+            </div>
+            <h2 className="text-lg font-bold tracking-tight">Study Modules</h2>
+          </div>
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {/* Search */}
+            <div className="relative">
+              <SearchIcon size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search…"
+                className="h-8 rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 w-32"
+              />
+            </div>
+
+            {/* Filter */}
+            <div className="flex rounded-lg border border-border bg-muted p-0.5 gap-0.5">
+              {(["all", "starred"] as FilterMode[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all capitalize ${
+                    filter === f ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f === "starred" && <StarIcon size={10} className="text-amber-400" />}
+                  {f === "all" ? "All" : "Starred"}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort */}
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortMode)}
+              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+            >
+              <option value="starred">Starred First</option>
+              <option value="az">A → Z</option>
+              <option value="za">Z → A</option>
+              <option value="most">Most Questions</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Weak Areas card */}
+        {weakAreaCount > 0 && filter === "all" && !search.trim() && (
+          <div className="mb-3">
+            <button
+              type="button"
+              onClick={() => onReadyForQuiz({ module: "__weak__", discipline: null })}
+              className="group relative w-full overflow-hidden rounded-2xl border-2 border-rose-300/50 bg-rose-50/60 p-5 text-left shadow-sm transition-all hover:border-rose-400/70 hover:shadow-md hover:ring-2 hover:ring-rose-300/40 active:scale-[0.99] dark:border-rose-800/40 dark:bg-rose-900/20"
+            >
+              <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 bg-rose-400/60" />
+              <div className="flex items-start justify-between">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500 text-white shadow-sm">
+                  <ActivityIcon size={22} />
+                </div>
+                <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-bold text-rose-700 dark:bg-rose-900/40 dark:text-rose-400">
+                  {weakAreaCount} to review
+                </span>
+              </div>
+              <h3 className="mt-3 font-bold text-foreground">Weak Areas</h3>
+              <p className="mt-0.5 text-sm text-muted-foreground">Questions you've struggled with most</p>
+            </button>
+          </div>
+        )}
+
+        {/* Module grid */}
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-14 text-center">
+            <LayersIcon size={32} className="mb-3 text-muted-foreground/40" />
+            <p className="text-sm font-medium text-muted-foreground">No modules match your filters</p>
+            <button
+              type="button"
+              onClick={() => { setSearch(""); setFilter("all") }}
+              className="mt-2 text-xs text-primary hover:underline"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            {filtered.map((mod, i) => (
+              <ModuleCard
+                key={mod}
+                mod={mod}
+                paletteIndex={modules.indexOf(mod) % CARD_PALETTES.length}
+                isFav={favorites.includes(mod)}
+                onOpen={() => setViewingModule(mod)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
+// ── Module Card ───────────────────────────────────────────────────────────────
+function ModuleCard({
+  mod,
+  paletteIndex,
+  isFav,
+  onOpen,
+}: {
+  mod: string
+  paletteIndex: number
+  isFav: boolean
+  onOpen: () => void
+}) {
+  const { toggleFavoriteModule, progress } = useApp()
+  const coverage = getDisciplineCoverage(progress.history)
+  const palette = CARD_PALETTES[paletteIndex]
+  const total = getModuleQuestionCount(mod)
+  const disciplines = getDisciplinesForModule(mod)
+
+  // compute attempted count for this module
+  const attempted = disciplines.reduce((sum, d) => {
+    const cov = coverage[d]
+    return sum + (cov ? cov.attempted : 0)
+  }, 0)
+  const pct = total > 0 ? Math.round((attempted / total) * 100) : 0
+
+  return (
+    <div className={`group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
+      {/* Color top bar */}
+      <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
+
+      <div className="p-5">
+        <div className="mb-3 mt-1 flex items-start justify-between gap-2">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
+            <LayersIcon size={18} />
+          </div>
+          {/* Star button — always visible */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleFavoriteModule(mod) }}
+            aria-label={isFav ? "Unstar module" : "Star module"}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${
+              isFav
+                ? "text-amber-400 hover:text-amber-500"
+                : "text-muted-foreground/30 hover:text-amber-400"
+            }`}
+          >
+            <StarIcon
+              size={16}
+              className={isFav ? "fill-amber-400 drop-shadow-sm" : ""}
+            />
+          </button>
+        </div>
+
+        <h3 className="font-bold text-foreground leading-snug">{mod}</h3>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
+        </p>
+
+        {/* Progress bar */}
+        {pct > 0 && (
+          <>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${pct}%`, background: palette.bar }}
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">{pct}% attempted</p>
+          </>
+        )}
+
+        {/* Open button */}
+        <button
+          type="button"
+          onClick={onOpen}
+          className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all"
+          style={{
+            background: `${palette.bar}18`,
+            color: palette.bar,
+          }}
+        >
+          Open Module
+          <ArrowRightIcon size={13} className="transition-transform group-hover:translate-x-0.5" />
+        </button>
       </div>
     </div>
   )
 }
 
-// ── Discipline View (inside Trial mode, after clicking a module) ──────────────
+// ── Discipline View ───────────────────────────────────────────────────────────
 function DisciplineView({
   module,
   coverage,
@@ -338,6 +488,8 @@ function DisciplineView({
 }) {
   const disciplines = getDisciplinesForModule(module)
   const totalInModule = getModuleQuestionCount(module)
+  const modIndex = getModules().indexOf(module) % CARD_PALETTES.length
+  const palette = CARD_PALETTES[modIndex]
 
   return (
     <div className="space-y-6">
@@ -359,7 +511,7 @@ function DisciplineView({
 
       {/* Discipline grid */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-        {/* All disciplines */}
+        {/* All disciplines card */}
         <button
           type="button"
           onClick={() => onSelectDiscipline(null)}
@@ -376,7 +528,7 @@ function DisciplineView({
         </button>
 
         {disciplines.map((disc, i) => {
-          const palette = CARD_PALETTES[i % CARD_PALETTES.length]
+          const dPalette = CARD_PALETTES[i % CARD_PALETTES.length]
           const cov = coverage[disc]
           const pct = cov ? Math.round((cov.attempted / cov.total) * 100) : 0
           return (
@@ -384,11 +536,11 @@ function DisciplineView({
               key={disc}
               type="button"
               onClick={() => onSelectDiscipline(disc)}
-              className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
+              className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`}
             >
-              <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: palette.bar }} />
+              <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: dPalette.bar }} />
               <div className="mb-4 mt-1 flex items-start justify-between">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${palette.icon}`}>
+                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${dPalette.icon}`}>
                   <BookOpenIcon size={20} />
                 </div>
                 <ArrowRightIcon size={18} className="mt-0.5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
@@ -415,7 +567,7 @@ function DisciplineView({
   )
 }
 
-// ── Exam Dashboard ───────────────────────────────────────────────────────────
+// ── Exam Dashboard ────────────────────────────────────────────────────────────
 function ExamDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfig) => void }) {
   const { progress } = useApp()
   const modules = getModules()
@@ -423,7 +575,6 @@ function ExamDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfig
 
   return (
     <div className="space-y-8">
-      {/* Recent exam scores */}
       {examScores.length > 0 && (
         <section>
           <div className="mb-4 flex items-center gap-2.5">
@@ -450,50 +601,53 @@ function ExamDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfig
         </section>
       )}
 
-      {/* Modules for exam */}
-      <section className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-          <TimerIcon size={15} className="text-amber-500 shrink-0" />
-          <h2 className="font-semibold text-sm tracking-tight">Mock Exam Modules</h2>
-          <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
+      {/* Module grid for exam */}
+      <section>
+        <div className="mb-4 flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-white">
+            <TimerIcon size={16} />
+          </div>
+          <h2 className="text-lg font-bold tracking-tight">Mock Exam Modules</h2>
+          <span className="ml-auto text-xs text-muted-foreground">
             {modules.length} module{modules.length !== 1 ? "s" : ""} · timed
           </span>
         </div>
-        <ul className="divide-y divide-border">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {modules.map((mod, i) => {
             const palette = CARD_PALETTES[i % CARD_PALETTES.length]
             const total = getModuleQuestionCount(mod)
             return (
-              <li key={mod}>
-                <button
-                  type="button"
-                  onClick={() => onReadyForQuiz({ module: mod, discipline: null })}
-                  className="group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
-                >
-                  <span
-                    className="shrink-0 h-7 w-1 rounded-full"
-                    style={{ background: palette.bar }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{mod}</p>
-                    <p className="text-[11px] text-muted-foreground">{total}Q · 90s per question</p>
+              <button
+                key={mod}
+                type="button"
+                onClick={() => onReadyForQuiz({ module: mod, discipline: null })}
+                className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
+              >
+                <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: palette.bar }} />
+                <div className="mb-3 mt-1 flex items-start justify-between">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${palette.icon}`}>
+                    <TimerIcon size={18} />
                   </div>
-                  <span className="shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200">
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-400">
                     Timed
                   </span>
-                  <ArrowRightIcon size={14} className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              </li>
+                </div>
+                <h3 className="font-bold text-foreground">{mod}</h3>
+                <p className="mt-0.5 text-sm text-muted-foreground">{total}Q · 90s per question</p>
+                <div className="mt-4 flex items-center gap-1.5 text-xs font-medium" style={{ color: palette.bar }}>
+                  Start Exam
+                  <ArrowRightIcon size={12} className="transition-transform group-hover:translate-x-0.5" />
+                </div>
+              </button>
             )
           })}
-        </ul>
+        </div>
       </section>
     </div>
   )
 }
 
-
-// ── Sub-components ───────────────────────────────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color }: { icon: string; label: string; value: string | number; sub: string; color: string }) {
   return (
     <div className="flex flex-col gap-1 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
