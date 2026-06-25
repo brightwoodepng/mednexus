@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useApp } from "@/contexts/app-context"
-import { getQuestionsForModule, getWeakAreaQuestions, computeResult, WEAK_AREAS } from "@/lib/modules"
+import { computeResult } from "@/lib/modules"
 import type { QuizMode, HistoryEntry, BlockResult, Question } from "@/lib/types"
 import { CalculatorModal } from "@/components/calculator-modal"
 import { LabValuesModal } from "@/components/lab-values-modal"
@@ -19,7 +19,8 @@ import {
 } from "@/components/icons"
 
 interface QuizSimulatorProps {
-  subject: string
+  questions: Question[]   // pre-selected and shuffled by the caller
+  moduleName: string      // display name
   mode: QuizMode
   onExit: () => void
   onComplete: (result: BlockResult, history: HistoryEntry[]) => void
@@ -27,14 +28,8 @@ interface QuizSimulatorProps {
 
 const SECONDS_PER_QUESTION = 90
 
-export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulatorProps) {
+export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete }: QuizSimulatorProps) {
   const { progress, toggleFlag, recordHistory } = useApp()
-
-  const questions = useMemo<Question[]>(
-    () => (subject === WEAK_AREAS ? getWeakAreaQuestions(progress.history) : getQuestionsForModule(subject)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [subject],
-  )
 
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | null>>({})
@@ -44,19 +39,22 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
   const [labsOpen, setLabsOpen] = useState(false)
   const [navOpenMobile, setNavOpenMobile] = useState(false)
 
+  const startedAt = useRef(Date.now())
+
   const current = questions[index]
   const selected = current ? answers[current.id] ?? null : null
   const isFlagged = current ? progress.flaggedQuestionIds.includes(current.id) : false
   const struckSet = current ? struck[current.id] ?? new Set<string>() : new Set<string>()
   const revealed = mode === "trial" && selected !== null
 
-  // --- Submission ---
   const submitBlock = useCallback(() => {
-    const result: BlockResult = computeResult(questions, answers)
+    const timeTakenMs = Date.now() - startedAt.current
+    const result: BlockResult = computeResult(questions, answers, timeTakenMs)
     const now = Date.now()
     const history: HistoryEntry[] = questions.map((q) => ({
       id: `${q.id}-${now}-${Math.random().toString(36).slice(2, 7)}`,
       questionId: q.id,
+      module: q.module,
       subject: q.subject,
       vignetteSnippet: q.vignette.slice(0, 120) + (q.vignette.length > 120 ? "…" : ""),
       mode,
@@ -69,7 +67,7 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
     onComplete(result, history)
   }, [questions, answers, mode, recordHistory, onComplete])
 
-  // --- Exam timer ---
+  // Exam timer
   useEffect(() => {
     if (mode !== "exam") return
     if (timeLeft <= 0) { submitBlock(); return }
@@ -80,7 +78,7 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
   if (!current) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center text-muted-foreground">
-        This module has no questions yet.
+        This block has no questions.
       </div>
     )
   }
@@ -112,9 +110,8 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
 
   return (
     <div className="flex h-full flex-col">
-      {/* ===== Top bar ===== */}
+      {/* Top bar */}
       <header className="flex items-center gap-1 border-b border-border bg-card px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3">
-        {/* Exit */}
         <button
           type="button"
           onClick={onExit}
@@ -126,23 +123,17 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
 
         <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
 
-        {/* Module name */}
         <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
           <BookOpenIcon size={15} className="shrink-0 text-primary" />
-          <span className="truncate text-sm font-semibold">{subject}</span>
+          <span className="truncate text-sm font-semibold">{moduleName}</span>
           <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline">
             {mode === "trial" ? "Tutor" : "Exam"}
           </span>
         </div>
 
-        {/* Right actions */}
         <div className="flex items-center gap-1">
           {mode === "exam" && (
-            <div
-              className={`mr-0.5 flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-semibold tabular-nums sm:mr-1 sm:px-2.5 ${
-                timeLeft < 60 ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground"
-              }`}
-            >
+            <div className={`mr-0.5 flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-semibold tabular-nums sm:mr-1 sm:px-2.5 ${timeLeft < 60 ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground"}`}>
               <ClockIcon size={15} />
               <span className="text-xs sm:text-sm">{formatTime(timeLeft)}</span>
             </div>
@@ -157,9 +148,7 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
             type="button"
             onClick={() => toggleFlag(current.id)}
             aria-pressed={isFlagged}
-            className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors sm:gap-1.5 sm:px-2.5 ${
-              isFlagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
+            className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors sm:gap-1.5 sm:px-2.5 ${isFlagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
           >
             <FlagIcon size={17} />
             <span className="hidden sm:inline">{isFlagged ? "Flagged" : "Flag"}</span>
@@ -167,12 +156,10 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
         </div>
       </header>
 
-      {/* ===== Body ===== */}
+      {/* Body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Main pane */}
         <div className="flex flex-1 flex-col overflow-y-auto">
           <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-5 sm:px-6 sm:py-8">
-            {/* Q counter + mobile nav trigger */}
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Question {index + 1} of {questions.length}
@@ -186,10 +173,8 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
               </button>
             </div>
 
-            {/* Vignette */}
             <p className="text-[15px] leading-relaxed text-foreground text-pretty sm:text-base">{current.vignette}</p>
 
-            {/* Options */}
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-6 sm:gap-3">
               {current.options.map((opt) => {
                 const isStruck = struckSet.has(opt.id)
@@ -214,21 +199,14 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectOption(opt.id) }
                     }}
-                    className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.99] ${stateClass} ${
-                      isStruck ? "opacity-50" : ""
-                    }`}
+                    className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.99] ${stateClass} ${isStruck ? "opacity-50" : ""}`}
                   >
-                    <span
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
-                        revealed && isCorrect
-                          ? "border-success bg-success text-success-foreground"
-                          : revealed && isSelected
-                            ? "border-destructive bg-destructive text-destructive-foreground"
-                            : isSelected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border bg-muted text-muted-foreground"
-                      }`}
-                    >
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
+                      revealed && isCorrect ? "border-success bg-success text-success-foreground"
+                        : revealed && isSelected ? "border-destructive bg-destructive text-destructive-foreground"
+                          : isSelected ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted text-muted-foreground"
+                    }`}>
                       {opt.id}
                     </span>
                     <span className={`flex-1 text-sm leading-snug ${isStruck ? "text-muted-foreground line-through" : ""}`}>
@@ -241,11 +219,7 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
                         type="button"
                         onClick={(e) => toggleStrike(e, opt.id)}
                         aria-label={isStruck ? `Restore option ${opt.id}` : `Cross out option ${opt.id}`}
-                        className={`shrink-0 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
-                          isStruck
-                            ? "bg-muted text-foreground"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
+                        className={`shrink-0 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${isStruck ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
                       >
                         {isStruck ? "Undo" : "✕"}
                       </button>
@@ -255,16 +229,9 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
               })}
             </div>
 
-            {/* Trial-mode explanation */}
             {revealed && (
               <div className="mt-5 overflow-hidden rounded-2xl border border-border sm:mt-6">
-                <div
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold sm:px-5 ${
-                    selected === current.correctAnswer
-                      ? "bg-success/10 text-success"
-                      : "bg-destructive/10 text-destructive"
-                  }`}
-                >
+                <div className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold sm:px-5 ${selected === current.correctAnswer ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                   {selected === current.correctAnswer ? <CheckIcon size={18} /> : <XIcon size={18} />}
                   {selected === current.correctAnswer ? "Correct" : "Incorrect"} — Answer is {current.correctAnswer}
                 </div>
@@ -312,7 +279,6 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
           </div>
         </div>
 
-        {/* Nav grid (desktop) */}
         <NavGrid
           className="hidden w-60 shrink-0 lg:flex"
           questions={questions}
@@ -323,7 +289,6 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
         />
       </div>
 
-      {/* Nav grid (mobile overlay) */}
       {navOpenMobile && (
         <div className="fixed inset-0 z-30 lg:hidden">
           <button
@@ -349,11 +314,9 @@ export function QuizSimulator({ subject, mode, onExit, onComplete }: QuizSimulat
   )
 }
 
-// ---- Sub-components -------------------------------------------------------
+// ── Sub-components ──────────────────────────────────────────────────────────
 
-function NavGrid({
-  className, questions, index, answers, flagged, onJump,
-}: {
+function NavGrid({ className, questions, index, answers, flagged, onJump }: {
   className: string
   questions: Question[]
   index: number
@@ -380,10 +343,8 @@ function NavGrid({
               type="button"
               onClick={() => onJump(i)}
               className={`relative flex h-10 items-center justify-center rounded-lg text-sm font-semibold transition-colors ${
-                isCurrent
-                  ? "bg-primary text-primary-foreground ring-2 ring-primary/40"
-                  : answered
-                    ? "bg-success/15 text-success"
+                isCurrent ? "bg-primary text-primary-foreground ring-2 ring-primary/40"
+                  : answered ? "bg-success/15 text-success"
                     : "bg-muted text-muted-foreground hover:bg-secondary"
               }`}
             >

@@ -15,7 +15,7 @@ import {
   useRef,
   type ReactNode,
 } from "react"
-import type { HistoryEntry, UserProgress } from "@/lib/types"
+import type { HistoryEntry, UserProgress, ExamScore } from "@/lib/types"
 
 interface AppUser {
   uid: string
@@ -31,6 +31,8 @@ interface AppContextValue {
   signOutUser: () => void
   toggleFlag: (questionId: string) => void
   recordHistory: (entries: HistoryEntry[]) => void
+  saveExamScore: (score: ExamScore) => void
+  markNotificationsRead: () => void
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined)
@@ -42,6 +44,8 @@ const EMPTY_PROGRESS: UserProgress = {
   streak: 0,
   lastStudyDate: null,
   history: [],
+  examScores: [],
+  notificationsLastRead: 0,
 }
 
 const LS_UID = "mednexus-uid"
@@ -223,6 +227,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [scheduleSync],
   )
 
+  const saveExamScore = useCallback(
+    (score: ExamScore) => {
+      setProgress((prev) => {
+        const next: UserProgress = {
+          ...prev,
+          examScores: [score, ...(prev.examScores ?? [])].slice(0, 100),
+        }
+        const u = userRef.current
+        if (u) {
+          saveLocal(u.uid, next)
+          scheduleSync(u.uid, u.name, next)
+        }
+        return next
+      })
+    },
+    [scheduleSync],
+  )
+
+  const markNotificationsRead = useCallback(() => {
+    setProgress((prev) => {
+      const now = Date.now()
+      const next: UserProgress = { ...prev, notificationsLastRead: now }
+      const u = userRef.current
+      if (u) {
+        saveLocal(u.uid, next)
+        scheduleSync(u.uid, u.name, next)
+      }
+      return next
+    })
+  }, [scheduleSync])
+
   const value: AppContextValue = {
     user,
     authReady,
@@ -232,6 +267,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     signOutUser,
     toggleFlag,
     recordHistory,
+    saveExamScore,
+    markNotificationsRead,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

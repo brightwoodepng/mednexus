@@ -1,41 +1,82 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
+import { useStudyMode } from "@/contexts/study-mode-context"
+import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
 import type { Screen } from "@/lib/view"
-import type { QuizMode, BlockResult } from "@/lib/types"
+import type { QuizMode, BlockResult, Question, ExamScore } from "@/lib/types"
 import { AuthScreen } from "@/components/auth-screen"
 import { Sidebar } from "@/components/sidebar"
 import { Dashboard } from "@/components/dashboard"
-import { ModeSelectionModal } from "@/components/mode-selection-modal"
+import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
 import { ProfileHistory } from "@/components/profile-history"
 import { ThemeModal } from "@/components/theme-modal"
 import { QuestionEditor } from "@/components/question-editor"
 import { AdminLoginModal } from "@/components/admin-login-modal"
-import { MenuIcon, StethoscopeIcon, PaletteIcon } from "@/components/icons"
+import { NotificationBell } from "@/components/notification-bell"
+import {
+  MenuIcon,
+  StethoscopeIcon,
+  PaletteIcon,
+  ZapIcon,
+  TimerIcon,
+} from "@/components/icons"
+
+interface PendingQuiz {
+  questions: Question[]
+  moduleName: string
+  discipline: string | null
+}
 
 interface ActiveQuiz {
-  subject: string
+  questions: Question[]
+  moduleName: string
+  discipline: string | null
   mode: QuizMode
+  startedAt: number
 }
 
 export function MedNexusApp() {
-  const { user, authReady } = useApp()
+  const { user, authReady, progress, saveExamScore } = useApp()
   const { isAdmin } = useAdmin()
+  const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [adminLoginOpen, setAdminLoginOpen] = useState(false)
-  const [pendingSubject, setPendingSubject] = useState<string | null>(null)
+  const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
-  const [lastResult, setLastResult] = useState<{ result: BlockResult; moduleName: string } | null>(null)
+  const [lastResult, setLastResult] = useState<{
+    result: BlockResult
+    moduleName: string
+    discipline: string | null
+    lastSetup: { module: string; discipline: string | null } | null
+  } | null>(null)
 
-  // Guard: if on question-editor but not admin, redirect to dashboard
   const safeScreen = screen === "question-editor" && !isAdmin ? "dashboard" : screen
+
+  // Called by Dashboard when user has selected module (+ optional discipline)
+  // Must be defined before any early returns to obey Rules of Hooks
+  const handleReadyForQuiz = useCallback((config: { module: string; discipline: string | null }) => {
+    let questions: Question[]
+    const isWeakAreas = config.module === "__weak__"
+    if (isWeakAreas) {
+      questions = getWeakAreaQuestions(progress.history)
+    } else {
+      questions = getQuestionsForModuleAndDiscipline(config.module, config.discipline)
+    }
+    setPendingQuiz({
+      questions,
+      moduleName: isWeakAreas ? "Weak Areas" : config.module,
+      discipline: config.discipline,
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress.history])
 
   if (!authReady) {
     return (
@@ -52,15 +93,46 @@ export function MedNexusApp() {
 
   if (!user) return <AuthScreen />
 
-  function startQuiz(mode: QuizMode) {
-    if (!pendingSubject) return
-    setActiveQuiz({ subject: pendingSubject, mode })
-    setPendingSubject(null)
+  // Called by QuantityModal when user confirms quantity
+  function handleStartQuiz(shuffledQuestions: Question[]) {
+    if (!pendingQuiz) return
+    setActiveQuiz({
+      questions: shuffledQuestions,
+      moduleName: pendingQuiz.moduleName,
+      discipline: pendingQuiz.discipline,
+      mode: globalMode,
+      startedAt: Date.now(),
+    })
+    setPendingQuiz(null)
     setScreen("quiz")
   }
 
   function handleQuizComplete(result: BlockResult) {
-    setLastResult({ result, moduleName: activeQuiz?.subject ?? "" })
+    if (!activeQuiz) return
+
+    // Save exam score if in exam mode
+    if (activeQuiz.mode === "exam" && result.timeTakenMs !== undefined) {
+      const score: ExamScore = {
+        id: `score-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        moduleName: activeQuiz.moduleName,
+        discipline: activeQuiz.discipline,
+        score: result.percentage,
+        total: result.total,
+        correct: result.correct,
+        timeTakenMs: result.timeTakenMs,
+        date: new Date().toISOString(),
+      }
+      saveExamScore(score)
+    }
+
+    setLastResult({
+      result,
+      moduleName: activeQuiz.moduleName,
+      discipline: activeQuiz.discipline,
+      lastSetup: activeQuiz.moduleName === "Weak Areas"
+        ? { module: "__weak__", discipline: null }
+        : { module: activeQuiz.moduleName, discipline: activeQuiz.discipline },
+    })
     setActiveQuiz(null)
     setScreen("results")
   }
@@ -70,11 +142,13 @@ export function MedNexusApp() {
     setScreen("dashboard")
   }
 
+  // Full-screen quiz view
   if (safeScreen === "quiz" && activeQuiz) {
     return (
       <div className="h-screen bg-background">
         <QuizSimulator
-          subject={activeQuiz.subject}
+          questions={activeQuiz.questions}
+          moduleName={activeQuiz.moduleName}
           mode={activeQuiz.mode}
           onExit={exitQuiz}
           onComplete={handleQuizComplete}
@@ -95,32 +169,51 @@ export function MedNexusApp() {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Mobile top bar */}
-        <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3 lg:hidden">
+        {/* Top bar (visible on all screens) */}
+        <header className="flex items-center justify-between border-b border-border bg-card px-4 py-2.5">
+          {/* Mobile: hamburger menu */}
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted lg:hidden"
             aria-label="Open menu"
           >
             <MenuIcon size={22} />
           </button>
-          <div className="flex items-center gap-2">
+
+          {/* Mobile: brand */}
+          <div className="flex items-center gap-2 lg:hidden">
             <StethoscopeIcon size={18} className="text-primary" />
             <span className="font-semibold">MedNexus</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setThemeOpen(true)}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
-            aria-label="Themes"
-          >
-            <PaletteIcon size={20} />
-          </button>
+
+          {/* Desktop: spacer */}
+          <div className="hidden lg:block" />
+
+          {/* Right side: mode toggle + bell + theme */}
+          <div className="flex items-center gap-2">
+            {/* Study Mode Toggle */}
+            <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
+
+            {/* Notification Bell */}
+            <NotificationBell />
+
+            {/* Theme toggle */}
+            <button
+              type="button"
+              onClick={() => setThemeOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Themes"
+            >
+              <PaletteIcon size={18} />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-5 sm:p-8">
-          {safeScreen === "dashboard" && <Dashboard onSelectModule={setPendingSubject} />}
+          {safeScreen === "dashboard" && (
+            <Dashboard onReadyForQuiz={handleReadyForQuiz} />
+          )}
           {safeScreen === "profile" && <ProfileHistory />}
           {safeScreen === "question-editor" && isAdmin && <QuestionEditor />}
           {safeScreen === "results" && lastResult && (
@@ -128,15 +221,66 @@ export function MedNexusApp() {
               result={lastResult.result}
               moduleName={lastResult.moduleName}
               onReturn={() => setScreen("dashboard")}
-              onRetry={() => setPendingSubject(lastResult.moduleName)}
+              onRetry={() => {
+                if (lastResult.lastSetup) {
+                  handleReadyForQuiz(lastResult.lastSetup)
+                }
+              }}
             />
           )}
         </main>
       </div>
 
-      <ModeSelectionModal subject={pendingSubject} onClose={() => setPendingSubject(null)} onStart={startQuiz} />
+      {/* Quantity selection modal */}
+      <QuantityModal
+        open={pendingQuiz !== null}
+        label={pendingQuiz?.discipline ?? pendingQuiz?.moduleName ?? ""}
+        sublabel={pendingQuiz?.discipline ? pendingQuiz.moduleName : undefined}
+        questions={pendingQuiz?.questions ?? []}
+        onClose={() => setPendingQuiz(null)}
+        onStart={handleStartQuiz}
+      />
+
       <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
       {adminLoginOpen && <AdminLoginModal onClose={() => setAdminLoginOpen(false)} />}
+    </div>
+  )
+}
+
+// ── Study Mode Toggle ────────────────────────────────────────────────────────
+function StudyModeToggle({
+  globalMode,
+  setGlobalMode,
+}: {
+  globalMode: QuizMode
+  setGlobalMode: (mode: QuizMode) => void
+}) {
+  return (
+    <div className="flex items-center rounded-xl border border-border bg-muted p-0.5">
+      <button
+        type="button"
+        onClick={() => setGlobalMode("trial")}
+        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all ${
+          globalMode === "trial"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <ZapIcon size={13} />
+        <span className="hidden sm:inline">Trial</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setGlobalMode("exam")}
+        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all ${
+          globalMode === "exam"
+            ? "bg-amber-500 text-white shadow-sm"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <TimerIcon size={13} />
+        <span className="hidden sm:inline">Exam</span>
+      </button>
     </div>
   )
 }
