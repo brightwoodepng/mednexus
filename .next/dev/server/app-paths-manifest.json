@@ -1,6 +1,1 @@
-{
-  "/api/notifications/route": "app/api/notifications/route.js",
-  "/api/questions/route": "app/api/questions/route.js",
-  "/api/sync/route": "app/api/sync/route.js",
-  "/page": "app/page.js"
-}
+{}
