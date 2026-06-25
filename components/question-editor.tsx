@@ -260,7 +260,7 @@ function QuestionForm({
             type="button"
             onClick={handleEnhance}
             disabled={enhancing}
-            className="flex items-center gap-1.5 rounded-lg bg-violet-500/10 border border-violet-400/40 px-3 py-1.5 text-xs font-semibold text-violet-700 dark:text-violet-400 hover:bg-violet-500/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {enhancing ? (
               <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
@@ -307,8 +307,8 @@ type SaveStatus = "idle" | "saving" | "saved" | "error"
 function SaveStatusPill({ status }: { status: SaveStatus }) {
   if (status === "idle") return null
   const cfg = {
-    saving: { label: "Saving to cloud…", cls: "bg-amber-100 text-amber-700 border-amber-300" },
-    saved:  { label: "Saved to cloud ✓",  cls: "bg-emerald-100 text-emerald-700 border-emerald-300" },
+    saving: { label: "Saving to cloud…", cls: "bg-muted text-muted-foreground border-border" },
+    saved:  { label: "Saved to cloud ✓",  cls: "bg-primary/10 text-primary border-primary/30" },
     error:  { label: "Save failed — try again", cls: "bg-destructive/10 text-destructive border-destructive/30" },
   }[status]
   return (
@@ -523,7 +523,7 @@ export function QuestionEditor() {
             onClick={handleExportJSON}
             disabled={questions.length === 0}
             title="Download all questions as a JSON file"
-            className="flex items-center gap-2 rounded-xl border border-emerald-400/50 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <DownloadIcon size={15} />
             Export JSON
@@ -539,12 +539,12 @@ export function QuestionEditor() {
             type="button"
             onClick={() => jsonInputRef.current?.click()}
             title="Upload a previously exported JSON file"
-            className="flex items-center gap-2 rounded-xl border border-emerald-400/50 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-sm"
+            className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors shadow-sm"
           >
             <UploadFileIcon />
             Import JSON
           </button>
-          <button type="button" onClick={() => setPdfImportOpen(true)} className="flex items-center gap-2 rounded-xl border border-violet-400/50 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-500/20 transition-colors shadow-sm">
+          <button type="button" onClick={() => setPdfImportOpen(true)} className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors shadow-sm">
             <UploadFileIcon />
             Import PDF
           </button>
@@ -636,12 +636,12 @@ export function QuestionEditor() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{q.subject}</span>
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">{q.correctAnswer}</span>
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{q.correctAnswer}</span>
                       </div>
                       <p className="text-sm text-foreground line-clamp-2">{q.vignette}</p>
                       <div className="mt-1.5 flex gap-3 flex-wrap">
                         {q.options.map((o) => (
-                          <span key={o.id} className={`text-xs ${o.id === q.correctAnswer ? "font-semibold text-emerald-700" : "text-muted-foreground"}`}>
+                          <span key={o.id} className={`text-xs ${o.id === q.correctAnswer ? "font-semibold text-primary" : "text-muted-foreground"}`}>
                             {o.id}. {o.text.slice(0, 30)}{o.text.length > 30 ? "…" : ""}
                           </span>
                         ))}
@@ -781,12 +781,12 @@ export function QuestionEditor() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Q{i + 1}</span>
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">{q.correctAnswer}</span>
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{q.correctAnswer}</span>
                       </div>
                       <p className="text-sm text-foreground line-clamp-2">{q.vignette}</p>
                       <div className="mt-1.5 flex gap-3 flex-wrap">
                         {q.options.map((o) => (
-                          <span key={o.id} className={`text-xs ${o.id === q.correctAnswer ? "font-semibold text-emerald-700" : "text-muted-foreground"}`}>
+                          <span key={o.id} className={`text-xs ${o.id === q.correctAnswer ? "font-semibold text-primary" : "text-muted-foreground"}`}>
                             {o.id}. {o.text.slice(0, 30)}{o.text.length > 30 ? "…" : ""}
                           </span>
                         ))}
@@ -823,7 +823,7 @@ export function QuestionEditor() {
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <div>
                 <h3 className="font-bold text-foreground">{editingQuestion === "new" ? "Add New Question" : "Edit Question"}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Use <span className="font-semibold text-violet-600">AI Enhance</span> to auto-generate explanation from your vignette.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Use <span className="font-semibold text-primary">AI Enhance</span> to auto-generate explanation from your vignette.</p>
               </div>
               <button type="button" onClick={() => setEditingQuestion(null)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
                 <XIcon size={18} />
