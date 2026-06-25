@@ -5637,9 +5637,125 @@ _s1(Dashboard, "r9eInKTmDuwfe+eKU+I9qg/iK4E=", false, function() {
     ];
 });
 _c = Dashboard;
+// ── Coverage List (compact rows inside a card) ───────────────────────────────
+const COVERAGE_COLLAPSE_THRESHOLD = 8;
+function CoverageList({ coverage }) {
+    _s2();
+    const [expanded, setExpanded] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const entries = Object.entries(coverage).filter(([, v])=>v.attempted > 0).sort((a, b)=>b[1].attempted - a[1].attempted);
+    if (entries.length === 0) return null;
+    const visible = expanded ? entries : entries.slice(0, COVERAGE_COLLAPSE_THRESHOLD);
+    const hidden = entries.length - COVERAGE_COLLAPSE_THRESHOLD;
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
+                className: "divide-y divide-border",
+                children: visible.map(([disc, { attempted, total, correct }])=>{
+                    const pct = total > 0 ? Math.round(attempted / total * 100) : 0;
+                    const acc = attempted > 0 ? Math.round(correct / attempted * 100) : 0;
+                    const barColor = acc >= 80 ? "#10b981" : acc >= 60 ? "#0ea5e9" : "#f59e0b";
+                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                        className: "flex items-center gap-3 px-4 py-2.5",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                className: "w-28 shrink-0 truncate text-sm font-medium",
+                                children: disc
+                            }, void 0, false, {
+                                fileName: "[project]/components/dashboard.tsx",
+                                lineNumber: 164,
+                                columnNumber: 15
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "flex-1 min-w-0",
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "h-1.5 overflow-hidden rounded-full bg-muted",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "h-full rounded-full transition-all",
+                                        style: {
+                                            width: `${pct}%`,
+                                            background: barColor
+                                        }
+                                    }, void 0, false, {
+                                        fileName: "[project]/components/dashboard.tsx",
+                                        lineNumber: 167,
+                                        columnNumber: 19
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/components/dashboard.tsx",
+                                    lineNumber: 166,
+                                    columnNumber: 17
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/components/dashboard.tsx",
+                                lineNumber: 165,
+                                columnNumber: 15
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                className: "w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums text-muted-foreground",
+                                children: [
+                                    pct,
+                                    "%"
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/components/dashboard.tsx",
+                                lineNumber: 173,
+                                columnNumber: 15
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                className: "w-14 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground",
+                                children: [
+                                    acc,
+                                    "% acc"
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/components/dashboard.tsx",
+                                lineNumber: 176,
+                                columnNumber: 15
+                            }, this)
+                        ]
+                    }, disc, true, {
+                        fileName: "[project]/components/dashboard.tsx",
+                        lineNumber: 163,
+                        columnNumber: 13
+                    }, this);
+                })
+            }, void 0, false, {
+                fileName: "[project]/components/dashboard.tsx",
+                lineNumber: 157,
+                columnNumber: 7
+            }, this),
+            entries.length > COVERAGE_COLLAPSE_THRESHOLD && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                type: "button",
+                onClick: ()=>setExpanded((v)=>!v),
+                className: "flex w-full items-center justify-center gap-1.5 border-t border-border px-4 py-2.5 text-[11px] font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ChevronDownIcon"], {
+                        size: 12,
+                        className: `transition-transform duration-200 ${expanded ? "rotate-180" : ""}`
+                    }, void 0, false, {
+                        fileName: "[project]/components/dashboard.tsx",
+                        lineNumber: 189,
+                        columnNumber: 11
+                    }, this),
+                    expanded ? "Show less" : `${hidden} more discipline${hidden !== 1 ? "s" : ""}`
+                ]
+            }, void 0, true, {
+                fileName: "[project]/components/dashboard.tsx",
+                lineNumber: 184,
+                columnNumber: 9
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/dashboard.tsx",
+        lineNumber: 156,
+        columnNumber: 5
+    }, this);
+}
+_s2(CoverageList, "DuL5jiiQQFgbn7gBKAyxwS/H4Ek=");
+_c1 = CoverageList;
 // ── Trial Dashboard ──────────────────────────────────────────────────────────
 function TrialDashboard({ onReadyForQuiz, requestedModule, onClearRequestedModule }) {
-    _s2();
+    _s3();
     const { progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"])();
     const [viewingModule, setViewingModule] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModules"])();
@@ -5669,324 +5785,291 @@ function TrialDashboard({ onReadyForQuiz, requestedModule, onClearRequestedModul
                 })
         }, void 0, false, {
             fileName: "[project]/components/dashboard.tsx",
-            lineNumber: 171,
+            lineNumber: 225,
             columnNumber: 7
         }, this);
     }
     // Only disciplines that have been attempted
     const attemptedCoverage = Object.fromEntries(Object.entries(coverage).filter(([, v])=>v.attempted > 0));
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        className: "space-y-8",
-        children: [
-            Object.keys(attemptedCoverage).length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "mb-4 flex items-center gap-2.5",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-white",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TrendingUpIcon"], {
-                                    size: 16
+        className: "space-y-6",
+        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "grid grid-cols-1 gap-6 lg:grid-cols-2",
+            children: [
+                Object.keys(attemptedCoverage).length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
+                    className: "rounded-2xl border border-border bg-card overflow-hidden shadow-sm",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "flex items-center gap-2 border-b border-border px-4 py-3",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TrendingUpIcon"], {
+                                    size: 15,
+                                    className: "text-emerald-500 shrink-0"
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 192,
+                                    lineNumber: 248,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                                    className: "font-semibold text-sm tracking-tight",
+                                    children: "Discipline Coverage"
+                                }, void 0, false, {
+                                    fileName: "[project]/components/dashboard.tsx",
+                                    lineNumber: 249,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "ml-auto text-[11px] text-muted-foreground tabular-nums",
+                                    children: [
+                                        Object.keys(attemptedCoverage).length,
+                                        " attempted"
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/components/dashboard.tsx",
+                                    lineNumber: 250,
                                     columnNumber: 15
                                 }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 191,
-                                columnNumber: 13
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                className: "text-lg font-bold tracking-tight",
-                                children: "Discipline Coverage"
-                            }, void 0, false, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 194,
-                                columnNumber: 13
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                className: "ml-auto text-xs text-muted-foreground",
-                                children: [
-                                    Object.keys(attemptedCoverage).length,
-                                    " attempted"
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 195,
-                                columnNumber: 13
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 190,
-                        columnNumber: 11
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(CoverageGrid, {
-                        coverage: attemptedCoverage
-                    }, void 0, false, {
-                        fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 199,
-                        columnNumber: 11
-                    }, this)
-                ]
-            }, void 0, true, {
-                fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 189,
-                columnNumber: 9
-            }, this),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "mb-5 flex items-center gap-2.5",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["LayersIcon"], {
-                                    size: 16
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/components/dashboard.tsx",
+                            lineNumber: 247,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(CoverageList, {
+                            coverage: attemptedCoverage
+                        }, void 0, false, {
+                            fileName: "[project]/components/dashboard.tsx",
+                            lineNumber: 254,
+                            columnNumber: 13
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/components/dashboard.tsx",
+                    lineNumber: 246,
+                    columnNumber: 11
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
+                    className: "rounded-2xl border border-border bg-card overflow-hidden shadow-sm",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "flex items-center gap-2 border-b border-border px-4 py-3",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["LayersIcon"], {
+                                    size: 15,
+                                    className: "text-primary shrink-0"
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 207,
+                                    lineNumber: 261,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                                    className: "font-semibold text-sm tracking-tight",
+                                    children: "Study Modules"
+                                }, void 0, false, {
+                                    fileName: "[project]/components/dashboard.tsx",
+                                    lineNumber: 262,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "ml-auto text-[11px] text-muted-foreground tabular-nums",
+                                    children: [
+                                        modules.length + (weakAreaCount > 0 ? 1 : 0),
+                                        " total"
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/components/dashboard.tsx",
+                                    lineNumber: 263,
                                     columnNumber: 13
                                 }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 206,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                className: "text-xl font-bold tracking-tight",
-                                children: "Study Modules"
-                            }, void 0, false, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 209,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                className: "ml-auto rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground",
-                                children: [
-                                    modules.length + (weakAreaCount > 0 ? 1 : 0),
-                                    " module",
-                                    modules.length !== 1 ? "s" : ""
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 210,
-                                columnNumber: 11
-                            }, this)
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 205,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3",
-                        children: [
-                            weakAreaCount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                type: "button",
-                                onClick: ()=>onReadyForQuiz({
-                                        module: "__weak__",
-                                        discipline: null
-                                    }),
-                                className: "group relative overflow-hidden rounded-2xl border-2 border-destructive/25 bg-destructive/8 p-5 text-left shadow-sm ring-0 transition-all hover:border-destructive/50 hover:shadow-md hover:ring-2 hover:ring-destructive/30 active:scale-[0.98]",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "mb-4 flex items-start justify-between",
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/components/dashboard.tsx",
+                            lineNumber: 260,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
+                            className: "divide-y divide-border",
+                            children: [
+                                weakAreaCount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                        type: "button",
+                                        onClick: ()=>onReadyForQuiz({
+                                                module: "__weak__",
+                                                discipline: null
+                                            }),
+                                        className: "group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-destructive/5 transition-colors",
                                         children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500 text-white shadow-sm",
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600",
                                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ActivityIcon"], {
-                                                    size: 22
+                                                    size: 14
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/dashboard.tsx",
-                                                    lineNumber: 225,
-                                                    columnNumber: 19
+                                                    lineNumber: 278,
+                                                    columnNumber: 21
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 224,
-                                                columnNumber: 17
+                                                lineNumber: 277,
+                                                columnNumber: 19
                                             }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
-                                                size: 18,
-                                                className: "mt-0.5 text-rose-500 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 227,
-                                                columnNumber: 17
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 223,
-                                        columnNumber: 15
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                        className: "font-bold text-foreground",
-                                        children: "Weak Areas"
-                                    }, void 0, false, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 229,
-                                        columnNumber: 15
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "mt-0.5 text-sm text-muted-foreground",
-                                        children: [
-                                            weakAreaCount,
-                                            " question",
-                                            weakAreaCount === 1 ? "" : "s",
-                                            " to review"
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 230,
-                                        columnNumber: 15
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "mt-3 flex items-center gap-1.5",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "inline-block h-2 w-2 rounded-full bg-destructive/70"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 232,
-                                                columnNumber: 17
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "text-[11px] font-medium text-destructive",
-                                                children: "Needs attention"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 233,
-                                                columnNumber: 17
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 231,
-                                        columnNumber: 15
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 218,
-                                columnNumber: 13
-                            }, this),
-                            modules.map((mod, i)=>{
-                                const palette = CARD_PALETTES[i % CARD_PALETTES.length];
-                                const total = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModuleQuestionCount"])(mod);
-                                const disciplines = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getDisciplinesForModule"])(mod);
-                                return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                    type: "button",
-                                    onClick: ()=>setViewingModule(mod),
-                                    className: `group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`,
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70",
-                                            style: {
-                                                background: palette.bar
-                                            }
-                                        }, void 0, false, {
-                                            fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 250,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "mb-4 mt-1 flex items-start justify-between",
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    className: `flex h-11 w-11 items-center justify-center rounded-xl ${palette.icon}`,
-                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["LayersIcon"], {
-                                                        size: 20
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "flex-1 min-w-0",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                        className: "text-sm font-semibold text-foreground truncate",
+                                                        children: "Weak Areas"
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/dashboard.tsx",
-                                                        lineNumber: 253,
+                                                        lineNumber: 281,
+                                                        columnNumber: 21
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                        className: "text-[11px] text-muted-foreground",
+                                                        children: [
+                                                            weakAreaCount,
+                                                            " to review"
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/components/dashboard.tsx",
+                                                        lineNumber: 282,
                                                         columnNumber: 21
                                                     }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/components/dashboard.tsx",
+                                                lineNumber: 280,
+                                                columnNumber: 19
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                className: "shrink-0 text-[10px] font-bold text-destructive bg-destructive/10 rounded-full px-2 py-0.5",
+                                                children: "Review"
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/dashboard.tsx",
+                                                lineNumber: 284,
+                                                columnNumber: 19
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
+                                                size: 14,
+                                                className: "shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/dashboard.tsx",
+                                                lineNumber: 287,
+                                                columnNumber: 19
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/components/dashboard.tsx",
+                                        lineNumber: 272,
+                                        columnNumber: 17
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/components/dashboard.tsx",
+                                    lineNumber: 271,
+                                    columnNumber: 15
+                                }, this),
+                                modules.map((mod, i)=>{
+                                    const palette = CARD_PALETTES[i % CARD_PALETTES.length];
+                                    const total = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModuleQuestionCount"])(mod);
+                                    const disciplines = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getDisciplinesForModule"])(mod);
+                                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "button",
+                                            onClick: ()=>setViewingModule(mod),
+                                            className: "group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                    className: "shrink-0 h-7 w-1 rounded-full",
+                                                    style: {
+                                                        background: palette.bar
+                                                    }
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/dashboard.tsx",
-                                                    lineNumber: 252,
-                                                    columnNumber: 19
+                                                    lineNumber: 304,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "flex-1 min-w-0",
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-sm font-semibold text-foreground truncate",
+                                                            children: mod
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/components/dashboard.tsx",
+                                                            lineNumber: 309,
+                                                            columnNumber: 23
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-[11px] text-muted-foreground",
+                                                            children: [
+                                                                disciplines.length,
+                                                                " discipline",
+                                                                disciplines.length !== 1 ? "s" : "",
+                                                                " · ",
+                                                                total,
+                                                                "Q"
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/components/dashboard.tsx",
+                                                            lineNumber: 310,
+                                                            columnNumber: 23
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/components/dashboard.tsx",
+                                                    lineNumber: 308,
+                                                    columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
-                                                    size: 18,
-                                                    className: "mt-0.5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+                                                    size: 14,
+                                                    className: "shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/dashboard.tsx",
-                                                    lineNumber: 255,
-                                                    columnNumber: 19
+                                                    lineNumber: 314,
+                                                    columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 251,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                            className: "font-bold text-foreground",
-                                            children: mod
-                                        }, void 0, false, {
-                                            fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 257,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                            className: "mt-0.5 text-sm text-muted-foreground",
-                                            children: [
-                                                total,
-                                                " question",
-                                                total !== 1 ? "s" : ""
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 258,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                            className: "mt-0.5 text-xs text-muted-foreground/70",
-                                            children: [
-                                                disciplines.length,
-                                                " discipline",
-                                                disciplines.length !== 1 ? "s" : ""
-                                            ]
-                                        }, void 0, true, {
-                                            fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 259,
-                                            columnNumber: 17
+                                            lineNumber: 299,
+                                            columnNumber: 19
                                         }, this)
-                                    ]
-                                }, mod, true, {
-                                    fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 244,
-                                    columnNumber: 15
-                                }, this);
-                            })
-                        ]
-                    }, void 0, true, {
-                        fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 215,
-                        columnNumber: 9
-                    }, this)
-                ]
-            }, void 0, true, {
-                fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 204,
-                columnNumber: 7
-            }, this)
-        ]
-    }, void 0, true, {
+                                    }, mod, false, {
+                                        fileName: "[project]/components/dashboard.tsx",
+                                        lineNumber: 298,
+                                        columnNumber: 17
+                                    }, this);
+                                })
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/components/dashboard.tsx",
+                            lineNumber: 268,
+                            columnNumber: 11
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/components/dashboard.tsx",
+                    lineNumber: 259,
+                    columnNumber: 9
+                }, this)
+            ]
+        }, void 0, true, {
+            fileName: "[project]/components/dashboard.tsx",
+            lineNumber: 242,
+            columnNumber: 7
+        }, this)
+    }, void 0, false, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 186,
+        lineNumber: 240,
         columnNumber: 5
     }, this);
 }
-_s2(TrialDashboard, "f3a+GTG0xPJfUTSaWZFf94G5zZo=", false, function() {
+_s3(TrialDashboard, "f3a+GTG0xPJfUTSaWZFf94G5zZo=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"]
     ];
 });
-_c1 = TrialDashboard;
+_c2 = TrialDashboard;
 // ── Discipline View (inside Trial mode, after clicking a module) ──────────────
 function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
     const disciplines = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getDisciplinesForModule"])(module);
@@ -6006,14 +6089,14 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 size: 15
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 295,
+                                lineNumber: 351,
                                 columnNumber: 11
                             }, this),
                             "Back"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 290,
+                        lineNumber: 346,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6024,7 +6107,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 children: module
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 299,
+                                lineNumber: 355,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6037,19 +6120,19 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 300,
+                                lineNumber: 356,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 298,
+                        lineNumber: 354,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 289,
+                lineNumber: 345,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6069,12 +6152,12 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                             size: 22
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 314,
+                                            lineNumber: 370,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 313,
+                                        lineNumber: 369,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
@@ -6082,13 +6165,13 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                         className: "mt-0.5 text-primary opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 316,
+                                        lineNumber: 372,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 312,
+                                lineNumber: 368,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -6096,7 +6179,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 children: "All Disciplines"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 318,
+                                lineNumber: 374,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6107,13 +6190,13 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 319,
+                                lineNumber: 375,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 307,
+                        lineNumber: 363,
                         columnNumber: 9
                     }, this),
                     disciplines.map((disc, i)=>{
@@ -6132,7 +6215,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 333,
+                                    lineNumber: 389,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6144,12 +6227,12 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                                 size: 20
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 336,
+                                                lineNumber: 392,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 335,
+                                            lineNumber: 391,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
@@ -6157,13 +6240,13 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                             className: "mt-0.5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 338,
+                                            lineNumber: 394,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 334,
+                                    lineNumber: 390,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -6171,7 +6254,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                     children: disc
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 340,
+                                    lineNumber: 396,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6182,7 +6265,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 341,
+                                    lineNumber: 397,
                                     columnNumber: 15
                                 }, this),
                                 cov && cov.total > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -6196,12 +6279,12 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 347,
+                                                lineNumber: 403,
                                                 columnNumber: 21
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 346,
+                                            lineNumber: 402,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6209,7 +6292,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                             children: pct > 0 ? `${pct}% attempted` : "Not started"
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 349,
+                                            lineNumber: 405,
                                             columnNumber: 19
                                         }, this)
                                     ]
@@ -6217,27 +6300,27 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                             ]
                         }, disc, true, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 327,
+                            lineNumber: 383,
                             columnNumber: 13
                         }, this);
                     })
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 305,
+                lineNumber: 361,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 287,
+        lineNumber: 343,
         columnNumber: 5
     }, this);
 }
-_c2 = DisciplineView;
+_c3 = DisciplineView;
 // ── Exam Dashboard ───────────────────────────────────────────────────────────
 function ExamDashboard({ onReadyForQuiz }) {
-    _s3();
+    _s4();
     const { progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"])();
     const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModules"])();
     const examScores = (progress.examScores ?? []).slice(0, 5);
@@ -6255,12 +6338,12 @@ function ExamDashboard({ onReadyForQuiz }) {
                                     size: 16
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 375,
+                                    lineNumber: 431,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 374,
+                                lineNumber: 430,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -6268,13 +6351,13 @@ function ExamDashboard({ onReadyForQuiz }) {
                                 children: "Recent Exam Scores"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 377,
+                                lineNumber: 433,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 373,
+                        lineNumber: 429,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6290,7 +6373,7 @@ function ExamDashboard({ onReadyForQuiz }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 382,
+                                        lineNumber: 438,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6301,7 +6384,7 @@ function ExamDashboard({ onReadyForQuiz }) {
                                                 children: s.moduleName
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 386,
+                                                lineNumber: 442,
                                                 columnNumber: 19
                                             }, this),
                                             s.discipline && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6309,7 +6392,7 @@ function ExamDashboard({ onReadyForQuiz }) {
                                                 children: s.discipline
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 387,
+                                                lineNumber: 443,
                                                 columnNumber: 36
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6323,13 +6406,13 @@ function ExamDashboard({ onReadyForQuiz }) {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 388,
+                                                lineNumber: 444,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 385,
+                                        lineNumber: 441,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6337,331 +6420,171 @@ function ExamDashboard({ onReadyForQuiz }) {
                                         children: fmtDate(s.date.slice(0, 10))
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 390,
+                                        lineNumber: 446,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, s.id, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 381,
+                                lineNumber: 437,
                                 columnNumber: 15
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 379,
+                        lineNumber: 435,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 372,
+                lineNumber: 428,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
+                className: "rounded-2xl border border-border bg-card overflow-hidden shadow-sm",
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "mb-5 flex items-center gap-2.5",
+                        className: "flex items-center gap-2 border-b border-border px-4 py-3",
                         children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-white",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TimerIcon"], {
-                                    size: 16
-                                }, void 0, false, {
-                                    fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 401,
-                                    columnNumber: 13
-                                }, this)
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TimerIcon"], {
+                                size: 15,
+                                className: "text-amber-500 shrink-0"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 400,
+                                lineNumber: 456,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                className: "text-xl font-bold tracking-tight",
+                                className: "font-semibold text-sm tracking-tight",
                                 children: "Mock Exam Modules"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 403,
+                                lineNumber: 457,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                className: "ml-auto rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground",
+                                className: "ml-auto text-[11px] text-muted-foreground tabular-nums",
                                 children: [
                                     modules.length,
                                     " module",
-                                    modules.length !== 1 ? "s" : ""
+                                    modules.length !== 1 ? "s" : "",
+                                    " · timed"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 404,
+                                lineNumber: 458,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 399,
+                        lineNumber: 455,
                         columnNumber: 9
                     }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                        className: "mb-4 text-sm text-muted-foreground",
-                        children: "Select a module to start a timed mock exam. Feedback is hidden until you submit."
-                    }, void 0, false, {
-                        fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 408,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3",
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
+                        className: "divide-y divide-border",
                         children: modules.map((mod, i)=>{
                             const palette = CARD_PALETTES[i % CARD_PALETTES.length];
                             const total = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModuleQuestionCount"])(mod);
-                            return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                type: "button",
-                                onClick: ()=>onReadyForQuiz({
-                                        module: mod,
-                                        discipline: null
-                                    }),
-                                className: `group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`,
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70",
-                                        style: {
-                                            background: palette.bar
-                                        }
-                                    }, void 0, false, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 422,
-                                        columnNumber: 17
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "mb-4 mt-1 flex items-start justify-between",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: `flex h-11 w-11 items-center justify-center rounded-xl ${palette.icon}`,
-                                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TimerIcon"], {
-                                                    size: 20
+                            return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("li", {
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    type: "button",
+                                    onClick: ()=>onReadyForQuiz({
+                                            module: mod,
+                                            discipline: null
+                                        }),
+                                    className: "group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "shrink-0 h-7 w-1 rounded-full",
+                                            style: {
+                                                background: palette.bar
+                                            }
+                                        }, void 0, false, {
+                                            fileName: "[project]/components/dashboard.tsx",
+                                            lineNumber: 473,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "flex-1 min-w-0",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                    className: "text-sm font-semibold text-foreground truncate",
+                                                    children: mod
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/dashboard.tsx",
-                                                    lineNumber: 425,
+                                                    lineNumber: 478,
+                                                    columnNumber: 21
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                    className: "text-[11px] text-muted-foreground",
+                                                    children: [
+                                                        total,
+                                                        "Q · 90s per question"
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/components/dashboard.tsx",
+                                                    lineNumber: 479,
                                                     columnNumber: 21
                                                 }, this)
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 424,
-                                                columnNumber: 19
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
-                                                size: 18,
-                                                className: "mt-0.5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 427,
-                                                columnNumber: 19
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 423,
-                                        columnNumber: 17
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                        className: "font-bold text-foreground",
-                                        children: mod
-                                    }, void 0, false, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 429,
-                                        columnNumber: 17
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "mt-0.5 text-sm text-muted-foreground",
-                                        children: [
-                                            total,
-                                            " question",
-                                            total !== 1 ? "s" : ""
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 430,
-                                        columnNumber: 17
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "mt-2 flex items-center gap-1.5",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TimerIcon"], {
-                                                size: 11,
-                                                className: "text-amber-600"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 432,
-                                                columnNumber: 19
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "text-[11px] text-amber-700 font-medium",
-                                                children: "Timed · 90s per question"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 433,
-                                                columnNumber: 19
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 431,
-                                        columnNumber: 17
-                                    }, this)
-                                ]
-                            }, mod, true, {
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/components/dashboard.tsx",
+                                            lineNumber: 477,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200",
+                                            children: "Timed"
+                                        }, void 0, false, {
+                                            fileName: "[project]/components/dashboard.tsx",
+                                            lineNumber: 481,
+                                            columnNumber: 19
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
+                                            size: 14,
+                                            className: "shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                                        }, void 0, false, {
+                                            fileName: "[project]/components/dashboard.tsx",
+                                            lineNumber: 484,
+                                            columnNumber: 19
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/components/dashboard.tsx",
+                                    lineNumber: 468,
+                                    columnNumber: 17
+                                }, this)
+                            }, mod, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 416,
+                                lineNumber: 467,
                                 columnNumber: 15
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 411,
+                        lineNumber: 462,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 398,
+                lineNumber: 454,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 369,
+        lineNumber: 425,
         columnNumber: 5
     }, this);
 }
-_s3(ExamDashboard, "OqdjxtDd9YNIRc1laFdvg2NUUQk=", false, function() {
+_s4(ExamDashboard, "OqdjxtDd9YNIRc1laFdvg2NUUQk=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"]
     ];
 });
-_c3 = ExamDashboard;
-// ── Coverage Grid (Trial mode stats) ────────────────────────────────────────
-const COVERAGE_COLLAPSE_THRESHOLD = 6;
-function CoverageGrid({ coverage }) {
-    _s4();
-    const [expanded, setExpanded] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
-    const entries = Object.entries(coverage).filter(([, v])=>v.attempted > 0);
-    if (entries.length === 0) return null;
-    const visible = expanded ? entries : entries.slice(0, COVERAGE_COLLAPSE_THRESHOLD);
-    const hidden = entries.length - COVERAGE_COLLAPSE_THRESHOLD;
-    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        className: "space-y-2",
-        children: [
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3",
-                children: visible.map(([disc, { attempted, total, correct }])=>{
-                    const pct = total > 0 ? Math.round(attempted / total * 100) : 0;
-                    const acc = attempted > 0 ? Math.round(correct / attempted * 100) : 0;
-                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "rounded-xl border border-border bg-card px-4 py-3",
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "flex items-center justify-between gap-2 mb-2",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "truncate text-sm font-semibold",
-                                        children: disc
-                                    }, void 0, false, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 463,
-                                        columnNumber: 17
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                        className: "shrink-0 text-xs font-bold text-muted-foreground",
-                                        children: [
-                                            pct,
-                                            "%"
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 464,
-                                        columnNumber: 17
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 462,
-                                columnNumber: 15
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "h-1.5 overflow-hidden rounded-full bg-muted",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "h-full rounded-full transition-all",
-                                    style: {
-                                        width: `${pct}%`,
-                                        background: pct >= 80 ? "#10b981" : pct >= 50 ? "#0ea5e9" : "#f59e0b"
-                                    }
-                                }, void 0, false, {
-                                    fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 467,
-                                    columnNumber: 17
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 466,
-                                columnNumber: 15
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                className: "mt-1.5 text-[11px] text-muted-foreground",
-                                children: [
-                                    attempted,
-                                    "/",
-                                    total,
-                                    " attempted · ",
-                                    acc,
-                                    "% correct"
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 475,
-                                columnNumber: 15
-                            }, this)
-                        ]
-                    }, disc, true, {
-                        fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 461,
-                        columnNumber: 13
-                    }, this);
-                })
-            }, void 0, false, {
-                fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 456,
-                columnNumber: 7
-            }, this),
-            entries.length > COVERAGE_COLLAPSE_THRESHOLD && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                type: "button",
-                onClick: ()=>setExpanded((v)=>!v),
-                className: "flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors",
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ChevronDownIcon"], {
-                        size: 13,
-                        className: `transition-transform duration-200 ${expanded ? "rotate-180" : ""}`
-                    }, void 0, false, {
-                        fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 488,
-                        columnNumber: 11
-                    }, this),
-                    expanded ? "Show less" : `Show ${hidden} more discipline${hidden !== 1 ? "s" : ""}`
-                ]
-            }, void 0, true, {
-                fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 483,
-                columnNumber: 9
-            }, this)
-        ]
-    }, void 0, true, {
-        fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 455,
-        columnNumber: 5
-    }, this);
-}
-_s4(CoverageGrid, "DuL5jiiQQFgbn7gBKAyxwS/H4Ek=");
-_c4 = CoverageGrid;
+_c4 = ExamDashboard;
 // ── Sub-components ───────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color }) {
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6675,7 +6598,7 @@ function StatCard({ icon, label, value, sub, color }) {
                         children: icon
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 504,
+                        lineNumber: 501,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6683,13 +6606,13 @@ function StatCard({ icon, label, value, sub, color }) {
                         children: label
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 505,
+                        lineNumber: 502,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 503,
+                lineNumber: 500,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6697,7 +6620,7 @@ function StatCard({ icon, label, value, sub, color }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 507,
+                lineNumber: 504,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6705,13 +6628,13 @@ function StatCard({ icon, label, value, sub, color }) {
                 children: sub
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 508,
+                lineNumber: 505,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 502,
+        lineNumber: 499,
         columnNumber: 5
     }, this);
 }
@@ -6732,10 +6655,10 @@ function fmtMs(ms) {
 }
 var _c, _c1, _c2, _c3, _c4, _c5;
 __turbopack_context__.k.register(_c, "Dashboard");
-__turbopack_context__.k.register(_c1, "TrialDashboard");
-__turbopack_context__.k.register(_c2, "DisciplineView");
-__turbopack_context__.k.register(_c3, "ExamDashboard");
-__turbopack_context__.k.register(_c4, "CoverageGrid");
+__turbopack_context__.k.register(_c1, "CoverageList");
+__turbopack_context__.k.register(_c2, "TrialDashboard");
+__turbopack_context__.k.register(_c3, "DisciplineView");
+__turbopack_context__.k.register(_c4, "ExamDashboard");
 __turbopack_context__.k.register(_c5, "StatCard");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);

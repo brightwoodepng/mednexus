@@ -140,6 +140,60 @@ export function Dashboard({ onReadyForQuiz, requestedModule, onClearRequestedMod
   )
 }
 
+// ── Coverage List (compact rows inside a card) ───────────────────────────────
+const COVERAGE_COLLAPSE_THRESHOLD = 8
+
+function CoverageList({ coverage }: { coverage: Record<string, { attempted: number; total: number; correct: number }> }) {
+  const [expanded, setExpanded] = useState(false)
+  const entries = Object.entries(coverage)
+    .filter(([, v]) => v.attempted > 0)
+    .sort((a, b) => b[1].attempted - a[1].attempted)
+  if (entries.length === 0) return null
+  const visible = expanded ? entries : entries.slice(0, COVERAGE_COLLAPSE_THRESHOLD)
+  const hidden = entries.length - COVERAGE_COLLAPSE_THRESHOLD
+
+  return (
+    <div>
+      <ul className="divide-y divide-border">
+        {visible.map(([disc, { attempted, total, correct }]) => {
+          const pct = total > 0 ? Math.round((attempted / total) * 100) : 0
+          const acc = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
+          const barColor = acc >= 80 ? "#10b981" : acc >= 60 ? "#0ea5e9" : "#f59e0b"
+          return (
+            <li key={disc} className="flex items-center gap-3 px-4 py-2.5">
+              <p className="w-28 shrink-0 truncate text-sm font-medium">{disc}</p>
+              <div className="flex-1 min-w-0">
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${pct}%`, background: barColor }}
+                  />
+                </div>
+              </div>
+              <span className="w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums text-muted-foreground">
+                {pct}%
+              </span>
+              <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                {acc}% acc
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      {entries.length > COVERAGE_COLLAPSE_THRESHOLD && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex w-full items-center justify-center gap-1.5 border-t border-border px-4 py-2.5 text-[11px] font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+        >
+          <ChevronDownIcon size={12} className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+          {expanded ? "Show less" : `${hidden} more discipline${hidden !== 1 ? "s" : ""}`}
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── Trial Dashboard ──────────────────────────────────────────────────────────
 function TrialDashboard({
   onReadyForQuiz,
@@ -183,87 +237,89 @@ function TrialDashboard({
   )
 
   return (
-    <div className="space-y-8">
-      {/* Coverage stats — only attempted disciplines */}
-      {Object.keys(attemptedCoverage).length > 0 && (
-        <section>
-          <div className="mb-4 flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-white">
-              <TrendingUpIcon size={16} />
+    <div className="space-y-6">
+      {/* Two-column layout: Coverage left, Modules right (on large screens) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+        {/* ── Discipline Coverage ── */}
+        {Object.keys(attemptedCoverage).length > 0 && (
+          <section className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+              <TrendingUpIcon size={15} className="text-emerald-500 shrink-0" />
+              <h2 className="font-semibold text-sm tracking-tight">Discipline Coverage</h2>
+              <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
+                {Object.keys(attemptedCoverage).length} attempted
+              </span>
             </div>
-            <h2 className="text-lg font-bold tracking-tight">Discipline Coverage</h2>
-            <span className="ml-auto text-xs text-muted-foreground">
-              {Object.keys(attemptedCoverage).length} attempted
+            <CoverageList coverage={attemptedCoverage} />
+          </section>
+        )}
+
+        {/* ── Study Modules ── */}
+        <section className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+            <LayersIcon size={15} className="text-primary shrink-0" />
+            <h2 className="font-semibold text-sm tracking-tight">Study Modules</h2>
+            <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
+              {modules.length + (weakAreaCount > 0 ? 1 : 0)} total
             </span>
           </div>
-          <CoverageGrid coverage={attemptedCoverage} />
-        </section>
-      )}
 
-      {/* Modules */}
-      <section>
-        <div className="mb-5 flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <LayersIcon size={16} />
-          </div>
-          <h2 className="text-xl font-bold tracking-tight">Study Modules</h2>
-          <span className="ml-auto rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            {modules.length + (weakAreaCount > 0 ? 1 : 0)} module{modules.length !== 1 ? "s" : ""}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-          {/* Weak Areas */}
-          {weakAreaCount > 0 && (
-            <button
-              type="button"
-              onClick={() => onReadyForQuiz({ module: "__weak__", discipline: null })}
-              className="group relative overflow-hidden rounded-2xl border-2 border-destructive/25 bg-destructive/8 p-5 text-left shadow-sm ring-0 transition-all hover:border-destructive/50 hover:shadow-md hover:ring-2 hover:ring-destructive/30 active:scale-[0.98]"
-            >
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500 text-white shadow-sm">
-                  <ActivityIcon size={22} />
-                </div>
-                <ArrowRightIcon size={18} className="mt-0.5 text-rose-500 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-              </div>
-              <h3 className="font-bold text-foreground">Weak Areas</h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">{weakAreaCount} question{weakAreaCount === 1 ? "" : "s"} to review</p>
-              <div className="mt-3 flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full bg-destructive/70" />
-                <span className="text-[11px] font-medium text-destructive">Needs attention</span>
-              </div>
-            </button>
-          )}
-
-          {/* Module cards → click opens discipline view */}
-          {modules.map((mod, i) => {
-            const palette = CARD_PALETTES[i % CARD_PALETTES.length]
-            const total = getModuleQuestionCount(mod)
-            const disciplines = getDisciplinesForModule(mod)
-            return (
-              <button
-                key={mod}
-                type="button"
-                onClick={() => setViewingModule(mod)}
-                className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
-              >
-                <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: palette.bar }} />
-                <div className="mb-4 mt-1 flex items-start justify-between">
-                  <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${palette.icon}`}>
-                    <LayersIcon size={20} />
+          <ul className="divide-y divide-border">
+            {/* Weak Areas row */}
+            {weakAreaCount > 0 && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onReadyForQuiz({ module: "__weak__", discipline: null })}
+                  className="group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-destructive/5 transition-colors"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
+                    <ActivityIcon size={14} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">Weak Areas</p>
+                    <p className="text-[11px] text-muted-foreground">{weakAreaCount} to review</p>
                   </div>
-                  <ArrowRightIcon size={18} className="mt-0.5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-                </div>
-                <h3 className="font-bold text-foreground">{mod}</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">{total} question{total !== 1 ? "s" : ""}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground/70">
-                  {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""}
-                </p>
-              </button>
-            )
-          })}
-        </div>
-      </section>
+                  <span className="shrink-0 text-[10px] font-bold text-destructive bg-destructive/10 rounded-full px-2 py-0.5">
+                    Review
+                  </span>
+                  <ArrowRightIcon size={14} className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </li>
+            )}
+
+            {/* Module rows */}
+            {modules.map((mod, i) => {
+              const palette = CARD_PALETTES[i % CARD_PALETTES.length]
+              const total = getModuleQuestionCount(mod)
+              const disciplines = getDisciplinesForModule(mod)
+              return (
+                <li key={mod}>
+                  <button
+                    type="button"
+                    onClick={() => setViewingModule(mod)}
+                    className="group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+                  >
+                    <span
+                      className="shrink-0 h-7 w-1 rounded-full"
+                      style={{ background: palette.bar }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{mod}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
+                      </p>
+                    </div>
+                    <ArrowRightIcon size={14} className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+
+      </div>
     </div>
   )
 }
@@ -395,106 +451,47 @@ function ExamDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfig
       )}
 
       {/* Modules for exam */}
-      <section>
-        <div className="mb-5 flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-white">
-            <TimerIcon size={16} />
-          </div>
-          <h2 className="text-xl font-bold tracking-tight">Mock Exam Modules</h2>
-          <span className="ml-auto rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            {modules.length} module{modules.length !== 1 ? "s" : ""}
+      <section className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <TimerIcon size={15} className="text-amber-500 shrink-0" />
+          <h2 className="font-semibold text-sm tracking-tight">Mock Exam Modules</h2>
+          <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
+            {modules.length} module{modules.length !== 1 ? "s" : ""} · timed
           </span>
         </div>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Select a module to start a timed mock exam. Feedback is hidden until you submit.
-        </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <ul className="divide-y divide-border">
           {modules.map((mod, i) => {
             const palette = CARD_PALETTES[i % CARD_PALETTES.length]
             const total = getModuleQuestionCount(mod)
             return (
-              <button
-                key={mod}
-                type="button"
-                onClick={() => onReadyForQuiz({ module: mod, discipline: null })}
-                className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
-              >
-                <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: palette.bar }} />
-                <div className="mb-4 mt-1 flex items-start justify-between">
-                  <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${palette.icon}`}>
-                    <TimerIcon size={20} />
+              <li key={mod}>
+                <button
+                  type="button"
+                  onClick={() => onReadyForQuiz({ module: mod, discipline: null })}
+                  className="group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+                >
+                  <span
+                    className="shrink-0 h-7 w-1 rounded-full"
+                    style={{ background: palette.bar }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{mod}</p>
+                    <p className="text-[11px] text-muted-foreground">{total}Q · 90s per question</p>
                   </div>
-                  <ArrowRightIcon size={18} className="mt-0.5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-                </div>
-                <h3 className="font-bold text-foreground">{mod}</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">{total} question{total !== 1 ? "s" : ""}</p>
-                <div className="mt-2 flex items-center gap-1.5">
-                  <TimerIcon size={11} className="text-amber-600" />
-                  <span className="text-[11px] text-amber-700 font-medium">Timed · 90s per question</span>
-                </div>
-              </button>
+                  <span className="shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200">
+                    Timed
+                  </span>
+                  <ArrowRightIcon size={14} className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </li>
             )
           })}
-        </div>
+        </ul>
       </section>
     </div>
   )
 }
 
-// ── Coverage Grid (Trial mode stats) ────────────────────────────────────────
-const COVERAGE_COLLAPSE_THRESHOLD = 6
-
-function CoverageGrid({ coverage }: { coverage: Record<string, { attempted: number; total: number; correct: number }> }) {
-  const [expanded, setExpanded] = useState(false)
-  const entries = Object.entries(coverage).filter(([, v]) => v.attempted > 0)
-  if (entries.length === 0) return null
-  const visible = expanded ? entries : entries.slice(0, COVERAGE_COLLAPSE_THRESHOLD)
-  const hidden = entries.length - COVERAGE_COLLAPSE_THRESHOLD
-
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {visible.map(([disc, { attempted, total, correct }]) => {
-          const pct = total > 0 ? Math.round((attempted / total) * 100) : 0
-          const acc = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
-          return (
-            <div key={disc} className="rounded-xl border border-border bg-card px-4 py-3">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <p className="truncate text-sm font-semibold">{disc}</p>
-                <span className="shrink-0 text-xs font-bold text-muted-foreground">{pct}%</span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${pct}%`,
-                    background: pct >= 80 ? "#10b981" : pct >= 50 ? "#0ea5e9" : "#f59e0b",
-                  }}
-                />
-              </div>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                {attempted}/{total} attempted · {acc}% correct
-              </p>
-            </div>
-          )
-        })}
-      </div>
-      {entries.length > COVERAGE_COLLAPSE_THRESHOLD && (
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-        >
-          <ChevronDownIcon
-            size={13}
-            className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
-          />
-          {expanded ? "Show less" : `Show ${hidden} more discipline${hidden !== 1 ? "s" : ""}`}
-        </button>
-      )}
-    </div>
-  )
-}
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color }: { icon: string; label: string; value: string | number; sub: string; color: string }) {
