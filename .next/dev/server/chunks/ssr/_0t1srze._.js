@@ -28,7 +28,8 @@ const EMPTY_PROGRESS = {
     history: [],
     examScores: [],
     notificationsLastRead: 0,
-    mutedNotificationTypes: []
+    mutedNotificationTypes: [],
+    favoriteModules: []
 };
 const LS_UID = "mednexus-uid";
 const LS_NAME = "mednexus-name";
@@ -271,6 +272,26 @@ function AppProvider({ children }) {
     }, [
         scheduleSync
     ]);
+    const toggleFavoriteModule = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])((module)=>{
+        setProgress((prev)=>{
+            const favs = prev.favoriteModules ?? [];
+            const next = {
+                ...prev,
+                favoriteModules: favs.includes(module) ? favs.filter((m)=>m !== module) : [
+                    ...favs,
+                    module
+                ]
+            };
+            const u = userRef.current;
+            if (u) {
+                saveLocal(u.uid, next);
+                scheduleSync(u.uid, u.name, next);
+            }
+            return next;
+        });
+    }, [
+        scheduleSync
+    ]);
     const value = {
         user,
         authReady,
@@ -283,14 +304,15 @@ function AppProvider({ children }) {
         recordHistory,
         saveExamScore,
         markNotificationsRead,
-        toggleMuteNotificationType
+        toggleMuteNotificationType,
+        toggleFavoriteModule
     };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(AppContext.Provider, {
         value: value,
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/app-context.tsx",
-        lineNumber: 307,
+        lineNumber: 328,
         columnNumber: 10
     }, this);
 }
@@ -13220,6 +13242,7 @@ function MedNexusApp() {
     const [adminLoginOpen, setAdminLoginOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [pendingQuiz, setPendingQuiz] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [activeQuiz, setActiveQuiz] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [dashboardModule, setDashboardModule] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [lastResult, setLastResult] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const safeScreen = (screen === "question-editor" || screen === "broadcast") && !isAdmin ? "dashboard" : screen;
     // Called by Dashboard when user has selected module (+ optional discipline)
@@ -13253,12 +13276,12 @@ function MedNexusApp() {
                             size: 26
                         }, void 0, false, {
                             fileName: "[project]/components/mednexus-app.tsx",
-                            lineNumber: 89,
+                            lineNumber: 90,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 88,
+                        lineNumber: 89,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -13266,24 +13289,24 @@ function MedNexusApp() {
                         children: "Loading MedNexus…"
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 91,
+                        lineNumber: 92,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 87,
+                lineNumber: 88,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/components/mednexus-app.tsx",
-            lineNumber: 86,
+            lineNumber: 87,
             columnNumber: 7
         }, this);
     }
     if (!user) return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$auth$2d$screen$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["AuthScreen"], {}, void 0, false, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 97,
+        lineNumber: 98,
         columnNumber: 21
     }, this);
     // Called by QuantityModal when user confirms quantity
@@ -13346,12 +13369,12 @@ function MedNexusApp() {
                 onComplete: handleQuizComplete
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 152,
+                lineNumber: 153,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/components/mednexus-app.tsx",
-            lineNumber: 151,
+            lineNumber: 152,
             columnNumber: 7
         }, this);
     }
@@ -13364,10 +13387,16 @@ function MedNexusApp() {
                 onOpenThemes: ()=>setThemeOpen(true),
                 onOpenAdminLogin: ()=>setAdminLoginOpen(true),
                 mobileOpen: mobileNavOpen,
-                onCloseMobile: ()=>setMobileNavOpen(false)
+                onCloseMobile: ()=>setMobileNavOpen(false),
+                onReadyForQuiz: handleReadyForQuiz,
+                onSelectModule: (mod)=>{
+                    setDashboardModule(mod);
+                    setScreen("dashboard");
+                    setMobileNavOpen(false);
+                }
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 165,
+                lineNumber: 166,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13385,12 +13414,12 @@ function MedNexusApp() {
                                     size: 22
                                 }, void 0, false, {
                                     fileName: "[project]/components/mednexus-app.tsx",
-                                    lineNumber: 184,
+                                    lineNumber: 191,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 178,
+                                lineNumber: 185,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13401,7 +13430,7 @@ function MedNexusApp() {
                                         className: "text-primary"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 189,
+                                        lineNumber: 196,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -13409,20 +13438,20 @@ function MedNexusApp() {
                                         children: "MedNexus"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 190,
+                                        lineNumber: 197,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 188,
+                                lineNumber: 195,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "hidden lg:block"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 194,
+                                lineNumber: 201,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13433,12 +13462,12 @@ function MedNexusApp() {
                                         setGlobalMode: setGlobalMode
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 199,
+                                        lineNumber: 206,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$notification$2d$bell$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["NotificationBell"], {}, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 202,
+                                        lineNumber: 209,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -13450,49 +13479,51 @@ function MedNexusApp() {
                                             size: 18
                                         }, void 0, false, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 211,
+                                            lineNumber: 218,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 205,
+                                        lineNumber: 212,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 197,
+                                lineNumber: 204,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 176,
+                        lineNumber: 183,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
                         className: "flex-1 overflow-y-auto p-5 sm:p-8",
                         children: [
                             safeScreen === "dashboard" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$dashboard$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Dashboard"], {
-                                onReadyForQuiz: handleReadyForQuiz
+                                onReadyForQuiz: handleReadyForQuiz,
+                                requestedModule: dashboardModule,
+                                onClearRequestedModule: ()=>setDashboardModule(null)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 218,
+                                lineNumber: 225,
                                 columnNumber: 13
                             }, this),
                             safeScreen === "profile" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$profile$2d$history$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProfileHistory"], {}, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 220,
+                                lineNumber: 231,
                                 columnNumber: 40
                             }, this),
                             safeScreen === "question-editor" && isAdmin && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$question$2d$editor$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["QuestionEditor"], {}, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 221,
+                                lineNumber: 232,
                                 columnNumber: 59
                             }, this),
                             safeScreen === "broadcast" && isAdmin && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$broadcast$2d$screen$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["BroadcastScreen"], {}, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 222,
+                                lineNumber: 233,
                                 columnNumber: 53
                             }, this),
                             safeScreen === "results" && lastResult && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$results$2d$screen$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ResultsScreen"], {
@@ -13506,19 +13537,19 @@ function MedNexusApp() {
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 224,
+                                lineNumber: 235,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 216,
+                        lineNumber: 223,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 174,
+                lineNumber: 181,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$quantity$2d$modal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["QuantityModal"], {
@@ -13530,7 +13561,7 @@ function MedNexusApp() {
                 onStart: handleStartQuiz
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 239,
+                lineNumber: 250,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$theme$2d$modal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ThemeModal"], {
@@ -13538,20 +13569,20 @@ function MedNexusApp() {
                 onClose: ()=>setThemeOpen(false)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 248,
+                lineNumber: 259,
                 columnNumber: 7
             }, this),
             adminLoginOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$admin$2d$login$2d$modal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["AdminLoginModal"], {
                 onClose: ()=>setAdminLoginOpen(false)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 249,
+                lineNumber: 260,
                 columnNumber: 26
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 164,
+        lineNumber: 165,
         columnNumber: 5
     }, this);
 }
@@ -13569,7 +13600,7 @@ function StudyModeToggle({ globalMode, setGlobalMode }) {
                         size: 13
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 273,
+                        lineNumber: 284,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -13577,13 +13608,13 @@ function StudyModeToggle({ globalMode, setGlobalMode }) {
                         children: "Trial"
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 274,
+                        lineNumber: 285,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 264,
+                lineNumber: 275,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -13595,7 +13626,7 @@ function StudyModeToggle({ globalMode, setGlobalMode }) {
                         size: 13
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 285,
+                        lineNumber: 296,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -13603,19 +13634,19 @@ function StudyModeToggle({ globalMode, setGlobalMode }) {
                         children: "Exam"
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 286,
+                        lineNumber: 297,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 276,
+                lineNumber: 287,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 263,
+        lineNumber: 274,
         columnNumber: 5
     }, this);
 }

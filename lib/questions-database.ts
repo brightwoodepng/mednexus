@@ -928,9 +928,313 @@ export const questionsDatabase: Question[] = [
   },
 
   // ==========================================================================
+  // MODULE: "Clinical Sciences" — Cardiology, Pulmonology, Nephrology
+  // (Multiple disciplines grouped under one module using the `module` field)
+  // ==========================================================================
+
+  {
+    id: "q38",
+    module: "Clinical Sciences",
+    subject: "Cardiology",
+    vignette:
+      "A 60-year-old man presents with sudden-onset severe tearing chest pain radiating to his back. He has a history of poorly controlled hypertension. Blood pressure is 190/110 mmHg in the right arm and 160/95 mmHg in the left arm. Chest X-ray shows mediastinal widening. Which of the following is the most appropriate next step?",
+    options: [
+      { id: "A", text: "CT angiography of the chest" },
+      { id: "B", text: "Thrombolytics" },
+      { id: "C", text: "Urgent cardiac catheterization" },
+      { id: "D", text: "Echocardiogram only" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Diagnose and evaluate aortic dissection.",
+      details:
+        "Aortic dissection presents with tearing/ripping pain radiating to the back, blood pressure differential between arms, and mediastinal widening on X-ray. CT angiography is the gold standard for diagnosis and classifying Type A (ascending) vs. Type B (descending) dissection to guide management.",
+      incorrectReasoning:
+        "Thrombolytics are absolutely contraindicated in dissection as they worsen hemorrhage. Catheterization is for ACS, not dissection. Echo alone misses the full extent of dissection.",
+    },
+  },
+
+  {
+    id: "q39",
+    module: "Clinical Sciences",
+    subject: "Pulmonology",
+    vignette:
+      "A 68-year-old man with a 40-pack-year smoking history presents with progressive dyspnea and chronic productive cough for the past 5 years. PFTs show FEV1/FVC ratio of 0.55 and FEV1 of 55% predicted. His symptoms improve slightly with bronchodilators. Which of the following is the most appropriate first-line maintenance therapy?",
+    options: [
+      { id: "A", text: "Long-acting muscarinic antagonist (LAMA)" },
+      { id: "B", text: "Inhaled corticosteroid monotherapy" },
+      { id: "C", text: "Short-acting beta-agonist as needed only" },
+      { id: "D", text: "Oral theophylline" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Select first-line maintenance therapy for moderate COPD.",
+      details:
+        "COPD with FEV1/FVC < 0.70 and significant symptoms warrants maintenance bronchodilation. Long-acting muscarinic antagonists (e.g., tiotropium) reduce exacerbations, improve symptoms, and are the preferred first-line maintenance agent for GOLD Group B COPD.",
+      incorrectReasoning:
+        "Inhaled corticosteroid monotherapy is not recommended for COPD (unlike asthma). SABA alone is for mild intermittent symptoms, not moderate persistent COPD. Oral theophylline has a narrow therapeutic window and significant drug interactions; it is a last-line agent.",
+    },
+  },
+
+  {
+    id: "q40",
+    module: "Clinical Sciences",
+    subject: "Nephrology",
+    vignette:
+      "A 70-year-old man with long-standing type 2 diabetes and hypertension is found to have a creatinine of 2.1 mg/dL and urine albumin-to-creatinine ratio of 350 mg/g. BP is 148/90 mmHg. Which drug class provides the most renoprotective benefit in this patient?",
+    options: [
+      { id: "A", text: "ACE inhibitor or ARB" },
+      { id: "B", text: "Calcium channel blocker" },
+      { id: "C", text: "Loop diuretic" },
+      { id: "D", text: "Beta-blocker" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Identify renoprotective antihypertensives in diabetic nephropathy.",
+      details:
+        "ACE inhibitors and ARBs reduce intraglomerular pressure by dilating the efferent arteriole, lowering proteinuria and slowing progression of diabetic nephropathy. They are the cornerstone of renoprotection in patients with CKD and proteinuria, regardless of blood pressure control.",
+      incorrectReasoning:
+        "CCBs are effective antihypertensives but do not independently reduce proteinuria or slow CKD progression. Loop diuretics manage volume but are not renoprotective. Beta-blockers reduce cardiovascular risk but do not slow CKD progression.",
+    },
+  },
+
+  // ==========================================================================
+  // MODULE: "Surgical Specialties" — Orthopedics, OB/GYN, Ophthalmology, ENT
+  // ==========================================================================
+
+  {
+    id: "q41",
+    module: "Surgical Specialties",
+    subject: "Ophthalmology",
+    vignette:
+      "A 65-year-old diabetic man presents with sudden painless loss of vision in his right eye. Fundoscopy reveals a flame-shaped hemorrhage, disc swelling, and dilated tortuous retinal veins in all quadrants. Which of the following is the most likely diagnosis?",
+    options: [
+      { id: "A", text: "Central retinal vein occlusion" },
+      { id: "B", text: "Central retinal artery occlusion" },
+      { id: "C", text: "Retinal detachment" },
+      { id: "D", text: "Vitreous hemorrhage" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Distinguish central retinal vein from artery occlusion.",
+      details:
+        "Central retinal vein occlusion (CRVO) presents with sudden painless vision loss and a classic 'blood and thunder' fundus: diffuse flame-shaped hemorrhages in all four quadrants, disc edema, and dilated tortuous veins. Risk factors include hypertension, diabetes, and glaucoma.",
+      incorrectReasoning:
+        "CRAO presents with sudden painless loss of vision, a pale retina with a cherry-red spot at the macula, and no hemorrhages. Retinal detachment causes a 'curtain' visual field defect. Vitreous hemorrhage shows blood obscuring the fundal view, not the hemorrhage pattern of CRVO.",
+    },
+  },
+
+  {
+    id: "q42",
+    module: "Surgical Specialties",
+    subject: "ENT",
+    vignette:
+      "A 45-year-old woman presents with a 3 cm painless neck mass just anterior to the sternocleidomastoid muscle that has been present for 4 weeks. She has no fever, weight loss, or night sweats. Fine-needle aspiration shows squamous epithelium with cholesterol crystals and lymphocytes. Which of the following is the most likely diagnosis?",
+    options: [
+      { id: "A", text: "Branchial cleft cyst" },
+      { id: "B", text: "Thyroglossal duct cyst" },
+      { id: "C", text: "Lymphoma" },
+      { id: "D", text: "Metastatic squamous cell carcinoma" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Diagnose a branchial cleft cyst.",
+      details:
+        "Branchial cleft cysts arise from remnants of the second branchial arch and present as lateral neck masses anterior to the SCM, typically in young adults. FNA classically shows squamous cells, cholesterol crystals, and lymphocytes in turbid fluid. Treatment is surgical excision.",
+      incorrectReasoning:
+        "Thyroglossal duct cysts occur in the midline, elevate with tongue protrusion, and are in the anterior neck near the hyoid. Lymphoma and metastatic SCC both warrant biopsy (and FNA findings differ), but the FNA characteristics here are classic for branchial cleft cyst.",
+    },
+  },
+
+  {
+    id: "q43",
+    module: "Surgical Specialties",
+    subject: "OB/GYN",
+    vignette:
+      "A 42-year-old woman presents with heavy menstrual bleeding, pelvic pressure, and urinary frequency. Pelvic exam reveals an enlarged, irregular uterus. Ultrasound shows multiple hypoechoic intramural masses. She desires definitive treatment with no future pregnancies planned. What is the most appropriate management?",
+    options: [
+      { id: "A", text: "Hysterectomy" },
+      { id: "B", text: "Myomectomy" },
+      { id: "C", text: "GnRH agonist therapy alone" },
+      { id: "D", text: "Endometrial ablation" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Manage symptomatic uterine fibroids in a woman not desiring future fertility.",
+      details:
+        "Uterine fibroids (leiomyomas) are the most common benign uterine tumors. In a woman with completed childbearing seeking definitive treatment, hysterectomy is curative. Symptoms of heavy bleeding, pressure, and frequency are well addressed.",
+      incorrectReasoning:
+        "Myomectomy preserves fertility but has higher recurrence rates — appropriate for women desiring future pregnancy. GnRH agonists reduce fibroid size temporarily (used pre-operatively) but symptoms recur when stopped. Endometrial ablation treats bleeding from the lining but does not address the fibroids themselves.",
+    },
+  },
+
+  {
+    id: "q44",
+    module: "Surgical Specialties",
+    subject: "Orthopedics",
+    vignette:
+      "A 55-year-old obese woman presents with deep, aching groin pain that worsens with weight-bearing and is relieved by rest. X-ray shows joint space narrowing, subchondral sclerosis, and osteophyte formation in the hip. She has failed conservative measures. Which of the following is the most appropriate definitive treatment?",
+    options: [
+      { id: "A", text: "Total hip arthroplasty" },
+      { id: "B", text: "Intra-articular corticosteroid injection" },
+      { id: "C", text: "Core decompression" },
+      { id: "D", text: "NSAIDs indefinitely" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Manage end-stage hip osteoarthritis.",
+      details:
+        "Total hip arthroplasty (THA) is the definitive treatment for end-stage hip osteoarthritis that has failed conservative management. It reliably relieves pain and restores function, with excellent long-term outcomes.",
+      incorrectReasoning:
+        "Corticosteroid injections provide temporary relief but are not curative. Core decompression is for avascular necrosis, not OA. Long-term NSAIDs carry GI, renal, and cardiovascular risks and are not definitive treatment.",
+    },
+  },
+
+  // ==========================================================================
+  // MODULE: "Neurosciences" — Neurology, Psychiatry, Pharmacology
+  // ==========================================================================
+
+  {
+    id: "q45",
+    module: "Neurosciences",
+    subject: "Neurology",
+    vignette:
+      "A 28-year-old woman presents with episodes of unilateral throbbing headache, nausea, and photophobia lasting 4–72 hours. She has 3–4 episodes per month. Between attacks, she is completely normal. Which of the following is the most appropriate acute treatment for severe attacks?",
+    options: [
+      { id: "A", text: "Sumatriptan (5-HT1B/1D agonist)" },
+      { id: "B", text: "Propranolol" },
+      { id: "C", text: "Amitriptyline" },
+      { id: "D", text: "Valproate" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Treat acute migraine with appropriate abortive therapy.",
+      details:
+        "Triptans (e.g., sumatriptan) are first-line abortive agents for moderate-to-severe migraine. They act as serotonin 5-HT1B/1D agonists, causing vasoconstriction of dilated meningeal vessels and inhibiting neuropeptide release. They work best when taken early in the attack.",
+      incorrectReasoning:
+        "Propranolol, amitriptyline, and valproate are all preventive (prophylactic) agents for migraine, not acute treatments. They reduce attack frequency when taken daily but do not abort an active headache.",
+    },
+  },
+
+  {
+    id: "q46",
+    module: "Neurosciences",
+    subject: "Psychiatry",
+    vignette:
+      "A 19-year-old male college student has had two first-break psychotic episodes with auditory hallucinations, delusions, and disorganized speech over the past 8 months. Between episodes he has flat affect, social withdrawal, and poor academic performance. Which diagnosis is most consistent with this presentation?",
+    options: [
+      { id: "A", text: "Schizophrenia" },
+      { id: "B", text: "Brief psychotic disorder" },
+      { id: "C", text: "Bipolar I with psychotic features" },
+      { id: "D", text: "Major depression with psychotic features" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Diagnose schizophrenia based on DSM-5 criteria.",
+      details:
+        "Schizophrenia requires ≥6 months of disturbance including ≥1 month of active-phase symptoms (hallucinations, delusions, disorganized speech, negative symptoms). The negative symptoms (flat affect, withdrawal, avolition) between episodes are characteristic of schizophrenia.",
+      incorrectReasoning:
+        "Brief psychotic disorder lasts < 1 month and has full remission. Bipolar I with psychotic features has prominent mood episodes. Major depression with psychosis has depressed mood as the primary syndrome, not the negative symptom profile described.",
+    },
+  },
+
+  {
+    id: "q47",
+    module: "Neurosciences",
+    subject: "Pharmacology",
+    vignette:
+      "A 35-year-old man with HIV on antiretroviral therapy (ART) including ritonavir develops a new fungal infection requiring fluconazole. Ritonavir is a potent CYP3A4 inhibitor. Which of the following best describes the expected pharmacokinetic interaction?",
+    options: [
+      { id: "A", text: "Increased fluconazole plasma levels due to reduced metabolism" },
+      { id: "B", text: "Decreased fluconazole levels due to enzyme induction" },
+      { id: "C", text: "No interaction since fluconazole is primarily renally eliminated" },
+      { id: "D", text: "Ritonavir is displaced from albumin by fluconazole" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Apply CYP450 inhibition principles to predict drug interactions.",
+      details:
+        "Ritonavir is a potent CYP3A4 inhibitor (and also inhibits CYP2C9). By inhibiting CYP enzymes responsible for fluconazole metabolism, ritonavir increases fluconazole plasma concentrations. This is actually the basis for 'ritonavir boosting' used intentionally in ART regimens to boost other protease inhibitors.",
+      incorrectReasoning:
+        "Fluconazole is partially hepatically metabolized and is itself a CYP2C9 inhibitor. Enzyme inducers (e.g., rifampin) would decrease levels, not ritonavir. Protein displacement is not the primary mechanism here.",
+    },
+  },
+
+  // ==========================================================================
+  // MODULE: "Emergency Medicine" — Toxicology, Trauma, Emergency
+  // ==========================================================================
+
+  {
+    id: "q48",
+    module: "Emergency Medicine",
+    subject: "Toxicology",
+    vignette:
+      "A 22-year-old man is brought to the ED after a witnessed seizure at a party. His friends report he had 'multiple pills.' He is confused, tachycardic (HR 135), hyperthermic (39.8°C), diaphoretic, and has clonus. Which of the following is the most likely diagnosis?",
+    options: [
+      { id: "A", text: "Serotonin syndrome" },
+      { id: "B", text: "Neuroleptic malignant syndrome" },
+      { id: "C", text: "Anticholinergic toxidrome" },
+      { id: "D", text: "Malignant hyperthermia" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Distinguish serotonin syndrome from other hyperthermic syndromes.",
+      details:
+        "Serotonin syndrome presents with the triad of altered mental status, autonomic instability (tachycardia, hyperthermia, diaphoresis), and neuromuscular abnormalities (clonus, hyperreflexia). It develops rapidly after ingestion of serotonergic agents. Clonus is the key distinguishing feature from other syndromes.",
+      incorrectReasoning:
+        "NMS is slower in onset (days), caused by antipsychotics, and features 'lead-pipe' rigidity (not clonus) with bradyreflexia. Anticholinergic toxidrome features dry flushed skin, urinary retention, and mydriasis without clonus. Malignant hyperthermia occurs under general anesthesia.",
+    },
+  },
+
+  {
+    id: "q49",
+    module: "Emergency Medicine",
+    subject: "Trauma",
+    vignette:
+      "A 30-year-old man is brought in after a high-speed motor vehicle accident. He is in respiratory distress with decreased breath sounds on the left, tracheal deviation to the right, and absent chest wall movement on the left. BP is 80/50 mmHg and HR is 130. Which of the following is the most appropriate immediate intervention?",
+    options: [
+      { id: "A", text: "Needle decompression of the left chest" },
+      { id: "B", text: "Chest X-ray" },
+      { id: "C", text: "CT chest" },
+      { id: "D", text: "Endotracheal intubation first" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Manage tension pneumothorax as a life-threatening emergency.",
+      details:
+        "Tension pneumothorax is a clinical diagnosis — do not wait for imaging. It presents with respiratory distress, absent breath sounds, tracheal deviation away from the affected side, and hemodynamic instability. Immediate needle decompression (2nd intercostal space, midclavicular line) is followed by chest tube insertion.",
+      incorrectReasoning:
+        "Imaging delays a life-saving intervention. With tracheal deviation and hemodynamic collapse, every second counts. Intubation alone does not address the tension pneumothorax and can worsen it by increasing positive pressure.",
+    },
+  },
+
+  {
+    id: "q50",
+    module: "Emergency Medicine",
+    subject: "Emergency Medicine",
+    vignette:
+      "A 55-year-old woman collapses in the waiting room. She is unresponsive, pulseless, and apneic. The cardiac monitor shows ventricular fibrillation. Which of the following is the most important immediate intervention?",
+    options: [
+      { id: "A", text: "Defibrillation" },
+      { id: "B", text: "Epinephrine 1 mg IV" },
+      { id: "C", text: "Amiodarone 300 mg IV" },
+      { id: "D", text: "Endotracheal intubation" },
+    ],
+    correctAnswer: "A",
+    explanation: {
+      objective: "Prioritize defibrillation in shockable cardiac arrest rhythms.",
+      details:
+        "Ventricular fibrillation is a shockable rhythm. Defibrillation is the single most effective intervention for VF and must be performed as soon as possible — survival decreases by ~10% per minute without defibrillation. High-quality CPR continues immediately after shock delivery.",
+      incorrectReasoning:
+        "Epinephrine is given every 3–5 minutes during CPR but after the first shock. Amiodarone is used for shock-refractory VF (after 2+ shocks). Intubation is a secondary priority — oxygenation via bag-mask is adequate initially.",
+    },
+  },
+
+  // ==========================================================================
   // ↓↓ ADD YOUR NEW QUESTIONS BELOW THIS LINE ↓↓
   // Copy the template from the top of this file, paste here, and fill it in.
   // To add a NEW MODULE, just use a new subject string — no other changes needed.
+  // To GROUP DISCIPLINES: add `module: "Module Name"` to questions in the same group.
   // ==========================================================================
 
 ]

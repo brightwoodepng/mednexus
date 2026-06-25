@@ -22,6 +22,7 @@ import {
   AwardIcon,
   TimerIcon,
   ZapIcon,
+  ChevronDownIcon,
 } from "@/components/icons"
 
 interface QuizReadyConfig {
@@ -31,6 +32,8 @@ interface QuizReadyConfig {
 
 interface DashboardProps {
   onReadyForQuiz: (config: QuizReadyConfig) => void
+  requestedModule?: string | null
+  onClearRequestedModule?: () => void
 }
 
 // Greeting based on time of day
@@ -77,7 +80,7 @@ const CARD_PALETTES = [
   { ring: "hover:ring-orange-400/50",  icon: "bg-orange-100 text-orange-600",   bar: "#f97316" },
 ]
 
-export function Dashboard({ onReadyForQuiz }: DashboardProps) {
+export function Dashboard({ onReadyForQuiz, requestedModule, onClearRequestedModule }: DashboardProps) {
   const { user, progress } = useApp()
   const { globalMode } = useStudyMode()
   const greeting = useGreeting()
@@ -125,7 +128,11 @@ export function Dashboard({ onReadyForQuiz }: DashboardProps) {
 
       {/* Mode-specific content */}
       {globalMode === "trial" ? (
-        <TrialDashboard onReadyForQuiz={onReadyForQuiz} />
+        <TrialDashboard
+          onReadyForQuiz={onReadyForQuiz}
+          requestedModule={requestedModule}
+          onClearRequestedModule={onClearRequestedModule}
+        />
       ) : (
         <ExamDashboard onReadyForQuiz={onReadyForQuiz} />
       )}
@@ -134,7 +141,15 @@ export function Dashboard({ onReadyForQuiz }: DashboardProps) {
 }
 
 // ── Trial Dashboard ──────────────────────────────────────────────────────────
-function TrialDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfig) => void }) {
+function TrialDashboard({
+  onReadyForQuiz,
+  requestedModule,
+  onClearRequestedModule,
+}: {
+  onReadyForQuiz: (c: QuizReadyConfig) => void
+  requestedModule?: string | null
+  onClearRequestedModule?: () => void
+}) {
   const { progress } = useApp()
   const [viewingModule, setViewingModule] = useState<string | null>(null)
 
@@ -142,6 +157,14 @@ function TrialDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfi
   const weakAreaQuestions = getWeakAreaQuestions(progress.history)
   const weakAreaCount = weakAreaQuestions.length
   const coverage = getDisciplineCoverage(progress.history)
+
+  // When sidebar selects a module, open it in the discipline view
+  useEffect(() => {
+    if (requestedModule) {
+      setViewingModule(requestedModule)
+      onClearRequestedModule?.()
+    }
+  }, [requestedModule, onClearRequestedModule])
 
   if (viewingModule) {
     return (
@@ -154,18 +177,26 @@ function TrialDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfi
     )
   }
 
+  // Only disciplines that have been attempted
+  const attemptedCoverage = Object.fromEntries(
+    Object.entries(coverage).filter(([, v]) => v.attempted > 0)
+  )
+
   return (
     <div className="space-y-8">
-      {/* Coverage stats */}
-      {Object.keys(coverage).length > 0 && (
+      {/* Coverage stats — only attempted disciplines */}
+      {Object.keys(attemptedCoverage).length > 0 && (
         <section>
           <div className="mb-4 flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-white">
               <TrendingUpIcon size={16} />
             </div>
             <h2 className="text-lg font-bold tracking-tight">Discipline Coverage</h2>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {Object.keys(attemptedCoverage).length} attempted
+            </span>
           </div>
-          <CoverageGrid coverage={coverage} />
+          <CoverageGrid coverage={attemptedCoverage} />
         </section>
       )}
 
@@ -411,35 +442,56 @@ function ExamDashboard({ onReadyForQuiz }: { onReadyForQuiz: (c: QuizReadyConfig
 }
 
 // ── Coverage Grid (Trial mode stats) ────────────────────────────────────────
+const COVERAGE_COLLAPSE_THRESHOLD = 6
+
 function CoverageGrid({ coverage }: { coverage: Record<string, { attempted: number; total: number; correct: number }> }) {
-  const entries = Object.entries(coverage).filter(([, v]) => v.total > 0)
+  const [expanded, setExpanded] = useState(false)
+  const entries = Object.entries(coverage).filter(([, v]) => v.attempted > 0)
   if (entries.length === 0) return null
+  const visible = expanded ? entries : entries.slice(0, COVERAGE_COLLAPSE_THRESHOLD)
+  const hidden = entries.length - COVERAGE_COLLAPSE_THRESHOLD
+
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {entries.map(([disc, { attempted, total, correct }]) => {
-        const pct = total > 0 ? Math.round((attempted / total) * 100) : 0
-        const acc = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
-        return (
-          <div key={disc} className="rounded-xl border border-border bg-card px-4 py-3">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="truncate text-sm font-semibold">{disc}</p>
-              <span className="shrink-0 text-xs font-bold text-muted-foreground">{pct}%</span>
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {visible.map(([disc, { attempted, total, correct }]) => {
+          const pct = total > 0 ? Math.round((attempted / total) * 100) : 0
+          const acc = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
+          return (
+            <div key={disc} className="rounded-xl border border-border bg-card px-4 py-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="truncate text-sm font-semibold">{disc}</p>
+                <span className="shrink-0 text-xs font-bold text-muted-foreground">{pct}%</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${pct}%`,
+                    background: pct >= 80 ? "#10b981" : pct >= 50 ? "#0ea5e9" : "#f59e0b",
+                  }}
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                {attempted}/{total} attempted · {acc}% correct
+              </p>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${pct}%`,
-                  background: pct >= 80 ? "#10b981" : pct >= 50 ? "#0ea5e9" : "#f59e0b",
-                }}
-              />
-            </div>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              {attempted}/{total} attempted · {acc}% correct
-            </p>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
+      {entries.length > COVERAGE_COLLAPSE_THRESHOLD && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+        >
+          <ChevronDownIcon
+            size={13}
+            className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          />
+          {expanded ? "Show less" : `Show ${hidden} more discipline${hidden !== 1 ? "s" : ""}`}
+        </button>
+      )}
     </div>
   )
 }
