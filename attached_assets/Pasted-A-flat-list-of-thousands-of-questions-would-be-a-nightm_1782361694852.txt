@@ -1,0 +1,47 @@
+A flat list of thousands of questions would be a nightmare to navigate. Grouping them hierarchically (Module -> Discipline -> Questions) allows you to manage whole chunks of your database at once.
+
+Also, offloading the exact parser rules to Replit is a smart move. Let the AI build the most robust text extraction logic it can, and then let it generate the "Tips for Best Results" text to match its own code.
+
+Here is the updated, highly specific prompt. Copy and paste this directly into Replit:
+
+---
+
+### Build Prompt: MedNexus Admin Question Editor (Hierarchical UI & Dynamic Parser)
+
+**Context & Tech Stack:**
+Build the "Admin Question Editor" dashboard for a React/Tailwind medical study application named MedNexus. This interface is the master database manager. The question database is strictly hierarchical: **Modules** contain **Disciplines**, which contain **Questions**.
+
+**Data Model:**
+Every question object must adhere to this state structure:
+`{ id: string, questionNumber: number, module: string, discipline: string, questionText: string, options: string[], correctAnswer: string, explanation: string, status: "live" | "draft" }`
+
+**UI Layout (Elegant, Neatly Arranged Header):**
+
+* **The Top Action Bar:** Create a single, sticky header arranged beautifully using flexbox (do not scatter the buttons).
+* *Left Side:* A Dropdown to filter the view.
+* *Center:* A wide, Advanced Global Search Bar.
+* *Right Side:* A neatly grouped row of action buttons: "Import PDF", "Export JSON", and "+ Add Question".
+
+
+* **Main Content (Hierarchical View):** Do not display a flat list of questions. Instead, group them. Render the **Modules** as collapsible sections. Clicking a Module reveals its **Disciplines**. Clicking a Discipline reveals the **Questions** under it. This allows the admin to view and edit a specific discipline as a complete group.
+
+**Advanced Search Capabilities:**
+The Global Search Bar must be highly robust. It must instantly filter the displayed questions by matching text against:
+
+* Question Text
+* Question Number
+* Discipline Name
+* Module Name
+
+**Core CRUD Features & Bulk Operations:**
+
+* **Read:** Render questions as clean cards within their Discipline groups. Show the question number, a highlighted circular badge for the correct answer, the question text, options, and tags.
+* **Update:** Every card has an "Edit" button for inline editing.
+* **Group / Bulk Edit:** Add checkboxes to the question cards, the Discipline headers, and the Module headers. Selecting a Discipline header selects all its questions. Trigger a "Bulk Action Menu" in the top bar to easily reassign or delete the selected group.
+
+**PDF Import & Dynamic Parser Logic:**
+When the admin clicks "Import PDF", open a modal with a drag-and-drop zone.
+
+1. **The Parser:** Write a robust text extraction parser capable of reading standard medical MCQ PDFs. The parser must be intelligent enough to identify module groupings, discipline groupings, question numbers, options, correct answers, and explanations.
+2. **Dynamic UI Tips:** Do *not* use pre-hardcoded "Tips for Best Results". Instead, based on the specific parser logic you write, programmatically render a "Tips for Best Results" checklist in the UI so the user knows exactly how to format their PDF for your specific parser.
+3. **Draft Staging:** Imported questions must NOT be instantly saved as live. They must populate into the main UI list with a status of `"draft"` so the admin can review the extraction, fix any OCR typos, and approve them. Provide a master "Make Live" button to commit them.

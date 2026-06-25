@@ -25,6 +25,8 @@ import {
   PaletteIcon,
   ZapIcon,
   TimerIcon,
+  XIcon,
+  HeartIcon,
 } from "@/components/icons"
 
 interface PendingQuiz {
@@ -41,6 +43,79 @@ interface ActiveQuiz {
   startedAt: number
 }
 
+// ── Credits Modal ─────────────────────────────────────────────────────────────
+function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+      />
+      <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+        {/* Header gradient */}
+        <div className="relative flex flex-col items-center bg-primary px-6 pb-8 pt-10 text-primary-foreground">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute -left-6 bottom-0 h-20 w-20 rounded-full bg-white/8" />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 shadow-lg">
+            <StethoscopeIcon size={32} />
+          </div>
+          <h2 className="relative mt-4 text-2xl font-bold tracking-tight">MedNexus</h2>
+          <p className="relative mt-1 text-sm opacity-80">Medical Study Platform</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 rounded-lg p-1.5 text-primary-foreground/70 hover:bg-white/15 transition-colors"
+          >
+            <XIcon size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="space-y-5 px-6 py-6">
+          <div className="flex flex-col items-center gap-1 text-center">
+            <p className="text-sm text-muted-foreground">Designed &amp; built by</p>
+            <p className="text-xl font-bold text-foreground">Britechinc</p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-muted/30 p-4">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Contact</p>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">💬</span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">WhatsApp</p>
+                <p className="text-sm text-muted-foreground">0543982307</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-4 dark:border-amber-800/30 dark:bg-amber-900/20">
+            <div className="flex items-start gap-2.5">
+              <HeartIcon size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Support the Project</p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
+                  Contributions help keep MedNexus growing. Reach out on WhatsApp to donate or collaborate.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore } = useApp()
   const { isAdmin } = useAdmin()
@@ -50,6 +125,7 @@ export function MedNexusApp() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [adminLoginOpen, setAdminLoginOpen] = useState(false)
+  const [creditsOpen, setCreditsOpen] = useState(false)
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
   const [dashboardModule, setDashboardModule] = useState<string | null>(null)
@@ -64,8 +140,6 @@ export function MedNexusApp() {
     ? "dashboard"
     : screen
 
-  // Called by Dashboard when user has selected module (+ optional discipline)
-  // Must be defined before any early returns to obey Rules of Hooks
   const handleReadyForQuiz = useCallback((config: { module: string; discipline: string | null }) => {
     let questions: Question[]
     const isWeakAreas = config.module === "__weak__"
@@ -97,11 +171,10 @@ export function MedNexusApp() {
 
   if (!user) return <AuthScreen />
 
-  // Called by QuantityModal when user confirms quantity
-  function handleStartQuiz(shuffledQuestions: Question[]) {
+  function handleStartQuiz(selectedQuestions: Question[]) {
     if (!pendingQuiz) return
     setActiveQuiz({
-      questions: shuffledQuestions,
+      questions: selectedQuestions,
       moduleName: pendingQuiz.moduleName,
       discipline: pendingQuiz.discipline,
       mode: globalMode,
@@ -114,7 +187,6 @@ export function MedNexusApp() {
   function handleQuizComplete(result: BlockResult) {
     if (!activeQuiz) return
 
-    // Save exam score if in exam mode
     if (activeQuiz.mode === "exam" && result.timeTakenMs !== undefined) {
       const score: ExamScore = {
         id: `score-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -146,7 +218,6 @@ export function MedNexusApp() {
     setScreen("dashboard")
   }
 
-  // Full-screen quiz view
   if (safeScreen === "quiz" && activeQuiz) {
     return (
       <div className="h-screen bg-background">
@@ -176,12 +247,13 @@ export function MedNexusApp() {
           setScreen("dashboard")
           setMobileNavOpen(false)
         }}
+        onOpenCredits={() => setCreditsOpen(true)}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar (visible on all screens) */}
+        {/* Top bar */}
         <header className="flex items-center justify-between border-b border-border bg-card px-4 py-2.5">
-          {/* Mobile: hamburger menu */}
+          {/* Mobile: hamburger */}
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
@@ -191,24 +263,23 @@ export function MedNexusApp() {
             <MenuIcon size={22} />
           </button>
 
-          {/* Mobile: brand */}
-          <div className="flex items-center gap-2 lg:hidden">
+          {/* Mobile: brand (tappable for credits) */}
+          <button
+            type="button"
+            onClick={() => setCreditsOpen(true)}
+            className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted lg:hidden"
+          >
             <StethoscopeIcon size={18} className="text-primary" />
             <span className="font-semibold">MedNexus</span>
-          </div>
+          </button>
 
           {/* Desktop: spacer */}
           <div className="hidden lg:block" />
 
-          {/* Right side: mode toggle + bell + theme */}
+          {/* Right side */}
           <div className="flex items-center gap-2">
-            {/* Study Mode Toggle */}
             <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
-
-            {/* Notification Bell */}
             <NotificationBell />
-
-            {/* Theme toggle */}
             <button
               type="button"
               onClick={() => setThemeOpen(true)}
@@ -258,11 +329,12 @@ export function MedNexusApp() {
 
       <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
       {adminLoginOpen && <AdminLoginModal onClose={() => setAdminLoginOpen(false)} />}
+      <CreditsModal open={creditsOpen} onClose={() => setCreditsOpen(false)} />
     </div>
   )
 }
 
-// ── Study Mode Toggle ────────────────────────────────────────────────────────
+// ── Study Mode Toggle ─────────────────────────────────────────────────────────
 function StudyModeToggle({
   globalMode,
   setGlobalMode,
@@ -282,7 +354,7 @@ function StudyModeToggle({
         }`}
       >
         <ZapIcon size={13} />
-        <span className="hidden sm:inline">Trial</span>
+        <span>Trial</span>
       </button>
       <button
         type="button"
@@ -294,7 +366,7 @@ function StudyModeToggle({
         }`}
       >
         <TimerIcon size={13} />
-        <span className="hidden sm:inline">Exam</span>
+        <span>Exam</span>
       </button>
     </div>
   )
