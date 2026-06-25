@@ -6,11 +6,12 @@ import { useAdmin } from "@/contexts/admin-context"
 import {
   StethoscopeIcon,
   LayoutDashboardIcon,
-  UserIcon,
   PaletteIcon,
   LogOutIcon,
   XIcon,
   DatabaseIcon,
+  MegaphoneIcon,
+  UserIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 
@@ -22,11 +23,6 @@ interface SidebarProps {
   mobileOpen: boolean
   onCloseMobile: () => void
 }
-
-const REGULAR_NAV: { id: Screen; label: string; icon: typeof LayoutDashboardIcon }[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
-  { id: "profile", label: "Profile & History", icon: UserIcon },
-]
 
 function LiveClock() {
   const [now, setNow] = useState<Date | null>(null)
@@ -63,6 +59,8 @@ export function Sidebar({
   const { user, cloudEnabled, signOutUser } = useApp()
   const { isAdmin, logoutAdmin } = useAdmin()
 
+  const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
+
   const content = (
     <div className="flex h-full flex-col gap-2 p-4">
       {/* Brand */}
@@ -88,45 +86,40 @@ export function Sidebar({
 
       {/* Primary nav */}
       <nav className="mt-1 flex flex-col gap-1">
-        {REGULAR_NAV.map((item) => {
-          const active = screen === item.id
-          const Icon = item.icon
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => { onNavigate(item.id); onCloseMobile() }}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              }`}
-            >
-              <Icon size={18} />
-              {item.label}
-            </button>
-          )
-        })}
+        {/* Dashboard */}
+        <NavButton
+          active={screen === "dashboard"}
+          onClick={() => nav("dashboard")}
+          icon={<LayoutDashboardIcon size={18} />}
+          label="Dashboard"
+        />
 
-        {/* Admin-only: Question Editor */}
+        {/* Admin-only items */}
         {isAdmin && (
-          <button
-            type="button"
-            onClick={() => { onNavigate("question-editor"); onCloseMobile() }}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-              screen === "question-editor"
-                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 shadow-sm ring-1 ring-amber-400/30"
-                : "text-amber-700/80 dark:text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-400"
-            }`}
-          >
-            <DatabaseIcon size={18} />
-            Question Editor
-            {screen !== "question-editor" && (
-              <span className="ml-auto rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                Admin
-              </span>
-            )}
-          </button>
+          <>
+            <div className="my-1 h-px bg-sidebar-border/60" />
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              Admin
+            </p>
+
+            <NavButton
+              active={screen === "question-editor"}
+              onClick={() => nav("question-editor")}
+              icon={<DatabaseIcon size={18} />}
+              label="Question Editor"
+              badge="Admin"
+              badgeColor="amber"
+            />
+
+            <NavButton
+              active={screen === "broadcast"}
+              onClick={() => nav("broadcast")}
+              icon={<MegaphoneIcon size={18} />}
+              label="Broadcast"
+              badge="Admin"
+              badgeColor="amber"
+            />
+          </>
         )}
 
         <div className="my-1 h-px bg-sidebar-border/60" />
@@ -211,5 +204,41 @@ export function Sidebar({
         </div>
       )}
     </>
+  )
+}
+
+// ── Reusable nav button ──────────────────────────────────────────────────────
+function NavButton({
+  active, onClick, icon, label, badge, badgeColor = "amber",
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+  badge?: string
+  badgeColor?: "amber" | "sky"
+}) {
+  const amber = badgeColor === "amber"
+  const activeClass = amber
+    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 shadow-sm ring-1 ring-amber-400/30"
+    : "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+  const idleClass = amber
+    ? "text-amber-700/80 dark:text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-400"
+    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${active ? activeClass : idleClass}`}
+    >
+      {icon}
+      {label}
+      {badge && !active && (
+        <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${amber ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-sky-500/15 text-sky-700"}`}>
+          {badge}
+        </span>
+      )}
+    </button>
   )
 }

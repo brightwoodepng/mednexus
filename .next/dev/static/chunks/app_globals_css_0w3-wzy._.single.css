@@ -2764,6 +2764,16 @@
     background-color: var(--color-rose-500);
   }
 
+  .bg-rose-500\/10 {
+    background-color: #ff23571a;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-rose-500\/10 {
+      background-color: color-mix(in oklab, var(--color-rose-500) 10%, transparent);
+    }
+  }
+
   .bg-secondary {
     background-color: var(--secondary);
   }
@@ -2832,6 +2842,16 @@
     }
   }
 
+  .bg-sky-500\/15 {
+    background-color: #00a5ef26;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-sky-500\/15 {
+      background-color: color-mix(in oklab, var(--color-sky-500) 15%, transparent);
+    }
+  }
+
   .bg-slate-50 {
     background-color: var(--color-slate-50);
   }
@@ -2866,6 +2886,10 @@
 
   .bg-violet-100 {
     background-color: var(--color-violet-100);
+  }
+
+  .bg-violet-500 {
+    background-color: var(--color-violet-500);
   }
 
   .bg-violet-500\/10 {
@@ -3155,6 +3179,10 @@
     padding-block: calc(var(--spacing) * 12);
   }
 
+  .py-14 {
+    padding-block: calc(var(--spacing) * 14);
+  }
+
   .py-16 {
     padding-block: calc(var(--spacing) * 16);
   }
@@ -3205,6 +3233,10 @@
 
   .pr-10 {
     padding-right: calc(var(--spacing) * 10);
+  }
+
+  .pb-1 {
+    padding-bottom: var(--spacing);
   }
 
   .pb-2 {
@@ -3911,8 +3943,38 @@
     --tw-ring-color: var(--ring);
   }
 
+  .ring-rose-400\/40 {
+    --tw-ring-color: #ff667f66;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .ring-rose-400\/40 {
+      --tw-ring-color: color-mix(in oklab, var(--color-rose-400) 40%, transparent);
+    }
+  }
+
   .ring-sidebar-ring {
     --tw-ring-color: var(--sidebar-ring);
+  }
+
+  .ring-sky-400\/40 {
+    --tw-ring-color: #00bcfe66;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .ring-sky-400\/40 {
+      --tw-ring-color: color-mix(in oklab, var(--color-sky-400) 40%, transparent);
+    }
+  }
+
+  .ring-violet-400\/40 {
+    --tw-ring-color: #a685ff66;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .ring-violet-400\/40 {
+      --tw-ring-color: color-mix(in oklab, var(--color-violet-400) 40%, transparent);
+    }
   }
 
   .ring-offset-background {
@@ -4586,6 +4648,12 @@
       .hover\:bg-amber-500\/90:hover {
         background-color: color-mix(in oklab, var(--color-amber-500) 90%, transparent);
       }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:bg-amber-600:hover {
+      background-color: var(--color-amber-600);
     }
   }
 
@@ -6440,6 +6508,12 @@
   @media (prefers-color-scheme: dark) {
     .dark\:text-emerald-400 {
       color: var(--color-emerald-400);
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dark\:text-rose-400 {
+      color: var(--color-rose-400);
     }
   }
 
