@@ -326,13 +326,13 @@ function QuestionCard({ item, questionNumber, isSelected, onToggle, onEdit, onDe
 // ─────────────────────────────────────────────────────────────────────────────
 // Discipline Section
 // ─────────────────────────────────────────────────────────────────────────────
-function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, forceExpand, qOffset }: {
+function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, forceExpand, qOffset, isExpanded, onToggleExpand }: {
   group: DiscGroup; moduleName: string; selectedIds: Set<string>
   onToggleItem: (id: string) => void; onToggleAll: (ids: string[], select: boolean) => void
   onEdit: (q: Question, isDraft: boolean) => void; onDelete: (q: Question, isDraft: boolean) => void
   onAddQuestion: (mod: string, disc: string) => void; forceExpand: boolean; qOffset: number
+  isExpanded: boolean; onToggleExpand: () => void
 }) {
-  const [expanded, setExpanded] = useState(true)
   const ids = group.items.map((i) => i.q.id)
   const allSelected = ids.every((id) => selectedIds.has(id))
   const someSelected = ids.some((id) => selectedIds.has(id))
@@ -348,8 +348,8 @@ function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onTog
         >
           {allSelected ? <CheckIcon size={9} /> : someSelected ? <span style={{ width: 6, height: 2, background: "currentColor", borderRadius: 1, display: "block" }} /> : null}
         </button>
-        <button type="button" onClick={() => setExpanded((v) => !v)} className="flex items-center gap-1.5 min-w-0">
-          {expanded ? <ChevronDownIcon size={13} className="text-muted-foreground" /> : <ChevronRightIcon size={13} className="text-muted-foreground" />}
+        <button type="button" onClick={onToggleExpand} className="flex items-center gap-1.5 min-w-0">
+          {isExpanded ? <ChevronDownIcon size={13} className="text-muted-foreground" /> : <ChevronRightIcon size={13} className="text-muted-foreground" />}
           <BookOpenIcon size={13} className="text-muted-foreground shrink-0" />
           <span className="text-sm font-medium text-foreground truncate">{group.name}</span>
         </button>
@@ -367,7 +367,7 @@ function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onTog
       </div>
 
       {/* Questions */}
-      {(expanded || forceExpand) && (
+      {(isExpanded || forceExpand) && (
         <div>
           {group.items.map((item, i) => (
             <QuestionCard
@@ -389,14 +389,15 @@ function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onTog
 // ─────────────────────────────────────────────────────────────────────────────
 // Module Section
 // ─────────────────────────────────────────────────────────────────────────────
-function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, onRename, onDeleteModule, forceExpand }: {
+function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, onRename, onDeleteModule, forceExpand, isExpanded, onToggleExpand }: {
   group: ModGroup; selectedIds: Set<string>
   onToggleItem: (id: string) => void; onToggleAll: (ids: string[], select: boolean) => void
   onEdit: (q: Question, isDraft: boolean) => void; onDelete: (q: Question, isDraft: boolean) => void
   onAddQuestion: (mod: string, disc: string) => void; onRename: (mod: string) => void
   onDeleteModule: (mod: string) => void; forceExpand: boolean
+  isExpanded: boolean; onToggleExpand: () => void
 }) {
-  const [expanded, setExpanded] = useState(true)
+  const [expandedDisc, setExpandedDisc] = useState<string | null>(null)
   const allIds = group.disciplines.flatMap((d) => d.items.map((i) => i.q.id))
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id))
   const someSelected = allIds.some((id) => selectedIds.has(id))
@@ -414,8 +415,8 @@ function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, 
         >
           {allSelected ? <CheckIcon size={10} /> : someSelected ? <span style={{ width: 8, height: 2, background: "currentColor", borderRadius: 1, display: "block" }} /> : null}
         </button>
-        <button type="button" onClick={() => setExpanded((v) => !v)} className="flex items-center gap-2 min-w-0">
-          {expanded ? <ChevronDownIcon size={15} className="text-muted-foreground" /> : <ChevronRightIcon size={15} className="text-muted-foreground" />}
+        <button type="button" onClick={onToggleExpand} className="flex items-center gap-2 min-w-0">
+          {isExpanded ? <ChevronDownIcon size={15} className="text-muted-foreground" /> : <ChevronRightIcon size={15} className="text-muted-foreground" />}
           <FolderIcon size={15} />
           <span className="font-bold text-foreground truncate">{group.name}</span>
         </button>
@@ -433,9 +434,10 @@ function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, 
       </div>
 
       {/* Disciplines */}
-      {expanded && (
+      {(isExpanded || forceExpand) && (
         <div className="pl-6">
           {group.disciplines.map((disc) => {
+            const discIsExpanded = forceExpand || expandedDisc === disc.name
             const section = (
               <DisciplineSection
                 key={disc.name}
@@ -449,6 +451,8 @@ function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, 
                 onAddQuestion={onAddQuestion}
                 forceExpand={forceExpand}
                 qOffset={qOffset}
+                isExpanded={discIsExpanded}
+                onToggleExpand={() => setExpandedDisc(expandedDisc === disc.name ? null : disc.name)}
               />
             )
             qOffset += disc.items.length
@@ -489,6 +493,7 @@ export function QuestionEditor() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all")
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
   const [pdfImportOpen, setPdfImportOpen] = useState(false)
+  const [expandedModule, setExpandedModule] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const [confirm, setConfirm] = useState<{ title: string; message: string; confirmLabel: string; action: () => void; danger?: boolean } | null>(null)
   const [renameTarget, setRenameTarget] = useState<{ moduleName: string } | null>(null)
@@ -734,6 +739,11 @@ export function QuestionEditor() {
             >
               <UploadIcon size={13} /> Import PDF
             </button>
+            <button type="button" onClick={() => jsonInputRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              <UploadIcon size={13} /> Import JSON
+            </button>
             <button type="button" onClick={handleExportJSON} disabled={totalLive === 0}
               className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -834,6 +844,8 @@ export function QuestionEditor() {
               onRename={startRename}
               onDeleteModule={handleDeleteModule}
               forceExpand={isSearching}
+              isExpanded={isSearching || expandedModule === mod.name}
+              onToggleExpand={() => setExpandedModule(expandedModule === mod.name ? null : mod.name)}
             />
           ))
         )}
