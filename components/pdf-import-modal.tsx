@@ -222,6 +222,7 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
   const [showPaste, setShowPaste] = useState(false)
   const [pasteText, setPasteText] = useState("")
   const [parsedQuestions, setParsedQuestions] = useState<Question[]>([])
+  const [moduleName, setModuleName] = useState(defaultModule)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function processFile(file: File) {
@@ -248,9 +249,10 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
       setError("No questions detected. Check the format tips below and try pasting the text directly.")
       return
     }
+    const trimmedModule = moduleName.trim()
     const questions = raw.map((r, i) => {
       const q = makeQuestion(r, i)
-      if (!q.module && defaultModule) q.module = defaultModule
+      if (trimmedModule) q.module = trimmedModule
       return q
     })
     setParsedQuestions(questions)
@@ -285,6 +287,20 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
         <div className="flex-1 overflow-y-auto">
           {step === "upload" ? (
             <div className="space-y-5 p-6">
+              {/* Module name */}
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Module Name <span className="normal-case font-normal text-muted-foreground/70">(required — all imported questions will be assigned to this module)</span>
+                </label>
+                <input
+                  type="text"
+                  value={moduleName}
+                  onChange={(e) => setModuleName(e.target.value)}
+                  placeholder="e.g. Level 400 Clinicals"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+
               {/* Drop zone */}
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
