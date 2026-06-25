@@ -34,6 +34,7 @@ interface PendingQuiz {
   questions: Question[]
   moduleName: string
   discipline: string | null
+  setupModule: string
 }
 
 interface ActiveQuiz {
@@ -42,6 +43,7 @@ interface ActiveQuiz {
   discipline: string | null
   mode: QuizMode
   startedAt: number
+  setupModule: string
 }
 
 // ── Credits Modal ─────────────────────────────────────────────────────────────
@@ -143,16 +145,34 @@ export function MedNexusApp() {
 
   const handleReadyForQuiz = useCallback((config: { module: string; discipline: string | null }) => {
     let questions: Question[]
-    const isWeakAreas = config.module === "__weak__"
-    if (isWeakAreas) {
+    let displayName: string
+
+    const TRIAL_PREFIX = "__weak_trial__|"
+    const EXAM_PREFIX  = "__weak_exam__|"
+
+    if (config.module === "__weak__") {
       questions = getWeakAreaQuestions(progress.history)
+      displayName = "Weak Areas"
+    } else if (config.module.startsWith(TRIAL_PREFIX)) {
+      const modName = config.module.slice(TRIAL_PREFIX.length)
+      const weakTrialQs = getWeakAreaQuestions(progress.history.filter((e) => e.mode === "trial"))
+      questions = weakTrialQs.filter((q) => (q.module?.trim() || q.subject) === modName)
+      displayName = modName
+    } else if (config.module.startsWith(EXAM_PREFIX)) {
+      const modName = config.module.slice(EXAM_PREFIX.length)
+      const weakExamQs = getWeakAreaQuestions(progress.history.filter((e) => e.mode === "exam"))
+      questions = weakExamQs.filter((q) => (q.module?.trim() || q.subject) === modName)
+      displayName = modName
     } else {
       questions = getQuestionsForModuleAndDiscipline(config.module, config.discipline)
+      displayName = config.module
     }
+
     setPendingQuiz({
       questions,
-      moduleName: isWeakAreas ? "Weak Areas" : config.module,
+      moduleName: displayName,
       discipline: config.discipline,
+      setupModule: config.module,
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress.history])
@@ -180,6 +200,7 @@ export function MedNexusApp() {
       discipline: pendingQuiz.discipline,
       mode: globalMode,
       startedAt: Date.now(),
+      setupModule: pendingQuiz.setupModule,
     })
     setPendingQuiz(null)
     setScreen("quiz")
@@ -206,9 +227,7 @@ export function MedNexusApp() {
       result,
       moduleName: activeQuiz.moduleName,
       discipline: activeQuiz.discipline,
-      lastSetup: activeQuiz.moduleName === "Weak Areas"
-        ? { module: "__weak__", discipline: null }
-        : { module: activeQuiz.moduleName, discipline: activeQuiz.discipline },
+      lastSetup: { module: activeQuiz.setupModule, discipline: activeQuiz.discipline },
     })
     setActiveQuiz(null)
     setScreen("results")

@@ -105,6 +105,24 @@ export function getWeakAreaQuestions(history: HistoryEntry[]): Question[] {
   return qs.filter((q) => weakIds.has(q.id))
 }
 
+/**
+ * Return weak questions filtered by mode, grouped by module name.
+ * Returns a map of { moduleName → weakQuestionCount }.
+ */
+export function getWeakModuleBreakdown(
+  history: HistoryEntry[],
+  mode: "trial" | "exam",
+): Record<string, number> {
+  const modeHistory = history.filter((e) => e.mode === mode)
+  const weakQs = getWeakAreaQuestions(modeHistory)
+  const breakdown: Record<string, number> = {}
+  for (const q of weakQs) {
+    const mod = q.module?.trim() || q.subject
+    breakdown[mod] = (breakdown[mod] ?? 0) + 1
+  }
+  return breakdown
+}
+
 /** Assign a proficiency rank from a percentage score. */
 export function rankFor(percentage: number): ProficiencyRank {
   if (percentage >= 85) return "Expert"
