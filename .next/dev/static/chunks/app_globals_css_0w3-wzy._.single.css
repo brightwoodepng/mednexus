@@ -2595,6 +2595,10 @@
     background-color: #25d366;
   }
 
+  .bg-\[\#0077c2\] {
+    background-color: #0077c2;
+  }
+
   .bg-\[\#F26207\] {
     background-color: #f26207;
   }
@@ -3804,6 +3808,10 @@
 
   .whitespace-nowrap {
     white-space: nowrap;
+  }
+
+  .text-\[\#fcfcfc\] {
+    color: #fcfcfc;
   }
 
   .text-accent-foreground {

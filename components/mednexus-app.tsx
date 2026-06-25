@@ -87,7 +87,7 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
             href="https://wa.me/233543982307"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4 transition-colors hover:bg-emerald-100/80 active:bg-emerald-100 dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30"
+            className="flex items-center gap-3 rounded-2xl border border-emerald-200/80 p-4 transition-colors hover:bg-emerald-100/80 active:bg-emerald-100 dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 bg-[#0077c2]"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#25D366] text-white shadow-sm">
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -95,20 +95,20 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Chat on WhatsApp</p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">+233 54 398 2307</p>
+              <p className="text-sm font-semibold dark:text-emerald-300 text-[#fcfcfc]">Chat on WhatsApp</p>
+              <p className="text-xs dark:text-emerald-400 text-[#fcfcfc]">+233 54 398 2307</p>
             </div>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400">
               <path d="M7 17L17 7M17 7H7M17 7v10" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </a>
 
-          <div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-4 dark:border-amber-800/30 dark:bg-amber-900/20">
+          <div className="rounded-2xl border border-amber-200/70 p-4 dark:border-amber-800/30 dark:bg-amber-900/20 bg-[#0077c2]">
             <div className="flex items-start gap-2.5">
               <HeartIcon size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
               <div>
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Support the Project</p>
-                <p className="mt-1 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
+                <p className="text-sm font-semibold dark:text-amber-300 text-[#fcfcfc]">Support the Project</p>
+                <p className="mt-1 text-xs leading-relaxed dark:text-amber-400 text-[#fcfcfc]">
                   Contributions help keep MedNexus growing. Reach out on WhatsApp to donate or collaborate.
                 </p>
               </div>
