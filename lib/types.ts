@@ -65,6 +65,7 @@ export interface UserProgress {
   history: HistoryEntry[]
   examScores: ExamScore[]
   notificationsLastRead: number // epoch ms; 0 = never read
+  mutedNotificationTypes: string[] // e.g. ["info", "update", "alert"]
 }
 
 /** In-session state for a single quiz block. */
