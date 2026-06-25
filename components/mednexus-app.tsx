@@ -18,6 +18,7 @@ import { QuestionEditor } from "@/components/question-editor"
 import { BroadcastScreen } from "@/components/broadcast-screen"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import { NotificationBell } from "@/components/notification-bell"
+import { ProfileHistory } from "@/components/profile-history"
 import {
   MenuIcon,
   StethoscopeIcon,
@@ -216,6 +217,7 @@ export function MedNexusApp() {
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} />
           )}
+          {safeScreen === "profile" && <ProfileHistory />}
           {safeScreen === "question-editor" && isAdmin && <QuestionEditor />}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
           {safeScreen === "results" && lastResult && (

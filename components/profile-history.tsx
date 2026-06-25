@@ -13,14 +13,19 @@ import {
   EyeOffIcon,
   PencilIcon,
   BookOpenIcon,
+  ChevronDownIcon,
 } from "@/components/icons"
 import type { HistoryEntry, ExamScore } from "@/lib/types"
+
+type SortOption = "attempted" | "alphabetical" | "coverage" | "accuracy"
 
 // ── Discipline Coverage ──────────────────────────────────────────────────────
 
 function DisciplineCoverage() {
   const { progress } = useApp()
   const { questions } = useQuestions()
+  const [sortBy, setSortBy] = useState<SortOption>("attempted")
+  const [filterAttempted, setFilterAttempted] = useState(false)
 
   const disciplines = useMemo(() => {
     // Build per-subject totals from question bank
@@ -47,68 +52,121 @@ function DisciplineCoverage() {
       ...Object.keys(attemptedIds),
     ])
 
-    return Array.from(allSubjects)
-      .map((subject) => {
-        const total = totalBySubject[subject] ?? 0
-        const attempted = attemptedIds[subject]?.size ?? 0
-        const correct = correctBySubject[subject] ?? 0
-        const coverage = total > 0 ? Math.round((attempted / total) * 100) : 0
-        const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : null
-        return { subject, total, attempted, correct, coverage, accuracy }
-      })
-      .sort((a, b) => b.attempted - a.attempted || a.subject.localeCompare(b.subject))
-  }, [questions, progress.history])
+    const rows = Array.from(allSubjects).map((subject) => {
+      const total = totalBySubject[subject] ?? 0
+      const attempted = attemptedIds[subject]?.size ?? 0
+      const correct = correctBySubject[subject] ?? 0
+      const coverage = total > 0 ? Math.round((attempted / total) * 100) : 0
+      const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : null
+      return { subject, total, attempted, correct, coverage, accuracy }
+    })
 
-  if (disciplines.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
-        <BookOpenIcon size={28} className="mx-auto mb-2 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">
-          Complete a study block to see your discipline coverage.
-        </p>
-      </div>
-    )
-  }
+    const filtered = filterAttempted ? rows.filter((d) => d.attempted > 0) : rows
+
+    return filtered.sort((a, b) => {
+      if (sortBy === "alphabetical") return a.subject.localeCompare(b.subject)
+      if (sortBy === "coverage") return b.coverage - a.coverage || a.subject.localeCompare(b.subject)
+      if (sortBy === "accuracy") {
+        const aAcc = a.accuracy ?? -1
+        const bAcc = b.accuracy ?? -1
+        return bAcc - aAcc || a.subject.localeCompare(b.subject)
+      }
+      // default: attempted desc
+      return b.attempted - a.attempted || a.subject.localeCompare(b.subject)
+    })
+  }, [questions, progress.history, sortBy, filterAttempted])
+
+  const totalAttempted = disciplines.filter((d) => d.attempted > 0).length
+  const totalDisciplines = useMemo(() => {
+    const subjects = new Set(questions.map((q) => q.subject))
+    for (const e of progress.history) subjects.add(e.subject)
+    return subjects.size
+  }, [questions, progress.history])
 
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-      <div className="border-b border-border px-5 py-4">
-        <h2 className="font-semibold text-foreground">Discipline Coverage</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {disciplines.filter((d) => d.attempted > 0).length} of {disciplines.length} disciplines attempted
-        </p>
+      <div className="border-b border-border px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-semibold text-foreground">Discipline Coverage</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {totalAttempted} of {totalDisciplines} disciplines attempted
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Filter toggle */}
+          <button
+            type="button"
+            onClick={() => setFilterAttempted((v) => !v)}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              filterAttempted
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            Attempted only
+          </button>
+          {/* Sort dropdown */}
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="appearance-none rounded-lg border border-border bg-background pl-3 pr-7 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+            >
+              <option value="attempted">Sort: Most attempted</option>
+              <option value="alphabetical">Sort: A → Z</option>
+              <option value="coverage">Sort: Coverage %</option>
+              <option value="accuracy">Sort: Accuracy %</option>
+            </select>
+            <ChevronDownIcon
+              size={12}
+              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+          </div>
+        </div>
       </div>
-      <ul className="divide-y divide-border">
-        {disciplines.map((d) => (
-          <li key={d.subject} className="px-5 py-3.5">
-            <div className="flex items-center justify-between gap-4 mb-2">
-              <span className="text-sm font-medium text-foreground truncate">{d.subject}</span>
-              <div className="flex items-center gap-3 shrink-0">
-                {d.accuracy !== null && (
-                  <span className={`text-xs font-semibold tabular-nums ${
-                    d.accuracy >= 70 ? "text-primary" : d.accuracy >= 50 ? "text-amber-600" : "text-destructive"
-                  }`}>
-                    {d.accuracy}% acc
+
+      {disciplines.length === 0 ? (
+        <div className="p-10 text-center">
+          <BookOpenIcon size={28} className="mx-auto mb-2 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            {filterAttempted
+              ? "No disciplines attempted yet. Complete a study block to see your progress."
+              : "No disciplines found."}
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border">
+          {disciplines.map((d) => (
+            <li key={d.subject} className="px-5 py-3.5">
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <span className="text-sm font-medium text-foreground truncate">{d.subject}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  {d.accuracy !== null && (
+                    <span className={`text-xs font-semibold tabular-nums ${
+                      d.accuracy >= 70 ? "text-primary" : d.accuracy >= 50 ? "text-amber-600" : "text-destructive"
+                    }`}>
+                      {d.accuracy}% acc
+                    </span>
+                  )}
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {d.attempted}{d.total > 0 ? `/${d.total}` : ""} Qs
                   </span>
-                )}
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {d.attempted}{d.total > 0 ? `/${d.total}` : ""} Qs
-                </span>
+                </div>
               </div>
-            </div>
-            {/* Coverage bar */}
-            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{ width: `${Math.max(d.coverage, d.attempted > 0 ? 2 : 0)}%` }}
-              />
-            </div>
-            {d.total > 0 && (
-              <p className="mt-1 text-[10px] text-muted-foreground">{d.coverage}% covered</p>
-            )}
-          </li>
-        ))}
-      </ul>
+              {/* Coverage bar */}
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${Math.max(d.coverage, d.attempted > 0 ? 2 : 0)}%` }}
+                />
+              </div>
+              {d.total > 0 && (
+                <p className="mt-1 text-[10px] text-muted-foreground">{d.coverage}% covered</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
