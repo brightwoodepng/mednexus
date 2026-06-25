@@ -2640,6 +2640,8 @@ __turbopack_context__.s([
     ()=>getSubjects,
     "getWeakAreaQuestions",
     ()=>getWeakAreaQuestions,
+    "getWeakModuleBreakdown",
+    ()=>getWeakModuleBreakdown,
     "rankFor",
     ()=>rankFor,
     "shuffleArray",
@@ -2724,6 +2726,16 @@ function getWeakAreaQuestions(history) {
         if (!entry.isCorrect) weakIds.add(qId);
     }
     return qs.filter((q)=>weakIds.has(q.id));
+}
+function getWeakModuleBreakdown(history, mode) {
+    const modeHistory = history.filter((e)=>e.mode === mode);
+    const weakQs = getWeakAreaQuestions(modeHistory);
+    const breakdown = {};
+    for (const q of weakQs){
+        const mod = q.module?.trim() || q.subject;
+        breakdown[mod] = (breakdown[mod] ?? 0) + 1;
+    }
+    return breakdown;
 }
 function rankFor(percentage) {
     if (percentage >= 85) return "Expert";

@@ -9875,6 +9875,18 @@
   }
 
   @media (hover: hover) {
+    .hover\:bg-amber-500\/10:hover {
+      background-color: #f99c001a;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-amber-500\/10:hover {
+        background-color: color-mix(in oklab, var(--color-amber-500) 10%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:bg-amber-500\/20:hover {
       background-color: #f99c0033;
     }
@@ -13567,6 +13579,18 @@
     @supports (color: color-mix(in lab, red, red)) {
       .dark\:bg-rose-900\/20 {
         background-color: color-mix(in oklab, var(--color-rose-900) 20%, transparent);
+      }
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dark\:bg-rose-900\/30 {
+      background-color: #8b08364d;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .dark\:bg-rose-900\/30 {
+        background-color: color-mix(in oklab, var(--color-rose-900) 30%, transparent);
       }
     }
   }
