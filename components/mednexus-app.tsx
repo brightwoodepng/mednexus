@@ -10,6 +10,7 @@ import type { QuizMode, BlockResult, Question, ExamScore } from "@/lib/types"
 import { AuthScreen } from "@/components/auth-screen"
 import { Sidebar } from "@/components/sidebar"
 import { Dashboard } from "@/components/dashboard"
+import { ModulesScreen } from "@/components/modules-screen"
 import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
@@ -128,7 +129,7 @@ export function MedNexusApp() {
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
-  const [dashboardModule, setDashboardModule] = useState<string | null>(null)
+  const [modulesInitialModule, setModulesInitialModule] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<{
     result: BlockResult
     moduleName: string
@@ -243,8 +244,8 @@ export function MedNexusApp() {
         onCloseMobile={() => setMobileNavOpen(false)}
         onReadyForQuiz={handleReadyForQuiz}
         onSelectModule={(mod) => {
-          setDashboardModule(mod)
-          setScreen("dashboard")
+          setModulesInitialModule(mod)
+          setScreen("modules")
           setMobileNavOpen(false)
         }}
         onOpenCredits={() => setCreditsOpen(true)}
@@ -252,41 +253,44 @@ export function MedNexusApp() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex items-center justify-between border-b border-border bg-card px-4 py-2.5">
+        <header className="flex items-center gap-2 border-b border-border bg-card px-3 py-2 sm:px-4 sm:py-2.5">
           {/* Mobile: hamburger */}
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted lg:hidden"
+            className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-muted lg:hidden"
             aria-label="Open menu"
           >
-            <MenuIcon size={22} />
+            <MenuIcon size={20} />
           </button>
 
           {/* Mobile: brand (tappable for credits) */}
           <button
             type="button"
             onClick={() => setCreditsOpen(true)}
-            className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted lg:hidden"
+            className="flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-1 transition-colors hover:bg-muted lg:hidden"
           >
-            <StethoscopeIcon size={18} className="text-primary" />
-            <span className="font-semibold">MedNexus</span>
+            <StethoscopeIcon size={16} className="shrink-0 text-primary" />
+            <span className="truncate text-sm font-semibold">MedNexus</span>
           </button>
 
           {/* Desktop: spacer */}
-          <div className="hidden lg:block" />
+          <div className="hidden flex-1 lg:block" />
 
-          {/* Right side */}
-          <div className="flex items-center gap-2">
+          {/* Mobile: push right */}
+          <div className="flex-1 lg:hidden" />
+
+          {/* Right side — all items visible on all screen sizes */}
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
             <NotificationBell />
             <button
               type="button"
               onClick={() => setThemeOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
               aria-label="Themes"
             >
-              <PaletteIcon size={18} />
+              <PaletteIcon size={16} />
             </button>
           </div>
         </header>
@@ -295,8 +299,16 @@ export function MedNexusApp() {
           {safeScreen === "dashboard" && (
             <Dashboard
               onReadyForQuiz={handleReadyForQuiz}
-              requestedModule={dashboardModule}
-              onClearRequestedModule={() => setDashboardModule(null)}
+              onOpenModules={(mod) => {
+                setModulesInitialModule(mod ?? null)
+                setScreen("modules")
+              }}
+            />
+          )}
+          {safeScreen === "modules" && (
+            <ModulesScreen
+              onReadyForQuiz={handleReadyForQuiz}
+              initialModule={modulesInitialModule}
             />
           )}
           {safeScreen === "profile" && <ProfileHistory />}
