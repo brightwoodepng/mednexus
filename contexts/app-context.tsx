@@ -29,6 +29,7 @@ interface AppContextValue {
   progress: UserProgress
   enterApp: (name: string) => Promise<void>
   signOutUser: () => void
+  updateName: (name: string) => Promise<void>
   toggleFlag: (questionId: string) => void
   recordHistory: (entries: HistoryEntry[]) => void
   saveExamScore: (score: ExamScore) => void
@@ -185,6 +186,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCloudEnabled(false)
   }, [])
 
+  const updateName = useCallback(async (name: string) => {
+    const trimmed = name.trim() || "Clinician"
+    const u = userRef.current
+    if (!u) return
+    try { localStorage.setItem(LS_NAME, trimmed) } catch {}
+    const updated = { ...u, name: trimmed }
+    setUser(updated)
+    await apiPost(u.uid, trimmed, progressRef.current)
+  }, [])
+
   const toggleFlag = useCallback(
     (questionId: string) => {
       setProgress((prev) => {
@@ -285,6 +296,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     progress,
     enterApp,
     signOutUser,
+    updateName,
     toggleFlag,
     recordHistory,
     saveExamScore,
