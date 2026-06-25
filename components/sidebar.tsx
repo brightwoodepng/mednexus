@@ -127,12 +127,10 @@ export function Sidebar({
 
           <div className="my-1 h-px bg-sidebar-border/60" />
 
-          {/* Study Modules — navigates to dashboard modules view */}
+          {/* Study Modules */}
           <NavButton
-            active={false}
-            onClick={() => {
-              nav("dashboard")
-            }}
+            active={screen === "modules"}
+            onClick={() => nav("modules")}
             icon={<LayersIcon size={18} />}
             label="Study Modules"
             badge={String(getModules().length)}

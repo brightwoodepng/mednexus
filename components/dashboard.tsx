@@ -18,12 +18,10 @@ import {
   ActivityIcon,
   LayersIcon,
   ChevronLeftIcon,
-  TrendingUpIcon,
   AwardIcon,
   TimerIcon,
   StarIcon,
   ChevronDownIcon,
-  SearchIcon,
 } from "@/components/icons"
 
 interface QuizReadyConfig {
@@ -33,8 +31,7 @@ interface QuizReadyConfig {
 
 interface DashboardProps {
   onReadyForQuiz: (config: QuizReadyConfig) => void
-  requestedModule?: string | null
-  onClearRequestedModule?: () => void
+  onOpenModules: (module?: string) => void
 }
 
 function useGreeting() {
@@ -80,7 +77,7 @@ const CARD_PALETTES = [
   { ring: "hover:ring-orange-400/50",  icon: "bg-orange-100 text-orange-600",   bar: "#f97316" },
 ]
 
-export function Dashboard({ onReadyForQuiz, requestedModule, onClearRequestedModule }: DashboardProps) {
+export function Dashboard({ onReadyForQuiz, onOpenModules }: DashboardProps) {
   const { user, progress } = useApp()
   const { globalMode } = useStudyMode()
   const greeting = useGreeting()
@@ -130,8 +127,7 @@ export function Dashboard({ onReadyForQuiz, requestedModule, onClearRequestedMod
       {globalMode === "trial" ? (
         <TrialDashboard
           onReadyForQuiz={onReadyForQuiz}
-          requestedModule={requestedModule}
-          onClearRequestedModule={onClearRequestedModule}
+          onOpenModules={onOpenModules}
         />
       ) : (
         <ExamDashboard onReadyForQuiz={onReadyForQuiz} />
@@ -194,145 +190,51 @@ function CoverageList({ coverage }: { coverage: Record<string, { attempted: numb
   )
 }
 
-// ── Sort / Filter types ───────────────────────────────────────────────────────
-type SortMode = "az" | "za" | "most" | "starred"
-type FilterMode = "all" | "starred"
-
 // ── Trial Dashboard ───────────────────────────────────────────────────────────
 function TrialDashboard({
   onReadyForQuiz,
-  requestedModule,
-  onClearRequestedModule,
+  onOpenModules,
 }: {
   onReadyForQuiz: (c: QuizReadyConfig) => void
-  requestedModule?: string | null
-  onClearRequestedModule?: () => void
+  onOpenModules: (module?: string) => void
 }) {
   const { progress } = useApp()
-  const [viewingModule, setViewingModule] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
-  const [sort, setSort] = useState<SortMode>("starred")
-  const [filter, setFilter] = useState<FilterMode>("all")
 
   const modules = getModules()
   const weakAreaQuestions = getWeakAreaQuestions(progress.history)
   const weakAreaCount = weakAreaQuestions.length
-  const coverage = getDisciplineCoverage(progress.history)
   const favorites = progress.favoriteModules ?? []
 
-  useEffect(() => {
-    if (requestedModule) {
-      setViewingModule(requestedModule)
-      onClearRequestedModule?.()
-    }
-  }, [requestedModule, onClearRequestedModule])
-
-  const filtered = useMemo(() => {
-    let list = modules
-    if (filter === "starred") list = list.filter((m) => favorites.includes(m))
-    if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      list = list.filter((m) => m.toLowerCase().includes(q))
-    }
-    return [...list].sort((a, b) => {
-      if (sort === "az") return a.localeCompare(b)
-      if (sort === "za") return b.localeCompare(a)
-      if (sort === "most") return getModuleQuestionCount(b) - getModuleQuestionCount(a)
-      // starred first
-      const aFav = favorites.includes(a) ? 0 : 1
-      const bFav = favorites.includes(b) ? 0 : 1
-      return aFav - bFav || a.localeCompare(b)
-    })
-  }, [modules, favorites, filter, sort, search])
-
-  if (viewingModule) {
-    return (
-      <DisciplineView
-        module={viewingModule}
-        coverage={coverage}
-        onBack={() => setViewingModule(null)}
-        onSelectDiscipline={(discipline) => onReadyForQuiz({ module: viewingModule, discipline })}
-      />
-    )
-  }
-
-  const attemptedCoverage = Object.fromEntries(
-    Object.entries(coverage).filter(([, v]) => v.attempted > 0)
-  )
+  const starredModules = useMemo(() => {
+    const fav = modules.filter((m) => favorites.includes(m))
+    if (fav.length > 0) return fav
+    return modules.slice(0, 6)
+  }, [modules, favorites])
 
   return (
     <div className="space-y-6">
-      {/* Coverage panel */}
-      {Object.keys(attemptedCoverage).length > 0 && (
-        <section className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-            <TrendingUpIcon size={15} className="text-emerald-500 shrink-0" />
-            <h2 className="font-semibold text-sm tracking-tight">Discipline Coverage</h2>
-            <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
-              {Object.keys(attemptedCoverage).length} attempted
-            </span>
-          </div>
-          <CoverageList coverage={attemptedCoverage} />
-        </section>
-      )}
-
       {/* Study Modules */}
       <section>
         {/* Section header */}
-        <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="mb-4 flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <LayersIcon size={16} />
             </div>
             <h2 className="text-lg font-bold tracking-tight">Study Modules</h2>
           </div>
-
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {/* Search */}
-            <div className="relative">
-              <SearchIcon size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search…"
-                className="h-8 rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 w-32"
-              />
-            </div>
-
-            {/* Filter */}
-            <div className="flex rounded-lg border border-border bg-muted p-0.5 gap-0.5">
-              {(["all", "starred"] as FilterMode[]).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setFilter(f)}
-                  className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all capitalize ${
-                    filter === f ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {f === "starred" && <StarIcon size={10} className="text-amber-400" />}
-                  {f === "all" ? "All" : "Starred"}
-                </button>
-              ))}
-            </div>
-
-            {/* Sort */}
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortMode)}
-              className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-            >
-              <option value="starred">Starred First</option>
-              <option value="az">A → Z</option>
-              <option value="za">Z → A</option>
-              <option value="most">Most Questions</option>
-            </select>
-          </div>
+          <button
+            type="button"
+            onClick={() => onOpenModules()}
+            className="ml-auto text-xs font-medium text-primary hover:underline flex items-center gap-1"
+          >
+            View all
+            <ArrowRightIcon size={12} />
+          </button>
         </div>
 
         {/* Weak Areas card */}
-        {weakAreaCount > 0 && filter === "all" && !search.trim() && (
+        {weakAreaCount > 0 && (
           <div className="mb-3">
             <button
               type="button"
@@ -354,31 +256,27 @@ function TrialDashboard({
           </div>
         )}
 
-        {/* Module grid */}
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-14 text-center">
-            <LayersIcon size={32} className="mb-3 text-muted-foreground/40" />
-            <p className="text-sm font-medium text-muted-foreground">No modules match your filters</p>
-            <button
-              type="button"
-              onClick={() => { setSearch(""); setFilter("all") }}
-              className="mt-2 text-xs text-primary hover:underline"
-            >
-              Clear filters
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-            {filtered.map((mod, i) => (
-              <ModuleCard
-                key={mod}
-                mod={mod}
-                paletteIndex={modules.indexOf(mod) % CARD_PALETTES.length}
-                isFav={favorites.includes(mod)}
-                onOpen={() => setViewingModule(mod)}
-              />
-            ))}
-          </div>
+        {/* Module grid — starred/recent preview */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          {starredModules.map((mod) => (
+            <ModuleCard
+              key={mod}
+              mod={mod}
+              paletteIndex={modules.indexOf(mod) % CARD_PALETTES.length}
+              isFav={favorites.includes(mod)}
+              onOpen={() => onOpenModules(mod)}
+            />
+          ))}
+        </div>
+
+        {modules.length > starredModules.length && (
+          <button
+            type="button"
+            onClick={() => onOpenModules()}
+            className="mt-3 w-full rounded-xl border border-border py-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            View all {modules.length} modules
+          </button>
         )}
       </section>
     </div>

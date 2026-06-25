@@ -14,30 +14,37 @@ import {
   PencilIcon,
   BookOpenIcon,
   ChevronDownIcon,
+  LayersIcon,
 } from "@/components/icons"
+import {
+  getModules,
+  getDisciplinesForModule,
+  getModuleQuestionCount,
+} from "@/lib/modules"
 import type { HistoryEntry, ExamScore } from "@/lib/types"
 
-type SortOption = "attempted" | "alphabetical" | "coverage" | "accuracy"
+// ── Module + Discipline Coverage ─────────────────────────────────────────────
 
-// ── Discipline Coverage ──────────────────────────────────────────────────────
-
-function DisciplineCoverage() {
+function ModuleCoverage() {
   const { progress } = useApp()
   const { questions } = useQuestions()
-  const [sortBy, setSortBy] = useState<SortOption>("attempted")
-  const [filterAttempted, setFilterAttempted] = useState(false)
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
 
-  const disciplines = useMemo(() => {
-    // Build per-subject totals from question bank
-    const totalBySubject: Record<string, number> = {}
+  const modules = getModules()
+
+  // Build per-subject totals from question bank
+  const totalBySubject = useMemo(() => {
+    const map: Record<string, number> = {}
     for (const q of questions) {
-      totalBySubject[q.subject] = (totalBySubject[q.subject] ?? 0) + 1
+      map[q.subject] = (map[q.subject] ?? 0) + 1
     }
+    return map
+  }, [questions])
 
-    // Build per-subject stats from history
+  // Build per-subject stats from history
+  const subjectStats = useMemo(() => {
     const attemptedIds: Record<string, Set<string>> = {}
     const correctBySubject: Record<string, number> = {}
-
     for (const entry of progress.history) {
       if (!attemptedIds[entry.subject]) attemptedIds[entry.subject] = new Set()
       attemptedIds[entry.subject].add(entry.questionId)
@@ -45,126 +52,146 @@ function DisciplineCoverage() {
         correctBySubject[entry.subject] = (correctBySubject[entry.subject] ?? 0) + 1
       }
     }
+    return { attemptedIds, correctBySubject }
+  }, [progress.history])
 
-    // Merge all known subjects (from question bank + history)
-    const allSubjects = new Set([
-      ...Object.keys(totalBySubject),
-      ...Object.keys(attemptedIds),
-    ])
-
-    const rows = Array.from(allSubjects).map((subject) => {
-      const total = totalBySubject[subject] ?? 0
-      const attempted = attemptedIds[subject]?.size ?? 0
-      const correct = correctBySubject[subject] ?? 0
-      const coverage = total > 0 ? Math.round((attempted / total) * 100) : 0
-      const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : null
-      return { subject, total, attempted, correct, coverage, accuracy }
-    })
-
-    const filtered = filterAttempted ? rows.filter((d) => d.attempted > 0) : rows
-
-    return filtered.sort((a, b) => {
-      if (sortBy === "alphabetical") return a.subject.localeCompare(b.subject)
-      if (sortBy === "coverage") return b.coverage - a.coverage || a.subject.localeCompare(b.subject)
-      if (sortBy === "accuracy") {
-        const aAcc = a.accuracy ?? -1
-        const bAcc = b.accuracy ?? -1
-        return bAcc - aAcc || a.subject.localeCompare(b.subject)
+  // Build module-level stats
+  const moduleRows = useMemo(() => {
+    return modules.map((mod) => {
+      const disciplines = getDisciplinesForModule(mod)
+      const totalQ = getModuleQuestionCount(mod)
+      let attempted = 0
+      let correct = 0
+      for (const disc of disciplines) {
+        const ids = subjectStats.attemptedIds[disc]
+        if (ids) attempted += ids.size
+        correct += subjectStats.correctBySubject[disc] ?? 0
       }
-      // default: attempted desc
-      return b.attempted - a.attempted || a.subject.localeCompare(b.subject)
+      const coverage = totalQ > 0 ? Math.round((attempted / totalQ) * 100) : 0
+      const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : null
+      return { mod, disciplines, totalQ, attempted, correct, coverage, accuracy }
     })
-  }, [questions, progress.history, sortBy, filterAttempted])
+  }, [modules, subjectStats])
 
-  const totalAttempted = disciplines.filter((d) => d.attempted > 0).length
-  const totalDisciplines = useMemo(() => {
-    const subjects = new Set(questions.map((q) => q.subject))
-    for (const e of progress.history) subjects.add(e.subject)
-    return subjects.size
-  }, [questions, progress.history])
+  function toggleModule(mod: string) {
+    setExpandedModules((prev) => {
+      const next = new Set(prev)
+      if (next.has(mod)) next.delete(mod)
+      else next.add(mod)
+      return next
+    })
+  }
+
+  const totalAttempted = moduleRows.filter((r) => r.attempted > 0).length
 
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-      <div className="border-b border-border px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="font-semibold text-foreground">Discipline Coverage</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {totalAttempted} of {totalDisciplines} disciplines attempted
-          </p>
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex items-center gap-2">
+          <LayersIcon size={16} className="text-primary shrink-0" />
+          <h2 className="font-semibold text-foreground">Coverage</h2>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Filter toggle */}
-          <button
-            type="button"
-            onClick={() => setFilterAttempted((v) => !v)}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-              filterAttempted
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-          >
-            Attempted only
-          </button>
-          {/* Sort dropdown */}
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="appearance-none rounded-lg border border-border bg-background pl-3 pr-7 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
-            >
-              <option value="attempted">Sort: Most attempted</option>
-              <option value="alphabetical">Sort: A → Z</option>
-              <option value="coverage">Sort: Coverage %</option>
-              <option value="accuracy">Sort: Accuracy %</option>
-            </select>
-            <ChevronDownIcon
-              size={12}
-              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-          </div>
-        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {totalAttempted} of {modules.length} modules started · tap a module to see discipline breakdown
+        </p>
       </div>
 
-      {disciplines.length === 0 ? (
+      {moduleRows.length === 0 ? (
         <div className="p-10 text-center">
           <BookOpenIcon size={28} className="mx-auto mb-2 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            {filterAttempted
-              ? "No disciplines attempted yet. Complete a study block to see your progress."
-              : "No disciplines found."}
-          </p>
+          <p className="text-sm text-muted-foreground">No modules found.</p>
         </div>
       ) : (
         <ul className="divide-y divide-border">
-          {disciplines.map((d) => (
-            <li key={d.subject} className="px-5 py-3.5">
-              <div className="flex items-center justify-between gap-4 mb-2">
-                <span className="text-sm font-medium text-foreground truncate">{d.subject}</span>
-                <div className="flex items-center gap-3 shrink-0">
-                  {d.accuracy !== null && (
-                    <span className={`text-xs font-semibold tabular-nums ${
-                      d.accuracy >= 70 ? "text-primary" : d.accuracy >= 50 ? "text-amber-600" : "text-destructive"
-                    }`}>
-                      {d.accuracy}% acc
-                    </span>
-                  )}
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {d.attempted}{d.total > 0 ? `/${d.total}` : ""} Qs
-                  </span>
-                </div>
-              </div>
-              {/* Coverage bar */}
-              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
-                  style={{ width: `${Math.max(d.coverage, d.attempted > 0 ? 2 : 0)}%` }}
-                />
-              </div>
-              {d.total > 0 && (
-                <p className="mt-1 text-[10px] text-muted-foreground">{d.coverage}% covered</p>
-              )}
-            </li>
-          ))}
+          {moduleRows.map((row) => {
+            const isExpanded = expandedModules.has(row.mod)
+            const barColor = row.coverage >= 70 ? "#10b981" : row.coverage >= 40 ? "#0ea5e9" : "#8b5cf6"
+
+            return (
+              <li key={row.mod}>
+                {/* Module row — always visible */}
+                <button
+                  type="button"
+                  onClick={() => toggleModule(row.mod)}
+                  className="w-full px-5 py-3.5 text-left hover:bg-muted/40 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <ChevronDownIcon
+                        size={13}
+                        className={`shrink-0 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                      />
+                      <span className="text-sm font-semibold text-foreground truncate">{row.mod}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {row.accuracy !== null && (
+                        <span className={`text-xs font-semibold tabular-nums ${
+                          row.accuracy >= 70 ? "text-primary" : row.accuracy >= 50 ? "text-amber-600" : "text-destructive"
+                        }`}>
+                          {row.accuracy}% acc
+                        </span>
+                      )}
+                      <span className="text-xs font-bold tabular-nums" style={{ color: barColor }}>
+                        {row.coverage}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.max(row.coverage, row.attempted > 0 ? 2 : 0)}%`, background: barColor }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {row.attempted} of {row.totalQ} questions attempted
+                  </p>
+                </button>
+
+                {/* Discipline breakdown — collapsible */}
+                {isExpanded && (
+                  <ul className="border-t border-border bg-muted/20 divide-y divide-border/50">
+                    {row.disciplines.map((disc) => {
+                      const total = totalBySubject[disc] ?? 0
+                      const attemptedIds = subjectStats.attemptedIds[disc]
+                      const attempted = attemptedIds?.size ?? 0
+                      const correct = subjectStats.correctBySubject[disc] ?? 0
+                      const cov = total > 0 ? Math.round((attempted / total) * 100) : 0
+                      const acc = attempted > 0 ? Math.round((correct / attempted) * 100) : null
+                      const dColor = cov >= 70 ? "#10b981" : cov >= 40 ? "#0ea5e9" : "#f59e0b"
+                      return (
+                        <li key={disc} className="px-8 py-3">
+                          <div className="flex items-center justify-between gap-3 mb-1.5">
+                            <span className="text-xs font-medium text-foreground truncate">{disc}</span>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {acc !== null && (
+                                <span className={`text-[11px] tabular-nums ${
+                                  acc >= 70 ? "text-primary" : acc >= 50 ? "text-amber-600" : "text-destructive"
+                                }`}>
+                                  {acc}% acc
+                                </span>
+                              )}
+                              <span className="text-[11px] font-semibold tabular-nums" style={{ color: dColor }}>
+                                {cov}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{ width: `${Math.max(cov, attempted > 0 ? 2 : 0)}%`, background: dColor }}
+                            />
+                          </div>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">
+                            {attempted}/{total} Qs
+                          </p>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
@@ -315,7 +342,7 @@ export function ProfileHistory() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <ProfileHeader />
-      <DisciplineCoverage />
+      <ModuleCoverage />
       <ExamScores scores={examScores} />
 
       {/* Per-question history */}
