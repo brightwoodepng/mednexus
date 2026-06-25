@@ -6611,6 +6611,10 @@
     padding-right: calc(var(--spacing) * 6);
   }
 
+  .pr-7 {
+    padding-right: calc(var(--spacing) * 7);
+  }
+
   .pr-8 {
     padding-right: calc(var(--spacing) * 8);
   }
@@ -7286,6 +7290,10 @@
 
   .text-inherit {
     color: inherit;
+  }
+
+  .text-muted {
+    color: var(--muted);
   }
 
   .text-muted-foreground {
