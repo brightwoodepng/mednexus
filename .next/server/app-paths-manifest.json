@@ -1,0 +1,11 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/admin/auth/route": "app/api/admin/auth/route.js",
+  "/api/enhance-question/route": "app/api/enhance-question/route.js",
+  "/api/notifications/route": "app/api/notifications/route.js",
+  "/api/parse-pdf/route": "app/api/parse-pdf/route.js",
+  "/api/questions/route": "app/api/questions/route.js",
+  "/api/sync/route": "app/api/sync/route.js",
+  "/page": "app/page.js"
+}

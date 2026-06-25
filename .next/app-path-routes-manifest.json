@@ -1,0 +1,11 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/admin/auth/route": "/api/admin/auth",
+  "/api/enhance-question/route": "/api/enhance-question",
+  "/api/notifications/route": "/api/notifications",
+  "/api/parse-pdf/route": "/api/parse-pdf",
+  "/api/questions/route": "/api/questions",
+  "/api/sync/route": "/api/sync",
+  "/page": "/"
+}

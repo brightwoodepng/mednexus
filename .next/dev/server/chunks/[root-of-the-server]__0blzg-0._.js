@@ -48,6 +48,13 @@ async function ensureSchema() {
       data JSONB NOT NULL DEFAULT '[]',
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS mednexus_notifications (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'info',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
     initialized = true;
 }
