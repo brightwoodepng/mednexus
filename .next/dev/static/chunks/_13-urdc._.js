@@ -16150,7 +16150,7 @@ function CreditsModal({ open, onClose }) {
                                 href: "https://wa.me/233543982307",
                                 target: "_blank",
                                 rel: "noopener noreferrer",
-                                className: "flex items-center gap-3 rounded-2xl border border-[#25D366]/40 bg-[#25D366] p-4 transition-all hover:bg-[#22c55e] active:bg-[#16a34a] shadow-sm",
+                                className: "flex items-center gap-3 rounded-2xl border border-[#25D366]/40 p-4 transition-all hover:bg-[#22c55e] active:bg-[#16a34a] shadow-sm bg-[color:var(--color-emerald-500)]",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         className: "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white shadow-sm",
@@ -16227,7 +16227,7 @@ function CreditsModal({ open, onClose }) {
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/40 dark:bg-amber-900/20",
+                                className: "rounded-2xl border border-amber-200 p-4 dark:border-amber-800/40 dark:bg-amber-900/20 bg-[color:var(--color-emerald-500)]",
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "flex items-start gap-2.5",
                                     children: [
@@ -16242,7 +16242,7 @@ function CreditsModal({ open, onClose }) {
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                             children: [
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "text-sm font-semibold text-amber-900 dark:text-amber-200",
+                                                    className: "text-sm font-semibold dark:text-amber-200 text-[#ffffff]",
                                                     children: "Support the Project"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/mednexus-app.tsx",
@@ -16250,7 +16250,7 @@ function CreditsModal({ open, onClose }) {
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300",
+                                                    className: "mt-1 text-xs leading-relaxed dark:text-amber-300 text-[#ffffff]",
                                                     children: "Contributions help keep MedNexus growing. Reach out on WhatsApp to donate or collaborate."
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/mednexus-app.tsx",

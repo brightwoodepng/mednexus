@@ -2754,6 +2754,10 @@
     background-color: --color-bg;
   }
 
+  .bg-\[color\:var\(--color-emerald-500\)\] {
+    background-color: var(--color-emerald-500);
+  }
+
   .bg-accent {
     background-color: var(--accent);
   }
@@ -3946,6 +3950,10 @@
 
   .whitespace-nowrap {
     white-space: nowrap;
+  }
+
+  .text-\[\#ffffff\] {
+    color: #fff;
   }
 
   .text-accent-foreground {

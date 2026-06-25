@@ -87,7 +87,7 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
             href="https://wa.me/233543982307"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-2xl border border-[#25D366]/40 bg-[#25D366] p-4 transition-all hover:bg-[#22c55e] active:bg-[#16a34a] shadow-sm"
+            className="flex items-center gap-3 rounded-2xl border border-[#25D366]/40 p-4 transition-all hover:bg-[#22c55e] active:bg-[#16a34a] shadow-sm bg-[color:var(--color-emerald-500)]"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white shadow-sm">
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -103,12 +103,12 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
             </svg>
           </a>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/40 dark:bg-amber-900/20">
+          <div className="rounded-2xl border border-amber-200 p-4 dark:border-amber-800/40 dark:bg-amber-900/20 bg-[color:var(--color-emerald-500)]">
             <div className="flex items-start gap-2.5">
               <HeartIcon size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
               <div>
-                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Support the Project</p>
-                <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                <p className="text-sm font-semibold dark:text-amber-200 text-[#ffffff]">Support the Project</p>
+                <p className="mt-1 text-xs leading-relaxed dark:text-amber-300 text-[#ffffff]">
                   Contributions help keep MedNexus growing. Reach out on WhatsApp to donate or collaborate.
                 </p>
               </div>
