@@ -9618,6 +9618,30 @@ const THEMES = [
             primary: "#e8429e"
         },
         accent: "#e8429e"
+    },
+    {
+        id: "liquid-glass-light",
+        name: "Liquid Glass",
+        description: "Icy azure glass — clean, airy, translucent.",
+        mode: "light",
+        swatch: {
+            bg: "#eaf3fc",
+            surface: "#fefeff",
+            primary: "#1a7fd4"
+        },
+        accent: "#1a7fd4"
+    },
+    {
+        id: "liquid-glass-dark",
+        name: "Liquid Glass Dark",
+        description: "Deep navy glass with electric cyan shimmer.",
+        mode: "dark",
+        swatch: {
+            bg: "#0d1320",
+            surface: "#141c2e",
+            primary: "#38bdf8"
+        },
+        accent: "#38bdf8"
     }
 ];
 const DEFAULT_THEME = "clinical-light";
@@ -16126,10 +16150,10 @@ function CreditsModal({ open, onClose }) {
                                 href: "https://wa.me/233543982307",
                                 target: "_blank",
                                 rel: "noopener noreferrer",
-                                className: "flex items-center gap-3 rounded-2xl border border-emerald-200/80 p-4 transition-colors hover:bg-emerald-100/80 active:bg-emerald-100 dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 bg-[#0077c2]",
+                                className: "flex items-center gap-3 rounded-2xl border border-[#25D366]/40 bg-[#25D366] p-4 transition-all hover:bg-[#22c55e] active:bg-[#16a34a] shadow-sm",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#25D366] text-white shadow-sm",
+                                        className: "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white shadow-sm",
                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
                                             viewBox: "0 0 24 24",
                                             fill: "currentColor",
@@ -16155,7 +16179,7 @@ function CreditsModal({ open, onClose }) {
                                         className: "min-w-0 flex-1",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                className: "text-sm font-semibold dark:text-emerald-300 text-[#fcfcfc]",
+                                                className: "text-sm font-semibold text-white",
                                                 children: "Chat on WhatsApp"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/mednexus-app.tsx",
@@ -16163,7 +16187,7 @@ function CreditsModal({ open, onClose }) {
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                className: "text-xs dark:text-emerald-400 text-[#fcfcfc]",
+                                                className: "text-xs text-white/80",
                                                 children: "+233 54 398 2307"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/mednexus-app.tsx",
@@ -16181,7 +16205,7 @@ function CreditsModal({ open, onClose }) {
                                         fill: "none",
                                         stroke: "currentColor",
                                         strokeWidth: "2",
-                                        className: "h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400",
+                                        className: "h-4 w-4 shrink-0 text-white/80",
                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                                             d: "M7 17L17 7M17 7H7M17 7v10",
                                             strokeLinecap: "round",
@@ -16203,7 +16227,7 @@ function CreditsModal({ open, onClose }) {
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "rounded-2xl border border-amber-200/70 p-4 dark:border-amber-800/30 dark:bg-amber-900/20 bg-[#0077c2]",
+                                className: "rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/40 dark:bg-amber-900/20",
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "flex items-start gap-2.5",
                                     children: [
@@ -16218,7 +16242,7 @@ function CreditsModal({ open, onClose }) {
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                             children: [
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "text-sm font-semibold dark:text-amber-300 text-[#fcfcfc]",
+                                                    className: "text-sm font-semibold text-amber-900 dark:text-amber-200",
                                                     children: "Support the Project"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/mednexus-app.tsx",
@@ -16226,7 +16250,7 @@ function CreditsModal({ open, onClose }) {
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "mt-1 text-xs leading-relaxed dark:text-amber-400 text-[#fcfcfc]",
+                                                    className: "mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300",
                                                     children: "Contributions help keep MedNexus growing. Reach out on WhatsApp to donate or collaborate."
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/mednexus-app.tsx",

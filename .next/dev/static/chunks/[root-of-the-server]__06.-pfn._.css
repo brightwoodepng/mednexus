@@ -2450,6 +2450,11 @@
     border-color: var(--button-outline);
   }
 
+  .border-\[\#25D366\]\/40 {
+    border-color: #25d36666;
+    border-color: lab(74.7716% -60.9649 41.133 / .4);
+  }
+
   .border-\[--color-border\] {
     border-color: --color-border;
   }
@@ -2730,10 +2735,6 @@
 
   .bg-\[\#25D366\] {
     background-color: #25d366;
-  }
-
-  .bg-\[\#0077c2\] {
-    background-color: #0077c2;
   }
 
   .bg-\[\#F26207\] {
@@ -3947,10 +3948,6 @@
     white-space: nowrap;
   }
 
-  .text-\[\#fcfcfc\] {
-    color: #fcfcfc;
-  }
-
   .text-accent-foreground {
     color: var(--accent-foreground);
   }
@@ -3977,6 +3974,10 @@
 
   .text-amber-800 {
     color: var(--color-amber-800);
+  }
+
+  .text-amber-900 {
+    color: var(--color-amber-900);
   }
 
   .text-black {
@@ -4230,6 +4231,16 @@
   @supports (color: color-mix(in lab, red, red)) {
     .text-white\/60 {
       color: color-mix(in oklab, var(--color-white) 60%, transparent);
+    }
+  }
+
+  .text-white\/80 {
+    color: #fffc;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-white\/80 {
+      color: color-mix(in oklab, var(--color-white) 80%, transparent);
     }
   }
 
@@ -5098,6 +5109,12 @@
   }
 
   @media (hover: hover) {
+    .hover\:bg-\[\#22c55e\]:hover {
+      background-color: #22c55e;
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:bg-accent:hover {
       background-color: var(--accent);
     }
@@ -5783,6 +5800,10 @@
 
   .active\:scale-\[0\.99\]:active {
     scale: .99;
+  }
+
+  .active\:bg-\[\#16a34a\]:active {
+    background-color: #16a34a;
   }
 
   .active\:bg-emerald-100:active {
@@ -7314,6 +7335,12 @@
       .dark\:bg-violet-900\/30 {
         background-color: color-mix(in oklab, var(--color-violet-900) 30%, transparent);
       }
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dark\:text-amber-200 {
+      color: var(--color-amber-200);
     }
   }
 
