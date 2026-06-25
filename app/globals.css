@@ -437,6 +437,90 @@
   --sidebar-ring: oklch(0.72 0.22 330);
 }
 
+/* 10. Liquid Glass Light — icy azure glass, airy and translucent */
+[data-theme='liquid-glass-light'] {
+  color-scheme: light;
+  --radius: 1.25rem;
+  --background: oklch(0.964 0.014 223);
+  --foreground: oklch(0.17 0.026 238);
+  --card: oklch(0.996 0.005 218);
+  --card-foreground: oklch(0.17 0.026 238);
+  --popover: oklch(0.996 0.005 218);
+  --popover-foreground: oklch(0.17 0.026 238);
+  --primary: oklch(0.56 0.22 234);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.92 0.02 226);
+  --secondary-foreground: oklch(0.26 0.03 238);
+  --muted: oklch(0.935 0.014 223);
+  --muted-foreground: oklch(0.5 0.022 236);
+  --accent: oklch(0.865 0.058 224);
+  --accent-foreground: oklch(0.26 0.04 238);
+  --destructive: oklch(0.57 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.6 0.15 162);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.72 0.17 68);
+  --warning-foreground: oklch(0.17 0.026 238);
+  --border: oklch(0.875 0.018 223);
+  --input: oklch(0.875 0.018 223);
+  --ring: oklch(0.56 0.22 234);
+  --chart-1: oklch(0.56 0.22 234);
+  --chart-2: oklch(0.6 0.15 162);
+  --chart-3: oklch(0.72 0.17 68);
+  --chart-4: oklch(0.6 0.2 25);
+  --chart-5: oklch(0.6 0.15 300);
+  --sidebar: oklch(0.978 0.011 222);
+  --sidebar-foreground: oklch(0.26 0.026 238);
+  --sidebar-primary: oklch(0.56 0.22 234);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.9 0.04 226);
+  --sidebar-accent-foreground: oklch(0.26 0.04 238);
+  --sidebar-border: oklch(0.875 0.018 223);
+  --sidebar-ring: oklch(0.56 0.22 234);
+}
+
+/* 11. Liquid Glass Dark — deep navy glass with electric cyan shimmer */
+[data-theme='liquid-glass-dark'] {
+  color-scheme: dark;
+  --radius: 1.25rem;
+  --background: oklch(0.13 0.022 242);
+  --foreground: oklch(0.94 0.012 226);
+  --card: oklch(0.178 0.028 242);
+  --card-foreground: oklch(0.94 0.012 226);
+  --popover: oklch(0.178 0.028 242);
+  --popover-foreground: oklch(0.94 0.012 226);
+  --primary: oklch(0.76 0.165 212);
+  --primary-foreground: oklch(0.12 0.022 242);
+  --secondary: oklch(0.228 0.032 242);
+  --secondary-foreground: oklch(0.94 0.012 226);
+  --muted: oklch(0.228 0.032 242);
+  --muted-foreground: oklch(0.68 0.02 232);
+  --accent: oklch(0.295 0.052 234);
+  --accent-foreground: oklch(0.94 0.012 226);
+  --destructive: oklch(0.63 0.21 22);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.69 0.15 158);
+  --success-foreground: oklch(0.13 0.022 242);
+  --warning: oklch(0.77 0.15 72);
+  --warning-foreground: oklch(0.13 0.022 242);
+  --border: oklch(0.275 0.034 242);
+  --input: oklch(0.275 0.034 242);
+  --ring: oklch(0.76 0.165 212);
+  --chart-1: oklch(0.76 0.165 212);
+  --chart-2: oklch(0.69 0.15 158);
+  --chart-3: oklch(0.77 0.15 72);
+  --chart-4: oklch(0.63 0.21 22);
+  --chart-5: oklch(0.65 0.18 295);
+  --sidebar: oklch(0.15 0.025 242);
+  --sidebar-foreground: oklch(0.9 0.012 226);
+  --sidebar-primary: oklch(0.76 0.165 212);
+  --sidebar-primary-foreground: oklch(0.12 0.022 242);
+  --sidebar-accent: oklch(0.275 0.05 236);
+  --sidebar-accent-foreground: oklch(0.94 0.012 226);
+  --sidebar-border: oklch(0.275 0.034 242);
+  --sidebar-ring: oklch(0.76 0.165 212);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
