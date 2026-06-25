@@ -2,3 +2,4 @@
 - [DB-backed Questions](db-questions.md) — single-row JSONB in mednexus_questions, polled every 30s by all clients
 - [Quiz Flow Architecture](quiz-flow.md) — Dashboard→handleReadyForQuiz→QuantityModal→QuizSimulator with pre-computed question pools
 - [Hooks Before Early Returns](hooks-rules.md) — useCallback/useCallback must appear before any early returns in MedNexusApp
+- [Admin Question Editor Architecture](admin-editor.md) — hierarchical tree (Module→Discipline→Question), draft staging via local state, pdfjs-dist client-side parsing
