@@ -13,9 +13,9 @@ import { Dashboard } from "@/components/dashboard"
 import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
-import { ProfileHistory } from "@/components/profile-history"
 import { ThemeModal } from "@/components/theme-modal"
 import { QuestionEditor } from "@/components/question-editor"
+import { BroadcastScreen } from "@/components/broadcast-screen"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import { NotificationBell } from "@/components/notification-bell"
 import {
@@ -58,7 +58,9 @@ export function MedNexusApp() {
     lastSetup: { module: string; discipline: string | null } | null
   } | null>(null)
 
-  const safeScreen = screen === "question-editor" && !isAdmin ? "dashboard" : screen
+  const safeScreen = (screen === "question-editor" || screen === "broadcast") && !isAdmin
+    ? "dashboard"
+    : screen
 
   // Called by Dashboard when user has selected module (+ optional discipline)
   // Must be defined before any early returns to obey Rules of Hooks
@@ -214,8 +216,8 @@ export function MedNexusApp() {
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} />
           )}
-          {safeScreen === "profile" && <ProfileHistory />}
           {safeScreen === "question-editor" && isAdmin && <QuestionEditor />}
+          {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
           {safeScreen === "results" && lastResult && (
             <ResultsScreen
               result={lastResult.result}
