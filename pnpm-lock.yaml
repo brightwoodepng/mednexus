@@ -12,7 +12,7 @@ importers:
   .:
     dependencies:
       '@base-ui/react':
-        specifier: ^1.5.0
+        specifier: ^1.6.0
         version: 1.6.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@types/bcryptjs':
         specifier: ^3.0.0
@@ -24,7 +24,7 @@ importers:
         specifier: ^8.20.0
         version: 8.20.0
       '@vercel/analytics':
-        specifier: 1.6.1
+        specifier: ^1.6.1
         version: 1.6.1(next@16.2.9(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       bcryptjs:
         specifier: ^3.0.3
@@ -42,16 +42,16 @@ importers:
         specifier: ^12.15.0
         version: 12.15.0
       firebase-admin:
-        specifier: ^14.0.0
-        version: 14.0.0
+        specifier: ^14.1.0
+        version: 14.1.0
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
       lucide-react:
-        specifier: ^1.16.0
+        specifier: ^1.21.0
         version: 1.21.0(react@19.2.7)
       next:
-        specifier: ^16.2.6
+        specifier: ^16.2.9
         version: 16.2.9(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       openai:
         specifier: ^6.45.0
@@ -78,7 +78,7 @@ importers:
         specifier: ^4.8.0
         version: 4.11.0(typescript@5.7.3)
       tailwind-merge:
-        specifier: ^3.3.1
+        specifier: ^3.6.0
         version: 3.6.0
       tw-animate-css:
         specifier: ^1.4.0
@@ -91,25 +91,25 @@ importers:
         version: 5.0.0(zod@4.4.3)
     devDependencies:
       '@tailwindcss/postcss':
-        specifier: ^4.2.0
+        specifier: ^4.3.1
         version: 4.3.1
       '@types/node':
-        specifier: ^24
+        specifier: ^24.13.2
         version: 24.13.2
       '@types/react':
-        specifier: ^19
+        specifier: ^19.2.17
         version: 19.2.17
       '@types/react-dom':
-        specifier: ^19
+        specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       postcss:
-        specifier: ^8.5
+        specifier: ^8.5.15
         version: 8.5.15
       tailwindcss:
-        specifier: ^4.2.0
+        specifier: ^4.3.1
         version: 4.3.1
       typescript:
-        specifier: 5.7.3
+        specifier: ^5.7.3
         version: 5.7.3
 
 packages:
@@ -1654,8 +1654,8 @@ packages:
     resolution: {integrity: sha512-1yD6RmLI1XBfxugvORwlck6f75tYL+iR0jqwsOrOxMZyGYqUuDhJ0l4AXdO1iX/FTs9cBAMEk1gWSEx1kSbylg==}
     engines: {node: '>=6'}
 
-  firebase-admin@14.0.0:
-    resolution: {integrity: sha512-U88/r6VWiBQ05+UlLaF1A1AN4Y3SAGQKcQWawzafEAnXVaCZ21+2KclMPdlIQAAF5pUtN+FkXCSQnJEpc6QDZA==}
+  firebase-admin@14.1.0:
+    resolution: {integrity: sha512-GdHh6vHWm9LVRt+3hINWczaA7fPwnN/l4xZdqzn+wNPYErrLI1x6u1mvAJM/5IGgYI9EqQgLt1EyBG8ok/hWCg==}
     engines: {node: '>=22'}
 
   firebase@12.15.0:
@@ -4558,7 +4558,7 @@ snapshots:
     dependencies:
       locate-path: 3.0.0
 
-  firebase-admin@14.0.0:
+  firebase-admin@14.1.0:
     dependencies:
       '@fastify/busboy': 3.2.0
       '@firebase/database-compat': 2.1.4
