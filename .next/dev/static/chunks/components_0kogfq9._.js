@@ -5700,25 +5700,457 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/next@16.2.9_@babel+core@7.29.7_@opentelemetry+api@1.9.1_react-dom@19.2.7_react@19.2.7__react@19.2.7/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/next@16.2.9_@babel+core@7.29.7_@opentelemetry+api@1.9.1_react-dom@19.2.7_react@19.2.7__react@19.2.7/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$themes$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/themes.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/icons.tsx [app-client] (ecmascript)");
 ;
-var _s = __turbopack_context__.k.signature();
+var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature();
 "use client";
 ;
 ;
-function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, questions, userName, userId, isGuest = false, onComplete, onExit }) {
+;
+function makeSessionKey(assessmentId, userId) {
+    return `mednexus-exam-session-${assessmentId}-${userId}`;
+}
+function readSession(key) {
+    try {
+        const raw = ("TURBOPACK compile-time truthy", 1) ? localStorage.getItem(key) : "TURBOPACK unreachable";
+        return raw ? JSON.parse(raw) : null;
+    } catch  {
+        return null;
+    }
+}
+function writeSession(key, session) {
+    try {
+        localStorage.setItem(key, JSON.stringify(session));
+    } catch  {}
+}
+function clearSession(key) {
+    try {
+        localStorage.removeItem(key);
+    } catch  {}
+}
+function calcRemaining(startedAt, totalSecs) {
+    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+    return Math.max(0, totalSecs - elapsed);
+}
+// ── Calculator ────────────────────────────────────────────────────────────────
+function Calculator({ onClose }) {
     _s();
+    const [display, setDisplay] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("0");
+    const [memory, setMemory] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [operator, setOperator] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [waiting, setWaiting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [expression, setExpression] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    function inputDigit(digit) {
+        if (waiting) {
+            setDisplay(digit);
+            setWaiting(false);
+        } else setDisplay(display === "0" ? digit : display + digit);
+    }
+    function inputDecimal() {
+        if (waiting) {
+            setDisplay("0.");
+            setWaiting(false);
+            return;
+        }
+        if (!display.includes(".")) setDisplay(display + ".");
+    }
+    function calculate(a, b, op) {
+        if (op === "+") return a + b;
+        if (op === "−") return a - b;
+        if (op === "×") return a * b;
+        if (op === "÷") return b !== 0 ? a / b : 0;
+        return b;
+    }
+    function handleOperator(op) {
+        const val = parseFloat(display);
+        if (memory !== null && !waiting) {
+            const result = calculate(memory, val, operator);
+            setDisplay(String(result));
+            setMemory(result);
+            setExpression(`${result} ${op}`);
+        } else {
+            setMemory(val);
+            setExpression(`${val} ${op}`);
+        }
+        setOperator(op);
+        setWaiting(true);
+    }
+    function handleEquals() {
+        if (operator === null || memory === null) return;
+        const val = parseFloat(display);
+        const result = parseFloat(calculate(memory, val, operator).toPrecision(10));
+        setDisplay(String(result));
+        setExpression(`${memory} ${operator} ${val} =`);
+        setMemory(null);
+        setOperator(null);
+        setWaiting(true);
+    }
+    function handleClear() {
+        setDisplay("0");
+        setMemory(null);
+        setOperator(null);
+        setWaiting(false);
+        setExpression("");
+    }
+    function handleBackspace() {
+        if (!waiting) setDisplay(display.length > 1 ? display.slice(0, -1) : "0");
+    }
+    function handleNegate() {
+        setDisplay(String(parseFloat(display) * -1));
+    }
+    function handlePercent() {
+        setDisplay(String(parseFloat(display) / 100));
+    }
+    const btn = (label, action, style = "")=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+            type: "button",
+            onClick: action,
+            className: `flex h-10 items-center justify-center rounded-xl text-sm font-semibold transition-colors active:scale-95 ${style}`,
+            children: label
+        }, label, false, {
+            fileName: "[project]/components/assessment-exam-runner.tsx",
+            lineNumber: 109,
+            columnNumber: 5
+        }, this);
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        className: "fixed bottom-20 right-4 z-[70] w-64 rounded-2xl border border-border bg-card shadow-2xl overflow-hidden",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "flex items-center justify-between border-b border-border px-3 py-2",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        className: "text-xs font-semibold text-muted-foreground uppercase tracking-wide",
+                        children: "Calculator"
+                    }, void 0, false, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 118,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: onClose,
+                        className: "flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["XIcon"], {
+                            size: 13
+                        }, void 0, false, {
+                            fileName: "[project]/components/assessment-exam-runner.tsx",
+                            lineNumber: 120,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 119,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/components/assessment-exam-runner.tsx",
+                lineNumber: 117,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "bg-muted/40 px-3 py-3 text-right",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "h-4 text-[10px] text-muted-foreground truncate",
+                        children: expression || " "
+                    }, void 0, false, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 124,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "mt-0.5 text-2xl font-bold text-foreground tabular-nums truncate",
+                        children: display
+                    }, void 0, false, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 125,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/components/assessment-exam-runner.tsx",
+                lineNumber: 123,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "grid grid-cols-4 gap-1 p-2",
+                children: [
+                    btn("C", handleClear, "bg-destructive/15 text-destructive hover:bg-destructive/25"),
+                    btn("±", handleNegate, "bg-muted text-foreground hover:bg-muted/80"),
+                    btn("%", handlePercent, "bg-muted text-foreground hover:bg-muted/80"),
+                    btn("÷", ()=>handleOperator("÷"), operator === "÷" ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary hover:bg-primary/25"),
+                    btn("7", ()=>inputDigit("7"), "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("8", ()=>inputDigit("8"), "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("9", ()=>inputDigit("9"), "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("×", ()=>handleOperator("×"), operator === "×" ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary hover:bg-primary/25"),
+                    btn("4", ()=>inputDigit("4"), "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("5", ()=>inputDigit("5"), "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("6", ()=>inputDigit("6"), "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("−", ()=>handleOperator("−"), operator === "−" ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary hover:bg-primary/25"),
+                    btn("1", ()=>inputDigit("1"), "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("2", ()=>inputDigit("2"), "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("3", ()=>inputDigit("3"), "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("+", ()=>handleOperator("+"), operator === "+" ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary hover:bg-primary/25"),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: ()=>inputDigit("0"),
+                        className: "col-span-2 flex h-10 items-center justify-start rounded-xl bg-card border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted transition-colors",
+                        children: "0"
+                    }, void 0, false, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 144,
+                        columnNumber: 9
+                    }, this),
+                    btn(".", inputDecimal, "bg-card border border-border hover:bg-muted text-foreground"),
+                    btn("=", handleEquals, "bg-primary text-primary-foreground hover:bg-primary/90"),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: handleBackspace,
+                        className: "col-span-4 flex h-8 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground hover:bg-muted/80 transition-colors",
+                        children: "⌫ backspace"
+                    }, void 0, false, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 150,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/components/assessment-exam-runner.tsx",
+                lineNumber: 127,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/assessment-exam-runner.tsx",
+        lineNumber: 116,
+        columnNumber: 5
+    }, this);
+}
+_s(Calculator, "trBXEXHqg1HyemosdiSyK12Spk4=");
+_c = Calculator;
+// ── Theme Picker ──────────────────────────────────────────────────────────────
+function ThemePicker({ current, onSelect, onClose }) {
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        className: "fixed bottom-16 left-1/2 -translate-x-1/2 z-[70] w-[min(340px,92vw)] rounded-2xl border border-border bg-card shadow-2xl overflow-hidden",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "flex items-center justify-between border-b border-border px-4 py-3",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        className: "text-xs font-semibold text-muted-foreground uppercase tracking-wide",
+                        children: "Exam Theme"
+                    }, void 0, false, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 164,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: onClose,
+                        className: "flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["XIcon"], {
+                            size: 13
+                        }, void 0, false, {
+                            fileName: "[project]/components/assessment-exam-runner.tsx",
+                            lineNumber: 166,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 165,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/components/assessment-exam-runner.tsx",
+                lineNumber: 163,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "p-3 grid grid-cols-4 gap-2 max-h-64 overflow-y-auto",
+                children: __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$themes$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["THEMES"].map((t)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: ()=>{
+                            onSelect(t.id);
+                            onClose();
+                        },
+                        title: t.name,
+                        className: `group flex flex-col items-center gap-1.5 rounded-xl p-2 transition-all ${current === t.id ? "ring-2 ring-primary bg-primary/8" : "hover:bg-muted"}`,
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "relative h-9 w-9 rounded-xl overflow-hidden border border-border/50 shadow-sm",
+                                style: {
+                                    background: t.swatch.bg
+                                },
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "absolute inset-0 flex",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "w-1/2 h-full",
+                                            style: {
+                                                background: t.swatch.surface
+                                            }
+                                        }, void 0, false, {
+                                            fileName: "[project]/components/assessment-exam-runner.tsx",
+                                            lineNumber: 175,
+                                            columnNumber: 17
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "w-1/2 h-full",
+                                            style: {
+                                                background: t.swatch.primary
+                                            }
+                                        }, void 0, false, {
+                                            fileName: "[project]/components/assessment-exam-runner.tsx",
+                                            lineNumber: 176,
+                                            columnNumber: 17
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/components/assessment-exam-runner.tsx",
+                                    lineNumber: 174,
+                                    columnNumber: 15
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/components/assessment-exam-runner.tsx",
+                                lineNumber: 173,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                className: "text-[9px] font-medium text-center leading-tight text-muted-foreground group-hover:text-foreground line-clamp-2",
+                                children: t.name
+                            }, void 0, false, {
+                                fileName: "[project]/components/assessment-exam-runner.tsx",
+                                lineNumber: 179,
+                                columnNumber: 13
+                            }, this)
+                        ]
+                    }, t.id, true, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 171,
+                        columnNumber: 11
+                    }, this))
+            }, void 0, false, {
+                fileName: "[project]/components/assessment-exam-runner.tsx",
+                lineNumber: 169,
+                columnNumber: 7
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/assessment-exam-runner.tsx",
+        lineNumber: 162,
+        columnNumber: 5
+    }, this);
+}
+_c1 = ThemePicker;
+function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, questions, userName, userId, isGuest = false, onComplete }) {
+    _s1();
     const totalSecs = timeLimitMins * 60;
-    const [timeLeft, setTimeLeft] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(totalSecs);
+    const sessionKey = makeSessionKey(assessmentId, userId);
+    // ── State — lazily initialised from localStorage session ──────────────────
+    const [timeLeft, setTimeLeft] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
+        "AssessmentExamRunner.useState": ()=>{
+            const session = readSession(sessionKey);
+            return session ? calcRemaining(session.startedAt, totalSecs) : totalSecs;
+        }
+    }["AssessmentExamRunner.useState"]);
+    const [answers, setAnswers] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
+        "AssessmentExamRunner.useState": ()=>{
+            return readSession(sessionKey)?.answers ?? {};
+        }
+    }["AssessmentExamRunner.useState"]);
+    const [flagged, setFlagged] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
+        "AssessmentExamRunner.useState": ()=>{
+            const session = readSession(sessionKey);
+            return session?.flagged ? new Set(session.flagged) : new Set();
+        }
+    }["AssessmentExamRunner.useState"]);
     const [currentIdx, setCurrentIdx] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(0);
-    const [answers, setAnswers] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({});
     const [submitted, setSubmitted] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [submitting, setSubmitting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [showNav, setShowNav] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [showConfirm, setShowConfirm] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [showCalc, setShowCalc] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [showThemePicker, setShowThemePicker] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [currentTheme, setCurrentTheme] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("clinical-light");
     const submittedRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(false);
-    const submitExam = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
-        "AssessmentExamRunner.useCallback[submitExam]": async (finalAnswers)=>{
+    // Store startedAt so saveSession doesn't need to re-read localStorage
+    const startedAtRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(0);
+    // ── Load persisted theme ──────────────────────────────────────────────────
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "AssessmentExamRunner.useEffect": ()=>{
+            try {
+                const stored = localStorage.getItem("mednexus-theme");
+                if (stored) setCurrentTheme(stored);
+            } catch  {}
+        }
+    }["AssessmentExamRunner.useEffect"], []);
+    // ── Session init — create if new, or auto-submit if expired ───────────────
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "AssessmentExamRunner.useEffect": ()=>{
+            const session = readSession(sessionKey);
+            if (!session) {
+                const now = Date.now();
+                startedAtRef.current = now;
+                writeSession(sessionKey, {
+                    startedAt: now,
+                    answers: {},
+                    flagged: []
+                });
+            } else {
+                startedAtRef.current = session.startedAt;
+                // If they were away long enough that time ran out, submit now
+                if (timeLeft === 0 && !submittedRef.current) {
+                    doSubmit(session.answers);
+                }
+            }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }
+    }["AssessmentExamRunner.useEffect"], []);
+    // ── Timer — wall-clock corrected every second ──────────────────────────────
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "AssessmentExamRunner.useEffect": ()=>{
+            if (submitted) return;
+            const t = setInterval({
+                "AssessmentExamRunner.useEffect.t": ()=>{
+                    // Always re-derive from wall clock so resume after leaving is accurate
+                    const remaining = calcRemaining(startedAtRef.current, totalSecs);
+                    setTimeLeft(remaining);
+                    if (remaining === 0) {
+                        clearInterval(t);
+                        doSubmit(answersRef.current);
+                    }
+                }
+            }["AssessmentExamRunner.useEffect.t"], 1000);
+            return ({
+                "AssessmentExamRunner.useEffect": ()=>clearInterval(t)
+            })["AssessmentExamRunner.useEffect"];
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }
+    }["AssessmentExamRunner.useEffect"], [
+        submitted
+    ]);
+    // Keep a ref to latest answers so the timer callback can access them
+    const answersRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(answers);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "AssessmentExamRunner.useEffect": ()=>{
+            answersRef.current = answers;
+        }
+    }["AssessmentExamRunner.useEffect"], [
+        answers
+    ]);
+    // ── Session save helpers ──────────────────────────────────────────────────
+    function saveSession(nextAnswers, nextFlagged) {
+        writeSession(sessionKey, {
+            startedAt: startedAtRef.current,
+            answers: nextAnswers,
+            flagged: Array.from(nextFlagged)
+        });
+    }
+    // ── Core submit ──────────────────────────────────────────────────────────
+    const doSubmit = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "AssessmentExamRunner.useCallback[doSubmit]": async (finalAnswers)=>{
             if (submittedRef.current) return;
             submittedRef.current = true;
             setSubmitting(true);
@@ -5728,6 +6160,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
             }
             const total = questions.length;
             const percentage = total ? Math.round(score / total * 100) : 0;
+            clearSession(sessionKey);
             try {
                 await fetch(`/api/assessments/${assessmentId}/attempt`, {
                     method: "POST",
@@ -5753,100 +6186,66 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                 questions
             });
         }
-    }["AssessmentExamRunner.useCallback[submitExam]"], [
+    }["AssessmentExamRunner.useCallback[doSubmit]"], [
         assessmentId,
         questions,
         userId,
         userName,
         isGuest,
         passMark,
-        onComplete
+        onComplete,
+        sessionKey
     ]);
-    // Timer countdown
-    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
-        "AssessmentExamRunner.useEffect": ()=>{
-            if (submitted) return;
-            const t = setInterval({
-                "AssessmentExamRunner.useEffect.t": ()=>{
-                    setTimeLeft({
-                        "AssessmentExamRunner.useEffect.t": (prev)=>{
-                            if (prev <= 1) {
-                                clearInterval(t);
-                                submitExam(answers);
-                                return 0;
-                            }
-                            return prev - 1;
-                        }
-                    }["AssessmentExamRunner.useEffect.t"]);
-                }
-            }["AssessmentExamRunner.useEffect.t"], 1000);
-            return ({
-                "AssessmentExamRunner.useEffect": ()=>clearInterval(t)
-            })["AssessmentExamRunner.useEffect"];
-        }
-    }["AssessmentExamRunner.useEffect"], [
-        submitted,
-        submitExam,
-        answers
-    ]);
-    // Session enforcement — auto-submit on tab hide or page unload (no confirmation)
-    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
-        "AssessmentExamRunner.useEffect": ()=>{
-            const handleVisibility = {
-                "AssessmentExamRunner.useEffect.handleVisibility": ()=>{
-                    if (document.visibilityState === "hidden" && !submittedRef.current) {
-                        submitExam(answers);
-                    }
-                }
-            }["AssessmentExamRunner.useEffect.handleVisibility"];
-            const handleBeforeUnload = {
-                "AssessmentExamRunner.useEffect.handleBeforeUnload": (e)=>{
-                    if (!submittedRef.current) {
-                        submitExam(answers);
-                        e.preventDefault();
-                        e.returnValue = "";
-                    }
-                }
-            }["AssessmentExamRunner.useEffect.handleBeforeUnload"];
-            document.addEventListener("visibilitychange", handleVisibility);
-            window.addEventListener("beforeunload", handleBeforeUnload);
-            return ({
-                "AssessmentExamRunner.useEffect": ()=>{
-                    document.removeEventListener("visibilitychange", handleVisibility);
-                    window.removeEventListener("beforeunload", handleBeforeUnload);
-                }
-            })["AssessmentExamRunner.useEffect"];
-        }
-    }["AssessmentExamRunner.useEffect"], [
-        answers,
-        submitExam
-    ]);
+    // ── NO visibilitychange / beforeunload auto-submit ────────────────────────
+    // Timer is wall-clock based so leaving and returning correctly deducts time.
+    function applyTheme(id) {
+        setCurrentTheme(id);
+        document.documentElement.setAttribute("data-theme", id);
+        try {
+            localStorage.setItem("mednexus-theme", id);
+        } catch  {}
+    }
     function selectAnswer(questionId, optionId) {
-        setAnswers((prev)=>({
+        setAnswers((prev)=>{
+            // Clicking the already-selected option clears it
+            const next = {
                 ...prev,
-                [questionId]: optionId
-            }));
+                [questionId]: prev[questionId] === optionId ? null : optionId
+            };
+            saveSession(next, flagged);
+            return next;
+        });
+    }
+    function toggleFlag(questionId) {
+        setFlagged((prev)=>{
+            const next = new Set(prev);
+            if (next.has(questionId)) next.delete(questionId);
+            else next.add(questionId);
+            saveSession(answersRef.current, next);
+            return next;
+        });
     }
     function requestSubmit() {
         setShowConfirm(true);
     }
     function confirmSubmit() {
         setShowConfirm(false);
-        submitExam(answers);
+        doSubmit(answers);
     }
     const q = questions[currentIdx];
-    const answered = Object.values(answers).filter((v)=>v !== null && v !== undefined).length;
+    const answered = Object.values(answers).filter((v)=>v != null).length;
     const unanswered = questions.length - answered;
+    const flaggedCount = flagged.size;
     const mins = Math.floor(timeLeft / 60);
     const secs = timeLeft % 60;
-    const timeCritical = timeLeft <= 60;
+    const timeCritical = timeLeft <= 60 && timeLeft > 0;
     const timeWarning = timeLeft <= 300 && timeLeft > 60;
     if (!q) return null;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "fixed inset-0 z-50 flex flex-col bg-background overflow-hidden",
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "shrink-0 flex items-center gap-3 border-b border-border bg-card px-4 py-3",
+                className: "shrink-0 flex items-center gap-2 border-b border-border bg-card px-3 py-2.5",
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "flex-1 min-w-0",
@@ -5860,7 +6259,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 135,
+                                lineNumber: 352,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5868,18 +6267,18 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                 children: [
                                     "Q",
                                     currentIdx + 1,
-                                    " of ",
+                                    "/",
                                     questions.length
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 136,
+                                lineNumber: 353,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 134,
+                        lineNumber: 351,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5894,12 +6293,12 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 144,
+                                    lineNumber: 359,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 143,
+                                lineNumber: 358,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5911,23 +6310,23 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 149,
+                                lineNumber: 361,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 142,
+                        lineNumber: 357,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: `flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-mono text-sm font-bold tabular-nums ${timeCritical ? "border-destructive/40 bg-destructive/10 text-destructive animate-pulse" : timeWarning ? "border-amber-400/40 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400" : "border-border bg-muted text-foreground"}`,
+                        className: `flex items-center gap-1 rounded-xl border px-2.5 py-1.5 font-mono text-sm font-bold tabular-nums ${timeCritical ? "border-destructive/40 bg-destructive/10 text-destructive animate-pulse" : timeWarning ? "border-amber-400/40 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400" : "border-border bg-muted text-foreground"}`,
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ClockIcon"], {
-                                size: 13
+                                size: 12
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 158,
+                                lineNumber: 370,
                                 columnNumber: 11
                             }, this),
                             String(mins).padStart(2, "0"),
@@ -5936,24 +6335,73 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 153,
+                        lineNumber: 365,
                         columnNumber: 9
                     }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                        type: "button",
-                        onClick: ()=>setShowNav((v)=>!v),
-                        className: "sm:flex lg:hidden hidden h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted text-xs font-bold text-muted-foreground hover:bg-muted/80 transition-colors",
-                        title: "Question navigator",
-                        children: "⊞"
-                    }, void 0, false, {
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "flex items-center gap-1",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: ()=>{
+                                    setShowCalc((v)=>!v);
+                                    setShowThemePicker(false);
+                                },
+                                title: "Calculator",
+                                className: `flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showCalc ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground hover:bg-muted/80"}`,
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CalculatorIcon"], {
+                                    size: 14
+                                }, void 0, false, {
+                                    fileName: "[project]/components/assessment-exam-runner.tsx",
+                                    lineNumber: 378,
+                                    columnNumber: 13
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/components/assessment-exam-runner.tsx",
+                                lineNumber: 376,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: ()=>{
+                                    setShowThemePicker((v)=>!v);
+                                    setShowCalc(false);
+                                },
+                                title: "Change theme",
+                                className: `flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showThemePicker ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground hover:bg-muted/80"}`,
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PaletteIcon"], {
+                                    size: 14
+                                }, void 0, false, {
+                                    fileName: "[project]/components/assessment-exam-runner.tsx",
+                                    lineNumber: 382,
+                                    columnNumber: 13
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/components/assessment-exam-runner.tsx",
+                                lineNumber: 380,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                type: "button",
+                                onClick: ()=>setShowNav((v)=>!v),
+                                className: `flex lg:hidden h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showNav ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground hover:bg-muted/80"}`,
+                                title: "Question navigator",
+                                children: "⊞"
+                            }, void 0, false, {
+                                fileName: "[project]/components/assessment-exam-runner.tsx",
+                                lineNumber: 384,
+                                columnNumber: 11
+                            }, this)
+                        ]
+                    }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 163,
+                        lineNumber: 375,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 133,
+                lineNumber: 350,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5962,37 +6410,66 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8",
                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "mx-auto max-w-3xl space-y-6",
+                            className: "mx-auto max-w-3xl space-y-5",
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "rounded-2xl border border-border bg-card p-5 sm:p-6",
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "mb-3 flex items-center gap-2",
+                                            className: "mb-3 flex items-center justify-between gap-2",
                                             children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                    className: "rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary",
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "flex items-center gap-2",
                                                     children: [
-                                                        "Q",
-                                                        currentIdx + 1
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                            className: "rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary",
+                                                            children: [
+                                                                "Q",
+                                                                currentIdx + 1
+                                                            ]
+                                                        }, void 0, true, {
+                                                            fileName: "[project]/components/assessment-exam-runner.tsx",
+                                                            lineNumber: 400,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                            className: "text-xs text-muted-foreground",
+                                                            children: q.subject
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/components/assessment-exam-runner.tsx",
+                                                            lineNumber: 401,
+                                                            columnNumber: 19
+                                                        }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 180,
+                                                    lineNumber: 399,
                                                     columnNumber: 17
                                                 }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                    className: "text-xs text-muted-foreground",
-                                                    children: q.subject
-                                                }, void 0, false, {
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                    type: "button",
+                                                    onClick: ()=>toggleFlag(q.id),
+                                                    title: flagged.has(q.id) ? "Remove flag" : "Flag this question",
+                                                    className: `flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium transition-colors ${flagged.has(q.id) ? "border-amber-400/60 bg-amber-50 text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-400" : "border-border bg-muted text-muted-foreground hover:border-amber-400/60 hover:text-amber-600"}`,
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["FlagIcon"], {
+                                                            size: 11
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/components/assessment-exam-runner.tsx",
+                                                            lineNumber: 409,
+                                                            columnNumber: 19
+                                                        }, this),
+                                                        flagged.has(q.id) ? "Flagged" : "Flag"
+                                                    ]
+                                                }, void 0, true, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 181,
+                                                    lineNumber: 403,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 179,
+                                            lineNumber: 398,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6000,13 +6477,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                             children: q.vignette
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 183,
+                                            lineNumber: 413,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 178,
+                                    lineNumber: 397,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6023,7 +6500,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                     children: opt.id
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 201,
+                                                    lineNumber: 425,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -6031,23 +6508,23 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                     children: opt.text
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 206,
+                                                    lineNumber: 428,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, opt.id, true, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 191,
+                                            lineNumber: 420,
                                             columnNumber: 19
                                         }, this);
                                     })
                                 }, void 0, false, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 187,
+                                    lineNumber: 416,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "flex items-center justify-between pt-2",
+                                    className: "flex items-center justify-between pt-1",
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                             type: "button",
@@ -6059,14 +6536,14 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                     size: 15
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 220,
+                                                    lineNumber: 437,
                                                     columnNumber: 17
                                                 }, this),
                                                 " Previous"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 214,
+                                            lineNumber: 435,
                                             columnNumber: 15
                                         }, this),
                                         currentIdx < questions.length - 1 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -6079,13 +6556,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                     size: 15
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 229,
+                                                    lineNumber: 442,
                                                     columnNumber: 24
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 224,
+                                            lineNumber: 440,
                                             columnNumber: 17
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                             type: "button",
@@ -6098,7 +6575,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                         size: 14
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                        lineNumber: 238,
+                                                        lineNumber: 447,
                                                         columnNumber: 51
                                                     }, this),
                                                     " Submit Exam"
@@ -6106,13 +6583,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                             }, void 0, true)
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 232,
+                                            lineNumber: 445,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 213,
+                                    lineNumber: 434,
                                     columnNumber: 13
                                 }, this),
                                 currentIdx < questions.length - 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6123,159 +6600,151 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         onClick: requestSubmit,
                                         className: "text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline",
                                         children: [
-                                            "Submit exam early (",
+                                            "Submit early (",
                                             answered,
-                                            " of ",
+                                            "/",
                                             questions.length,
                                             " answered)"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 246,
+                                        lineNumber: 454,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 245,
+                                    lineNumber: 453,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                            lineNumber: 176,
+                            lineNumber: 395,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 175,
+                        lineNumber: 394,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: `hidden ${showNav ? "sm:flex" : ""} lg:flex w-56 shrink-0 flex-col border-l border-border bg-muted/30 p-3 overflow-y-auto`,
-                        children: [
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                className: "mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground",
-                                children: "Navigator"
-                            }, void 0, false, {
-                                fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 261,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "grid grid-cols-5 gap-1",
-                                children: questions.map((question, idx)=>{
-                                    const ans = answers[question.id];
-                                    const isAnswered = ans !== undefined && ans !== null;
-                                    const isCurrent = idx === currentIdx;
-                                    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                        type: "button",
-                                        onClick: ()=>setCurrentIdx(idx),
-                                        className: `flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-colors ${isCurrent ? "bg-primary text-primary-foreground shadow-sm" : isAnswered ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-background border border-border text-muted-foreground hover:bg-muted"}`,
-                                        children: idx + 1
-                                    }, question.id, false, {
-                                        fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 268,
-                                        columnNumber: 17
-                                    }, this);
-                                })
-                            }, void 0, false, {
-                                fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 262,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "mt-4 space-y-1.5",
-                                children: [
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "flex items-center gap-2 text-[11px] text-muted-foreground",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "h-3 w-3 rounded bg-primary/20"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 285,
-                                                columnNumber: 15
-                                            }, this),
-                                            " Current"
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 284,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "flex items-center gap-2 text-[11px] text-muted-foreground",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "h-3 w-3 rounded bg-emerald-100 dark:bg-emerald-900/30"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 288,
-                                                columnNumber: 15
-                                            }, this),
-                                            " Answered (",
-                                            answered,
-                                            ")"
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 287,
-                                        columnNumber: 13
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "flex items-center gap-2 text-[11px] text-muted-foreground",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "h-3 w-3 rounded border border-border bg-background"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 291,
-                                                columnNumber: 15
-                                            }, this),
-                                            " Unanswered (",
-                                            unanswered,
-                                            ")"
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 290,
-                                        columnNumber: 13
-                                    }, this)
-                                ]
-                            }, void 0, true, {
-                                fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 283,
-                                columnNumber: 11
-                            }, this),
-                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "mt-auto pt-4",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                    type: "button",
-                                    disabled: submitting || submitted,
-                                    onClick: requestSubmit,
-                                    className: "w-full rounded-xl bg-emerald-600 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60",
-                                    children: submitting ? "Submitting…" : "Submit Exam"
-                                }, void 0, false, {
-                                    fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 296,
-                                    columnNumber: 13
-                                }, this)
-                            }, void 0, false, {
-                                fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 295,
-                                columnNumber: 11
-                            }, this)
-                        ]
-                    }, void 0, true, {
+                        className: "hidden lg:flex w-56 shrink-0 flex-col border-l border-border bg-muted/30 p-3 overflow-y-auto",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NavPanel, {
+                            questions: questions,
+                            answers: answers,
+                            flagged: flagged,
+                            currentIdx: currentIdx,
+                            answered: answered,
+                            unanswered: unanswered,
+                            flaggedCount: flaggedCount,
+                            submitting: submitting,
+                            submitted: submitted,
+                            onSelect: (idx)=>setCurrentIdx(idx),
+                            onSubmit: requestSubmit
+                        }, void 0, false, {
+                            fileName: "[project]/components/assessment-exam-runner.tsx",
+                            lineNumber: 465,
+                            columnNumber: 11
+                        }, this)
+                    }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 260,
+                        lineNumber: 464,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 173,
+                lineNumber: 392,
                 columnNumber: 7
+            }, this),
+            showNav && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "fixed inset-0 z-[58] lg:hidden",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "absolute inset-0 bg-foreground/40 backdrop-blur-sm",
+                        onClick: ()=>setShowNav(false)
+                    }, void 0, false, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 478,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "absolute right-0 top-0 h-full w-64 flex flex-col bg-card border-l border-border overflow-y-auto",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "flex items-center justify-between px-3 py-3 border-b border-border shrink-0",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        className: "text-xs font-semibold uppercase tracking-widest text-muted-foreground",
+                                        children: "Navigator"
+                                    }, void 0, false, {
+                                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                                        lineNumber: 481,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                        type: "button",
+                                        onClick: ()=>setShowNav(false),
+                                        className: "flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors",
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["XIcon"], {
+                                            size: 14
+                                        }, void 0, false, {
+                                            fileName: "[project]/components/assessment-exam-runner.tsx",
+                                            lineNumber: 484,
+                                            columnNumber: 17
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                                        lineNumber: 482,
+                                        columnNumber: 15
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/components/assessment-exam-runner.tsx",
+                                lineNumber: 480,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "flex-1 overflow-y-auto p-3",
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NavPanel, {
+                                    questions: questions,
+                                    answers: answers,
+                                    flagged: flagged,
+                                    currentIdx: currentIdx,
+                                    answered: answered,
+                                    unanswered: unanswered,
+                                    flaggedCount: flaggedCount,
+                                    submitting: submitting,
+                                    submitted: submitted,
+                                    onSelect: (idx)=>{
+                                        setCurrentIdx(idx);
+                                        setShowNav(false);
+                                    },
+                                    onSubmit: ()=>{
+                                        setShowNav(false);
+                                        requestSubmit();
+                                    }
+                                }, void 0, false, {
+                                    fileName: "[project]/components/assessment-exam-runner.tsx",
+                                    lineNumber: 488,
+                                    columnNumber: 15
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/components/assessment-exam-runner.tsx",
+                                lineNumber: 487,
+                                columnNumber: 13
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                        lineNumber: 479,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/components/assessment-exam-runner.tsx",
+                lineNumber: 477,
+                columnNumber: 9
             }, this),
             timeCritical && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "shrink-0 flex items-center justify-center gap-2 bg-destructive/10 border-t border-destructive/20 px-4 py-2 text-xs font-semibold text-destructive",
@@ -6284,14 +6753,14 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                         size: 13
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 311,
+                        lineNumber: 502,
                         columnNumber: 11
                     }, this),
-                    " Less than 1 minute remaining — exam will auto-submit!"
+                    " Less than 1 minute remaining!"
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 310,
+                lineNumber: 501,
                 columnNumber: 9
             }, this),
             showConfirm && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6311,12 +6780,12 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                             className: "text-amber-600 dark:text-amber-400"
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 322,
+                                            lineNumber: 513,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 321,
+                                        lineNumber: 512,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6326,63 +6795,63 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 children: "Submit Exam?"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 325,
+                                                lineNumber: 516,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                 className: "mt-1 text-sm text-muted-foreground",
-                                                children: unanswered > 0 ? `You have ${unanswered} unanswered question${unanswered === 1 ? "" : "s"}. This action cannot be undone.` : "All questions answered. This action cannot be undone."
+                                                children: unanswered > 0 ? `You have ${unanswered} unanswered question${unanswered === 1 ? "" : "s"}. This cannot be undone.` : "All questions answered. This cannot be undone."
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 326,
+                                                lineNumber: 517,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 324,
+                                        lineNumber: 515,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 320,
+                                lineNumber: 511,
                                 columnNumber: 15
                             }, this),
                             unanswered > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/20 px-3 py-2.5",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "flex justify-between text-xs",
+                                        className: "flex justify-between text-xs mb-1.5",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 className: "text-amber-700 dark:text-amber-400",
                                                 children: "Answered"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 337,
+                                                lineNumber: 527,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 className: "font-bold text-amber-700 dark:text-amber-400",
                                                 children: [
                                                     answered,
-                                                    " / ",
+                                                    "/",
                                                     questions.length
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 338,
+                                                lineNumber: 528,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 336,
+                                        lineNumber: 526,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "mt-1.5 h-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 overflow-hidden",
+                                        className: "h-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 overflow-hidden",
                                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                             className: "h-full rounded-full bg-amber-500 transition-all",
                                             style: {
@@ -6390,18 +6859,48 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 341,
+                                            lineNumber: 531,
                                             columnNumber: 21
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 340,
+                                        lineNumber: 530,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 335,
+                                lineNumber: 525,
+                                columnNumber: 17
+                            }, this),
+                            flaggedCount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-800/30 dark:bg-amber-900/10 px-3 py-2",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["FlagIcon"], {
+                                        size: 12,
+                                        className: "text-amber-500 shrink-0"
+                                    }, void 0, false, {
+                                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                                        lineNumber: 537,
+                                        columnNumber: 19
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "text-xs text-amber-700 dark:text-amber-400",
+                                        children: [
+                                            flaggedCount,
+                                            " flagged question",
+                                            flaggedCount === 1 ? "" : "s",
+                                            " marked for review."
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/components/assessment-exam-runner.tsx",
+                                        lineNumber: 538,
+                                        columnNumber: 19
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/components/assessment-exam-runner.tsx",
+                                lineNumber: 536,
                                 columnNumber: 17
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6414,7 +6913,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         children: "Go Back"
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 350,
+                                        lineNumber: 544,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -6422,45 +6921,63 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         onClick: confirmSubmit,
                                         disabled: submitting,
                                         className: "flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60",
-                                        children: submitting ? "Submitting…" : "Submit"
+                                        children: "Submit"
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 357,
+                                        lineNumber: 548,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 349,
+                                lineNumber: 543,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 319,
+                        lineNumber: 510,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                    lineNumber: 318,
+                    lineNumber: 509,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 317,
+                lineNumber: 508,
                 columnNumber: 9
+            }, this),
+            showCalc && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Calculator, {
+                onClose: ()=>setShowCalc(false)
+            }, void 0, false, {
+                fileName: "[project]/components/assessment-exam-runner.tsx",
+                lineNumber: 558,
+                columnNumber: 20
+            }, this),
+            showThemePicker && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ThemePicker, {
+                current: currentTheme,
+                onSelect: applyTheme,
+                onClose: ()=>setShowThemePicker(false)
+            }, void 0, false, {
+                fileName: "[project]/components/assessment-exam-runner.tsx",
+                lineNumber: 559,
+                columnNumber: 27
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/assessment-exam-runner.tsx",
-        lineNumber: 131,
+        lineNumber: 348,
         columnNumber: 5
     }, this);
 }
-_s(AssessmentExamRunner, "bMb4tPdUi72yrzxgqOS2rYDUuhU=");
-_c = AssessmentExamRunner;
-var _c;
-__turbopack_context__.k.register(_c, "AssessmentExamRunner");
+_s1(AssessmentExamRunner, "l+SOTzOQG3LN3lwU0DCI7054muA=");
+_c2 = AssessmentExamRunner;
+var _c, _c1, _c2;
+__turbopack_context__.k.register(_c, "Calculator");
+__turbopack_context__.k.register(_c1, "ThemePicker");
+__turbopack_context__.k.register(_c2, "AssessmentExamRunner");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
@@ -6962,6 +7479,22 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
+function userStorageKey(assessmentId) {
+    return `mednexus-user-exam-${assessmentId}`;
+}
+function saveUserResult(assessmentId, result) {
+    try {
+        localStorage.setItem(userStorageKey(assessmentId), JSON.stringify(result));
+    } catch  {}
+}
+function loadUserResult(assessmentId) {
+    try {
+        const raw = localStorage.getItem(userStorageKey(assessmentId));
+        return raw ? JSON.parse(raw) : null;
+    } catch  {
+        return null;
+    }
+}
 function LiveAssessmentsScreen() {
     _s();
     const { user } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"])();
@@ -6973,6 +7506,7 @@ function LiveAssessmentsScreen() {
     const [result, setResult] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [showReview, setShowReview] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [loadingExam, setLoadingExam] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [storedResultIds, setStoredResultIds] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(new Set());
     const fetchAssessments = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "LiveAssessmentsScreen.useCallback[fetchAssessments]": async ()=>{
             if (!user) return;
@@ -6981,7 +7515,6 @@ function LiveAssessmentsScreen() {
                 const res = await fetch("/api/assessments");
                 const data = await res.json();
                 const list = data.assessments ?? [];
-                // For each assessment, fetch attempt count for this user
                 const withMeta = await Promise.all(list.map({
                     "LiveAssessmentsScreen.useCallback[fetchAssessments]": async (asmt)=>{
                         try {
@@ -7008,6 +7541,14 @@ function LiveAssessmentsScreen() {
                     }
                 }["LiveAssessmentsScreen.useCallback[fetchAssessments]"]));
                 setAssessments(withMeta);
+                // Check localStorage for stored results for assessments with prior attempts
+                const ids = new Set();
+                for (const asmt of withMeta){
+                    if (asmt.attemptsUsed > 0 && loadUserResult(asmt.id)) {
+                        ids.add(asmt.id);
+                    }
+                }
+                setStoredResultIds(ids);
             } catch  {
                 setAssessments([]);
             } finally{
@@ -7039,9 +7580,32 @@ function LiveAssessmentsScreen() {
         }
     }
     function handleComplete(res) {
+        // Persist result so the "Review" button works after navigating away
+        if (activeAssessment) {
+            saveUserResult(activeAssessment.id, {
+                score: res.score,
+                total: res.total,
+                percentage: res.percentage,
+                passed: res.passed,
+                answers: res.answers,
+                questions: res.questions
+            });
+            setStoredResultIds((prev)=>new Set([
+                    ...prev,
+                    activeAssessment.id
+                ]));
+        }
         setResult(res);
         setPhase("results");
         fetchAssessments();
+    }
+    function reviewFromList(asmt) {
+        const stored = loadUserResult(asmt.id);
+        if (!stored) return;
+        setActiveAssessment(asmt);
+        setResult(stored);
+        setShowReview(true);
+        setPhase("results");
     }
     // Full-screen exam
     if (phase === "exam" && activeAssessment && user) {
@@ -7058,7 +7622,7 @@ function LiveAssessmentsScreen() {
             onExit: ()=>setPhase("list")
         }, void 0, false, {
             fileName: "[project]/components/live-assessments-screen.tsx",
-            lineNumber: 107,
+            lineNumber: 163,
             columnNumber: 7
         }, this);
     }
@@ -7080,12 +7644,12 @@ function LiveAssessmentsScreen() {
                     onClose: ()=>setShowReview(false)
                 }, void 0, false, {
                     fileName: "[project]/components/live-assessments-screen.tsx",
-                    lineNumber: 127,
+                    lineNumber: 183,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/live-assessments-screen.tsx",
-                lineNumber: 126,
+                lineNumber: 182,
                 columnNumber: 9
             }, this);
         }
@@ -7100,7 +7664,7 @@ function LiveAssessmentsScreen() {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/live-assessments-screen.tsx",
-                    lineNumber: 145,
+                    lineNumber: 201,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7110,7 +7674,7 @@ function LiveAssessmentsScreen() {
                             children: result.passed ? "Congratulations!" : "Exam Complete"
                         }, void 0, false, {
                             fileName: "[project]/components/live-assessments-screen.tsx",
-                            lineNumber: 149,
+                            lineNumber: 205,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7125,7 +7689,7 @@ function LiveAssessmentsScreen() {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/live-assessments-screen.tsx",
-                            lineNumber: 150,
+                            lineNumber: 206,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7133,13 +7697,13 @@ function LiveAssessmentsScreen() {
                             children: result.passed ? "✓ Passed" : "✗ Did not pass"
                         }, void 0, false, {
                             fileName: "[project]/components/live-assessments-screen.tsx",
-                            lineNumber: 153,
+                            lineNumber: 209,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/live-assessments-screen.tsx",
-                    lineNumber: 148,
+                    lineNumber: 204,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7152,7 +7716,7 @@ function LiveAssessmentsScreen() {
                             children: "Review Exam"
                         }, void 0, false, {
                             fileName: "[project]/components/live-assessments-screen.tsx",
-                            lineNumber: 158,
+                            lineNumber: 214,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -7160,25 +7724,26 @@ function LiveAssessmentsScreen() {
                             onClick: ()=>{
                                 setPhase("list");
                                 setResult(null);
+                                setShowReview(false);
                                 setActiveAssessment(null);
                             },
                             className: "w-full rounded-xl border border-border py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors",
                             children: "Back to Assessments"
                         }, void 0, false, {
                             fileName: "[project]/components/live-assessments-screen.tsx",
-                            lineNumber: 165,
+                            lineNumber: 221,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/live-assessments-screen.tsx",
-                    lineNumber: 157,
+                    lineNumber: 213,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/live-assessments-screen.tsx",
-            lineNumber: 144,
+            lineNumber: 200,
             columnNumber: 7
         }, this);
     }
@@ -7198,14 +7763,14 @@ function LiveAssessmentsScreen() {
                                         className: "text-primary"
                                     }, void 0, false, {
                                         fileName: "[project]/components/live-assessments-screen.tsx",
-                                        lineNumber: 183,
+                                        lineNumber: 239,
                                         columnNumber: 13
                                     }, this),
                                     "Live Assessments"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/live-assessments-screen.tsx",
-                                lineNumber: 182,
+                                lineNumber: 238,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7213,13 +7778,13 @@ function LiveAssessmentsScreen() {
                                 children: "Exams published by your instructor"
                             }, void 0, false, {
                                 fileName: "[project]/components/live-assessments-screen.tsx",
-                                lineNumber: 186,
+                                lineNumber: 242,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/live-assessments-screen.tsx",
-                        lineNumber: 181,
+                        lineNumber: 237,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -7231,18 +7796,18 @@ function LiveAssessmentsScreen() {
                             size: 14
                         }, void 0, false, {
                             fileName: "[project]/components/live-assessments-screen.tsx",
-                            lineNumber: 189,
+                            lineNumber: 245,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/live-assessments-screen.tsx",
-                        lineNumber: 188,
+                        lineNumber: 244,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/live-assessments-screen.tsx",
-                lineNumber: 180,
+                lineNumber: 236,
                 columnNumber: 7
             }, this),
             loading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7254,12 +7819,12 @@ function LiveAssessmentsScreen() {
                         className: "h-28 animate-pulse rounded-2xl bg-muted"
                     }, i, false, {
                         fileName: "[project]/components/live-assessments-screen.tsx",
-                        lineNumber: 196,
+                        lineNumber: 252,
                         columnNumber: 13
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/components/live-assessments-screen.tsx",
-                lineNumber: 194,
+                lineNumber: 250,
                 columnNumber: 9
             }, this) : assessments.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "flex flex-col items-center justify-center gap-4 py-20 text-center",
@@ -7270,12 +7835,12 @@ function LiveAssessmentsScreen() {
                             size: 28
                         }, void 0, false, {
                             fileName: "[project]/components/live-assessments-screen.tsx",
-                            lineNumber: 202,
+                            lineNumber: 258,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/live-assessments-screen.tsx",
-                        lineNumber: 201,
+                        lineNumber: 257,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7285,7 +7850,7 @@ function LiveAssessmentsScreen() {
                                 children: "No live assessments"
                             }, void 0, false, {
                                 fileName: "[project]/components/live-assessments-screen.tsx",
-                                lineNumber: 205,
+                                lineNumber: 261,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -7293,19 +7858,19 @@ function LiveAssessmentsScreen() {
                                 children: "Your instructor hasn't published any assessments yet."
                             }, void 0, false, {
                                 fileName: "[project]/components/live-assessments-screen.tsx",
-                                lineNumber: 206,
+                                lineNumber: 262,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/live-assessments-screen.tsx",
-                        lineNumber: 204,
+                        lineNumber: 260,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/live-assessments-screen.tsx",
-                lineNumber: 200,
+                lineNumber: 256,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "space-y-3",
@@ -7313,6 +7878,7 @@ function LiveAssessmentsScreen() {
                     const triesLeft = asmt.triesAllowed - asmt.attemptsUsed;
                     const exhausted = triesLeft <= 0;
                     const hasAttempted = asmt.attemptsUsed > 0;
+                    const hasStoredResult = storedResultIds.has(asmt.id);
                     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "rounded-2xl border border-border bg-card overflow-hidden",
                         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7334,14 +7900,14 @@ function LiveAssessmentsScreen() {
                                                                     className: "h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                                                    lineNumber: 223,
+                                                                    lineNumber: 280,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 "LIVE"
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                                            lineNumber: 222,
+                                                            lineNumber: 279,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7349,13 +7915,13 @@ function LiveAssessmentsScreen() {
                                                             children: asmt.moduleName
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                                            lineNumber: 226,
+                                                            lineNumber: 283,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                                    lineNumber: 221,
+                                                    lineNumber: 278,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -7363,7 +7929,7 @@ function LiveAssessmentsScreen() {
                                                     children: asmt.title
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                                    lineNumber: 228,
+                                                    lineNumber: 285,
                                                     columnNumber: 23
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7376,7 +7942,7 @@ function LiveAssessmentsScreen() {
                                                                     size: 11
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                                                    lineNumber: 231,
+                                                                    lineNumber: 288,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 " ",
@@ -7385,7 +7951,7 @@ function LiveAssessmentsScreen() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                                            lineNumber: 230,
+                                                            lineNumber: 287,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7395,7 +7961,7 @@ function LiveAssessmentsScreen() {
                                                                     size: 11
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                                                    lineNumber: 234,
+                                                                    lineNumber: 291,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 " ",
@@ -7404,7 +7970,7 @@ function LiveAssessmentsScreen() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                                            lineNumber: 233,
+                                                            lineNumber: 290,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7414,7 +7980,7 @@ function LiveAssessmentsScreen() {
                                                                     size: 11
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                                                    lineNumber: 237,
+                                                                    lineNumber: 294,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 " Pass: ",
@@ -7423,7 +7989,7 @@ function LiveAssessmentsScreen() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                                            lineNumber: 236,
+                                                            lineNumber: 293,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7433,62 +7999,90 @@ function LiveAssessmentsScreen() {
                                                                     size: 11
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                                                    lineNumber: 240,
+                                                                    lineNumber: 297,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 exhausted ? "No tries left" : `${triesLeft} tr${triesLeft === 1 ? "y" : "ies"} remaining`
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                                            lineNumber: 239,
+                                                            lineNumber: 296,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                                    lineNumber: 229,
+                                                    lineNumber: 286,
                                                     columnNumber: 23
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                            lineNumber: 220,
+                                            lineNumber: 277,
                                             columnNumber: 21
                                         }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                            type: "button",
-                                            disabled: exhausted || loadingExam === asmt.id,
-                                            onClick: ()=>startExam(asmt),
-                                            className: `shrink-0 flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors shadow-sm ${exhausted ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-primary-foreground hover:bg-primary/90"}`,
-                                            children: loadingExam === asmt.id ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "animate-pulse",
-                                                children: "Loading…"
-                                            }, void 0, false, {
-                                                fileName: "[project]/components/live-assessments-screen.tsx",
-                                                lineNumber: 256,
-                                                columnNumber: 25
-                                            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PlayIcon"], {
-                                                        size: 12
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "flex shrink-0 flex-col items-end gap-1.5",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                    type: "button",
+                                                    disabled: exhausted || loadingExam === asmt.id,
+                                                    onClick: ()=>startExam(asmt),
+                                                    className: `flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors shadow-sm ${exhausted ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-primary-foreground hover:bg-primary/90"}`,
+                                                    children: loadingExam === asmt.id ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "animate-pulse",
+                                                        children: "Loading…"
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/live-assessments-screen.tsx",
-                                                        lineNumber: 258,
+                                                        lineNumber: 316,
                                                         columnNumber: 27
-                                                    }, this),
-                                                    " ",
-                                                    hasAttempted ? "Retry" : "Start"
-                                                ]
-                                            }, void 0, true)
-                                        }, void 0, false, {
+                                                    }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["PlayIcon"], {
+                                                                size: 12
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/components/live-assessments-screen.tsx",
+                                                                lineNumber: 318,
+                                                                columnNumber: 29
+                                                            }, this),
+                                                            " ",
+                                                            hasAttempted ? "Retry" : "Start"
+                                                        ]
+                                                    }, void 0, true)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/components/live-assessments-screen.tsx",
+                                                    lineNumber: 305,
+                                                    columnNumber: 23
+                                                }, this),
+                                                hasStoredResult && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                    type: "button",
+                                                    onClick: ()=>reviewFromList(asmt),
+                                                    className: "flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["TrophyIcon"], {
+                                                            size: 11
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/components/live-assessments-screen.tsx",
+                                                            lineNumber: 329,
+                                                            columnNumber: 27
+                                                        }, this),
+                                                        " Review Last Attempt"
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/components/live-assessments-screen.tsx",
+                                                    lineNumber: 324,
+                                                    columnNumber: 25
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                            lineNumber: 245,
+                                            lineNumber: 304,
                                             columnNumber: 21
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                    lineNumber: 219,
+                                    lineNumber: 276,
                                     columnNumber: 19
                                 }, this),
                                 asmt.lastAttempt && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -7499,14 +8093,14 @@ function LiveAssessmentsScreen() {
                                             className: "text-emerald-600 shrink-0"
                                         }, void 0, false, {
                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                            lineNumber: 267,
+                                            lineNumber: 339,
                                             columnNumber: 27
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AlertTriangleIcon"], {
                                             size: 11,
                                             className: "text-muted-foreground shrink-0"
                                         }, void 0, false, {
                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                            lineNumber: 268,
+                                            lineNumber: 340,
                                             columnNumber: 27
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -7521,7 +8115,7 @@ function LiveAssessmentsScreen() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                                    lineNumber: 271,
+                                                    lineNumber: 343,
                                                     columnNumber: 39
                                                 }, this),
                                                 " ",
@@ -7539,40 +8133,40 @@ function LiveAssessmentsScreen() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/live-assessments-screen.tsx",
-                                            lineNumber: 270,
+                                            lineNumber: 342,
                                             columnNumber: 23
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/live-assessments-screen.tsx",
-                                    lineNumber: 265,
+                                    lineNumber: 337,
                                     columnNumber: 21
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/live-assessments-screen.tsx",
-                            lineNumber: 218,
+                            lineNumber: 275,
                             columnNumber: 17
                         }, this)
                     }, asmt.id, false, {
                         fileName: "[project]/components/live-assessments-screen.tsx",
-                        lineNumber: 217,
+                        lineNumber: 274,
                         columnNumber: 15
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/components/live-assessments-screen.tsx",
-                lineNumber: 210,
+                lineNumber: 266,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/live-assessments-screen.tsx",
-        lineNumber: 178,
+        lineNumber: 234,
         columnNumber: 5
     }, this);
 }
-_s(LiveAssessmentsScreen, "DzGBc7bljW/TSQ5b98Nsgr1Y2J4=", false, function() {
+_s(LiveAssessmentsScreen, "IJa3VKbj4BU1p4wpHCI601j+D6Y=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"]
     ];

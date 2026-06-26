@@ -184,6 +184,82 @@ function ThemePicker({ current, onSelect, onClose }: { current: ThemeId; onSelec
   )
 }
 
+// ── Navigator Panel (shared by desktop sidebar + mobile drawer) ───────────────
+interface NavPanelProps {
+  questions: Question[]
+  answers: Record<string, string | null>
+  flagged: Set<string>
+  currentIdx: number
+  answered: number
+  unanswered: number
+  flaggedCount: number
+  submitting: boolean
+  submitted: boolean
+  onSelect: (idx: number) => void
+  onSubmit: () => void
+}
+
+function NavPanel({ questions, answers, flagged, currentIdx, answered, unanswered, flaggedCount, submitting, submitted, onSelect, onSubmit }: NavPanelProps) {
+  return (
+    <div className="flex flex-col h-full gap-3">
+      <div className="grid grid-cols-5 gap-1">
+        {questions.map((question, idx) => {
+          const isAnswered = answers[question.id] != null
+          const isFlagged = flagged.has(question.id)
+          const isCurrent = idx === currentIdx
+          return (
+            <button key={question.id} type="button" onClick={() => onSelect(idx)}
+              className={`relative flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
+                isCurrent ? "bg-primary text-primary-foreground shadow-sm"
+                : isFlagged ? "bg-amber-400/80 text-white dark:bg-amber-500/60 dark:text-white"
+                : isAnswered ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                : "bg-background border border-border text-muted-foreground hover:bg-muted"
+              }`}>
+              {idx + 1}
+              {isFlagged && !isCurrent && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-500 border border-card" />
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded bg-primary/20" /> Current</div>
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded bg-emerald-100 dark:bg-emerald-900/30" /> Answered ({answered})</div>
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded bg-amber-400/80" /> Flagged ({flaggedCount})</div>
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded border border-border bg-background" /> Unanswered ({unanswered})</div>
+      </div>
+
+      {flaggedCount > 0 && (
+        <div>
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">Flagged</p>
+          <div className="space-y-1">
+            {Array.from(flagged).map((qId) => {
+              const qIdx = questions.findIndex((q) => q.id === qId)
+              if (qIdx === -1) return null
+              return (
+                <button key={qId} type="button" onClick={() => onSelect(qIdx)}
+                  className="w-full flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-left hover:bg-muted transition-colors">
+                  <FlagIcon size={9} className="text-amber-500 shrink-0" />
+                  <span className="text-muted-foreground truncate">Q{qIdx + 1}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-auto pt-2">
+        <button type="button" disabled={submitting || submitted} onClick={onSubmit}
+          className="w-full rounded-xl bg-emerald-600 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60">
+          {submitting ? "Submitting…" : "Submit Exam"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function AssessmentExamRunner({
   assessmentId, title, timeLimitMins, passMark, questions,
@@ -313,7 +389,8 @@ export function AssessmentExamRunner({
 
   function selectAnswer(questionId: string, optionId: string) {
     setAnswers((prev) => {
-      const next = { ...prev, [questionId]: optionId }
+      // Clicking the already-selected option clears it
+      const next = { ...prev, [questionId]: prev[questionId] === optionId ? null : optionId }
       saveSession(next, flagged)
       return next
     })
@@ -381,7 +458,7 @@ export function AssessmentExamRunner({
             <PaletteIcon size={14} />
           </button>
           <button type="button" onClick={() => setShowNav((v) => !v)}
-            className="sm:flex lg:hidden hidden h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted text-xs font-bold text-muted-foreground hover:bg-muted/80 transition-colors"
+            className={`flex lg:hidden h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showNav ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground hover:bg-muted/80"}`}
             title="Question navigator">
             ⊞
           </button>
@@ -459,65 +536,42 @@ export function AssessmentExamRunner({
           </div>
         </div>
 
-        {/* ── Navigator panel ── */}
-        <div className={`hidden ${showNav ? "sm:flex" : ""} lg:flex w-56 shrink-0 flex-col border-l border-border bg-muted/30 p-3 overflow-y-auto`}>
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Navigator</p>
-          <div className="grid grid-cols-5 gap-1">
-            {questions.map((question, idx) => {
-              const isAnswered = answers[question.id] != null
-              const isFlagged = flagged.has(question.id)
-              const isCurrent = idx === currentIdx
-              return (
-                <button key={question.id} type="button" onClick={() => setCurrentIdx(idx)}
-                  className={`relative flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
-                    isCurrent ? "bg-primary text-primary-foreground shadow-sm"
-                    : isFlagged ? "bg-amber-400/80 text-white dark:bg-amber-500/60 dark:text-white"
-                    : isAnswered ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                    : "bg-background border border-border text-muted-foreground hover:bg-muted"
-                  }`}>
-                  {idx + 1}
-                  {isFlagged && !isCurrent && (
-                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-500 border border-card" />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="mt-4 space-y-1.5">
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded bg-primary/20" /> Current</div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded bg-emerald-100 dark:bg-emerald-900/30" /> Answered ({answered})</div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded bg-amber-400/80" /> Flagged ({flaggedCount})</div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded border border-border bg-background" /> Unanswered ({unanswered})</div>
-          </div>
-
-          {flaggedCount > 0 && (
-            <div className="mt-3">
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">Flagged</p>
-              <div className="space-y-1">
-                {Array.from(flagged).map((qId) => {
-                  const qIdx = questions.findIndex((q) => q.id === qId)
-                  if (qIdx === -1) return null
-                  return (
-                    <button key={qId} type="button" onClick={() => setCurrentIdx(qIdx)}
-                      className="w-full flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-left hover:bg-muted transition-colors">
-                      <FlagIcon size={9} className="text-amber-500 shrink-0" />
-                      <span className="text-muted-foreground truncate">Q{qIdx + 1}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-auto pt-4">
-            <button type="button" disabled={submitting || submitted} onClick={requestSubmit}
-              className="w-full rounded-xl bg-emerald-600 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60">
-              {submitting ? "Submitting…" : "Submit Exam"}
-            </button>
-          </div>
+        {/* ── Desktop navigator sidebar (lg+) ── */}
+        <div className="hidden lg:flex w-56 shrink-0 flex-col border-l border-border bg-muted/30 p-3 overflow-y-auto">
+          <NavPanel
+            questions={questions} answers={answers} flagged={flagged}
+            currentIdx={currentIdx} answered={answered} unanswered={unanswered} flaggedCount={flaggedCount}
+            submitting={submitting} submitted={submitted}
+            onSelect={(idx) => setCurrentIdx(idx)}
+            onSubmit={requestSubmit}
+          />
         </div>
       </div>
+
+      {/* ── Mobile navigator overlay (< lg) ── */}
+      {showNav && (
+        <div className="fixed inset-0 z-[58] lg:hidden">
+          <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={() => setShowNav(false)} />
+          <div className="absolute right-0 top-0 h-full w-64 flex flex-col bg-card border-l border-border overflow-y-auto">
+            <div className="flex items-center justify-between px-3 py-3 border-b border-border shrink-0">
+              <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Navigator</span>
+              <button type="button" onClick={() => setShowNav(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+                <XIcon size={14} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              <NavPanel
+                questions={questions} answers={answers} flagged={flagged}
+                currentIdx={currentIdx} answered={answered} unanswered={unanswered} flaggedCount={flaggedCount}
+                submitting={submitting} submitted={submitted}
+                onSelect={(idx) => { setCurrentIdx(idx); setShowNav(false) }}
+                onSubmit={() => { setShowNav(false); requestSubmit() }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {timeCritical && (
         <div className="shrink-0 flex items-center justify-center gap-2 bg-destructive/10 border-t border-destructive/20 px-4 py-2 text-xs font-semibold text-destructive">
