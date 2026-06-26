@@ -74,14 +74,15 @@ export function updateSrsFromHistory(
 }
 
 /**
- * How many days overdue is a question?
- * Positive  → overdue by that many days.
+ * How many days overdue is a question.
+ * Positive  → overdue (past due date).
  * 0         → due today.
- * Negative  → not yet due (future).
- * No entry  → 999 (never seen; treat as most urgent).
+ * Negative  → not yet due (upcoming).
+ * No entry  → 0 (unscheduled; treated as due-today for quiz sorting only —
+ *              but NOT shown as "due now" in the UI, see isDue).
  */
 export function daysOverdue(entry: SrsEntry | undefined): number {
-  if (!entry) return 999
+  if (!entry) return 0
   const today = todayStr()
   return Math.round(
     (new Date(today + "T12:00:00").getTime() - new Date(entry.due + "T12:00:00").getTime()) /
@@ -89,9 +90,14 @@ export function daysOverdue(entry: SrsEntry | undefined): number {
   )
 }
 
-/** True when a question is due today or overdue. */
+/**
+ * True when a question has been SRS-reviewed at least once AND is due today or overdue.
+ * Questions with no SRS entry (never reviewed via SRS) are NOT counted as due —
+ * they are "unscheduled" and shown simply as "to review".
+ */
 export function isDue(entry: SrsEntry | undefined): boolean {
-  return daysOverdue(entry) >= 0
+  if (!entry) return false
+  return entry.due <= todayStr()
 }
 
 /** Count due questions from a list of question IDs. */
