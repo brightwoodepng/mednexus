@@ -16,6 +16,8 @@ import {
   LayersIcon,
   ActivityIcon,
   ChevronLeftIcon,
+  ClipboardListIcon,
+  RadioIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 
@@ -121,6 +123,7 @@ export function Sidebar({
 
           <NavButton active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getLiveModules().length)} />
           <NavButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
+          <NavButton active={screen === "live-assessments"} onClick={() => nav("live-assessments")} icon={<RadioIcon size={18} />} label="Live Assessments" />
 
           {isAdmin && (
             <>
@@ -128,6 +131,7 @@ export function Sidebar({
               <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Admin</p>
               <NavButton active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
               <NavButton active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
+              <NavButton active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} icon={<ClipboardListIcon size={18} />} label="Assessments" adminBadge="Admin" />
             </>
           )}
 
@@ -198,12 +202,14 @@ export function Sidebar({
 
       <IconButton active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
       <IconButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
+      <IconButton active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments"><RadioIcon size={18} /></IconButton>
 
       {isAdmin && (
         <>
           <div className="my-1 w-6 h-px bg-sidebar-border/60" />
           <IconButton active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
           <IconButton active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
+          <IconButton active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} label="Assessments (Admin)"><ClipboardListIcon size={18} /></IconButton>
         </>
       )}
 
