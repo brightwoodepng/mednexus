@@ -9,7 +9,6 @@ import {
   TrashIcon, PencilIcon, PlusIcon, XIcon, CheckIcon, DatabaseIcon,
   RefreshCwIcon, AlertTriangleIcon, CheckSquareIcon, DownloadIcon,
   SearchIcon, ChevronDownIcon, ChevronRightIcon, LayersIcon, BookOpenIcon,
-  SparklesIcon,
 } from "@/components/icons"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,32 +126,7 @@ function QuestionForm({ initial, questionId, defaultModule, defaultSubject, admi
   const [form, setForm] = useState<FormState>(
     initial ? questionToForm(initial) : { ...EMPTY_FORM, module: defaultModule, subject: defaultSubject }
   )
-  const [enhancing, setEnhancing] = useState(false)
-  const [enhanceError, setEnhanceError] = useState("")
-
   function set(key: keyof FormState, val: string) { setForm((f) => ({ ...f, [key]: val })) }
-
-  async function handleEnhance() {
-    if (!form.vignette.trim() || !form.optA.trim() || !form.optB.trim()) {
-      setEnhanceError("Fill in the vignette and answer choices first."); return
-    }
-    setEnhancing(true); setEnhanceError("")
-    try {
-      const options = ["A", "B", "C", "D", "E"]
-        .map((l) => ({ id: l, text: form[`opt${l}` as keyof FormState] as string }))
-        .filter((o) => o.text.trim())
-      const res = await fetch("/api/enhance-question", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-token": adminToken ?? "" },
-        body: JSON.stringify({ vignette: form.vignette, options, correctAnswer: form.correctAnswer, subject: form.subject }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? "Failed")
-      setForm((f) => ({ ...f, objective: data.explanation.objective ?? f.objective, details: data.explanation.details ?? f.details, incorrectReasoning: data.explanation.incorrectReasoning ?? f.incorrectReasoning }))
-    } catch (err: any) {
-      setEnhanceError(err.message ?? "Enhancement failed.")
-    } finally { setEnhancing(false) }
-  }
 
   const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
   const labelCls = "block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1"
@@ -194,14 +168,7 @@ function QuestionForm({ initial, questionId, defaultModule, defaultSubject, admi
       <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Explanation</p>
-          <button type="button" onClick={handleEnhance} disabled={enhancing}
-            className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {enhancing ? <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg> : <SparklesIcon size={12} />}
-            {enhancing ? "Enhancing…" : "AI Enhance"}
-          </button>
         </div>
-        {enhanceError && <p className="text-xs text-destructive flex items-center gap-1"><AlertTriangleIcon size={11} /> {enhanceError}</p>}
         <div>
           <label className={labelCls}>Objective</label>
           <input className={inputCls} value={form.objective} onChange={(e) => set("objective", e.target.value)} placeholder="What concept is tested?" />

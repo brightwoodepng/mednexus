@@ -309,7 +309,7 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
       )}
 
       <CalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
-      <LabValuesModal open={labsOpen} onClose={() => setLabsOpen(false)} />
+      <LabValuesModal open={labsOpen} onClose={() => setLabsOpen(false)} question={current} />
     </div>
   )
 }
