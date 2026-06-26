@@ -15,7 +15,7 @@ import {
   UserIcon,
   LayersIcon,
   ActivityIcon,
-  ChevronDownIcon,
+  ChevronLeftIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 
@@ -28,7 +28,6 @@ interface SidebarProps {
   onCloseMobile: () => void
   onReadyForQuiz: (config: { module: string; discipline: string | null }) => void
   onSelectModule: (module: string) => void
-  onOpenCredits: () => void
 }
 
 function LiveClock() {
@@ -64,10 +63,10 @@ export function Sidebar({
   onCloseMobile,
   onReadyForQuiz,
   onSelectModule,
-  onOpenCredits,
 }: SidebarProps) {
   const { user, cloudEnabled, signOutUser, progress } = useApp()
   const { isAdmin, logoutAdmin } = useAdmin()
+  const [collapsed, setCollapsed] = useState(false)
 
   const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
 
@@ -76,28 +75,36 @@ export function Sidebar({
     [progress.history],
   )
 
-  const content = (
+  const fullContent = (
     <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
-      {/* Brand */}
+      {/* Brand + collapse toggle */}
       <div className="mb-2 flex items-center justify-between px-2 pt-2 shrink-0">
-        <button
-          type="button"
-          onClick={onOpenCredits}
-          className="flex items-center gap-2.5 rounded-xl transition-colors hover:bg-sidebar-accent px-2 py-1.5 -mx-2 -my-1.5"
-        >
+        <div className="flex items-center gap-2.5 px-2 py-1.5 -mx-2 -my-1.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
             <StethoscopeIcon size={20} />
           </div>
           <span className="text-lg font-semibold tracking-tight">MedNexus</span>
-        </button>
-        <button
-          type="button"
-          onClick={onCloseMobile}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:hidden"
-          aria-label="Close menu"
-        >
-          <XIcon size={20} />
-        </button>
+        </div>
+        <div className="flex items-center gap-1">
+          {/* Desktop collapse button */}
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            className="hidden rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:flex"
+            aria-label="Collapse sidebar"
+          >
+            <ChevronLeftIcon size={18} />
+          </button>
+          {/* Mobile close button */}
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:hidden"
+            aria-label="Close menu"
+          >
+            <XIcon size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Live clock */}
@@ -108,65 +115,20 @@ export function Sidebar({
       {/* Scrollable nav area */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <nav className="flex flex-col gap-1">
-          {/* Dashboard */}
-          <NavButton
-            active={screen === "dashboard"}
-            onClick={() => nav("dashboard")}
-            icon={<LayoutDashboardIcon size={18} />}
-            label="Dashboard"
-          />
-
-          {/* Profile */}
-          <NavButton
-            active={screen === "profile"}
-            onClick={() => nav("profile")}
-            icon={<UserIcon size={18} />}
-            label="Profile"
-          />
+          <NavButton active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
+          <NavButton active={screen === "profile"} onClick={() => nav("profile")} icon={<UserIcon size={18} />} label="Profile" />
 
           <div className="my-1 h-px bg-sidebar-border/60" />
 
-          {/* Study Modules */}
-          <NavButton
-            active={screen === "modules"}
-            onClick={() => nav("modules")}
-            icon={<LayersIcon size={18} />}
-            label="Study Modules"
-            badge={String(getModules().length)}
-          />
+          <NavButton active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getModules().length)} />
+          <NavButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
 
-          {/* Weak Areas */}
-          <NavButton
-            active={screen === "weak-areas"}
-            onClick={() => nav("weak-areas")}
-            icon={<ActivityIcon size={18} />}
-            label="Weak Areas"
-            badge={weakCount > 0 ? String(weakCount) : undefined}
-          />
-
-          {/* Admin-only items */}
           {isAdmin && (
             <>
               <div className="my-1 h-px bg-sidebar-border/60" />
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-                Admin
-              </p>
-
-              <NavButton
-                active={screen === "question-editor"}
-                onClick={() => nav("question-editor")}
-                icon={<DatabaseIcon size={18} />}
-                label="Question Editor"
-                adminBadge="Admin"
-              />
-
-              <NavButton
-                active={screen === "broadcast"}
-                onClick={() => nav("broadcast")}
-                icon={<MegaphoneIcon size={18} />}
-                label="Broadcast"
-                adminBadge="Admin"
-              />
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Admin</p>
+              <NavButton active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
+              <NavButton active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
             </>
           )}
 
@@ -183,35 +145,23 @@ export function Sidebar({
         </nav>
       </div>
 
-      {/* Bottom section — always visible */}
+      {/* Bottom section */}
       <div className="shrink-0 flex flex-col gap-3 pt-2">
-        {/* Admin badge or login button */}
         {isAdmin ? (
           <div className="flex items-center justify-between rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2">
             <div className="flex items-center gap-2">
               <DatabaseIcon size={14} className="text-amber-600" />
               <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Admin Mode</span>
             </div>
-            <button
-              type="button"
-              onClick={logoutAdmin}
-              className="rounded-lg px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-500/20 transition-colors"
-            >
-              Exit
-            </button>
+            <button type="button" onClick={logoutAdmin} className="rounded-lg px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-500/20 transition-colors">Exit</button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={onOpenAdminLogin}
-            className="flex items-center gap-2 rounded-xl border border-sidebar-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
-          >
+          <button type="button" onClick={onOpenAdminLogin} className="flex items-center gap-2 rounded-xl border border-sidebar-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
             <DatabaseIcon size={13} />
             Admin Login
           </button>
         )}
 
-        {/* User card */}
         <div className="flex items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/50 px-3 py-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground">
             <UserIcon size={18} />
@@ -222,11 +172,7 @@ export function Sidebar({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={signOutUser}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-        >
+        <button type="button" onClick={signOutUser} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
           <LogOutIcon size={18} />
           Sign Out
         </button>
@@ -234,22 +180,59 @@ export function Sidebar({
     </div>
   )
 
+  const collapsedContent = (
+    <div className="flex h-full flex-col items-center gap-1 py-4 px-2">
+      {/* Expand button */}
+      <button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm hover:opacity-90 transition-opacity"
+        aria-label="Expand sidebar"
+      >
+        <ChevronLeftIcon size={18} className="rotate-180" />
+      </button>
+
+      <IconButton active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
+      <IconButton active={screen === "profile"} onClick={() => nav("profile")} label="Profile"><UserIcon size={18} /></IconButton>
+
+      <div className="my-1 w-6 h-px bg-sidebar-border/60" />
+
+      <IconButton active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
+      <IconButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
+
+      {isAdmin && (
+        <>
+          <div className="my-1 w-6 h-px bg-sidebar-border/60" />
+          <IconButton active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
+          <IconButton active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
+        </>
+      )}
+
+      <div className="my-1 w-6 h-px bg-sidebar-border/60" />
+      <IconButton active={false} onClick={() => { onOpenThemes() }} label="Themes"><PaletteIcon size={18} /></IconButton>
+
+      {/* Sign out at bottom */}
+      <div className="mt-auto">
+        <IconButton active={false} onClick={signOutUser} label="Sign Out"><LogOutIcon size={18} /></IconButton>
+      </div>
+    </div>
+  )
+
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar lg:block">{content}</aside>
+      <aside
+        className={`hidden shrink-0 border-r border-sidebar-border bg-sidebar lg:block transition-all duration-200 ${collapsed ? "w-16" : "w-64"}`}
+      >
+        {collapsed ? collapsedContent : fullContent}
+      </aside>
 
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={onCloseMobile}
-            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
-          />
+          <button type="button" aria-label="Close menu" onClick={onCloseMobile} className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" />
           <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] border-r border-sidebar-border bg-sidebar shadow-2xl animate-in slide-in-from-left duration-200">
-            {content}
+            {fullContent}
           </div>
         </div>
       )}
@@ -257,39 +240,35 @@ export function Sidebar({
   )
 }
 
-// ── Reusable nav button ──────────────────────────────────────────────────────
-function NavButton({
-  active, onClick, icon, label, badge, adminBadge,
-}: {
-  active: boolean
-  onClick: () => void
-  icon: React.ReactNode
-  label: string
-  badge?: string
-  adminBadge?: string
+// ── Reusable nav button (expanded) ───────────────────────────────────────────
+function NavButton({ active, onClick, icon, label, badge, adminBadge }: {
+  active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: string; adminBadge?: string
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${active ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+    >
+      {icon}
+      <span className="flex-1 text-left">{label}</span>
+      {badge && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground tabular-nums">{badge}</span>}
+      {adminBadge && <span className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-400">{adminBadge}</span>}
+    </button>
+  )
+}
+
+// ── Icon-only button (collapsed) ─────────────────────────────────────────────
+function IconButton({ active, onClick, label, children }: {
+  active: boolean; onClick: () => void; label: string; children: React.ReactNode
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border"
-          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      }`}
+      title={label}
+      aria-label={label}
+      className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${active ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
     >
-      {icon}
-      <span className="flex-1 text-left">{label}</span>
-      {badge && (
-        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground tabular-nums">
-          {badge}
-        </span>
-      )}
-      {adminBadge && (
-        <span className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-400">
-          {adminBadge}
-        </span>
-      )}
+      {children}
     </button>
   )
 }

@@ -30,6 +30,7 @@ import {
   TimerIcon,
   XIcon,
   HeartIcon,
+  InfoIcon,
 } from "@/components/icons"
 
 interface PendingQuiz {
@@ -284,7 +285,6 @@ export function MedNexusApp() {
           setScreen("modules")
           setMobileNavOpen(false)
         }}
-        onOpenCredits={() => setCreditsOpen(true)}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -300,15 +300,11 @@ export function MedNexusApp() {
             <MenuIcon size={20} />
           </button>
 
-          {/* Mobile: brand (tappable for credits) */}
-          <button
-            type="button"
-            onClick={() => setCreditsOpen(true)}
-            className="flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-1 transition-colors hover:bg-muted lg:hidden"
-          >
+          {/* Mobile: brand (non-interactive) */}
+          <div className="flex min-w-0 items-center gap-1.5 px-1.5 py-1 lg:hidden">
             <StethoscopeIcon size={16} className="shrink-0 text-primary" />
             <span className="truncate text-sm font-semibold">MedNexus</span>
-          </button>
+          </div>
 
           {/* Desktop: spacer */}
           <div className="hidden flex-1 lg:block" />
@@ -327,6 +323,14 @@ export function MedNexusApp() {
               aria-label="Themes"
             >
               <PaletteIcon size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreditsOpen(true)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
+              aria-label="About MedNexus"
+            >
+              <InfoIcon size={16} />
             </button>
           </div>
         </header>
