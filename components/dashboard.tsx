@@ -32,6 +32,7 @@ interface QuizReadyConfig {
 interface DashboardProps {
   onReadyForQuiz: (config: QuizReadyConfig) => void
   onOpenModules: (module?: string) => void
+  onOpenWeakAreas: () => void
 }
 
 function useGreeting() {
@@ -77,7 +78,7 @@ const CARD_PALETTES = [
   { ring: "hover:ring-orange-400/50",  icon: "bg-orange-100 text-orange-600",   bar: "#f97316" },
 ]
 
-export function Dashboard({ onReadyForQuiz, onOpenModules }: DashboardProps) {
+export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas }: DashboardProps) {
   const { user, progress } = useApp()
   const { globalMode } = useStudyMode()
   const greeting = useGreeting()
@@ -148,6 +149,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules }: DashboardProps) {
         <TrialDashboard
           onReadyForQuiz={onReadyForQuiz}
           onOpenModules={onOpenModules}
+          onOpenWeakAreas={onOpenWeakAreas}
         />
       ) : (
         <ExamDashboard onReadyForQuiz={onReadyForQuiz} onOpenModules={onOpenModules} />
@@ -214,9 +216,11 @@ function CoverageList({ coverage }: { coverage: Record<string, { attempted: numb
 function TrialDashboard({
   onReadyForQuiz,
   onOpenModules,
+  onOpenWeakAreas,
 }: {
   onReadyForQuiz: (c: QuizReadyConfig) => void
   onOpenModules: (module?: string) => void
+  onOpenWeakAreas: () => void
 }) {
   const { progress } = useApp()
 
@@ -258,7 +262,7 @@ function TrialDashboard({
           <div className="mb-3">
             <button
               type="button"
-              onClick={() => onReadyForQuiz({ module: "__weak__", discipline: null })}
+              onClick={onOpenWeakAreas}
               className="group relative w-full overflow-hidden rounded-2xl border-2 border-rose-300/50 bg-rose-50/60 p-5 text-left shadow-sm transition-all hover:border-rose-400/70 hover:shadow-md hover:ring-2 hover:ring-rose-300/40 active:scale-[0.99] dark:border-rose-800/40 dark:bg-rose-900/20"
             >
               <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 bg-rose-400/60" />
