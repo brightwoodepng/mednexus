@@ -98,6 +98,7 @@
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --font-mono: var(--font-geist-mono), "Geist Mono Fallback";
     --color-red-50: #fef2f2;
+    --color-red-100: #ffe2e2;
     --color-red-300: #ffa3a3;
     --color-red-400: #ff6568;
     --color-red-500: #fb2c36;
@@ -108,6 +109,7 @@
     --color-orange-400: #ff8b1a;
     --color-orange-500: #fe6e00;
     --color-orange-600: #f05100;
+    --color-orange-700: #c53c00;
     --color-orange-800: #9f2d00;
     --color-orange-900: #7e2a0c;
     --color-amber-50: #fffbeb;
@@ -121,6 +123,12 @@
     --color-amber-800: #953d00;
     --color-amber-900: #7b3306;
     --color-amber-950: #461901;
+    --color-yellow-100: #fef9c2;
+    --color-yellow-200: #fff085;
+    --color-yellow-400: #fac800;
+    --color-yellow-500: #edb200;
+    --color-yellow-600: #cd8900;
+    --color-yellow-700: #a36100;
     --color-emerald-50: #ecfdf5;
     --color-emerald-100: #d0fae5;
     --color-emerald-200: #a4f4cf;
@@ -170,6 +178,9 @@
     --color-fuchsia-600: #c600db;
     --color-fuchsia-800: #8a0194;
     --color-fuchsia-900: #721378;
+    --color-pink-100: #fce7f3;
+    --color-pink-400: #fb64b6;
+    --color-pink-600: #e30076;
     --color-rose-50: #fff1f2;
     --color-rose-100: #ffe4e6;
     --color-rose-200: #ffccd3;
@@ -300,6 +311,7 @@
   @supports (color: lab(0% 0 0)) {
     :root, :host {
       --color-red-50: lab(96.5005% 4.18508 1.52328);
+      --color-red-100: lab(92.243% 10.2865 3.83865);
       --color-red-300: lab(76.5514% 36.422 15.5335);
       --color-red-400: lab(63.7053% 60.745 31.3109);
       --color-red-500: lab(55.4814% 75.0732 48.8528);
@@ -310,6 +322,7 @@
       --color-orange-400: lab(70.0429% 42.5156 75.8207);
       --color-orange-500: lab(64.272% 57.1788 90.3583);
       --color-orange-600: lab(57.1026% 64.2584 89.8886);
+      --color-orange-700: lab(46.4615% 57.7275 70.8507);
       --color-orange-800: lab(37.1566% 46.6433 50.5562);
       --color-orange-900: lab(30.2951% 36.0434 37.671);
       --color-amber-50: lab(98.6252% -.635922 8.42309);
@@ -323,6 +336,12 @@
       --color-amber-800: lab(37.8822% 37.1699 52.2718);
       --color-amber-900: lab(31.2288% 30.2627 40.0378);
       --color-amber-950: lab(15.8111% 20.9107 23.3752);
+      --color-yellow-100: lab(97.3564% -4.51407 27.344);
+      --color-yellow-200: lab(94.3433% -5.00429 52.9663);
+      --color-yellow-400: lab(83.2664% 8.65132 106.895);
+      --color-yellow-500: lab(76.3898% 14.5258 98.4589);
+      --color-yellow-600: lab(62.7799% 22.4197 86.1544);
+      --color-yellow-700: lab(47.8202% 25.2426 66.5015);
       --color-emerald-50: lab(97.8462% -6.94966 1.85487);
       --color-emerald-100: lab(94.9004% -17.0769 5.63836);
       --color-emerald-200: lab(90.2247% -31.039 9.47084);
@@ -372,6 +391,9 @@
       --color-fuchsia-600: lab(47.5131% 83.4271 -63.0363);
       --color-fuchsia-800: lab(32.904% 60.2883 -43.6569);
       --color-fuchsia-900: lab(27.755% 48.6174 -34.3553);
+      --color-pink-100: lab(93.5864% 9.01193 -3.15079);
+      --color-pink-400: lab(64.5597% 64.3615 -12.7988);
+      --color-pink-600: lab(49.5493% 79.8381 2.31768);
       --color-rose-50: lab(96.2369% 4.94155 1.28011);
       --color-rose-100: lab(92.8221% 9.86832 2.60075);
       --color-rose-200: lab(86.806% 19.1909 4.07754);
@@ -2677,6 +2699,10 @@
     }
   }
 
+  .bg-amber-200 {
+    background-color: var(--color-amber-200);
+  }
+
   .bg-amber-500 {
     background-color: var(--color-amber-500);
   }
@@ -2943,8 +2969,16 @@
     background-color: var(--color-orange-100);
   }
 
+  .bg-orange-200 {
+    background-color: var(--color-orange-200);
+  }
+
   .bg-orange-500 {
     background-color: var(--color-orange-500);
+  }
+
+  .bg-pink-100 {
+    background-color: var(--color-pink-100);
   }
 
   .bg-popover {
@@ -3013,6 +3047,10 @@
     .bg-primary\/20 {
       background-color: color-mix(in oklab, var(--primary) 20%, transparent);
     }
+  }
+
+  .bg-red-100 {
+    background-color: var(--color-red-100);
   }
 
   .bg-rose-50 {
@@ -3289,6 +3327,14 @@
     .bg-white\/90 {
       background-color: color-mix(in oklab, var(--color-white) 90%, transparent);
     }
+  }
+
+  .bg-yellow-100 {
+    background-color: var(--color-yellow-100);
+  }
+
+  .bg-yellow-200 {
+    background-color: var(--color-yellow-200);
   }
 
   .bg-gradient-to-br {
@@ -3965,6 +4011,16 @@
     color: var(--muted-foreground);
   }
 
+  .text-muted-foreground\/25 {
+    color: var(--muted-foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-muted-foreground\/25 {
+      color: color-mix(in oklab, var(--muted-foreground) 25%, transparent);
+    }
+  }
+
   .text-muted-foreground\/30 {
     color: var(--muted-foreground);
   }
@@ -3999,6 +4055,14 @@
     color: var(--color-orange-600);
   }
 
+  .text-orange-700 {
+    color: var(--color-orange-700);
+  }
+
+  .text-pink-600 {
+    color: var(--color-pink-600);
+  }
+
   .text-popover-foreground {
     color: var(--popover-foreground);
   }
@@ -4023,6 +4087,14 @@
 
   .text-red-500 {
     color: var(--color-red-500);
+  }
+
+  .text-red-600 {
+    color: var(--color-red-600);
+  }
+
+  .text-rose-500 {
+    color: var(--color-rose-500);
   }
 
   .text-rose-600 {
@@ -4131,6 +4203,14 @@
     .text-white\/80 {
       color: color-mix(in oklab, var(--color-white) 80%, transparent);
     }
+  }
+
+  .text-yellow-600 {
+    color: var(--color-yellow-600);
+  }
+
+  .text-yellow-700 {
+    color: var(--color-yellow-700);
   }
 
   .capitalize {
@@ -5379,6 +5459,18 @@
   }
 
   @media (hover: hover) {
+    .hover\:ring-amber-500\/50:hover {
+      --tw-ring-color: #f99c0080;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:ring-amber-500\/50:hover {
+        --tw-ring-color: color-mix(in oklab, var(--color-amber-500) 50%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:ring-cyan-400\/50:hover {
       --tw-ring-color: #00d2ef80;
     }
@@ -5427,6 +5519,30 @@
   }
 
   @media (hover: hover) {
+    .hover\:ring-orange-500\/50:hover {
+      --tw-ring-color: #fe6e0080;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:ring-orange-500\/50:hover {
+        --tw-ring-color: color-mix(in oklab, var(--color-orange-500) 50%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:ring-pink-400\/50:hover {
+      --tw-ring-color: #fb64b680;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:ring-pink-400\/50:hover {
+        --tw-ring-color: color-mix(in oklab, var(--color-pink-400) 50%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:ring-primary\/30:hover {
       --tw-ring-color: var(--primary);
     }
@@ -5439,6 +5555,18 @@
   }
 
   @media (hover: hover) {
+    .hover\:ring-red-400\/50:hover {
+      --tw-ring-color: #ff656880;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:ring-red-400\/50:hover {
+        --tw-ring-color: color-mix(in oklab, var(--color-red-400) 50%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:ring-rose-300\/40:hover {
       --tw-ring-color: #ffa2ae66;
     }
@@ -5446,6 +5574,18 @@
     @supports (color: color-mix(in lab, red, red)) {
       .hover\:ring-rose-300\/40:hover {
         --tw-ring-color: color-mix(in oklab, var(--color-rose-300) 40%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:ring-rose-300\/50:hover {
+      --tw-ring-color: #ffa2ae80;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:ring-rose-300\/50:hover {
+        --tw-ring-color: color-mix(in oklab, var(--color-rose-300) 50%, transparent);
       }
     }
   }
@@ -5482,6 +5622,30 @@
     @supports (color: color-mix(in lab, red, red)) {
       .hover\:ring-violet-400\/50:hover {
         --tw-ring-color: color-mix(in oklab, var(--color-violet-400) 50%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:ring-yellow-400\/50:hover {
+      --tw-ring-color: #fac80080;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:ring-yellow-400\/50:hover {
+        --tw-ring-color: color-mix(in oklab, var(--color-yellow-400) 50%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:ring-yellow-500\/50:hover {
+      --tw-ring-color: #edb20080;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:ring-yellow-500\/50:hover {
+        --tw-ring-color: color-mix(in oklab, var(--color-yellow-500) 50%, transparent);
       }
     }
   }

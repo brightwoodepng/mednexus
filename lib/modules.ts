@@ -105,6 +105,30 @@ export function getWeakAreaQuestions(history: HistoryEntry[]): Question[] {
   return qs.filter((q) => weakIds.has(q.id))
 }
 
+/** Unique module names that have weak questions for a given mode. */
+export function getWeakModulesForMode(history: HistoryEntry[], mode: "trial" | "exam"): string[] {
+  const modeHistory = history.filter((e) => e.mode === mode)
+  const weakQs = getWeakAreaQuestions(modeHistory)
+  return Array.from(new Set(weakQs.map((q) => q.module?.trim() || q.subject))).sort()
+}
+
+/** Disciplines within a module that have weak questions for a given mode. */
+export function getWeakDisciplinesForModule(history: HistoryEntry[], mode: "trial" | "exam", moduleName: string): string[] {
+  const modeHistory = history.filter((e) => e.mode === mode)
+  const weakQs = getWeakAreaQuestions(modeHistory)
+  const modQs = weakQs.filter((q) => (q.module?.trim() || q.subject) === moduleName)
+  return Array.from(new Set(modQs.map((q) => q.subject))).sort()
+}
+
+/** Count of weak questions for a module/discipline in a given mode. */
+export function getWeakCountForModule(history: HistoryEntry[], mode: "trial" | "exam", moduleName: string, discipline?: string): number {
+  const modeHistory = history.filter((e) => e.mode === mode)
+  const weakQs = getWeakAreaQuestions(modeHistory)
+  let modQs = weakQs.filter((q) => (q.module?.trim() || q.subject) === moduleName)
+  if (discipline) modQs = modQs.filter((q) => q.subject === discipline)
+  return modQs.length
+}
+
 /**
  * Return weak questions filtered by mode, grouped by module name.
  * Returns a map of { moduleName → weakQuestionCount }.

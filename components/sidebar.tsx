@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
-import { getModules, getWeakModuleBreakdown } from "@/lib/modules"
+import { getModules, getWeakAreaQuestions } from "@/lib/modules"
 import {
   StethoscopeIcon,
   LayoutDashboardIcon,
@@ -71,6 +71,11 @@ export function Sidebar({
 
   const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
 
+  const weakCount = useMemo(
+    () => getWeakAreaQuestions(progress.history).length,
+    [progress.history],
+  )
+
   const content = (
     <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
       {/* Brand */}
@@ -130,20 +135,13 @@ export function Sidebar({
             badge={String(getModules().length)}
           />
 
-          {/* Weak Areas — Trial */}
-          <WeakAreasSection
-            mode="trial"
-            label="Trial Weak Areas"
-            history={progress.history}
-            onStart={(module) => { onReadyForQuiz({ module, discipline: null }); onCloseMobile() }}
-          />
-
-          {/* Weak Areas — Exam */}
-          <WeakAreasSection
-            mode="exam"
-            label="Exam Weak Areas"
-            history={progress.history}
-            onStart={(module) => { onReadyForQuiz({ module, discipline: null }); onCloseMobile() }}
+          {/* Weak Areas */}
+          <NavButton
+            active={screen === "weak-areas"}
+            onClick={() => nav("weak-areas")}
+            icon={<ActivityIcon size={18} />}
+            label="Weak Areas"
+            badge={weakCount > 0 ? String(weakCount) : undefined}
           />
 
           {/* Admin-only items */}
@@ -256,81 +254,6 @@ export function Sidebar({
         </div>
       )}
     </>
-  )
-}
-
-// ── Weak Areas expandable section ────────────────────────────────────────────
-function WeakAreasSection({
-  mode,
-  label,
-  history,
-  onStart,
-}: {
-  mode: "trial" | "exam"
-  label: string
-  history: import("@/lib/types").HistoryEntry[]
-  onStart: (moduleIdentifier: string) => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-
-  const breakdown = useMemo(
-    () => getWeakModuleBreakdown(history, mode),
-    [history, mode],
-  )
-
-  const prefix = mode === "trial" ? "__weak_trial__|" : "__weak_exam__|"
-  const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1])
-  const total = entries.reduce((s, [, n]) => s + n, 0)
-
-  const isRose = mode === "trial"
-  const colorActive  = isRose ? "text-rose-600 dark:text-rose-400 hover:bg-rose-500/10" : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-  const colorDisabled = "text-muted-foreground/40 cursor-not-allowed"
-  const badgeClass   = isRose ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-  const rowHover     = isRose ? "hover:bg-rose-500/10 text-rose-700 dark:text-rose-400" : "hover:bg-amber-500/10 text-amber-700 dark:text-amber-400"
-
-  return (
-    <div>
-      <button
-        type="button"
-        disabled={total === 0}
-        onClick={() => total > 0 && setExpanded((v) => !v)}
-        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-          total > 0 ? colorActive : colorDisabled
-        }`}
-      >
-        <ActivityIcon size={18} />
-        <span className="flex-1 text-left">{label}</span>
-        {total > 0 && (
-          <>
-            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${badgeClass}`}>
-              {total}
-            </span>
-            <ChevronDownIcon
-              size={14}
-              className={`shrink-0 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
-            />
-          </>
-        )}
-      </button>
-
-      {expanded && total > 0 && (
-        <div className="ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-sidebar-border pl-3">
-          {entries.map(([mod, count]) => (
-            <button
-              key={mod}
-              type="button"
-              onClick={() => onStart(`${prefix}${mod}`)}
-              className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium transition-colors ${rowHover}`}
-            >
-              <span className="flex-1 truncate">{mod}</span>
-              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${badgeClass}`}>
-                {count}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   )
 }
 

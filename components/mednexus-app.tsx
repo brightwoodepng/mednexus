@@ -20,6 +20,7 @@ import { BroadcastScreen } from "@/components/broadcast-screen"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import { NotificationBell } from "@/components/notification-bell"
 import { ProfileHistory } from "@/components/profile-history"
+import { WeakAreasScreen } from "@/components/weak-areas-screen"
 import {
   MenuIcon,
   StethoscopeIcon,
@@ -166,12 +167,14 @@ export function MedNexusApp() {
       const modName = config.module.slice(TRIAL_PREFIX.length)
       const weakTrialQs = getWeakAreaQuestions(progress.history.filter((e) => e.mode === "trial"))
       questions = weakTrialQs.filter((q) => (q.module?.trim() || q.subject) === modName)
-      displayName = modName
+      if (config.discipline) questions = questions.filter((q) => q.subject === config.discipline)
+      displayName = config.discipline ?? modName
     } else if (config.module.startsWith(EXAM_PREFIX)) {
       const modName = config.module.slice(EXAM_PREFIX.length)
       const weakExamQs = getWeakAreaQuestions(progress.history.filter((e) => e.mode === "exam"))
       questions = weakExamQs.filter((q) => (q.module?.trim() || q.subject) === modName)
-      displayName = modName
+      if (config.discipline) questions = questions.filter((q) => q.subject === config.discipline)
+      displayName = config.discipline ?? modName
     } else {
       questions = getQuestionsForModuleAndDiscipline(config.module, config.discipline)
       displayName = config.module
@@ -331,6 +334,7 @@ export function MedNexusApp() {
                 setModulesInitialModule(mod ?? null)
                 setScreen("modules")
               }}
+              onOpenWeakAreas={() => setScreen("weak-areas")}
             />
           )}
           {safeScreen === "modules" && (
@@ -338,6 +342,9 @@ export function MedNexusApp() {
               onReadyForQuiz={handleReadyForQuiz}
               initialModule={modulesInitialModule}
             />
+          )}
+          {safeScreen === "weak-areas" && (
+            <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} />
           )}
           {safeScreen === "profile" && <ProfileHistory />}
           {safeScreen === "question-editor" && isAdmin && <QuestionEditor />}
