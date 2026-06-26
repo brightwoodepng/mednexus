@@ -1845,6 +1845,31 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__
 ;
 ;
 ;
+function makeSessionKey(assessmentId, userId) {
+    return `mednexus-exam-session-${assessmentId}-${userId}`;
+}
+function readSession(key) {
+    try {
+        const raw = ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : null;
+        return ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : null;
+    } catch  {
+        return null;
+    }
+}
+function writeSession(key, session) {
+    try {
+        localStorage.setItem(key, JSON.stringify(session));
+    } catch  {}
+}
+function clearSession(key) {
+    try {
+        localStorage.removeItem(key);
+    } catch  {}
+}
+function calcRemaining(startedAt, totalSecs) {
+    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+    return Math.max(0, totalSecs - elapsed);
+}
 // ── Calculator ────────────────────────────────────────────────────────────────
 function Calculator({ onClose }) {
     const [display, setDisplay] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("0");
@@ -1856,9 +1881,7 @@ function Calculator({ onClose }) {
         if (waiting) {
             setDisplay(digit);
             setWaiting(false);
-        } else {
-            setDisplay(display === "0" ? digit : display + digit);
-        }
+        } else setDisplay(display === "0" ? digit : display + digit);
     }
     function inputDecimal() {
         if (waiting) {
@@ -1867,6 +1890,13 @@ function Calculator({ onClose }) {
             return;
         }
         if (!display.includes(".")) setDisplay(display + ".");
+    }
+    function calculate(a, b, op) {
+        if (op === "+") return a + b;
+        if (op === "−") return a - b;
+        if (op === "×") return a * b;
+        if (op === "÷") return b !== 0 ? a / b : 0;
+        return b;
     }
     function handleOperator(op) {
         const val = parseFloat(display);
@@ -1882,26 +1912,11 @@ function Calculator({ onClose }) {
         setOperator(op);
         setWaiting(true);
     }
-    function calculate(a, b, op) {
-        switch(op){
-            case "+":
-                return a + b;
-            case "−":
-                return a - b;
-            case "×":
-                return a * b;
-            case "÷":
-                return b !== 0 ? a / b : 0;
-            default:
-                return b;
-        }
-    }
     function handleEquals() {
         if (operator === null || memory === null) return;
         const val = parseFloat(display);
-        const result = calculate(memory, val, operator);
-        const rounded = parseFloat(result.toPrecision(10));
-        setDisplay(String(rounded));
+        const result = parseFloat(calculate(memory, val, operator).toPrecision(10));
+        setDisplay(String(result));
         setExpression(`${memory} ${operator} ${val} =`);
         setMemory(null);
         setOperator(null);
@@ -1915,8 +1930,7 @@ function Calculator({ onClose }) {
         setExpression("");
     }
     function handleBackspace() {
-        if (waiting) return;
-        setDisplay(display.length > 1 ? display.slice(0, -1) : "0");
+        if (!waiting) setDisplay(display.length > 1 ? display.slice(0, -1) : "0");
     }
     function handleNegate() {
         setDisplay(String(parseFloat(display) * -1));
@@ -1945,7 +1959,7 @@ function Calculator({ onClose }) {
                         children: "Calculator"
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 122,
+                        lineNumber: 118,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1956,18 +1970,18 @@ function Calculator({ onClose }) {
                             size: 13
                         }, void 0, false, {
                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                            lineNumber: 124,
+                            lineNumber: 120,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 123,
+                        lineNumber: 119,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 121,
+                lineNumber: 117,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1978,7 +1992,7 @@ function Calculator({ onClose }) {
                         children: expression || " "
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 129,
+                        lineNumber: 124,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1986,13 +2000,13 @@ function Calculator({ onClose }) {
                         children: display
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 130,
+                        lineNumber: 125,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 128,
+                lineNumber: 123,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2021,7 +2035,7 @@ function Calculator({ onClose }) {
                         children: "0"
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 154,
+                        lineNumber: 144,
                         columnNumber: 9
                     }, this),
                     btn(".", inputDecimal, "bg-card border border-border hover:bg-muted text-foreground"),
@@ -2033,19 +2047,19 @@ function Calculator({ onClose }) {
                         children: "⌫ backspace"
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 164,
+                        lineNumber: 150,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 133,
+                lineNumber: 127,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/assessment-exam-runner.tsx",
-        lineNumber: 120,
+        lineNumber: 116,
         columnNumber: 5
     }, this);
 }
@@ -2062,7 +2076,7 @@ function ThemePicker({ current, onSelect, onClose }) {
                         children: "Exam Theme"
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 181,
+                        lineNumber: 164,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2073,18 +2087,18 @@ function ThemePicker({ current, onSelect, onClose }) {
                             size: 13
                         }, void 0, false, {
                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                            lineNumber: 183,
+                            lineNumber: 166,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 182,
+                        lineNumber: 165,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 180,
+                lineNumber: 163,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2113,7 +2127,7 @@ function ThemePicker({ current, onSelect, onClose }) {
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 197,
+                                            lineNumber: 175,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2123,18 +2137,18 @@ function ThemePicker({ current, onSelect, onClose }) {
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 198,
+                                            lineNumber: 176,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 196,
+                                    lineNumber: 174,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 195,
+                                lineNumber: 173,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2142,33 +2156,43 @@ function ThemePicker({ current, onSelect, onClose }) {
                                 children: t.name
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 201,
+                                lineNumber: 179,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, t.id, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 188,
+                        lineNumber: 171,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 186,
+                lineNumber: 169,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/assessment-exam-runner.tsx",
-        lineNumber: 179,
+        lineNumber: 162,
         columnNumber: 5
     }, this);
 }
-function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, questions, userName, userId, isGuest = false, onComplete, onExit }) {
+function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, questions, userName, userId, isGuest = false, onComplete }) {
     const totalSecs = timeLimitMins * 60;
-    const [timeLeft, setTimeLeft] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(totalSecs);
+    const sessionKey = makeSessionKey(assessmentId, userId);
+    // ── State — lazily initialised from localStorage session ──────────────────
+    const [timeLeft, setTimeLeft] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(()=>{
+        const session = readSession(sessionKey);
+        return ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : totalSecs;
+    });
+    const [answers, setAnswers] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(()=>{
+        return readSession(sessionKey)?.answers ?? {};
+    });
+    const [flagged, setFlagged] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(()=>{
+        const session = readSession(sessionKey);
+        return session?.flagged ? new Set(session.flagged) : new Set();
+    });
     const [currentIdx, setCurrentIdx] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(0);
-    const [answers, setAnswers] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])({});
-    const [flagged, setFlagged] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(new Set());
     const [submitted, setSubmitted] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [submitting, setSubmitting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [showNav, setShowNav] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
@@ -2177,29 +2201,64 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
     const [showThemePicker, setShowThemePicker] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [currentTheme, setCurrentTheme] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("clinical-light");
     const submittedRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(false);
-    // Load persisted theme
+    // Store startedAt so saveSession doesn't need to re-read localStorage
+    const startedAtRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(0);
+    // ── Load persisted theme ──────────────────────────────────────────────────
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         try {
             const stored = localStorage.getItem("mednexus-theme");
             if (stored) setCurrentTheme(stored);
         } catch  {}
     }, []);
-    function applyTheme(id) {
-        setCurrentTheme(id);
-        document.documentElement.setAttribute("data-theme", id);
-        try {
-            localStorage.setItem("mednexus-theme", id);
-        } catch  {}
-    }
-    function toggleFlag(questionId) {
-        setFlagged((prev)=>{
-            const next = new Set(prev);
-            if (next.has(questionId)) next.delete(questionId);
-            else next.add(questionId);
-            return next;
+    // ── Session init — create if new, or auto-submit if expired ───────────────
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        const session = readSession(sessionKey);
+        if ("TURBOPACK compile-time truthy", 1) {
+            const now = Date.now();
+            startedAtRef.current = now;
+            writeSession(sessionKey, {
+                startedAt: now,
+                answers: {},
+                flagged: []
+            });
+        } else //TURBOPACK unreachable
+        ;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    // ── Timer — wall-clock corrected every second ──────────────────────────────
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        if (submitted) return;
+        const t = setInterval(()=>{
+            // Always re-derive from wall clock so resume after leaving is accurate
+            const remaining = calcRemaining(startedAtRef.current, totalSecs);
+            setTimeLeft(remaining);
+            if (remaining === 0) {
+                clearInterval(t);
+                doSubmit(answersRef.current);
+            }
+        }, 1000);
+        return ()=>clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        submitted
+    ]);
+    // Keep a ref to latest answers so the timer callback can access them
+    const answersRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(answers);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        answersRef.current = answers;
+    }, [
+        answers
+    ]);
+    // ── Session save helpers ──────────────────────────────────────────────────
+    function saveSession(nextAnswers, nextFlagged) {
+        writeSession(sessionKey, {
+            startedAt: startedAtRef.current,
+            answers: nextAnswers,
+            flagged: Array.from(nextFlagged)
         });
     }
-    const submitExam = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (finalAnswers)=>{
+    // ── Core submit ──────────────────────────────────────────────────────────
+    const doSubmit = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (finalAnswers)=>{
         if (submittedRef.current) return;
         submittedRef.current = true;
         setSubmitting(true);
@@ -2209,6 +2268,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
         }
         const total = questions.length;
         const percentage = total ? Math.round(score / total * 100) : 0;
+        clearSession(sessionKey);
         try {
             await fetch(`/api/assessments/${assessmentId}/attempt`, {
                 method: "POST",
@@ -2240,61 +2300,43 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
         userName,
         isGuest,
         passMark,
-        onComplete
+        onComplete,
+        sessionKey
     ]);
-    // Timer countdown
-    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
-        if (submitted) return;
-        const t = setInterval(()=>{
-            setTimeLeft((prev)=>{
-                if (prev <= 1) {
-                    clearInterval(t);
-                    submitExam(answers);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-        return ()=>clearInterval(t);
-    }, [
-        submitted,
-        submitExam,
-        answers
-    ]);
-    // Session enforcement
-    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
-        const handleVisibility = ()=>{
-            if (document.visibilityState === "hidden" && !submittedRef.current) submitExam(answers);
-        };
-        const handleBeforeUnload = (e)=>{
-            if (!submittedRef.current) {
-                submitExam(answers);
-                e.preventDefault();
-                e.returnValue = "";
-            }
-        };
-        document.addEventListener("visibilitychange", handleVisibility);
-        window.addEventListener("beforeunload", handleBeforeUnload);
-        return ()=>{
-            document.removeEventListener("visibilitychange", handleVisibility);
-            window.removeEventListener("beforeunload", handleBeforeUnload);
-        };
-    }, [
-        answers,
-        submitExam
-    ]);
+    // ── NO visibilitychange / beforeunload auto-submit ────────────────────────
+    // Timer is wall-clock based so leaving and returning correctly deducts time.
+    function applyTheme(id) {
+        setCurrentTheme(id);
+        document.documentElement.setAttribute("data-theme", id);
+        try {
+            localStorage.setItem("mednexus-theme", id);
+        } catch  {}
+    }
     function selectAnswer(questionId, optionId) {
-        setAnswers((prev)=>({
+        setAnswers((prev)=>{
+            const next = {
                 ...prev,
                 [questionId]: optionId
-            }));
+            };
+            saveSession(next, flagged);
+            return next;
+        });
+    }
+    function toggleFlag(questionId) {
+        setFlagged((prev)=>{
+            const next = new Set(prev);
+            if (next.has(questionId)) next.delete(questionId);
+            else next.add(questionId);
+            saveSession(answersRef.current, next);
+            return next;
+        });
     }
     function requestSubmit() {
         setShowConfirm(true);
     }
     function confirmSubmit() {
         setShowConfirm(false);
-        submitExam(answers);
+        doSubmit(answers);
     }
     const q = questions[currentIdx];
     const answered = Object.values(answers).filter((v)=>v != null).length;
@@ -2302,7 +2344,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
     const flaggedCount = flagged.size;
     const mins = Math.floor(timeLeft / 60);
     const secs = timeLeft % 60;
-    const timeCritical = timeLeft <= 60;
+    const timeCritical = timeLeft <= 60 && timeLeft > 0;
     const timeWarning = timeLeft <= 300 && timeLeft > 60;
     if (!q) return null;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2323,7 +2365,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 327,
+                                lineNumber: 351,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2336,13 +2378,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 328,
+                                lineNumber: 352,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 326,
+                        lineNumber: 350,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2357,12 +2399,12 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 334,
+                                    lineNumber: 358,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 333,
+                                lineNumber: 357,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2374,13 +2416,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 336,
+                                lineNumber: 360,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 332,
+                        lineNumber: 356,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2390,7 +2432,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                 size: 12
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 345,
+                                lineNumber: 369,
                                 columnNumber: 11
                             }, this),
                             String(mins).padStart(2, "0"),
@@ -2399,7 +2441,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 340,
+                        lineNumber: 364,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2417,12 +2459,12 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                     size: 14
                                 }, void 0, false, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 358,
+                                    lineNumber: 377,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 352,
+                                lineNumber: 375,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2437,12 +2479,12 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                     size: 14
                                 }, void 0, false, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 368,
+                                    lineNumber: 381,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 362,
+                                lineNumber: 379,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2453,19 +2495,19 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                 children: "⊞"
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 372,
+                                lineNumber: 383,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 350,
+                        lineNumber: 374,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 325,
+                lineNumber: 349,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2493,7 +2535,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                            lineNumber: 392,
+                                                            lineNumber: 399,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2501,13 +2543,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                             children: q.subject
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                            lineNumber: 393,
+                                                            lineNumber: 400,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 391,
+                                                    lineNumber: 398,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2520,20 +2562,20 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                             size: 11
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                            lineNumber: 405,
+                                                            lineNumber: 408,
                                                             columnNumber: 19
                                                         }, this),
                                                         flagged.has(q.id) ? "Flagged" : "Flag"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 395,
+                                                    lineNumber: 402,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 390,
+                                            lineNumber: 397,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2541,13 +2583,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                             children: q.vignette
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 409,
+                                            lineNumber: 412,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 389,
+                                    lineNumber: 396,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2564,7 +2606,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                     children: opt.id
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 427,
+                                                    lineNumber: 424,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2572,19 +2614,19 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                     children: opt.text
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 432,
+                                                    lineNumber: 427,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, opt.id, true, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 417,
+                                            lineNumber: 419,
                                             columnNumber: 19
                                         }, this);
                                     })
                                 }, void 0, false, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 413,
+                                    lineNumber: 415,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2600,14 +2642,14 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                     size: 15
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 446,
+                                                    lineNumber: 436,
                                                     columnNumber: 17
                                                 }, this),
                                                 " Previous"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 440,
+                                            lineNumber: 434,
                                             columnNumber: 15
                                         }, this),
                                         currentIdx < questions.length - 1 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2620,13 +2662,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                     size: 15
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                    lineNumber: 455,
+                                                    lineNumber: 441,
                                                     columnNumber: 24
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 450,
+                                            lineNumber: 439,
                                             columnNumber: 17
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                             type: "button",
@@ -2639,7 +2681,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                         size: 14
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                        lineNumber: 464,
+                                                        lineNumber: 446,
                                                         columnNumber: 51
                                                     }, this),
                                                     " Submit Exam"
@@ -2647,13 +2689,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                             }, void 0, true)
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 458,
+                                            lineNumber: 444,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 439,
+                                    lineNumber: 433,
                                     columnNumber: 13
                                 }, this),
                                 currentIdx < questions.length - 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2672,23 +2714,23 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 471,
+                                        lineNumber: 453,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 470,
+                                    lineNumber: 452,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                            lineNumber: 386,
+                            lineNumber: 394,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 385,
+                        lineNumber: 393,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2699,7 +2741,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                 children: "Navigator"
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 486,
+                                lineNumber: 464,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2718,19 +2760,19 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 className: "absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-500 border border-card"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 506,
+                                                lineNumber: 480,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, question.id, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 493,
+                                        lineNumber: 471,
                                         columnNumber: 17
                                     }, this);
                                 })
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 487,
+                                lineNumber: 465,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2743,14 +2785,14 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 className: "h-3 w-3 rounded bg-primary/20"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 516,
-                                                columnNumber: 15
+                                                lineNumber: 488,
+                                                columnNumber: 88
                                             }, this),
                                             " Current"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 515,
+                                        lineNumber: 488,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2760,8 +2802,8 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 className: "h-3 w-3 rounded bg-emerald-100 dark:bg-emerald-900/30"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 519,
-                                                columnNumber: 15
+                                                lineNumber: 489,
+                                                columnNumber: 88
                                             }, this),
                                             " Answered (",
                                             answered,
@@ -2769,7 +2811,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 518,
+                                        lineNumber: 489,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2779,8 +2821,8 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 className: "h-3 w-3 rounded bg-amber-400/80"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 522,
-                                                columnNumber: 15
+                                                lineNumber: 490,
+                                                columnNumber: 88
                                             }, this),
                                             " Flagged (",
                                             flaggedCount,
@@ -2788,7 +2830,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 521,
+                                        lineNumber: 490,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2798,8 +2840,8 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 className: "h-3 w-3 rounded border border-border bg-background"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 525,
-                                                columnNumber: 15
+                                                lineNumber: 491,
+                                                columnNumber: 88
                                             }, this),
                                             " Unanswered (",
                                             unanswered,
@@ -2807,13 +2849,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 524,
+                                        lineNumber: 491,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 514,
+                                lineNumber: 487,
                                 columnNumber: 11
                             }, this),
                             flaggedCount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2824,7 +2866,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         children: "Flagged"
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 532,
+                                        lineNumber: 496,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2842,7 +2884,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                         className: "text-amber-500 shrink-0"
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                        lineNumber: 544,
+                                                        lineNumber: 504,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2853,25 +2895,25 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                        lineNumber: 545,
+                                                        lineNumber: 505,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, qId, true, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 538,
+                                                lineNumber: 502,
                                                 columnNumber: 21
                                             }, this);
                                         })
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 533,
+                                        lineNumber: 497,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 531,
+                                lineNumber: 495,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2884,24 +2926,24 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                     children: submitting ? "Submitting…" : "Submit Exam"
                                 }, void 0, false, {
                                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                                    lineNumber: 555,
+                                    lineNumber: 514,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 554,
+                                lineNumber: 513,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 485,
+                        lineNumber: 463,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 383,
+                lineNumber: 391,
                 columnNumber: 7
             }, this),
             timeCritical && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2911,14 +2953,14 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                         size: 13
                     }, void 0, false, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 570,
+                        lineNumber: 524,
                         columnNumber: 11
                     }, this),
-                    " Less than 1 minute remaining — exam will auto-submit!"
+                    " Less than 1 minute remaining!"
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 569,
+                lineNumber: 523,
                 columnNumber: 9
             }, this),
             showConfirm && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2938,12 +2980,12 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                             className: "text-amber-600 dark:text-amber-400"
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 581,
+                                            lineNumber: 535,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 580,
+                                        lineNumber: 534,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2953,7 +2995,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 children: "Submit Exam?"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 584,
+                                                lineNumber: 538,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2961,19 +3003,19 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 children: unanswered > 0 ? `You have ${unanswered} unanswered question${unanswered === 1 ? "" : "s"}. This cannot be undone.` : "All questions answered. This cannot be undone."
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 585,
+                                                lineNumber: 539,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 583,
+                                        lineNumber: 537,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 579,
+                                lineNumber: 533,
                                 columnNumber: 15
                             }, this),
                             unanswered > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2987,7 +3029,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 children: "Answered"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 596,
+                                                lineNumber: 549,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2999,13 +3041,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                                lineNumber: 597,
+                                                lineNumber: 550,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 595,
+                                        lineNumber: 548,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3017,18 +3059,18 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/components/assessment-exam-runner.tsx",
-                                            lineNumber: 600,
+                                            lineNumber: 553,
                                             columnNumber: 21
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 599,
+                                        lineNumber: 552,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 594,
+                                lineNumber: 547,
                                 columnNumber: 17
                             }, this),
                             flaggedCount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3039,27 +3081,26 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         className: "text-amber-500 shrink-0"
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 607,
+                                        lineNumber: 559,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                         className: "text-xs text-amber-700 dark:text-amber-400",
                                         children: [
-                                            "You have ",
                                             flaggedCount,
                                             " flagged question",
                                             flaggedCount === 1 ? "" : "s",
-                                            " to review."
+                                            " marked for review."
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 608,
+                                        lineNumber: 560,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 606,
+                                lineNumber: 558,
                                 columnNumber: 17
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3072,7 +3113,7 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         children: "Go Back"
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 615,
+                                        lineNumber: 566,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3083,36 +3124,36 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                                         children: "Submit"
                                     }, void 0, false, {
                                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                                        lineNumber: 622,
+                                        lineNumber: 570,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                                lineNumber: 614,
+                                lineNumber: 565,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/assessment-exam-runner.tsx",
-                        lineNumber: 578,
+                        lineNumber: 532,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/assessment-exam-runner.tsx",
-                    lineNumber: 577,
+                    lineNumber: 531,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 576,
+                lineNumber: 530,
                 columnNumber: 9
             }, this),
             showCalc && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(Calculator, {
                 onClose: ()=>setShowCalc(false)
             }, void 0, false, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 637,
+                lineNumber: 580,
                 columnNumber: 20
             }, this),
             showThemePicker && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ThemePicker, {
@@ -3121,13 +3162,13 @@ function AssessmentExamRunner({ assessmentId, title, timeLimitMins, passMark, qu
                 onClose: ()=>setShowThemePicker(false)
             }, void 0, false, {
                 fileName: "[project]/components/assessment-exam-runner.tsx",
-                lineNumber: 641,
-                columnNumber: 9
+                lineNumber: 581,
+                columnNumber: 27
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/assessment-exam-runner.tsx",
-        lineNumber: 323,
+        lineNumber: 347,
         columnNumber: 5
     }, this);
 }
@@ -3613,19 +3654,21 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__
 ;
 ;
 ;
-function storageKey(token) {
+function attemptKey(token) {
     return `mednexus-exam-${token}`;
 }
-function saveAttempt(token, stored) {
+function sessionKey(assessmentId, guestId) {
+    return `mednexus-exam-session-${assessmentId}-${guestId}`;
+}
+function saveAttempt(token, data) {
     try {
-        localStorage.setItem(storageKey(token), JSON.stringify(stored));
+        localStorage.setItem(attemptKey(token), JSON.stringify(data));
     } catch  {}
 }
 function loadAttempt(token) {
     try {
-        const raw = localStorage.getItem(storageKey(token));
-        if (!raw) return null;
-        return JSON.parse(raw);
+        const raw = localStorage.getItem(attemptKey(token));
+        return raw ? JSON.parse(raw) : null;
     } catch  {
         return null;
     }
@@ -3654,24 +3697,49 @@ function GuestExamPage({ params }) {
                     setPhase("unavailable");
                     return;
                 }
-                setAssessment(data.assessment);
-                setQuestions(data.questions ?? []);
-                // Check localStorage for a previous attempt by this guest
+                const asmt = data.assessment;
+                const qs = data.questions ?? [];
+                setAssessment(asmt);
+                setQuestions(qs);
                 const stored = loadAttempt(token);
-                if (stored) {
+                const triesAllowed = asmt.triesAllowed ?? 1;
+                // 1. Tries exhausted with a completed result → show review
+                if (stored && stored.latestResult && stored.attemptCount >= triesAllowed) {
                     setGuestName(stored.guestName);
                     setGuestId(stored.guestId);
                     setTriesUsed(stored.attemptCount);
-                    const triesAllowed = data.assessment.triesAllowed ?? 1;
-                    if (stored.attemptCount >= triesAllowed) {
-                        // All tries exhausted — route directly to review mode
-                        setResult({
-                            ...stored.latestResult,
-                            questions: stored.questions
-                        });
-                        setPhase("results");
-                        return;
-                    }
+                    setResult({
+                        ...stored.latestResult,
+                        questions: stored.questions ?? qs
+                    });
+                    setPhase("results");
+                    return;
+                }
+                // 2. In-progress session (reloaded / came back) → resume exam
+                if (stored?.guestId) {
+                    try {
+                        const sk = sessionKey(asmt.id, stored.guestId);
+                        const sessionRaw = localStorage.getItem(sk);
+                        if (sessionRaw) {
+                            const session = JSON.parse(sessionRaw);
+                            const elapsed = Math.floor((Date.now() - session.startedAt) / 1000);
+                            const remaining = Math.max(0, asmt.timeLimitMins * 60 - elapsed);
+                            if (remaining > 0) {
+                                // Restore identity and jump straight to exam — runner picks up from session
+                                setGuestName(stored.guestName);
+                                setGuestId(stored.guestId);
+                                setTriesUsed(stored.attemptCount ?? 0);
+                                setPhase("exam");
+                                return;
+                            }
+                            // remaining === 0: runner will auto-submit on mount
+                            setGuestName(stored.guestName);
+                            setGuestId(stored.guestId);
+                            setTriesUsed(stored.attemptCount ?? 0);
+                            setPhase("exam");
+                            return;
+                        }
+                    } catch  {}
                 }
                 setPhase("name-entry");
             } catch  {
@@ -3690,12 +3758,22 @@ function GuestExamPage({ params }) {
         setNameError("");
         const id = `guest-${guestName.trim().toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`;
         setGuestId(id);
+        // Persist identity immediately so reload can resume without re-entering name
+        const existing = loadAttempt(token);
+        saveAttempt(token, {
+            guestName: guestName.trim(),
+            guestId: id,
+            attemptCount: existing?.attemptCount ?? triesUsed,
+            triesAllowed: assessment?.triesAllowed ?? 1,
+            latestResult: existing?.latestResult,
+            questions: existing?.questions
+        });
         setPhase("exam");
     }
     function handleComplete(res) {
         const newAttemptCount = triesUsed + 1;
         setTriesUsed(newAttemptCount);
-        // Persist attempt to localStorage so revisiting the link goes to review
+        // Save completed attempt (session already cleared by runner)
         saveAttempt(token, {
             guestName: guestName.trim(),
             guestId,
@@ -3724,6 +3802,7 @@ function GuestExamPage({ params }) {
     const triesAllowed = assessment?.triesAllowed ?? 1;
     const triesRemaining = Math.max(0, triesAllowed - triesUsed);
     const triesExhausted = triesUsed >= triesAllowed;
+    // ── Loading ──────────────────────────────────────────────────────────────
     if (phase === "loading") {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex min-h-screen items-center justify-center bg-background",
@@ -3736,12 +3815,12 @@ function GuestExamPage({ params }) {
                             size: 24
                         }, void 0, false, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 157,
+                            lineNumber: 188,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 156,
+                        lineNumber: 187,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3749,21 +3828,22 @@ function GuestExamPage({ params }) {
                         children: "Loading assessment…"
                     }, void 0, false, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 159,
+                        lineNumber: 190,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/exam/[token]/page.tsx",
-                lineNumber: 155,
+                lineNumber: 186,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/app/exam/[token]/page.tsx",
-            lineNumber: 154,
+            lineNumber: 185,
             columnNumber: 7
         }, this);
     }
+    // ── Unavailable ──────────────────────────────────────────────────────────
     if (phase === "unavailable") {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex min-h-screen items-center justify-center bg-background p-4",
@@ -3776,12 +3856,12 @@ function GuestExamPage({ params }) {
                             size: 28
                         }, void 0, false, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 170,
+                            lineNumber: 202,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 169,
+                        lineNumber: 201,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3791,7 +3871,7 @@ function GuestExamPage({ params }) {
                                 children: "Assessment Unavailable"
                             }, void 0, false, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 173,
+                                lineNumber: 205,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3799,27 +3879,28 @@ function GuestExamPage({ params }) {
                                 children: "This assessment link is no longer active. Contact your instructor for more information."
                             }, void 0, false, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 174,
+                                lineNumber: 206,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 172,
+                        lineNumber: 204,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/exam/[token]/page.tsx",
-                lineNumber: 168,
+                lineNumber: 200,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/app/exam/[token]/page.tsx",
-            lineNumber: 167,
+            lineNumber: 199,
             columnNumber: 7
         }, this);
     }
+    // ── Exam ─────────────────────────────────────────────────────────────────
     if (phase === "exam" && assessment && questions.length > 0) {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$assessment$2d$exam$2d$runner$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["AssessmentExamRunner"], {
             assessmentId: assessment.id,
@@ -3827,16 +3908,17 @@ function GuestExamPage({ params }) {
             timeLimitMins: assessment.timeLimitMins,
             passMark: assessment.passMark,
             questions: questions,
-            userName: guestName.trim(),
+            userName: guestName.trim() || "Guest",
             userId: guestId,
             isGuest: true,
             onComplete: handleComplete
         }, void 0, false, {
             fileName: "[project]/app/exam/[token]/page.tsx",
-            lineNumber: 185,
+            lineNumber: 218,
             columnNumber: 7
         }, this);
     }
+    // ── Results ──────────────────────────────────────────────────────────────
     if (phase === "results" && result && assessment) {
         if (showReview) {
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3856,17 +3938,17 @@ function GuestExamPage({ params }) {
                         onClose: ()=>setShowReview(false)
                     }, void 0, false, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 204,
+                        lineNumber: 238,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/app/exam/[token]/page.tsx",
-                    lineNumber: 203,
+                    lineNumber: 237,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/exam/[token]/page.tsx",
-                lineNumber: 202,
+                lineNumber: 236,
                 columnNumber: 9
             }, this);
         }
@@ -3886,7 +3968,7 @@ function GuestExamPage({ params }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 226,
+                                lineNumber: 259,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -3894,7 +3976,7 @@ function GuestExamPage({ params }) {
                                 children: result.passed ? "Congratulations!" : "Exam Complete"
                             }, void 0, false, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 229,
+                                lineNumber: 262,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3909,7 +3991,7 @@ function GuestExamPage({ params }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 232,
+                                lineNumber: 263,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -3917,13 +3999,13 @@ function GuestExamPage({ params }) {
                                 children: result.passed ? "✓ Passed" : "✗ Did not pass"
                             }, void 0, false, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 235,
+                                lineNumber: 266,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 225,
+                        lineNumber: 258,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3937,7 +4019,7 @@ function GuestExamPage({ params }) {
                                         children: "Candidate"
                                     }, void 0, false, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 243,
+                                        lineNumber: 273,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -3945,13 +4027,13 @@ function GuestExamPage({ params }) {
                                         children: guestName.trim()
                                     }, void 0, false, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 244,
+                                        lineNumber: 274,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 242,
+                                lineNumber: 272,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3962,7 +4044,7 @@ function GuestExamPage({ params }) {
                                         children: "Assessment"
                                     }, void 0, false, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 247,
+                                        lineNumber: 277,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -3970,13 +4052,13 @@ function GuestExamPage({ params }) {
                                         children: assessment.title
                                     }, void 0, false, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 248,
+                                        lineNumber: 278,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 246,
+                                lineNumber: 276,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3987,7 +4069,7 @@ function GuestExamPage({ params }) {
                                         children: "Score"
                                     }, void 0, false, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 251,
+                                        lineNumber: 281,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -3998,13 +4080,13 @@ function GuestExamPage({ params }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 252,
+                                        lineNumber: 282,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 250,
+                                lineNumber: 280,
                                 columnNumber: 13
                             }, this),
                             triesAllowed > 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4015,7 +4097,7 @@ function GuestExamPage({ params }) {
                                         children: "Attempts used"
                                     }, void 0, false, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 256,
+                                        lineNumber: 286,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4027,19 +4109,19 @@ function GuestExamPage({ params }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 257,
+                                        lineNumber: 287,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 255,
+                                lineNumber: 285,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 241,
+                        lineNumber: 271,
                         columnNumber: 11
                     }, this),
                     triesExhausted && triesAllowed > 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4050,7 +4132,7 @@ function GuestExamPage({ params }) {
                                 className: "mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
                             }, void 0, false, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 267,
+                                lineNumber: 296,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -4058,17 +4140,17 @@ function GuestExamPage({ params }) {
                                 children: [
                                     "You have used all ",
                                     triesAllowed,
-                                    " allowed attempts. You can review your answers below."
+                                    " allowed attempts. You can still review your answers below."
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 268,
+                                lineNumber: 297,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 266,
+                        lineNumber: 295,
                         columnNumber: 13
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4083,14 +4165,14 @@ function GuestExamPage({ params }) {
                                         size: 15
                                     }, void 0, false, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 281,
+                                        lineNumber: 306,
                                         columnNumber: 15
                                     }, this),
                                     " Review Exam"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 276,
+                                lineNumber: 304,
                                 columnNumber: 13
                             }, this),
                             !triesExhausted && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -4102,7 +4184,7 @@ function GuestExamPage({ params }) {
                                         size: 14
                                     }, void 0, false, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 291,
+                                        lineNumber: 311,
                                         columnNumber: 17
                                     }, this),
                                     "Retake Exam",
@@ -4117,19 +4199,19 @@ function GuestExamPage({ params }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/exam/[token]/page.tsx",
-                                        lineNumber: 294,
+                                        lineNumber: 314,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 286,
+                                lineNumber: 309,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 275,
+                        lineNumber: 303,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -4137,22 +4219,22 @@ function GuestExamPage({ params }) {
                         children: "Powered by MedNexus"
                     }, void 0, false, {
                         fileName: "[project]/app/exam/[token]/page.tsx",
-                        lineNumber: 300,
+                        lineNumber: 320,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/exam/[token]/page.tsx",
-                lineNumber: 223,
+                lineNumber: 257,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/app/exam/[token]/page.tsx",
-            lineNumber: 222,
+            lineNumber: 256,
             columnNumber: 7
         }, this);
     }
-    // Name entry phase
+    // ── Name entry ────────────────────────────────────────────────────────────
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "flex min-h-screen items-center justify-center bg-background p-4",
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4167,12 +4249,12 @@ function GuestExamPage({ params }) {
                                 size: 26
                             }, void 0, false, {
                                 fileName: "[project]/app/exam/[token]/page.tsx",
-                                lineNumber: 313,
+                                lineNumber: 332,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 312,
+                            lineNumber: 331,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -4180,7 +4262,7 @@ function GuestExamPage({ params }) {
                             children: assessment?.title
                         }, void 0, false, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 315,
+                            lineNumber: 334,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -4188,13 +4270,13 @@ function GuestExamPage({ params }) {
                             children: "MedNexus Live Assessment"
                         }, void 0, false, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 316,
+                            lineNumber: 335,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/exam/[token]/page.tsx",
-                    lineNumber: 311,
+                    lineNumber: 330,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4208,7 +4290,7 @@ function GuestExamPage({ params }) {
                                     children: "Questions"
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 322,
+                                    lineNumber: 340,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4216,13 +4298,13 @@ function GuestExamPage({ params }) {
                                     children: assessment?.questionCount
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 323,
+                                    lineNumber: 341,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 321,
+                            lineNumber: 339,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4233,7 +4315,7 @@ function GuestExamPage({ params }) {
                                     children: "Time limit"
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 326,
+                                    lineNumber: 344,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4243,7 +4325,7 @@ function GuestExamPage({ params }) {
                                             size: 12
                                         }, void 0, false, {
                                             fileName: "[project]/app/exam/[token]/page.tsx",
-                                            lineNumber: 328,
+                                            lineNumber: 346,
                                             columnNumber: 15
                                         }, this),
                                         " ",
@@ -4252,13 +4334,13 @@ function GuestExamPage({ params }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 327,
+                                    lineNumber: 345,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 325,
+                            lineNumber: 343,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4269,7 +4351,7 @@ function GuestExamPage({ params }) {
                                     children: "Pass mark"
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 332,
+                                    lineNumber: 350,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4280,13 +4362,13 @@ function GuestExamPage({ params }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 333,
+                                    lineNumber: 351,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 331,
+                            lineNumber: 349,
                             columnNumber: 11
                         }, this),
                         triesAllowed > 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4297,7 +4379,7 @@ function GuestExamPage({ params }) {
                                     children: "Attempts allowed"
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 337,
+                                    lineNumber: 355,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4305,19 +4387,19 @@ function GuestExamPage({ params }) {
                                     children: triesAllowed
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 338,
+                                    lineNumber: 356,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 336,
+                            lineNumber: 354,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/exam/[token]/page.tsx",
-                    lineNumber: 320,
+                    lineNumber: 338,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4328,21 +4410,21 @@ function GuestExamPage({ params }) {
                             className: "mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
                         }, void 0, false, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 345,
+                            lineNumber: 362,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                             className: "text-xs text-amber-700 dark:text-amber-400 leading-relaxed",
-                            children: "Once started, the timer cannot be paused. Closing or leaving this tab will auto-submit your exam."
+                            children: "The timer runs continuously — you can leave and return as needed, but time keeps counting down. The exam auto-submits when the timer reaches zero."
                         }, void 0, false, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 346,
+                            lineNumber: 363,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/exam/[token]/page.tsx",
-                    lineNumber: 344,
+                    lineNumber: 361,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4355,7 +4437,7 @@ function GuestExamPage({ params }) {
                                     children: "Your Full Name"
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 354,
+                                    lineNumber: 370,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -4371,7 +4453,7 @@ function GuestExamPage({ params }) {
                                     autoFocus: true
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 357,
+                                    lineNumber: 373,
                                     columnNumber: 13
                                 }, this),
                                 nameError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -4379,13 +4461,13 @@ function GuestExamPage({ params }) {
                                     children: nameError
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 366,
+                                    lineNumber: 382,
                                     columnNumber: 27
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 353,
+                            lineNumber: 369,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -4397,31 +4479,31 @@ function GuestExamPage({ params }) {
                                     size: 15
                                 }, void 0, false, {
                                     fileName: "[project]/app/exam/[token]/page.tsx",
-                                    lineNumber: 373,
+                                    lineNumber: 386,
                                     columnNumber: 13
                                 }, this),
                                 " Begin Exam"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/exam/[token]/page.tsx",
-                            lineNumber: 368,
+                            lineNumber: 384,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/exam/[token]/page.tsx",
-                    lineNumber: 352,
+                    lineNumber: 368,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/app/exam/[token]/page.tsx",
-            lineNumber: 309,
+            lineNumber: 329,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/app/exam/[token]/page.tsx",
-        lineNumber: 308,
+        lineNumber: 328,
         columnNumber: 5
     }, this);
 }

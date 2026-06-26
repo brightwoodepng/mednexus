@@ -29,6 +29,39 @@ interface Props {
   onExit?: () => void
 }
 
+// ── Session helpers ───────────────────────────────────────────────────────────
+interface ExamSession {
+  startedAt: number
+  answers: Record<string, string | null>
+  flagged: string[]
+}
+
+function makeSessionKey(assessmentId: string, userId: string) {
+  return `mednexus-exam-session-${assessmentId}-${userId}`
+}
+
+function readSession(key: string): ExamSession | null {
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(key) : null
+    return raw ? (JSON.parse(raw) as ExamSession) : null
+  } catch {
+    return null
+  }
+}
+
+function writeSession(key: string, session: ExamSession) {
+  try { localStorage.setItem(key, JSON.stringify(session)) } catch { /* ignore */ }
+}
+
+function clearSession(key: string) {
+  try { localStorage.removeItem(key) } catch { /* ignore */ }
+}
+
+function calcRemaining(startedAt: number, totalSecs: number): number {
+  const elapsed = Math.floor((Date.now() - startedAt) / 1000)
+  return Math.max(0, totalSecs - elapsed)
+}
+
 // ── Calculator ────────────────────────────────────────────────────────────────
 function Calculator({ onClose }: { onClose: () => void }) {
   const [display, setDisplay] = useState("0")
@@ -38,80 +71,43 @@ function Calculator({ onClose }: { onClose: () => void }) {
   const [expression, setExpression] = useState("")
 
   function inputDigit(digit: string) {
-    if (waiting) {
-      setDisplay(digit)
-      setWaiting(false)
-    } else {
-      setDisplay(display === "0" ? digit : display + digit)
-    }
+    if (waiting) { setDisplay(digit); setWaiting(false) }
+    else setDisplay(display === "0" ? digit : display + digit)
   }
-
   function inputDecimal() {
     if (waiting) { setDisplay("0."); setWaiting(false); return }
     if (!display.includes(".")) setDisplay(display + ".")
   }
-
+  function calculate(a: number, b: number, op: string): number {
+    if (op === "+") return a + b
+    if (op === "−") return a - b
+    if (op === "×") return a * b
+    if (op === "÷") return b !== 0 ? a / b : 0
+    return b
+  }
   function handleOperator(op: string) {
     const val = parseFloat(display)
     if (memory !== null && !waiting) {
       const result = calculate(memory, val, operator!)
-      setDisplay(String(result))
-      setMemory(result)
-      setExpression(`${result} ${op}`)
-    } else {
-      setMemory(val)
-      setExpression(`${val} ${op}`)
-    }
-    setOperator(op)
-    setWaiting(true)
+      setDisplay(String(result)); setMemory(result); setExpression(`${result} ${op}`)
+    } else { setMemory(val); setExpression(`${val} ${op}`) }
+    setOperator(op); setWaiting(true)
   }
-
-  function calculate(a: number, b: number, op: string): number {
-    switch (op) {
-      case "+": return a + b
-      case "−": return a - b
-      case "×": return a * b
-      case "÷": return b !== 0 ? a / b : 0
-      default: return b
-    }
-  }
-
   function handleEquals() {
     if (operator === null || memory === null) return
     const val = parseFloat(display)
-    const result = calculate(memory, val, operator)
-    const rounded = parseFloat(result.toPrecision(10))
-    setDisplay(String(rounded))
-    setExpression(`${memory} ${operator} ${val} =`)
-    setMemory(null)
-    setOperator(null)
-    setWaiting(true)
+    const result = parseFloat(calculate(memory, val, operator).toPrecision(10))
+    setDisplay(String(result)); setExpression(`${memory} ${operator} ${val} =`)
+    setMemory(null); setOperator(null); setWaiting(true)
   }
-
-  function handleClear() {
-    setDisplay("0"); setMemory(null); setOperator(null); setWaiting(false); setExpression("")
-  }
-
-  function handleBackspace() {
-    if (waiting) return
-    setDisplay(display.length > 1 ? display.slice(0, -1) : "0")
-  }
-
-  function handleNegate() {
-    setDisplay(String(parseFloat(display) * -1))
-  }
-
-  function handlePercent() {
-    setDisplay(String(parseFloat(display) / 100))
-  }
+  function handleClear() { setDisplay("0"); setMemory(null); setOperator(null); setWaiting(false); setExpression("") }
+  function handleBackspace() { if (!waiting) setDisplay(display.length > 1 ? display.slice(0, -1) : "0") }
+  function handleNegate() { setDisplay(String(parseFloat(display) * -1)) }
+  function handlePercent() { setDisplay(String(parseFloat(display) / 100)) }
 
   const btn = (label: string, action: () => void, style = "") => (
-    <button
-      key={label}
-      type="button"
-      onClick={action}
-      className={`flex h-10 items-center justify-center rounded-xl text-sm font-semibold transition-colors active:scale-95 ${style}`}
-    >
+    <button key={label} type="button" onClick={action}
+      className={`flex h-10 items-center justify-center rounded-xl text-sm font-semibold transition-colors active:scale-95 ${style}`}>
       {label}
     </button>
   )
@@ -124,48 +120,35 @@ function Calculator({ onClose }: { onClose: () => void }) {
           <XIcon size={13} />
         </button>
       </div>
-
       <div className="bg-muted/40 px-3 py-3 text-right">
         <p className="h-4 text-[10px] text-muted-foreground truncate">{expression || " "}</p>
         <p className="mt-0.5 text-2xl font-bold text-foreground tabular-nums truncate">{display}</p>
       </div>
-
       <div className="grid grid-cols-4 gap-1 p-2">
         {btn("C", handleClear, "bg-destructive/15 text-destructive hover:bg-destructive/25")}
         {btn("±", handleNegate, "bg-muted text-foreground hover:bg-muted/80")}
         {btn("%", handlePercent, "bg-muted text-foreground hover:bg-muted/80")}
         {btn("÷", () => handleOperator("÷"), operator === "÷" ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary hover:bg-primary/25")}
-
         {btn("7", () => inputDigit("7"), "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("8", () => inputDigit("8"), "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("9", () => inputDigit("9"), "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("×", () => handleOperator("×"), operator === "×" ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary hover:bg-primary/25")}
-
         {btn("4", () => inputDigit("4"), "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("5", () => inputDigit("5"), "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("6", () => inputDigit("6"), "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("−", () => handleOperator("−"), operator === "−" ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary hover:bg-primary/25")}
-
         {btn("1", () => inputDigit("1"), "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("2", () => inputDigit("2"), "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("3", () => inputDigit("3"), "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("+", () => handleOperator("+"), operator === "+" ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary hover:bg-primary/25")}
-
-        <button
-          type="button"
-          onClick={() => inputDigit("0")}
-          className="col-span-2 flex h-10 items-center justify-start rounded-xl bg-card border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
-        >
+        <button type="button" onClick={() => inputDigit("0")}
+          className="col-span-2 flex h-10 items-center justify-start rounded-xl bg-card border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted transition-colors">
           0
         </button>
         {btn(".", inputDecimal, "bg-card border border-border hover:bg-muted text-foreground")}
         {btn("=", handleEquals, "bg-primary text-primary-foreground hover:bg-primary/90")}
-
-        <button
-          type="button"
-          onClick={handleBackspace}
-          className="col-span-4 flex h-8 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground hover:bg-muted/80 transition-colors"
-        >
+        <button type="button" onClick={handleBackspace}
+          className="col-span-4 flex h-8 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground hover:bg-muted/80 transition-colors">
           ⌫ backspace
         </button>
       </div>
@@ -185,13 +168,8 @@ function ThemePicker({ current, onSelect, onClose }: { current: ThemeId; onSelec
       </div>
       <div className="p-3 grid grid-cols-4 gap-2 max-h-64 overflow-y-auto">
         {THEMES.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => { onSelect(t.id); onClose() }}
-            title={t.name}
-            className={`group flex flex-col items-center gap-1.5 rounded-xl p-2 transition-all ${current === t.id ? "ring-2 ring-primary bg-primary/8" : "hover:bg-muted"}`}
-          >
+          <button key={t.id} type="button" onClick={() => { onSelect(t.id); onClose() }} title={t.name}
+            className={`group flex flex-col items-center gap-1.5 rounded-xl p-2 transition-all ${current === t.id ? "ring-2 ring-primary bg-primary/8" : "hover:bg-muted"}`}>
             <div className="relative h-9 w-9 rounded-xl overflow-hidden border border-border/50 shadow-sm" style={{ background: t.swatch.bg }}>
               <div className="absolute inset-0 flex">
                 <div className="w-1/2 h-full" style={{ background: t.swatch.surface }} />
@@ -209,13 +187,27 @@ function ThemePicker({ current, onSelect, onClose }: { current: ThemeId; onSelec
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function AssessmentExamRunner({
   assessmentId, title, timeLimitMins, passMark, questions,
-  userName, userId, isGuest = false, onComplete, onExit,
+  userName, userId, isGuest = false, onComplete,
 }: Props) {
   const totalSecs = timeLimitMins * 60
-  const [timeLeft, setTimeLeft] = useState(totalSecs)
+  const sessionKey = makeSessionKey(assessmentId, userId)
+
+  // ── State — lazily initialised from localStorage session ──────────────────
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    const session = readSession(sessionKey)
+    return session ? calcRemaining(session.startedAt, totalSecs) : totalSecs
+  })
+
+  const [answers, setAnswers] = useState<Record<string, string | null>>(() => {
+    return readSession(sessionKey)?.answers ?? {}
+  })
+
+  const [flagged, setFlagged] = useState<Set<string>>(() => {
+    const session = readSession(sessionKey)
+    return session?.flagged ? new Set(session.flagged) : new Set()
+  })
+
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string | null>>({})
-  const [flagged, setFlagged] = useState<Set<string>>(new Set())
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [showNav, setShowNav] = useState(false)
@@ -223,9 +215,12 @@ export function AssessmentExamRunner({
   const [showCalc, setShowCalc] = useState(false)
   const [showThemePicker, setShowThemePicker] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<ThemeId>("clinical-light")
-  const submittedRef = useRef(false)
 
-  // Load persisted theme
+  const submittedRef = useRef(false)
+  // Store startedAt so saveSession doesn't need to re-read localStorage
+  const startedAtRef = useRef<number>(0)
+
+  // ── Load persisted theme ──────────────────────────────────────────────────
   useEffect(() => {
     try {
       const stored = localStorage.getItem("mednexus-theme") as ThemeId | null
@@ -233,22 +228,54 @@ export function AssessmentExamRunner({
     } catch { /* ignore */ }
   }, [])
 
-  function applyTheme(id: ThemeId) {
-    setCurrentTheme(id)
-    document.documentElement.setAttribute("data-theme", id)
-    try { localStorage.setItem("mednexus-theme", id) } catch { /* ignore */ }
-  }
+  // ── Session init — create if new, or auto-submit if expired ───────────────
+  useEffect(() => {
+    const session = readSession(sessionKey)
+    if (!session) {
+      const now = Date.now()
+      startedAtRef.current = now
+      writeSession(sessionKey, { startedAt: now, answers: {}, flagged: [] })
+    } else {
+      startedAtRef.current = session.startedAt
+      // If they were away long enough that time ran out, submit now
+      if (timeLeft === 0 && !submittedRef.current) {
+        doSubmit(session.answers)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  function toggleFlag(questionId: string) {
-    setFlagged((prev) => {
-      const next = new Set(prev)
-      if (next.has(questionId)) next.delete(questionId)
-      else next.add(questionId)
-      return next
+  // ── Timer — wall-clock corrected every second ──────────────────────────────
+  useEffect(() => {
+    if (submitted) return
+    const t = setInterval(() => {
+      // Always re-derive from wall clock so resume after leaving is accurate
+      const remaining = calcRemaining(startedAtRef.current, totalSecs)
+      setTimeLeft(remaining)
+      if (remaining === 0) {
+        clearInterval(t)
+        doSubmit(answersRef.current)
+      }
+    }, 1000)
+    return () => clearInterval(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitted])
+
+  // Keep a ref to latest answers so the timer callback can access them
+  const answersRef = useRef(answers)
+  useEffect(() => { answersRef.current = answers }, [answers])
+
+  // ── Session save helpers ──────────────────────────────────────────────────
+  function saveSession(nextAnswers: Record<string, string | null>, nextFlagged: Set<string>) {
+    writeSession(sessionKey, {
+      startedAt: startedAtRef.current,
+      answers: nextAnswers,
+      flagged: Array.from(nextFlagged),
     })
   }
 
-  const submitExam = useCallback(async (finalAnswers: Record<string, string | null>) => {
+  // ── Core submit ──────────────────────────────────────────────────────────
+  const doSubmit = useCallback(async (finalAnswers: Record<string, string | null>) => {
     if (submittedRef.current) return
     submittedRef.current = true
     setSubmitting(true)
@@ -260,53 +287,50 @@ export function AssessmentExamRunner({
     const total = questions.length
     const percentage = total ? Math.round((score / total) * 100) : 0
 
+    clearSession(sessionKey)
+
     try {
       await fetch(`/api/assessments/${assessmentId}/attempt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, userName, isGuest, answers: finalAnswers }),
       })
-    } catch { /* swallow — result still shown locally */ }
+    } catch { /* swallow — result shown locally */ }
 
     setSubmitted(true)
     setSubmitting(false)
     onComplete({ score, total, percentage, passed: percentage >= passMark, answers: finalAnswers, questions })
-  }, [assessmentId, questions, userId, userName, isGuest, passMark, onComplete])
+  }, [assessmentId, questions, userId, userName, isGuest, passMark, onComplete, sessionKey])
 
-  // Timer countdown
-  useEffect(() => {
-    if (submitted) return
-    const t = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) { clearInterval(t); submitExam(answers); return 0 }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(t)
-  }, [submitted, submitExam, answers])
+  // ── NO visibilitychange / beforeunload auto-submit ────────────────────────
+  // Timer is wall-clock based so leaving and returning correctly deducts time.
 
-  // Session enforcement
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "hidden" && !submittedRef.current) submitExam(answers)
-    }
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!submittedRef.current) { submitExam(answers); e.preventDefault(); e.returnValue = "" }
-    }
-    document.addEventListener("visibilitychange", handleVisibility)
-    window.addEventListener("beforeunload", handleBeforeUnload)
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility)
-      window.removeEventListener("beforeunload", handleBeforeUnload)
-    }
-  }, [answers, submitExam])
+  function applyTheme(id: ThemeId) {
+    setCurrentTheme(id)
+    document.documentElement.setAttribute("data-theme", id)
+    try { localStorage.setItem("mednexus-theme", id) } catch { /* ignore */ }
+  }
 
   function selectAnswer(questionId: string, optionId: string) {
-    setAnswers((prev) => ({ ...prev, [questionId]: optionId }))
+    setAnswers((prev) => {
+      const next = { ...prev, [questionId]: optionId }
+      saveSession(next, flagged)
+      return next
+    })
+  }
+
+  function toggleFlag(questionId: string) {
+    setFlagged((prev) => {
+      const next = new Set(prev)
+      if (next.has(questionId)) next.delete(questionId)
+      else next.add(questionId)
+      saveSession(answersRef.current, next)
+      return next
+    })
   }
 
   function requestSubmit() { setShowConfirm(true) }
-  function confirmSubmit() { setShowConfirm(false); submitExam(answers) }
+  function confirmSubmit() { setShowConfirm(false); doSubmit(answers) }
 
   const q = questions[currentIdx]
   const answered = Object.values(answers).filter((v) => v != null).length
@@ -314,7 +338,7 @@ export function AssessmentExamRunner({
   const flaggedCount = flagged.size
   const mins = Math.floor(timeLeft / 60)
   const secs = timeLeft % 60
-  const timeCritical = timeLeft <= 60
+  const timeCritical = timeLeft <= 60 && timeLeft > 0
   const timeWarning = timeLeft <= 300 && timeLeft > 60
 
   if (!q) return null
@@ -348,33 +372,17 @@ export function AssessmentExamRunner({
 
         {/* Tool buttons */}
         <div className="flex items-center gap-1">
-          {/* Calculator */}
-          <button
-            type="button"
-            onClick={() => { setShowCalc((v) => !v); setShowThemePicker(false) }}
-            title="Calculator"
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showCalc ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
+          <button type="button" onClick={() => { setShowCalc((v) => !v); setShowThemePicker(false) }} title="Calculator"
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showCalc ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground hover:bg-muted/80"}`}>
             <CalculatorIcon size={14} />
           </button>
-
-          {/* Theme */}
-          <button
-            type="button"
-            onClick={() => { setShowThemePicker((v) => !v); setShowCalc(false) }}
-            title="Change theme"
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showThemePicker ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
+          <button type="button" onClick={() => { setShowThemePicker((v) => !v); setShowCalc(false) }} title="Change theme"
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${showThemePicker ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground hover:bg-muted/80"}`}>
             <PaletteIcon size={14} />
           </button>
-
-          {/* Nav grid toggle (sm-lg only) */}
-          <button
-            type="button"
-            onClick={() => setShowNav((v) => !v)}
+          <button type="button" onClick={() => setShowNav((v) => !v)}
             className="sm:flex lg:hidden hidden h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted text-xs font-bold text-muted-foreground hover:bg-muted/80 transition-colors"
-            title="Question navigator"
-          >
+            title="Question navigator">
             ⊞
           </button>
         </div>
@@ -385,23 +393,18 @@ export function AssessmentExamRunner({
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-3xl space-y-5">
 
-            {/* Question card */}
             <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">Q{currentIdx + 1}</span>
                   <span className="text-xs text-muted-foreground">{q.subject}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleFlag(q.id)}
-                  title={flagged.has(q.id) ? "Remove flag" : "Flag this question"}
+                <button type="button" onClick={() => toggleFlag(q.id)} title={flagged.has(q.id) ? "Remove flag" : "Flag this question"}
                   className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium transition-colors ${
                     flagged.has(q.id)
                       ? "border-amber-400/60 bg-amber-50 text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-400"
                       : "border-border bg-muted text-muted-foreground hover:border-amber-400/60 hover:text-amber-600"
-                  }`}
-                >
+                  }`}>
                   <FlagIcon size={11} />
                   {flagged.has(q.id) ? "Flagged" : "Flag"}
                 </button>
@@ -409,58 +412,37 @@ export function AssessmentExamRunner({
               <p className="text-base leading-relaxed text-foreground">{q.vignette}</p>
             </div>
 
-            {/* Options */}
             <div className="space-y-2.5">
               {q.options.map((opt) => {
                 const selected = answers[q.id] === opt.id
                 return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => selectAnswer(q.id, opt.id)}
+                  <button key={opt.id} type="button" onClick={() => selectAnswer(q.id, opt.id)}
                     className={`w-full flex items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-all ${
-                      selected
-                        ? "border-primary bg-primary/8 shadow-sm ring-1 ring-primary/20"
-                        : "border-border bg-card hover:border-primary/40 hover:bg-muted/40"
-                    }`}
-                  >
+                      selected ? "border-primary bg-primary/8 shadow-sm ring-1 ring-primary/20"
+                      : "border-border bg-card hover:border-primary/40 hover:bg-muted/40"
+                    }`}>
                     <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors ${
                       selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"
-                    }`}>
-                      {opt.id}
-                    </span>
+                    }`}>{opt.id}</span>
                     <span className="text-sm leading-relaxed text-foreground">{opt.text}</span>
                   </button>
                 )
               })}
             </div>
 
-            {/* Prev / Next / Submit */}
             <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
-                disabled={currentIdx === 0}
-                className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <button type="button" onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))} disabled={currentIdx === 0}
+                className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                 <ChevronLeftIcon size={15} /> Previous
               </button>
-
               {currentIdx < questions.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setCurrentIdx((i) => Math.min(questions.length - 1, i + 1))}
-                  className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-                >
+                <button type="button" onClick={() => setCurrentIdx((i) => Math.min(questions.length - 1, i + 1))}
+                  className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
                   Next <ChevronRightIcon size={15} />
                 </button>
               ) : (
-                <button
-                  type="button"
-                  disabled={submitting || submitted}
-                  onClick={requestSubmit}
-                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60"
-                >
+                <button type="button" disabled={submitting || submitted} onClick={requestSubmit}
+                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60">
                   {submitting ? "Submitting…" : <><CheckIcon size={14} /> Submit Exam</>}
                 </button>
               )}
@@ -468,12 +450,8 @@ export function AssessmentExamRunner({
 
             {currentIdx < questions.length - 1 && (
               <div className="flex justify-end">
-                <button
-                  type="button"
-                  disabled={submitting || submitted}
-                  onClick={requestSubmit}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
-                >
+                <button type="button" disabled={submitting || submitted} onClick={requestSubmit}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
                   Submit early ({answered}/{questions.length} answered)
                 </button>
               </div>
@@ -481,7 +459,7 @@ export function AssessmentExamRunner({
           </div>
         </div>
 
-        {/* ── Navigator panel (always lg+, toggled sm-md) ── */}
+        {/* ── Navigator panel ── */}
         <div className={`hidden ${showNav ? "sm:flex" : ""} lg:flex w-56 shrink-0 flex-col border-l border-border bg-muted/30 p-3 overflow-y-auto`}>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Navigator</p>
           <div className="grid grid-cols-5 gap-1">
@@ -490,17 +468,13 @@ export function AssessmentExamRunner({
               const isFlagged = flagged.has(question.id)
               const isCurrent = idx === currentIdx
               return (
-                <button
-                  key={question.id}
-                  type="button"
-                  onClick={() => setCurrentIdx(idx)}
+                <button key={question.id} type="button" onClick={() => setCurrentIdx(idx)}
                   className={`relative flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
                     isCurrent ? "bg-primary text-primary-foreground shadow-sm"
                     : isFlagged ? "bg-amber-400/80 text-white dark:bg-amber-500/60 dark:text-white"
                     : isAnswered ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                     : "bg-background border border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                >
+                  }`}>
                   {idx + 1}
                   {isFlagged && !isCurrent && (
                     <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-500 border border-card" />
@@ -510,23 +484,13 @@ export function AssessmentExamRunner({
             })}
           </div>
 
-          {/* Legend */}
           <div className="mt-4 space-y-1.5">
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="h-3 w-3 rounded bg-primary/20" /> Current
-            </div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="h-3 w-3 rounded bg-emerald-100 dark:bg-emerald-900/30" /> Answered ({answered})
-            </div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="h-3 w-3 rounded bg-amber-400/80" /> Flagged ({flaggedCount})
-            </div>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="h-3 w-3 rounded border border-border bg-background" /> Unanswered ({unanswered})
-            </div>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded bg-primary/20" /> Current</div>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded bg-emerald-100 dark:bg-emerald-900/30" /> Answered ({answered})</div>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded bg-amber-400/80" /> Flagged ({flaggedCount})</div>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><span className="h-3 w-3 rounded border border-border bg-background" /> Unanswered ({unanswered})</div>
           </div>
 
-          {/* Jump to flagged */}
           {flaggedCount > 0 && (
             <div className="mt-3">
               <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">Flagged</p>
@@ -535,12 +499,8 @@ export function AssessmentExamRunner({
                   const qIdx = questions.findIndex((q) => q.id === qId)
                   if (qIdx === -1) return null
                   return (
-                    <button
-                      key={qId}
-                      type="button"
-                      onClick={() => setCurrentIdx(qIdx)}
-                      className="w-full flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-left hover:bg-muted transition-colors"
-                    >
+                    <button key={qId} type="button" onClick={() => setCurrentIdx(qIdx)}
+                      className="w-full flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-left hover:bg-muted transition-colors">
                       <FlagIcon size={9} className="text-amber-500 shrink-0" />
                       <span className="text-muted-foreground truncate">Q{qIdx + 1}</span>
                     </button>
@@ -550,28 +510,22 @@ export function AssessmentExamRunner({
             </div>
           )}
 
-          {/* Submit button */}
           <div className="mt-auto pt-4">
-            <button
-              type="button"
-              disabled={submitting || submitted}
-              onClick={requestSubmit}
-              className="w-full rounded-xl bg-emerald-600 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60"
-            >
+            <button type="button" disabled={submitting || submitted} onClick={requestSubmit}
+              className="w-full rounded-xl bg-emerald-600 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60">
               {submitting ? "Submitting…" : "Submit Exam"}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Time critical banner */}
       {timeCritical && (
         <div className="shrink-0 flex items-center justify-center gap-2 bg-destructive/10 border-t border-destructive/20 px-4 py-2 text-xs font-semibold text-destructive">
-          <AlertTriangleIcon size={13} /> Less than 1 minute remaining — exam will auto-submit!
+          <AlertTriangleIcon size={13} /> Less than 1 minute remaining!
         </div>
       )}
 
-      {/* ── Submit Confirmation Modal ── */}
+      {/* ── Submit Confirm ── */}
       {showConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
@@ -589,7 +543,6 @@ export function AssessmentExamRunner({
                   </p>
                 </div>
               </div>
-
               {unanswered > 0 && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/20 px-3 py-2.5">
                   <div className="flex justify-between text-xs mb-1.5">
@@ -601,30 +554,21 @@ export function AssessmentExamRunner({
                   </div>
                 </div>
               )}
-
               {flaggedCount > 0 && (
                 <div className="flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-800/30 dark:bg-amber-900/10 px-3 py-2">
                   <FlagIcon size={12} className="text-amber-500 shrink-0" />
                   <p className="text-xs text-amber-700 dark:text-amber-400">
-                    You have {flaggedCount} flagged question{flaggedCount === 1 ? "" : "s"} to review.
+                    {flaggedCount} flagged question{flaggedCount === 1 ? "" : "s"} marked for review.
                   </p>
                 </div>
               )}
-
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(false)}
-                  className="flex-1 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-                >
+                <button type="button" onClick={() => setShowConfirm(false)}
+                  className="flex-1 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors">
                   Go Back
                 </button>
-                <button
-                  type="button"
-                  onClick={confirmSubmit}
-                  disabled={submitting}
-                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60"
-                >
+                <button type="button" onClick={confirmSubmit} disabled={submitting}
+                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60">
                   Submit
                 </button>
               </div>
@@ -633,17 +577,8 @@ export function AssessmentExamRunner({
         </div>
       )}
 
-      {/* ── Calculator ── */}
       {showCalc && <Calculator onClose={() => setShowCalc(false)} />}
-
-      {/* ── Theme Picker ── */}
-      {showThemePicker && (
-        <ThemePicker
-          current={currentTheme}
-          onSelect={applyTheme}
-          onClose={() => setShowThemePicker(false)}
-        />
-      )}
+      {showThemePicker && <ThemePicker current={currentTheme} onSelect={applyTheme} onClose={() => setShowThemePicker(false)} />}
     </div>
   )
 }
