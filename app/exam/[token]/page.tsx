@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react"
 import type { Question, LiveAssessment } from "@/lib/types"
 import { AssessmentExamRunner } from "@/components/assessment-exam-runner"
 import { AssessmentReview } from "@/components/assessment-review"
-import { StethoscopeIcon, ClockIcon, AlertTriangleIcon, CheckIcon } from "@/components/icons"
+import { StethoscopeIcon, ClockIcon, AlertTriangleIcon, CheckIcon, TrophyIcon, RefreshCwIcon } from "@/components/icons"
 
 type Phase = "loading" | "unavailable" | "name-entry" | "exam" | "results"
 
@@ -17,6 +17,41 @@ interface Result {
   questions: Question[]
 }
 
+interface StoredAttempt {
+  guestName: string
+  guestId: string
+  attemptCount: number
+  triesAllowed: number
+  latestResult: {
+    score: number
+    total: number
+    percentage: number
+    passed: boolean
+    answers: Record<string, string | null>
+  }
+  questions: Question[]
+}
+
+function storageKey(token: string) {
+  return `mednexus-exam-${token}`
+}
+
+function saveAttempt(token: string, stored: StoredAttempt) {
+  try {
+    localStorage.setItem(storageKey(token), JSON.stringify(stored))
+  } catch { /* storage may be unavailable */ }
+}
+
+function loadAttempt(token: string): StoredAttempt | null {
+  try {
+    const raw = localStorage.getItem(storageKey(token))
+    if (!raw) return null
+    return JSON.parse(raw) as StoredAttempt
+  } catch {
+    return null
+  }
+}
+
 export default function GuestExamPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
 
@@ -24,20 +59,43 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
   const [assessment, setAssessment] = useState<LiveAssessment | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [guestName, setGuestName] = useState("")
+  const [guestId, setGuestId] = useState("")
   const [nameError, setNameError] = useState("")
   const [result, setResult] = useState<Result | null>(null)
   const [showReview, setShowReview] = useState(false)
+  const [triesUsed, setTriesUsed] = useState(0)
 
   useEffect(() => {
     async function load() {
       try {
-        // Use a dummy ID and pass the token as a query param
         const res = await fetch(`/api/assessments/by-token?token=${encodeURIComponent(token)}`)
         if (!res.ok) { setPhase("unavailable"); return }
         const data = await res.json()
         if (!data.assessment || data.assessment.status !== "live") { setPhase("unavailable"); return }
+
         setAssessment(data.assessment)
         setQuestions(data.questions ?? [])
+
+        // Check localStorage for a previous attempt by this guest
+        const stored = loadAttempt(token)
+        if (stored) {
+          setGuestName(stored.guestName)
+          setGuestId(stored.guestId)
+          setTriesUsed(stored.attemptCount)
+
+          const triesAllowed = data.assessment.triesAllowed ?? 1
+
+          if (stored.attemptCount >= triesAllowed) {
+            // All tries exhausted — route directly to review mode
+            setResult({
+              ...stored.latestResult,
+              questions: stored.questions,
+            })
+            setPhase("results")
+            return
+          }
+        }
+
         setPhase("name-entry")
       } catch {
         setPhase("unavailable")
@@ -49,13 +107,47 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
   function handleStartExam() {
     if (!guestName.trim()) { setNameError("Please enter your name to continue."); return }
     setNameError("")
+    const id = `guest-${guestName.trim().toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`
+    setGuestId(id)
     setPhase("exam")
   }
 
   function handleComplete(res: Result) {
+    const newAttemptCount = triesUsed + 1
+    setTriesUsed(newAttemptCount)
+
+    // Persist attempt to localStorage so revisiting the link goes to review
+    saveAttempt(token, {
+      guestName: guestName.trim(),
+      guestId,
+      attemptCount: newAttemptCount,
+      triesAllowed: assessment?.triesAllowed ?? 1,
+      latestResult: {
+        score: res.score,
+        total: res.total,
+        percentage: res.percentage,
+        passed: res.passed,
+        answers: res.answers,
+      },
+      questions: res.questions,
+    })
+
     setResult(res)
     setPhase("results")
   }
+
+  function handleRetake() {
+    setResult(null)
+    setShowReview(false)
+    setGuestName("")
+    setGuestId("")
+    setNameError("")
+    setPhase("name-entry")
+  }
+
+  const triesAllowed = assessment?.triesAllowed ?? 1
+  const triesRemaining = Math.max(0, triesAllowed - triesUsed)
+  const triesExhausted = triesUsed >= triesAllowed
 
   if (phase === "loading") {
     return (
@@ -89,7 +181,6 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
   }
 
   if (phase === "exam" && assessment && questions.length > 0) {
-    const guestId = `guest-${guestName.trim().toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`
     return (
       <AssessmentExamRunner
         assessmentId={assessment.id}
@@ -130,6 +221,7 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm space-y-5">
+          {/* Score */}
           <div className="text-center">
             <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-4xl font-bold ${result.passed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
               {result.percentage}%
@@ -145,6 +237,7 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
             </p>
           </div>
 
+          {/* Details card */}
           <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Candidate</span>
@@ -158,18 +251,53 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
               <span className="text-muted-foreground">Score</span>
               <span className="font-bold text-foreground">{result.percentage}%</span>
             </div>
+            {triesAllowed > 1 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Attempts used</span>
+                <span className={`font-medium ${triesExhausted ? "text-destructive" : "text-foreground"}`}>
+                  {triesUsed} / {triesAllowed}
+                </span>
+              </div>
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowReview(true)}
-            className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-          >
-            Review Exam
-          </button>
-          <p className="text-center text-xs text-muted-foreground">
-            Powered by MedNexus
-          </p>
+          {/* Tries exhausted notice */}
+          {triesExhausted && triesAllowed > 1 && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-amber-300/60 bg-amber-50 p-3 dark:border-amber-800/40 dark:bg-amber-900/20">
+              <AlertTriangleIcon size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                You have used all {triesAllowed} allowed attempts. You can review your answers below.
+              </p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setShowReview(true)}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              <TrophyIcon size={15} /> Review Exam
+            </button>
+
+            {/* Retake button — only if tries remaining */}
+            {!triesExhausted && (
+              <button
+                type="button"
+                onClick={handleRetake}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <RefreshCwIcon size={14} />
+                Retake Exam
+                {triesAllowed > 1 && (
+                  <span className="text-xs text-muted-foreground">({triesRemaining} attempt{triesRemaining === 1 ? "" : "s"} left)</span>
+                )}
+              </button>
+            )}
+          </div>
+
+          <p className="text-center text-xs text-muted-foreground">Powered by MedNexus</p>
         </div>
       </div>
     )
@@ -204,6 +332,12 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
             <span className="text-muted-foreground">Pass mark</span>
             <span className="font-semibold text-foreground">{assessment?.passMark}%</span>
           </div>
+          {triesAllowed > 1 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Attempts allowed</span>
+              <span className="font-semibold text-foreground">{triesAllowed}</span>
+            </div>
+          )}
         </div>
 
         {/* Warning */}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import type { Question } from "@/lib/types"
 import {
   ClockIcon, CheckIcon, XIcon, ChevronLeftIcon, ChevronRightIcon,
-  AlertTriangleIcon, FlagIcon,
+  AlertTriangleIcon,
 } from "@/components/icons"
 
 interface Props {
@@ -38,6 +38,7 @@ export function AssessmentExamRunner({
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [showNav, setShowNav] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const submittedRef = useRef(false)
 
   const submitExam = useCallback(async (finalAnswers: Record<string, string | null>) => {
@@ -81,7 +82,7 @@ export function AssessmentExamRunner({
     return () => clearInterval(t)
   }, [submitted, submitExam, answers])
 
-  // Session enforcement — auto-submit on tab hide or page unload
+  // Session enforcement — auto-submit on tab hide or page unload (no confirmation)
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "hidden" && !submittedRef.current) {
@@ -107,8 +108,18 @@ export function AssessmentExamRunner({
     setAnswers((prev) => ({ ...prev, [questionId]: optionId }))
   }
 
+  function requestSubmit() {
+    setShowConfirm(true)
+  }
+
+  function confirmSubmit() {
+    setShowConfirm(false)
+    submitExam(answers)
+  }
+
   const q = questions[currentIdx]
   const answered = Object.values(answers).filter((v) => v !== null && v !== undefined).length
+  const unanswered = questions.length - answered
   const mins = Math.floor(timeLeft / 60)
   const secs = timeLeft % 60
   const timeCritical = timeLeft <= 60
@@ -148,11 +159,11 @@ export function AssessmentExamRunner({
           {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
         </div>
 
-        {/* Nav grid toggle */}
+        {/* Nav grid toggle — only shown on sm-lg, hidden on lg+ where nav is always visible */}
         <button
           type="button"
           onClick={() => setShowNav((v) => !v)}
-          className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted text-xs font-bold text-muted-foreground hover:bg-muted/80 transition-colors"
+          className="sm:flex lg:hidden hidden h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted text-xs font-bold text-muted-foreground hover:bg-muted/80 transition-colors"
           title="Question navigator"
         >
           ⊞
@@ -221,7 +232,7 @@ export function AssessmentExamRunner({
                 <button
                   type="button"
                   disabled={submitting || submitted}
-                  onClick={() => submitExam(answers)}
+                  onClick={requestSubmit}
                   className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60"
                 >
                   {submitting ? "Submitting…" : <><CheckIcon size={14} /> Submit Exam</>}
@@ -235,7 +246,7 @@ export function AssessmentExamRunner({
                 <button
                   type="button"
                   disabled={submitting || submitted}
-                  onClick={() => submitExam(answers)}
+                  onClick={requestSubmit}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
                 >
                   Submit exam early ({answered} of {questions.length} answered)
@@ -245,58 +256,115 @@ export function AssessmentExamRunner({
           </div>
         </div>
 
-        {/* Question Navigator panel */}
-        {showNav && (
-          <div className="hidden sm:flex w-52 shrink-0 flex-col border-l border-border bg-muted/30 p-3 overflow-y-auto">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Navigator</p>
-            <div className="grid grid-cols-5 gap-1">
-              {questions.map((question, idx) => {
-                const ans = answers[question.id]
-                const isAnswered = ans !== undefined && ans !== null
-                const isCurrent = idx === currentIdx
-                return (
-                  <button
-                    key={question.id}
-                    type="button"
-                    onClick={() => setCurrentIdx(idx)}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
-                      isCurrent ? "bg-primary text-primary-foreground shadow-sm"
-                      : isAnswered ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                      : "bg-background border border-border text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {idx + 1}
-                  </button>
-                )
-              })}
+        {/* Question Navigator panel — always visible on lg+, toggled on sm-md */}
+        <div className={`hidden ${showNav ? "sm:flex" : ""} lg:flex w-56 shrink-0 flex-col border-l border-border bg-muted/30 p-3 overflow-y-auto`}>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Navigator</p>
+          <div className="grid grid-cols-5 gap-1">
+            {questions.map((question, idx) => {
+              const ans = answers[question.id]
+              const isAnswered = ans !== undefined && ans !== null
+              const isCurrent = idx === currentIdx
+              return (
+                <button
+                  key={question.id}
+                  type="button"
+                  onClick={() => setCurrentIdx(idx)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
+                    isCurrent ? "bg-primary text-primary-foreground shadow-sm"
+                    : isAnswered ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    : "bg-background border border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {idx + 1}
+                </button>
+              )
+            })}
+          </div>
+          <div className="mt-4 space-y-1.5">
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="h-3 w-3 rounded bg-primary/20" /> Current
             </div>
-            <div className="mt-4 space-y-1.5">
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span className="h-3 w-3 rounded bg-emerald-100 dark:bg-emerald-900/30" /> Answered ({answered})
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span className="h-3 w-3 rounded border border-border bg-background" /> Unanswered ({questions.length - answered})
-              </div>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="h-3 w-3 rounded bg-emerald-100 dark:bg-emerald-900/30" /> Answered ({answered})
             </div>
-
-            <div className="mt-auto pt-4">
-              <button
-                type="button"
-                disabled={submitting || submitted}
-                onClick={() => submitExam(answers)}
-                className="w-full rounded-xl bg-emerald-600 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60"
-              >
-                {submitting ? "Submitting…" : "Submit Exam"}
-              </button>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="h-3 w-3 rounded border border-border bg-background" /> Unanswered ({unanswered})
             </div>
           </div>
-        )}
+
+          <div className="mt-auto pt-4">
+            <button
+              type="button"
+              disabled={submitting || submitted}
+              onClick={requestSubmit}
+              className="w-full rounded-xl bg-emerald-600 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60"
+            >
+              {submitting ? "Submitting…" : "Submit Exam"}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Warning banner */}
       {timeCritical && (
         <div className="shrink-0 flex items-center justify-center gap-2 bg-destructive/10 border-t border-destructive/20 px-4 py-2 text-xs font-semibold text-destructive">
           <AlertTriangleIcon size={13} /> Less than 1 minute remaining — exam will auto-submit!
+        </div>
+      )}
+
+      {/* Submit Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
+            <div className="p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                  <AlertTriangleIcon size={20} className="text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground">Submit Exam?</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {unanswered > 0
+                      ? `You have ${unanswered} unanswered question${unanswered === 1 ? "" : "s"}. This action cannot be undone.`
+                      : "All questions answered. This action cannot be undone."}
+                  </p>
+                </div>
+              </div>
+
+              {unanswered > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/20 px-3 py-2.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-amber-700 dark:text-amber-400">Answered</span>
+                    <span className="font-bold text-amber-700 dark:text-amber-400">{answered} / {questions.length}</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-amber-500 transition-all"
+                      style={{ width: `${(answered / questions.length) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  className="flex-1 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                >
+                  Go Back
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmSubmit}
+                  disabled={submitting}
+                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60"
+                >
+                  {submitting ? "Submitting…" : "Submit"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

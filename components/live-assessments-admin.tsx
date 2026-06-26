@@ -145,6 +145,110 @@ function AnalyticsModal({
     load()
   }, [assessment.id, adminToken])
 
+  function exportToPDF() {
+    if (!analytics) return
+    const passMark = analytics.passMark ?? 50
+    const passRate = analytics.totalSubmitted
+      ? Math.round((analytics.passCount / analytics.totalSubmitted) * 100)
+      : 0
+    const generatedAt = new Date().toLocaleString()
+
+    const attemptsRows = recentAttempts.map((a) => {
+      const passed = a.percentage >= passMark
+      return `<tr>
+        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">${a.userName}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">
+          <span style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 7px;border-radius:9999px;background:${a.isGuest ? "#fef9c3" : "#eff6ff"};color:${a.isGuest ? "#a16207" : "#1d4ed8"};">
+            ${a.isGuest ? "Guest" : "Registered"}
+          </span>
+        </td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">${a.score}/${a.total}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;font-weight:700;color:${passed ? "#059669" : "#dc2626"};">
+          ${a.percentage}% ${passed ? "✓" : "✗"}
+        </td>
+      </tr>`
+    }).join("")
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Analytics — ${assessment.title}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #111827; padding: 48px; background: #fff; font-size: 13px; }
+    .header { margin-bottom: 32px; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+    .header p { color: #6b7280; font-size: 12px; }
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 32px; }
+    .stat { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+    .stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 6px; }
+    .stat-value { font-size: 26px; font-weight: 700; color: #111827; margin-bottom: 2px; }
+    .stat-sub { font-size: 11px; color: #9ca3af; }
+    .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #f9fafb; }
+    th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+    td { font-size: 13px; color: #111827; vertical-align: middle; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 11px; text-align: center; }
+    @media print { body { padding: 24px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${assessment.title}</h1>
+    <p>Analytics Report &middot; Generated ${generatedAt} &middot; MedNexus</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Total Submitted</div>
+      <div class="stat-value">${analytics.totalSubmitted}</div>
+      <div class="stat-sub">${analytics.uniqueParticipants} unique participant${analytics.uniqueParticipants === 1 ? "" : "s"}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Average Score</div>
+      <div class="stat-value">${analytics.averageScore}%</div>
+      <div class="stat-sub">Pass mark: ${passMark}%</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Passed</div>
+      <div class="stat-value" style="color:#059669;">${analytics.passCount}</div>
+      <div class="stat-sub">${passRate}% pass rate</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Breakdown</div>
+      <div class="stat-value" style="font-size:18px;">${analytics.registeredCount} reg · ${analytics.guestCount} guest</div>
+      <div class="stat-sub">registered vs external guests</div>
+    </div>
+  </div>
+
+  ${recentAttempts.length > 0 ? `
+  <div class="section-title">Submissions (last ${recentAttempts.length})</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Score</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody>${attemptsRows}</tbody>
+  </table>` : "<p style=\"color:#9ca3af;text-align:center;padding:24px 0;\">No submissions recorded.</p>"}
+
+  <div class="footer">MedNexus &mdash; Confidential &mdash; ${assessment.title}</div>
+</body>
+</html>`
+
+    const w = window.open("", "_blank")
+    if (w) {
+      w.document.write(html)
+      w.document.close()
+      setTimeout(() => w.print(), 400)
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
       <div className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -153,9 +257,21 @@ function AnalyticsModal({
             <h2 className="font-bold text-foreground">Analytics</h2>
             <p className="text-xs text-muted-foreground truncate max-w-72">{assessment.title}</p>
           </div>
-          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-            <XIcon size={15} />
-          </button>
+          <div className="flex items-center gap-2">
+            {analytics && analytics.totalSubmitted > 0 && (
+              <button
+                type="button"
+                onClick={exportToPDF}
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/80 transition-colors"
+                title="Export to PDF"
+              >
+                <BarChart2Icon size={11} /> Export PDF
+              </button>
+            )}
+            <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+              <XIcon size={15} />
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {loading ? (

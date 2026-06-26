@@ -1,0 +1,14 @@
+1. Exam-Taking User Experience (The "Real Online Exam" Feel)
+•	Immersive UI: The exam interface should be clean, professional, and distraction-free, focusing entirely on the question, the countdown timer, and exam navigation.
+•	External Guest Access: Ensure the external guest view page perfectly matches the styling and theme of the main MedNexus app. When guests open a shareable link, prompt them to enter their Full Name before starting.
+•	Exam Navigation Bar: Include a persistent grid or panel of question numbers so users can freely navigate back and forth, change their answers, and jump directly to specific questions during the test.
+•	Strict Session Enforcement: Once any user starts the exam, the countdown timer begins. If they exit the app, close the tab, or navigate away without submitting, the attempt is immediately forfeited or automatically submitted.
+•	Submission Confirmation: When the user clicks the final submit button, trigger a clear confirmation popup modal: "Are you sure you want to submit? You have [X] unanswered questions." Provide options to either finalize the submission or go back to review/change their answers.
+2. Admin Controls & Analytics (Dashboard Configuration)
+•	Visibility & External Link: The exam remains hidden until the Admin toggles it "Live". When "Live", generate a unique, shareable URL for external guests. If toggled "Offline", this URL must immediately expire and show an "Assessment Unavailable" message to anyone who tries to use it.
+•	Analytics & Export: View aggregated statistics explicitly including data from BOTH registered in-app users and external guests. Track total participants, overall average score, and total users who passed and other vital stats. Add a button to Export to PDF for these statistics.
+3. Post-Exam & Persistent Review Mode
+•	Results UI: After submitting, users see their Final Score and a "Review Exam" button.
+•	Review Mode Details: Opens a read-only view of their submitted exam showing all questions, what they got wrong, what they got right, and the correct answers/explanations.
+•	Search & Filter: Add a Search Bar within the Review Mode and a filtering mechanism allowing the user to filter the review list to show "All Questions", "Correct Answers Only", or "Incorrect Answers Only".
+•	Attempt Persistence (All Users): If any user (registered or guest) exhausts their maximum allowed tries, they must not be locked out of reviewing. If they refresh the page, revisit the guest link, or open the tab later (while the exam is still "Live" on the admin side), the system must recognize their session state (via local storage or database) and route them directly to Review Mode. They can see their score and review questions, but the app must explicitly block them from retaking the exam.
