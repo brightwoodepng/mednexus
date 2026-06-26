@@ -420,6 +420,104 @@ function AnalyticsModal({ assessment, onClose }) {
         assessment.id,
         adminToken
     ]);
+    function exportToPDF() {
+        if (!analytics) return;
+        const passMark = analytics.passMark ?? 50;
+        const passRate = analytics.totalSubmitted ? Math.round(analytics.passCount / analytics.totalSubmitted * 100) : 0;
+        const generatedAt = new Date().toLocaleString();
+        const attemptsRows = recentAttempts.map((a)=>{
+            const passed = a.percentage >= passMark;
+            return `<tr>
+        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">${a.userName}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">
+          <span style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 7px;border-radius:9999px;background:${a.isGuest ? "#fef9c3" : "#eff6ff"};color:${a.isGuest ? "#a16207" : "#1d4ed8"};">
+            ${a.isGuest ? "Guest" : "Registered"}
+          </span>
+        </td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">${a.score}/${a.total}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;font-weight:700;color:${passed ? "#059669" : "#dc2626"};">
+          ${a.percentage}% ${passed ? "✓" : "✗"}
+        </td>
+      </tr>`;
+        }).join("");
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Analytics — ${assessment.title}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #111827; padding: 48px; background: #fff; font-size: 13px; }
+    .header { margin-bottom: 32px; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+    .header p { color: #6b7280; font-size: 12px; }
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 32px; }
+    .stat { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+    .stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 6px; }
+    .stat-value { font-size: 26px; font-weight: 700; color: #111827; margin-bottom: 2px; }
+    .stat-sub { font-size: 11px; color: #9ca3af; }
+    .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #f9fafb; }
+    th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+    td { font-size: 13px; color: #111827; vertical-align: middle; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 11px; text-align: center; }
+    @media print { body { padding: 24px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${assessment.title}</h1>
+    <p>Analytics Report &middot; Generated ${generatedAt} &middot; MedNexus</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Total Submitted</div>
+      <div class="stat-value">${analytics.totalSubmitted}</div>
+      <div class="stat-sub">${analytics.uniqueParticipants} unique participant${analytics.uniqueParticipants === 1 ? "" : "s"}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Average Score</div>
+      <div class="stat-value">${analytics.averageScore}%</div>
+      <div class="stat-sub">Pass mark: ${passMark}%</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Passed</div>
+      <div class="stat-value" style="color:#059669;">${analytics.passCount}</div>
+      <div class="stat-sub">${passRate}% pass rate</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Breakdown</div>
+      <div class="stat-value" style="font-size:18px;">${analytics.registeredCount} reg · ${analytics.guestCount} guest</div>
+      <div class="stat-sub">registered vs external guests</div>
+    </div>
+  </div>
+
+  ${recentAttempts.length > 0 ? `
+  <div class="section-title">Submissions (last ${recentAttempts.length})</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Score</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody>${attemptsRows}</tbody>
+  </table>` : "<p style=\"color:#9ca3af;text-align:center;padding:24px 0;\">No submissions recorded.</p>"}
+
+  <div class="footer">MedNexus &mdash; Confidential &mdash; ${assessment.title}</div>
+</body>
+</html>`;
+        const w = window.open("", "_blank");
+        if (w) {
+            w.document.write(html);
+            w.document.close();
+            setTimeout(()=>w.print(), 400);
+        }
+    }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4",
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -435,7 +533,7 @@ function AnalyticsModal({ assessment, onClose }) {
                                     children: "Analytics"
                                 }, void 0, false, {
                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                    lineNumber: 153,
+                                    lineNumber: 257,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -443,35 +541,64 @@ function AnalyticsModal({ assessment, onClose }) {
                                     children: assessment.title
                                 }, void 0, false, {
                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                    lineNumber: 154,
+                                    lineNumber: 258,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/live-assessments-admin.tsx",
-                            lineNumber: 152,
+                            lineNumber: 256,
                             columnNumber: 11
                         }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                            type: "button",
-                            onClick: onClose,
-                            className: "flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors",
-                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["XIcon"], {
-                                size: 15
-                            }, void 0, false, {
-                                fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 157,
-                                columnNumber: 13
-                            }, this)
-                        }, void 0, false, {
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "flex items-center gap-2",
+                            children: [
+                                analytics && analytics.totalSubmitted > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    type: "button",
+                                    onClick: exportToPDF,
+                                    className: "flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/80 transition-colors",
+                                    title: "Export to PDF",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["BarChart2Icon"], {
+                                            size: 11
+                                        }, void 0, false, {
+                                            fileName: "[project]/components/live-assessments-admin.tsx",
+                                            lineNumber: 268,
+                                            columnNumber: 17
+                                        }, this),
+                                        " Export PDF"
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/components/live-assessments-admin.tsx",
+                                    lineNumber: 262,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    type: "button",
+                                    onClick: onClose,
+                                    className: "flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors",
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["XIcon"], {
+                                        size: 15
+                                    }, void 0, false, {
+                                        fileName: "[project]/components/live-assessments-admin.tsx",
+                                        lineNumber: 272,
+                                        columnNumber: 15
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/components/live-assessments-admin.tsx",
+                                    lineNumber: 271,
+                                    columnNumber: 13
+                                }, this)
+                            ]
+                        }, void 0, true, {
                             fileName: "[project]/components/live-assessments-admin.tsx",
-                            lineNumber: 156,
+                            lineNumber: 260,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/live-assessments-admin.tsx",
-                    lineNumber: 151,
+                    lineNumber: 255,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -486,12 +613,12 @@ function AnalyticsModal({ assessment, onClose }) {
                                 className: "h-16 animate-pulse rounded-xl bg-muted"
                             }, i, false, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 163,
+                                lineNumber: 279,
                                 columnNumber: 37
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/components/live-assessments-admin.tsx",
-                        lineNumber: 162,
+                        lineNumber: 278,
                         columnNumber: 13
                     }, this) : analytics ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                         children: [
@@ -526,7 +653,7 @@ function AnalyticsModal({ assessment, onClose }) {
                                                 children: label
                                             }, void 0, false, {
                                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                                lineNumber: 176,
+                                                lineNumber: 292,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -534,7 +661,7 @@ function AnalyticsModal({ assessment, onClose }) {
                                                 children: value
                                             }, void 0, false, {
                                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                                lineNumber: 177,
+                                                lineNumber: 293,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -542,18 +669,18 @@ function AnalyticsModal({ assessment, onClose }) {
                                                 children: sub
                                             }, void 0, false, {
                                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                                lineNumber: 178,
+                                                lineNumber: 294,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, label, true, {
                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                        lineNumber: 175,
+                                        lineNumber: 291,
                                         columnNumber: 19
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 168,
+                                lineNumber: 284,
                                 columnNumber: 15
                             }, this),
                             recentAttempts.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -563,7 +690,7 @@ function AnalyticsModal({ assessment, onClose }) {
                                         children: "Recent Submissions"
                                     }, void 0, false, {
                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                        lineNumber: 186,
+                                        lineNumber: 302,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -576,7 +703,7 @@ function AnalyticsModal({ assessment, onClose }) {
                                                         children: att.percentage >= (analytics?.passMark ?? 50) ? "✓" : "✗"
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                                        lineNumber: 190,
+                                                        lineNumber: 306,
                                                         columnNumber: 25
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -590,18 +717,18 @@ function AnalyticsModal({ assessment, onClose }) {
                                                                     children: "Guest"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                                    lineNumber: 195,
+                                                                    lineNumber: 311,
                                                                     columnNumber: 45
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                                            lineNumber: 194,
+                                                            lineNumber: 310,
                                                             columnNumber: 27
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                                        lineNumber: 193,
+                                                        lineNumber: 309,
                                                         columnNumber: 25
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -612,7 +739,7 @@ function AnalyticsModal({ assessment, onClose }) {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                                        lineNumber: 198,
+                                                        lineNumber: 314,
                                                         columnNumber: 25
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -624,24 +751,24 @@ function AnalyticsModal({ assessment, onClose }) {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                                        lineNumber: 201,
+                                                        lineNumber: 317,
                                                         columnNumber: 25
                                                     }, this)
                                                 ]
                                             }, i, true, {
                                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                                lineNumber: 189,
+                                                lineNumber: 305,
                                                 columnNumber: 23
                                             }, this))
                                     }, void 0, false, {
                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                        lineNumber: 187,
+                                        lineNumber: 303,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 185,
+                                lineNumber: 301,
                                 columnNumber: 17
                             }, this),
                             analytics.totalSubmitted === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -652,7 +779,7 @@ function AnalyticsModal({ assessment, onClose }) {
                                         className: "mx-auto mb-2 opacity-40"
                                     }, void 0, false, {
                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                        lineNumber: 212,
+                                        lineNumber: 328,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -660,13 +787,13 @@ function AnalyticsModal({ assessment, onClose }) {
                                         children: "No submissions yet."
                                     }, void 0, false, {
                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                        lineNumber: 213,
+                                        lineNumber: 329,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 211,
+                                lineNumber: 327,
                                 columnNumber: 17
                             }, this)
                         ]
@@ -675,23 +802,23 @@ function AnalyticsModal({ assessment, onClose }) {
                         children: "Failed to load analytics."
                     }, void 0, false, {
                         fileName: "[project]/components/live-assessments-admin.tsx",
-                        lineNumber: 218,
+                        lineNumber: 334,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/live-assessments-admin.tsx",
-                    lineNumber: 160,
+                    lineNumber: 276,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/live-assessments-admin.tsx",
-            lineNumber: 150,
+            lineNumber: 254,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/live-assessments-admin.tsx",
-        lineNumber: 149,
+        lineNumber: 253,
         columnNumber: 5
     }, this);
 }
@@ -782,7 +909,7 @@ function LiveAssessmentsAdmin() {
                                         className: "text-amber-600"
                                     }, void 0, false, {
                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                        lineNumber: 284,
+                                        lineNumber: 400,
                                         columnNumber: 13
                                     }, this),
                                     "Assessments",
@@ -791,13 +918,13 @@ function LiveAssessmentsAdmin() {
                                         children: "Admin"
                                     }, void 0, false, {
                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                        lineNumber: 286,
+                                        lineNumber: 402,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 283,
+                                lineNumber: 399,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -805,13 +932,13 @@ function LiveAssessmentsAdmin() {
                                 children: "Create and manage live exams for your students"
                             }, void 0, false, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 288,
+                                lineNumber: 404,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/live-assessments-admin.tsx",
-                        lineNumber: 282,
+                        lineNumber: 398,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -825,12 +952,12 @@ function LiveAssessmentsAdmin() {
                                     size: 14
                                 }, void 0, false, {
                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                    lineNumber: 292,
+                                    lineNumber: 408,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 291,
+                                lineNumber: 407,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -842,26 +969,26 @@ function LiveAssessmentsAdmin() {
                                         size: 14
                                     }, void 0, false, {
                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                        lineNumber: 299,
+                                        lineNumber: 415,
                                         columnNumber: 13
                                     }, this),
                                     " New Assessment"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 294,
+                                lineNumber: 410,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/live-assessments-admin.tsx",
-                        lineNumber: 290,
+                        lineNumber: 406,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/live-assessments-admin.tsx",
-                lineNumber: 281,
+                lineNumber: 397,
                 columnNumber: 7
             }, this),
             loading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -873,12 +1000,12 @@ function LiveAssessmentsAdmin() {
                         className: "h-32 animate-pulse rounded-2xl bg-muted"
                     }, i, false, {
                         fileName: "[project]/components/live-assessments-admin.tsx",
-                        lineNumber: 306,
+                        lineNumber: 422,
                         columnNumber: 30
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/components/live-assessments-admin.tsx",
-                lineNumber: 305,
+                lineNumber: 421,
                 columnNumber: 9
             }, this) : assessments.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "flex flex-col items-center justify-center gap-4 py-20 text-center",
@@ -889,12 +1016,12 @@ function LiveAssessmentsAdmin() {
                             size: 28
                         }, void 0, false, {
                             fileName: "[project]/components/live-assessments-admin.tsx",
-                            lineNumber: 311,
+                            lineNumber: 427,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/live-assessments-admin.tsx",
-                        lineNumber: 310,
+                        lineNumber: 426,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -904,7 +1031,7 @@ function LiveAssessmentsAdmin() {
                                 children: "No assessments yet"
                             }, void 0, false, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 314,
+                                lineNumber: 430,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -912,13 +1039,13 @@ function LiveAssessmentsAdmin() {
                                 children: "Create your first assessment to get started."
                             }, void 0, false, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 315,
+                                lineNumber: 431,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/live-assessments-admin.tsx",
-                        lineNumber: 313,
+                        lineNumber: 429,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -930,20 +1057,20 @@ function LiveAssessmentsAdmin() {
                                 size: 14
                             }, void 0, false, {
                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                lineNumber: 318,
+                                lineNumber: 434,
                                 columnNumber: 13
                             }, this),
                             " Create Assessment"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/live-assessments-admin.tsx",
-                        lineNumber: 317,
+                        lineNumber: 433,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/live-assessments-admin.tsx",
-                lineNumber: 309,
+                lineNumber: 425,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "space-y-3",
@@ -971,7 +1098,7 @@ function LiveAssessmentsAdmin() {
                                                                     className: `h-1.5 w-1.5 rounded-full ${asmt.status === "live" ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                                    lineNumber: 340,
+                                                                    lineNumber: 456,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 asmt.status === "live" ? "Live" : "Offline",
@@ -979,13 +1106,13 @@ function LiveAssessmentsAdmin() {
                                                                     size: 9
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                                    lineNumber: 342,
+                                                                    lineNumber: 458,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                                            lineNumber: 330,
+                                                            lineNumber: 446,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -993,13 +1120,13 @@ function LiveAssessmentsAdmin() {
                                                             children: asmt.moduleName
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                                            lineNumber: 344,
+                                                            lineNumber: 460,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                    lineNumber: 328,
+                                                    lineNumber: 444,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -1007,7 +1134,7 @@ function LiveAssessmentsAdmin() {
                                                     children: asmt.title
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                    lineNumber: 346,
+                                                    lineNumber: 462,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1020,7 +1147,7 @@ function LiveAssessmentsAdmin() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                                            lineNumber: 348,
+                                                            lineNumber: 464,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1030,7 +1157,7 @@ function LiveAssessmentsAdmin() {
                                                                     size: 10
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                                    lineNumber: 349,
+                                                                    lineNumber: 465,
                                                                     columnNumber: 65
                                                                 }, this),
                                                                 " ",
@@ -1039,7 +1166,7 @@ function LiveAssessmentsAdmin() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                                            lineNumber: 349,
+                                                            lineNumber: 465,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1050,7 +1177,7 @@ function LiveAssessmentsAdmin() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                                            lineNumber: 350,
+                                                            lineNumber: 466,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1060,7 +1187,7 @@ function LiveAssessmentsAdmin() {
                                                                     className: "inline mr-0.5"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                                    lineNumber: 351,
+                                                                    lineNumber: 467,
                                                                     columnNumber: 29
                                                                 }, this),
                                                                 " Pass: ",
@@ -1069,19 +1196,19 @@ function LiveAssessmentsAdmin() {
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                                            lineNumber: 351,
+                                                            lineNumber: 467,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                    lineNumber: 347,
+                                                    lineNumber: 463,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                            lineNumber: 327,
+                                            lineNumber: 443,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1098,7 +1225,7 @@ function LiveAssessmentsAdmin() {
                                                                 size: 11
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                                                lineNumber: 367,
+                                                                lineNumber: 483,
                                                                 columnNumber: 49
                                                             }, this),
                                                             " Copied!"
@@ -1109,7 +1236,7 @@ function LiveAssessmentsAdmin() {
                                                                 size: 11
                                                             }, void 0, false, {
                                                                 fileName: "[project]/components/live-assessments-admin.tsx",
-                                                                lineNumber: 367,
+                                                                lineNumber: 483,
                                                                 columnNumber: 88
                                                             }, this),
                                                             " Copy Link"
@@ -1117,7 +1244,7 @@ function LiveAssessmentsAdmin() {
                                                     }, void 0, true)
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                    lineNumber: 357,
+                                                    lineNumber: 473,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1129,14 +1256,14 @@ function LiveAssessmentsAdmin() {
                                                             size: 11
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                                            lineNumber: 374,
+                                                            lineNumber: 490,
                                                             columnNumber: 23
                                                         }, this),
                                                         " Analytics"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                    lineNumber: 369,
+                                                    lineNumber: 485,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1147,24 +1274,24 @@ function LiveAssessmentsAdmin() {
                                                         size: 12
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/live-assessments-admin.tsx",
-                                                        lineNumber: 381,
+                                                        lineNumber: 497,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                                    lineNumber: 376,
+                                                    lineNumber: 492,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                            lineNumber: 356,
+                                            lineNumber: 472,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                    lineNumber: 326,
+                                    lineNumber: 442,
                                     columnNumber: 17
                                 }, this),
                                 asmt.status === "live" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1175,7 +1302,7 @@ function LiveAssessmentsAdmin() {
                                             className: "text-muted-foreground shrink-0"
                                         }, void 0, false, {
                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                            lineNumber: 389,
+                                            lineNumber: 505,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
@@ -1187,7 +1314,7 @@ function LiveAssessmentsAdmin() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                            lineNumber: 390,
+                                            lineNumber: 506,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1197,29 +1324,29 @@ function LiveAssessmentsAdmin() {
                                             children: copiedId === asmt.id ? "Copied!" : "Copy"
                                         }, void 0, false, {
                                             fileName: "[project]/components/live-assessments-admin.tsx",
-                                            lineNumber: 393,
+                                            lineNumber: 509,
                                             columnNumber: 21
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/live-assessments-admin.tsx",
-                                    lineNumber: 388,
+                                    lineNumber: 504,
                                     columnNumber: 19
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/live-assessments-admin.tsx",
-                            lineNumber: 325,
+                            lineNumber: 441,
                             columnNumber: 15
                         }, this)
                     }, asmt.id, false, {
                         fileName: "[project]/components/live-assessments-admin.tsx",
-                        lineNumber: 324,
+                        lineNumber: 440,
                         columnNumber: 13
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/components/live-assessments-admin.tsx",
-                lineNumber: 322,
+                lineNumber: 438,
                 columnNumber: 9
             }, this),
             createOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(CreateModal, {
@@ -1227,7 +1354,7 @@ function LiveAssessmentsAdmin() {
                 onCreated: fetchAssessments
             }, void 0, false, {
                 fileName: "[project]/components/live-assessments-admin.tsx",
-                lineNumber: 404,
+                lineNumber: 520,
                 columnNumber: 22
             }, this),
             analyticsTarget && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(AnalyticsModal, {
@@ -1235,13 +1362,13 @@ function LiveAssessmentsAdmin() {
                 onClose: ()=>setAnalyticsTarget(null)
             }, void 0, false, {
                 fileName: "[project]/components/live-assessments-admin.tsx",
-                lineNumber: 405,
+                lineNumber: 521,
                 columnNumber: 27
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/live-assessments-admin.tsx",
-        lineNumber: 279,
+        lineNumber: 395,
         columnNumber: 5
     }, this);
 }

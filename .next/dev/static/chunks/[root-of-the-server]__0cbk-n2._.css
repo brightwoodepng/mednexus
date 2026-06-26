@@ -1664,6 +1664,10 @@
     z-index: 2;
   }
 
+  .z-\[60\] {
+    z-index: 60;
+  }
+
   .z-\[100\] {
     z-index: 100;
   }
@@ -5361,6 +5365,16 @@
   @supports (color: color-mix(in lab, red, red)) {
     .bg-foreground\/40 {
       background-color: color-mix(in oklab, var(--foreground) 40%, transparent);
+    }
+  }
+
+  .bg-foreground\/50 {
+    background-color: var(--foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-foreground\/50 {
+      background-color: color-mix(in oklab, var(--foreground) 50%, transparent);
     }
   }
 
@@ -13646,6 +13660,18 @@
     @supports (color: color-mix(in lab, red, red)) {
       .dark\:bg-amber-900\/30 {
         background-color: color-mix(in oklab, var(--color-amber-900) 30%, transparent);
+      }
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dark\:bg-amber-900\/40 {
+      background-color: #7b330666;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .dark\:bg-amber-900\/40 {
+        background-color: color-mix(in oklab, var(--color-amber-900) 40%, transparent);
       }
     }
   }
