@@ -13,9 +13,18 @@ function getModuleKey(q: Question): string {
   return q.module?.trim() || q.subject
 }
 
-/** All unique module names in the active question bank (sorted). */
+/** All unique module names in the active question bank (sorted). Includes all statuses — used by admin views. */
 export function getModules(): string[] {
   return Array.from(new Set(getActiveQuestions().map(getModuleKey))).sort()
+}
+
+/**
+ * Only modules whose status is "live" (or unset, for backward compatibility).
+ * Used by student-facing views — draft and offline modules are hidden.
+ */
+export function getLiveModules(): string[] {
+  const qs = getActiveQuestions().filter((q) => !q.moduleStatus || q.moduleStatus === "live")
+  return Array.from(new Set(qs.map(getModuleKey))).sort()
 }
 
 /** Disciplines (subjects) that belong to a given module (sorted). */

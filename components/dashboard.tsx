@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import {
-  getModules,
+  getLiveModules,
   getDisciplinesForModule,
   getModuleQuestionCount,
   getQuestionsForModuleAndDiscipline,
@@ -224,7 +224,7 @@ function TrialDashboard({
 }) {
   const { progress } = useApp()
 
-  const modules = getModules()
+  const modules = getLiveModules()
   const weakAreaQuestions = getWeakAreaQuestions(progress.history)
   const weakAreaCount = weakAreaQuestions.length
   const favorites = progress.favoriteModules ?? []
@@ -410,7 +410,7 @@ function DisciplineView({
 }) {
   const disciplines = getDisciplinesForModule(module)
   const totalInModule = getModuleQuestionCount(module)
-  const modIndex = getModules().indexOf(module) % CARD_PALETTES.length
+  const modIndex = getLiveModules().indexOf(module) % CARD_PALETTES.length
   const palette = CARD_PALETTES[modIndex]
 
   return (
@@ -498,7 +498,7 @@ function ExamDashboard({
   onOpenModules: (module?: string) => void
 }) {
   const { progress } = useApp()
-  const modules = getModules()
+  const modules = getLiveModules()
   const examScores = (progress.examScores ?? []).slice(0, 5)
 
   return (

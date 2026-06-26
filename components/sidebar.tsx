@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
-import { getModules, getWeakAreaQuestions } from "@/lib/modules"
+import { getLiveModules, getWeakAreaQuestions } from "@/lib/modules"
 import {
   StethoscopeIcon,
   LayoutDashboardIcon,
@@ -119,7 +119,7 @@ export function Sidebar({
 
           <div className="my-1 h-px bg-sidebar-border/60" />
 
-          <NavButton active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getModules().length)} />
+          <NavButton active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getLiveModules().length)} />
           <NavButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
 
           {isAdmin && (
