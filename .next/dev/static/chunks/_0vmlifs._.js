@@ -1855,6 +1855,8 @@ __turbopack_context__.s([
     ()=>getDisciplineCoverage,
     "getDisciplinesForModule",
     ()=>getDisciplinesForModule,
+    "getLiveModules",
+    ()=>getLiveModules,
     "getModuleQuestionCount",
     ()=>getModuleQuestionCount,
     "getModules",
@@ -1897,6 +1899,10 @@ function getModuleKey(q) {
 }
 function getModules() {
     return Array.from(new Set((0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().map(getModuleKey))).sort();
+}
+function getLiveModules() {
+    const qs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().filter((q)=>!q.moduleStatus || q.moduleStatus === "live");
+    return Array.from(new Set(qs.map(getModuleKey))).sort();
 }
 function getDisciplinesForModule(module) {
     const qs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$custom$2d$questions$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getActiveQuestions"])().filter((q)=>getModuleKey(q) === module);

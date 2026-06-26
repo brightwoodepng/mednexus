@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import {
-  getModules,
+  getLiveModules,
   getDisciplinesForModule,
   getModuleQuestionCount,
   getDisciplineCoverage,
@@ -44,7 +44,7 @@ export function ModulesScreen({ onReadyForQuiz, initialModule }: ModulesScreenPr
   const [search, setSearch] = useState("")
   const [sort, setSort] = useState<"az" | "za" | "most" | "starred">("starred")
 
-  const modules = getModules()
+  const modules = getLiveModules()
   const coverage = getDisciplineCoverage(progress.history)
   const favorites = progress.favoriteModules ?? []
 
@@ -217,7 +217,7 @@ function ModuleDisciplineView({
 }) {
   const disciplines = getDisciplinesForModule(module)
   const totalInModule = getModuleQuestionCount(module)
-  const modIndex = getModules().indexOf(module) % CARD_PALETTES.length
+  const modIndex = getLiveModules().indexOf(module) % CARD_PALETTES.length
   const palette = CARD_PALETTES[modIndex]
 
   return (

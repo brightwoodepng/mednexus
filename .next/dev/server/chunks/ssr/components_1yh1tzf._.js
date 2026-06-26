@@ -1939,7 +1939,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 columnNumber: 89
                             }, this),
                             label: "Study Modules",
-                            badge: String((0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModules"])().length)
+                            badge: String((0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getLiveModules"])().length)
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
                             lineNumber: 122,
@@ -2961,7 +2961,7 @@ function CoverageList({ coverage }) {
 // ── Trial Dashboard ───────────────────────────────────────────────────────────
 function TrialDashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas }) {
     const { progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useApp"])();
-    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModules"])();
+    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getLiveModules"])();
     const weakAreaQuestions = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakAreaQuestions"])(progress.history);
     const weakAreaCount = weakAreaQuestions.length;
     const favorites = progress.favoriteModules ?? [];
@@ -3324,7 +3324,7 @@ function ModuleCard({ mod, paletteIndex, isFav, onOpen }) {
 function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
     const disciplines = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getDisciplinesForModule"])(module);
     const totalInModule = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModuleQuestionCount"])(module);
-    const modIndex = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModules"])().indexOf(module) % CARD_PALETTES.length;
+    const modIndex = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getLiveModules"])().indexOf(module) % CARD_PALETTES.length;
     const palette = CARD_PALETTES[modIndex];
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "space-y-6",
@@ -3572,7 +3572,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
 // ── Exam Dashboard ────────────────────────────────────────────────────────────
 function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
     const { progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useApp"])();
-    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModules"])();
+    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getLiveModules"])();
     const examScores = (progress.examScores ?? []).slice(0, 5);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "space-y-8",
@@ -3994,7 +3994,7 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
     const [viewingModule, setViewingModule] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(initialModule ?? null);
     const [search, setSearch] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
     const [sort, setSort] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("starred");
-    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModules"])();
+    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getLiveModules"])();
     const coverage = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getDisciplineCoverage"])(progress.history);
     const favorites = progress.favoriteModules ?? [];
     const filtered = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
@@ -4392,7 +4392,7 @@ function ModulesScreen({ onReadyForQuiz, initialModule }) {
 function ModuleDisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
     const disciplines = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getDisciplinesForModule"])(module);
     const totalInModule = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModuleQuestionCount"])(module);
-    const modIndex = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModules"])().indexOf(module) % CARD_PALETTES.length;
+    const modIndex = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getLiveModules"])().indexOf(module) % CARD_PALETTES.length;
     const palette = CARD_PALETTES[modIndex];
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "mx-auto max-w-6xl space-y-6",
@@ -11758,7 +11758,7 @@ function ModuleCoverage() {
     const { progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useApp"])();
     const { questions } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$questions$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQuestions"])();
     const [expandedModules, setExpandedModules] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(new Set());
-    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModules"])();
+    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getLiveModules"])();
     // Build per-subject totals from question bank
     const totalBySubject = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
         const map = {};

@@ -17,7 +17,7 @@ import {
   LayersIcon,
 } from "@/components/icons"
 import {
-  getModules,
+  getLiveModules,
   getDisciplinesForModule,
   getModuleQuestionCount,
 } from "@/lib/modules"
@@ -30,7 +30,7 @@ function ModuleCoverage() {
   const { questions } = useQuestions()
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
 
-  const modules = getModules()
+  const modules = getLiveModules()
 
   // Build per-subject totals from question bank
   const totalBySubject = useMemo(() => {
