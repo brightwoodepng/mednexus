@@ -82,13 +82,8 @@ export function Sidebar({
 
   const fullContent = (
     <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
-      {/* Brand — icon only, no text (text lives in the header) */}
-      <div className="mb-2 flex items-center justify-between px-2 pt-2 shrink-0">
-        <div className="flex items-center gap-2.5 px-2 py-1.5 -mx-2 -my-1.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-            <StethoscopeIcon size={20} />
-          </div>
-        </div>
+      {/* Top row — collapse and close buttons */}
+      <div className="mb-2 flex items-center justify-end px-2 pt-2 shrink-0">
         <div className="flex items-center gap-1">
           {/* Desktop collapse button */}
           <button
@@ -186,14 +181,14 @@ export function Sidebar({
 
   const collapsedContent = (
     <div className="flex h-full flex-col items-center gap-1 py-4 px-2">
-      {/* Expand button — stethoscope icon */}
+      {/* Expand button */}
       <button
         type="button"
         onClick={onExpand}
-        className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm hover:opacity-90 transition-opacity"
+        className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl border border-sidebar-border text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
         aria-label="Expand sidebar"
       >
-        <StethoscopeIcon size={18} />
+        <ChevronLeftIcon size={18} className="rotate-180" />
       </button>
 
       <IconButton active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
