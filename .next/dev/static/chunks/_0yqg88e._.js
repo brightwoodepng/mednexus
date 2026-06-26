@@ -75,12 +75,13 @@ function updateSrsFromHistory(srsData, entries) {
     return next;
 }
 function daysOverdue(entry) {
-    if (!entry) return 999;
+    if (!entry) return 0;
     const today = todayStr();
     return Math.round((new Date(today + "T12:00:00").getTime() - new Date(entry.due + "T12:00:00").getTime()) / 86_400_000);
 }
 function isDue(entry) {
-    return daysOverdue(entry) >= 0;
+    if (!entry) return false;
+    return entry.due <= todayStr();
 }
 function countDue(questionIds, srsData) {
     return questionIds.filter((id)=>isDue(srsData[id])).length;
