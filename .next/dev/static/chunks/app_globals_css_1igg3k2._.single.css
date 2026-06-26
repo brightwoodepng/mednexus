@@ -9803,6 +9803,12 @@
   }
 
   @media (hover: hover) {
+    .hover\:bg-amber-100:hover {
+      background-color: var(--color-amber-100);
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:bg-amber-500\/20:hover {
       background-color: #f99c0033;
     }
@@ -9924,6 +9930,18 @@
     @supports (color: color-mix(in lab, red, red)) {
       .hover\:bg-muted\/50:hover {
         background-color: color-mix(in oklab, var(--muted) 50%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:bg-muted\/80:hover {
+      background-color: var(--muted);
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-muted\/80:hover {
+        background-color: color-mix(in oklab, var(--muted) 80%, transparent);
       }
     }
   }

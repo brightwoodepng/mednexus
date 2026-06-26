@@ -103,7 +103,7 @@ const CARD_PALETTES = [
         bar: "#f97316"
     }
 ];
-function Dashboard({ onReadyForQuiz, onOpenModules }) {
+function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas }) {
     _s1();
     const { user, progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"])();
     const { globalMode } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$study$2d$mode$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useStudyMode"])();
@@ -121,30 +121,30 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
     const avgExamScore = examsTaken ? Math.round(examScores.reduce((s, e)=>s + e.score, 0) / examsTaken) : 0;
     const bestExamScore = examsTaken ? Math.max(...examScores.map((e)=>e.score)) : 0;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        className: "mx-auto max-w-6xl space-y-8",
+        className: "mx-auto max-w-6xl space-y-5 sm:space-y-8",
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "relative overflow-hidden rounded-3xl bg-primary px-7 py-7 text-primary-foreground shadow-lg sm:px-8 sm:py-8",
+                className: "relative overflow-hidden rounded-2xl bg-primary px-5 py-5 text-primary-foreground shadow-lg sm:rounded-3xl sm:px-8 sm:py-8",
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10"
-                    }, void 0, false, {
-                        fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 106,
-                        columnNumber: 9
-                    }, this),
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/6"
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
                         lineNumber: 107,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/5"
+                        className: "pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/6"
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
                         lineNumber: 108,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: "pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/5"
+                    }, void 0, false, {
+                        fileName: "[project]/components/dashboard.tsx",
+                        lineNumber: 109,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -160,7 +160,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 111,
+                                        lineNumber: 112,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -171,7 +171,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 112,
+                                        lineNumber: 113,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -179,13 +179,13 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                                         children: motivation
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 113,
+                                        lineNumber: 114,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 110,
+                                lineNumber: 111,
                                 columnNumber: 11
                             }, this),
                             progress.streak > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -196,7 +196,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                                         children: "🔥"
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 117,
+                                        lineNumber: 118,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -206,7 +206,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                                                 children: progress.streak
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 119,
+                                                lineNumber: 120,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -214,36 +214,36 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                                                 children: "day streak"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 120,
+                                                lineNumber: 121,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 118,
+                                        lineNumber: 119,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 116,
+                                lineNumber: 117,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 109,
+                        lineNumber: 110,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 105,
+                lineNumber: 106,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
                 children: globalMode === "trial" ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4",
+                    className: "grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4",
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
                             icon: "📋",
@@ -253,7 +253,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                             color: "bg-sky-50 text-sky-700 border-sky-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 131,
+                            lineNumber: 132,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -264,7 +264,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                             color: "bg-emerald-50 text-emerald-700 border-emerald-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 132,
+                            lineNumber: 133,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -275,7 +275,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                             color: "bg-amber-50 text-amber-700 border-amber-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 133,
+                            lineNumber: 134,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -286,16 +286,16 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                             color: "bg-rose-50 text-rose-700 border-rose-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 134,
+                            lineNumber: 135,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/dashboard.tsx",
-                    lineNumber: 130,
+                    lineNumber: 131,
                     columnNumber: 11
                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4",
+                    className: "grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4",
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
                             icon: "📝",
@@ -305,7 +305,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                             color: "bg-sky-50 text-sky-700 border-sky-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 138,
+                            lineNumber: 139,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -316,7 +316,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                             color: "bg-emerald-50 text-emerald-700 border-emerald-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 139,
+                            lineNumber: 140,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -327,7 +327,7 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                             color: "bg-amber-50 text-amber-700 border-amber-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 140,
+                            lineNumber: 141,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -338,39 +338,40 @@ function Dashboard({ onReadyForQuiz, onOpenModules }) {
                             color: "bg-rose-50 text-rose-700 border-rose-200/80"
                         }, void 0, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 141,
+                            lineNumber: 142,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/dashboard.tsx",
-                    lineNumber: 137,
+                    lineNumber: 138,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 128,
+                lineNumber: 129,
                 columnNumber: 7
             }, this),
             globalMode === "trial" ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(TrialDashboard, {
                 onReadyForQuiz: onReadyForQuiz,
-                onOpenModules: onOpenModules
+                onOpenModules: onOpenModules,
+                onOpenWeakAreas: onOpenWeakAreas
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 148,
+                lineNumber: 149,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ExamDashboard, {
                 onReadyForQuiz: onReadyForQuiz,
                 onOpenModules: onOpenModules
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 153,
+                lineNumber: 155,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 103,
+        lineNumber: 104,
         columnNumber: 5
     }, this);
 }
@@ -407,7 +408,7 @@ function CoverageList({ coverage }) {
                                 children: disc
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 180,
+                                lineNumber: 182,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -422,17 +423,17 @@ function CoverageList({ coverage }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 183,
+                                        lineNumber: 185,
                                         columnNumber: 19
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 182,
+                                    lineNumber: 184,
                                     columnNumber: 17
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 181,
+                                lineNumber: 183,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -443,7 +444,7 @@ function CoverageList({ coverage }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 189,
+                                lineNumber: 191,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -454,19 +455,19 @@ function CoverageList({ coverage }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 192,
+                                lineNumber: 194,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, disc, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 179,
+                        lineNumber: 181,
                         columnNumber: 13
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 173,
+                lineNumber: 175,
                 columnNumber: 7
             }, this),
             entries.length > COVERAGE_COLLAPSE_THRESHOLD && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -479,30 +480,30 @@ function CoverageList({ coverage }) {
                         className: `transition-transform duration-200 ${expanded ? "rotate-180" : ""}`
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 205,
+                        lineNumber: 207,
                         columnNumber: 11
                     }, this),
                     expanded ? "Show less" : `${hidden} more discipline${hidden !== 1 ? "s" : ""}`
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 200,
+                lineNumber: 202,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 172,
+        lineNumber: 174,
         columnNumber: 5
     }, this);
 }
 _s2(CoverageList, "DuL5jiiQQFgbn7gBKAyxwS/H4Ek=");
 _c1 = CoverageList;
 // ── Trial Dashboard ───────────────────────────────────────────────────────────
-function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
+function TrialDashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas }) {
     _s3();
     const { progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"])();
-    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModules"])();
+    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getLiveModules"])();
     const weakAreaQuestions = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getWeakAreaQuestions"])(progress.history);
     const weakAreaCount = weakAreaQuestions.length;
     const favorites = progress.favoriteModules ?? [];
@@ -534,12 +535,12 @@ function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
                                         size: 16
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 242,
+                                        lineNumber: 246,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 241,
+                                    lineNumber: 245,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -547,13 +548,13 @@ function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
                                     children: "Study Modules"
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 244,
+                                    lineNumber: 248,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 240,
+                            lineNumber: 244,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -566,36 +567,33 @@ function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
                                     size: 12
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 252,
+                                    lineNumber: 256,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 246,
+                            lineNumber: 250,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/dashboard.tsx",
-                    lineNumber: 239,
+                    lineNumber: 243,
                     columnNumber: 9
                 }, this),
                 weakAreaCount > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "mb-3",
                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                         type: "button",
-                        onClick: ()=>onReadyForQuiz({
-                                module: "__weak__",
-                                discipline: null
-                            }),
+                        onClick: onOpenWeakAreas,
                         className: "group relative w-full overflow-hidden rounded-2xl border-2 border-rose-300/50 bg-rose-50/60 p-5 text-left shadow-sm transition-all hover:border-rose-400/70 hover:shadow-md hover:ring-2 hover:ring-rose-300/40 active:scale-[0.99] dark:border-rose-800/40 dark:bg-rose-900/20",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "pointer-events-none absolute left-0 right-0 top-0 h-1 bg-rose-400/60"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 264,
+                                lineNumber: 268,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -607,12 +605,12 @@ function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
                                             size: 22
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 267,
+                                            lineNumber: 271,
                                             columnNumber: 19
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 266,
+                                        lineNumber: 270,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -623,13 +621,13 @@ function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 269,
+                                        lineNumber: 273,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 265,
+                                lineNumber: 269,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -637,7 +635,7 @@ function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
                                 children: "Weak Areas"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 273,
+                                lineNumber: 277,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -645,18 +643,18 @@ function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
                                 children: "Questions you've struggled with most"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 274,
+                                lineNumber: 278,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 259,
+                        lineNumber: 263,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/dashboard.tsx",
-                    lineNumber: 258,
+                    lineNumber: 262,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -668,12 +666,12 @@ function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
                             onOpen: ()=>onOpenModules(mod)
                         }, mod, false, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 282,
+                            lineNumber: 286,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/components/dashboard.tsx",
-                    lineNumber: 280,
+                    lineNumber: 284,
                     columnNumber: 9
                 }, this),
                 modules.length > starredModules.length && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -687,18 +685,18 @@ function TrialDashboard({ onReadyForQuiz, onOpenModules }) {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/dashboard.tsx",
-                    lineNumber: 293,
+                    lineNumber: 297,
                     columnNumber: 11
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/dashboard.tsx",
-            lineNumber: 237,
+            lineNumber: 241,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 235,
+        lineNumber: 239,
         columnNumber: 5
     }, this);
 }
@@ -732,7 +730,7 @@ function ModuleCard({ mod, paletteIndex, isFav, onOpen }) {
                 }
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 334,
+                lineNumber: 338,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -747,12 +745,12 @@ function ModuleCard({ mod, paletteIndex, isFav, onOpen }) {
                                     size: 18
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 339,
+                                    lineNumber: 343,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 338,
+                                lineNumber: 342,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -768,18 +766,18 @@ function ModuleCard({ mod, paletteIndex, isFav, onOpen }) {
                                     className: isFav ? "fill-amber-400 drop-shadow-sm" : ""
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 352,
+                                    lineNumber: 356,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 342,
+                                lineNumber: 346,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 337,
+                        lineNumber: 341,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -787,7 +785,7 @@ function ModuleCard({ mod, paletteIndex, isFav, onOpen }) {
                         children: mod
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 359,
+                        lineNumber: 363,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -802,7 +800,7 @@ function ModuleCard({ mod, paletteIndex, isFav, onOpen }) {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 360,
+                        lineNumber: 364,
                         columnNumber: 9
                     }, this),
                     pct > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -817,12 +815,12 @@ function ModuleCard({ mod, paletteIndex, isFav, onOpen }) {
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 368,
+                                    lineNumber: 372,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 367,
+                                lineNumber: 371,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -833,7 +831,7 @@ function ModuleCard({ mod, paletteIndex, isFav, onOpen }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 373,
+                                lineNumber: 377,
                                 columnNumber: 13
                             }, this)
                         ]
@@ -853,25 +851,25 @@ function ModuleCard({ mod, paletteIndex, isFav, onOpen }) {
                                 className: "transition-transform group-hover:translate-x-0.5"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 388,
+                                lineNumber: 392,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 378,
+                        lineNumber: 382,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 336,
+                lineNumber: 340,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 332,
+        lineNumber: 336,
         columnNumber: 5
     }, this);
 }
@@ -885,7 +883,7 @@ _c3 = ModuleCard;
 function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
     const disciplines = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getDisciplinesForModule"])(module);
     const totalInModule = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModuleQuestionCount"])(module);
-    const modIndex = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModules"])().indexOf(module) % CARD_PALETTES.length;
+    const modIndex = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getLiveModules"])().indexOf(module) % CARD_PALETTES.length;
     const palette = CARD_PALETTES[modIndex];
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "space-y-6",
@@ -902,14 +900,14 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 size: 15
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 421,
+                                lineNumber: 425,
                                 columnNumber: 11
                             }, this),
                             "Back"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 416,
+                        lineNumber: 420,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -920,7 +918,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 children: module
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 425,
+                                lineNumber: 429,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -933,19 +931,19 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 426,
+                                lineNumber: 430,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 424,
+                        lineNumber: 428,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 415,
+                lineNumber: 419,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -965,12 +963,12 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                             size: 22
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 440,
+                                            lineNumber: 444,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 439,
+                                        lineNumber: 443,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
@@ -978,13 +976,13 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                         className: "mt-0.5 text-primary opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 442,
+                                        lineNumber: 446,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 438,
+                                lineNumber: 442,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -992,7 +990,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 children: "All Disciplines"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 444,
+                                lineNumber: 448,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1003,13 +1001,13 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 445,
+                                lineNumber: 449,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 433,
+                        lineNumber: 437,
                         columnNumber: 9
                     }, this),
                     disciplines.map((disc, i)=>{
@@ -1028,7 +1026,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 459,
+                                    lineNumber: 463,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1040,12 +1038,12 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                                 size: 20
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 462,
+                                                lineNumber: 466,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 461,
+                                            lineNumber: 465,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
@@ -1053,13 +1051,13 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                             className: "mt-0.5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 464,
+                                            lineNumber: 468,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 460,
+                                    lineNumber: 464,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -1067,7 +1065,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                     children: disc
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 466,
+                                    lineNumber: 470,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1078,7 +1076,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 467,
+                                    lineNumber: 471,
                                     columnNumber: 15
                                 }, this),
                                 cov && cov.total > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -1092,12 +1090,12 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                                 }
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 473,
+                                                lineNumber: 477,
                                                 columnNumber: 21
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 472,
+                                            lineNumber: 476,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1105,7 +1103,7 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                                             children: pct > 0 ? `${pct}% attempted` : "Not started"
                                         }, void 0, false, {
                                             fileName: "[project]/components/dashboard.tsx",
-                                            lineNumber: 475,
+                                            lineNumber: 479,
                                             columnNumber: 19
                                         }, this)
                                     ]
@@ -1113,20 +1111,20 @@ function DisciplineView({ module, coverage, onBack, onSelectDiscipline }) {
                             ]
                         }, disc, true, {
                             fileName: "[project]/components/dashboard.tsx",
-                            lineNumber: 453,
+                            lineNumber: 457,
                             columnNumber: 13
                         }, this);
                     })
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 431,
+                lineNumber: 435,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 413,
+        lineNumber: 417,
         columnNumber: 5
     }, this);
 }
@@ -1135,7 +1133,7 @@ _c4 = DisciplineView;
 function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
     _s5();
     const { progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useApp"])();
-    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getModules"])();
+    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getLiveModules"])();
     const examScores = (progress.examScores ?? []).slice(0, 5);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "space-y-8",
@@ -1151,12 +1149,12 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                     size: 16
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 506,
+                                    lineNumber: 510,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 505,
+                                lineNumber: 509,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -1164,13 +1162,13 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                 children: "Recent Exam Scores"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 508,
+                                lineNumber: 512,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 504,
+                        lineNumber: 508,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1186,7 +1184,7 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 513,
+                                        lineNumber: 517,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1197,7 +1195,7 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                                 children: s.moduleName
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 517,
+                                                lineNumber: 521,
                                                 columnNumber: 19
                                             }, this),
                                             s.discipline && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1205,7 +1203,7 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                                 children: s.discipline
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 518,
+                                                lineNumber: 522,
                                                 columnNumber: 36
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1219,13 +1217,13 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 519,
+                                                lineNumber: 523,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 516,
+                                        lineNumber: 520,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1233,24 +1231,24 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                         children: fmtDate(s.date.slice(0, 10))
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 521,
+                                        lineNumber: 525,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, s.id, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 512,
+                                lineNumber: 516,
                                 columnNumber: 15
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 510,
+                        lineNumber: 514,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 503,
+                lineNumber: 507,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -1264,12 +1262,12 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                     size: 16
                                 }, void 0, false, {
                                     fileName: "[project]/components/dashboard.tsx",
-                                    lineNumber: 532,
+                                    lineNumber: 536,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 531,
+                                lineNumber: 535,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -1277,7 +1275,7 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                 children: "Mock Exam Modules"
                             }, void 0, false, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 534,
+                                lineNumber: 538,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1290,19 +1288,19 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                         size: 12
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 541,
+                                        lineNumber: 545,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 535,
+                                lineNumber: 539,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 530,
+                        lineNumber: 534,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1325,7 +1323,7 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 555,
+                                        lineNumber: 559,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1337,12 +1335,12 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                                     size: 18
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/dashboard.tsx",
-                                                    lineNumber: 558,
+                                                    lineNumber: 562,
                                                     columnNumber: 21
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 557,
+                                                lineNumber: 561,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1350,13 +1348,13 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                                 children: "Timed"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 560,
+                                                lineNumber: 564,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 556,
+                                        lineNumber: 560,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -1364,7 +1362,7 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                         children: mod
                                     }, void 0, false, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 564,
+                                        lineNumber: 568,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1375,7 +1373,7 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 565,
+                                        lineNumber: 569,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1390,37 +1388,37 @@ function ExamDashboard({ onReadyForQuiz, onOpenModules }) {
                                                 className: "transition-transform group-hover:translate-x-0.5"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/dashboard.tsx",
-                                                lineNumber: 568,
+                                                lineNumber: 572,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/dashboard.tsx",
-                                        lineNumber: 566,
+                                        lineNumber: 570,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, mod, true, {
                                 fileName: "[project]/components/dashboard.tsx",
-                                lineNumber: 549,
+                                lineNumber: 553,
                                 columnNumber: 15
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 544,
+                        lineNumber: 548,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 529,
+                lineNumber: 533,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 501,
+        lineNumber: 505,
         columnNumber: 5
     }, this);
 }
@@ -1443,7 +1441,7 @@ function StatCard({ icon, label, value, sub, color }) {
                         children: icon
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 584,
+                        lineNumber: 588,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1451,13 +1449,13 @@ function StatCard({ icon, label, value, sub, color }) {
                         children: label
                     }, void 0, false, {
                         fileName: "[project]/components/dashboard.tsx",
-                        lineNumber: 585,
+                        lineNumber: 589,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 583,
+                lineNumber: 587,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1465,7 +1463,7 @@ function StatCard({ icon, label, value, sub, color }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 587,
+                lineNumber: 591,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1473,13 +1471,13 @@ function StatCard({ icon, label, value, sub, color }) {
                 children: sub
             }, void 0, false, {
                 fileName: "[project]/components/dashboard.tsx",
-                lineNumber: 588,
+                lineNumber: 592,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/dashboard.tsx",
-        lineNumber: 582,
+        lineNumber: 586,
         columnNumber: 5
     }, this);
 }
