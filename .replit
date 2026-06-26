@@ -28,7 +28,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm dev"
+args = "pnpm install && pnpm dev"
 waitForPort = 5000
 
 [[ports]]
@@ -42,4 +42,3 @@ externalPort = 80
 [userenv]
 
 [userenv.shared]
-ADMIN_SECRET = "mednexus-tok-9x2km4p7wq"
