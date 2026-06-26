@@ -16,6 +16,7 @@ import {
   type ReactNode,
 } from "react"
 import type { HistoryEntry, UserProgress, ExamScore } from "@/lib/types"
+import { updateSrsFromHistory } from "@/lib/srs"
 
 interface AppUser {
   uid: string
@@ -51,6 +52,7 @@ const EMPTY_PROGRESS: UserProgress = {
   notificationsLastRead: 0,
   mutedNotificationTypes: [],
   favoriteModules: [],
+  srsData: {},
 }
 
 const LS_UID = "mednexus-uid"
@@ -230,6 +232,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           streak: nextStreak(prev),
           lastStudyDate: todayStr(),
           history: [...entries, ...prev.history].slice(0, 500),
+          srsData: updateSrsFromHistory(prev.srsData ?? {}, entries),
         }
         const u = userRef.current
         if (u) {

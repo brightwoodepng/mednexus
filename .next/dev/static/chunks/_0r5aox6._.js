@@ -30,7 +30,8 @@ const EMPTY_PROGRESS = {
     examScores: [],
     notificationsLastRead: 0,
     mutedNotificationTypes: [],
-    favoriteModules: []
+    favoriteModules: [],
+    srsData: {}
 };
 const LS_UID = "mednexus-uid";
 const LS_NAME = "mednexus-name";
@@ -379,7 +380,7 @@ function AppProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/app-context.tsx",
-        lineNumber: 328,
+        lineNumber: 330,
         columnNumber: 10
     }, this);
 }

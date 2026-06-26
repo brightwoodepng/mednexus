@@ -12426,8 +12426,10 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/contexts/app-context.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/modules.ts [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/srs.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/icons.tsx [app-ssr] (ecmascript)");
 "use client";
+;
 ;
 ;
 ;
@@ -12497,10 +12499,32 @@ const EXAM_PALETTES = [
         bar: "#ea580c"
     }
 ];
+/** Urgency label shown on cards */ function UrgencyBadge({ dueCount, total }) {
+    if (dueCount === 0) return null;
+    const isAll = dueCount === total;
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+        className: "flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-500 ring-1 ring-red-500/20",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                className: "inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-red-500"
+            }, void 0, false, {
+                fileName: "[project]/components/weak-areas-screen.tsx",
+                lineNumber: 57,
+                columnNumber: 7
+            }, this),
+            isAll ? "All due" : `${dueCount} due`
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/weak-areas-screen.tsx",
+        lineNumber: 56,
+        columnNumber: 5
+    }, this);
+}
 function WeakAreasScreen({ onReadyForQuiz }) {
     const { progress } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useApp"])();
     const [mode, setMode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("trial");
     const [viewingModule, setViewingModule] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const srsData = progress.srsData ?? {};
     const palettes = mode === "trial" ? TRIAL_PALETTES : EXAM_PALETTES;
     const prefix = mode === "trial" ? "__weak_trial__|" : "__weak_exam__|";
     const weakModules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakModulesForMode"])(progress.history, mode), [
@@ -12512,6 +12536,35 @@ function WeakAreasScreen({ onReadyForQuiz }) {
         mode,
         weakModules
     ]);
+    // Sort modules by urgency: most due → fewest due → zero due
+    const sortedModules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
+        return [
+            ...weakModules
+        ].sort((a, b)=>{
+            const aQs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakQuestionsForMode"])(progress.history, mode, a);
+            const bQs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakQuestionsForMode"])(progress.history, mode, b);
+            const aDue = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["countDue"])(aQs.map((q)=>q.id), srsData);
+            const bDue = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["countDue"])(bQs.map((q)=>q.id), srsData);
+            if (bDue !== aDue) return bDue - aDue;
+            return bQs.length - aQs.length;
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        weakModules,
+        progress.history,
+        mode,
+        srsData
+    ]);
+    const totalDue = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
+        const allIds = weakModules.flatMap((mod)=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakQuestionsForMode"])(progress.history, mode, mod).map((q)=>q.id));
+        return (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["countDue"])(allIds, srsData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        weakModules,
+        progress.history,
+        mode,
+        srsData
+    ]);
     function switchMode(next) {
         setMode(next);
         setViewingModule(null);
@@ -12521,6 +12574,7 @@ function WeakAreasScreen({ onReadyForQuiz }) {
             moduleName: viewingModule,
             mode: mode,
             history: progress.history,
+            srsData: srsData,
             palettes: palettes,
             onBack: ()=>setViewingModule(null),
             onSelectDiscipline: (disc)=>onReadyForQuiz({
@@ -12529,7 +12583,7 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                 })
         }, void 0, false, {
             fileName: "[project]/components/weak-areas-screen.tsx",
-            lineNumber: 73,
+            lineNumber: 110,
             columnNumber: 7
         }, this);
     }
@@ -12548,12 +12602,12 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                     size: 18
                                 }, void 0, false, {
                                     fileName: "[project]/components/weak-areas-screen.tsx",
-                                    lineNumber: 92,
+                                    lineNumber: 130,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 91,
+                                lineNumber: 129,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -12563,27 +12617,46 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                         children: "Weak Areas"
                                     }, void 0, false, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 95,
+                                        lineNumber: 133,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                         className: "text-xs text-muted-foreground",
-                                        children: totalWeak > 0 ? `${totalWeak} question${totalWeak !== 1 ? "s" : ""} to review · ${mode} mode` : `No weak areas in ${mode} mode yet`
+                                        children: totalWeak > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Fragment"], {
+                                            children: [
+                                                totalWeak,
+                                                " question",
+                                                totalWeak !== 1 ? "s" : "",
+                                                " to review",
+                                                totalDue > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                    className: "ml-1.5 text-red-500 font-semibold",
+                                                    children: [
+                                                        "· ",
+                                                        totalDue,
+                                                        " due now"
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/components/weak-areas-screen.tsx",
+                                                    lineNumber: 139,
+                                                    columnNumber: 21
+                                                }, this)
+                                            ]
+                                        }, void 0, true) : `No weak areas in ${mode} mode yet`
                                     }, void 0, false, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 96,
+                                        lineNumber: 134,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 94,
+                                lineNumber: 132,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/weak-areas-screen.tsx",
-                        lineNumber: 90,
+                        lineNumber: 128,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -12598,14 +12671,14 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                         size: 12
                                     }, void 0, false, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 115,
+                                        lineNumber: 162,
                                         columnNumber: 13
                                     }, this),
                                     "Trial"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 106,
+                                lineNumber: 153,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -12617,26 +12690,26 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                         size: 12
                                     }, void 0, false, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 127,
+                                        lineNumber: 174,
                                         columnNumber: 13
                                     }, this),
                                     "Exam"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 118,
+                                lineNumber: 165,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/weak-areas-screen.tsx",
-                        lineNumber: 105,
+                        lineNumber: 152,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/weak-areas-screen.tsx",
-                lineNumber: 89,
+                lineNumber: 127,
                 columnNumber: 7
             }, this),
             weakModules.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -12647,7 +12720,7 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                         className: "mb-4 text-muted-foreground/25"
                     }, void 0, false, {
                         fileName: "[project]/components/weak-areas-screen.tsx",
-                        lineNumber: 136,
+                        lineNumber: 183,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -12659,7 +12732,7 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/weak-areas-screen.tsx",
-                        lineNumber: 137,
+                        lineNumber: 184,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -12667,19 +12740,21 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                         children: mode === "trial" ? "Answer trial questions and any you get wrong will appear here for focused review." : "Complete exam sessions and questions you miss will appear here."
                     }, void 0, false, {
                         fileName: "[project]/components/weak-areas-screen.tsx",
-                        lineNumber: 140,
+                        lineNumber: 187,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/weak-areas-screen.tsx",
-                lineNumber: 135,
+                lineNumber: 182,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3",
-                children: weakModules.map((mod, i)=>{
+                children: sortedModules.map((mod, i)=>{
                     const palette = palettes[i % palettes.length];
-                    const weakCount = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakCountForModule"])(progress.history, mode, mod);
+                    const weakQs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakQuestionsForMode"])(progress.history, mode, mod);
+                    const weakCount = weakQs.length;
+                    const dueCount = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["countDue"])(weakQs.map((q)=>q.id), srsData);
                     const totalCount = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getModuleQuestionCount"])(mod);
                     const pct = totalCount > 0 ? Math.round(weakCount / totalCount * 100) : 0;
                     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -12692,7 +12767,7 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 159,
+                                lineNumber: 208,
                                 columnNumber: 17
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -12707,33 +12782,50 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                                     size: 18
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/weak-areas-screen.tsx",
-                                                    lineNumber: 166,
+                                                    lineNumber: 215,
                                                     columnNumber: 23
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                                lineNumber: 165,
+                                                lineNumber: 214,
                                                 columnNumber: 21
                                             }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                className: "rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums",
-                                                style: {
-                                                    background: `${palette.bar}20`,
-                                                    color: palette.bar
-                                                },
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "flex flex-col items-end gap-1",
                                                 children: [
-                                                    weakCount,
-                                                    " to review"
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(UrgencyBadge, {
+                                                        dueCount: dueCount,
+                                                        total: weakCount
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/components/weak-areas-screen.tsx",
+                                                        lineNumber: 218,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums",
+                                                        style: {
+                                                            background: `${palette.bar}20`,
+                                                            color: palette.bar
+                                                        },
+                                                        children: [
+                                                            weakCount,
+                                                            " to review"
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/components/weak-areas-screen.tsx",
+                                                        lineNumber: 219,
+                                                        columnNumber: 23
+                                                    }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                                lineNumber: 168,
+                                                lineNumber: 217,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 164,
+                                        lineNumber: 213,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -12741,7 +12833,7 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                         children: mod
                                     }, void 0, false, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 176,
+                                        lineNumber: 228,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -12752,7 +12844,7 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 177,
+                                        lineNumber: 229,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -12765,12 +12857,12 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/components/weak-areas-screen.tsx",
-                                            lineNumber: 182,
+                                            lineNumber: 234,
                                             columnNumber: 21
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 181,
+                                        lineNumber: 233,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -12788,45 +12880,77 @@ function WeakAreasScreen({ onReadyForQuiz }) {
                                                 className: "transition-transform group-hover:translate-x-0.5"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                                lineNumber: 195,
+                                                lineNumber: 247,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 188,
+                                        lineNumber: 240,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 163,
+                                lineNumber: 212,
                                 columnNumber: 17
                             }, this)
                         ]
                     }, mod, true, {
                         fileName: "[project]/components/weak-areas-screen.tsx",
-                        lineNumber: 155,
+                        lineNumber: 204,
                         columnNumber: 15
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/components/weak-areas-screen.tsx",
-                lineNumber: 147,
+                lineNumber: 194,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/weak-areas-screen.tsx",
-        lineNumber: 87,
+        lineNumber: 125,
         columnNumber: 5
     }, this);
 }
 // ── Discipline drill-down ─────────────────────────────────────────────────────
-function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack, onSelectDiscipline }) {
+function WeakModuleDisciplineView({ moduleName, mode, history, srsData, palettes, onBack, onSelectDiscipline }) {
     const weakDisciplines = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakDisciplinesForModule"])(history, mode, moduleName);
     const totalWeak = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakCountForModule"])(history, mode, moduleName);
     const primaryPalette = palettes[0];
+    // For each discipline compute due count; sort by urgency
+    const disciplineData = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>{
+        return weakDisciplines.map((disc)=>{
+            const qs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakQuestionsForMode"])(history, mode, moduleName, disc);
+            const dueCount = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["countDue"])(qs.map((q)=>q.id), srsData);
+            const mostOverdue = qs.reduce((worst, q)=>{
+                const d = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["daysOverdue"])(srsData[q.id]);
+                return d > worst ? d : worst;
+            }, -Infinity);
+            return {
+                disc,
+                count: qs.length,
+                dueCount,
+                mostOverdue
+            };
+        }).sort((a, b)=>{
+            if (b.dueCount !== a.dueCount) return b.dueCount - a.dueCount;
+            return b.count - a.count;
+        });
+    }, [
+        weakDisciplines,
+        history,
+        mode,
+        moduleName,
+        srsData
+    ]);
+    const allQsIds = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakQuestionsForMode"])(history, mode, moduleName).map((q)=>q.id), [
+        history,
+        mode,
+        moduleName
+    ]);
+    const totalDue = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["countDue"])(allQsIds, srsData);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "mx-auto max-w-6xl space-y-6",
         children: [
@@ -12842,14 +12966,14 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                 size: 15
                             }, void 0, false, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 235,
+                                lineNumber: 313,
                                 columnNumber: 11
                             }, this),
                             "Back"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/weak-areas-screen.tsx",
-                        lineNumber: 230,
+                        lineNumber: 308,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -12860,7 +12984,7 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                 children: moduleName
                             }, void 0, false, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 239,
+                                lineNumber: 317,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -12869,6 +12993,18 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                     totalWeak,
                                     " weak question",
                                     totalWeak !== 1 ? "s" : "",
+                                    totalDue > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        className: "ml-1.5 text-red-500 font-semibold",
+                                        children: [
+                                            "· ",
+                                            totalDue,
+                                            " due now"
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/components/weak-areas-screen.tsx",
+                                        lineNumber: 321,
+                                        columnNumber: 15
+                                    }, this),
                                     " · ",
                                     mode,
                                     " mode · ",
@@ -12878,19 +13014,19 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 240,
+                                lineNumber: 318,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/weak-areas-screen.tsx",
-                        lineNumber: 238,
+                        lineNumber: 316,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/weak-areas-screen.tsx",
-                lineNumber: 229,
+                lineNumber: 307,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -12906,7 +13042,7 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                         },
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "mb-4 flex items-start justify-between",
+                                className: "mb-3 flex items-start justify-between",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         className: "flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm",
@@ -12917,29 +13053,46 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                             size: 22
                                         }, void 0, false, {
                                             fileName: "[project]/components/weak-areas-screen.tsx",
-                                            lineNumber: 262,
+                                            lineNumber: 344,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 258,
+                                        lineNumber: 340,
                                         columnNumber: 13
                                     }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
-                                        size: 18,
-                                        className: "mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100",
-                                        style: {
-                                            color: primaryPalette.bar
-                                        }
-                                    }, void 0, false, {
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "flex flex-col items-end gap-1",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(UrgencyBadge, {
+                                                dueCount: totalDue,
+                                                total: totalWeak
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/weak-areas-screen.tsx",
+                                                lineNumber: 347,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
+                                                size: 18,
+                                                className: "mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100",
+                                                style: {
+                                                    color: primaryPalette.bar
+                                                }
+                                            }, void 0, false, {
+                                                fileName: "[project]/components/weak-areas-screen.tsx",
+                                                lineNumber: 348,
+                                                columnNumber: 15
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
                                         fileName: "[project]/components/weak-areas-screen.tsx",
-                                        lineNumber: 264,
+                                        lineNumber: 346,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 257,
+                                lineNumber: 339,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -12947,7 +13100,7 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                 children: "All Disciplines"
                             }, void 0, false, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 270,
+                                lineNumber: 355,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -12960,18 +13113,17 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                lineNumber: 271,
+                                lineNumber: 356,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/weak-areas-screen.tsx",
-                        lineNumber: 248,
+                        lineNumber: 330,
                         columnNumber: 9
                     }, this),
-                    weakDisciplines.map((disc, i)=>{
+                    disciplineData.map(({ disc, count, dueCount }, i)=>{
                         const dPalette = palettes[i % palettes.length];
-                        const count = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakCountForModule"])(history, mode, moduleName, disc);
                         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                             type: "button",
                             onClick: ()=>onSelectDiscipline(disc),
@@ -12984,11 +13136,11 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/components/weak-areas-screen.tsx",
-                                    lineNumber: 288,
+                                    lineNumber: 372,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "mb-4 flex items-start justify-between",
+                                    className: "mb-3 flex items-start justify-between",
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                             className: `flex h-11 w-11 items-center justify-center rounded-xl ${dPalette.icon}`,
@@ -12996,29 +13148,46 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                                 size: 22
                                             }, void 0, false, {
                                                 fileName: "[project]/components/weak-areas-screen.tsx",
-                                                lineNumber: 294,
+                                                lineNumber: 378,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/weak-areas-screen.tsx",
-                                            lineNumber: 293,
+                                            lineNumber: 377,
                                             columnNumber: 17
                                         }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
-                                            size: 18,
-                                            className: "mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100",
-                                            style: {
-                                                color: dPalette.bar
-                                            }
-                                        }, void 0, false, {
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "flex flex-col items-end gap-1",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(UrgencyBadge, {
+                                                    dueCount: dueCount,
+                                                    total: count
+                                                }, void 0, false, {
+                                                    fileName: "[project]/components/weak-areas-screen.tsx",
+                                                    lineNumber: 381,
+                                                    columnNumber: 19
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ArrowRightIcon"], {
+                                                    size: 18,
+                                                    className: "mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100",
+                                                    style: {
+                                                        color: dPalette.bar
+                                                    }
+                                                }, void 0, false, {
+                                                    fileName: "[project]/components/weak-areas-screen.tsx",
+                                                    lineNumber: 382,
+                                                    columnNumber: 19
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
                                             fileName: "[project]/components/weak-areas-screen.tsx",
-                                            lineNumber: 296,
+                                            lineNumber: 380,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/weak-areas-screen.tsx",
-                                    lineNumber: 292,
+                                    lineNumber: 376,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -13026,7 +13195,7 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                     children: disc
                                 }, void 0, false, {
                                     fileName: "[project]/components/weak-areas-screen.tsx",
-                                    lineNumber: 302,
+                                    lineNumber: 389,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -13038,26 +13207,26 @@ function WeakModuleDisciplineView({ moduleName, mode, history, palettes, onBack,
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/weak-areas-screen.tsx",
-                                    lineNumber: 303,
+                                    lineNumber: 390,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, disc, true, {
                             fileName: "[project]/components/weak-areas-screen.tsx",
-                            lineNumber: 282,
+                            lineNumber: 366,
                             columnNumber: 13
                         }, this);
                     })
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/weak-areas-screen.tsx",
-                lineNumber: 246,
+                lineNumber: 328,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/weak-areas-screen.tsx",
-        lineNumber: 228,
+        lineNumber: 306,
         columnNumber: 5
     }, this);
 }
@@ -13075,6 +13244,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$app$2d$context$2
 var __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$admin$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/contexts/admin-context.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$study$2d$mode$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/contexts/study-mode-context.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/modules.ts [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/srs.ts [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$auth$2d$screen$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/auth-screen.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$sidebar$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/sidebar.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$dashboard$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/dashboard.tsx [app-ssr] (ecmascript)");
@@ -13112,6 +13282,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__
 ;
 ;
 ;
+;
 // ── Credits Modal ─────────────────────────────────────────────────────────────
 function CreditsModal({ open, onClose }) {
     if (!open) return null;
@@ -13125,7 +13296,7 @@ function CreditsModal({ open, onClose }) {
                 className: "absolute inset-0 bg-foreground/40 backdrop-blur-sm"
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 55,
+                lineNumber: 56,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13138,14 +13309,14 @@ function CreditsModal({ open, onClose }) {
                                 className: "pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 64,
+                                lineNumber: 65,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "pointer-events-none absolute -left-6 bottom-0 h-20 w-20 rounded-full bg-white/8"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 65,
+                                lineNumber: 66,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13154,12 +13325,12 @@ function CreditsModal({ open, onClose }) {
                                     size: 32
                                 }, void 0, false, {
                                     fileName: "[project]/components/mednexus-app.tsx",
-                                    lineNumber: 67,
+                                    lineNumber: 68,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 66,
+                                lineNumber: 67,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -13167,7 +13338,7 @@ function CreditsModal({ open, onClose }) {
                                 children: "MedNexus"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 69,
+                                lineNumber: 70,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -13175,7 +13346,7 @@ function CreditsModal({ open, onClose }) {
                                 children: "Medical Study Platform"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 70,
+                                lineNumber: 71,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -13186,18 +13357,18 @@ function CreditsModal({ open, onClose }) {
                                     size: 18
                                 }, void 0, false, {
                                     fileName: "[project]/components/mednexus-app.tsx",
-                                    lineNumber: 76,
+                                    lineNumber: 77,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 71,
+                                lineNumber: 72,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 63,
+                        lineNumber: 64,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13211,7 +13382,7 @@ function CreditsModal({ open, onClose }) {
                                         children: "Designed & built by"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 83,
+                                        lineNumber: 84,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -13219,13 +13390,13 @@ function CreditsModal({ open, onClose }) {
                                         children: "Britechinc"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 84,
+                                        lineNumber: 85,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 82,
+                                lineNumber: 83,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -13244,17 +13415,17 @@ function CreditsModal({ open, onClose }) {
                                                 d: "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/mednexus-app.tsx",
-                                                lineNumber: 95,
+                                                lineNumber: 96,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 94,
+                                            lineNumber: 95,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 93,
+                                        lineNumber: 94,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13265,7 +13436,7 @@ function CreditsModal({ open, onClose }) {
                                                 children: "Chat on WhatsApp"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/mednexus-app.tsx",
-                                                lineNumber: 99,
+                                                lineNumber: 100,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -13273,13 +13444,13 @@ function CreditsModal({ open, onClose }) {
                                                 children: "+233 54 398 2307"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/mednexus-app.tsx",
-                                                lineNumber: 100,
+                                                lineNumber: 101,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 98,
+                                        lineNumber: 99,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
@@ -13294,18 +13465,18 @@ function CreditsModal({ open, onClose }) {
                                             strokeLinejoin: "round"
                                         }, void 0, false, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 103,
+                                            lineNumber: 104,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 102,
+                                        lineNumber: 103,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 87,
+                                lineNumber: 88,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13318,7 +13489,7 @@ function CreditsModal({ open, onClose }) {
                                             className: "mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
                                         }, void 0, false, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 109,
+                                            lineNumber: 110,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13328,7 +13499,7 @@ function CreditsModal({ open, onClose }) {
                                                     children: "Support the Project"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/mednexus-app.tsx",
-                                                    lineNumber: 111,
+                                                    lineNumber: 112,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -13336,24 +13507,24 @@ function CreditsModal({ open, onClose }) {
                                                     children: "Contributions help keep MedNexus growing. Reach out on WhatsApp to donate or collaborate."
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/mednexus-app.tsx",
-                                                    lineNumber: 112,
+                                                    lineNumber: 113,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 110,
+                                            lineNumber: 111,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/mednexus-app.tsx",
-                                    lineNumber: 108,
+                                    lineNumber: 109,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 107,
+                                lineNumber: 108,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -13363,25 +13534,25 @@ function CreditsModal({ open, onClose }) {
                                 children: "Close"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 119,
+                                lineNumber: 120,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 81,
+                        lineNumber: 82,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 61,
+                lineNumber: 62,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 54,
+        lineNumber: 55,
         columnNumber: 5
     }, this);
 }
@@ -13404,20 +13575,23 @@ function MedNexusApp() {
         let displayName;
         const TRIAL_PREFIX = "__weak_trial__|";
         const EXAM_PREFIX = "__weak_exam__|";
+        const srsData = progress.srsData ?? {};
         if (config.module === "__weak__") {
-            questions = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakAreaQuestions"])(progress.history);
+            questions = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["sortByUrgency"])((0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakAreaQuestions"])(progress.history), srsData);
             displayName = "Weak Areas";
         } else if (config.module.startsWith(TRIAL_PREFIX)) {
             const modName = config.module.slice(TRIAL_PREFIX.length);
             const weakTrialQs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakAreaQuestions"])(progress.history.filter((e)=>e.mode === "trial"));
             questions = weakTrialQs.filter((q)=>(q.module?.trim() || q.subject) === modName);
             if (config.discipline) questions = questions.filter((q)=>q.subject === config.discipline);
+            questions = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["sortByUrgency"])(questions, srsData);
             displayName = config.discipline ?? modName;
         } else if (config.module.startsWith(EXAM_PREFIX)) {
             const modName = config.module.slice(EXAM_PREFIX.length);
             const weakExamQs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getWeakAreaQuestions"])(progress.history.filter((e)=>e.mode === "exam"));
             questions = weakExamQs.filter((q)=>(q.module?.trim() || q.subject) === modName);
             if (config.discipline) questions = questions.filter((q)=>q.subject === config.discipline);
+            questions = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["sortByUrgency"])(questions, srsData);
             displayName = config.discipline ?? modName;
         } else {
             questions = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getQuestionsForModuleAndDiscipline"])(config.module, config.discipline);
@@ -13445,12 +13619,12 @@ function MedNexusApp() {
                             size: 26
                         }, void 0, false, {
                             fileName: "[project]/components/mednexus-app.tsx",
-                            lineNumber: 197,
+                            lineNumber: 202,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 196,
+                        lineNumber: 201,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -13458,24 +13632,24 @@ function MedNexusApp() {
                         children: "Loading MedNexus…"
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 199,
+                        lineNumber: 204,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 195,
+                lineNumber: 200,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/components/mednexus-app.tsx",
-            lineNumber: 194,
+            lineNumber: 199,
             columnNumber: 7
         }, this);
     }
     if (!user) return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$auth$2d$screen$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["AuthScreen"], {}, void 0, false, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 205,
+        lineNumber: 210,
         columnNumber: 21
     }, this);
     function handleStartQuiz(selectedQuestions) {
@@ -13533,12 +13707,12 @@ function MedNexusApp() {
                 onComplete: handleQuizComplete
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 256,
+                lineNumber: 261,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/components/mednexus-app.tsx",
-            lineNumber: 255,
+            lineNumber: 260,
             columnNumber: 7
         }, this);
     }
@@ -13561,7 +13735,7 @@ function MedNexusApp() {
                 onOpenCredits: ()=>setCreditsOpen(true)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 269,
+                lineNumber: 274,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13579,12 +13753,12 @@ function MedNexusApp() {
                                     size: 20
                                 }, void 0, false, {
                                     fileName: "[project]/components/mednexus-app.tsx",
-                                    lineNumber: 295,
+                                    lineNumber: 300,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 289,
+                                lineNumber: 294,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -13597,7 +13771,7 @@ function MedNexusApp() {
                                         className: "shrink-0 text-primary"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 304,
+                                        lineNumber: 309,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -13605,27 +13779,27 @@ function MedNexusApp() {
                                         children: "MedNexus"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 305,
+                                        lineNumber: 310,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 299,
+                                lineNumber: 304,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "hidden flex-1 lg:block"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 309,
+                                lineNumber: 314,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "flex-1 lg:hidden"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 312,
+                                lineNumber: 317,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -13636,12 +13810,12 @@ function MedNexusApp() {
                                         setGlobalMode: setGlobalMode
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 316,
+                                        lineNumber: 321,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$notification$2d$bell$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["NotificationBell"], {}, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 317,
+                                        lineNumber: 322,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -13653,24 +13827,24 @@ function MedNexusApp() {
                                             size: 16
                                         }, void 0, false, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 324,
+                                            lineNumber: 329,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 318,
+                                        lineNumber: 323,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 315,
+                                lineNumber: 320,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 287,
+                        lineNumber: 292,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -13685,7 +13859,7 @@ function MedNexusApp() {
                                 onOpenWeakAreas: ()=>setScreen("weak-areas")
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 331,
+                                lineNumber: 336,
                                 columnNumber: 13
                             }, this),
                             safeScreen === "modules" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$modules$2d$screen$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ModulesScreen"], {
@@ -13693,29 +13867,29 @@ function MedNexusApp() {
                                 initialModule: modulesInitialModule
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 341,
+                                lineNumber: 346,
                                 columnNumber: 13
                             }, this),
                             safeScreen === "weak-areas" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$weak$2d$areas$2d$screen$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["WeakAreasScreen"], {
                                 onReadyForQuiz: handleReadyForQuiz
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 347,
+                                lineNumber: 352,
                                 columnNumber: 13
                             }, this),
                             safeScreen === "profile" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$profile$2d$history$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ProfileHistory"], {}, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 349,
+                                lineNumber: 354,
                                 columnNumber: 40
                             }, this),
                             safeScreen === "question-editor" && isAdmin && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$question$2d$editor$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["QuestionEditor"], {}, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 350,
+                                lineNumber: 355,
                                 columnNumber: 59
                             }, this),
                             safeScreen === "broadcast" && isAdmin && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$broadcast$2d$screen$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["BroadcastScreen"], {}, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 351,
+                                lineNumber: 356,
                                 columnNumber: 53
                             }, this),
                             safeScreen === "results" && lastResult && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$results$2d$screen$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ResultsScreen"], {
@@ -13729,19 +13903,19 @@ function MedNexusApp() {
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 353,
+                                lineNumber: 358,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 329,
+                        lineNumber: 334,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 285,
+                lineNumber: 290,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$quantity$2d$modal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["QuantityModal"], {
@@ -13753,7 +13927,7 @@ function MedNexusApp() {
                 onStart: handleStartQuiz
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 368,
+                lineNumber: 373,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$theme$2d$modal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ThemeModal"], {
@@ -13761,14 +13935,14 @@ function MedNexusApp() {
                 onClose: ()=>setThemeOpen(false)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 377,
+                lineNumber: 382,
                 columnNumber: 7
             }, this),
             adminLoginOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$admin$2d$login$2d$modal$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["AdminLoginModal"], {
                 onClose: ()=>setAdminLoginOpen(false)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 378,
+                lineNumber: 383,
                 columnNumber: 26
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(CreditsModal, {
@@ -13776,13 +13950,13 @@ function MedNexusApp() {
                 onClose: ()=>setCreditsOpen(false)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 379,
+                lineNumber: 384,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 268,
+        lineNumber: 273,
         columnNumber: 5
     }, this);
 }
@@ -13800,20 +13974,20 @@ function StudyModeToggle({ globalMode, setGlobalMode }) {
                         size: 13
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 403,
+                        lineNumber: 408,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "Trial"
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 404,
+                        lineNumber: 409,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 394,
+                lineNumber: 399,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -13825,26 +13999,26 @@ function StudyModeToggle({ globalMode, setGlobalMode }) {
                         size: 13
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 415,
+                        lineNumber: 420,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "Exam"
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 416,
+                        lineNumber: 421,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 406,
+                lineNumber: 411,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 393,
+        lineNumber: 398,
         columnNumber: 5
     }, this);
 }

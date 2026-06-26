@@ -55,6 +55,14 @@ export interface ExamScore {
   date: string // ISO date string
 }
 
+/** Per-question spaced-repetition scheduling state. */
+export interface SrsEntry {
+  interval: number  // days until next review
+  ef: number        // ease factor (1.3 – 2.5)
+  due: string       // YYYY-MM-DD next review date
+  reps: number      // consecutive correct answers
+}
+
 /** Aggregated user progress / global stats. */
 export interface UserProgress {
   totalAnswered: number
@@ -67,6 +75,7 @@ export interface UserProgress {
   notificationsLastRead: number // epoch ms; 0 = never read
   mutedNotificationTypes: string[] // e.g. ["info", "update", "alert"]
   favoriteModules: string[] // starred module names
+  srsData: Record<string, SrsEntry> // questionId → SRS schedule
 }
 
 /** In-session state for a single quiz block. */
