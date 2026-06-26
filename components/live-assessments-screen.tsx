@@ -26,6 +26,32 @@ interface Result {
   questions: Question[]
 }
 
+interface StoredResult {
+  score: number
+  total: number
+  percentage: number
+  passed: boolean
+  answers: Record<string, string | null>
+  questions: Question[]
+}
+
+function userStorageKey(assessmentId: string) {
+  return `mednexus-user-exam-${assessmentId}`
+}
+
+function saveUserResult(assessmentId: string, result: StoredResult) {
+  try {
+    localStorage.setItem(userStorageKey(assessmentId), JSON.stringify(result))
+  } catch { /* ignore */ }
+}
+
+function loadUserResult(assessmentId: string): StoredResult | null {
+  try {
+    const raw = localStorage.getItem(userStorageKey(assessmentId))
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
 export function LiveAssessmentsScreen() {
   const { user } = useApp()
   const [assessments, setAssessments] = useState<AssessmentWithMeta[]>([])
@@ -36,6 +62,7 @@ export function LiveAssessmentsScreen() {
   const [result, setResult] = useState<Result | null>(null)
   const [showReview, setShowReview] = useState(false)
   const [loadingExam, setLoadingExam] = useState<string | null>(null)
+  const [storedResultIds, setStoredResultIds] = useState<Set<string>>(new Set())
 
   const fetchAssessments = useCallback(async () => {
     if (!user) return
@@ -45,7 +72,6 @@ export function LiveAssessmentsScreen() {
       const data = await res.json()
       const list: LiveAssessment[] = data.assessments ?? []
 
-      // For each assessment, fetch attempt count for this user
       const withMeta: AssessmentWithMeta[] = await Promise.all(
         list.map(async (asmt) => {
           try {
@@ -71,6 +97,15 @@ export function LiveAssessmentsScreen() {
         })
       )
       setAssessments(withMeta)
+
+      // Check localStorage for stored results for assessments with prior attempts
+      const ids = new Set<string>()
+      for (const asmt of withMeta) {
+        if (asmt.attemptsUsed > 0 && loadUserResult(asmt.id)) {
+          ids.add(asmt.id)
+        }
+      }
+      setStoredResultIds(ids)
     } catch {
       setAssessments([])
     } finally {
@@ -96,9 +131,30 @@ export function LiveAssessmentsScreen() {
   }
 
   function handleComplete(res: Result) {
+    // Persist result so the "Review" button works after navigating away
+    if (activeAssessment) {
+      saveUserResult(activeAssessment.id, {
+        score: res.score,
+        total: res.total,
+        percentage: res.percentage,
+        passed: res.passed,
+        answers: res.answers,
+        questions: res.questions,
+      })
+      setStoredResultIds((prev) => new Set([...prev, activeAssessment.id]))
+    }
     setResult(res)
     setPhase("results")
     fetchAssessments()
+  }
+
+  function reviewFromList(asmt: AssessmentWithMeta) {
+    const stored = loadUserResult(asmt.id)
+    if (!stored) return
+    setActiveAssessment(asmt)
+    setResult(stored)
+    setShowReview(true)
+    setPhase("results")
   }
 
   // Full-screen exam
@@ -164,7 +220,7 @@ export function LiveAssessmentsScreen() {
           </button>
           <button
             type="button"
-            onClick={() => { setPhase("list"); setResult(null); setActiveAssessment(null) }}
+            onClick={() => { setPhase("list"); setResult(null); setShowReview(false); setActiveAssessment(null) }}
             className="w-full rounded-xl border border-border py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
           >
             Back to Assessments
@@ -212,6 +268,7 @@ export function LiveAssessmentsScreen() {
             const triesLeft = asmt.triesAllowed - asmt.attemptsUsed
             const exhausted = triesLeft <= 0
             const hasAttempted = asmt.attemptsUsed > 0
+            const hasStoredResult = storedResultIds.has(asmt.id)
 
             return (
               <div key={asmt.id} className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -242,22 +299,37 @@ export function LiveAssessmentsScreen() {
                         </span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      disabled={exhausted || loadingExam === asmt.id}
-                      onClick={() => startExam(asmt)}
-                      className={`shrink-0 flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors shadow-sm ${
-                        exhausted
-                          ? "bg-muted text-muted-foreground cursor-not-allowed"
-                          : "bg-primary text-primary-foreground hover:bg-primary/90"
-                      }`}
-                    >
-                      {loadingExam === asmt.id ? (
-                        <span className="animate-pulse">Loading…</span>
-                      ) : (
-                        <><PlayIcon size={12} /> {hasAttempted ? "Retry" : "Start"}</>
+
+                    {/* Action buttons */}
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <button
+                        type="button"
+                        disabled={exhausted || loadingExam === asmt.id}
+                        onClick={() => startExam(asmt)}
+                        className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors shadow-sm ${
+                          exhausted
+                            ? "bg-muted text-muted-foreground cursor-not-allowed"
+                            : "bg-primary text-primary-foreground hover:bg-primary/90"
+                        }`}
+                      >
+                        {loadingExam === asmt.id ? (
+                          <span className="animate-pulse">Loading…</span>
+                        ) : (
+                          <><PlayIcon size={12} /> {hasAttempted ? "Retry" : "Start"}</>
+                        )}
+                      </button>
+
+                      {/* Review button — shown while session is live and result exists */}
+                      {hasStoredResult && (
+                        <button
+                          type="button"
+                          onClick={() => reviewFromList(asmt)}
+                          className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        >
+                          <TrophyIcon size={11} /> Review Last Attempt
+                        </button>
                       )}
-                    </button>
+                    </div>
                   </div>
 
                   {/* Last attempt summary */}

@@ -1,1 +1,13 @@
-{}
+{
+  "/api/admin/auth/route": "app/api/admin/auth/route.js",
+  "/api/assessments/[id]/analytics/route": "app/api/assessments/[id]/analytics/route.js",
+  "/api/assessments/[id]/attempt/route": "app/api/assessments/[id]/attempt/route.js",
+  "/api/assessments/[id]/route": "app/api/assessments/[id]/route.js",
+  "/api/assessments/by-token/route": "app/api/assessments/by-token/route.js",
+  "/api/assessments/route": "app/api/assessments/route.js",
+  "/api/notifications/route": "app/api/notifications/route.js",
+  "/api/questions/route": "app/api/questions/route.js",
+  "/api/sync/route": "app/api/sync/route.js",
+  "/exam/[token]/page": "app/exam/[token]/page.js",
+  "/page": "app/page.js"
+}
