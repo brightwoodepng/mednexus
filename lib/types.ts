@@ -15,10 +15,14 @@ export interface QuestionExplanation {
   incorrectReasoning: string // Why common distractors are wrong
 }
 
+/** Publication status for a module (stored on each question in the module). */
+export type ModuleStatus = "live" | "draft" | "offline"
+
 /** A single Q-Bank question. */
 export interface Question {
   id: string
   module?: string // Parent module grouping (e.g. "Level 400 Clinicals")
+  moduleStatus?: ModuleStatus // Publication status of the parent module
   subject: string // Discipline tag (e.g. "Internal Medicine")
   vignette: string
   options: QuestionOption[]

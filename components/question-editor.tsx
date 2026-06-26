@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { PdfImportModal } from "@/components/pdf-import-modal"
-import type { Question, QuestionOption } from "@/lib/types"
+import type { Question, QuestionOption, ModuleStatus } from "@/lib/types"
 import {
   TrashIcon, PencilIcon, PlusIcon, XIcon, CheckIcon, DatabaseIcon,
   RefreshCwIcon, AlertTriangleIcon, CheckSquareIcon, DownloadIcon,
@@ -197,9 +197,10 @@ function QuestionForm({ initial, questionId, defaultModule, defaultSubject, admi
 // ─────────────────────────────────────────────────────────────────────────────
 interface QItem { q: Question; isDraft: boolean }
 interface DiscGroup { name: string; items: QItem[] }
-interface ModGroup { name: string; disciplines: DiscGroup[]; total: number; draftCount: number }
+interface ModGroup { name: string; disciplines: DiscGroup[]; total: number; draftCount: number; moduleStatus: ModuleStatus }
 
 function getModuleKey(q: Question): string { return q.module?.trim() || q.subject }
+function getModuleStatus(qs: Question[]): ModuleStatus { return qs[0]?.moduleStatus ?? "live" }
 
 function buildHierarchy(live: Question[], drafts: Question[], search: string, filter: "all" | "live" | "draft"): ModGroup[] {
   const combined: QItem[] = [
@@ -238,7 +239,9 @@ function buildHierarchy(live: Question[], drafts: Question[], search: string, fi
       const disciplines = Array.from(dm.entries()).map(([disc, items]) => ({ name: disc, items })).sort((a, b) => a.name.localeCompare(b.name))
       const total = disciplines.reduce((s, d) => s + d.items.length, 0)
       const draftCount = disciplines.reduce((s, d) => s + d.items.filter((i) => i.isDraft).length, 0)
-      return { name: mod, disciplines, total, draftCount }
+      const allQs = disciplines.flatMap((d) => d.items.map((i) => i.q))
+      const moduleStatus = getModuleStatus(allQs)
+      return { name: mod, disciplines, total, draftCount, moduleStatus }
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -354,15 +357,62 @@ function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onTog
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Module Status Badge & Picker
+// ─────────────────────────────────────────────────────────────────────────────
+const STATUS_CONFIG: Record<ModuleStatus, { label: string; cls: string; dotCls: string }> = {
+  live:    { label: "Live",    cls: "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/40", dotCls: "bg-emerald-500" },
+  draft:   { label: "Draft",  cls: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/40",          dotCls: "bg-amber-500"   },
+  offline: { label: "Offline", cls: "bg-muted text-muted-foreground border-border",                                                                             dotCls: "bg-muted-foreground" },
+}
+
+function ModuleStatusPicker({ status, onChange }: { status: ModuleStatus; onChange: (s: ModuleStatus) => void }) {
+  const [open, setOpen] = useState(false)
+  const cfg = STATUS_CONFIG[status]
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
+        className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${cfg.cls}`}
+        title="Change module status"
+      >
+        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${cfg.dotCls}`} />
+        {cfg.label}
+        <ChevronDownIcon size={9} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full z-20 mt-1 w-28 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+            {(["live", "draft", "offline"] as ModuleStatus[]).map((s) => {
+              const c = STATUS_CONFIG[s]
+              return (
+                <button key={s} type="button"
+                  onClick={(e) => { e.stopPropagation(); onChange(s); setOpen(false) }}
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-[12px] font-medium transition-colors hover:bg-muted ${status === s ? "opacity-60 cursor-default" : ""}`}
+                >
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${c.dotCls}`} />
+                  {c.label}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Module Section
 // ─────────────────────────────────────────────────────────────────────────────
-function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, onRename, onDeleteModule, forceExpand, isExpanded, onToggleExpand }: {
+function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, onRename, onDeleteModule, onSetStatus, forceExpand, isExpanded, onToggleExpand }: {
   group: ModGroup; selectedIds: Set<string>
   onToggleItem: (id: string) => void; onToggleAll: (ids: string[], select: boolean) => void
   onEdit: (q: Question, isDraft: boolean) => void; onDelete: (q: Question, isDraft: boolean) => void
   onAddQuestion: (mod: string, disc: string) => void; onRename: (mod: string) => void
-  onDeleteModule: (mod: string) => void; forceExpand: boolean
-  isExpanded: boolean; onToggleExpand: () => void
+  onDeleteModule: (mod: string) => void; onSetStatus: (mod: string, status: ModuleStatus) => void
+  forceExpand: boolean; isExpanded: boolean; onToggleExpand: () => void
 }) {
   const [expandedDisc, setExpandedDisc] = useState<string | null>(null)
   const allIds = group.disciplines.flatMap((d) => d.items.map((i) => i.q.id))
@@ -388,6 +438,7 @@ function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, 
           <span className="font-bold text-foreground truncate">{group.name}</span>
         </button>
         <div className="ml-1 flex items-center gap-1.5 shrink-0">
+          <ModuleStatusPicker status={group.moduleStatus} onChange={(s) => onSetStatus(group.name, s)} />
           <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{group.disciplines.length} disc</span>
           <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{group.total}Q</span>
           {group.draftCount > 0 && (
@@ -628,14 +679,29 @@ export function QuestionEditor() {
         if (parsed.length === 0) throw new Error("The file contains no questions.")
         const invalid = parsed.find((q: any) => typeof q.vignette !== "string" || !Array.isArray(q.options))
         if (invalid) throw new Error("One or more questions have an invalid format.")
+
+        // Compute which modules will be overwritten vs added
+        const importedModules = new Set(parsed.map((q: any) => (q.module?.trim() || q.subject) as string))
+        const existingModuleNames = new Set(questions.map(getModuleKey))
+        const overwritten = [...importedModules].filter((m) => existingModuleNames.has(m))
+        const added = [...importedModules].filter((m) => !existingModuleNames.has(m))
+
+        const summaryParts: string[] = []
+        if (overwritten.length > 0) summaryParts.push(`Overwrite ${overwritten.length} existing module${overwritten.length !== 1 ? "s" : ""} (${overwritten.join(", ")})`)
+        if (added.length > 0) summaryParts.push(`Add ${added.length} new module${added.length !== 1 ? "s" : ""} (${added.join(", ")})`)
+
         setConfirm({
           title: `Import ${parsed.length} question${parsed.length !== 1 ? "s" : ""}?`,
-          message: "This will replace your entire current question bank. Existing questions will be lost.",
-          confirmLabel: "Import & Replace", danger: true,
+          message: summaryParts.join(". ") + ". All other existing modules will be kept.",
+          confirmLabel: "Import", danger: false,
           action: async () => {
             if (!adminToken) return
+            // Ensure all imported questions have IDs
             for (const q of parsed) { if (!q.id) q.id = `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
-            await saveToDb(parsed, adminToken)
+            // Upsert: keep existing questions not in imported modules, add/replace imported modules
+            const kept = questions.filter((q) => !importedModules.has(getModuleKey(q)))
+            const merged = [...kept, ...parsed]
+            await saveToDb(merged, adminToken)
           },
         })
       } catch (err) {
@@ -643,6 +709,11 @@ export function QuestionEditor() {
       }
     }
     reader.readAsText(file)
+  }
+
+  // ── Module status ──
+  function handleSetModuleStatus(moduleName: string, status: ModuleStatus) {
+    questions.filter((q) => getModuleKey(q) === moduleName).forEach((q) => updateQuestion({ ...q, moduleStatus: status }))
   }
 
   // ── Draft import from PDF ──
@@ -810,6 +881,7 @@ export function QuestionEditor() {
               onAddQuestion={openAdd}
               onRename={startRename}
               onDeleteModule={handleDeleteModule}
+              onSetStatus={handleSetModuleStatus}
               forceExpand={isSearching}
               isExpanded={isSearching || expandedModule === mod.name}
               onToggleExpand={() => setExpandedModule(expandedModule === mod.name ? null : mod.name)}

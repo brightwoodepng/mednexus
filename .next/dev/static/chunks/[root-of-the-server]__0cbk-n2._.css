@@ -4791,6 +4791,10 @@
     }
   }
 
+  .border-amber-300 {
+    border-color: var(--color-amber-300);
+  }
+
   .border-amber-400\/30 {
     border-color: #fcbb004d;
   }
@@ -6907,6 +6911,10 @@
 
   .text-\[11px\] {
     font-size: 11px;
+  }
+
+  .text-\[12px\] {
+    font-size: 12px;
   }
 
   .text-\[15px\] {
