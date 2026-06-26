@@ -728,6 +728,19 @@ export function QuestionEditor() {
     return [...selectedIds].filter((id) => draftIdSet.has(id)).length
   }, [selectedIds, draftQuestions])
 
+  // ── Modules that are fully selected (all their questions checked) ──
+  const selectedModules = useMemo(() => {
+    return hierarchy.filter((m) => {
+      const allIds = m.disciplines.flatMap((d) => d.items.map((i) => i.q.id))
+      return allIds.length > 0 && allIds.every((id) => selectedIds.has(id))
+    })
+  }, [hierarchy, selectedIds])
+
+  // ── Bulk module status ──
+  function handleBulkSetModuleStatus(status: ModuleStatus) {
+    selectedModules.forEach((m) => handleSetModuleStatus(m.name, status))
+  }
+
   const emptyState = hierarchy.length === 0 && totalLive === 0 && totalDrafts === 0
 
   return (
@@ -823,6 +836,33 @@ export function QuestionEditor() {
         {selectedIds.size > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border bg-primary/5 px-4 py-2.5">
             <span className="text-xs font-semibold text-foreground">{selectedIds.size} selected</span>
+
+            {/* Module bulk status — shown when ≥1 whole module is checked */}
+            {selectedModules.length > 0 && (
+              <>
+                <span className="text-[10px] text-muted-foreground border-l border-border pl-2">
+                  {selectedModules.length} module{selectedModules.length !== 1 ? "s" : ""}
+                </span>
+                <span className="text-[10px] font-medium text-muted-foreground">Set status:</span>
+                <button type="button" onClick={() => handleBulkSetModuleStatus("live")}
+                  className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:text-emerald-400"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" /> Live
+                </button>
+                <button type="button" onClick={() => handleBulkSetModuleStatus("draft")}
+                  className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-400"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" /> Draft
+                </button>
+                <button type="button" onClick={() => handleBulkSetModuleStatus("offline")}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground shrink-0" /> Offline
+                </button>
+                <span className="border-l border-border h-4 self-center" />
+              </>
+            )}
+
             {selectedDraftCount > 0 && (
               <button type="button" onClick={handleMakeLive}
                 className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
