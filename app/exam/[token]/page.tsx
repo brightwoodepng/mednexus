@@ -17,39 +17,35 @@ interface Result {
   questions: Question[]
 }
 
+// Stored after a completed attempt — latestResult/questions optional for in-progress state
 interface StoredAttempt {
   guestName: string
   guestId: string
   attemptCount: number
   triesAllowed: number
-  latestResult: {
+  latestResult?: {
     score: number
     total: number
     percentage: number
     passed: boolean
     answers: Record<string, string | null>
   }
-  questions: Question[]
+  questions?: Question[]
 }
 
-function storageKey(token: string) {
-  return `mednexus-exam-${token}`
+function attemptKey(token: string) { return `mednexus-exam-${token}` }
+function sessionKey(assessmentId: string, guestId: string) {
+  return `mednexus-exam-session-${assessmentId}-${guestId}`
 }
 
-function saveAttempt(token: string, stored: StoredAttempt) {
-  try {
-    localStorage.setItem(storageKey(token), JSON.stringify(stored))
-  } catch { /* storage may be unavailable */ }
+function saveAttempt(token: string, data: StoredAttempt) {
+  try { localStorage.setItem(attemptKey(token), JSON.stringify(data)) } catch { /* ignore */ }
 }
-
 function loadAttempt(token: string): StoredAttempt | null {
   try {
-    const raw = localStorage.getItem(storageKey(token))
-    if (!raw) return null
-    return JSON.parse(raw) as StoredAttempt
-  } catch {
-    return null
-  }
+    const raw = localStorage.getItem(attemptKey(token))
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
 }
 
 export default function GuestExamPage({ params }: { params: Promise<{ token: string }> }) {
@@ -73,27 +69,49 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
         const data = await res.json()
         if (!data.assessment || data.assessment.status !== "live") { setPhase("unavailable"); return }
 
-        setAssessment(data.assessment)
-        setQuestions(data.questions ?? [])
+        const asmt: LiveAssessment = data.assessment
+        const qs: Question[] = data.questions ?? []
+        setAssessment(asmt)
+        setQuestions(qs)
 
-        // Check localStorage for a previous attempt by this guest
         const stored = loadAttempt(token)
-        if (stored) {
+        const triesAllowed = asmt.triesAllowed ?? 1
+
+        // 1. Tries exhausted with a completed result → show review
+        if (stored && stored.latestResult && stored.attemptCount >= triesAllowed) {
           setGuestName(stored.guestName)
           setGuestId(stored.guestId)
           setTriesUsed(stored.attemptCount)
+          setResult({ ...stored.latestResult, questions: stored.questions ?? qs })
+          setPhase("results")
+          return
+        }
 
-          const triesAllowed = data.assessment.triesAllowed ?? 1
-
-          if (stored.attemptCount >= triesAllowed) {
-            // All tries exhausted — route directly to review mode
-            setResult({
-              ...stored.latestResult,
-              questions: stored.questions,
-            })
-            setPhase("results")
-            return
-          }
+        // 2. In-progress session (reloaded / came back) → resume exam
+        if (stored?.guestId) {
+          try {
+            const sk = sessionKey(asmt.id, stored.guestId)
+            const sessionRaw = localStorage.getItem(sk)
+            if (sessionRaw) {
+              const session = JSON.parse(sessionRaw)
+              const elapsed = Math.floor((Date.now() - session.startedAt) / 1000)
+              const remaining = Math.max(0, asmt.timeLimitMins * 60 - elapsed)
+              if (remaining > 0) {
+                // Restore identity and jump straight to exam — runner picks up from session
+                setGuestName(stored.guestName)
+                setGuestId(stored.guestId)
+                setTriesUsed(stored.attemptCount ?? 0)
+                setPhase("exam")
+                return
+              }
+              // remaining === 0: runner will auto-submit on mount
+              setGuestName(stored.guestName)
+              setGuestId(stored.guestId)
+              setTriesUsed(stored.attemptCount ?? 0)
+              setPhase("exam")
+              return
+            }
+          } catch { /* fall through to name-entry */ }
         }
 
         setPhase("name-entry")
@@ -109,6 +127,18 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
     setNameError("")
     const id = `guest-${guestName.trim().toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`
     setGuestId(id)
+
+    // Persist identity immediately so reload can resume without re-entering name
+    const existing = loadAttempt(token)
+    saveAttempt(token, {
+      guestName: guestName.trim(),
+      guestId: id,
+      attemptCount: existing?.attemptCount ?? triesUsed,
+      triesAllowed: assessment?.triesAllowed ?? 1,
+      latestResult: existing?.latestResult,
+      questions: existing?.questions,
+    })
+
     setPhase("exam")
   }
 
@@ -116,7 +146,7 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
     const newAttemptCount = triesUsed + 1
     setTriesUsed(newAttemptCount)
 
-    // Persist attempt to localStorage so revisiting the link goes to review
+    // Save completed attempt (session already cleared by runner)
     saveAttempt(token, {
       guestName: guestName.trim(),
       guestId,
@@ -149,6 +179,7 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
   const triesRemaining = Math.max(0, triesAllowed - triesUsed)
   const triesExhausted = triesUsed >= triesAllowed
 
+  // ── Loading ──────────────────────────────────────────────────────────────
   if (phase === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -162,6 +193,7 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
     )
   }
 
+  // ── Unavailable ──────────────────────────────────────────────────────────
   if (phase === "unavailable") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -180,6 +212,7 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
     )
   }
 
+  // ── Exam ─────────────────────────────────────────────────────────────────
   if (phase === "exam" && assessment && questions.length > 0) {
     return (
       <AssessmentExamRunner
@@ -188,7 +221,7 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
         timeLimitMins={assessment.timeLimitMins}
         passMark={assessment.passMark}
         questions={questions}
-        userName={guestName.trim()}
+        userName={guestName.trim() || "Guest"}
         userId={guestId}
         isGuest={true}
         onComplete={handleComplete}
@@ -196,6 +229,7 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
     )
   }
 
+  // ── Results ──────────────────────────────────────────────────────────────
   if (phase === "results" && result && assessment) {
     if (showReview) {
       return (
@@ -221,14 +255,11 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm space-y-5">
-          {/* Score */}
           <div className="text-center">
             <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-4xl font-bold ${result.passed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
               {result.percentage}%
             </div>
-            <h1 className="text-xl font-bold text-foreground">
-              {result.passed ? "Congratulations!" : "Exam Complete"}
-            </h1>
+            <h1 className="text-xl font-bold text-foreground">{result.passed ? "Congratulations!" : "Exam Complete"}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {result.score} of {result.total} correct · Pass mark {assessment.passMark}%
             </p>
@@ -237,7 +268,6 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
             </p>
           </div>
 
-          {/* Details card */}
           <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Candidate</span>
@@ -261,33 +291,23 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
             )}
           </div>
 
-          {/* Tries exhausted notice */}
           {triesExhausted && triesAllowed > 1 && (
             <div className="flex items-start gap-2.5 rounded-xl border border-amber-300/60 bg-amber-50 p-3 dark:border-amber-800/40 dark:bg-amber-900/20">
               <AlertTriangleIcon size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
               <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                You have used all {triesAllowed} allowed attempts. You can review your answers below.
+                You have used all {triesAllowed} allowed attempts. You can still review your answers below.
               </p>
             </div>
           )}
 
-          {/* Actions */}
           <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => setShowReview(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-            >
+            <button type="button" onClick={() => setShowReview(true)}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
               <TrophyIcon size={15} /> Review Exam
             </button>
-
-            {/* Retake button — only if tries remaining */}
             {!triesExhausted && (
-              <button
-                type="button"
-                onClick={handleRetake}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-              >
+              <button type="button" onClick={handleRetake}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors">
                 <RefreshCwIcon size={14} />
                 Retake Exam
                 {triesAllowed > 1 && (
@@ -303,11 +323,10 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
     )
   }
 
-  // Name entry phase
+  // ── Name entry ────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
-        {/* Header */}
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
             <StethoscopeIcon size={26} />
@@ -316,7 +335,6 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
           <p className="mt-1 text-sm text-muted-foreground">MedNexus Live Assessment</p>
         </div>
 
-        {/* Exam info */}
         <div className="rounded-2xl border border-border bg-card p-4 space-y-2.5">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Questions</span>
@@ -340,15 +358,13 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
           )}
         </div>
 
-        {/* Warning */}
         <div className="flex items-start gap-2.5 rounded-xl border border-amber-300/60 bg-amber-50 p-3 dark:border-amber-800/40 dark:bg-amber-900/20">
           <AlertTriangleIcon size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-            Once started, the timer cannot be paused. Closing or leaving this tab will auto-submit your exam.
+            The timer runs continuously — you can leave and return as needed, but time keeps counting down. The exam auto-submits when the timer reaches zero.
           </p>
         </div>
 
-        {/* Name form */}
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
@@ -365,11 +381,8 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
             />
             {nameError && <p className="mt-1 text-xs text-destructive">{nameError}</p>}
           </div>
-          <button
-            type="button"
-            onClick={handleStartExam}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-          >
+          <button type="button" onClick={handleStartExam}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
             <CheckIcon size={15} /> Begin Exam
           </button>
         </div>
