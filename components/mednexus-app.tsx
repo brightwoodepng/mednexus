@@ -5,6 +5,7 @@ import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
+import { sortByUrgency } from "@/lib/srs"
 import type { Screen } from "@/lib/view"
 import type { QuizMode, BlockResult, Question, ExamScore } from "@/lib/types"
 import { AuthScreen } from "@/components/auth-screen"
@@ -160,20 +161,24 @@ export function MedNexusApp() {
     const TRIAL_PREFIX = "__weak_trial__|"
     const EXAM_PREFIX  = "__weak_exam__|"
 
+    const srsData = progress.srsData ?? {}
+
     if (config.module === "__weak__") {
-      questions = getWeakAreaQuestions(progress.history)
+      questions = sortByUrgency(getWeakAreaQuestions(progress.history), srsData)
       displayName = "Weak Areas"
     } else if (config.module.startsWith(TRIAL_PREFIX)) {
       const modName = config.module.slice(TRIAL_PREFIX.length)
       const weakTrialQs = getWeakAreaQuestions(progress.history.filter((e) => e.mode === "trial"))
       questions = weakTrialQs.filter((q) => (q.module?.trim() || q.subject) === modName)
       if (config.discipline) questions = questions.filter((q) => q.subject === config.discipline)
+      questions = sortByUrgency(questions, srsData)
       displayName = config.discipline ?? modName
     } else if (config.module.startsWith(EXAM_PREFIX)) {
       const modName = config.module.slice(EXAM_PREFIX.length)
       const weakExamQs = getWeakAreaQuestions(progress.history.filter((e) => e.mode === "exam"))
       questions = weakExamQs.filter((q) => (q.module?.trim() || q.subject) === modName)
       if (config.discipline) questions = questions.filter((q) => q.subject === config.discipline)
+      questions = sortByUrgency(questions, srsData)
       displayName = config.discipline ?? modName
     } else {
       questions = getQuestionsForModuleAndDiscipline(config.module, config.discipline)

@@ -7,7 +7,10 @@ import {
   getWeakDisciplinesForModule,
   getWeakCountForModule,
   getModuleQuestionCount,
+  getWeakQuestionsForMode,
 } from "@/lib/modules"
+import { countDue, daysOverdue } from "@/lib/srs"
+import type { SrsEntry } from "@/lib/types"
 import {
   ActivityIcon,
   ChevronLeftIcon,
@@ -45,11 +48,24 @@ const EXAM_PALETTES = [
   { ring: "hover:ring-orange-500/50",  icon: "bg-orange-200 text-orange-700",  bar: "#ea580c" },
 ]
 
+/** Urgency label shown on cards */
+function UrgencyBadge({ dueCount, total }: { dueCount: number; total: number }) {
+  if (dueCount === 0) return null
+  const isAll = dueCount === total
+  return (
+    <span className="flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-500 ring-1 ring-red-500/20">
+      <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-red-500" />
+      {isAll ? "All due" : `${dueCount} due`}
+    </span>
+  )
+}
+
 export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
   const { progress } = useApp()
   const [mode, setMode] = useState<"trial" | "exam">("trial")
   const [viewingModule, setViewingModule] = useState<string | null>(null)
 
+  const srsData: Record<string, SrsEntry> = progress.srsData ?? {}
   const palettes = mode === "trial" ? TRIAL_PALETTES : EXAM_PALETTES
   const prefix = mode === "trial" ? "__weak_trial__|" : "__weak_exam__|"
 
@@ -63,6 +79,27 @@ export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
     [progress.history, mode, weakModules],
   )
 
+  // Sort modules by urgency: most due → fewest due → zero due
+  const sortedModules = useMemo(() => {
+    return [...weakModules].sort((a, b) => {
+      const aQs = getWeakQuestionsForMode(progress.history, mode, a)
+      const bQs = getWeakQuestionsForMode(progress.history, mode, b)
+      const aDue = countDue(aQs.map((q) => q.id), srsData)
+      const bDue = countDue(bQs.map((q) => q.id), srsData)
+      if (bDue !== aDue) return bDue - aDue
+      return bQs.length - aQs.length
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weakModules, progress.history, mode, srsData])
+
+  const totalDue = useMemo(() => {
+    const allIds = weakModules.flatMap((mod) =>
+      getWeakQuestionsForMode(progress.history, mode, mod).map((q) => q.id),
+    )
+    return countDue(allIds, srsData)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weakModules, progress.history, mode, srsData])
+
   function switchMode(next: "trial" | "exam") {
     setMode(next)
     setViewingModule(null)
@@ -74,6 +111,7 @@ export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
         moduleName={viewingModule}
         mode={mode}
         history={progress.history}
+        srsData={srsData}
         palettes={palettes}
         onBack={() => setViewingModule(null)}
         onSelectDiscipline={(disc) =>
@@ -94,9 +132,18 @@ export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
           <div>
             <h1 className="text-xl font-bold tracking-tight">Weak Areas</h1>
             <p className="text-xs text-muted-foreground">
-              {totalWeak > 0
-                ? `${totalWeak} question${totalWeak !== 1 ? "s" : ""} to review · ${mode} mode`
-                : `No weak areas in ${mode} mode yet`}
+              {totalWeak > 0 ? (
+                <>
+                  {totalWeak} question{totalWeak !== 1 ? "s" : ""} to review
+                  {totalDue > 0 && (
+                    <span className="ml-1.5 text-red-500 font-semibold">
+                      · {totalDue} due now
+                    </span>
+                  )}
+                </>
+              ) : (
+                `No weak areas in ${mode} mode yet`
+              )}
             </p>
           </div>
         </div>
@@ -145,9 +192,11 @@ export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-          {weakModules.map((mod, i) => {
+          {sortedModules.map((mod, i) => {
             const palette = palettes[i % palettes.length]
-            const weakCount = getWeakCountForModule(progress.history, mode, mod)
+            const weakQs = getWeakQuestionsForMode(progress.history, mode, mod)
+            const weakCount = weakQs.length
+            const dueCount = countDue(weakQs.map((q) => q.id), srsData)
             const totalCount = getModuleQuestionCount(mod)
             const pct = totalCount > 0 ? Math.round((weakCount / totalCount) * 100) : 0
 
@@ -165,12 +214,15 @@ export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
                       <ActivityIcon size={18} />
                     </div>
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums"
-                      style={{ background: `${palette.bar}20`, color: palette.bar }}
-                    >
-                      {weakCount} to review
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <UrgencyBadge dueCount={dueCount} total={weakCount} />
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+                        style={{ background: `${palette.bar}20`, color: palette.bar }}
+                      >
+                        {weakCount} to review
+                      </span>
+                    </div>
                   </div>
 
                   <h3 className="font-bold text-foreground leading-snug">{mod}</h3>
@@ -209,6 +261,7 @@ function WeakModuleDisciplineView({
   moduleName,
   mode,
   history,
+  srsData,
   palettes,
   onBack,
   onSelectDiscipline,
@@ -216,6 +269,7 @@ function WeakModuleDisciplineView({
   moduleName: string
   mode: "trial" | "exam"
   history: HistoryEntry[]
+  srsData: Record<string, SrsEntry>
   palettes: typeof TRIAL_PALETTES
   onBack: () => void
   onSelectDiscipline: (discipline: string | null) => void
@@ -223,6 +277,30 @@ function WeakModuleDisciplineView({
   const weakDisciplines = getWeakDisciplinesForModule(history, mode, moduleName)
   const totalWeak = getWeakCountForModule(history, mode, moduleName)
   const primaryPalette = palettes[0]
+
+  // For each discipline compute due count; sort by urgency
+  const disciplineData = useMemo(() => {
+    return weakDisciplines
+      .map((disc) => {
+        const qs = getWeakQuestionsForMode(history, mode, moduleName, disc)
+        const dueCount = countDue(qs.map((q) => q.id), srsData)
+        const mostOverdue = qs.reduce((worst, q) => {
+          const d = daysOverdue(srsData[q.id])
+          return d > worst ? d : worst
+        }, -Infinity)
+        return { disc, count: qs.length, dueCount, mostOverdue }
+      })
+      .sort((a, b) => {
+        if (b.dueCount !== a.dueCount) return b.dueCount - a.dueCount
+        return b.count - a.count
+      })
+  }, [weakDisciplines, history, mode, moduleName, srsData])
+
+  const allQsIds = useMemo(
+    () => getWeakQuestionsForMode(history, mode, moduleName).map((q) => q.id),
+    [history, mode, moduleName],
+  )
+  const totalDue = countDue(allQsIds, srsData)
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -238,7 +316,11 @@ function WeakModuleDisciplineView({
         <div className="min-w-0">
           <h2 className="truncate text-xl font-bold tracking-tight">{moduleName}</h2>
           <p className="text-sm text-muted-foreground">
-            {totalWeak} weak question{totalWeak !== 1 ? "s" : ""} · {mode} mode · {weakDisciplines.length} discipline{weakDisciplines.length !== 1 ? "s" : ""}
+            {totalWeak} weak question{totalWeak !== 1 ? "s" : ""}
+            {totalDue > 0 && (
+              <span className="ml-1.5 text-red-500 font-semibold">· {totalDue} due now</span>
+            )}
+            {" · "}{mode} mode · {weakDisciplines.length} discipline{weakDisciplines.length !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
@@ -254,18 +336,21 @@ function WeakModuleDisciplineView({
             background: `${primaryPalette.bar}0e`,
           }}
         >
-          <div className="mb-4 flex items-start justify-between">
+          <div className="mb-3 flex items-start justify-between">
             <div
               className="flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm"
               style={{ background: primaryPalette.bar }}
             >
               <GraduationCapIcon size={22} />
             </div>
-            <ArrowRightIcon
-              size={18}
-              className="mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-              style={{ color: primaryPalette.bar }}
-            />
+            <div className="flex flex-col items-end gap-1">
+              <UrgencyBadge dueCount={totalDue} total={totalWeak} />
+              <ArrowRightIcon
+                size={18}
+                className="mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+                style={{ color: primaryPalette.bar }}
+              />
+            </div>
           </div>
           <h3 className="font-bold text-foreground">All Disciplines</h3>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -274,9 +359,8 @@ function WeakModuleDisciplineView({
         </button>
 
         {/* Per-discipline cards */}
-        {weakDisciplines.map((disc, i) => {
+        {disciplineData.map(({ disc, count, dueCount }, i) => {
           const dPalette = palettes[i % palettes.length]
-          const count = getWeakCountForModule(history, mode, moduleName, disc)
 
           return (
             <button
@@ -289,15 +373,18 @@ function WeakModuleDisciplineView({
                 className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80"
                 style={{ background: dPalette.bar }}
               />
-              <div className="mb-4 flex items-start justify-between">
+              <div className="mb-3 flex items-start justify-between">
                 <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${dPalette.icon}`}>
                   <GraduationCapIcon size={22} />
                 </div>
-                <ArrowRightIcon
-                  size={18}
-                  className="mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-                  style={{ color: dPalette.bar }}
-                />
+                <div className="flex flex-col items-end gap-1">
+                  <UrgencyBadge dueCount={dueCount} total={count} />
+                  <ArrowRightIcon
+                    size={18}
+                    className="mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+                    style={{ color: dPalette.bar }}
+                  />
+                </div>
               </div>
               <h3 className="font-bold text-foreground leading-snug">{disc}</h3>
               <p className="mt-0.5 text-sm text-muted-foreground">

@@ -147,6 +147,23 @@ export function getWeakModuleBreakdown(
   return breakdown
 }
 
+/**
+ * Weak questions filtered by mode and optional module/discipline.
+ * Returns the actual Question objects — used by SRS sorting and due-count logic.
+ */
+export function getWeakQuestionsForMode(
+  history: HistoryEntry[],
+  mode: "trial" | "exam",
+  moduleName?: string,
+  discipline?: string,
+): Question[] {
+  const modeHistory = history.filter((e) => e.mode === mode)
+  let qs = getWeakAreaQuestions(modeHistory)
+  if (moduleName) qs = qs.filter((q) => (q.module?.trim() || q.subject) === moduleName)
+  if (discipline) qs = qs.filter((q) => q.subject === discipline)
+  return qs
+}
+
 /** Assign a proficiency rank from a percentage score. */
 export function rankFor(percentage: number): ProficiencyRank {
   if (percentage >= 85) return "Expert"
