@@ -317,22 +317,6 @@ export function MedNexusApp() {
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
             <NotificationBell />
-            <button
-              type="button"
-              onClick={() => setThemeOpen(true)}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
-              aria-label="Themes"
-            >
-              <PaletteIcon size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCreditsOpen(true)}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
-              aria-label="About MedNexus"
-            >
-              <InfoIcon size={16} />
-            </button>
           </div>
         </header>
 
