@@ -55,6 +55,31 @@ async function ensureSchema() {
       type TEXT NOT NULL DEFAULT 'info',
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS mednexus_assessments (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      module_name TEXT NOT NULL,
+      question_ids JSONB NOT NULL DEFAULT '[]',
+      question_count INTEGER NOT NULL DEFAULT 10,
+      time_limit_mins INTEGER NOT NULL DEFAULT 30,
+      tries_allowed INTEGER NOT NULL DEFAULT 1,
+      pass_mark INTEGER NOT NULL DEFAULT 50,
+      status TEXT NOT NULL DEFAULT 'offline',
+      share_token TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_assessment_attempts (
+      id TEXT PRIMARY KEY,
+      assessment_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      user_name TEXT NOT NULL,
+      is_guest BOOLEAN NOT NULL DEFAULT false,
+      answers JSONB NOT NULL DEFAULT '{}',
+      score INTEGER NOT NULL DEFAULT 0,
+      total INTEGER NOT NULL DEFAULT 0,
+      started_at TIMESTAMPTZ DEFAULT NOW(),
+      submitted_at TIMESTAMPTZ
+    );
   `);
     initialized = true;
 }

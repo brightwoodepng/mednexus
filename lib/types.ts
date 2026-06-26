@@ -129,3 +129,41 @@ export interface AppNotification {
   type: "info" | "update" | "alert"
   createdAt: string // ISO string
 }
+
+/** A published live assessment (exam) created by admin. */
+export interface LiveAssessment {
+  id: string
+  title: string
+  moduleName: string
+  questionIds: string[]
+  questionCount: number
+  timeLimitMins: number
+  triesAllowed: number
+  passMark: number // percentage 0-100
+  status: "live" | "offline"
+  shareToken: string
+  createdAt: string
+}
+
+/** A single attempt at a LiveAssessment by a registered or guest user. */
+export interface AssessmentAttempt {
+  id: string
+  assessmentId: string
+  userId: string
+  userName: string
+  isGuest: boolean
+  answers: Record<string, string | null>
+  score: number
+  total: number
+  startedAt: string
+  submittedAt: string | null
+}
+
+/** Aggregated analytics for a LiveAssessment. */
+export interface AssessmentAnalytics {
+  totalSubmitted: number
+  averageScore: number
+  passCount: number
+  guestCount: number
+  registeredCount: number
+}

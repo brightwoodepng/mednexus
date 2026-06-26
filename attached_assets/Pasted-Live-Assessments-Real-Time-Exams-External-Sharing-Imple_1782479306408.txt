@@ -1,0 +1,31 @@
+Live Assessments (Real-Time Exams & External Sharing)
+
+Implement a new testing mode called "Live Assessments" with strict controls and a dedicated review mode.
+
+Admin Controls (Dashboard Configuration):
+
+To create an assessment, the Admin selects from the existing question modules.
+
+The Admin configures: Selected Module, Amount of Questions to pull, Time Limit (Exam Timer), and Amount of Tries allowed per user.
+
+Visibility & Sharing: The exam is hidden from users until the Admin toggles it to "Live".
+
+External Guest Link: When an exam is set to "Live", generate a unique, shareable URL for that specific assessment. If the Admin toggles the exam to "Offline", this URL must immediately expire/break and show an "Assessment Unavailable" message to anyone who clicks it.
+
+Exam Analytics Dashboard: View aggregated statistics for each exam, explicitly including data from BOTH registered in-app users and external guest users. Track the total number of participants, the overall average score, and the total number of users who reached the pass mark across all user types.
+
+User Experience (Taking the Exam - Registered & External Guests):
+
+In-App Users: Access the exam via the new "Live Assessments" tab.
+
+External Guests (Link via URL): When opening the shareable link, they are prompted to type in their Name before the exam begins.
+
+Strict Session Enforcement: Once any user (registered or guest) starts the exam, the timer begins. If they exit the app, close the tab, or navigate away, the attempt is forfeited or automatically submitted.
+
+User Experience (Post-Exam & Review Mode):
+
+After submitting, users see their Final Score and a "Review Exam" button.
+
+Review Mode Details: Opens a read-only view of their submitted exam showing all questions, what they got wrong, what they got right, and the correct answers/explanations.
+
+Search & Filter: Add a Search Bar within the Review Mode. Add a filtering mechanism (tabs or dropdowns) allowing the user to filter the review list to show "All Questions", "Correct Answers Only", or "Incorrect Answers Only".

@@ -409,3 +409,58 @@ export const HashIcon = (p: IconProps) => (
     <line x1="16" x2="14" y1="3" y2="21" />
   </Svg>
 )
+
+export const ClipboardListIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" />
+  </Svg>
+)
+
+export const UsersIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </Svg>
+)
+
+export const LinkIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+  </Svg>
+)
+
+export const BarChart2Icon = (p: IconProps) => (
+  <Svg {...p}>
+    <line x1="18" x2="18" y1="20" y2="10" />
+    <line x1="12" x2="12" y1="20" y2="4" />
+    <line x1="6" x2="6" y1="20" y2="14" />
+  </Svg>
+)
+
+export const PlayIcon = (p: IconProps) => (
+  <Svg {...p} fill="currentColor" stroke="none">
+    <polygon points="5 3 19 12 5 21 5 3" />
+  </Svg>
+)
+
+export const RadioIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="2" />
+    <path d="M4.93 4.93a10 10 0 0 0 0 14.14" />
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    <path d="M7.76 7.76a6 6 0 0 0 0 8.49" />
+    <path d="M16.24 7.76a6 6 0 0 1 0 8.49" />
+  </Svg>
+)
+
+export const CopyIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+  </Svg>
+)

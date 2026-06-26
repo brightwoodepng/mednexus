@@ -18,6 +18,8 @@ import { ResultsScreen } from "@/components/results-screen"
 import { ThemeModal } from "@/components/theme-modal"
 import { QuestionEditor } from "@/components/question-editor"
 import { BroadcastScreen } from "@/components/broadcast-screen"
+import { LiveAssessmentsScreen } from "@/components/live-assessments-screen"
+import { LiveAssessmentsAdmin } from "@/components/live-assessments-admin"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import { NotificationBell } from "@/components/notification-bell"
 import { ProfileHistory } from "@/components/profile-history"
@@ -152,7 +154,7 @@ export function MedNexusApp() {
     lastSetup: { module: string; discipline: string | null } | null
   } | null>(null)
 
-  const safeScreen = (screen === "question-editor" || screen === "broadcast") && !isAdmin
+  const safeScreen = (screen === "question-editor" || screen === "broadcast" || screen === "live-assessments-admin") && !isAdmin
     ? "dashboard"
     : screen
 
@@ -346,6 +348,8 @@ export function MedNexusApp() {
           {safeScreen === "profile" && <ProfileHistory />}
           {safeScreen === "question-editor" && isAdmin && <QuestionEditor />}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
+          {safeScreen === "live-assessments" && <LiveAssessmentsScreen />}
+          {safeScreen === "live-assessments-admin" && isAdmin && <LiveAssessmentsAdmin />}
           {safeScreen === "results" && lastResult && (
             <ResultsScreen
               result={lastResult.result}

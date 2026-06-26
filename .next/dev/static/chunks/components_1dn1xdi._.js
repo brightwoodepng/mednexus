@@ -243,7 +243,7 @@ function LiveClock() {
                 children: time
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 52,
+                lineNumber: 54,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -251,13 +251,13 @@ function LiveClock() {
                 children: date
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 55,
+                lineNumber: 57,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/sidebar.tsx",
-        lineNumber: 51,
+        lineNumber: 53,
         columnNumber: 5
     }, this);
 }
@@ -293,12 +293,12 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 size: 18
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 95,
+                                lineNumber: 97,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 89,
+                            lineNumber: 91,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -310,35 +310,35 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 size: 20
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 104,
+                                lineNumber: 106,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 98,
+                            lineNumber: 100,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 87,
+                    lineNumber: 89,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 86,
+                lineNumber: 88,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "shrink-0",
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(LiveClock, {}, void 0, false, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 111,
+                    lineNumber: 113,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 110,
+                lineNumber: 112,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -353,13 +353,13 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 size: 18
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 117,
+                                lineNumber: 119,
                                 columnNumber: 93
                             }, this),
                             label: "Dashboard"
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 117,
+                            lineNumber: 119,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NavButton, {
@@ -369,20 +369,20 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 size: 18
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 118,
+                                lineNumber: 120,
                                 columnNumber: 89
                             }, this),
                             label: "Profile"
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 118,
+                            lineNumber: 120,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "my-1 h-px bg-sidebar-border/60"
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 120,
+                            lineNumber: 122,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NavButton, {
@@ -392,14 +392,14 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 size: 18
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 122,
+                                lineNumber: 124,
                                 columnNumber: 89
                             }, this),
                             label: "Study Modules",
                             badge: String((0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$modules$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getLiveModules"])().length)
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 122,
+                            lineNumber: 124,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NavButton, {
@@ -409,14 +409,30 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 size: 18
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 123,
+                                lineNumber: 125,
                                 columnNumber: 95
                             }, this),
                             label: "Weak Areas",
                             badge: weakCount > 0 ? String(weakCount) : undefined
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 123,
+                            lineNumber: 125,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NavButton, {
+                            active: screen === "live-assessments",
+                            onClick: ()=>nav("live-assessments"),
+                            icon: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["RadioIcon"], {
+                                size: 18
+                            }, void 0, false, {
+                                fileName: "[project]/components/sidebar.tsx",
+                                lineNumber: 126,
+                                columnNumber: 107
+                            }, this),
+                            label: "Live Assessments"
+                        }, void 0, false, {
+                            fileName: "[project]/components/sidebar.tsx",
+                            lineNumber: 126,
                             columnNumber: 11
                         }, this),
                         isAdmin && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -425,7 +441,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                     className: "my-1 h-px bg-sidebar-border/60"
                                 }, void 0, false, {
                                     fileName: "[project]/components/sidebar.tsx",
-                                    lineNumber: 127,
+                                    lineNumber: 130,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -433,7 +449,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                     children: "Admin"
                                 }, void 0, false, {
                                     fileName: "[project]/components/sidebar.tsx",
-                                    lineNumber: 128,
+                                    lineNumber: 131,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NavButton, {
@@ -443,14 +459,14 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/components/sidebar.tsx",
-                                        lineNumber: 129,
+                                        lineNumber: 132,
                                         columnNumber: 109
                                     }, this),
                                     label: "Question Editor",
                                     adminBadge: "Admin"
                                 }, void 0, false, {
                                     fileName: "[project]/components/sidebar.tsx",
-                                    lineNumber: 129,
+                                    lineNumber: 132,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NavButton, {
@@ -460,14 +476,31 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                         size: 18
                                     }, void 0, false, {
                                         fileName: "[project]/components/sidebar.tsx",
-                                        lineNumber: 130,
+                                        lineNumber: 133,
                                         columnNumber: 97
                                     }, this),
                                     label: "Broadcast",
                                     adminBadge: "Admin"
                                 }, void 0, false, {
                                     fileName: "[project]/components/sidebar.tsx",
-                                    lineNumber: 130,
+                                    lineNumber: 133,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(NavButton, {
+                                    active: screen === "live-assessments-admin",
+                                    onClick: ()=>nav("live-assessments-admin"),
+                                    icon: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ClipboardListIcon"], {
+                                        size: 18
+                                    }, void 0, false, {
+                                        fileName: "[project]/components/sidebar.tsx",
+                                        lineNumber: 134,
+                                        columnNumber: 123
+                                    }, this),
+                                    label: "Assessments",
+                                    adminBadge: "Admin"
+                                }, void 0, false, {
+                                    fileName: "[project]/components/sidebar.tsx",
+                                    lineNumber: 134,
                                     columnNumber: 15
                                 }, this)
                             ]
@@ -476,7 +509,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                             className: "my-1 h-px bg-sidebar-border/60"
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 134,
+                            lineNumber: 138,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -491,25 +524,25 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                     size: 18
                                 }, void 0, false, {
                                     fileName: "[project]/components/sidebar.tsx",
-                                    lineNumber: 141,
+                                    lineNumber: 145,
                                     columnNumber: 13
                                 }, this),
                                 "Themes"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 136,
+                            lineNumber: 140,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 116,
+                    lineNumber: 118,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 115,
+                lineNumber: 117,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -526,7 +559,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                         className: "text-amber-600"
                                     }, void 0, false, {
                                         fileName: "[project]/components/sidebar.tsx",
-                                        lineNumber: 152,
+                                        lineNumber: 156,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -534,13 +567,13 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                         children: "Admin Mode"
                                     }, void 0, false, {
                                         fileName: "[project]/components/sidebar.tsx",
-                                        lineNumber: 153,
+                                        lineNumber: 157,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 151,
+                                lineNumber: 155,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -550,13 +583,13 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 children: "Exit"
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 155,
+                                lineNumber: 159,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 150,
+                        lineNumber: 154,
                         columnNumber: 11
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                         type: "button",
@@ -567,14 +600,14 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 size: 13
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 159,
+                                lineNumber: 163,
                                 columnNumber: 13
                             }, this),
                             "Admin Login"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 158,
+                        lineNumber: 162,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -586,12 +619,12 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                     size: 18
                                 }, void 0, false, {
                                     fileName: "[project]/components/sidebar.tsx",
-                                    lineNumber: 166,
+                                    lineNumber: 170,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 165,
+                                lineNumber: 169,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -602,7 +635,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                         children: user?.name ?? "Clinician"
                                     }, void 0, false, {
                                         fileName: "[project]/components/sidebar.tsx",
-                                        lineNumber: 169,
+                                        lineNumber: 173,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -610,19 +643,19 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                         children: cloudEnabled ? "☁ Synced" : "Saving locally…"
                                     }, void 0, false, {
                                         fileName: "[project]/components/sidebar.tsx",
-                                        lineNumber: 170,
+                                        lineNumber: 174,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 168,
+                                lineNumber: 172,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 164,
+                        lineNumber: 168,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -634,26 +667,26 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                                 size: 18
                             }, void 0, false, {
                                 fileName: "[project]/components/sidebar.tsx",
-                                lineNumber: 175,
+                                lineNumber: 179,
                                 columnNumber: 11
                             }, this),
                             "Sign Out"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 174,
+                        lineNumber: 178,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 148,
+                lineNumber: 152,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/sidebar.tsx",
-        lineNumber: 84,
+        lineNumber: 86,
         columnNumber: 5
     }, this);
     const collapsedContent = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -669,12 +702,12 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                     className: "rotate-180"
                 }, void 0, false, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 191,
+                    lineNumber: 195,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 185,
+                lineNumber: 189,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(IconButton, {
@@ -685,12 +718,12 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                     size: 18
                 }, void 0, false, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 194,
+                    lineNumber: 198,
                     columnNumber: 102
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 194,
+                lineNumber: 198,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(IconButton, {
@@ -701,19 +734,19 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                     size: 18
                 }, void 0, false, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 195,
+                    lineNumber: 199,
                     columnNumber: 96
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 195,
+                lineNumber: 199,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "my-1 w-6 h-px bg-sidebar-border/60"
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 197,
+                lineNumber: 201,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(IconButton, {
@@ -724,12 +757,12 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                     size: 18
                 }, void 0, false, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 199,
+                    lineNumber: 203,
                     columnNumber: 102
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 199,
+                lineNumber: 203,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(IconButton, {
@@ -740,12 +773,28 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                     size: 18
                 }, void 0, false, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 200,
+                    lineNumber: 204,
                     columnNumber: 105
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 200,
+                lineNumber: 204,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(IconButton, {
+                active: screen === "live-assessments",
+                onClick: ()=>nav("live-assessments"),
+                label: "Live Assessments",
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["RadioIcon"], {
+                    size: 18
+                }, void 0, false, {
+                    fileName: "[project]/components/sidebar.tsx",
+                    lineNumber: 205,
+                    columnNumber: 123
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/components/sidebar.tsx",
+                lineNumber: 205,
                 columnNumber: 7
             }, this),
             isAdmin && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -754,7 +803,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                         className: "my-1 w-6 h-px bg-sidebar-border/60"
                     }, void 0, false, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 204,
+                        lineNumber: 209,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(IconButton, {
@@ -765,12 +814,12 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                             size: 18
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 205,
+                            lineNumber: 210,
                             columnNumber: 124
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 205,
+                        lineNumber: 210,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(IconButton, {
@@ -781,12 +830,28 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                             size: 18
                         }, void 0, false, {
                             fileName: "[project]/components/sidebar.tsx",
-                            lineNumber: 206,
+                            lineNumber: 211,
                             columnNumber: 106
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 206,
+                        lineNumber: 211,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(IconButton, {
+                        active: screen === "live-assessments-admin",
+                        onClick: ()=>nav("live-assessments-admin"),
+                        label: "Assessments (Admin)",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$icons$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ClipboardListIcon"], {
+                            size: 18
+                        }, void 0, false, {
+                            fileName: "[project]/components/sidebar.tsx",
+                            lineNumber: 212,
+                            columnNumber: 142
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/components/sidebar.tsx",
+                        lineNumber: 212,
                         columnNumber: 11
                     }, this)
                 ]
@@ -795,7 +860,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                 className: "my-1 w-6 h-px bg-sidebar-border/60"
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 210,
+                lineNumber: 216,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(IconButton, {
@@ -806,12 +871,12 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                     size: 18
                 }, void 0, false, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 211,
+                    lineNumber: 217,
                     columnNumber: 72
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 211,
+                lineNumber: 217,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -824,23 +889,23 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                         size: 18
                     }, void 0, false, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 214,
+                        lineNumber: 220,
                         columnNumber: 75
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/sidebar.tsx",
-                    lineNumber: 214,
+                    lineNumber: 220,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 213,
+                lineNumber: 219,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/sidebar.tsx",
-        lineNumber: 183,
+        lineNumber: 187,
         columnNumber: 5
     }, this);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -850,7 +915,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                 children: collapsed ? collapsedContent : fullContent
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 222,
+                lineNumber: 228,
                 columnNumber: 7
             }, this),
             mobileOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -863,7 +928,7 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                         className: "absolute inset-0 bg-foreground/40 backdrop-blur-sm"
                     }, void 0, false, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 231,
+                        lineNumber: 237,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -871,13 +936,13 @@ function Sidebar({ screen, onNavigate, onOpenThemes, onOpenAdminLogin, mobileOpe
                         children: fullContent
                     }, void 0, false, {
                         fileName: "[project]/components/sidebar.tsx",
-                        lineNumber: 232,
+                        lineNumber: 238,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 230,
+                lineNumber: 236,
                 columnNumber: 9
             }, this)
         ]
@@ -902,7 +967,7 @@ function NavButton({ active, onClick, icon, label, badge, adminBadge }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 249,
+                lineNumber: 255,
                 columnNumber: 7
             }, this),
             badge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -910,7 +975,7 @@ function NavButton({ active, onClick, icon, label, badge, adminBadge }) {
                 children: badge
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 250,
+                lineNumber: 256,
                 columnNumber: 17
             }, this),
             adminBadge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -918,13 +983,13 @@ function NavButton({ active, onClick, icon, label, badge, adminBadge }) {
                 children: adminBadge
             }, void 0, false, {
                 fileName: "[project]/components/sidebar.tsx",
-                lineNumber: 251,
+                lineNumber: 257,
                 columnNumber: 22
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/sidebar.tsx",
-        lineNumber: 245,
+        lineNumber: 251,
         columnNumber: 5
     }, this);
 }
@@ -939,7 +1004,7 @@ function IconButton({ active, onClick, label, children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/components/sidebar.tsx",
-        lineNumber: 260,
+        lineNumber: 266,
         columnNumber: 5
     }, this);
 }
@@ -8548,7 +8613,7 @@ function CreditsModal({ open, onClose }) {
                 className: "absolute inset-0 bg-foreground/40 backdrop-blur-sm"
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 57,
+                lineNumber: 59,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8561,14 +8626,14 @@ function CreditsModal({ open, onClose }) {
                                 className: "pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 66,
+                                lineNumber: 68,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "pointer-events-none absolute -left-6 bottom-0 h-20 w-20 rounded-full bg-white/8"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 67,
+                                lineNumber: 69,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8577,12 +8642,12 @@ function CreditsModal({ open, onClose }) {
                                     size: 32
                                 }, void 0, false, {
                                     fileName: "[project]/components/mednexus-app.tsx",
-                                    lineNumber: 69,
+                                    lineNumber: 71,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 68,
+                                lineNumber: 70,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -8590,7 +8655,7 @@ function CreditsModal({ open, onClose }) {
                                 children: "MedNexus"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 71,
+                                lineNumber: 73,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8598,7 +8663,7 @@ function CreditsModal({ open, onClose }) {
                                 children: "Medical Study Platform"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 72,
+                                lineNumber: 74,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8609,18 +8674,18 @@ function CreditsModal({ open, onClose }) {
                                     size: 18
                                 }, void 0, false, {
                                     fileName: "[project]/components/mednexus-app.tsx",
-                                    lineNumber: 78,
+                                    lineNumber: 80,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 73,
+                                lineNumber: 75,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 65,
+                        lineNumber: 67,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8634,7 +8699,7 @@ function CreditsModal({ open, onClose }) {
                                         children: "Designed & built by"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 85,
+                                        lineNumber: 87,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8642,13 +8707,13 @@ function CreditsModal({ open, onClose }) {
                                         children: "Britechinc"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 86,
+                                        lineNumber: 88,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 84,
+                                lineNumber: 86,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
@@ -8667,17 +8732,17 @@ function CreditsModal({ open, onClose }) {
                                                 d: "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/mednexus-app.tsx",
-                                                lineNumber: 97,
+                                                lineNumber: 99,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 96,
+                                            lineNumber: 98,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 95,
+                                        lineNumber: 97,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8688,7 +8753,7 @@ function CreditsModal({ open, onClose }) {
                                                 children: "Chat on WhatsApp"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/mednexus-app.tsx",
-                                                lineNumber: 101,
+                                                lineNumber: 103,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8696,13 +8761,13 @@ function CreditsModal({ open, onClose }) {
                                                 children: "+233 54 398 2307"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/mednexus-app.tsx",
-                                                lineNumber: 102,
+                                                lineNumber: 104,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 100,
+                                        lineNumber: 102,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
@@ -8717,18 +8782,18 @@ function CreditsModal({ open, onClose }) {
                                             strokeLinejoin: "round"
                                         }, void 0, false, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 105,
+                                            lineNumber: 107,
                                             columnNumber: 15
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 104,
+                                        lineNumber: 106,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 89,
+                                lineNumber: 91,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8741,7 +8806,7 @@ function CreditsModal({ open, onClose }) {
                                             className: "mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
                                         }, void 0, false, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 111,
+                                            lineNumber: 113,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -8751,7 +8816,7 @@ function CreditsModal({ open, onClose }) {
                                                     children: "Support the Project"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/mednexus-app.tsx",
-                                                    lineNumber: 113,
+                                                    lineNumber: 115,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8759,24 +8824,24 @@ function CreditsModal({ open, onClose }) {
                                                     children: "Contributions help keep MedNexus growing. Reach out on WhatsApp to donate or collaborate."
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/mednexus-app.tsx",
-                                                    lineNumber: 114,
+                                                    lineNumber: 116,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/mednexus-app.tsx",
-                                            lineNumber: 112,
+                                            lineNumber: 114,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/mednexus-app.tsx",
-                                    lineNumber: 110,
+                                    lineNumber: 112,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 109,
+                                lineNumber: 111,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -8786,25 +8851,25 @@ function CreditsModal({ open, onClose }) {
                                 children: "Close"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 121,
+                                lineNumber: 123,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 83,
+                        lineNumber: 85,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 63,
+                lineNumber: 65,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 56,
+        lineNumber: 58,
         columnNumber: 5
     }, this);
 }
@@ -8824,7 +8889,7 @@ function MedNexusApp() {
     const [activeQuiz, setActiveQuiz] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [modulesInitialModule, setModulesInitialModule] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [lastResult, setLastResult] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
-    const safeScreen = (screen === "question-editor" || screen === "broadcast") && !isAdmin ? "dashboard" : screen;
+    const safeScreen = (screen === "question-editor" || screen === "broadcast" || screen === "live-assessments-admin") && !isAdmin ? "dashboard" : screen;
     const handleReadyForQuiz = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "MedNexusApp.useCallback[handleReadyForQuiz]": (config)=>{
             let questions;
@@ -8888,12 +8953,12 @@ function MedNexusApp() {
                             size: 26
                         }, void 0, false, {
                             fileName: "[project]/components/mednexus-app.tsx",
-                            lineNumber: 204,
+                            lineNumber: 206,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 203,
+                        lineNumber: 205,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -8901,24 +8966,24 @@ function MedNexusApp() {
                         children: "Loading MedNexus…"
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 206,
+                        lineNumber: 208,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 202,
+                lineNumber: 204,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/components/mednexus-app.tsx",
-            lineNumber: 201,
+            lineNumber: 203,
             columnNumber: 7
         }, this);
     }
     if (!user) return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$auth$2d$screen$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AuthScreen"], {}, void 0, false, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 212,
+        lineNumber: 214,
         columnNumber: 21
     }, this);
     function handleStartQuiz(selectedQuestions) {
@@ -8976,12 +9041,12 @@ function MedNexusApp() {
                 onComplete: handleQuizComplete
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 263,
+                lineNumber: 265,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/components/mednexus-app.tsx",
-            lineNumber: 262,
+            lineNumber: 264,
             columnNumber: 7
         }, this);
     }
@@ -9006,7 +9071,7 @@ function MedNexusApp() {
                 onExpand: ()=>setSidebarCollapsed(false)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 276,
+                lineNumber: 278,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9024,12 +9089,12 @@ function MedNexusApp() {
                                     size: 20
                                 }, void 0, false, {
                                     fileName: "[project]/components/mednexus-app.tsx",
-                                    lineNumber: 304,
+                                    lineNumber: 306,
                                     columnNumber: 13
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 298,
+                                lineNumber: 300,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9040,7 +9105,7 @@ function MedNexusApp() {
                                         className: "shrink-0 text-primary"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 309,
+                                        lineNumber: 311,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -9048,20 +9113,20 @@ function MedNexusApp() {
                                         children: "MedNexus"
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 310,
+                                        lineNumber: 312,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 308,
+                                lineNumber: 310,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "flex-1"
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 314,
+                                lineNumber: 316,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -9072,24 +9137,24 @@ function MedNexusApp() {
                                         setGlobalMode: setGlobalMode
                                     }, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 318,
+                                        lineNumber: 320,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$notification$2d$bell$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["NotificationBell"], {}, void 0, false, {
                                         fileName: "[project]/components/mednexus-app.tsx",
-                                        lineNumber: 319,
+                                        lineNumber: 321,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 317,
+                                lineNumber: 319,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 296,
+                        lineNumber: 298,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -9107,7 +9172,7 @@ function MedNexusApp() {
                                 onOpenWeakAreas: ()=>setScreen("weak-areas")
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 328,
+                                lineNumber: 330,
                                 columnNumber: 13
                             }, this),
                             safeScreen === "modules" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$modules$2d$screen$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ModulesScreen"], {
@@ -9115,29 +9180,29 @@ function MedNexusApp() {
                                 initialModule: modulesInitialModule
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 338,
+                                lineNumber: 340,
                                 columnNumber: 13
                             }, this),
                             safeScreen === "weak-areas" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$weak$2d$areas$2d$screen$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["WeakAreasScreen"], {
                                 onReadyForQuiz: handleReadyForQuiz
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 344,
+                                lineNumber: 346,
                                 columnNumber: 13
                             }, this),
                             safeScreen === "profile" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$profile$2d$history$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ProfileHistory"], {}, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 346,
+                                lineNumber: 348,
                                 columnNumber: 40
                             }, this),
                             safeScreen === "question-editor" && isAdmin && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$question$2d$editor$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["QuestionEditor"], {}, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 347,
+                                lineNumber: 349,
                                 columnNumber: 59
                             }, this),
                             safeScreen === "broadcast" && isAdmin && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$broadcast$2d$screen$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["BroadcastScreen"], {}, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 348,
+                                lineNumber: 350,
                                 columnNumber: 53
                             }, this),
                             safeScreen === "results" && lastResult && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$results$2d$screen$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ResultsScreen"], {
@@ -9151,19 +9216,19 @@ function MedNexusApp() {
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
-                                lineNumber: 350,
+                                lineNumber: 352,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 323,
+                        lineNumber: 325,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 294,
+                lineNumber: 296,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$quantity$2d$modal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["QuantityModal"], {
@@ -9175,7 +9240,7 @@ function MedNexusApp() {
                 onStart: handleStartQuiz
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 365,
+                lineNumber: 367,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$theme$2d$modal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ThemeModal"], {
@@ -9183,14 +9248,14 @@ function MedNexusApp() {
                 onClose: ()=>setThemeOpen(false)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 374,
+                lineNumber: 376,
                 columnNumber: 7
             }, this),
             adminLoginOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$admin$2d$login$2d$modal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["AdminLoginModal"], {
                 onClose: ()=>setAdminLoginOpen(false)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 375,
+                lineNumber: 377,
                 columnNumber: 26
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(CreditsModal, {
@@ -9198,13 +9263,13 @@ function MedNexusApp() {
                 onClose: ()=>setCreditsOpen(false)
             }, void 0, false, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 376,
+                lineNumber: 378,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 275,
+        lineNumber: 277,
         columnNumber: 5
     }, this);
 }
@@ -9230,20 +9295,20 @@ function StudyModeToggle({ globalMode, setGlobalMode }) {
                         size: 13
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 400,
+                        lineNumber: 402,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "Trial"
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 401,
+                        lineNumber: 403,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 391,
+                lineNumber: 393,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -9255,26 +9320,26 @@ function StudyModeToggle({ globalMode, setGlobalMode }) {
                         size: 13
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 412,
+                        lineNumber: 414,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                         children: "Exam"
                     }, void 0, false, {
                         fileName: "[project]/components/mednexus-app.tsx",
-                        lineNumber: 413,
+                        lineNumber: 415,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/mednexus-app.tsx",
-                lineNumber: 403,
+                lineNumber: 405,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/mednexus-app.tsx",
-        lineNumber: 390,
+        lineNumber: 392,
         columnNumber: 5
     }, this);
 }

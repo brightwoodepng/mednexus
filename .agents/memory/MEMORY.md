@@ -3,3 +3,4 @@
 - [Quiz Flow Architecture](quiz-flow.md) — Dashboard→handleReadyForQuiz→QuantityModal→QuizSimulator with pre-computed question pools
 - [Hooks Before Early Returns](hooks-rules.md) — useCallback/useCallback must appear before any early returns in MedNexusApp
 - [Admin Question Editor Architecture](admin-editor.md) — hierarchical tree (Module→Discipline→Question), draft staging via local state, pdfjs-dist client-side parsing
+- [Live Assessments Architecture](live-assessments.md) — mednexus_assessments + mednexus_assessment_attempts tables, share_token UUID for guest URLs at /exam/[token], safeScreen guards live-assessments-admin
