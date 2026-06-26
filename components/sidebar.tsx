@@ -28,6 +28,9 @@ interface SidebarProps {
   onCloseMobile: () => void
   onReadyForQuiz: (config: { module: string; discipline: string | null }) => void
   onSelectModule: (module: string) => void
+  collapsed: boolean
+  onCollapse: () => void
+  onExpand: () => void
 }
 
 function LiveClock() {
@@ -63,10 +66,12 @@ export function Sidebar({
   onCloseMobile,
   onReadyForQuiz,
   onSelectModule,
+  collapsed,
+  onCollapse,
+  onExpand,
 }: SidebarProps) {
   const { user, cloudEnabled, signOutUser, progress } = useApp()
   const { isAdmin, logoutAdmin } = useAdmin()
-  const [collapsed, setCollapsed] = useState(false)
 
   const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
 
@@ -77,19 +82,18 @@ export function Sidebar({
 
   const fullContent = (
     <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
-      {/* Brand + collapse toggle */}
+      {/* Brand — icon only, no text (text lives in the header) */}
       <div className="mb-2 flex items-center justify-between px-2 pt-2 shrink-0">
         <div className="flex items-center gap-2.5 px-2 py-1.5 -mx-2 -my-1.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
             <StethoscopeIcon size={20} />
           </div>
-          <span className="text-lg font-semibold tracking-tight">MedNexus</span>
         </div>
         <div className="flex items-center gap-1">
           {/* Desktop collapse button */}
           <button
             type="button"
-            onClick={() => setCollapsed(true)}
+            onClick={onCollapse}
             className="hidden rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:flex"
             aria-label="Collapse sidebar"
           >
@@ -182,14 +186,14 @@ export function Sidebar({
 
   const collapsedContent = (
     <div className="flex h-full flex-col items-center gap-1 py-4 px-2">
-      {/* Expand button */}
+      {/* Expand button — stethoscope icon */}
       <button
         type="button"
-        onClick={() => setCollapsed(false)}
+        onClick={onExpand}
         className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm hover:opacity-90 transition-opacity"
         aria-label="Expand sidebar"
       >
-        <ChevronLeftIcon size={18} className="rotate-180" />
+        <StethoscopeIcon size={18} />
       </button>
 
       <IconButton active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
@@ -209,9 +213,8 @@ export function Sidebar({
       )}
 
       <div className="my-1 w-6 h-px bg-sidebar-border/60" />
-      <IconButton active={false} onClick={() => { onOpenThemes() }} label="Themes"><PaletteIcon size={18} /></IconButton>
+      <IconButton active={false} onClick={onOpenThemes} label="Themes"><PaletteIcon size={18} /></IconButton>
 
-      {/* Sign out at bottom */}
       <div className="mt-auto">
         <IconButton active={false} onClick={signOutUser} label="Sign Out"><LogOutIcon size={18} /></IconButton>
       </div>
@@ -222,7 +225,7 @@ export function Sidebar({
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`hidden shrink-0 border-r border-sidebar-border bg-sidebar lg:block transition-all duration-200 ${collapsed ? "w-16" : "w-64"}`}
+        className={`hidden shrink-0 border-r border-sidebar-border bg-sidebar lg:block transition-all duration-200 ${collapsed ? "w-14" : "w-64"}`}
       >
         {collapsed ? collapsedContent : fullContent}
       </aside>
@@ -240,7 +243,6 @@ export function Sidebar({
   )
 }
 
-// ── Reusable nav button (expanded) ───────────────────────────────────────────
 function NavButton({ active, onClick, icon, label, badge, adminBadge }: {
   active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: string; adminBadge?: string
 }) {
@@ -256,7 +258,6 @@ function NavButton({ active, onClick, icon, label, badge, adminBadge }: {
   )
 }
 
-// ── Icon-only button (collapsed) ─────────────────────────────────────────────
 function IconButton({ active, onClick, label, children }: {
   active: boolean; onClick: () => void; label: string; children: React.ReactNode
 }) {

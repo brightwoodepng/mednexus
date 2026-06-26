@@ -137,6 +137,7 @@ export function MedNexusApp() {
   const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [adminLoginOpen, setAdminLoginOpen] = useState(false)
@@ -285,6 +286,9 @@ export function MedNexusApp() {
           setScreen("modules")
           setMobileNavOpen(false)
         }}
+        collapsed={sidebarCollapsed}
+        onCollapse={() => setSidebarCollapsed(true)}
+        onExpand={() => setSidebarCollapsed(false)}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -300,17 +304,14 @@ export function MedNexusApp() {
             <MenuIcon size={20} />
           </button>
 
-          {/* Mobile: brand (non-interactive) */}
-          <div className="flex min-w-0 items-center gap-1.5 px-1.5 py-1 lg:hidden">
+          {/* Brand — shown always (mobile + desktop) */}
+          <div className="flex min-w-0 items-center gap-1.5 px-1.5 py-1">
             <StethoscopeIcon size={16} className="shrink-0 text-primary" />
             <span className="truncate text-sm font-semibold">MedNexus</span>
           </div>
 
-          {/* Desktop: spacer */}
-          <div className="hidden flex-1 lg:block" />
-
-          {/* Mobile: push right */}
-          <div className="flex-1 lg:hidden" />
+          {/* Push right */}
+          <div className="flex-1" />
 
           {/* Right side — all items visible on all screen sizes */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -335,7 +336,10 @@ export function MedNexusApp() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-8">
+        <main
+          className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-8"
+          onClick={() => { if (!sidebarCollapsed) setSidebarCollapsed(true) }}
+        >
           {safeScreen === "dashboard" && (
             <Dashboard
               onReadyForQuiz={handleReadyForQuiz}
