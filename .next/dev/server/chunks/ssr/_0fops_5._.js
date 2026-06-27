@@ -2192,11 +2192,6 @@ __turbopack_context__.s([
     ()=>useApp
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/next@16.2.9_@babel+core@7.29.7_@opentelemetry+api@1.9.1_react-dom@19.2.7_react@19.2.7__react@19.2.7/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
-// ============================================================================
-// MedNexus — App Context
-// Uses Replit PostgreSQL for cloud storage (via /api/sync).
-// Falls back to localStorage if the API is unavailable.
-// ============================================================================
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/next@16.2.9_@babel+core@7.29.7_@opentelemetry+api@1.9.1_react-dom@19.2.7_react@19.2.7__react@19.2.7/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/srs.ts [app-ssr] (ecmascript)");
 "use client";
@@ -2219,7 +2214,9 @@ const EMPTY_PROGRESS = {
 };
 const LS_UID = "mednexus-uid";
 const LS_NAME = "mednexus-name";
+const LS_ROLE = "mednexus-role";
 const LS_PROGRESS = "mednexus-progress";
+const LS_REQUIRES_PW_UPDATE = "mednexus-requires-pw-update";
 function todayStr() {
     return new Date().toISOString().slice(0, 10);
 }
@@ -2286,13 +2283,13 @@ function AppProvider({ children }) {
     const [user, setUser] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
     const [authReady, setAuthReady] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [cloudEnabled, setCloudEnabled] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [requiresPasswordUpdate, setRequiresPasswordUpdate] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [progress, setProgress] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(EMPTY_PROGRESS);
     const userRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(user);
     userRef.current = user;
     const progressRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(progress);
     progressRef.current = progress;
     const syncTimer = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(null);
-    // Debounced cloud sync — fires 1.5s after the last progress change.
     const scheduleSync = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])((uid, name, next)=>{
         if (syncTimer.current) clearTimeout(syncTimer.current);
         syncTimer.current = setTimeout(()=>{
@@ -2301,11 +2298,12 @@ function AppProvider({ children }) {
             });
         }, 1500);
     }, []);
-    // Bootstrap: restore session from localStorage, then hydrate from cloud.
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         async function init() {
             const uid = ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : null;
             const name = ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : "Clinician";
+            const role = ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : null;
+            const needsPwUpdate = ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : false;
             if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
             ;
             else {
@@ -2320,26 +2318,150 @@ function AppProvider({ children }) {
         try {
             localStorage.setItem(LS_UID, uid);
             localStorage.setItem(LS_NAME, trimmed);
+            localStorage.setItem(LS_ROLE, "guest");
+            localStorage.removeItem(LS_REQUIRES_PW_UPDATE);
         } catch  {}
         const appUser = {
             uid,
-            name: trimmed
+            name: trimmed,
+            role: "guest"
         };
         setUser(appUser);
         setProgress(EMPTY_PROGRESS);
-        // Create the user record in the cloud.
+        setRequiresPasswordUpdate(false);
         const ok = await apiPost(uid, trimmed, EMPTY_PROGRESS);
         if (ok) setCloudEnabled(true);
+    }, []);
+    const loginUser = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (indexNumber, password)=>{
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    indexNumber,
+                    password
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) return {
+                ok: false,
+                error: data.error ?? "Login failed"
+            };
+            const { uid, name, requiresPasswordUpdate: needsPw } = data;
+            try {
+                localStorage.setItem(LS_UID, uid);
+                localStorage.setItem(LS_NAME, name);
+                localStorage.setItem(LS_ROLE, "user");
+                localStorage.setItem(LS_REQUIRES_PW_UPDATE, needsPw ? "true" : "false");
+            } catch  {}
+            const local = loadLocal(uid);
+            const appUser = {
+                uid,
+                name,
+                role: "user",
+                status: data.status,
+                indexNumber: data.indexNumber,
+                level: data.level
+            };
+            setUser(appUser);
+            setProgress(local);
+            setRequiresPasswordUpdate(!!needsPw);
+            setCloudEnabled(false);
+            const remote = await apiGet(uid);
+            if (remote) {
+                setCloudEnabled(true);
+                setProgress(remote.progress);
+            }
+            return {
+                ok: true
+            };
+        } catch  {
+            return {
+                ok: false,
+                error: "Network error"
+            };
+        }
+    }, []);
+    const registerUser = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (name, level, indexNumber, password)=>{
+        try {
+            const res = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name,
+                    level,
+                    indexNumber,
+                    password
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) return {
+                ok: false,
+                error: data.error
+            };
+            return {
+                ok: true,
+                status: data.status
+            };
+        } catch  {
+            return {
+                ok: false,
+                error: "Network error"
+            };
+        }
+    }, []);
+    const updatePassword = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (newPassword)=>{
+        const uid = userRef.current?.uid;
+        if (!uid) return {
+            ok: false,
+            error: "Not logged in"
+        };
+        try {
+            const res = await fetch("/api/auth/update-password", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    uid,
+                    newPassword
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) return {
+                ok: false,
+                error: data.error
+            };
+            setRequiresPasswordUpdate(false);
+            try {
+                localStorage.setItem(LS_REQUIRES_PW_UPDATE, "false");
+            } catch  {}
+            return {
+                ok: true
+            };
+        } catch  {
+            return {
+                ok: false,
+                error: "Network error"
+            };
+        }
     }, []);
     const signOutUser = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(()=>{
         if (syncTimer.current) clearTimeout(syncTimer.current);
         try {
             localStorage.removeItem(LS_UID);
             localStorage.removeItem(LS_NAME);
+            localStorage.removeItem(LS_ROLE);
+            localStorage.removeItem(LS_REQUIRES_PW_UPDATE);
         } catch  {}
         setUser(null);
         setProgress(EMPTY_PROGRESS);
         setCloudEnabled(false);
+        setRequiresPasswordUpdate(false);
     }, []);
     const updateName = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (name)=>{
         const trimmed = name.trim() || "Clinician";
@@ -2483,8 +2605,12 @@ function AppProvider({ children }) {
         user,
         authReady,
         cloudEnabled,
+        requiresPasswordUpdate,
         progress,
         enterApp,
+        loginUser,
+        registerUser,
+        updatePassword,
         signOutUser,
         updateName,
         toggleFlag,
@@ -2499,7 +2625,7 @@ function AppProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/app-context.tsx",
-        lineNumber: 331,
+        lineNumber: 393,
         columnNumber: 10
     }, this);
 }

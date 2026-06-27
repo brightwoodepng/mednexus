@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useApp } from "@/contexts/app-context"
+import { useAdmin } from "@/contexts/admin-context"
 import { BellIcon, XIcon, InfoIcon, AlertTriangleIcon, RefreshCwIcon } from "@/components/icons"
 import type { AppNotification } from "@/lib/types"
 
@@ -10,9 +11,11 @@ const POLL_INTERVAL = 60_000
 const ALL_TYPES = ["info", "update", "alert"] as const
 type NType = typeof ALL_TYPES[number]
 
-async function fetchNotifications(): Promise<AppNotification[]> {
+async function fetchNotifications(adminToken?: string | null): Promise<AppNotification[]> {
   try {
-    const res = await fetch("/api/notifications", { cache: "no-store" })
+    const headers: Record<string, string> = {}
+    if (adminToken) headers["x-admin-token"] = adminToken
+    const res = await fetch("/api/notifications", { cache: "no-store", headers })
     if (!res.ok) return []
     const data = await res.json()
     return data.notifications ?? []
@@ -52,6 +55,7 @@ function fmtTime(iso: string) {
 
 export function NotificationBell() {
   const { progress, markNotificationsRead, toggleMuteNotificationType } = useApp()
+  const { adminToken } = useAdmin()
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [open, setOpen] = useState(false)
   const [showPrefs, setShowPrefs] = useState(false)
@@ -61,9 +65,9 @@ export function NotificationBell() {
   const muted: string[] = progress.mutedNotificationTypes ?? []
 
   const load = useCallback(async () => {
-    const data = await fetchNotifications()
+    const data = await fetchNotifications(adminToken)
     setNotifications(data)
-  }, [])
+  }, [adminToken])
 
   useEffect(() => {
     load()

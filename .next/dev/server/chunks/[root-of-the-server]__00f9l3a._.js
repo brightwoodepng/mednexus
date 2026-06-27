@@ -100,19 +100,22 @@ async function getPool() {
         return null;
     }
 }
-async function GET() {
+async function GET(req) {
     try {
         const pool = await getPool();
         if (!pool) return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             notifications: []
         });
-        const res = await pool.query("SELECT id, title, body, type, created_at FROM mednexus_notifications ORDER BY created_at DESC LIMIT 100");
+        const token = req.headers.get("x-admin-token") ?? "";
+        const isAdmin = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$admin$2d$auth$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["verifyAdminToken"])(token);
+        const res = await pool.query(isAdmin ? "SELECT id, title, body, type, admin_only, created_at FROM mednexus_notifications ORDER BY created_at DESC LIMIT 100" : "SELECT id, title, body, type, admin_only, created_at FROM mednexus_notifications WHERE admin_only = FALSE ORDER BY created_at DESC LIMIT 100");
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             notifications: res.rows.map((r)=>({
                     id: r.id,
                     title: r.title,
                     body: r.body,
                     type: r.type,
+                    adminOnly: r.admin_only,
                     createdAt: r.created_at
                 }))
         });
