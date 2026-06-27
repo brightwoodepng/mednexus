@@ -1,7 +1,4 @@
 {
-  "/api/admin/auth/route": "app/api/admin/auth/route.js",
-  "/api/assessments/route": "app/api/assessments/route.js",
-  "/api/notifications/route": "app/api/notifications/route.js",
   "/api/questions/route": "app/api/questions/route.js",
   "/page": "app/page.js"
 }
