@@ -20,7 +20,7 @@ const nextConfig = {
   devIndicators: false,
   allowedDevOrigins,
   turbopack: {
-    root: process.cwd(),
+    root: "/home/runner/workspace",
   },
   serverExternalPackages: ["firebase-admin"],
 }
