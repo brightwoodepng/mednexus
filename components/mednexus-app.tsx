@@ -314,7 +314,7 @@ function StudyModeToggle({ globalMode, setGlobalMode }: { globalMode: QuizMode; 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
-  const { isAdmin } = useAdmin()
+  const { isAdmin, adminReady } = useAdmin()
   const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
@@ -370,7 +370,7 @@ export function MedNexusApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress.history])
 
-  if (!authReady) {
+  if (!authReady || !adminReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -383,13 +383,15 @@ export function MedNexusApp() {
     )
   }
 
-  if (!user) return <AuthScreen />
+  // Admins bypass the user login flow entirely
+  if (!user && !isAdmin) return <AuthScreen />
 
-  if (requiresPasswordUpdate) return <ForcePasswordUpdate />
-
-  if (user.role === "user" && user.status === "pending") return <PendingApprovalScreen />
-
-  if (user.role === "user" && user.status === "rejected") return <RejectedScreen />
+  // These checks only apply to regular users
+  if (user) {
+    if (requiresPasswordUpdate) return <ForcePasswordUpdate />
+    if (user.role === "user" && user.status === "pending") return <PendingApprovalScreen />
+    if (user.role === "user" && user.status === "rejected") return <RejectedScreen />
+  }
 
   function handleStartQuiz(selectedQuestions: Question[]) {
     if (!pendingQuiz) return
