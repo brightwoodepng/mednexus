@@ -381,19 +381,14 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
       </div>
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground" htmlFor="reg-level">Level / Year</label>
-        <select
+        <input
           id="reg-level"
+          type="text"
           value={level}
           onChange={(e) => { setLevel(e.target.value); setError("") }}
+          placeholder="e.g. Level 300, Year 2, Intern…"
           className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-        >
-          <option value="">Select level…</option>
-          <option value="Level 100">Level 100</option>
-          <option value="Level 200">Level 200</option>
-          <option value="Level 300">Level 300</option>
-          <option value="Level 400">Level 400</option>
-          <option value="Level 500">Level 500</option>
-        </select>
+        />
       </div>
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground" htmlFor="reg-index">Index Number</label>
