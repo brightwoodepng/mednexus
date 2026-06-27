@@ -260,10 +260,6 @@ function OtpResetFields({ onBack }: { onBack: () => void }) {
         />
       </div>
 
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        Request a reset token from admin via WhatsApp. Once you receive it, enter it below.
-      </p>
-
       <a
         href={whatsappHref}
         target="_blank"
