@@ -1,8 +1,5 @@
 import { Pool } from "pg"
 
-// On Replit the internal Postgres doesn't need SSL.
-// On external hosts (Neon, Supabase, etc.) SSL is required.
-// REPL_ID is only present inside Replit's runtime.
 const isReplit = Boolean(process.env.REPL_ID)
 
 const pool = new Pool({
@@ -65,6 +62,14 @@ export async function ensureSchema() {
       started_at TIMESTAMPTZ DEFAULT NOW(),
       submitted_at TIMESTAMPTZ
     );
+
+    ALTER TABLE mednexus_users ADD COLUMN IF NOT EXISTS level TEXT;
+    ALTER TABLE mednexus_users ADD COLUMN IF NOT EXISTS index_number TEXT;
+    ALTER TABLE mednexus_users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+    ALTER TABLE mednexus_users ADD COLUMN IF NOT EXISTS user_type TEXT DEFAULT 'guest';
+
+    CREATE UNIQUE INDEX IF NOT EXISTS mednexus_users_index_number_idx
+      ON mednexus_users(index_number) WHERE index_number IS NOT NULL;
   `)
   initialized = true
 }

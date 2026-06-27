@@ -1,11 +1,5 @@
 "use client"
 
-// ============================================================================
-// MedNexus — App Context
-// Uses Replit PostgreSQL for cloud storage (via /api/sync).
-// Falls back to localStorage if the API is unavailable.
-// ============================================================================
-
 import {
   createContext,
   useContext,
@@ -18,9 +12,11 @@ import {
 import type { HistoryEntry, UserProgress, ExamScore } from "@/lib/types"
 import { updateSrsFromHistory } from "@/lib/srs"
 
-interface AppUser {
+export interface AppUser {
   uid: string
   name: string
+  level?: string
+  isGuest: boolean
 }
 
 interface AppContextValue {
@@ -29,6 +25,8 @@ interface AppContextValue {
   cloudEnabled: boolean
   progress: UserProgress
   enterApp: (name: string) => Promise<void>
+  loginUser: (indexNumber: string, password: string) => Promise<{ ok: boolean; error?: string }>
+  registerUser: (name: string, level: string, indexNumber: string, password: string) => Promise<{ ok: boolean; error?: string }>
   signOutUser: () => void
   updateName: (name: string) => Promise<void>
   toggleFlag: (questionId: string) => void
@@ -55,8 +53,9 @@ const EMPTY_PROGRESS: UserProgress = {
   srsData: {},
 }
 
-const LS_UID = "mednexus-uid"
-const LS_NAME = "mednexus-name"
+const LS_UID      = "mednexus-uid"
+const LS_NAME     = "mednexus-name"
+const LS_GUEST    = "mednexus-guest"
 const LS_PROGRESS = "mednexus-progress"
 
 function todayStr() {
@@ -83,6 +82,15 @@ function loadLocal(uid: string): UserProgress {
     if (raw) return { ...EMPTY_PROGRESS, ...JSON.parse(raw) }
   } catch {}
   return EMPTY_PROGRESS
+}
+
+function clearLocalForUser(uid: string) {
+  try {
+    localStorage.removeItem(LS_PROGRESS + "-" + uid)
+    localStorage.removeItem(LS_UID)
+    localStorage.removeItem(LS_NAME)
+    localStorage.removeItem(LS_GUEST)
+  } catch {}
 }
 
 async function apiGet(uid: string): Promise<{ name: string; progress: UserProgress } | null> {
@@ -124,7 +132,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   progressRef.current = progress
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Debounced cloud sync — fires 1.5s after the last progress change.
   const scheduleSync = useCallback((uid: string, name: string, next: UserProgress) => {
     if (syncTimer.current) clearTimeout(syncTimer.current)
     syncTimer.current = setTimeout(() => {
@@ -134,25 +141,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, 1500)
   }, [])
 
-  // Bootstrap: restore session from localStorage, then hydrate from cloud.
+  // Bootstrap: restore session from localStorage
   useEffect(() => {
     async function init() {
-      const uid = typeof window !== "undefined" ? localStorage.getItem(LS_UID) : null
-      const name = typeof window !== "undefined" ? localStorage.getItem(LS_NAME) ?? "Clinician" : "Clinician"
+      const uid      = typeof window !== "undefined" ? localStorage.getItem(LS_UID)  : null
+      const name     = typeof window !== "undefined" ? localStorage.getItem(LS_NAME) ?? "Clinician" : "Clinician"
+      const isGuest  = typeof window !== "undefined" ? localStorage.getItem(LS_GUEST) === "1" : true
 
       if (uid) {
         const local = loadLocal(uid)
-        const appUser: AppUser = { uid, name }
+        const appUser: AppUser = { uid, name, isGuest }
         setUser(appUser)
-        setProgress(local) // show local data immediately
+        setProgress(local)
         setAuthReady(true)
 
-        // Then try to hydrate from cloud (may be richer / newer)
-        const remote = await apiGet(uid)
-        if (remote) {
-          setCloudEnabled(true)
-          setProgress(remote.progress)
-          setUser({ uid, name: remote.name })
+        if (!isGuest) {
+          const remote = await apiGet(uid)
+          if (remote) {
+            setCloudEnabled(true)
+            setProgress(remote.progress)
+            setUser({ uid, name: remote.name, isGuest: false })
+          }
         }
       } else {
         setAuthReady(true)
@@ -161,30 +170,96 @@ export function AppProvider({ children }: { children: ReactNode }) {
     init()
   }, [])
 
+  // Guest entry — name only, data local only
   const enterApp = useCallback(async (name: string) => {
     const uid = crypto.randomUUID()
-    const trimmed = name.trim() || "Clinician"
-
+    const trimmed = name.trim() || "Guest"
     try {
       localStorage.setItem(LS_UID, uid)
       localStorage.setItem(LS_NAME, trimmed)
+      localStorage.setItem(LS_GUEST, "1")
     } catch {}
-
-    const appUser: AppUser = { uid, name: trimmed }
+    const appUser: AppUser = { uid, name: trimmed, isGuest: true }
     setUser(appUser)
     setProgress(EMPTY_PROGRESS)
+  }, [])
 
-    // Create the user record in the cloud.
-    const ok = await apiPost(uid, trimmed, EMPTY_PROGRESS)
-    if (ok) setCloudEnabled(true)
+  // Registered user login
+  const loginUser = useCallback(async (indexNumber: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ indexNumber, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) return { ok: false, error: data.error ?? "Login failed" }
+
+      const { uid, name, level } = data
+      try {
+        localStorage.setItem(LS_UID, uid)
+        localStorage.setItem(LS_NAME, name)
+        localStorage.setItem(LS_GUEST, "0")
+      } catch {}
+
+      const local = loadLocal(uid)
+      const appUser: AppUser = { uid, name, level, isGuest: false }
+      setUser(appUser)
+      setProgress(local)
+
+      const remote = await apiGet(uid)
+      if (remote) {
+        setCloudEnabled(true)
+        setProgress(remote.progress)
+        setUser({ uid, name: remote.name, level, isGuest: false })
+      }
+
+      return { ok: true }
+    } catch {
+      return { ok: false, error: "Network error. Try again." }
+    }
+  }, [])
+
+  // New user registration
+  const registerUser = useCallback(async (
+    name: string,
+    level: string,
+    indexNumber: string,
+    password: string,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, level, indexNumber, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) return { ok: false, error: data.error ?? "Registration failed" }
+
+      const { uid, name: savedName, level: savedLevel } = data
+      try {
+        localStorage.setItem(LS_UID, uid)
+        localStorage.setItem(LS_NAME, savedName)
+        localStorage.setItem(LS_GUEST, "0")
+      } catch {}
+
+      const appUser: AppUser = { uid, name: savedName, level: savedLevel, isGuest: false }
+      setUser(appUser)
+      setProgress(EMPTY_PROGRESS)
+      setCloudEnabled(true)
+
+      return { ok: true }
+    } catch {
+      return { ok: false, error: "Network error. Try again." }
+    }
   }, [])
 
   const signOutUser = useCallback(() => {
     if (syncTimer.current) clearTimeout(syncTimer.current)
-    try {
-      localStorage.removeItem(LS_UID)
-      localStorage.removeItem(LS_NAME)
-    } catch {}
+    const currentUser = userRef.current
+    if (currentUser) {
+      clearLocalForUser(currentUser.uid)
+    }
     setUser(null)
     setProgress(EMPTY_PROGRESS)
     setCloudEnabled(false)
@@ -197,7 +272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(LS_NAME, trimmed) } catch {}
     const updated = { ...u, name: trimmed }
     setUser(updated)
-    await apiPost(u.uid, trimmed, progressRef.current)
+    if (!u.isGuest) await apiPost(u.uid, trimmed, progressRef.current)
   }, [])
 
   const toggleFlag = useCallback(
@@ -211,7 +286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const u = userRef.current
         if (u) {
           saveLocal(u.uid, next)
-          scheduleSync(u.uid, u.name, next)
+          if (!u.isGuest) scheduleSync(u.uid, u.name, next)
         }
         return next
       })
@@ -237,7 +312,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const u = userRef.current
         if (u) {
           saveLocal(u.uid, next)
-          scheduleSync(u.uid, u.name, next)
+          if (!u.isGuest) scheduleSync(u.uid, u.name, next)
         }
         return next
       })
@@ -255,7 +330,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const u = userRef.current
         if (u) {
           saveLocal(u.uid, next)
-          scheduleSync(u.uid, u.name, next)
+          if (!u.isGuest) scheduleSync(u.uid, u.name, next)
         }
         return next
       })
@@ -270,7 +345,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const u = userRef.current
       if (u) {
         saveLocal(u.uid, next)
-        scheduleSync(u.uid, u.name, next)
+        if (!u.isGuest) scheduleSync(u.uid, u.name, next)
       }
       return next
     })
@@ -288,7 +363,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const u = userRef.current
       if (u) {
         saveLocal(u.uid, next)
-        scheduleSync(u.uid, u.name, next)
+        if (!u.isGuest) scheduleSync(u.uid, u.name, next)
       }
       return next
     })
@@ -306,7 +381,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const u = userRef.current
       if (u) {
         saveLocal(u.uid, next)
-        scheduleSync(u.uid, u.name, next)
+        if (!u.isGuest) scheduleSync(u.uid, u.name, next)
       }
       return next
     })
@@ -318,6 +393,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     cloudEnabled,
     progress,
     enterApp,
+    loginUser,
+    registerUser,
     signOutUser,
     updateName,
     toggleFlag,

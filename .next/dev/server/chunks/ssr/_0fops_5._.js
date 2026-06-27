@@ -2192,11 +2192,6 @@ __turbopack_context__.s([
     ()=>useApp
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/next@16.2.9_@babel+core@7.29.7_@opentelemetry+api@1.9.1_react-dom@19.2.7_react@19.2.7__react@19.2.7/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
-// ============================================================================
-// MedNexus — App Context
-// Uses Replit PostgreSQL for cloud storage (via /api/sync).
-// Falls back to localStorage if the API is unavailable.
-// ============================================================================
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/next@16.2.9_@babel+core@7.29.7_@opentelemetry+api@1.9.1_react-dom@19.2.7_react@19.2.7__react@19.2.7/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$srs$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/srs.ts [app-ssr] (ecmascript)");
 "use client";
@@ -2219,6 +2214,7 @@ const EMPTY_PROGRESS = {
 };
 const LS_UID = "mednexus-uid";
 const LS_NAME = "mednexus-name";
+const LS_GUEST = "mednexus-guest";
 const LS_PROGRESS = "mednexus-progress";
 function todayStr() {
     return new Date().toISOString().slice(0, 10);
@@ -2244,6 +2240,14 @@ function loadLocal(uid) {
         };
     } catch  {}
     return EMPTY_PROGRESS;
+}
+function clearLocalForUser(uid) {
+    try {
+        localStorage.removeItem(LS_PROGRESS + "-" + uid);
+        localStorage.removeItem(LS_UID);
+        localStorage.removeItem(LS_NAME);
+        localStorage.removeItem(LS_GUEST);
+    } catch  {}
 }
 async function apiGet(uid) {
     try {
@@ -2292,7 +2296,6 @@ function AppProvider({ children }) {
     const progressRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(progress);
     progressRef.current = progress;
     const syncTimer = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(null);
-    // Debounced cloud sync — fires 1.5s after the last progress change.
     const scheduleSync = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])((uid, name, next)=>{
         if (syncTimer.current) clearTimeout(syncTimer.current);
         syncTimer.current = setTimeout(()=>{
@@ -2301,11 +2304,12 @@ function AppProvider({ children }) {
             });
         }, 1500);
     }, []);
-    // Bootstrap: restore session from localStorage, then hydrate from cloud.
+    // Bootstrap: restore session from localStorage
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         async function init() {
             const uid = ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : null;
             const name = ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : "Clinician";
+            const isGuest = ("TURBOPACK compile-time falsy", 0) ? "TURBOPACK unreachable" : true;
             if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
             ;
             else {
@@ -2314,29 +2318,128 @@ function AppProvider({ children }) {
         }
         init();
     }, []);
+    // Guest entry — name only, data local only
     const enterApp = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (name)=>{
         const uid = crypto.randomUUID();
-        const trimmed = name.trim() || "Clinician";
+        const trimmed = name.trim() || "Guest";
         try {
             localStorage.setItem(LS_UID, uid);
             localStorage.setItem(LS_NAME, trimmed);
+            localStorage.setItem(LS_GUEST, "1");
         } catch  {}
         const appUser = {
             uid,
-            name: trimmed
+            name: trimmed,
+            isGuest: true
         };
         setUser(appUser);
         setProgress(EMPTY_PROGRESS);
-        // Create the user record in the cloud.
-        const ok = await apiPost(uid, trimmed, EMPTY_PROGRESS);
-        if (ok) setCloudEnabled(true);
+    }, []);
+    // Registered user login
+    const loginUser = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (indexNumber, password)=>{
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    indexNumber,
+                    password
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) return {
+                ok: false,
+                error: data.error ?? "Login failed"
+            };
+            const { uid, name, level } = data;
+            try {
+                localStorage.setItem(LS_UID, uid);
+                localStorage.setItem(LS_NAME, name);
+                localStorage.setItem(LS_GUEST, "0");
+            } catch  {}
+            const local = loadLocal(uid);
+            const appUser = {
+                uid,
+                name,
+                level,
+                isGuest: false
+            };
+            setUser(appUser);
+            setProgress(local);
+            const remote = await apiGet(uid);
+            if (remote) {
+                setCloudEnabled(true);
+                setProgress(remote.progress);
+                setUser({
+                    uid,
+                    name: remote.name,
+                    level,
+                    isGuest: false
+                });
+            }
+            return {
+                ok: true
+            };
+        } catch  {
+            return {
+                ok: false,
+                error: "Network error. Try again."
+            };
+        }
+    }, []);
+    // New user registration
+    const registerUser = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(async (name, level, indexNumber, password)=>{
+        try {
+            const res = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name,
+                    level,
+                    indexNumber,
+                    password
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) return {
+                ok: false,
+                error: data.error ?? "Registration failed"
+            };
+            const { uid, name: savedName, level: savedLevel } = data;
+            try {
+                localStorage.setItem(LS_UID, uid);
+                localStorage.setItem(LS_NAME, savedName);
+                localStorage.setItem(LS_GUEST, "0");
+            } catch  {}
+            const appUser = {
+                uid,
+                name: savedName,
+                level: savedLevel,
+                isGuest: false
+            };
+            setUser(appUser);
+            setProgress(EMPTY_PROGRESS);
+            setCloudEnabled(true);
+            return {
+                ok: true
+            };
+        } catch  {
+            return {
+                ok: false,
+                error: "Network error. Try again."
+            };
+        }
     }, []);
     const signOutUser = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])(()=>{
         if (syncTimer.current) clearTimeout(syncTimer.current);
-        try {
-            localStorage.removeItem(LS_UID);
-            localStorage.removeItem(LS_NAME);
-        } catch  {}
+        const currentUser = userRef.current;
+        if (currentUser) {
+            clearLocalForUser(currentUser.uid);
+        }
         setUser(null);
         setProgress(EMPTY_PROGRESS);
         setCloudEnabled(false);
@@ -2353,7 +2456,7 @@ function AppProvider({ children }) {
             name: trimmed
         };
         setUser(updated);
-        await apiPost(u.uid, trimmed, progressRef.current);
+        if (!u.isGuest) await apiPost(u.uid, trimmed, progressRef.current);
     }, []);
     const toggleFlag = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useCallback"])((questionId)=>{
         setProgress((prev)=>{
@@ -2369,7 +2472,7 @@ function AppProvider({ children }) {
             const u = userRef.current;
             if (u) {
                 saveLocal(u.uid, next);
-                scheduleSync(u.uid, u.name, next);
+                if (!u.isGuest) scheduleSync(u.uid, u.name, next);
             }
             return next;
         });
@@ -2396,7 +2499,7 @@ function AppProvider({ children }) {
             const u = userRef.current;
             if (u) {
                 saveLocal(u.uid, next);
-                scheduleSync(u.uid, u.name, next);
+                if (!u.isGuest) scheduleSync(u.uid, u.name, next);
             }
             return next;
         });
@@ -2415,7 +2518,7 @@ function AppProvider({ children }) {
             const u = userRef.current;
             if (u) {
                 saveLocal(u.uid, next);
-                scheduleSync(u.uid, u.name, next);
+                if (!u.isGuest) scheduleSync(u.uid, u.name, next);
             }
             return next;
         });
@@ -2432,7 +2535,7 @@ function AppProvider({ children }) {
             const u = userRef.current;
             if (u) {
                 saveLocal(u.uid, next);
-                scheduleSync(u.uid, u.name, next);
+                if (!u.isGuest) scheduleSync(u.uid, u.name, next);
             }
             return next;
         });
@@ -2452,7 +2555,7 @@ function AppProvider({ children }) {
             const u = userRef.current;
             if (u) {
                 saveLocal(u.uid, next);
-                scheduleSync(u.uid, u.name, next);
+                if (!u.isGuest) scheduleSync(u.uid, u.name, next);
             }
             return next;
         });
@@ -2472,7 +2575,7 @@ function AppProvider({ children }) {
             const u = userRef.current;
             if (u) {
                 saveLocal(u.uid, next);
-                scheduleSync(u.uid, u.name, next);
+                if (!u.isGuest) scheduleSync(u.uid, u.name, next);
             }
             return next;
         });
@@ -2485,6 +2588,8 @@ function AppProvider({ children }) {
         cloudEnabled,
         progress,
         enterApp,
+        loginUser,
+        registerUser,
         signOutUser,
         updateName,
         toggleFlag,
@@ -2499,7 +2604,7 @@ function AppProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/app-context.tsx",
-        lineNumber: 331,
+        lineNumber: 408,
         columnNumber: 10
     }, this);
 }
