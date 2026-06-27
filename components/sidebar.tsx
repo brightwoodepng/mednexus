@@ -160,15 +160,24 @@ export function Sidebar({
             <UserIcon size={18} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.name ?? "Clinician"}</p>
+            <p className="truncate text-sm font-medium text-sidebar-foreground">
+              {isAdmin && !user ? "Admin" : user?.name ?? "Clinician"}
+            </p>
             <p className="text-xs text-muted-foreground">
-              {user?.role === "guest" ? "Guest · " : ""}
-              {cloudEnabled ? "☁ Synced" : "Saving locally…"}
+              {isAdmin && !user
+                ? "Administrator"
+                : user?.role === "guest"
+                  ? `Guest · ${cloudEnabled ? "☁ Synced" : "Local only"}`
+                  : cloudEnabled ? "☁ Synced" : "Saving locally…"}
             </p>
           </div>
         </div>
 
-        <button type="button" onClick={signOutUser} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+        <button
+          type="button"
+          onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }}
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+        >
           <LogOutIcon size={18} />
           Sign Out
         </button>
@@ -205,7 +214,7 @@ export function Sidebar({
       <IconButton active={false} onClick={onOpenThemes} label="Themes"><PaletteIcon size={18} /></IconButton>
 
       <div className="mt-auto">
-        <IconButton active={false} onClick={signOutUser} label="Sign Out"><LogOutIcon size={18} /></IconButton>
+        <IconButton active={false} onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }} label="Sign Out"><LogOutIcon size={18} /></IconButton>
       </div>
     </div>
   )
