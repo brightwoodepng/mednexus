@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
+export const maxDuration = 30
+
 // POST /api/parse-pdf
 // Body: { text: string, moduleName?: string }
 // Returns: { questions: ParsedQuestion[] }

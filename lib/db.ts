@@ -1,16 +1,17 @@
 import { Pool } from "pg"
 
-// On Replit the internal Postgres doesn't need SSL.
-// On external hosts (Neon, Supabase, etc.) SSL is required.
 // REPL_ID is only present inside Replit's runtime.
+// On Vercel / Netlify / external hosts, SSL is required (Neon, Supabase, etc.)
 const isReplit = Boolean(process.env.REPL_ID)
 
+// In serverless environments (Vercel), keep the pool small to avoid
+// exhausting Neon's connection limit across concurrent function invocations.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: isReplit ? false : { rejectUnauthorized: false },
-  max: 10,
-  connectionTimeoutMillis: 5000,
-  idleTimeoutMillis: 30000,
+  max: isReplit ? 10 : 3,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 20000,
 })
 
 let initialized = false

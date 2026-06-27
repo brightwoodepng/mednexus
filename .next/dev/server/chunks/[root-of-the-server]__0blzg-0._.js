@@ -16,18 +16,19 @@ var __turbopack_async_dependencies__ = __turbopack_handle_async_dependencies__([
 ]);
 [__TURBOPACK__imported__module__$5b$externals$5d2f$pg__$5b$external$5d$__$28$pg$2c$__esm_import$2c$__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$pg$40$8$2e$22$2e$0$2f$node_modules$2f$pg$29$__] = __turbopack_async_dependencies__.then ? (await __turbopack_async_dependencies__)() : __turbopack_async_dependencies__;
 ;
-// On Replit the internal Postgres doesn't need SSL.
-// On external hosts (Neon, Supabase, etc.) SSL is required.
 // REPL_ID is only present inside Replit's runtime.
+// On Vercel / Netlify / external hosts, SSL is required (Neon, Supabase, etc.)
 const isReplit = Boolean(process.env.REPL_ID);
+// In serverless environments (Vercel), keep the pool small to avoid
+// exhausting Neon's connection limit across concurrent function invocations.
 const pool = new __TURBOPACK__imported__module__$5b$externals$5d2f$pg__$5b$external$5d$__$28$pg$2c$__esm_import$2c$__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$pg$40$8$2e$22$2e$0$2f$node_modules$2f$pg$29$__["Pool"]({
     connectionString: process.env.DATABASE_URL,
     ssl: isReplit ? false : {
         rejectUnauthorized: false
     },
-    max: 10,
-    connectionTimeoutMillis: 5000,
-    idleTimeoutMillis: 30000
+    max: isReplit ? 10 : 3,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 20000
 });
 let initialized = false;
 async function ensureSchema() {

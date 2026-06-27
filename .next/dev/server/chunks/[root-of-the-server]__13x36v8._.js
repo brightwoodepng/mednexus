@@ -40,10 +40,13 @@ module.exports = mod;
 
 __turbopack_context__.s([
     "POST",
-    ()=>POST
+    ()=>POST,
+    "maxDuration",
+    ()=>maxDuration
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/.pnpm/next@16.2.9_@babel+core@7.29.7_@opentelemetry+api@1.9.1_react-dom@19.2.7_react@19.2.7__react@19.2.7/node_modules/next/server.js [app-route] (ecmascript)");
 ;
+const maxDuration = 30;
 // ── Regex-based MCQ parser ────────────────────────────────────────────────────
 // Handles common formats found in medical MCQ PDFs.
 function cleanText(t) {
