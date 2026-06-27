@@ -1,0 +1,33 @@
+Full Auth & User Management System
+What & Why
+Replace the current name-only guest system with a proper role-based authentication flow (Guest, User, Admin). Add real user registration with index number validation, password-based login, and a full admin user management dashboard. This allows the school to track students, approve accounts, and manage access securely.
+
+Done looks like
+Landing page shows three clear role options: Continue as Guest, Login / Register (User), and Admin Access
+Guest mode works exactly as before (name → local progress) but guest data only wipes on explicit "Log Out"
+User registration collects: Full Name, Level, Index Number, Password — index number auto-formats (slashes optional on input)
+Index numbers matching sm/sms/YY/NNNN or sm/gem/YY/NNNN are auto-approved; others are set to Pending Approval and cannot access the app until an admin approves
+Registered users log in with index number + password; progress is saved to the database and restored on any device/session
+"Forgot password?" on login screen shows a message to contact the admin (no email flow)
+Admin password login unchanged; admin dashboard gains a new User Management tab
+User Management tab (admin-only) shows: total users, pending approvals queue, full searchable/filterable user list
+Admin can: Approve or Reject pending users, Delete accounts, generate a one-time OTP password to share with a user
+A user who logs in with an OTP is immediately redirected to a "Change Password" screen and cannot access the app until they set a new password
+Footer on landing page reads "Created by Britechinc" with a "For support contact admin" WhatsApp link to https://wa.me/233543982307 (number hidden from visible text)
+Out of scope
+Email-based password reset (admin-generated OTP only)
+Social / OAuth login
+Migrating existing guest users to registered accounts
+Role changes after registration
+Steps
+DB schema migration — Add columns to mednexus_users: level, index_number, status (approved/pending/rejected), password_hash, otp, otp_expires_at (1 hour), force_password_change. Existing rows get status = 'approved' and null passwords (they remain guest-compatible).
+
+Index number helpers — Write a utility that strips all slashes/spaces from input, matches the pattern sm(sms|gem)\d{6} (case-insensitive), and reformats to canonical sm/sms/YY/NNNN or sm/gem/YY/NNNN. Returns { canonical, autoApprove }.
+
+Auth API routes — Create /api/auth/register (POST), /api/auth/login (POST), /api/auth/change-password (POST). Registration hashes the password (using Node crypto.scrypt), stores canonical index number, sets status. Login validates password hash, checks status (block if pending/rejected), returns a signed session token (same HMAC pattern as admin auth, 7-day TTL). OTP login is detected and force_password_change flag returned in the token payload.
+
+Admin user management API — Create /api/admin/users (GET — list with search/filter/sort), /api/admin/users/[uid]/approve (POST), /api/admin/users/[uid]/reject (POST), /api/admin/users/[uid] (DELETE), /api/admin/users/[uid]/reset-password (POST — generates 8-char alphanumeric OTP, stores hash + expiry, returns plaintext OTP to admin UI only).
+
+Session token flow — On app load, check localStorage for mednexus-user-token. If present, validate with a /api/auth/verify GET route (returns user payload). Store user context (uid, name, level, indexNumber, status, forcePasswordChange) in a UserContext. Guest mode stores only { uid, name, isGuest: true } locally with no token.
+
+Landing page redesign — Replace the single name-input screen with a three-card role picker: "Continue as Guest" (name prompt → existing flow), "Student Login / Register" (toggleable login/register forms), "Admin Access" (existing admin password modal). Add footer: "Created by Britechinc · For support contact admin [WhatsApp icon]".

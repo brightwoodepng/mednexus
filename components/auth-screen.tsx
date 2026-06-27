@@ -272,6 +272,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
   const [level, setLevel] = useState("")
   const [indexNumber, setIndexNumber] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -280,6 +281,8 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim() || !indexNumber.trim() || !password.trim()) return
+    if (password !== confirmPassword) { setError("Passwords do not match"); return }
+    if (password.length < 6) { setError("Password must be at least 6 characters"); return }
     setLoading(true)
     setError("")
     const result = await registerUser(name, level, indexNumber, password)
@@ -356,14 +359,19 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground" htmlFor="reg-level">Level / Year</label>
-          <input
+          <select
             id="reg-level"
-            type="text"
             value={level}
             onChange={(e) => { setLevel(e.target.value); setError("") }}
-            placeholder="e.g. Level 400"
             className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-          />
+          >
+            <option value="">Select level…</option>
+            <option value="Level 100">Level 100</option>
+            <option value="Level 200">Level 200</option>
+            <option value="Level 300">Level 300</option>
+            <option value="Level 400">Level 400</option>
+            <option value="Level 500">Level 500</option>
+          </select>
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground" htmlFor="reg-index">Index Number</label>
@@ -397,6 +405,17 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
             </button>
           </div>
         </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="reg-confirm-pw">Confirm Password</label>
+          <input
+            id="reg-confirm-pw"
+            type={showPw ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => { setConfirmPassword(e.target.value); setError("") }}
+            placeholder="Re-enter your password"
+            className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+          />
+        </div>
 
         {error && (
           <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
@@ -409,7 +428,7 @@ function RegisterForm({ onBack }: { onBack: () => void }) {
 
         <button
           type="submit"
-          disabled={loading || !name.trim() || !indexNumber.trim() || !password.trim()}
+          disabled={loading || !name.trim() || !indexNumber.trim() || !password.trim() || !confirmPassword.trim()}
           className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
         >
           {loading ? "Creating account…" : "Create Account"}

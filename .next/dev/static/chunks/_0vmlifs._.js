@@ -2245,6 +2245,7 @@ const EMPTY_PROGRESS = {
 const LS_UID = "mednexus-uid";
 const LS_NAME = "mednexus-name";
 const LS_ROLE = "mednexus-role";
+const LS_STATUS = "mednexus-status";
 const LS_PROGRESS = "mednexus-progress";
 const LS_REQUIRES_PW_UPDATE = "mednexus-requires-pw-update";
 function todayStr() {
@@ -2341,13 +2342,15 @@ function AppProvider({ children }) {
                 const uid = ("TURBOPACK compile-time truthy", 1) ? localStorage.getItem(LS_UID) : "TURBOPACK unreachable";
                 const name = ("TURBOPACK compile-time truthy", 1) ? localStorage.getItem(LS_NAME) ?? "Clinician" : "TURBOPACK unreachable";
                 const role = ("TURBOPACK compile-time truthy", 1) ? localStorage.getItem(LS_ROLE) : "TURBOPACK unreachable";
+                const status = ("TURBOPACK compile-time truthy", 1) ? localStorage.getItem(LS_STATUS) ?? undefined : "TURBOPACK unreachable";
                 const needsPwUpdate = ("TURBOPACK compile-time truthy", 1) ? localStorage.getItem(LS_REQUIRES_PW_UPDATE) === "true" : "TURBOPACK unreachable";
                 if (uid) {
                     const local = loadLocal(uid);
                     const appUser = {
                         uid,
                         name,
-                        role: role ?? "guest"
+                        role: role ?? "guest",
+                        status: status ?? undefined
                     };
                     setUser(appUser);
                     setProgress(local);
@@ -2416,6 +2419,7 @@ function AppProvider({ children }) {
                     localStorage.setItem(LS_NAME, name);
                     localStorage.setItem(LS_ROLE, "user");
                     localStorage.setItem(LS_REQUIRES_PW_UPDATE, needsPw ? "true" : "false");
+                    if (data.status) localStorage.setItem(LS_STATUS, data.status);
                 } catch  {}
                 const local = loadLocal(uid);
                 const appUser = {
@@ -2523,6 +2527,7 @@ function AppProvider({ children }) {
                 localStorage.removeItem(LS_UID);
                 localStorage.removeItem(LS_NAME);
                 localStorage.removeItem(LS_ROLE);
+                localStorage.removeItem(LS_STATUS);
                 localStorage.removeItem(LS_REQUIRES_PW_UPDATE);
             } catch  {}
             setUser(null);
@@ -2729,7 +2734,7 @@ function AppProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/app-context.tsx",
-        lineNumber: 393,
+        lineNumber: 397,
         columnNumber: 10
     }, this);
 }
