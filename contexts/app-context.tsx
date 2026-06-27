@@ -62,6 +62,7 @@ const EMPTY_PROGRESS: UserProgress = {
 const LS_UID = "mednexus-uid"
 const LS_NAME = "mednexus-name"
 const LS_ROLE = "mednexus-role"
+const LS_STATUS = "mednexus-status"
 const LS_PROGRESS = "mednexus-progress"
 const LS_REQUIRES_PW_UPDATE = "mednexus-requires-pw-update"
 
@@ -145,11 +146,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const uid = typeof window !== "undefined" ? localStorage.getItem(LS_UID) : null
       const name = typeof window !== "undefined" ? localStorage.getItem(LS_NAME) ?? "Clinician" : "Clinician"
       const role = (typeof window !== "undefined" ? localStorage.getItem(LS_ROLE) : null) as UserRole | null
+      const status = typeof window !== "undefined" ? localStorage.getItem(LS_STATUS) ?? undefined : undefined
       const needsPwUpdate = typeof window !== "undefined" ? localStorage.getItem(LS_REQUIRES_PW_UPDATE) === "true" : false
 
       if (uid) {
         const local = loadLocal(uid)
-        const appUser: AppUser = { uid, name, role: role ?? "guest" }
+        const appUser: AppUser = { uid, name, role: role ?? "guest", status: status ?? undefined }
         setUser(appUser)
         setProgress(local)
         setRequiresPasswordUpdate(needsPwUpdate)
@@ -201,6 +203,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(LS_NAME, name)
         localStorage.setItem(LS_ROLE, "user")
         localStorage.setItem(LS_REQUIRES_PW_UPDATE, needsPw ? "true" : "false")
+        if (data.status) localStorage.setItem(LS_STATUS, data.status)
       } catch {}
 
       const local = loadLocal(uid)
@@ -262,6 +265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(LS_UID)
       localStorage.removeItem(LS_NAME)
       localStorage.removeItem(LS_ROLE)
+      localStorage.removeItem(LS_STATUS)
       localStorage.removeItem(LS_REQUIRES_PW_UPDATE)
     } catch {}
     setUser(null)

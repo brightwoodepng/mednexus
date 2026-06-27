@@ -44,6 +44,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Your account is pending approval. Please contact the admin." }, { status: 403 })
     }
 
+    if (user.status === "rejected") {
+      return NextResponse.json({ error: "Your account has been rejected. Please contact the admin for more information." }, { status: 403 })
+    }
+
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
 
     if (passwordMatch) {
