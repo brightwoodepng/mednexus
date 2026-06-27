@@ -16,6 +16,9 @@ var __turbopack_async_dependencies__ = __turbopack_handle_async_dependencies__([
 ]);
 [__TURBOPACK__imported__module__$5b$externals$5d2f$pg__$5b$external$5d$__$28$pg$2c$__esm_import$2c$__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$pg$40$8$2e$22$2e$0$2f$node_modules$2f$pg$29$__] = __turbopack_async_dependencies__.then ? (await __turbopack_async_dependencies__)() : __turbopack_async_dependencies__;
 ;
+// On Replit the internal Postgres doesn't need SSL.
+// On external hosts (Neon, Supabase, etc.) SSL is required.
+// REPL_ID is only present inside Replit's runtime.
 const isReplit = Boolean(process.env.REPL_ID);
 const pool = new __TURBOPACK__imported__module__$5b$externals$5d2f$pg__$5b$external$5d$__$28$pg$2c$__esm_import$2c$__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$pg$40$8$2e$22$2e$0$2f$node_modules$2f$pg$29$__["Pool"]({
     connectionString: process.env.DATABASE_URL,
@@ -77,14 +80,6 @@ async function ensureSchema() {
       started_at TIMESTAMPTZ DEFAULT NOW(),
       submitted_at TIMESTAMPTZ
     );
-
-    ALTER TABLE mednexus_users ADD COLUMN IF NOT EXISTS level TEXT;
-    ALTER TABLE mednexus_users ADD COLUMN IF NOT EXISTS index_number TEXT;
-    ALTER TABLE mednexus_users ADD COLUMN IF NOT EXISTS password_hash TEXT;
-    ALTER TABLE mednexus_users ADD COLUMN IF NOT EXISTS user_type TEXT DEFAULT 'guest';
-
-    CREATE UNIQUE INDEX IF NOT EXISTS mednexus_users_index_number_idx
-      ON mednexus_users(index_number) WHERE index_number IS NOT NULL;
   `);
     initialized = true;
 }
