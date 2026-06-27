@@ -260,36 +260,20 @@ function OtpResetFields({ onBack }: { onBack: () => void }) {
         />
       </div>
 
-      <div className="rounded-2xl border border-border bg-muted/40 px-4 py-4 flex flex-col gap-3">
-        <p className="text-xs font-semibold text-foreground uppercase tracking-wide">How it works</p>
-        <ol className="flex flex-col gap-2">
-          {[
-            "Tap the button below — WhatsApp opens with a pre-written message to admin.",
-            "Admin verifies your identity and replies with a unique reset token.",
-            "Enter that token in the field below to set a new password.",
-          ].map((step, i) => (
-            <li key={i} className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">{i + 1}</span>
-              <span className="text-xs text-muted-foreground leading-relaxed">{step}</span>
-            </li>
-          ))}
-        </ol>
-        <a
-          href={whatsappHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => setWhatsappSent(true)}
-          className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#20bd5a] transition-colors"
-        >
-          <WhatsAppIcon size={16} />
-          Request Reset Token via WhatsApp
-        </a>
-        {whatsappSent && (
-          <p className="text-center text-xs text-muted-foreground">
-            Message sent! Enter the token admin sends you below.
-          </p>
-        )}
-      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Request a reset token from admin via WhatsApp. Once you receive it, enter it below.
+      </p>
+
+      <a
+        href={whatsappHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => setWhatsappSent(true)}
+        className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#20bd5a] transition-colors"
+      >
+        <WhatsAppIcon size={16} />
+        Request Reset Token via WhatsApp
+      </a>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
