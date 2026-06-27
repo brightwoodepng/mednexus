@@ -127,6 +127,7 @@ export interface AppNotification {
   title: string
   body: string
   type: "info" | "update" | "alert"
+  adminOnly?: boolean
   createdAt: string // ISO string
 }
 

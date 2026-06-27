@@ -4,3 +4,4 @@
 - [Hooks Before Early Returns](hooks-rules.md) — useCallback/useCallback must appear before any early returns in MedNexusApp
 - [Admin Question Editor Architecture](admin-editor.md) — hierarchical tree (Module→Discipline→Question), draft staging via local state, pdfjs-dist client-side parsing
 - [Live Assessments Architecture](live-assessments.md) — mednexus_assessments + mednexus_assessment_attempts tables, share_token UUID for guest URLs at /exam/[token], safeScreen guards live-assessments-admin
+- [User Auth Architecture](user-auth.md) — mednexus_registered_users table, index number auto-format/auto-approve, OTP reset via must_change_password flag, 3-role landing page

@@ -21,6 +21,15 @@ import {
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 
+function UsersIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  )
+}
+
 interface SidebarProps {
   screen: Screen
   onNavigate: (screen: Screen) => void
@@ -51,9 +60,7 @@ function LiveClock() {
 
   return (
     <div className="flex flex-col items-center rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-3 py-2.5 text-center">
-      <span className="text-lg font-bold tabular-nums tracking-tight text-sidebar-foreground leading-none">
-        {time}
-      </span>
+      <span className="text-lg font-bold tabular-nums tracking-tight text-sidebar-foreground leading-none">{time}</span>
       <span className="mt-0.5 text-[11px] text-muted-foreground">{date}</span>
     </div>
   )
@@ -84,36 +91,19 @@ export function Sidebar({
 
   const fullContent = (
     <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
-      {/* Top row — collapse and close buttons */}
       <div className="mb-2 flex items-center justify-end px-2 pt-2 shrink-0">
         <div className="flex items-center gap-1">
-          {/* Desktop collapse button */}
-          <button
-            type="button"
-            onClick={onCollapse}
-            className="hidden rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:flex"
-            aria-label="Collapse sidebar"
-          >
+          <button type="button" onClick={onCollapse} className="hidden rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:flex" aria-label="Collapse sidebar">
             <ChevronLeftIcon size={18} />
           </button>
-          {/* Mobile close button */}
-          <button
-            type="button"
-            onClick={onCloseMobile}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:hidden"
-            aria-label="Close menu"
-          >
+          <button type="button" onClick={onCloseMobile} className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:hidden" aria-label="Close menu">
             <XIcon size={20} />
           </button>
         </div>
       </div>
 
-      {/* Live clock */}
-      <div className="shrink-0">
-        <LiveClock />
-      </div>
+      <div className="shrink-0"><LiveClock /></div>
 
-      {/* Scrollable nav area */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <nav className="flex flex-col gap-1">
           <NavButton active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
@@ -129,6 +119,7 @@ export function Sidebar({
             <>
               <div className="my-1 h-px bg-sidebar-border/60" />
               <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Admin</p>
+              <NavButton active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
               <NavButton active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
               <NavButton active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
               <NavButton active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} icon={<ClipboardListIcon size={18} />} label="Assessments" adminBadge="Admin" />
@@ -148,7 +139,6 @@ export function Sidebar({
         </nav>
       </div>
 
-      {/* Bottom section */}
       <div className="shrink-0 flex flex-col gap-3 pt-2">
         {isAdmin ? (
           <div className="flex items-center justify-between rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2">
@@ -171,7 +161,10 @@ export function Sidebar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.name ?? "Clinician"}</p>
-            <p className="text-xs text-muted-foreground">{cloudEnabled ? "☁ Synced" : "Saving locally…"}</p>
+            <p className="text-xs text-muted-foreground">
+              {user?.role === "guest" ? "Guest · " : ""}
+              {cloudEnabled ? "☁ Synced" : "Saving locally…"}
+            </p>
           </div>
         </div>
 
@@ -185,13 +178,7 @@ export function Sidebar({
 
   const collapsedContent = (
     <div className="flex h-full flex-col items-center gap-1 py-4 px-2">
-      {/* Expand button */}
-      <button
-        type="button"
-        onClick={onExpand}
-        className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl border border-sidebar-border text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-        aria-label="Expand sidebar"
-      >
+      <button type="button" onClick={onExpand} className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl border border-sidebar-border text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors" aria-label="Expand sidebar">
         <ChevronLeftIcon size={18} className="rotate-180" />
       </button>
 
@@ -207,6 +194,7 @@ export function Sidebar({
       {isAdmin && (
         <>
           <div className="my-1 w-6 h-px bg-sidebar-border/60" />
+          <IconButton active={screen === "user-management"} onClick={() => nav("user-management")} label="Users"><UsersIcon size={18} /></IconButton>
           <IconButton active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
           <IconButton active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
           <IconButton active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} label="Assessments (Admin)"><ClipboardListIcon size={18} /></IconButton>
@@ -224,14 +212,9 @@ export function Sidebar({
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside
-        className={`hidden shrink-0 border-r border-sidebar-border bg-sidebar lg:block transition-all duration-200 ${collapsed ? "w-14" : "w-64"}`}
-      >
+      <aside className={`hidden shrink-0 border-r border-sidebar-border bg-sidebar lg:block transition-all duration-200 ${collapsed ? "w-14" : "w-64"}`}>
         {collapsed ? collapsedContent : fullContent}
       </aside>
-
-      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button type="button" aria-label="Close menu" onClick={onCloseMobile} className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" />
@@ -263,11 +246,7 @@ function IconButton({ active, onClick, label, children }: {
   active: boolean; onClick: () => void; label: string; children: React.ReactNode
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
+    <button type="button" onClick={onClick} title={label} aria-label={label}
       className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${active ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
     >
       {children}

@@ -12,13 +12,17 @@ async function getPool() {
   }
 }
 
-// GET /api/notifications — public, returns all notifications sorted newest first
-export async function GET() {
+// GET /api/notifications — public; admin_only rows only returned with valid admin token
+export async function GET(req: NextRequest) {
   try {
     const pool = await getPool()
     if (!pool) return NextResponse.json({ notifications: [] })
+    const token = req.headers.get("x-admin-token") ?? ""
+    const isAdmin = verifyAdminToken(token)
     const res = await pool.query(
-      "SELECT id, title, body, type, created_at FROM mednexus_notifications ORDER BY created_at DESC LIMIT 100"
+      isAdmin
+        ? "SELECT id, title, body, type, admin_only, created_at FROM mednexus_notifications ORDER BY created_at DESC LIMIT 100"
+        : "SELECT id, title, body, type, admin_only, created_at FROM mednexus_notifications WHERE admin_only = FALSE ORDER BY created_at DESC LIMIT 100"
     )
     return NextResponse.json({
       notifications: res.rows.map((r) => ({
@@ -26,6 +30,7 @@ export async function GET() {
         title: r.title,
         body: r.body,
         type: r.type,
+        adminOnly: r.admin_only,
         createdAt: r.created_at,
       })),
     })
