@@ -19,9 +19,6 @@ const nextConfig = {
   },
   devIndicators: false,
   allowedDevOrigins,
-  turbopack: {
-    root: "/home/runner/workspace",
-  },
   serverExternalPackages: ["firebase-admin"],
 }
 
