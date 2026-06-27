@@ -218,14 +218,134 @@ function StudentForm({ onBack }: { onBack: () => void }) {
   )
 }
 
+// ── OTP Reset Fields ──────────────────────────────────────────────────────────
+const ADMIN_WHATSAPP = "233543982307"
+
+function OtpResetFields({ onBack }: { onBack: () => void }) {
+  const { loginUser } = useApp()
+  const [indexNumber, setIndexNumber] = useState("")
+  const [otp, setOtp] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [whatsappSent, setWhatsappSent] = useState(false)
+
+  const whatsappMessage = indexNumber.trim()
+    ? `Hello, I would like to reset my MedNexus password. My index number is: ${indexNumber.trim()}`
+    : `Hello, I would like to reset my MedNexus password.`
+  const whatsappHref = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(whatsappMessage)}`
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!indexNumber.trim() || otp.length < 6) return
+    setLoading(true)
+    setError("")
+    const result = await loginUser(indexNumber, otp)
+    setLoading(false)
+    if (!result.ok) setError(result.error ?? "Invalid index number or reset token")
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-muted-foreground" htmlFor="otp-index">Your Index Number</label>
+        <input
+          id="otp-index"
+          type="text"
+          autoFocus
+          value={indexNumber}
+          onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
+          placeholder="sm/sms/22/0092"
+          className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+        />
+      </div>
+
+      <div className="rounded-2xl border border-border bg-muted/40 px-4 py-4 flex flex-col gap-3">
+        <p className="text-xs font-semibold text-foreground uppercase tracking-wide">How it works</p>
+        <ol className="flex flex-col gap-2">
+          {[
+            "Tap the button below — WhatsApp opens with a pre-written message to admin.",
+            "Admin verifies your identity and replies with a unique reset token.",
+            "Enter that token in the field below to set a new password.",
+          ].map((step, i) => (
+            <li key={i} className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">{i + 1}</span>
+              <span className="text-xs text-muted-foreground leading-relaxed">{step}</span>
+            </li>
+          ))}
+        </ol>
+        <a
+          href={whatsappHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setWhatsappSent(true)}
+          className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#20bd5a] transition-colors"
+        >
+          <WhatsAppIcon size={16} />
+          Request Reset Token via WhatsApp
+        </a>
+        {whatsappSent && (
+          <p className="text-center text-xs text-muted-foreground">
+            Message sent! Enter the token admin sends you below.
+          </p>
+        )}
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground shrink-0">Enter your reset token</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        <input
+          id="otp-code"
+          type="text"
+          inputMode="numeric"
+          value={otp}
+          onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setError("") }}
+          placeholder="6-digit token"
+          className="w-full rounded-xl border border-input bg-background px-4 py-3 text-center text-xl font-bold tracking-[0.4em] font-mono outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+        />
+
+        {error && (
+          <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15} className="mt-0.5 shrink-0">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+            </svg>
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading || !indexNumber.trim() || otp.length < 6}
+          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+        >
+          {loading ? "Verifying…" : "Verify Token & Set New Password"}
+          {!loading && <ArrowRightIcon size={16} />}
+        </button>
+      </form>
+
+      <button type="button" onClick={onBack} className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors">
+        ← Back to Log In
+      </button>
+    </div>
+  )
+}
+
 // ── Login Fields ──────────────────────────────────────────────────────────────
 function LoginFields() {
   const { loginUser } = useApp()
+  const [mode, setMode] = useState<"login" | "otp">("login")
   const [indexNumber, setIndexNumber] = useState("")
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+
+  if (mode === "otp") {
+    return <OtpResetFields onBack={() => setMode("login")} />
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -286,18 +406,13 @@ function LoginFields() {
         {!loading && <ArrowRightIcon size={16} />}
       </button>
 
-      <p className="text-center text-xs text-muted-foreground">
-        Forgot your password?{" "}
-        <a
-          href="https://wa.me/233543982307"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 font-medium text-[#25D366] hover:underline"
-        >
-          <WhatsAppIcon size={12} />
-          Contact admin
-        </a>
-      </p>
+      <button
+        type="button"
+        onClick={() => setMode("otp")}
+        className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        Forgot password? <span className="font-semibold text-primary">Enter with OTP</span>
+      </button>
     </form>
   )
 }
