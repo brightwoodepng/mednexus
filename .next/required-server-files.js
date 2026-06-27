@@ -108,7 +108,7 @@ self.__SERVER_FILES_MANIFEST={
       "*.kirk.replit.dev",
       "*.picard.replit.dev",
       "*.repl.co",
-      "fa4beb5b-200e-469d-a7a9-8cfdcf1e7614-00-2u7z619yolb1.worf.replit.dev"
+      "deed3f6a-8372-4f22-b804-0cee89ba61f3-00-14b4oilkvpi5n.riker.replit.dev"
     ],
     "cacheComponents": false,
     "cacheLife": {
