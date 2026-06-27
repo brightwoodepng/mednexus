@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
@@ -311,6 +311,46 @@ function StudyModeToggle({ globalMode, setGlobalMode }: { globalMode: QuizMode; 
   )
 }
 
+// ── Welcome Modal ─────────────────────────────────────────────────────────────
+function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-foreground/30 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-3xl bg-card border border-border shadow-2xl overflow-hidden">
+        <div className="bg-primary px-6 pt-8 pb-10 flex flex-col items-center text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={32} height={32}>
+              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-white">Welcome to MedNexus!</h2>
+          <p className="mt-1.5 text-sm text-white/80">Hi {name.split(" ")[0]} — you&apos;re all set.</p>
+        </div>
+        <div className="px-6 py-5 flex flex-col gap-4">
+          <div className="flex flex-col gap-2.5">
+            {[
+              { icon: "📚", text: "Practice questions across all your modules" },
+              { icon: "📊", text: "Track your progress and identify weak areas" },
+              { icon: "🎯", text: "Take timed exams to sharpen your skills" },
+            ].map(({ icon, text }) => (
+              <div key={text} className="flex items-center gap-3">
+                <span className="text-lg">{icon}</span>
+                <span className="text-sm text-muted-foreground">{text}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Start Learning
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
@@ -323,6 +363,7 @@ export function MedNexusApp() {
   const [themeOpen, setThemeOpen] = useState(false)
   const [adminLoginOpen, setAdminLoginOpen] = useState(false)
   const [creditsOpen, setCreditsOpen] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(false)
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
   const [modulesInitialModule, setModulesInitialModule] = useState<string | null>(null)
@@ -332,6 +373,16 @@ export function MedNexusApp() {
     discipline: string | null
     lastSetup: { module: string; discipline: string | null } | null
   } | null>(null)
+
+  useEffect(() => {
+    if (user?.role === "user" && user.status === "approved" && !requiresPasswordUpdate) {
+      const key = `mednexus-welcome-seen-${user.uid}`
+      if (!localStorage.getItem(key)) {
+        setShowWelcome(true)
+        localStorage.setItem(key, "1")
+      }
+    }
+  }, [user?.uid, user?.role, user?.status, requiresPasswordUpdate])
 
   const adminOnlyScreens: Screen[] = ["question-editor", "broadcast", "live-assessments-admin", "user-management"]
   const safeScreen = adminOnlyScreens.includes(screen) && !isAdmin ? "dashboard" : screen
@@ -502,6 +553,7 @@ export function MedNexusApp() {
       <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
       {adminLoginOpen && <AdminLoginModal onClose={() => setAdminLoginOpen(false)} />}
       <CreditsModal open={creditsOpen} onClose={() => setCreditsOpen(false)} />
+      {showWelcome && user && <WelcomeModal name={user.name} onClose={() => setShowWelcome(false)} />}
     </div>
   )
 }
