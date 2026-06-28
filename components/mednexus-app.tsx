@@ -25,6 +25,7 @@ import { AdminUserManagement } from "@/components/admin-user-management"
 import { NotificationBell } from "@/components/notification-bell"
 import { ProfileHistory } from "@/components/profile-history"
 import { WeakAreasScreen } from "@/components/weak-areas-screen"
+import { GameMode } from "@/components/game-mode"
 import {
   MenuIcon,
   StethoscopeIcon,
@@ -535,6 +536,7 @@ export function MedNexusApp() {
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen />}
           {safeScreen === "live-assessments-admin" && isAdmin && <LiveAssessmentsAdmin />}
           {safeScreen === "user-management" && isAdmin && <AdminUserManagement />}
+          {safeScreen === "game" && <GameMode onExit={() => setScreen("dashboard")} />}
           {safeScreen === "results" && lastResult && (
             <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />
           )}
