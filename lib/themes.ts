@@ -8,8 +8,6 @@ export type ThemeId =
   | "forest-night"
   | "solar-flare"
   | "nebula"
-  | "liquid-glass-light"
-  | "liquid-glass-dark"
 
 export interface ThemeMeta {
   id: ThemeId
@@ -92,22 +90,6 @@ export const THEMES: ThemeMeta[] = [
     mode: "dark",
     swatch: { bg: "#1a112b", surface: "#211637", primary: "#e8429e" },
     accent: "#e8429e",
-  },
-  {
-    id: "liquid-glass-light",
-    name: "Liquid Glass",
-    description: "Icy azure glass — clean, airy, translucent.",
-    mode: "light",
-    swatch: { bg: "#eaf3fc", surface: "#fefeff", primary: "#1a7fd4" },
-    accent: "#1a7fd4",
-  },
-  {
-    id: "liquid-glass-dark",
-    name: "Liquid Glass Dark",
-    description: "Deep navy glass with electric cyan shimmer.",
-    mode: "dark",
-    swatch: { bg: "#0d1320", surface: "#141c2e", primary: "#38bdf8" },
-    accent: "#38bdf8",
   },
 ]
 
