@@ -1698,7 +1698,7 @@ function Modal({ open, onClose, title, children, widthClass = "max-w-lg", showHe
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: `glass-modal relative w-full ${widthClass} max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-200`,
+                className: `glass-modal relative w-full ${widthClass} max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl animate-ios-sheet`,
                 children: [
                     showHeader && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "glass-modal-header sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-card px-6 py-4",
@@ -3995,14 +3995,6 @@ function ThemeModal({ open, onClose }) {
                                             lineNumber: 60,
                                             columnNumber: 15
                                         }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                            className: "rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary",
-                                            children: "iOS 26"
-                                        }, void 0, false, {
-                                            fileName: "[project]/components/theme-modal.tsx",
-                                            lineNumber: 61,
-                                            columnNumber: 15
-                                        }, this),
                                         glassEnabled && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                             className: "inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary",
                                             children: [
@@ -4010,14 +4002,14 @@ function ThemeModal({ open, onClose }) {
                                                     size: 10
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/theme-modal.tsx",
-                                                    lineNumber: 66,
+                                                    lineNumber: 63,
                                                     columnNumber: 19
                                                 }, this),
                                                 " On"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/theme-modal.tsx",
-                                            lineNumber: 65,
+                                            lineNumber: 62,
                                             columnNumber: 17
                                         }, this)
                                     ]
@@ -4031,7 +4023,7 @@ function ThemeModal({ open, onClose }) {
                                     children: "Frosted glass sidebar and cards — works with any theme."
                                 }, void 0, false, {
                                     fileName: "[project]/components/theme-modal.tsx",
-                                    lineNumber: 70,
+                                    lineNumber: 67,
                                     columnNumber: 13
                                 }, this)
                             ]
@@ -4046,12 +4038,12 @@ function ThemeModal({ open, onClose }) {
                                 className: `absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${glassEnabled ? "translate-x-5" : "translate-x-0.5"}`
                             }, void 0, false, {
                                 fileName: "[project]/components/theme-modal.tsx",
-                                lineNumber: 81,
+                                lineNumber: 78,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/theme-modal.tsx",
-                            lineNumber: 76,
+                            lineNumber: 73,
                             columnNumber: 11
                         }, this)
                     ]
@@ -4072,7 +4064,7 @@ function ThemeModal({ open, onClose }) {
                 onSelect: setTheme
             }, void 0, false, {
                 fileName: "[project]/components/theme-modal.tsx",
-                lineNumber: 90,
+                lineNumber: 87,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ThemeGroup, {
@@ -4082,7 +4074,7 @@ function ThemeModal({ open, onClose }) {
                 onSelect: setTheme
             }, void 0, false, {
                 fileName: "[project]/components/theme-modal.tsx",
-                lineNumber: 91,
+                lineNumber: 88,
                 columnNumber: 7
             }, this)
         ]
@@ -4101,7 +4093,7 @@ function ThemeGroup({ label, themes, active, onSelect }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/components/theme-modal.tsx",
-                lineNumber: 109,
+                lineNumber: 106,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4126,7 +4118,7 @@ function ThemeGroup({ label, themes, active, onSelect }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/components/theme-modal.tsx",
-                                        lineNumber: 129,
+                                        lineNumber: 126,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4136,7 +4128,7 @@ function ThemeGroup({ label, themes, active, onSelect }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/components/theme-modal.tsx",
-                                        lineNumber: 133,
+                                        lineNumber: 130,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4146,13 +4138,13 @@ function ThemeGroup({ label, themes, active, onSelect }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/components/theme-modal.tsx",
-                                        lineNumber: 137,
+                                        lineNumber: 134,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/theme-modal.tsx",
-                                lineNumber: 125,
+                                lineNumber: 122,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4166,7 +4158,7 @@ function ThemeGroup({ label, themes, active, onSelect }) {
                                                 children: t.name
                                             }, void 0, false, {
                                                 fileName: "[project]/components/theme-modal.tsx",
-                                                lineNumber: 145,
+                                                lineNumber: 142,
                                                 columnNumber: 19
                                             }, this),
                                             isActive && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4176,20 +4168,20 @@ function ThemeGroup({ label, themes, active, onSelect }) {
                                                         size: 10
                                                     }, void 0, false, {
                                                         fileName: "[project]/components/theme-modal.tsx",
-                                                        lineNumber: 148,
+                                                        lineNumber: 145,
                                                         columnNumber: 23
                                                     }, this),
                                                     " On"
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/theme-modal.tsx",
-                                                lineNumber: 147,
+                                                lineNumber: 144,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/theme-modal.tsx",
-                                        lineNumber: 144,
+                                        lineNumber: 141,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -4197,31 +4189,31 @@ function ThemeGroup({ label, themes, active, onSelect }) {
                                         children: t.description
                                     }, void 0, false, {
                                         fileName: "[project]/components/theme-modal.tsx",
-                                        lineNumber: 152,
+                                        lineNumber: 149,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/theme-modal.tsx",
-                                lineNumber: 143,
+                                lineNumber: 140,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, t.id, true, {
                         fileName: "[project]/components/theme-modal.tsx",
-                        lineNumber: 114,
+                        lineNumber: 111,
                         columnNumber: 13
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/components/theme-modal.tsx",
-                lineNumber: 110,
+                lineNumber: 107,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/theme-modal.tsx",
-        lineNumber: 108,
+        lineNumber: 105,
         columnNumber: 5
     }, this);
 }
