@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useTheme } from "@/contexts/theme-context"
-import { THEMES } from "@/lib/themes"
+import { ThemeModal } from "@/components/theme-modal"
 import { StethoscopeIcon, ArrowRightIcon } from "@/components/icons"
 
 function WhatsAppIcon({ size = 14 }: { size?: number }) {
@@ -625,45 +625,6 @@ function AdminForm({ onBack }: { onBack: () => void }) {
   )
 }
 
-// ── Theme Picker ──────────────────────────────────────────────────────────────
-function LandingThemePicker({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { theme, setTheme, glassEnabled } = useTheme()
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" />
-      <div className={`animate-ios-sheet relative w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-2xl ${glassEnabled ? "glass-auth-card" : ""}`}>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold">Choose Theme</h3>
-          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><path d="M18 6 6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-2.5">
-          {THEMES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => { setTheme(t.id); onClose() }}
-              className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all ${theme === t.id ? "border-primary ring-2 ring-primary/30 bg-primary/5" : "border-border hover:border-border/80 hover:bg-muted"}`}
-            >
-              <div className="flex shrink-0 gap-0.5">
-                <span className="h-5 w-2.5 rounded-l-full" style={{ background: t.swatch.bg }} />
-                <span className="h-5 w-2.5" style={{ background: t.swatch.primary }} />
-                <span className="h-5 w-2.5 rounded-r-full" style={{ background: t.swatch.surface }} />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-foreground">{t.name}</p>
-                <p className="text-[10px] text-muted-foreground capitalize">{t.mode}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Root ──────────────────────────────────────────────────────────────────────
 export function AuthScreen() {
   const [view, setView] = useState<"role-select" | "guest" | "student" | "admin">("role-select")
@@ -693,7 +654,7 @@ export function AuthScreen() {
         <Footer />
       </div>
 
-      <LandingThemePicker open={themeOpen} onClose={() => setThemeOpen(false)} />
+      <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
     </main>
   )
 }

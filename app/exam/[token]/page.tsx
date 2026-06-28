@@ -6,6 +6,7 @@ import { AssessmentExamRunner } from "@/components/assessment-exam-runner"
 import { AssessmentReview } from "@/components/assessment-review"
 import { StethoscopeIcon, ClockIcon, AlertTriangleIcon, CheckIcon, TrophyIcon, RefreshCwIcon } from "@/components/icons"
 import { ThemeProvider } from "@/contexts/theme-context"
+import { ThemeModal } from "@/components/theme-modal"
 
 type Phase = "loading" | "unavailable" | "name-entry" | "exam" | "results"
 
@@ -61,6 +62,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
   const [result, setResult] = useState<Result | null>(null)
   const [showReview, setShowReview] = useState(false)
   const [triesUsed, setTriesUsed] = useState(0)
+  const [themeOpen, setThemeOpen] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -180,36 +182,58 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
   const triesRemaining = Math.max(0, triesAllowed - triesUsed)
   const triesExhausted = triesUsed >= triesAllowed
 
+  const themeOverlay = (
+    <>
+      <button
+        type="button"
+        onClick={() => setThemeOpen(true)}
+        className="fixed right-4 top-4 z-40 flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}>
+          <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        Appearance
+      </button>
+      <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
+    </>
+  )
+
   // ── Loading ──────────────────────────────────────────────────────────────
   if (phase === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <div className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <StethoscopeIcon size={24} />
+      <>
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+            <div className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <StethoscopeIcon size={24} />
+            </div>
+            <p className="text-sm">Loading assessment…</p>
           </div>
-          <p className="text-sm">Loading assessment…</p>
         </div>
-      </div>
+        {themeOverlay}
+      </>
     )
   }
 
   // ── Unavailable ──────────────────────────────────────────────────────────
   if (phase === "unavailable") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm text-center space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-            <AlertTriangleIcon size={28} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Assessment Unavailable</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              This assessment link is no longer active. Contact your instructor for more information.
-            </p>
+      <>
+        <div className="flex min-h-screen items-center justify-center bg-background p-4">
+          <div className="w-full max-w-sm text-center space-y-4">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+              <AlertTriangleIcon size={28} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Assessment Unavailable</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                This assessment link is no longer active. Contact your instructor for more information.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+        {themeOverlay}
+      </>
     )
   }
 
@@ -234,26 +258,30 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
   if (phase === "results" && result && assessment) {
     if (showReview) {
       return (
-        <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-3xl">
-            <AssessmentReview
-              questions={result.questions}
-              answers={result.answers}
-              score={result.score}
-              total={result.total}
-              percentage={result.percentage}
-              passed={result.passed}
-              passMark={assessment.passMark}
-              title={assessment.title}
-              userName={guestName.trim()}
-              onClose={() => setShowReview(false)}
-            />
+        <>
+          <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
+            <div className="mx-auto max-w-3xl">
+              <AssessmentReview
+                questions={result.questions}
+                answers={result.answers}
+                score={result.score}
+                total={result.total}
+                percentage={result.percentage}
+                passed={result.passed}
+                passMark={assessment.passMark}
+                title={assessment.title}
+                userName={guestName.trim()}
+                onClose={() => setShowReview(false)}
+              />
+            </div>
           </div>
-        </div>
+          {themeOverlay}
+        </>
       )
     }
 
     return (
+      <>
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm space-y-5">
           <div className="text-center">
@@ -321,11 +349,14 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
           <p className="text-center text-xs text-muted-foreground">Powered by MedNexus</p>
         </div>
       </div>
+      {themeOverlay}
+      </>
     )
   }
 
   // ── Name entry ────────────────────────────────────────────────────────────
   return (
+    <>
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
@@ -389,6 +420,8 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         </div>
       </div>
     </div>
+    {themeOverlay}
+    </>
   )
 }
 
