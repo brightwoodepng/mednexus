@@ -33,6 +33,34 @@ interface DashboardProps {
   onReadyForQuiz: (config: QuizReadyConfig) => void
   onOpenModules: (module?: string) => void
   onOpenWeakAreas: () => void
+  onOpenLiveAssessments: () => void
+}
+
+interface LiveAssessment {
+  id: string
+  title: string
+  timeLimitMins: number
+  questionCount: number
+  status: string
+}
+
+function useLiveAssessments() {
+  const [liveExams, setLiveExams] = useState<LiveAssessment[]>([])
+  useEffect(() => {
+    async function check() {
+      try {
+        const res = await fetch("/api/assessments")
+        if (res.ok) {
+          const data = await res.json()
+          setLiveExams((data.assessments ?? []).filter((a: LiveAssessment) => a.status === "live"))
+        }
+      } catch {}
+    }
+    check()
+    const id = setInterval(check, 30_000)
+    return () => clearInterval(id)
+  }, [])
+  return liveExams
 }
 
 function useGreeting() {
@@ -78,10 +106,11 @@ const CARD_PALETTES = [
   { ring: "hover:ring-orange-400/50",  icon: "bg-orange-100 text-orange-600",   bar: "#f97316" },
 ]
 
-export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas }: DashboardProps) {
+export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOpenLiveAssessments }: DashboardProps) {
   const { user, progress } = useApp()
   const { globalMode } = useStudyMode()
   const greeting = useGreeting()
+  const liveExams = useLiveAssessments()
 
   const firstName = user?.name?.split(" ").pop() ?? "Clinician"
   const motivation = MOTIVATIONS[new Date().getDate() % MOTIVATIONS.length]
@@ -102,6 +131,43 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas }: Da
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
+
+      {/* Live Assessment Banner */}
+      {liveExams.length > 0 && (
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-400/40 bg-emerald-500 px-5 py-4 shadow-lg sm:rounded-3xl sm:px-6 sm:py-5">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute -bottom-8 right-24 h-20 w-20 rounded-full bg-white/8" />
+          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                </span>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">Live Now</p>
+                {liveExams.map((exam) => (
+                  <p key={exam.id} className="text-base font-bold text-white leading-snug">{exam.title}</p>
+                ))}
+                <p className="mt-0.5 text-xs text-white/70">
+                  {liveExams[0].questionCount} questions · {liveExams[0].timeLimitMins} min
+                  {liveExams.length > 1 && ` · +${liveExams.length - 1} more`}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenLiveAssessments}
+              className="shrink-0 flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-emerald-700 shadow-sm hover:bg-white/90 transition-colors"
+            >
+              Join Now
+              <ArrowRightIcon size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl bg-primary px-5 py-5 text-primary-foreground shadow-lg sm:rounded-3xl sm:px-8 sm:py-8">
         <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
