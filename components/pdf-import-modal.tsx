@@ -320,11 +320,11 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
   const src = parseSource ? sourceLabel[parseSource] : null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-      <div className="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+    <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="glass-modal flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
 
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
+        <div className="glass-modal-header flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-foreground">

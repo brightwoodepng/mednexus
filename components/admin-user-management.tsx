@@ -27,8 +27,8 @@ function OtpModal({ otp, userName, onClose }: { otp: string; userName: string; o
     navigator.clipboard.writeText(otp).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+    <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="glass-modal w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={22} height={22}>
             <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -61,8 +61,8 @@ function OtpModal({ otp, userName, onClose }: { otp: string; userName: string; o
 
 function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+    <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="glass-modal w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={22} height={22}>
             <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
