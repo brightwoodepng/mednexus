@@ -525,7 +525,7 @@ export function MedNexusApp() {
 
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-8" onClick={() => { if (!sidebarCollapsed) setSidebarCollapsed(true) }}>
           {safeScreen === "dashboard" && (
-            <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} />
+            <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
           )}
           {safeScreen === "modules" && <ModulesScreen onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} />}

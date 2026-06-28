@@ -1477,7 +1477,8 @@ function MedNexusApp() {
                                     setModulesInitialModule(mod ?? null);
                                     setScreen("modules");
                                 },
-                                onOpenWeakAreas: ()=>setScreen("weak-areas")
+                                onOpenWeakAreas: ()=>setScreen("weak-areas"),
+                                onOpenLiveAssessments: ()=>setScreen("live-assessments")
                             }, void 0, false, {
                                 fileName: "[project]/components/mednexus-app.tsx",
                                 lineNumber: 528,
