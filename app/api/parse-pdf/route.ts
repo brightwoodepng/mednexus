@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-export const maxDuration = 30
-
-// POST /api/parse-pdf
-// Body: { text: string, moduleName?: string }
-// Returns: { questions: ParsedQuestion[] }
+export const maxDuration = 45
 
 interface ParsedQuestion {
   subject: string
@@ -18,40 +14,32 @@ interface ParsedQuestion {
   }
 }
 
-// ── Regex-based MCQ parser ────────────────────────────────────────────────────
-// Handles common formats found in medical MCQ PDFs.
-
+// ── Text cleaning ─────────────────────────────────────────────────────────────
 function cleanText(t: string): string {
   return t
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
+    .replace(/\r\n/g, "\n").replace(/\r/g, "\n")
     .replace(/[ \t]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
+    .replace(/--- Page Break ---/gi, "\n")
+    .replace(/\n{4,}/g, "\n\n\n")
     .trim()
 }
 
+// ── Regex-based MCQ parser ────────────────────────────────────────────────────
 function parseQuestions(raw: string, defaultSubject: string): ParsedQuestion[] {
   const text = cleanText(raw)
   const results: ParsedQuestion[] = []
 
-  // Split on question boundaries. Matches:
-  //   1. / Q1. / Question 1 / Q1: / 1) at line start
-  const qSplitter = /(?:^|\n)(?:Question\s+|Q\.?\s*)?(\d{1,3})[.):\s]/gm
+  // Split on question boundaries: "1." / "1)" / "(1)" / "Q1." / "Q1)" / "Question 1"
+  const qSplitter = /(?:^|\n)[ \t]*(?:Question\s+|Q\.?\s*)?(\d{1,3})[.):\s][ \t]*\S/gm
   const boundaries: number[] = []
   let m: RegExpExecArray | null
   while ((m = qSplitter.exec(text)) !== null) {
-    boundaries.push(m.index)
+    boundaries.push(m.index === 0 ? 0 : m.index + 1)
   }
   if (boundaries.length === 0) return results
 
-  const blocks: string[] = []
   for (let i = 0; i < boundaries.length; i++) {
-    const start = boundaries[i]
-    const end = i + 1 < boundaries.length ? boundaries[i + 1] : text.length
-    blocks.push(text.slice(start, end).trim())
-  }
-
-  for (const block of blocks) {
+    const block = text.slice(boundaries[i], i + 1 < boundaries.length ? boundaries[i + 1] : text.length).trim()
     const q = parseBlock(block, defaultSubject)
     if (q) results.push(q)
   }
@@ -63,99 +51,78 @@ function parseBlock(block: string, defaultSubject: string): ParsedQuestion | nul
   const lines = block.split("\n").map((l) => l.trim()).filter(Boolean)
   if (lines.length < 3) return null
 
-  // Strip leading question number from first line
   const vignetteLines: string[] = []
-  const optionLines: string[] = []
+  const options: { id: string; text: string }[] = []
   let answerLine = ""
-  let explanationLines: string[] = []
+  const explanationLines: string[] = []
   let inExplanation = false
   let inOptions = false
 
-  // Option patterns: A. / A) / (A) / A: / A -
-  const optPattern = /^([A-Ea-e])[.):\-\s]\s+(.+)$/
-  // Answer patterns
-  const answerPattern = /^(?:answer|correct\s+answer|key|ans)[.:\s]*([A-Ea-e])/i
-  // Explanation patterns
-  const explPattern = /^(?:explanation|rationale|discussion|reason|solution|note)[.:\s]/i
+  // Option: A. / A) / (A) / A: / A -  followed by text
+  const optPattern = /^(?:\(([A-Ea-e])\)|([A-Ea-e])[.):\-])[ \t]*(.+)$/
+  // Answer line
+  const answerPattern = /^(?:correct[\s_]?answer|answer|ans(?:wer)?|key)[\s.:—-]*([A-Ea-e])\b/i
+  // Explanation header
+  const explPattern = /^(?:explanation|rationale|discussion|reason|solution|note)[.:\s—-]/i
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
 
-    if (inExplanation) {
-      explanationLines.push(line)
-      continue
-    }
+    if (inExplanation) { explanationLines.push(line); continue }
 
-    // Check for answer line
-    const ansMath = line.match(answerPattern)
-    if (ansMath) {
-      answerLine = ansMath[1].toUpperCase()
-      inExplanation = false
-      continue
-    }
+    const ansM = line.match(answerPattern)
+    if (ansM) { answerLine = ansM[1].toUpperCase(); inExplanation = false; continue }
 
-    // Check for explanation header
     if (explPattern.test(line)) {
       inExplanation = true
-      // Include rest of line after the header word
       const rest = line.replace(explPattern, "").trim()
       if (rest) explanationLines.push(rest)
       continue
     }
 
-    // Check for option
-    const optMatch = line.match(optPattern)
-    if (optMatch) {
+    const optM = line.match(optPattern)
+    if (optM) {
       inOptions = true
-      optionLines.push(line)
+      const id = (optM[1] ?? optM[2]).toUpperCase()
+      const text = optM[3].trim()
+      // Avoid duplicate IDs
+      if (!options.find((o) => o.id === id)) options.push({ id, text })
       continue
     }
 
-    // Everything before options is vignette
+    // Option continuation: indented line after an option, no new pattern matched
+    if (inOptions && options.length > 0 && !line.match(/^(?:Question\s+|Q\.?\s*)?\d{1,3}[.):\s]/)) {
+      // Only append if not a new question boundary
+      options[options.length - 1].text += " " + line
+      continue
+    }
+
     if (!inOptions) {
-      // Strip leading question number
       const cleaned = line.replace(/^(?:Question\s+|Q\.?\s*)?\d{1,3}[.):\s]+/, "").trim()
       if (cleaned) vignetteLines.push(cleaned)
     }
   }
 
-  if (vignetteLines.length === 0 || optionLines.length < 2) return null
+  if (vignetteLines.length === 0 || options.length < 2) return null
 
-  // Parse options
-  const options: { id: string; text: string }[] = []
-  for (const ol of optionLines) {
-    const om = ol.match(optPattern)
-    if (om) options.push({ id: om[1].toUpperCase(), text: om[2].trim() })
-  }
-
-  if (options.length < 2) return null
-
-  // Determine correct answer — fallback to first option if not found
   const correctAnswer = answerLine || options[0].id
-
-  // Build explanation
+  const vignetteText = vignetteLines.join(" ").trim()
   const explText = explanationLines.join(" ").trim()
 
-  // Try to split explanation into objective / details / incorrectReasoning
   let objective = ""
   let details = explText
   let incorrectReasoning = ""
 
-  // If explanation mentions "incorrect" or distractor reasoning, split there
-  const incorrectIdx = explText.search(/incorrect|distractor|wrong choice|other option/i)
+  const incorrectIdx = explText.search(/\b(?:incorrect|distractor|wrong choice|other option|whereas)\b/i)
   if (incorrectIdx > 50) {
     details = explText.slice(0, incorrectIdx).trim()
     incorrectReasoning = explText.slice(incorrectIdx).trim()
   }
 
-  // Derive objective from vignette: first sentence or first 100 chars
-  const vignetteText = vignetteLines.join(" ")
-  const firstSentenceEnd = vignetteText.search(/[.?!]/)
-  if (firstSentenceEnd > 20 && firstSentenceEnd < 150) {
-    objective = vignetteText.slice(0, firstSentenceEnd + 1).trim()
-  } else {
-    objective = vignetteText.slice(0, Math.min(120, vignetteText.length)).trim()
-  }
+  const firstSentEnd = vignetteText.search(/[.?!]/)
+  objective = firstSentEnd > 20 && firstSentEnd < 160
+    ? vignetteText.slice(0, firstSentEnd + 1).trim()
+    : vignetteText.slice(0, 120).trim()
 
   return {
     subject: defaultSubject,
@@ -164,71 +131,91 @@ function parseBlock(block: string, defaultSubject: string): ParsedQuestion | nul
     correctAnswer,
     explanation: {
       objective: objective || "Clinical reasoning question.",
-      details: details || "See explanation above.",
-      incorrectReasoning: incorrectReasoning || "",
+      details: details || "See explanation.",
+      incorrectReasoning,
     },
   }
 }
 
-// ── OpenAI-enhanced parsing (used if key is available) ────────────────────────
-async function parseWithAI(
-  text: string,
-  moduleName: string,
-): Promise<ParsedQuestion[] | null> {
+// ── JSON extraction (handles raw JSON or ```json fences) ─────────────────────
+function extractJson(raw: string): unknown {
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]+?)```/)
+  const candidate = fenceMatch ? fenceMatch[1] : raw
+  return JSON.parse(candidate.trim())
+}
+
+// ── OpenAI-enhanced parsing ───────────────────────────────────────────────────
+async function parseWithAI(text: string, moduleName: string): Promise<ParsedQuestion[] | null> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return null
+
+  // Send up to 20 000 chars; if longer, take first 10 000 + last 10 000 so we
+  // capture both early and late questions in long PDFs
+  let excerpt = text
+  if (text.length > 20000) {
+    excerpt = text.slice(0, 10000) + "\n\n[...middle truncated...]\n\n" + text.slice(-10000)
+  }
 
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: "gpt-4o-mini",
         temperature: 0,
-        max_tokens: 4096,
+        max_tokens: 8000,
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content: `You are a medical education assistant. Extract all MCQ questions from the given text and return a JSON array.
+            content: `You are a medical education data extractor. Parse all MCQ questions from the supplied text and return a JSON object with a single key "questions" whose value is an array.
 
-Each question must match this TypeScript interface:
+Each element must exactly match:
 {
-  subject: string,            // use the provided module name
-  vignette: string,           // the full question stem / clinical vignette
-  options: { id: string, text: string }[],  // A, B, C, D (and optionally E)
-  correctAnswer: string,      // single letter: "A" | "B" | "C" | "D" | "E"
-  explanation: {
-    objective: string,        // 1 sentence: what concept is tested
-    details: string,          // why the correct answer is correct
-    incorrectReasoning: string // why the distractors are wrong
+  "subject": string,          // discipline or topic from context; use "${moduleName}" if unknown
+  "vignette": string,         // full question stem — preserve clinical detail
+  "options": [{ "id": "A", "text": "..." }, ...],  // A-E only
+  "correctAnswer": "A",       // single uppercase letter
+  "explanation": {
+    "objective": string,      // ≤1 sentence: what concept is tested
+    "details": string,        // why the correct answer is right
+    "incorrectReasoning": string  // why each distractor is wrong (can be empty "")
   }
 }
 
-Return ONLY a valid JSON array. No markdown, no code fences, no extra text.`,
+Rules:
+- Return ONLY the JSON object — no markdown, no preamble.
+- If a question has no explanation in the source text, set details to "" and incorrectReasoning to "".
+- If the correct answer is not stated, infer it from context if possible; otherwise use "A".
+- Preserve the complete clinical vignette — do not truncate.
+- Ignore page headers, footers, and page numbers.`,
           },
           {
             role: "user",
-            content: `Module name: ${moduleName}\n\nText to parse:\n\n${text.slice(0, 12000)}`,
+            content: `Module: ${moduleName}\n\nText:\n${excerpt}`,
           },
         ],
       }),
     })
 
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error("[parse-pdf AI] HTTP", res.status, await res.text())
+      return null
+    }
+
     const data = await res.json()
-    const content = data.choices?.[0]?.message?.content ?? ""
-    const parsed = JSON.parse(content)
-    if (Array.isArray(parsed)) return parsed as ParsedQuestion[]
-  } catch {
-    return null
+    const content: string = data.choices?.[0]?.message?.content ?? ""
+    const parsed = extractJson(content) as { questions?: ParsedQuestion[] }
+    if (Array.isArray(parsed)) return parsed
+    if (Array.isArray(parsed?.questions)) return parsed.questions
+  } catch (err) {
+    console.error("[parse-pdf AI] parse error", err)
   }
 
   return null
 }
 
+// ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const { text, moduleName = "Imported Module" } = await req.json()
@@ -236,17 +223,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "text is required" }, { status: 400 })
     }
 
-    // Try AI-enhanced parsing first (only if OPENAI_API_KEY is set)
     const aiResult = await parseWithAI(text, moduleName)
     if (aiResult && aiResult.length > 0) {
       return NextResponse.json({ questions: aiResult, source: "ai" })
     }
 
-    // Fall back to regex parser
     const questions = parseQuestions(text, moduleName)
     return NextResponse.json({ questions, source: "regex" })
   } catch (err) {
-    console.error("parse-pdf error:", err)
+    console.error("[parse-pdf]", err)
     return NextResponse.json({ error: "Parse failed" }, { status: 500 })
   }
 }

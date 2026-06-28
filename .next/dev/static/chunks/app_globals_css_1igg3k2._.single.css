@@ -1877,6 +1877,14 @@
     margin-block: var(--spacing);
   }
 
+  .my-1\.5 {
+    margin-block: calc(var(--spacing) * 1.5);
+  }
+
+  .my-2 {
+    margin-block: calc(var(--spacing) * 2);
+  }
+
   .my-16 {
     margin-block: calc(var(--spacing) * 16);
   }
@@ -5751,6 +5759,16 @@
     background-color: var(--sidebar-primary);
   }
 
+  .bg-sidebar-primary\/90 {
+    background-color: var(--sidebar-primary);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-sidebar-primary\/90 {
+      background-color: color-mix(in oklab, var(--sidebar-primary) 90%, transparent);
+    }
+  }
+
   .bg-sky-50 {
     background-color: var(--color-sky-50);
   }
@@ -6651,6 +6669,10 @@
 
   .pt-0 {
     padding-top: 0;
+  }
+
+  .pt-0\.5 {
+    padding-top: calc(var(--spacing) * .5);
   }
 
   .pt-1 {
@@ -7590,6 +7612,36 @@
     color: var(--sidebar-foreground);
   }
 
+  .text-sidebar-foreground\/50 {
+    color: var(--sidebar-foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-sidebar-foreground\/50 {
+      color: color-mix(in oklab, var(--sidebar-foreground) 50%, transparent);
+    }
+  }
+
+  .text-sidebar-foreground\/55 {
+    color: var(--sidebar-foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-sidebar-foreground\/55 {
+      color: color-mix(in oklab, var(--sidebar-foreground) 55%, transparent);
+    }
+  }
+
+  .text-sidebar-foreground\/60 {
+    color: var(--sidebar-foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-sidebar-foreground\/60 {
+      color: color-mix(in oklab, var(--sidebar-foreground) 60%, transparent);
+    }
+  }
+
   .text-sidebar-foreground\/70 {
     color: var(--sidebar-foreground);
   }
@@ -7597,6 +7649,16 @@
   @supports (color: color-mix(in lab, red, red)) {
     .text-sidebar-foreground\/70 {
       color: color-mix(in oklab, var(--sidebar-foreground) 70%, transparent);
+    }
+  }
+
+  .text-sidebar-foreground\/80 {
+    color: var(--sidebar-foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .text-sidebar-foreground\/80 {
+      color: color-mix(in oklab, var(--sidebar-foreground) 80%, transparent);
     }
   }
 
@@ -7626,6 +7688,10 @@
 
   .text-success-foreground {
     color: var(--success-foreground);
+  }
+
+  .text-violet-500 {
+    color: var(--color-violet-500);
   }
 
   .text-violet-600 {
@@ -10507,6 +10573,12 @@
   @media (hover: hover) {
     .hover\:text-sidebar-accent-foreground:hover {
       color: var(--sidebar-accent-foreground);
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:text-sidebar-foreground:hover {
+      color: var(--sidebar-foreground);
     }
   }
 
@@ -15748,6 +15820,70 @@
 
   [data-variant="legend"] + .\[\[data-variant\=legend\]\+\&\]\:-mt-1\.5 {
     margin-top: calc(var(--spacing) * -1.5);
+  }
+
+  .glass-sidebar {
+    background: var(--sidebar);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .glass-sidebar {
+      background: color-mix(in oklch, var(--sidebar) 68%, transparent);
+    }
+  }
+
+  .glass-sidebar {
+    -webkit-backdrop-filter: blur(40px) saturate(170%);
+    border-right: 1px solid #ffffff2e;
+    box-shadow: inset -1px 0 #ffffff0f, 6px 0 32px #0000000f;
+  }
+
+  .glass-pill-active {
+    background: var(--sidebar-accent);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .glass-pill-active {
+      background: color-mix(in oklch, var(--sidebar-accent) 55%, transparent);
+    }
+  }
+
+  .glass-pill-active {
+    border: 1px solid #ffffff38;
+    box-shadow: inset 0 1.5px #ffffff61, inset 0 -1px #0000000f, 0 3px 12px #00000017;
+  }
+
+  .glass-pill-hover {
+    border: 1px solid #0000;
+    transition: background .13s, box-shadow .13s, border-color .13s;
+  }
+
+  .glass-pill-hover:hover {
+    background: var(--sidebar-accent);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .glass-pill-hover:hover {
+      background: color-mix(in oklch, var(--sidebar-accent) 35%, transparent);
+    }
+  }
+
+  .glass-pill-hover:hover {
+    border-color: #ffffff24;
+    box-shadow: inset 0 1px #ffffff38;
+  }
+
+  .glass-card {
+    -webkit-backdrop-filter: blur(14px);
+    background: #ffffff17;
+    background: lab(100% 0 0 / .09);
+    border: 1px solid #ffffff2e;
+    box-shadow: inset 0 1.5px #ffffff4d, 0 2px 10px #0000000f;
+  }
+
+  .glass-divider {
+    background: #ffffff21;
+    border: none;
   }
 }
 
