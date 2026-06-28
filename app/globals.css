@@ -539,10 +539,10 @@
 @layer utilities {
   /* ── Sidebar panel ── */
   .glass-sidebar {
-    background: color-mix(in oklch, var(--sidebar) 68%, transparent);
-    backdrop-filter: blur(40px) saturate(170%);
-    -webkit-backdrop-filter: blur(40px) saturate(170%);
-    border-right: 1px solid rgba(255, 255, 255, 0.18);
+    background: color-mix(in oklch, var(--sidebar) 78%, transparent);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow:
       inset -1px 0 0 rgba(255, 255, 255, 0.06),
       6px 0 32px rgba(0, 0, 0, 0.06);
@@ -550,7 +550,7 @@
 
   /* ── Active nav capsule ── */
   .glass-pill-active {
-    background: color-mix(in oklch, var(--sidebar-accent) 55%, transparent);
+    background: color-mix(in oklch, var(--sidebar-accent) 65%, transparent);
     border: 1px solid rgba(255, 255, 255, 0.22);
     box-shadow:
       inset 0 1.5px 0 rgba(255, 255, 255, 0.38),
@@ -564,14 +564,14 @@
     transition: background 130ms ease, box-shadow 130ms ease, border-color 130ms ease;
   }
   .glass-pill-hover:hover {
-    background: color-mix(in oklch, var(--sidebar-accent) 35%, transparent);
+    background: color-mix(in oklch, var(--sidebar-accent) 45%, transparent);
     border-color: rgba(255, 255, 255, 0.14);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
 
   /* ── Glass card (user info, admin panel) ── */
   .glass-card {
-    background: color-mix(in oklch, white 9%, transparent);
+    background: color-mix(in oklch, white 12%, transparent);
     border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow:
       inset 0 1.5px 0 rgba(255, 255, 255, 0.3),
@@ -588,41 +588,41 @@
 
   /* ── Modal overlay ── */
   [data-glass="true"] .glass-modal-overlay {
-    background: color-mix(in oklch, var(--foreground) 22%, transparent);
-    backdrop-filter: blur(10px) saturate(150%);
-    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    background: color-mix(in oklch, var(--foreground) 20%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   /* ── Modal panel ── */
   [data-glass="true"] .glass-modal {
-    background: color-mix(in oklch, var(--card) 60%, transparent);
-    backdrop-filter: blur(36px) saturate(165%);
-    -webkit-backdrop-filter: blur(36px) saturate(165%);
+    background: color-mix(in oklch, var(--card) 82%, transparent);
+    backdrop-filter: blur(36px);
+    -webkit-backdrop-filter: blur(36px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow:
       inset 0 1.5px 0 rgba(255, 255, 255, 0.3),
       inset 0 -1px 0 rgba(0, 0, 0, 0.04),
-      0 28px 72px rgba(0, 0, 0, 0.2);
+      0 28px 72px rgba(0, 0, 0, 0.18);
   }
 
   /* ── Modal sticky header ── */
   [data-glass="true"] .glass-modal-header {
-    background: color-mix(in oklch, var(--card) 42%, transparent);
+    background: color-mix(in oklch, var(--card) 72%, transparent);
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-    backdrop-filter: blur(24px) saturate(150%);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
   }
 
   /* ── Glass auth card (landing page & exam page panels) ── */
   .glass-auth-card {
-    background: color-mix(in oklch, var(--card) 58%, transparent);
-    backdrop-filter: blur(32px) saturate(160%);
-    -webkit-backdrop-filter: blur(32px) saturate(160%);
+    background: color-mix(in oklch, var(--card) 80%, transparent);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
     border: 1px solid rgba(255, 255, 255, 0.22);
     box-shadow:
       inset 0 1.5px 0 rgba(255, 255, 255, 0.32),
       inset 0 -1px 0 rgba(0, 0, 0, 0.04),
-      0 20px 60px rgba(0, 0, 0, 0.14);
+      0 16px 48px rgba(0, 0, 0, 0.1);
   }
 }
 
