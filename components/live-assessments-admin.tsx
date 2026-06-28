@@ -62,9 +62,9 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
   const labelCls = "block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+    <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="glass-modal w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
+        <div className="glass-modal-header flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="font-bold text-foreground">New Assessment</h2>
           <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
             <XIcon size={15} />
@@ -250,9 +250,9 @@ function AnalyticsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4 shrink-0">
+    <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="glass-modal w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="glass-modal-header flex items-center justify-between border-b border-border px-5 py-4 shrink-0">
           <div>
             <h2 className="font-bold text-foreground">Analytics</h2>
             <p className="text-xs text-muted-foreground truncate max-w-72">{assessment.title}</p>

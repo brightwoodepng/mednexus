@@ -46,10 +46,10 @@ export function AdminLoginModal({ onClose }: AdminLoginModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl">
+    <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="glass-modal w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="glass-modal-header flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
               <DatabaseIcon size={18} />
