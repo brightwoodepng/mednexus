@@ -70,9 +70,9 @@ function Footer() {
 }
 
 // ── Role Picker ──────────────────────────────────────────────────────────────
-function RoleSelect({ onSelect }: { onSelect: (tab: "guest" | "student" | "admin") => void }) {
+function RoleSelect({ onSelect, glass }: { onSelect: (tab: "guest" | "student" | "admin") => void; glass: boolean }) {
   return (
-    <div className="rounded-3xl border border-border bg-card p-7 shadow-2xl">
+    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glass ? "glass-auth-card" : ""}`}>
       <h2 className="mb-1 text-xl font-semibold tracking-tight">Welcome</h2>
       <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
         Choose how you want to access MedNexus.
@@ -142,6 +142,7 @@ function RoleSelect({ onSelect }: { onSelect: (tab: "guest" | "student" | "admin
 // ── Guest Form ────────────────────────────────────────────────────────────────
 function GuestForm({ onBack }: { onBack: () => void }) {
   const { enterApp } = useApp()
+  const { glassEnabled } = useTheme()
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -153,7 +154,7 @@ function GuestForm({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-7 shadow-2xl">
+    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glassEnabled ? "glass-auth-card" : ""}`}>
       <BackButton onClick={onBack} />
       <h2 className="mb-1 text-xl font-semibold tracking-tight">Guest Access</h2>
       <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
@@ -189,9 +190,10 @@ function GuestForm({ onBack }: { onBack: () => void }) {
 // ── Student Form (Login + Register toggled) ───────────────────────────────────
 function StudentForm({ onBack }: { onBack: () => void }) {
   const [mode, setMode] = useState<"login" | "register">("login")
+  const { glassEnabled } = useTheme()
 
   return (
-    <div className="rounded-3xl border border-border bg-card shadow-2xl overflow-hidden">
+    <div className={`rounded-3xl border border-border bg-card shadow-2xl overflow-hidden ${glassEnabled ? "glass-auth-card" : ""}`}>
       {/* Tab toggle */}
       <div className="flex border-b border-border">
         <button
@@ -551,6 +553,7 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
 // ── Admin Access Form ─────────────────────────────────────────────────────────
 function AdminForm({ onBack }: { onBack: () => void }) {
   const { loginAdmin } = useAdmin()
+  const { glassEnabled } = useTheme()
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -567,7 +570,7 @@ function AdminForm({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-7 shadow-2xl">
+    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glassEnabled ? "glass-auth-card" : ""}`}>
       <BackButton onClick={onBack} />
       <div className="mb-5 flex items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
@@ -624,12 +627,12 @@ function AdminForm({ onBack }: { onBack: () => void }) {
 
 // ── Theme Picker ──────────────────────────────────────────────────────────────
 function LandingThemePicker({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, glassEnabled } = useTheme()
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
       <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" />
-      <div className="relative w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-2xl">
+      <div className={`animate-ios-sheet relative w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-2xl ${glassEnabled ? "glass-auth-card" : ""}`}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-base font-semibold">Choose Theme</h3>
           <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
@@ -665,6 +668,7 @@ function LandingThemePicker({ open, onClose }: { open: boolean; onClose: () => v
 export function AuthScreen() {
   const [view, setView] = useState<"role-select" | "guest" | "student" | "admin">("role-select")
   const [themeOpen, setThemeOpen] = useState(false)
+  const { glassEnabled } = useTheme()
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-5 py-12 safe-area-inset">
@@ -682,7 +686,7 @@ export function AuthScreen() {
 
       <div className="w-full max-w-sm">
         <Brand />
-        {view === "role-select" && <RoleSelect onSelect={setView} />}
+        {view === "role-select" && <RoleSelect onSelect={setView} glass={glassEnabled} />}
         {view === "guest" && <GuestForm onBack={() => setView("role-select")} />}
         {view === "student" && <StudentForm onBack={() => setView("role-select")} />}
         {view === "admin" && <AdminForm onBack={() => setView("role-select")} />}

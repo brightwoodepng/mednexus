@@ -58,9 +58,6 @@ export function ThemeModal({ open, onClose }: ThemeModalProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold">Liquid Glass</p>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
-                iOS 26
-              </span>
               {glassEnabled && (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
                   <CheckIcon size={10} /> On

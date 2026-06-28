@@ -5,6 +5,7 @@ import type { Question, LiveAssessment } from "@/lib/types"
 import { AssessmentExamRunner } from "@/components/assessment-exam-runner"
 import { AssessmentReview } from "@/components/assessment-review"
 import { StethoscopeIcon, ClockIcon, AlertTriangleIcon, CheckIcon, TrophyIcon, RefreshCwIcon } from "@/components/icons"
+import { ThemeProvider } from "@/contexts/theme-context"
 
 type Phase = "loading" | "unavailable" | "name-entry" | "exam" | "results"
 
@@ -48,7 +49,7 @@ function loadAttempt(token: string): StoredAttempt | null {
   } catch { return null }
 }
 
-export default function GuestExamPage({ params }: { params: Promise<{ token: string }> }) {
+function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
 
   const [phase, setPhase] = useState<Phase>("loading")
@@ -388,5 +389,13 @@ export default function GuestExamPage({ params }: { params: Promise<{ token: str
         </div>
       </div>
     </div>
+  )
+}
+
+export default function GuestExamPage({ params }: { params: Promise<{ token: string }> }) {
+  return (
+    <ThemeProvider>
+      <GuestExamPageInner params={params} />
+    </ThemeProvider>
   )
 }
