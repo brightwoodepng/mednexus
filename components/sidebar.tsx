@@ -89,6 +89,22 @@ export function Sidebar({
     [progress.history],
   )
 
+  const [hasLiveAssessment, setHasLiveAssessment] = useState(false)
+  useEffect(() => {
+    async function checkLive() {
+      try {
+        const res = await fetch("/api/assessments")
+        if (res.ok) {
+          const data = await res.json()
+          setHasLiveAssessment((data.assessments ?? []).some((a: { status: string }) => a.status === "live"))
+        }
+      } catch {}
+    }
+    checkLive()
+    const id = setInterval(checkLive, 30_000)
+    return () => clearInterval(id)
+  }, [])
+
   const fullContent = (
     <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
       <div className="mb-2 flex items-center justify-end px-2 pt-2 shrink-0">
@@ -113,7 +129,7 @@ export function Sidebar({
 
           <NavButton active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getLiveModules().length)} />
           <NavButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
-          <NavButton active={screen === "live-assessments"} onClick={() => nav("live-assessments")} icon={<RadioIcon size={18} />} label="Live Assessments" />
+          <NavButton active={screen === "live-assessments"} onClick={() => nav("live-assessments")} icon={<RadioIcon size={18} />} label="Live Assessments" liveDot={hasLiveAssessment} />
 
           {isAdmin && (
             <>
@@ -198,7 +214,7 @@ export function Sidebar({
 
       <IconButton active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
       <IconButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
-      <IconButton active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments"><RadioIcon size={18} /></IconButton>
+      <IconButton active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
 
       {isAdmin && (
         <>
@@ -236,8 +252,17 @@ export function Sidebar({
   )
 }
 
-function NavButton({ active, onClick, icon, label, badge, adminBadge }: {
-  active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: string; adminBadge?: string
+function LiveDot() {
+  return (
+    <span className="relative flex h-2 w-2 shrink-0">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+    </span>
+  )
+}
+
+function NavButton({ active, onClick, icon, label, badge, adminBadge, liveDot }: {
+  active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: string; adminBadge?: string; liveDot?: boolean
 }) {
   return (
     <button type="button" onClick={onClick}
@@ -245,20 +270,22 @@ function NavButton({ active, onClick, icon, label, badge, adminBadge }: {
     >
       {icon}
       <span className="flex-1 text-left">{label}</span>
+      {liveDot && <LiveDot />}
       {badge && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground tabular-nums">{badge}</span>}
       {adminBadge && <span className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-400">{adminBadge}</span>}
     </button>
   )
 }
 
-function IconButton({ active, onClick, label, children }: {
-  active: boolean; onClick: () => void; label: string; children: React.ReactNode
+function IconButton({ active, onClick, label, children, liveDot }: {
+  active: boolean; onClick: () => void; label: string; children: React.ReactNode; liveDot?: boolean
 }) {
   return (
     <button type="button" onClick={onClick} title={label} aria-label={label}
-      className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${active ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+      className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${active ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
     >
       {children}
+      {liveDot && <span className="absolute top-1 right-1 flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" /></span>}
     </button>
   )
 }

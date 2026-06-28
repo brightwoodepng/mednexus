@@ -1921,6 +1921,10 @@
     margin-top: calc(var(--spacing) * 6);
   }
 
+  .mt-8 {
+    margin-top: calc(var(--spacing) * 8);
+  }
+
   .mt-24 {
     margin-top: calc(var(--spacing) * 24);
   }
@@ -3525,6 +3529,10 @@
     animation: exit var(--tw-animation-duration, var(--tw-duration, .15s))var(--tw-ease, ease)var(--tw-animation-delay, 0s)var(--tw-animation-iteration-count, 1)var(--tw-animation-direction, normal)var(--tw-animation-fill-mode, none);
   }
 
+  .animate-ping {
+    animation: var(--animate-ping);
+  }
+
   .animate-pulse {
     animation: var(--animate-pulse);
   }
@@ -4086,6 +4094,10 @@
     gap: calc(var(--spacing) * 3);
   }
 
+  .gap-3\.5 {
+    gap: calc(var(--spacing) * 3.5);
+  }
+
   .gap-4 {
     gap: calc(var(--spacing) * 4);
   }
@@ -4498,6 +4510,11 @@
     border-bottom-left-radius: .25rem;
   }
 
+  .rounded-l-full {
+    border-top-left-radius: 3.40282e38px;
+    border-bottom-left-radius: 3.40282e38px;
+  }
+
   .rounded-l-md {
     border-top-left-radius: calc(var(--radius) * .8);
     border-bottom-left-radius: calc(var(--radius) * .8);
@@ -4514,6 +4531,11 @@
   .rounded-r {
     border-top-right-radius: .25rem;
     border-bottom-right-radius: .25rem;
+  }
+
+  .rounded-r-full {
+    border-top-right-radius: 3.40282e38px;
+    border-bottom-right-radius: 3.40282e38px;
   }
 
   .rounded-r-md {
@@ -4904,6 +4926,16 @@
     }
   }
 
+  .border-primary\/30 {
+    border-color: var(--primary);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .border-primary\/30 {
+      border-color: color-mix(in oklab, var(--primary) 30%, transparent);
+    }
+  }
+
   .border-primary\/40 {
     border-color: var(--primary);
   }
@@ -5012,6 +5044,10 @@
 
   .bg-\[\#0D101E\] {
     background-color: #0d101e;
+  }
+
+  .bg-\[\#25D366\] {
+    background-color: #25d366;
   }
 
   .bg-\[\#0088cc\] {
@@ -5197,6 +5233,16 @@
     background-color: var(--color-blue-200);
   }
 
+  .bg-blue-500\/15 {
+    background-color: #3080ff26;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-blue-500\/15 {
+      background-color: color-mix(in oklab, var(--color-blue-500) 15%, transparent);
+    }
+  }
+
   .bg-blue-800\/10 {
     background-color: #193cb81a;
   }
@@ -5285,8 +5331,22 @@
     background-color: var(--color-emerald-100);
   }
 
+  .bg-emerald-400 {
+    background-color: var(--color-emerald-400);
+  }
+
   .bg-emerald-500 {
     background-color: var(--color-emerald-500);
+  }
+
+  .bg-emerald-500\/15 {
+    background-color: #00bb7f26;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-emerald-500\/15 {
+      background-color: color-mix(in oklab, var(--color-emerald-500) 15%, transparent);
+    }
   }
 
   .bg-emerald-600 {
@@ -5295,6 +5355,16 @@
 
   .bg-foreground {
     background-color: var(--foreground);
+  }
+
+  .bg-foreground\/30 {
+    background-color: var(--foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-foreground\/30 {
+      background-color: color-mix(in oklab, var(--foreground) 30%, transparent);
+    }
   }
 
   .bg-foreground\/40 {
@@ -6641,6 +6711,10 @@
     padding-right: calc(var(--spacing) * 10);
   }
 
+  .pr-11 {
+    padding-right: calc(var(--spacing) * 11);
+  }
+
   .pr-12 {
     padding-right: calc(var(--spacing) * 12);
   }
@@ -6683,6 +6757,10 @@
 
   .pb-8 {
     padding-bottom: calc(var(--spacing) * 8);
+  }
+
+  .pb-10 {
+    padding-bottom: calc(var(--spacing) * 10);
   }
 
   .pb-\[calc\(0\.625rem\+env\(safe-area-inset-bottom\,0px\)\+var\(--bleed\)\)\] {
@@ -7038,9 +7116,19 @@
     font-weight: var(--font-weight-thin);
   }
 
+  .tracking-\[0\.4em\] {
+    --tw-tracking: .4em;
+    letter-spacing: .4em;
+  }
+
   .tracking-\[0\.12em\] {
     --tw-tracking: .12em;
     letter-spacing: .12em;
+  }
+
+  .tracking-\[0\.35em\] {
+    --tw-tracking: .35em;
+    letter-spacing: .35em;
   }
 
   .tracking-tight {
@@ -7176,6 +7264,10 @@
   .\[color\:red\]\/50\! {
     color: #ff000080 !important;
     color: lab(54.2905% 80.8049 69.891 / .5) !important;
+  }
+
+  .text-\[\#25D366\] {
+    color: #25d366;
   }
 
   .text-\[\#ffffff\] {
@@ -9929,6 +10021,18 @@
   }
 
   @media (hover: hover) {
+    .hover\:border-border\/80:hover {
+      border-color: var(--border);
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:border-border\/80:hover {
+        border-color: color-mix(in oklab, var(--border) 80%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
     .hover\:border-primary\/40:hover {
       border-color: var(--primary);
     }
@@ -9961,6 +10065,12 @@
       .hover\:border-rose-400\/70:hover {
         border-color: color-mix(in oklab, var(--color-rose-400) 70%, transparent);
       }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:bg-\[\#20bd5a\]:hover {
+      background-color: #20bd5a;
     }
   }
 
@@ -10182,6 +10292,18 @@
     @supports (color: color-mix(in lab, red, red)) {
       .hover\:bg-primary\/5:hover {
         background-color: color-mix(in oklab, var(--primary) 5%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:bg-primary\/10:hover {
+      background-color: var(--primary);
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-primary\/10:hover {
+        background-color: color-mix(in oklab, var(--primary) 10%, transparent);
       }
     }
   }
@@ -13117,6 +13239,12 @@
   }
 
   @media (min-width: 40rem) {
+    .sm\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 40rem) {
     .sm\:grid-cols-4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
@@ -13143,6 +13271,12 @@
   @media (min-width: 40rem) {
     .sm\:items-end {
       align-items: flex-end;
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .sm\:items-start {
+      align-items: flex-start;
     }
   }
 
@@ -13947,6 +14081,12 @@
   @media (prefers-color-scheme: dark) {
     .dark\:text-blue-300 {
       color: var(--color-blue-300);
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dark\:text-blue-400 {
+      color: var(--color-blue-400);
     }
   }
 
