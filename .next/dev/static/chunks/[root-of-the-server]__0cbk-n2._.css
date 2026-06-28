@@ -15993,6 +15993,51 @@
     background: #ffffff21;
     border: none;
   }
+
+  [data-glass="true"] .glass-modal-overlay {
+    background: var(--foreground);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    [data-glass="true"] .glass-modal-overlay {
+      background: color-mix(in oklch, var(--foreground) 22%, transparent);
+    }
+  }
+
+  [data-glass="true"] .glass-modal-overlay {
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+  }
+
+  [data-glass="true"] .glass-modal {
+    background: var(--card);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    [data-glass="true"] .glass-modal {
+      background: color-mix(in oklch, var(--card) 60%, transparent);
+    }
+  }
+
+  [data-glass="true"] .glass-modal {
+    -webkit-backdrop-filter: blur(36px) saturate(165%);
+    border: 1px solid #fff3;
+    box-shadow: inset 0 1.5px #ffffff4d, inset 0 -1px #0000000a, 0 28px 72px #0003;
+  }
+
+  [data-glass="true"] .glass-modal-header {
+    background: var(--card);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    [data-glass="true"] .glass-modal-header {
+      background: color-mix(in oklch, var(--card) 42%, transparent);
+    }
+  }
+
+  [data-glass="true"] .glass-modal-header {
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border-bottom: 1px solid #ffffff24;
+  }
 }
 
 @property --tw-animation-delay {
