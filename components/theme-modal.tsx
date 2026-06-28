@@ -11,16 +11,81 @@ interface ThemeModalProps {
 }
 
 export function ThemeModal({ open, onClose }: ThemeModalProps) {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, glassEnabled, setGlassEnabled } = useTheme()
 
   const light = THEMES.filter((t) => t.mode === "light")
   const dark = THEMES.filter((t) => t.mode === "dark")
 
   return (
-    <Modal open={open} onClose={onClose} title="Choose a Theme" widthClass="max-w-2xl">
+    <Modal open={open} onClose={onClose} title="Appearance" widthClass="max-w-2xl">
       <p className="mb-6 text-sm text-muted-foreground">
-        Themes apply instantly and are remembered on this device.
+        Choose a theme and visual style. Changes apply instantly and are saved on this device.
       </p>
+
+      {/* Liquid Glass toggle */}
+      <div className="mb-6 overflow-hidden rounded-2xl border border-border">
+        <button
+          type="button"
+          onClick={() => setGlassEnabled(!glassEnabled)}
+          className="flex w-full items-center gap-4 p-4 text-left hover:bg-muted/30 transition-colors"
+        >
+          {/* Glass preview swatch */}
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border shadow-sm"
+            style={{ background: "linear-gradient(135deg, #c9d8f0 0%, #e8f0fa 50%, #d0e8f8 100%)" }}
+          >
+            <div className="absolute inset-0" style={{
+              background: "linear-gradient(160deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.1) 100%)",
+              backdropFilter: "blur(2px)",
+            }} />
+            <div
+              className="absolute left-2 top-2 h-6 w-9 rounded-lg shadow-sm"
+              style={{
+                background: "rgba(255,255,255,0.5)",
+                border: "1px solid rgba(255,255,255,0.7)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8)",
+              }}
+            />
+            <div
+              className="absolute bottom-2 right-2 h-5 w-5 rounded-full"
+              style={{
+                background: "rgba(255,255,255,0.55)",
+                border: "1px solid rgba(255,255,255,0.8)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)",
+              }}
+            />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold">Liquid Glass</p>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                iOS 26
+              </span>
+              {glassEnabled && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                  <CheckIcon size={10} /> On
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground leading-snug">
+              Frosted glass sidebar and cards — works with any theme.
+            </p>
+          </div>
+
+          {/* Toggle pill */}
+          <div
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+              glassEnabled ? "bg-primary" : "bg-muted-foreground/30"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                glassEnabled ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </div>
+        </button>
+      </div>
 
       <ThemeGroup label="☀️  Light" themes={light} active={theme} onSelect={setTheme} />
       <ThemeGroup label="🌙  Dark" themes={dark} active={theme} onSelect={setTheme} />
@@ -61,17 +126,14 @@ function ThemeGroup({
                 className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border shadow-sm"
                 style={{ background: t.swatch.bg }}
               >
-                {/* Simulated card */}
                 <div
                   className="absolute left-2 top-2 h-6 w-9 rounded-lg shadow-sm"
                   style={{ background: t.swatch.surface }}
                 />
-                {/* Primary chip */}
                 <div
                   className="absolute bottom-2 right-2 h-5 w-5 rounded-full shadow"
                   style={{ background: t.swatch.primary }}
                 />
-                {/* Color stripe */}
                 <div
                   className="absolute bottom-0 left-0 right-0 h-1"
                   style={{ background: t.swatch.primary }}

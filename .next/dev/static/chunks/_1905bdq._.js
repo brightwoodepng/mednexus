@@ -2180,30 +2180,6 @@ const THEMES = [
             primary: "#e8429e"
         },
         accent: "#e8429e"
-    },
-    {
-        id: "liquid-glass-light",
-        name: "Liquid Glass",
-        description: "Icy azure glass — clean, airy, translucent.",
-        mode: "light",
-        swatch: {
-            bg: "#eaf3fc",
-            surface: "#fefeff",
-            primary: "#1a7fd4"
-        },
-        accent: "#1a7fd4"
-    },
-    {
-        id: "liquid-glass-dark",
-        name: "Liquid Glass Dark",
-        description: "Deep navy glass with electric cyan shimmer.",
-        mode: "dark",
-        swatch: {
-            bg: "#0d1320",
-            surface: "#141c2e",
-            primary: "#38bdf8"
-        },
-        accent: "#38bdf8"
     }
 ];
 const DEFAULT_THEME = "clinical-light";
@@ -3054,18 +3030,39 @@ var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.sign
 ;
 ;
 const STORAGE_KEY = "mednexus-theme";
+const GLASS_STORAGE_KEY = "mednexus-glass";
+// Legacy liquid-glass theme IDs that may be in localStorage from before this was a toggle
+const LEGACY_GLASS_THEMES = [
+    "liquid-glass-light",
+    "liquid-glass-dark"
+];
 const ThemeContext = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["createContext"])(undefined);
 function ThemeProvider({ children }) {
     _s();
     const [theme, setThemeState] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$themes$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DEFAULT_THEME"]);
-    // Load persisted theme on mount.
+    const [glassEnabled, setGlassState] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    // Load persisted preferences on mount (with legacy migration)
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "ThemeProvider.useEffect": ()=>{
-            const stored = ("TURBOPACK compile-time value", "object") !== "undefined" && localStorage.getItem(STORAGE_KEY);
-            if (stored) setThemeState(stored);
+            if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
+            ;
+            const storedTheme = localStorage.getItem(STORAGE_KEY);
+            const storedGlass = localStorage.getItem(GLASS_STORAGE_KEY);
+            if (storedTheme && LEGACY_GLASS_THEMES.includes(storedTheme)) {
+                // Migrate: was using liquid-glass theme → switch to default + enable glass
+                setThemeState(__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$themes$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DEFAULT_THEME"]);
+                setGlassState(true);
+                localStorage.setItem(STORAGE_KEY, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$themes$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DEFAULT_THEME"]);
+                localStorage.setItem(GLASS_STORAGE_KEY, "true");
+            } else if (storedTheme) {
+                setThemeState(storedTheme);
+                setGlassState(storedGlass === "true");
+            } else {
+                setGlassState(storedGlass === "true");
+            }
         }
     }["ThemeProvider.useEffect"], []);
-    // Apply the theme to <html> whenever it changes.
+    // Apply theme + glass attributes to <html>
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "ThemeProvider.useEffect": ()=>{
             document.documentElement.setAttribute("data-theme", theme);
@@ -3073,29 +3070,48 @@ function ThemeProvider({ children }) {
     }["ThemeProvider.useEffect"], [
         theme
     ]);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "ThemeProvider.useEffect": ()=>{
+            if (glassEnabled) {
+                document.documentElement.setAttribute("data-glass", "true");
+            } else {
+                document.documentElement.removeAttribute("data-glass");
+            }
+        }
+    }["ThemeProvider.useEffect"], [
+        glassEnabled
+    ]);
     const setTheme = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "ThemeProvider.useCallback[setTheme]": (next)=>{
             setThemeState(next);
             try {
                 localStorage.setItem(STORAGE_KEY, next);
-            } catch  {
-            // ignore storage errors (e.g. private mode)
-            }
+            } catch  {}
         }
     }["ThemeProvider.useCallback[setTheme]"], []);
+    const setGlassEnabled = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
+        "ThemeProvider.useCallback[setGlassEnabled]": (enabled)=>{
+            setGlassState(enabled);
+            try {
+                localStorage.setItem(GLASS_STORAGE_KEY, String(enabled));
+            } catch  {}
+        }
+    }["ThemeProvider.useCallback[setGlassEnabled]"], []);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ThemeContext.Provider, {
         value: {
             theme,
-            setTheme
+            setTheme,
+            glassEnabled,
+            setGlassEnabled
         },
         children: children
     }, void 0, false, {
         fileName: "[project]/contexts/theme-context.tsx",
-        lineNumber: 38,
-        columnNumber: 10
+        lineNumber: 70,
+        columnNumber: 5
     }, this);
 }
-_s(ThemeProvider, "0s1d3+VognU3zltMbU/7jRSXwY8=");
+_s(ThemeProvider, "Bjx/LQ55oW3+82jVCwAURSRAwkw=");
 _c = ThemeProvider;
 function useTheme() {
     _s1();

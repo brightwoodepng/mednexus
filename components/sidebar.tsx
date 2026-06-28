@@ -3,9 +3,9 @@
 import { useEffect, useState, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
+import { useTheme } from "@/contexts/theme-context"
 import { getLiveModules, getWeakAreaQuestions } from "@/lib/modules"
 import {
-  StethoscopeIcon,
   LayoutDashboardIcon,
   PaletteIcon,
   LogOutIcon,
@@ -59,6 +59,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { user, cloudEnabled, signOutUser, progress } = useApp()
   const { isAdmin, logoutAdmin } = useAdmin()
+  const { glassEnabled } = useTheme()
 
   const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
 
@@ -83,15 +84,28 @@ export function Sidebar({
     return () => clearInterval(id)
   }, [])
 
+  // ── Derived class helpers ──────────────────────────────────────────────────
+  const panelCls = glassEnabled
+    ? "glass-sidebar"
+    : "bg-sidebar border-r border-sidebar-border"
+
+  const cardCls = glassEnabled
+    ? "glass-card"
+    : "border border-sidebar-border bg-sidebar-accent/50"
+
+  const dividerCls = glassEnabled
+    ? "glass-divider"
+    : "bg-sidebar-border/60"
+
+  // ── Shared content ─────────────────────────────────────────────────────────
   const fullContent = (
     <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
-      {/* Top bar */}
       <div className="mb-1 flex items-center justify-end px-1 pt-1 shrink-0">
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onCollapse}
-            className="hidden rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground glass-pill-hover lg:flex"
+            className={`hidden rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:flex ${glassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
             aria-label="Collapse sidebar"
           >
             <ChevronLeftIcon size={18} />
@@ -99,7 +113,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={onCloseMobile}
-            className="rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground glass-pill-hover lg:hidden"
+            className={`rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:hidden ${glassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
             aria-label="Close menu"
           >
             <XIcon size={20} />
@@ -107,35 +121,34 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Nav */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <nav className="flex flex-col gap-0.5">
-          <NavButton active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
-          <NavButton active={screen === "profile"} onClick={() => nav("profile")} icon={<UserIcon size={18} />} label="Profile" />
+          <NavButton glass={glassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
+          <NavButton glass={glassEnabled} active={screen === "profile"} onClick={() => nav("profile")} icon={<UserIcon size={18} />} label="Profile" />
 
-          <GlassDivider />
+          <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
 
-          <NavButton active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getLiveModules().length)} />
-          <NavButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
-          <NavButton active={screen === "live-assessments"} onClick={() => nav("live-assessments")} icon={<RadioIcon size={18} />} label="Live Assessments" liveDot={hasLiveAssessment} />
+          <NavButton glass={glassEnabled} active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getLiveModules().length)} />
+          <NavButton glass={glassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
+          <NavButton glass={glassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} icon={<RadioIcon size={18} />} label="Live Assessments" liveDot={hasLiveAssessment} />
 
           {isAdmin && (
             <>
-              <GlassDivider />
+              <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
               <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">Admin</p>
-              <NavButton active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
-              <NavButton active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
-              <NavButton active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
-              <NavButton active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} icon={<ClipboardListIcon size={18} />} label="Assessments" adminBadge="Admin" />
+              <NavButton glass={glassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
+              <NavButton glass={glassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
+              <NavButton glass={glassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
+              <NavButton glass={glassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} icon={<ClipboardListIcon size={18} />} label="Assessments" adminBadge="Admin" />
             </>
           )}
 
-          <GlassDivider />
+          <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
 
           <button
             type="button"
             onClick={() => { onOpenThemes(); onCloseMobile() }}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 glass-pill-hover"
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 transition-colors ${glassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
           >
             <PaletteIcon size={18} />
             Themes
@@ -143,10 +156,9 @@ export function Sidebar({
         </nav>
       </div>
 
-      {/* Bottom section */}
       <div className="shrink-0 flex flex-col gap-2 pt-2">
         {isAdmin ? (
-          <div className="flex items-center justify-between rounded-xl glass-card px-3 py-2">
+          <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${cardCls}`}>
             <div className="flex items-center gap-2">
               <DatabaseIcon size={13} className="text-amber-500" />
               <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Admin Mode</span>
@@ -154,7 +166,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={logoutAdmin}
-              className="rounded-lg px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 glass-pill-hover"
+              className={`rounded-lg px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 transition-colors ${glassEnabled ? "glass-pill-hover" : "hover:bg-amber-500/20"}`}
             >
               Exit
             </button>
@@ -163,15 +175,14 @@ export function Sidebar({
           <button
             type="button"
             onClick={onOpenAdminLogin}
-            className="flex items-center gap-2 rounded-xl glass-card px-3 py-2 text-xs font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
+            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors ${cardCls}`}
           >
             <DatabaseIcon size={13} />
             Admin Login
           </button>
         )}
 
-        {/* User card */}
-        <div className="flex items-center gap-3 rounded-xl glass-card px-3 py-2.5">
+        <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${cardCls}`}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary/90 text-sidebar-primary-foreground shadow-sm">
             <UserIcon size={18} />
           </div>
@@ -192,7 +203,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 glass-pill-hover hover:text-destructive"
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:text-destructive ${glassEnabled ? "glass-pill-hover" : "hover:bg-destructive/10"}`}
         >
           <LogOutIcon size={18} />
           Sign Out
@@ -206,43 +217,43 @@ export function Sidebar({
       <button
         type="button"
         onClick={onExpand}
-        className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground glass-pill-hover"
+        className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors ${glassEnabled ? "glass-pill-hover" : "border border-sidebar-border hover:bg-sidebar-accent"}`}
         aria-label="Expand sidebar"
       >
         <ChevronLeftIcon size={18} className="rotate-180" />
       </button>
 
-      <IconButton active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
-      <IconButton active={screen === "profile"} onClick={() => nav("profile")} label="Profile"><UserIcon size={18} /></IconButton>
+      <IconButton glass={glassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
+      <IconButton glass={glassEnabled} active={screen === "profile"} onClick={() => nav("profile")} label="Profile"><UserIcon size={18} /></IconButton>
 
-      <div className="my-2 w-6 h-px glass-divider" />
+      <div className={`my-2 w-6 h-px ${dividerCls}`} />
 
-      <IconButton active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
-      <IconButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
-      <IconButton active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
+      <IconButton glass={glassEnabled} active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
+      <IconButton glass={glassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
+      <IconButton glass={glassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
 
       {isAdmin && (
         <>
-          <div className="my-2 w-6 h-px glass-divider" />
-          <IconButton active={screen === "user-management"} onClick={() => nav("user-management")} label="Users"><UsersIcon size={18} /></IconButton>
-          <IconButton active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
-          <IconButton active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
-          <IconButton active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} label="Assessments (Admin)"><ClipboardListIcon size={18} /></IconButton>
+          <div className={`my-2 w-6 h-px ${dividerCls}`} />
+          <IconButton glass={glassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} label="Users"><UsersIcon size={18} /></IconButton>
+          <IconButton glass={glassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
+          <IconButton glass={glassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
+          <IconButton glass={glassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} label="Assessments (Admin)"><ClipboardListIcon size={18} /></IconButton>
         </>
       )}
 
-      <div className="my-2 w-6 h-px glass-divider" />
-      <IconButton active={false} onClick={onOpenThemes} label="Themes"><PaletteIcon size={18} /></IconButton>
+      <div className={`my-2 w-6 h-px ${dividerCls}`} />
+      <IconButton glass={glassEnabled} active={false} onClick={onOpenThemes} label="Themes"><PaletteIcon size={18} /></IconButton>
 
       <div className="mt-auto">
-        <IconButton active={false} onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }} label="Sign Out"><LogOutIcon size={18} /></IconButton>
+        <IconButton glass={glassEnabled} active={false} onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }} label="Sign Out"><LogOutIcon size={18} /></IconButton>
       </div>
     </div>
   )
 
   return (
     <>
-      <aside className={`hidden shrink-0 glass-sidebar lg:block transition-all duration-200 ${collapsed ? "w-14" : "w-64"}`}>
+      <aside className={`hidden shrink-0 lg:block transition-all duration-200 ${panelCls} ${collapsed ? "w-14" : "w-64"}`}>
         {collapsed ? collapsedContent : fullContent}
       </aside>
       {mobileOpen && (
@@ -253,17 +264,13 @@ export function Sidebar({
             onClick={onCloseMobile}
             className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
           />
-          <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] glass-sidebar shadow-2xl animate-in slide-in-from-left duration-200">
+          <div className={`absolute left-0 top-0 h-full w-72 max-w-[80%] shadow-2xl animate-in slide-in-from-left duration-200 ${panelCls}`}>
             {fullContent}
           </div>
         </div>
       )}
     </>
   )
-}
-
-function GlassDivider() {
-  return <div className="my-1.5 h-px glass-divider mx-1" />
 }
 
 function LiveDot() {
@@ -275,29 +282,33 @@ function LiveDot() {
   )
 }
 
-function NavButton({ active, onClick, icon, label, badge, adminBadge, liveDot }: {
-  active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: string; adminBadge?: string; liveDot?: boolean
+function NavButton({ glass, active, onClick, icon, label, badge, adminBadge, liveDot }: {
+  glass: boolean; active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: string; adminBadge?: string; liveDot?: boolean
 }) {
+  const activeCls = glass
+    ? "glass-pill-active text-sidebar-accent-foreground"
+    : "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border"
+  const inactiveCls = glass
+    ? "text-sidebar-foreground/80 glass-pill-hover"
+    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? "glass-pill-active text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/80 glass-pill-hover"
-      }`}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${active ? activeCls : inactiveCls}`}
     >
       {icon}
       <span className="flex-1 text-left">{label}</span>
       {liveDot && <LiveDot />}
       {badge && (
-        <span className="rounded-full glass-card px-1.5 py-0.5 text-[10px] font-semibold text-sidebar-foreground/70 tabular-nums">
+        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-sidebar-foreground/70 tabular-nums ${glass ? "glass-card" : "bg-muted"}`}>
           {badge}
         </span>
       )}
       {adminBadge && (
-        <span className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"
+        <span
+          className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"
           style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.22)" }}
         >
           {adminBadge}
@@ -307,20 +318,23 @@ function NavButton({ active, onClick, icon, label, badge, adminBadge, liveDot }:
   )
 }
 
-function IconButton({ active, onClick, label, children, liveDot }: {
-  active: boolean; onClick: () => void; label: string; children: React.ReactNode; liveDot?: boolean
+function IconButton({ glass, active, onClick, label, children, liveDot }: {
+  glass: boolean; active: boolean; onClick: () => void; label: string; children: React.ReactNode; liveDot?: boolean
 }) {
+  const activeCls = glass
+    ? "glass-pill-active text-sidebar-accent-foreground"
+    : "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border"
+  const inactiveCls = glass
+    ? "text-sidebar-foreground/70 glass-pill-hover"
+    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+
   return (
     <button
       type="button"
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
-        active
-          ? "glass-pill-active text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/70 glass-pill-hover"
-      }`}
+      className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${active ? activeCls : inactiveCls}`}
     >
       {children}
       {liveDot && (
