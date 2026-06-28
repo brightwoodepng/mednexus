@@ -44,28 +44,6 @@ interface SidebarProps {
   onExpand: () => void
 }
 
-function LiveClock() {
-  const [now, setNow] = useState<Date | null>(null)
-
-  useEffect(() => {
-    setNow(new Date())
-    const t = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(t)
-  }, [])
-
-  if (!now) return null
-
-  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-  const date = now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
-
-  return (
-    <div className="flex flex-col items-center rounded-xl border border-sidebar-border bg-sidebar-accent/30 px-3 py-2.5 text-center">
-      <span className="text-lg font-bold tabular-nums tracking-tight text-sidebar-foreground leading-none">{time}</span>
-      <span className="mt-0.5 text-[11px] text-muted-foreground">{date}</span>
-    </div>
-  )
-}
-
 export function Sidebar({
   screen,
   onNavigate,
@@ -107,25 +85,35 @@ export function Sidebar({
 
   const fullContent = (
     <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
-      <div className="mb-2 flex items-center justify-end px-2 pt-2 shrink-0">
+      {/* Top bar */}
+      <div className="mb-1 flex items-center justify-end px-1 pt-1 shrink-0">
         <div className="flex items-center gap-1">
-          <button type="button" onClick={onCollapse} className="hidden rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:flex" aria-label="Collapse sidebar">
+          <button
+            type="button"
+            onClick={onCollapse}
+            className="hidden rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground glass-pill-hover lg:flex"
+            aria-label="Collapse sidebar"
+          >
             <ChevronLeftIcon size={18} />
           </button>
-          <button type="button" onClick={onCloseMobile} className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent lg:hidden" aria-label="Close menu">
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground glass-pill-hover lg:hidden"
+            aria-label="Close menu"
+          >
             <XIcon size={20} />
           </button>
         </div>
       </div>
 
-      <div className="shrink-0"><LiveClock /></div>
-
+      {/* Nav */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-0.5">
           <NavButton active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
           <NavButton active={screen === "profile"} onClick={() => nav("profile")} icon={<UserIcon size={18} />} label="Profile" />
 
-          <div className="my-1 h-px bg-sidebar-border/60" />
+          <GlassDivider />
 
           <NavButton active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getLiveModules().length)} />
           <NavButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
@@ -133,8 +121,8 @@ export function Sidebar({
 
           {isAdmin && (
             <>
-              <div className="my-1 h-px bg-sidebar-border/60" />
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Admin</p>
+              <GlassDivider />
+              <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">Admin</p>
               <NavButton active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
               <NavButton active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
               <NavButton active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
@@ -142,12 +130,12 @@ export function Sidebar({
             </>
           )}
 
-          <div className="my-1 h-px bg-sidebar-border/60" />
+          <GlassDivider />
 
           <button
             type="button"
             onClick={() => { onOpenThemes(); onCloseMobile() }}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 glass-pill-hover"
           >
             <PaletteIcon size={18} />
             Themes
@@ -155,31 +143,43 @@ export function Sidebar({
         </nav>
       </div>
 
-      <div className="shrink-0 flex flex-col gap-3 pt-2">
+      {/* Bottom section */}
+      <div className="shrink-0 flex flex-col gap-2 pt-2">
         {isAdmin ? (
-          <div className="flex items-center justify-between rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2">
+          <div className="flex items-center justify-between rounded-xl glass-card px-3 py-2">
             <div className="flex items-center gap-2">
-              <DatabaseIcon size={14} className="text-amber-600" />
-              <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Admin Mode</span>
+              <DatabaseIcon size={13} className="text-amber-500" />
+              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Admin Mode</span>
             </div>
-            <button type="button" onClick={logoutAdmin} className="rounded-lg px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-500/20 transition-colors">Exit</button>
+            <button
+              type="button"
+              onClick={logoutAdmin}
+              className="rounded-lg px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 glass-pill-hover"
+            >
+              Exit
+            </button>
           </div>
         ) : (
-          <button type="button" onClick={onOpenAdminLogin} className="flex items-center gap-2 rounded-xl border border-sidebar-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
+          <button
+            type="button"
+            onClick={onOpenAdminLogin}
+            className="flex items-center gap-2 rounded-xl glass-card px-3 py-2 text-xs font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
+          >
             <DatabaseIcon size={13} />
             Admin Login
           </button>
         )}
 
-        <div className="flex items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/50 px-3 py-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground">
+        {/* User card */}
+        <div className="flex items-center gap-3 rounded-xl glass-card px-3 py-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary/90 text-sidebar-primary-foreground shadow-sm">
             <UserIcon size={18} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-sidebar-foreground">
+            <p className="truncate text-sm font-semibold text-sidebar-foreground">
               {isAdmin && !user ? "Admin" : user?.name ?? "Clinician"}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] text-sidebar-foreground/55">
               {isAdmin && !user
                 ? "Administrator"
                 : user?.role === "guest"
@@ -192,7 +192,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 glass-pill-hover hover:text-destructive"
         >
           <LogOutIcon size={18} />
           Sign Out
@@ -202,15 +202,20 @@ export function Sidebar({
   )
 
   const collapsedContent = (
-    <div className="flex h-full flex-col items-center gap-1 py-4 px-2">
-      <button type="button" onClick={onExpand} className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl border border-sidebar-border text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors" aria-label="Expand sidebar">
+    <div className="flex h-full flex-col items-center gap-0.5 py-4 px-2">
+      <button
+        type="button"
+        onClick={onExpand}
+        className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground glass-pill-hover"
+        aria-label="Expand sidebar"
+      >
         <ChevronLeftIcon size={18} className="rotate-180" />
       </button>
 
       <IconButton active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
       <IconButton active={screen === "profile"} onClick={() => nav("profile")} label="Profile"><UserIcon size={18} /></IconButton>
 
-      <div className="my-1 w-6 h-px bg-sidebar-border/60" />
+      <div className="my-2 w-6 h-px glass-divider" />
 
       <IconButton active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
       <IconButton active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
@@ -218,7 +223,7 @@ export function Sidebar({
 
       {isAdmin && (
         <>
-          <div className="my-1 w-6 h-px bg-sidebar-border/60" />
+          <div className="my-2 w-6 h-px glass-divider" />
           <IconButton active={screen === "user-management"} onClick={() => nav("user-management")} label="Users"><UsersIcon size={18} /></IconButton>
           <IconButton active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
           <IconButton active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
@@ -226,7 +231,7 @@ export function Sidebar({
         </>
       )}
 
-      <div className="my-1 w-6 h-px bg-sidebar-border/60" />
+      <div className="my-2 w-6 h-px glass-divider" />
       <IconButton active={false} onClick={onOpenThemes} label="Themes"><PaletteIcon size={18} /></IconButton>
 
       <div className="mt-auto">
@@ -237,19 +242,28 @@ export function Sidebar({
 
   return (
     <>
-      <aside className={`hidden shrink-0 border-r border-sidebar-border bg-sidebar lg:block transition-all duration-200 ${collapsed ? "w-14" : "w-64"}`}>
+      <aside className={`hidden shrink-0 glass-sidebar lg:block transition-all duration-200 ${collapsed ? "w-14" : "w-64"}`}>
         {collapsed ? collapsedContent : fullContent}
       </aside>
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <button type="button" aria-label="Close menu" onClick={onCloseMobile} className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" />
-          <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] border-r border-sidebar-border bg-sidebar shadow-2xl animate-in slide-in-from-left duration-200">
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={onCloseMobile}
+            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+          />
+          <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] glass-sidebar shadow-2xl animate-in slide-in-from-left duration-200">
             {fullContent}
           </div>
         </div>
       )}
     </>
   )
+}
+
+function GlassDivider() {
+  return <div className="my-1.5 h-px glass-divider mx-1" />
 }
 
 function LiveDot() {
@@ -265,14 +279,30 @@ function NavButton({ active, onClick, icon, label, badge, adminBadge, liveDot }:
   active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: string; adminBadge?: string; liveDot?: boolean
 }) {
   return (
-    <button type="button" onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${active ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+        active
+          ? "glass-pill-active text-sidebar-accent-foreground"
+          : "text-sidebar-foreground/80 glass-pill-hover"
+      }`}
     >
       {icon}
       <span className="flex-1 text-left">{label}</span>
       {liveDot && <LiveDot />}
-      {badge && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground tabular-nums">{badge}</span>}
-      {adminBadge && <span className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-400">{adminBadge}</span>}
+      {badge && (
+        <span className="rounded-full glass-card px-1.5 py-0.5 text-[10px] font-semibold text-sidebar-foreground/70 tabular-nums">
+          {badge}
+        </span>
+      )}
+      {adminBadge && (
+        <span className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"
+          style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.22)" }}
+        >
+          {adminBadge}
+        </span>
+      )}
     </button>
   )
 }
@@ -281,11 +311,24 @@ function IconButton({ active, onClick, label, children, liveDot }: {
   active: boolean; onClick: () => void; label: string; children: React.ReactNode; liveDot?: boolean
 }) {
   return (
-    <button type="button" onClick={onClick} title={label} aria-label={label}
-      className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${active ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
+        active
+          ? "glass-pill-active text-sidebar-accent-foreground"
+          : "text-sidebar-foreground/70 glass-pill-hover"
+      }`}
     >
       {children}
-      {liveDot && <span className="absolute top-1 right-1 flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" /></span>}
+      {liveDot && (
+        <span className="absolute top-1 right-1 flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+        </span>
+      )}
     </button>
   )
 }
