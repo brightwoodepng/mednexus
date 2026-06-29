@@ -94,6 +94,21 @@ async function ensureSchema() {
       otp_hash TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS mednexus_game_rooms (
+      pin TEXT PRIMARY KEY,
+      mode TEXT NOT NULL,
+      host_id TEXT NOT NULL,
+      host_name TEXT NOT NULL,
+      question_pool JSONB NOT NULL DEFAULT '[]',
+      current_qi INTEGER NOT NULL DEFAULT 0,
+      phase TEXT NOT NULL DEFAULT 'lobby',
+      players JSONB NOT NULL DEFAULT '[]',
+      version INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '4 hours'
+    );
+    ALTER TABLE mednexus_game_rooms ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
+    DELETE FROM mednexus_game_rooms WHERE expires_at < NOW();
   `);
     initialized = true;
 }

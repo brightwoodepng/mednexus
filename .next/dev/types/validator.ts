@@ -164,6 +164,24 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../app/api/game-rooms/[pin]/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/game-rooms/[pin]">> = Specific
+  const handler = {} as typeof import("../../../app/api/game-rooms/[pin]/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/api/game-rooms/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/game-rooms">> = Specific
+  const handler = {} as typeof import("../../../app/api/game-rooms/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../app/api/notifications/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/notifications">> = Specific
