@@ -1,0 +1,103 @@
+MedNexus Game Mode
+Architecture & Implementation Blueprint
+1. The Game Roster (Solo & Multiplayer)
+The lineup offers a complete spectrum of study methods, from high-speed solo revision to massive
+lecture hall reviews.
+Rapid Fire (Classic): The user races a 30-second clock with 3 lives. Scoring relies heavily on
+streak multipliers.
+Sudden Death (High Risk): A true endurance test. One wrong answer ends the game instantly.
+Time Attack (Speed): The user starts with a 90-second global bank. Correct answers add 3
+seconds; wrong answers drain 5 seconds.
+Streak Master (Endurance): No timers, no pressure. The goal is to build the highest
+consecutive correct-answer streak and cash out manually.
+Double Jeopardy (Confidence Betting): The clinical vignette is shown, but the multiple-choice
+options are hidden. The user wagers a portion of their current score based on how confident
+they are in the diagnosis before revealing the answers.
+Multiplayer Clash (The Study Group): A tightly capped, highly competitive room for a
+maximum of 5 players. Everyone sees the full leaderboard, and the fastest correct answer
+takes the maximum points.
+Cohort Review (Kahoot Style): A massive multiplayer mode built for large classes. The room
+has no player cap. The system focuses on a split-screen experience where the host controls the
+pace of the questions, and the leaderboard only highlights the Top 5 players to prevent UI
+clutter.
+2. The Lobby & Match Configuration
+When a user clicks Play on any of the game cards, a sleek configuration drawer slides out from the
+right side of the screen.
+The Organizing Toggle: The segmented control sits at the top: [ View by Module ] | [
+View by Discipline ].
+Tag Selection: A grid of selectable pills allows the host to build the custom question pool (e.g.,
+Cardiology, Respiratory).
+Match Launch: A large Start Match or Create Room button locks in the choices. The React
+frontend sends the selected tags to Supabase to fetch all matching Live questions.
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+3. The State & Randomization Engine
+The game state must be handled differently depending on the chosen mode to guarantee zero
+loading screens between questions.
+State Type Mechanism Best For
+Local State The fetched question array is shuffled using a Fisher
+Yates algorithm and injected into standard React
+state. Timers and scoring run entirely in the browser
+for zero latency.
+Rapid Fire, Sudden
+Death, Time Attack,
+Streak Master, Double
+Jeopardy
+Realtime State The shuffled question array is saved to a temporary
+Supabase database row. The Host's browser updates
+the current question index, and all connected devices
+listen and sync instantly.
+Multiplayer Clash
+(Max 5), Cohort
+Review (Kahoot Style)
+4. Real-Time Architecture: Clash vs. Cohort Review
+Both multiplayer modes use WebSockets (Supabase Realtime) and a Game Rooms database table
+generating a 6-digit room PIN, but their data payloads and syncing logic differ.
+Multiplayer Clash (5-Player Limit):
+The room strictly rejects connections after the 5th player enters the PIN.
+During the 5-second pause between questions, the React frontend renders a complete
+vertical bar chart of all 5 players, ensuring everyone instantly sees exactly who is winning.
+Cohort Review (Kahoot Style):
+The room accepts unlimited connections.
+During the pause between questions, the database runs a strict query ordering players by
+score and limiting the return to 5. The main screen renders only these Top 5 players.
+Every other connected device receives a tiny, personalized payload rendering a sticky
+banner at the bottom of their screen (e.g., "You are in 42nd place").
+5. The Active Match UI (The HUD)
+The interface strips away the standard application navigation to create a focused, high-pressure
+environment.
+Solo & Multiplayer Clash HUD: The screen displays the full clinical vignette and standard
+options (A, B, C, D). The top bar displays a continuous progress bar shrinking as the timer runs
+down, next to the live Score and Streak Multiplier.
+• 
+◦ 
+◦ 
+• 
+◦ 
+◦ 
+◦ 
+• 
+Cohort Review (Split UI):
+The Host Screen: Displays the full clinical vignette, the question timer, and the options. This
+is intended to be projected or shared on a large screen.
+The Player Screen: Their mobile device acts purely as a buzzer. It strips away the text of the
+question entirely and only displays four massive, color-coded squares (A, B, C, D) for them to
+tap while looking at the host's screen.
+6. Post-Match Analytics
+The Scoreboard: Displays the Final Score, Longest Streak, and Average Time per Question.
+The Clinical Breakdown: A visual chart shows accuracy broken down by the specific body
+systems or specialties they selected during setup, highlighting weak areas to review before their
+next major exam.
+• 
+◦ 
+◦ 
+• 
+• 

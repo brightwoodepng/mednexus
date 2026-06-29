@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
+import { MultiplayerClash, CohortReview } from "@/components/game-mode-multiplayer"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type GameModeId = "rapid" | "sudden" | "timeatk" | "streak"
+type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort"
 type Phase = "menu" | "playing" | "over"
 type Feedback = "correct" | "wrong" | null
 type FilterScope = "all" | "module" | "subject"
@@ -62,6 +63,36 @@ const MODES: ModeConfig[] = [
     desc: "No game over. Build the longest streak you can, finish whenever you're ready.",
     rules: ["Wrong answer resets streak — game continues", "No timer, no pressure", "Finish anytime to bank your best streak"],
     hsKey: "mednexus-hs-streak", hsLabel: "Best Streak",
+  },
+  {
+    id: "double", name: "Double Jeopardy", badge: "Confidence",
+    badgeColor: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+    icon: "🎲", gradient: "from-indigo-500 to-purple-600", shadow: "shadow-indigo-500/20",
+    desc: "Read the vignette, wager your confidence — then see the options.",
+    rules: ["Vignette shown first, options hidden", "Wager: Safe 10% / Moderate 25% / Bold 50% / All In 100%", "Correct = win the wager · Wrong = lose it"],
+    hsKey: "mednexus-hs-double", hsLabel: "Best Score",
+  },
+]
+
+// Multiplayer modes (shown separately in the grid)
+interface MultiModeCard {
+  id: GameModeId; name: string; badge: string; badgeColor: string
+  icon: string; gradient: string; shadow: string; desc: string; rules: string[]
+}
+const MULTI_MODES: MultiModeCard[] = [
+  {
+    id: "clash", name: "Multiplayer Clash", badge: "Study Group",
+    badgeColor: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
+    icon: "⚔️", gradient: "from-fuchsia-500 to-violet-600", shadow: "shadow-fuchsia-500/20",
+    desc: "Compete with up to 5 players. Fastest correct answer takes max points.",
+    rules: ["Max 5 players per room", "6-digit PIN to join", "Full leaderboard between questions"],
+  },
+  {
+    id: "cohort", name: "Cohort Review", badge: "Kahoot Style",
+    badgeColor: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+    icon: "🎓", gradient: "from-teal-500 to-cyan-500", shadow: "shadow-teal-500/20",
+    desc: "Lecture hall mode — unlimited players, host controls the pace.",
+    rules: ["Unlimited players", "Players use phones as buzzers (A/B/C/D)", "Top 5 leaderboard · Personal rank banner"],
   },
 ]
 
@@ -408,6 +439,54 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
 }
 
 // ── Mode Select Screen ────────────────────────────────────────────────────────
+function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules, hsLabel, hsKey, onSelect }: {
+  name: string; badge: string; badgeColor: string; icon: string; gradient: string; shadow: string
+  desc: string; rules: string[]; hsLabel?: string; hsKey?: string; onSelect: () => void
+}) {
+  const hs = hsKey ? readHs(hsKey) : 0
+  return (
+    <button
+      type="button" onClick={onSelect}
+      className="group relative overflow-hidden rounded-3xl border border-border bg-card p-5 text-left transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/8 hover:scale-[1.01] active:scale-[0.99]"
+    >
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
+      <div className="flex items-start gap-4">
+        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} shadow-md ${shadow} text-2xl`}>
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="font-bold text-foreground">{name}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${badgeColor}`}>{badge}</span>
+          </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">{desc}</p>
+        </div>
+      </div>
+      <div className="mt-3.5 space-y-1.5">
+        {rules.map(rule => (
+          <div key={rule} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />
+            {rule}
+          </div>
+        ))}
+      </div>
+      {hs > 0 && hsLabel && (
+        <div className="mt-3.5 flex items-center gap-1.5 rounded-xl bg-muted/70 px-3 py-2">
+          <span className="text-xs">🏆</span>
+          <span className="text-xs text-muted-foreground">{hsLabel}:</span>
+          <span className="text-xs font-bold text-foreground">{hs.toLocaleString()}</span>
+        </div>
+      )}
+      <div className={`mt-4 flex items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r ${gradient} py-2.5 text-sm font-bold text-white shadow-sm transition-opacity group-hover:opacity-90`}>
+        Play
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}>
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </div>
+    </button>
+  )
+}
+
 function ModeSelectScreen({ onSelect, onBack }: {
   onSelect: (id: GameModeId) => void; onBack: () => void
 }) {
@@ -426,51 +505,24 @@ function ModeSelectScreen({ onSelect, onBack }: {
           <p className="mt-1 text-sm text-muted-foreground">Pick a game type and start playing</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          {MODES.map(m => {
-            const hs = readHs(m.hsKey)
-            return (
-              <button
-                key={m.id} type="button" onClick={() => onSelect(m.id)}
-                className="group relative overflow-hidden rounded-3xl border border-border bg-card p-5 text-left transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/8 hover:scale-[1.01] active:scale-[0.99]"
-              >
-                <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${m.gradient}`} />
-                <div className="flex items-start gap-4">
-                  <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${m.gradient} shadow-md ${m.shadow} text-2xl`}>
-                    {m.icon}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="font-bold text-foreground">{m.name}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${m.badgeColor}`}>{m.badge}</span>
-                    </div>
-                    <p className="text-xs leading-relaxed text-muted-foreground">{m.desc}</p>
-                  </div>
-                </div>
-                <div className="mt-3.5 space-y-1.5">
-                  {m.rules.map(rule => (
-                    <div key={rule} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />
-                      {rule}
-                    </div>
-                  ))}
-                </div>
-                {hs > 0 && (
-                  <div className="mt-3.5 flex items-center gap-1.5 rounded-xl bg-muted/70 px-3 py-2">
-                    <span className="text-xs">🏆</span>
-                    <span className="text-xs text-muted-foreground">{m.hsLabel}:</span>
-                    <span className="text-xs font-bold text-foreground">{hs.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className={`mt-4 flex items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r ${m.gradient} py-2.5 text-sm font-bold text-white shadow-sm transition-opacity group-hover:opacity-90`}>
-                  Play
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}>
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
-                </div>
-              </button>
-            )
-          })}
+        {/* Solo modes */}
+        <div className="mb-3">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Solo Modes</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {MODES.map(m => (
+              <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
+            ))}
+          </div>
+        </div>
+
+        {/* Multiplayer modes */}
+        <div className="mt-6 mb-3">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Multiplayer Modes</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {MULTI_MODES.map(m => (
+              <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
+            ))}
+          </div>
         </div>
 
         <button type="button" onClick={onBack} className="mt-6 w-full rounded-2xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
@@ -793,6 +845,185 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   )
 }
 
+// ── DOUBLE JEOPARDY ───────────────────────────────────────────────────────────
+const DJ_STARTING_BANK = 500
+const DJ_BETS = [
+  { label: "Safe", pct: 0.1, icon: "🛡️", color: "from-emerald-500 to-teal-500", shadow: "shadow-emerald-500/20" },
+  { label: "Moderate", pct: 0.25, icon: "🎯", color: "from-blue-500 to-indigo-500", shadow: "shadow-blue-500/20" },
+  { label: "Bold", pct: 0.5, icon: "🔥", color: "from-amber-500 to-orange-500", shadow: "shadow-amber-500/20" },
+  { label: "All In", pct: 1.0, icon: "💎", color: "from-rose-500 to-fuchsia-600", shadow: "shadow-rose-500/20" },
+]
+
+type DJPhase = "menu" | "wager" | "answering" | "feedback" | "over"
+
+function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
+  const { questions: allQ } = useQuestions()
+  const cfg = MODES.find(m => m.id === "double")!
+
+  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
+  const [djPhase, setDjPhase] = useState<DJPhase>("menu")
+  const [pool, setPool] = useState<Question[]>([])
+  const [qi, setQi] = useState(0)
+  const [bank, setBank] = useState(DJ_STARTING_BANK)
+  const [wager, setWager] = useState(0)
+  const [picked, setPicked] = useState<string | null>(null)
+  const [fb, setFb] = useState<Feedback>(null)
+  const [totalQ, setTotalQ] = useState(0)
+  const [totalRight, setTotalRight] = useState(0)
+  const [bestWager, setBestWager] = useState(0)
+  const [isNewHigh, setIsNewHigh] = useState(false)
+  const [hs, setHsState] = useState(() => readHs(cfg.hsKey))
+
+  const r = useRef({ pool: [] as Question[], qi: 0, bank: DJ_STARTING_BANK, wager: 0, hs: 0, totalQ: 0, totalRight: 0, bestWager: 0 })
+  r.current = { pool, qi, bank, wager, hs, totalQ, totalRight, bestWager }
+
+  function start() {
+    const p = makeFilteredSrc(allQ, filter)
+    setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
+    setBank(DJ_STARTING_BANK); r.current.bank = DJ_STARTING_BANK
+    setWager(0); r.current.wager = 0
+    setPicked(null); setFb(null)
+    setTotalQ(0); r.current.totalQ = 0; setTotalRight(0); r.current.totalRight = 0
+    setBestWager(0); r.current.bestWager = 0
+    setIsNewHigh(false); setDjPhase("wager")
+  }
+
+  function placeBet(pct: number) {
+    const w = Math.max(10, Math.floor(r.current.bank * pct))
+    setWager(w); r.current.wager = w
+    setDjPhase("answering"); setPicked(null); setFb(null)
+  }
+
+  function doAnswer(c: string) {
+    if (fb !== null || djPhase !== "answering") return
+    const q = r.current.pool[r.current.qi]; if (!q) return
+    const right = c === q.correctAnswer
+    const nfb: Feedback = right ? "correct" : "wrong"
+    setFb(nfb); setPicked(c)
+    const nb = right ? r.current.bank + r.current.wager : Math.max(0, r.current.bank - r.current.wager)
+    const ntq = r.current.totalQ + 1; const ntr = right ? r.current.totalRight + 1 : r.current.totalRight
+    const nbw = Math.max(r.current.bestWager, r.current.wager)
+    setBank(nb); r.current.bank = nb
+    setTotalQ(ntq); r.current.totalQ = ntq; setTotalRight(ntr); r.current.totalRight = ntr
+    setBestWager(nbw); r.current.bestWager = nbw
+    setDjPhase("feedback")
+    setTimeout(() => {
+      const nextQi = r.current.qi + 1
+      if (nextQi >= r.current.pool.length || r.current.bank <= 0) {
+        const best = Math.max(r.current.hs, r.current.bank)
+        setIsNewHigh(r.current.bank > 0 && r.current.bank >= r.current.hs)
+        setHsState(best); writeHs(cfg.hsKey, best)
+        setDjPhase("over")
+      } else {
+        setQi(nextQi); r.current.qi = nextQi
+        setFb(null); setPicked(null); setDjPhase("wager")
+      }
+    }, 1400)
+  }
+
+  if (djPhase === "menu") {
+    return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
+  }
+
+  if (djPhase === "over") {
+    const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
+    return (
+      <GameOver
+        emoji={bank >= DJ_STARTING_BANK * 3 ? "💎🏆" : bank >= DJ_STARTING_BANK ? "🎲" : "💸"}
+        headline="Confidence cashed out!"
+        scoreLabel="Final Bank"
+        score={bank}
+        stats={[
+          { label: "Questions", value: String(totalQ) },
+          { label: "Accuracy", value: `${acc}%` },
+          { label: "Biggest Wager", value: bestWager.toLocaleString() },
+        ]}
+        isNewHigh={isNewHigh}
+        onReplay={start}
+        onExit={onExit}
+      />
+    )
+  }
+
+  const q = pool[qi]
+  if (!q) return null
+
+  // WAGER phase — show vignette, hide options
+  if (djPhase === "wager") {
+    return (
+      <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
+        {/* HUD */}
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
+          <span className="text-sm font-bold text-muted-foreground">Q {qi + 1}/{pool.length}</span>
+          <div className="flex-1" />
+          <div className="flex items-center gap-1.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 px-3 py-1">
+            <span className="text-xs">🏦</span>
+            <span className="text-sm font-extrabold tabular-nums text-indigo-700 dark:text-indigo-400">{bank.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* Vignette */}
+        <div className="flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">{q.subject}</span>
+            {q.module && <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground">{q.module}</span>}
+          </div>
+          <p className="text-sm leading-relaxed text-foreground sm:text-base">{q.vignette}</p>
+        </div>
+
+        {/* Bet panel */}
+        <div className="rounded-3xl border border-indigo-200 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/30 p-4">
+          <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-indigo-700 dark:text-indigo-400">
+            🎲 Place Your Wager — Options reveal after!
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {DJ_BETS.map(bet => {
+              const amount = Math.max(10, Math.floor(bank * bet.pct))
+              return (
+                <button key={bet.label} type="button" onClick={() => placeBet(bet.pct)}
+                  className={`flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br ${bet.color} px-4 py-3.5 text-white shadow-md ${bet.shadow} transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]`}>
+                  <span className="text-xl">{bet.icon}</span>
+                  <span className="text-sm font-extrabold">{bet.label}</span>
+                  <span className="text-xs font-semibold opacity-90">+/− {amount.toLocaleString()} pts</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>
+      </div>
+    )
+  }
+
+  // ANSWERING / FEEDBACK phase — show options
+  return (
+    <QuestionView question={q} fb={fb} picked={picked} onAnswer={doAnswer}
+      hud={
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
+          <span className="text-sm font-bold text-muted-foreground">Q {qi + 1}/{pool.length}</span>
+          <div className="flex-1" />
+          {wager > 0 && (
+            <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1">
+              <span className="text-xs">🎲</span>
+              <span className="text-sm font-extrabold tabular-nums text-amber-700 dark:text-amber-400">
+                {djPhase === "feedback" && fb === "correct" ? `+${wager.toLocaleString()}` : djPhase === "feedback" && fb === "wrong" ? `-${wager.toLocaleString()}` : `Wagered: ${wager.toLocaleString()}`}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 px-3 py-1">
+            <span className="text-xs">🏦</span>
+            <span className={`text-sm font-extrabold tabular-nums ${djPhase === "feedback" && fb === "correct" ? "text-emerald-600 dark:text-emerald-400" : djPhase === "feedback" && fb === "wrong" ? "text-rose-600 dark:text-rose-400" : "text-indigo-700 dark:text-indigo-400"}`}>
+              {djPhase === "feedback" ? (fb === "correct" ? (bank).toLocaleString() : (bank).toLocaleString()) : bank.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      }
+      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
+    />
+  )
+}
+
 // ── STREAK MASTER ─────────────────────────────────────────────────────────────
 function StreakMasterMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
@@ -897,6 +1128,9 @@ export function GameMode({ onExit }: { onExit: () => void }) {
   if (activeMode === "sudden") return <SuddenDeathMode onExit={() => setActiveMode(null)} />
   if (activeMode === "timeatk") return <TimeAttackMode onExit={() => setActiveMode(null)} />
   if (activeMode === "streak") return <StreakMasterMode onExit={() => setActiveMode(null)} />
+  if (activeMode === "double") return <DoubleJeopardyMode onExit={() => setActiveMode(null)} />
+  if (activeMode === "clash") return <MultiplayerClash onExit={() => setActiveMode(null)} />
+  if (activeMode === "cohort") return <CohortReview onExit={() => setActiveMode(null)} />
 
   return <ModeSelectScreen onSelect={setActiveMode} onBack={onExit} />
 }
