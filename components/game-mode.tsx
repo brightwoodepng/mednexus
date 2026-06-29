@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 
@@ -8,6 +8,12 @@ import type { Question } from "@/lib/types"
 type GameModeId = "rapid" | "sudden" | "timeatk" | "streak"
 type Phase = "menu" | "playing" | "over"
 type Feedback = "correct" | "wrong" | null
+type FilterScope = "all" | "module" | "subject"
+
+interface GameFilter {
+  scope: FilterScope
+  value: string | null
+}
 
 interface ModeConfig {
   id: GameModeId
@@ -59,6 +65,8 @@ const MODES: ModeConfig[] = [
   },
 ]
 
+const DEFAULT_FILTER: GameFilter = { scope: "all", value: null }
+
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -86,9 +94,29 @@ function streakMsg(streak: number): string {
   if (streak >= 3) return "⚡ Streak!"
   return ""
 }
-function makeSrc(allQ: Question[]): Question[] {
-  const src = allQ.filter(q => !q.moduleStatus || q.moduleStatus === "live")
-  return shuffle(src.length >= 5 ? src : [...allQ])
+
+/** Returns a shuffled pool of live questions, optionally filtered by module or subject.
+ *  Falls back to the full set if the filtered result is fewer than 3 questions. */
+function makeFilteredSrc(allQ: Question[], filter: GameFilter): Question[] {
+  let base = allQ.filter(q => !q.moduleStatus || q.moduleStatus === "live")
+  if (base.length < 5) base = [...allQ]
+  if (filter.scope === "module" && filter.value) {
+    const f = base.filter(q => q.module === filter.value)
+    if (f.length >= 3) base = f
+  } else if (filter.scope === "subject" && filter.value) {
+    const f = base.filter(q => q.subject === filter.value)
+    if (f.length >= 3) base = f
+  }
+  return shuffle(base)
+}
+
+/** Count how many (live) questions match a filter. */
+function countForFilter(allQ: Question[], filter: GameFilter): number {
+  let base = allQ.filter(q => !q.moduleStatus || q.moduleStatus === "live")
+  if (base.length < 5) base = [...allQ]
+  if (filter.scope === "module" && filter.value) return base.filter(q => q.module === filter.value).length
+  if (filter.scope === "subject" && filter.value) return base.filter(q => q.subject === filter.value).length
+  return base.length
 }
 
 // ── Option button ─────────────────────────────────────────────────────────────
@@ -201,19 +229,138 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
   )
 }
 
-// ── Shared per-mode menu (start screen) ──────────────────────────────────────
-function ModeMenu({ mode, hs, onStart, onBack }: {
-  mode: ModeConfig; hs: number; onStart: () => void; onBack: () => void
+// ── Filter picker (used inside ModeMenu) ──────────────────────────────────────
+function FilterPicker({ allQ, filter, onChange }: {
+  allQ: Question[]
+  filter: GameFilter
+  onChange: (f: GameFilter) => void
 }) {
+  const [activeTab, setActiveTab] = useState<FilterScope>(filter.scope === "all" ? "all" : filter.scope)
+
+  const modules = useMemo(() =>
+    [...new Set(allQ.map(q => q.module).filter(Boolean) as string[])].sort(),
+    [allQ]
+  )
+  const subjects = useMemo(() =>
+    [...new Set(allQ.map(q => q.subject).filter(Boolean) as string[])].sort(),
+    [allQ]
+  )
+
+  const count = countForFilter(allQ, filter)
+  const hasFilter = filter.scope !== "all" && filter.value !== null
+
+  function selectTab(tab: FilterScope) {
+    setActiveTab(tab)
+    if (tab === "all") onChange(DEFAULT_FILTER)
+  }
+
+  function pick(scope: FilterScope, value: string) {
+    if (filter.scope === scope && filter.value === value) {
+      onChange(DEFAULT_FILTER)
+      setActiveTab("all")
+    } else {
+      onChange({ scope, value })
+    }
+  }
+
   return (
-    <div className="flex min-h-full flex-col items-center justify-center p-4 sm:p-8">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className={`mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br ${mode.gradient} shadow-xl ${mode.shadow} text-5xl`}>
+    <div className="mb-5 rounded-3xl border border-border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Question Scope</p>
+        {hasFilter && (
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+            {count} question{count !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      {/* Scope tabs */}
+      <div className="mb-3 flex gap-1 rounded-2xl bg-muted p-1">
+        {(["all", "module", "subject"] as FilterScope[]).map(tab => (
+          <button
+            key={tab} type="button" onClick={() => selectTab(tab)}
+            className={`flex-1 rounded-xl py-1.5 text-xs font-semibold capitalize transition-all ${activeTab === tab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {tab === "all" ? "All" : tab === "module" ? "Module" : "Discipline"}
+          </button>
+        ))}
+      </div>
+
+      {/* Module pills */}
+      {activeTab === "module" && (
+        modules.length === 0 ? (
+          <p className="text-center text-xs text-muted-foreground py-2">No modules found</p>
+        ) : (
+          <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
+            {modules.map(m => (
+              <button
+                key={m} type="button" onClick={() => pick("module", m)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${filter.scope === "module" && filter.value === m ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* Subject/discipline pills */}
+      {activeTab === "subject" && (
+        subjects.length === 0 ? (
+          <p className="text-center text-xs text-muted-foreground py-2">No disciplines found</p>
+        ) : (
+          <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
+            {subjects.map(s => (
+              <button
+                key={s} type="button" onClick={() => pick("subject", s)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${filter.scope === "subject" && filter.value === s ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* Active filter summary when on "all" tab */}
+      {activeTab === "all" && (
+        <p className="text-center text-xs text-muted-foreground py-1">
+          All {countForFilter(allQ, DEFAULT_FILTER)} available questions
+        </p>
+      )}
+
+      {/* Active filter badge below pills */}
+      {hasFilter && (
+        <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-primary/8 px-3 py-2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={12} height={12} className="text-primary shrink-0">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+          </svg>
+          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-primary">{filter.value}</span>
+          <button type="button" onClick={() => { onChange(DEFAULT_FILTER); setActiveTab("all") }} className="text-[11px] text-muted-foreground hover:text-foreground shrink-0">✕ Clear</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Shared per-mode menu (start screen) ──────────────────────────────────────
+function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
+  mode: ModeConfig; hs: number
+  allQ: Question[]; filter: GameFilter; onFilterChange: (f: GameFilter) => void
+  onStart: () => void; onBack: () => void
+}) {
+  const count = countForFilter(allQ, filter)
+  const tooFew = filter.scope !== "all" && filter.value && count < 3
+
+  return (
+    <div className="flex min-h-full flex-col p-4 sm:p-8">
+      <div className="mx-auto w-full max-w-md">
+        <div className="mb-6 text-center">
+          <div className={`mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br ${mode.gradient} shadow-xl ${mode.shadow} text-4xl`}>
             {mode.icon}
           </div>
           <div className="flex items-center justify-center gap-2 mb-2">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{mode.name}</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">{mode.name}</h1>
             <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${mode.badgeColor}`}>{mode.badge}</span>
           </div>
           <p className="text-sm text-muted-foreground">{mode.desc}</p>
@@ -223,9 +370,14 @@ function ModeMenu({ mode, hs, onStart, onBack }: {
             </div>
           )}
         </div>
-        <div className="mb-6 rounded-3xl border border-border bg-card p-5">
+
+        {/* Filter picker */}
+        <FilterPicker allQ={allQ} filter={filter} onChange={onFilterChange} />
+
+        {/* Rules */}
+        <div className="mb-5 rounded-3xl border border-border bg-card p-4">
           <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Rules</p>
-          <div className="grid gap-2.5">
+          <div className="grid gap-2">
             {mode.rules.map(r => (
               <div key={r} className="flex items-start gap-3">
                 <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${mode.gradient} text-[9px] font-bold text-white`}>✓</span>
@@ -234,6 +386,13 @@ function ModeMenu({ mode, hs, onStart, onBack }: {
             ))}
           </div>
         </div>
+
+        {tooFew && (
+          <div className="mb-3 rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-400">
+            ⚠️ Only {count} question{count !== 1 ? "s" : ""} in this filter — will fall back to all questions.
+          </div>
+        )}
+
         <button
           type="button" onClick={onStart}
           className={`w-full rounded-2xl bg-gradient-to-r ${mode.gradient} py-4 text-base font-bold text-white shadow-lg ${mode.shadow} transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.99]`}
@@ -331,6 +490,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const cfg = MODES[0]
 
+  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
   const [phase, setPhase] = useState<Phase>("menu")
   const [pool, setPool] = useState<Question[]>([])
   const [qi, setQi] = useState(0)
@@ -355,11 +515,9 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
       const best = Math.max(r.current.hs, ns)
       setIsNewHigh(ns > 0 && ns >= r.current.hs)
       setHsState(best); writeHs(cfg.hsKey, best)
-      setPhase("over"); r.current.phase = "over"
-      return
+      setPhase("over"); r.current.phase = "over"; return
     }
-    setFb(null); r.current.fb = null
-    setPicked(null); setTimeLeft(RAPID_TIME)
+    setFb(null); r.current.fb = null; setPicked(null); setTimeLeft(RAPID_TIME)
     setQi(prev => prev + 1 >= r.current.pool.length ? 0 : prev + 1)
   }
 
@@ -388,7 +546,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   }, [phase, fb, qi])
 
   function start() {
-    const p = makeSrc(allQ)
+    const p = makeFilteredSrc(allQ, filter)
     setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
     setLives(MAX_LIVES); r.current.lives = MAX_LIVES
     setScore(0); r.current.score = 0; setStreak(0); r.current.streak = 0
@@ -398,7 +556,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
     setIsNewHigh(false); setPhase("playing"); r.current.phase = "playing"
   }
 
-  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} onStart={start} onBack={onExit} />
+  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
     return <GameOver emoji={acc >= 80 ? "🏆" : acc >= 60 ? "🎯" : "💪"} headline="Game Over!" scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }, { label: "Best Streak", value: `${bestStreak}×` }]} isNewHigh={isNewHigh} onReplay={start} onExit={onExit} />
@@ -445,6 +603,7 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const cfg = MODES[1]
 
+  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
   const [phase, setPhase] = useState<Phase>("menu")
   const [pool, setPool] = useState<Question[]>([])
   const [qi, setQi] = useState(0)
@@ -460,13 +619,10 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   const doRef = useRef<((c: string | null) => void) | null>(null)
 
   function endGame(finalSurvived: number) {
-    const score = finalSurvived * BASE_PTS
     const best = Math.max(r.current.hs, finalSurvived)
     setIsNewHigh(finalSurvived > 0 && finalSurvived >= r.current.hs)
     setHsState(best); writeHs(cfg.hsKey, best)
-    setSurvived(finalSurvived)
-    setPhase("over"); r.current.phase = "over"
-    return score
+    setSurvived(finalSurvived); setPhase("over"); r.current.phase = "over"
   }
 
   function doAnswer(c: string | null) {
@@ -476,12 +632,8 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
     const nfb: Feedback = right ? "correct" : "wrong"
     setFb(nfb); r.current.fb = nfb; setPicked(c)
     if (right) {
-      const ns = r.current.survived + 1
-      setSurvived(ns); r.current.survived = ns
-      setTimeout(() => {
-        setFb(null); r.current.fb = null; setPicked(null); setTimeLeft(SUDDEN_TIME)
-        setQi(prev => prev + 1 >= r.current.pool.length ? 0 : prev + 1)
-      }, 900)
+      const ns = r.current.survived + 1; setSurvived(ns); r.current.survived = ns
+      setTimeout(() => { setFb(null); r.current.fb = null; setPicked(null); setTimeLeft(SUDDEN_TIME); setQi(prev => prev + 1 >= r.current.pool.length ? 0 : prev + 1) }, 900)
     } else {
       setTimeout(() => endGame(r.current.survived), 900)
     }
@@ -496,17 +648,17 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   }, [phase, fb, qi])
 
   function start() {
-    const p = makeSrc(allQ)
+    const p = makeFilteredSrc(allQ, filter)
     setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
     setSurvived(0); r.current.survived = 0; setTimeLeft(SUDDEN_TIME)
     setFb(null); r.current.fb = null; setPicked(null)
     setIsNewHigh(false); setPhase("playing"); r.current.phase = "playing"
   }
 
-  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} onStart={start} onBack={onExit} />
+  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const score = survived * BASE_PTS
-    return <GameOver emoji={survived >= 20 ? "💀🏆" : survived >= 10 ? "😤" : "💀"} headline={survived === 0 ? "Out on Question 1!" : `${survived} Questions Survived`} scoreLabel="Score" score={score} stats={[{ label: "Survived", value: String(survived) }, { label: "Best", value: String(hs) + " questions" }]} isNewHigh={isNewHigh} onReplay={start} onExit={onExit} />
+    return <GameOver emoji={survived >= 20 ? "💀🏆" : survived >= 10 ? "😤" : "💀"} headline={survived === 0 ? "Out on Question 1!" : `${survived} Questions Survived`} scoreLabel="Score" score={score} stats={[{ label: "Survived", value: String(survived) }, { label: "Best", value: `${hs} questions` }]} isNewHigh={isNewHigh} onReplay={start} onExit={onExit} />
   }
   const q = pool[qi]; if (!q) return null
   const pct = (timeLeft / SUDDEN_TIME) * 100
@@ -545,6 +697,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const cfg = MODES[2]
 
+  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
   const [phase, setPhase] = useState<Phase>("menu")
   const [pool, setPool] = useState<Question[]>([])
   const [qi, setQi] = useState(0)
@@ -579,13 +732,9 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     setScore(ns); setTimeLeft(nt); setTotalQ(ntq); setTotalRight(ntr)
     r.current.score = ns; r.current.timeLeft = nt; r.current.totalQ = ntq; r.current.totalRight = ntr
     if (nt <= 0) { setTimeout(() => endGame(ns), 700); return }
-    setTimeout(() => {
-      setFb(null); r.current.fb = null; setPicked(null)
-      setQi(prev => prev + 1 >= r.current.pool.length ? 0 : prev + 1)
-    }, 700)
+    setTimeout(() => { setFb(null); r.current.fb = null; setPicked(null); setQi(prev => prev + 1 >= r.current.pool.length ? 0 : prev + 1) }, 700)
   }
 
-  // Global timer — one tick per second, no per-question reset
   useEffect(() => {
     if (phase !== "playing") return
     const id = setInterval(() => {
@@ -599,7 +748,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   }, [phase])
 
   function start() {
-    const p = makeSrc(allQ)
+    const p = makeFilteredSrc(allQ, filter)
     setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
     setScore(0); r.current.score = 0; setTimeLeft(TIMEATK_START); r.current.timeLeft = TIMEATK_START
     setFb(null); r.current.fb = null; setPicked(null)
@@ -607,7 +756,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     setIsNewHigh(false); setPhase("playing"); r.current.phase = "playing"
   }
 
-  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} onStart={start} onBack={onExit} />
+  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
     return <GameOver emoji={acc >= 80 ? "⚡🏆" : acc >= 60 ? "⏱️" : "💨"} headline="Time's Up!" scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Correct", value: String(totalRight) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} onReplay={start} onExit={onExit} />
@@ -649,6 +798,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const cfg = MODES[3]
 
+  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
   const [phase, setPhase] = useState<Phase>("menu")
   const [pool, setPool] = useState<Question[]>([])
   const [qi, setQi] = useState(0)
@@ -675,21 +825,17 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
     const ntq = r.current.totalQ + 1; const ntr = right ? r.current.totalRight + 1 : r.current.totalRight
     setStreak(ns); setBestStreak(nb); setTotalQ(ntq); setTotalRight(ntr)
     r.current.streak = ns; r.current.bestStreak = nb; r.current.totalQ = ntq; r.current.totalRight = ntr
-    setTimeout(() => {
-      setFb(null); r.current.fb = null; setPicked(null)
-      setQi(prev => prev + 1 >= r.current.pool.length ? 0 : prev + 1)
-    }, 900)
+    setTimeout(() => { setFb(null); r.current.fb = null; setPicked(null); setQi(prev => prev + 1 >= r.current.pool.length ? 0 : prev + 1) }, 900)
   }
 
   function finishGame() {
     const best = Math.max(r.current.hs, r.current.bestStreak)
     setIsNewHigh(r.current.bestStreak > 0 && r.current.bestStreak >= r.current.hs)
-    setHsState(best); writeHs(cfg.hsKey, best)
-    setPhase("over")
+    setHsState(best); writeHs(cfg.hsKey, best); setPhase("over")
   }
 
   function start() {
-    const p = makeSrc(allQ)
+    const p = makeFilteredSrc(allQ, filter)
     setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
     setStreak(0); r.current.streak = 0; setBestStreak(0); r.current.bestStreak = 0
     setTotalQ(0); r.current.totalQ = 0; setTotalRight(0); r.current.totalRight = 0
@@ -697,7 +843,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
     setIsNewHigh(false); setPhase("playing")
   }
 
-  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} onStart={start} onBack={onExit} />
+  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
     const finalScore = bestStreak * 50 + totalRight * 10
