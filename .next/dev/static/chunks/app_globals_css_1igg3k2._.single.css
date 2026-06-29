@@ -1954,6 +1954,10 @@
     margin-top: calc(var(--spacing) * 2);
   }
 
+  .mt-2\.5 {
+    margin-top: calc(var(--spacing) * 2.5);
+  }
+
   .mt-3 {
     margin-top: calc(var(--spacing) * 3);
   }
@@ -2539,6 +2543,10 @@
 
   .max-h-\(--radix-select-content-available-height\) {
     max-height: var(--radix-select-content-available-height);
+  }
+
+  .max-h-36 {
+    max-height: calc(var(--spacing) * 36);
   }
 
   .max-h-64 {
@@ -10590,6 +10598,18 @@
     @supports (color: color-mix(in lab, red, red)) {
       .hover\:bg-muted\/50:hover {
         background-color: color-mix(in oklab, var(--muted) 50%, transparent);
+      }
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:bg-muted\/70:hover {
+      background-color: var(--muted);
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-muted\/70:hover {
+        background-color: color-mix(in oklab, var(--muted) 70%, transparent);
       }
     }
   }

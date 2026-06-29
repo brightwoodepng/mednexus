@@ -84,6 +84,10 @@ const MODES = [
         hsLabel: "Best Streak"
     }
 ];
+const DEFAULT_FILTER = {
+    scope: "all",
+    value: null
+};
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function shuffle(arr) {
     const a = [
@@ -122,11 +126,29 @@ function streakMsg(streak) {
     if (streak >= 3) return "⚡ Streak!";
     return "";
 }
-function makeSrc(allQ) {
-    const src = allQ.filter((q)=>!q.moduleStatus || q.moduleStatus === "live");
-    return shuffle(src.length >= 5 ? src : [
+/** Returns a shuffled pool of live questions, optionally filtered by module or subject.
+ *  Falls back to the full set if the filtered result is fewer than 3 questions. */ function makeFilteredSrc(allQ, filter) {
+    let base = allQ.filter((q)=>!q.moduleStatus || q.moduleStatus === "live");
+    if (base.length < 5) base = [
         ...allQ
-    ]);
+    ];
+    if (filter.scope === "module" && filter.value) {
+        const f = base.filter((q)=>q.module === filter.value);
+        if (f.length >= 3) base = f;
+    } else if (filter.scope === "subject" && filter.value) {
+        const f = base.filter((q)=>q.subject === filter.value);
+        if (f.length >= 3) base = f;
+    }
+    return shuffle(base);
+}
+/** Count how many (live) questions match a filter. */ function countForFilter(allQ, filter) {
+    let base = allQ.filter((q)=>!q.moduleStatus || q.moduleStatus === "live");
+    if (base.length < 5) base = [
+        ...allQ
+    ];
+    if (filter.scope === "module" && filter.value) return base.filter((q)=>q.module === filter.value).length;
+    if (filter.scope === "subject" && filter.value) return base.filter((q)=>q.subject === filter.value).length;
+    return base.length;
 }
 // ── Option button ─────────────────────────────────────────────────────────────
 function OptionBtn({ id, text, sel, correct, fb, onSel }) {
@@ -154,25 +176,25 @@ function OptionBtn({ id, text, sel, correct, fb, onSel }) {
                     children: id
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 118,
+                    lineNumber: 146,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                     children: text
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 119,
+                    lineNumber: 147,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 117,
+            lineNumber: 145,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 116,
+        lineNumber: 144,
         columnNumber: 5
     }, this);
 }
@@ -193,7 +215,7 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer }) {
                                 children: question.subject
                             }, void 0, false, {
                                 fileName: "[project]/components/game-mode.tsx",
-                                lineNumber: 136,
+                                lineNumber: 164,
                                 columnNumber: 11
                             }, this),
                             question.module && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -201,13 +223,13 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer }) {
                                 children: question.module
                             }, void 0, false, {
                                 fileName: "[project]/components/game-mode.tsx",
-                                lineNumber: 140,
+                                lineNumber: 168,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/game-mode.tsx",
-                        lineNumber: 135,
+                        lineNumber: 163,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -215,13 +237,13 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer }) {
                         children: question.vignette
                     }, void 0, false, {
                         fileName: "[project]/components/game-mode.tsx",
-                        lineNumber: 145,
+                        lineNumber: 173,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/game-mode.tsx",
-                lineNumber: 134,
+                lineNumber: 162,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -235,19 +257,19 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer }) {
                         onSel: ()=>onAnswer(opt.id)
                     }, opt.id, false, {
                         fileName: "[project]/components/game-mode.tsx",
-                        lineNumber: 149,
+                        lineNumber: 177,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/components/game-mode.tsx",
-                lineNumber: 147,
+                lineNumber: 175,
                 columnNumber: 7
             }, this),
             footer
         ]
     }, void 0, true, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 132,
+        lineNumber: 160,
         columnNumber: 5
     }, this);
 }
@@ -266,7 +288,7 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
                             children: emoji
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 171,
+                            lineNumber: 199,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -274,7 +296,7 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
                             children: headline
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 172,
+                            lineNumber: 200,
                             columnNumber: 11
                         }, this),
                         isNewHigh && score > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -282,13 +304,13 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
                             children: "🏆 New Best!"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 174,
+                            lineNumber: 202,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 170,
+                    lineNumber: 198,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -299,7 +321,7 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
                             children: scoreLabel
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 180,
+                            lineNumber: 208,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -307,13 +329,13 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
                             children: score.toLocaleString()
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 181,
+                            lineNumber: 209,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 179,
+                    lineNumber: 207,
                     columnNumber: 9
                 }, this),
                 stats.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -329,7 +351,7 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
                                     children: s.value
                                 }, void 0, false, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 187,
+                                    lineNumber: 215,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -337,18 +359,18 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
                                     children: s.label
                                 }, void 0, false, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 188,
+                                    lineNumber: 216,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, s.label, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 186,
+                            lineNumber: 214,
                             columnNumber: 15
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 184,
+                    lineNumber: 212,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -358,7 +380,7 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
                     children: "Play Again"
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 193,
+                    lineNumber: 221,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -368,48 +390,252 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
                     children: "Choose Mode"
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 196,
+                    lineNumber: 224,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 169,
+            lineNumber: 197,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 168,
+        lineNumber: 196,
+        columnNumber: 5
+    }, this);
+}
+// ── Filter picker (used inside ModeMenu) ──────────────────────────────────────
+function FilterPicker({ allQ, filter, onChange }) {
+    const [activeTab, setActiveTab] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(filter.scope === "all" ? "all" : filter.scope);
+    const modules = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>[
+            ...new Set(allQ.map((q)=>q.module).filter(Boolean))
+        ].sort(), [
+        allQ
+    ]);
+    const subjects = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useMemo"])(()=>[
+            ...new Set(allQ.map((q)=>q.subject).filter(Boolean))
+        ].sort(), [
+        allQ
+    ]);
+    const count = countForFilter(allQ, filter);
+    const hasFilter = filter.scope !== "all" && filter.value !== null;
+    function selectTab(tab) {
+        setActiveTab(tab);
+        if (tab === "all") onChange(DEFAULT_FILTER);
+    }
+    function pick(scope, value) {
+        if (filter.scope === scope && filter.value === value) {
+            onChange(DEFAULT_FILTER);
+            setActiveTab("all");
+        } else {
+            onChange({
+                scope,
+                value
+            });
+        }
+    }
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        className: "mb-5 rounded-3xl border border-border bg-card p-4",
+        children: [
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "mb-3 flex items-center justify-between",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "text-[10px] font-bold uppercase tracking-widest text-muted-foreground",
+                        children: "Question Scope"
+                    }, void 0, false, {
+                        fileName: "[project]/components/game-mode.tsx",
+                        lineNumber: 269,
+                        columnNumber: 9
+                    }, this),
+                    hasFilter && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        className: "rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary",
+                        children: [
+                            count,
+                            " question",
+                            count !== 1 ? "s" : ""
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/components/game-mode.tsx",
+                        lineNumber: 271,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/components/game-mode.tsx",
+                lineNumber: 268,
+                columnNumber: 7
+            }, this),
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "mb-3 flex gap-1 rounded-2xl bg-muted p-1",
+                children: [
+                    "all",
+                    "module",
+                    "subject"
+                ].map((tab)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: ()=>selectTab(tab),
+                        className: `flex-1 rounded-xl py-1.5 text-xs font-semibold capitalize transition-all ${activeTab === tab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`,
+                        children: tab === "all" ? "All" : tab === "module" ? "Module" : "Discipline"
+                    }, tab, false, {
+                        fileName: "[project]/components/game-mode.tsx",
+                        lineNumber: 280,
+                        columnNumber: 11
+                    }, this))
+            }, void 0, false, {
+                fileName: "[project]/components/game-mode.tsx",
+                lineNumber: 278,
+                columnNumber: 7
+            }, this),
+            activeTab === "module" && (modules.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                className: "text-center text-xs text-muted-foreground py-2",
+                children: "No modules found"
+            }, void 0, false, {
+                fileName: "[project]/components/game-mode.tsx",
+                lineNumber: 292,
+                columnNumber: 11
+            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "flex max-h-36 flex-wrap gap-1.5 overflow-y-auto",
+                children: modules.map((m)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: ()=>pick("module", m),
+                        className: `rounded-full px-3 py-1.5 text-xs font-medium transition-all ${filter.scope === "module" && filter.value === m ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`,
+                        children: m
+                    }, m, false, {
+                        fileName: "[project]/components/game-mode.tsx",
+                        lineNumber: 296,
+                        columnNumber: 15
+                    }, this))
+            }, void 0, false, {
+                fileName: "[project]/components/game-mode.tsx",
+                lineNumber: 294,
+                columnNumber: 11
+            }, this)),
+            activeTab === "subject" && (subjects.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                className: "text-center text-xs text-muted-foreground py-2",
+                children: "No disciplines found"
+            }, void 0, false, {
+                fileName: "[project]/components/game-mode.tsx",
+                lineNumber: 310,
+                columnNumber: 11
+            }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "flex max-h-36 flex-wrap gap-1.5 overflow-y-auto",
+                children: subjects.map((s)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: ()=>pick("subject", s),
+                        className: `rounded-full px-3 py-1.5 text-xs font-medium transition-all ${filter.scope === "subject" && filter.value === s ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`,
+                        children: s
+                    }, s, false, {
+                        fileName: "[project]/components/game-mode.tsx",
+                        lineNumber: 314,
+                        columnNumber: 15
+                    }, this))
+            }, void 0, false, {
+                fileName: "[project]/components/game-mode.tsx",
+                lineNumber: 312,
+                columnNumber: 11
+            }, this)),
+            activeTab === "all" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                className: "text-center text-xs text-muted-foreground py-1",
+                children: [
+                    "All ",
+                    countForFilter(allQ, DEFAULT_FILTER),
+                    " available questions"
+                ]
+            }, void 0, true, {
+                fileName: "[project]/components/game-mode.tsx",
+                lineNumber: 327,
+                columnNumber: 9
+            }, this),
+            hasFilter && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "mt-2.5 flex items-center gap-2 rounded-xl bg-primary/8 px-3 py-2",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
+                        viewBox: "0 0 24 24",
+                        fill: "none",
+                        stroke: "currentColor",
+                        strokeWidth: 2,
+                        strokeLinecap: "round",
+                        strokeLinejoin: "round",
+                        width: 12,
+                        height: 12,
+                        className: "text-primary shrink-0",
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("polygon", {
+                            points: "22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"
+                        }, void 0, false, {
+                            fileName: "[project]/components/game-mode.tsx",
+                            lineNumber: 336,
+                            columnNumber: 13
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/components/game-mode.tsx",
+                        lineNumber: 335,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                        className: "min-w-0 flex-1 truncate text-[11px] font-semibold text-primary",
+                        children: filter.value
+                    }, void 0, false, {
+                        fileName: "[project]/components/game-mode.tsx",
+                        lineNumber: 338,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: ()=>{
+                            onChange(DEFAULT_FILTER);
+                            setActiveTab("all");
+                        },
+                        className: "text-[11px] text-muted-foreground hover:text-foreground shrink-0",
+                        children: "✕ Clear"
+                    }, void 0, false, {
+                        fileName: "[project]/components/game-mode.tsx",
+                        lineNumber: 339,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/components/game-mode.tsx",
+                lineNumber: 334,
+                columnNumber: 9
+            }, this)
+        ]
+    }, void 0, true, {
+        fileName: "[project]/components/game-mode.tsx",
+        lineNumber: 267,
         columnNumber: 5
     }, this);
 }
 // ── Shared per-mode menu (start screen) ──────────────────────────────────────
-function ModeMenu({ mode, hs, onStart, onBack }) {
+function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }) {
+    const count = countForFilter(allQ, filter);
+    const tooFew = filter.scope !== "all" && filter.value && count < 3;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        className: "flex min-h-full flex-col items-center justify-center p-4 sm:p-8",
+        className: "flex min-h-full flex-col p-4 sm:p-8",
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "w-full max-w-md",
+            className: "mx-auto w-full max-w-md",
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "mb-8 text-center",
+                    className: "mb-6 text-center",
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: `mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br ${mode.gradient} shadow-xl ${mode.shadow} text-5xl`,
+                            className: `mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br ${mode.gradient} shadow-xl ${mode.shadow} text-4xl`,
                             children: mode.icon
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 212,
+                            lineNumber: 359,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "flex items-center justify-center gap-2 mb-2",
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
-                                    className: "text-3xl font-extrabold tracking-tight text-foreground",
+                                    className: "text-2xl font-extrabold tracking-tight text-foreground",
                                     children: mode.name
                                 }, void 0, false, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 216,
+                                    lineNumber: 363,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -417,13 +643,13 @@ function ModeMenu({ mode, hs, onStart, onBack }) {
                                     children: mode.badge
                                 }, void 0, false, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 217,
+                                    lineNumber: 364,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 215,
+                            lineNumber: 362,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -431,7 +657,7 @@ function ModeMenu({ mode, hs, onStart, onBack }) {
                             children: mode.desc
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 219,
+                            lineNumber: 366,
                             columnNumber: 11
                         }, this),
                         hs > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -444,28 +670,37 @@ function ModeMenu({ mode, hs, onStart, onBack }) {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 221,
+                            lineNumber: 368,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 211,
+                    lineNumber: 358,
+                    columnNumber: 9
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(FilterPicker, {
+                    allQ: allQ,
+                    filter: filter,
+                    onChange: onFilterChange
+                }, void 0, false, {
+                    fileName: "[project]/components/game-mode.tsx",
+                    lineNumber: 375,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "mb-6 rounded-3xl border border-border bg-card p-5",
+                    className: "mb-5 rounded-3xl border border-border bg-card p-4",
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                             className: "mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground",
                             children: "Rules"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 227,
+                            lineNumber: 379,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "grid gap-2.5",
+                            className: "grid gap-2",
                             children: mode.rules.map((r)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "flex items-start gap-3",
                                     children: [
@@ -474,7 +709,7 @@ function ModeMenu({ mode, hs, onStart, onBack }) {
                                             children: "✓"
                                         }, void 0, false, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 231,
+                                            lineNumber: 383,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -482,25 +717,39 @@ function ModeMenu({ mode, hs, onStart, onBack }) {
                                             children: r
                                         }, void 0, false, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 232,
+                                            lineNumber: 384,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, r, true, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 230,
+                                    lineNumber: 382,
                                     columnNumber: 15
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 228,
+                            lineNumber: 380,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 226,
+                    lineNumber: 378,
                     columnNumber: 9
+                }, this),
+                tooFew && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "mb-3 rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-400",
+                    children: [
+                        "⚠️ Only ",
+                        count,
+                        " question",
+                        count !== 1 ? "s" : "",
+                        " in this filter — will fall back to all questions."
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/components/game-mode.tsx",
+                    lineNumber: 391,
+                    columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                     type: "button",
@@ -509,7 +758,7 @@ function ModeMenu({ mode, hs, onStart, onBack }) {
                     children: "Start Game"
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 237,
+                    lineNumber: 396,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -519,18 +768,18 @@ function ModeMenu({ mode, hs, onStart, onBack }) {
                     children: "Back to Mode Select"
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 243,
+                    lineNumber: 402,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 210,
+            lineNumber: 357,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 209,
+        lineNumber: 356,
         columnNumber: 5
     }, this);
 }
@@ -563,7 +812,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                         y2: "12"
                                     }, void 0, false, {
                                         fileName: "[project]/components/game-mode.tsx",
-                                        lineNumber: 261,
+                                        lineNumber: 420,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -573,7 +822,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                         y2: "14"
                                     }, void 0, false, {
                                         fileName: "[project]/components/game-mode.tsx",
-                                        lineNumber: 261,
+                                        lineNumber: 420,
                                         columnNumber: 54
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -583,7 +832,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                         y2: "11"
                                     }, void 0, false, {
                                         fileName: "[project]/components/game-mode.tsx",
-                                        lineNumber: 262,
+                                        lineNumber: 421,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -593,7 +842,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                         y2: "13"
                                     }, void 0, false, {
                                         fileName: "[project]/components/game-mode.tsx",
-                                        lineNumber: 262,
+                                        lineNumber: 421,
                                         columnNumber: 55
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -604,18 +853,18 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                         rx: "2"
                                     }, void 0, false, {
                                         fileName: "[project]/components/game-mode.tsx",
-                                        lineNumber: 263,
+                                        lineNumber: 422,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/game-mode.tsx",
-                                lineNumber: 260,
+                                lineNumber: 419,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 259,
+                            lineNumber: 418,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -623,7 +872,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                             children: "Game Mode"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 266,
+                            lineNumber: 425,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -631,13 +880,13 @@ function ModeSelectScreen({ onSelect, onBack }) {
                             children: "Pick a game type and start playing"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 267,
+                            lineNumber: 426,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 258,
+                    lineNumber: 417,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -653,7 +902,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                     className: `absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${m.gradient}`
                                 }, void 0, false, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 278,
+                                    lineNumber: 437,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -664,7 +913,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                             children: m.icon
                                         }, void 0, false, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 280,
+                                            lineNumber: 439,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -678,7 +927,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                                             children: m.name
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/game-mode.tsx",
-                                                            lineNumber: 285,
+                                                            lineNumber: 444,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -686,13 +935,13 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                                             children: m.badge
                                                         }, void 0, false, {
                                                             fileName: "[project]/components/game-mode.tsx",
-                                                            lineNumber: 286,
+                                                            lineNumber: 445,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/game-mode.tsx",
-                                                    lineNumber: 284,
+                                                    lineNumber: 443,
                                                     columnNumber: 21
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -700,19 +949,19 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                                     children: m.desc
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/game-mode.tsx",
-                                                    lineNumber: 288,
+                                                    lineNumber: 447,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 283,
+                                            lineNumber: 442,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 279,
+                                    lineNumber: 438,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -724,19 +973,19 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                                     className: "h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/game-mode.tsx",
-                                                    lineNumber: 294,
+                                                    lineNumber: 453,
                                                     columnNumber: 23
                                                 }, this),
                                                 rule
                                             ]
                                         }, rule, true, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 293,
+                                            lineNumber: 452,
                                             columnNumber: 21
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 291,
+                                    lineNumber: 450,
                                     columnNumber: 17
                                 }, this),
                                 hs > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -747,7 +996,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                             children: "🏆"
                                         }, void 0, false, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 301,
+                                            lineNumber: 460,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -758,7 +1007,7 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 302,
+                                            lineNumber: 461,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -766,13 +1015,13 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                             children: hs.toLocaleString()
                                         }, void 0, false, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 303,
+                                            lineNumber: 462,
                                             columnNumber: 21
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 300,
+                                    lineNumber: 459,
                                     columnNumber: 19
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -792,30 +1041,30 @@ function ModeSelectScreen({ onSelect, onBack }) {
                                                 d: "m9 18 6-6-6-6"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/game-mode.tsx",
-                                                lineNumber: 309,
+                                                lineNumber: 468,
                                                 columnNumber: 21
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 308,
+                                            lineNumber: 467,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 306,
+                                    lineNumber: 465,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, m.id, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 274,
+                            lineNumber: 433,
                             columnNumber: 15
                         }, this);
                     })
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 270,
+                    lineNumber: 429,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -825,18 +1074,18 @@ function ModeSelectScreen({ onSelect, onBack }) {
                     children: "Back to Dashboard"
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 317,
+                    lineNumber: 476,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 257,
+            lineNumber: 416,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 256,
+        lineNumber: 415,
         columnNumber: 5
     }, this);
 }
@@ -847,6 +1096,7 @@ const BASE_PTS = 100;
 function RapidFireMode({ onExit }) {
     const { questions: allQ } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$questions$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQuestions"])();
     const cfg = MODES[0];
+    const [filter, setFilter] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(DEFAULT_FILTER);
     const [phase, setPhase] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("menu");
     const [pool, setPool] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [qi, setQi] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(0);
@@ -952,7 +1202,7 @@ function RapidFireMode({ onExit }) {
         qi
     ]);
     function start() {
-        const p = makeSrc(allQ);
+        const p = makeFilteredSrc(allQ, filter);
         setPool(p);
         r.current.pool = p;
         setQi(0);
@@ -980,11 +1230,14 @@ function RapidFireMode({ onExit }) {
     if (phase === "menu") return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ModeMenu, {
         mode: cfg,
         hs: hs,
+        allQ: allQ,
+        filter: filter,
+        onFilterChange: setFilter,
         onStart: start,
         onBack: onExit
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 401,
+        lineNumber: 559,
         columnNumber: 32
     }, this);
     if (phase === "over") {
@@ -1013,7 +1266,7 @@ function RapidFireMode({ onExit }) {
             onExit: onExit
         }, void 0, false, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 404,
+            lineNumber: 562,
             columnNumber: 12
         }, this);
     }
@@ -1052,24 +1305,24 @@ function RapidFireMode({ onExit }) {
                                         d: "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
                                     }, void 0, false, {
                                         fileName: "[project]/components/game-mode.tsx",
-                                        lineNumber: 419,
+                                        lineNumber: 577,
                                         columnNumber: 19
                                     }, this)
                                 }, i, false, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 418,
+                                    lineNumber: 576,
                                     columnNumber: 17
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 416,
+                            lineNumber: 574,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "flex-1"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 423,
+                            lineNumber: 581,
                             columnNumber: 13
                         }, this),
                         streak >= 3 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1081,7 +1334,7 @@ function RapidFireMode({ onExit }) {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 424,
+                            lineNumber: 582,
                             columnNumber: 29
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1089,13 +1342,13 @@ function RapidFireMode({ onExit }) {
                             children: score.toLocaleString()
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 425,
+                            lineNumber: 583,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 415,
+                    lineNumber: 573,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1107,12 +1360,12 @@ function RapidFireMode({ onExit }) {
                         }
                     }, void 0, false, {
                         fileName: "[project]/components/game-mode.tsx",
-                        lineNumber: 428,
+                        lineNumber: 586,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 427,
+                    lineNumber: 585,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1126,7 +1379,7 @@ function RapidFireMode({ onExit }) {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 431,
+                            lineNumber: 589,
                             columnNumber: 13
                         }, this),
                         msg ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1134,7 +1387,7 @@ function RapidFireMode({ onExit }) {
                             children: msg
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 432,
+                            lineNumber: 590,
                             columnNumber: 20
                         }, this) : bonus > 0 && fb === null ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                             className: "text-xs font-semibold text-emerald-600 dark:text-emerald-400",
@@ -1145,19 +1398,19 @@ function RapidFireMode({ onExit }) {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 432,
+                            lineNumber: 590,
                             columnNumber: 133
                         }, this) : null
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 430,
+                    lineNumber: 588,
                     columnNumber: 11
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 414,
+            lineNumber: 572,
             columnNumber: 9
         }, this),
         footer: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1167,12 +1420,12 @@ function RapidFireMode({ onExit }) {
             children: "Quit Game"
         }, void 0, false, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 436,
+            lineNumber: 594,
             columnNumber: 15
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 412,
+        lineNumber: 570,
         columnNumber: 5
     }, this);
 }
@@ -1181,6 +1434,7 @@ const SUDDEN_TIME = 20;
 function SuddenDeathMode({ onExit }) {
     const { questions: allQ } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$questions$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQuestions"])();
     const cfg = MODES[1];
+    const [filter, setFilter] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(DEFAULT_FILTER);
     const [phase, setPhase] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("menu");
     const [pool, setPool] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [qi, setQi] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(0);
@@ -1208,7 +1462,6 @@ function SuddenDeathMode({ onExit }) {
     };
     const doRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(null);
     function endGame(finalSurvived) {
-        const score = finalSurvived * BASE_PTS;
         const best = Math.max(r.current.hs, finalSurvived);
         setIsNewHigh(finalSurvived > 0 && finalSurvived >= r.current.hs);
         setHsState(best);
@@ -1216,7 +1469,6 @@ function SuddenDeathMode({ onExit }) {
         setSurvived(finalSurvived);
         setPhase("over");
         r.current.phase = "over";
-        return score;
     }
     function doAnswer(c) {
         if (r.current.fb !== null || r.current.phase !== "playing") return;
@@ -1261,7 +1513,7 @@ function SuddenDeathMode({ onExit }) {
         qi
     ]);
     function start() {
-        const p = makeSrc(allQ);
+        const p = makeFilteredSrc(allQ, filter);
         setPool(p);
         r.current.pool = p;
         setQi(0);
@@ -1279,11 +1531,14 @@ function SuddenDeathMode({ onExit }) {
     if (phase === "menu") return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ModeMenu, {
         mode: cfg,
         hs: hs,
+        allQ: allQ,
+        filter: filter,
+        onFilterChange: setFilter,
         onStart: start,
         onBack: onExit
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 506,
+        lineNumber: 658,
         columnNumber: 32
     }, this);
     if (phase === "over") {
@@ -1300,7 +1555,7 @@ function SuddenDeathMode({ onExit }) {
                 },
                 {
                     label: "Best",
-                    value: String(hs) + " questions"
+                    value: `${hs} questions`
                 }
             ],
             isNewHigh: isNewHigh,
@@ -1308,7 +1563,7 @@ function SuddenDeathMode({ onExit }) {
             onExit: onExit
         }, void 0, false, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 509,
+            lineNumber: 661,
             columnNumber: 12
         }, this);
     }
@@ -1335,7 +1590,7 @@ function SuddenDeathMode({ onExit }) {
                                     children: "💀"
                                 }, void 0, false, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 521,
+                                    lineNumber: 673,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1346,20 +1601,20 @@ function SuddenDeathMode({ onExit }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 522,
+                                    lineNumber: 674,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 520,
+                            lineNumber: 672,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "flex-1"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 524,
+                            lineNumber: 676,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1367,13 +1622,13 @@ function SuddenDeathMode({ onExit }) {
                             children: (survived * BASE_PTS).toLocaleString()
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 525,
+                            lineNumber: 677,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 519,
+                    lineNumber: 671,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1385,12 +1640,12 @@ function SuddenDeathMode({ onExit }) {
                         }
                     }, void 0, false, {
                         fileName: "[project]/components/game-mode.tsx",
-                        lineNumber: 528,
+                        lineNumber: 680,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 527,
+                    lineNumber: 679,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1404,7 +1659,7 @@ function SuddenDeathMode({ onExit }) {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 531,
+                            lineNumber: 683,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1412,19 +1667,19 @@ function SuddenDeathMode({ onExit }) {
                             children: "One wrong = game over"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 532,
+                            lineNumber: 684,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 530,
+                    lineNumber: 682,
                     columnNumber: 11
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 518,
+            lineNumber: 670,
             columnNumber: 9
         }, this),
         footer: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1434,12 +1689,12 @@ function SuddenDeathMode({ onExit }) {
             children: "Quit Game"
         }, void 0, false, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 536,
+            lineNumber: 688,
             columnNumber: 15
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 516,
+        lineNumber: 668,
         columnNumber: 5
     }, this);
 }
@@ -1448,6 +1703,7 @@ const TIMEATK_START = 90;
 function TimeAttackMode({ onExit }) {
     const { questions: allQ } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$questions$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQuestions"])();
     const cfg = MODES[2];
+    const [filter, setFilter] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(DEFAULT_FILTER);
     const [phase, setPhase] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("menu");
     const [pool, setPool] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [qi, setQi] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(0);
@@ -1521,7 +1777,6 @@ function TimeAttackMode({ onExit }) {
             setQi((prev)=>prev + 1 >= r.current.pool.length ? 0 : prev + 1);
         }, 700);
     }
-    // Global timer — one tick per second, no per-question reset
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
         if (phase !== "playing") return;
         const id = setInterval(()=>{
@@ -1540,7 +1795,7 @@ function TimeAttackMode({ onExit }) {
         phase
     ]);
     function start() {
-        const p = makeSrc(allQ);
+        const p = makeFilteredSrc(allQ, filter);
         setPool(p);
         r.current.pool = p;
         setQi(0);
@@ -1563,11 +1818,14 @@ function TimeAttackMode({ onExit }) {
     if (phase === "menu") return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ModeMenu, {
         mode: cfg,
         hs: hs,
+        allQ: allQ,
+        filter: filter,
+        onFilterChange: setFilter,
         onStart: start,
         onBack: onExit
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 610,
+        lineNumber: 759,
         columnNumber: 32
     }, this);
     if (phase === "over") {
@@ -1596,7 +1854,7 @@ function TimeAttackMode({ onExit }) {
             onExit: onExit
         }, void 0, false, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 613,
+            lineNumber: 762,
             columnNumber: 12
         }, this);
     }
@@ -1635,20 +1893,20 @@ function TimeAttackMode({ onExit }) {
                                             r: "10"
                                         }, void 0, false, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 626,
+                                            lineNumber: 775,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("polyline", {
                                             points: "12 6 12 12 16 14"
                                         }, void 0, false, {
                                             fileName: "[project]/components/game-mode.tsx",
-                                            lineNumber: 626,
+                                            lineNumber: 775,
                                             columnNumber: 49
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 625,
+                                    lineNumber: 774,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1659,20 +1917,20 @@ function TimeAttackMode({ onExit }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 628,
+                                    lineNumber: 777,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 624,
+                            lineNumber: 773,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "flex-1"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 630,
+                            lineNumber: 779,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1680,13 +1938,13 @@ function TimeAttackMode({ onExit }) {
                             children: score.toLocaleString()
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 631,
+                            lineNumber: 780,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 623,
+                    lineNumber: 772,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1698,12 +1956,12 @@ function TimeAttackMode({ onExit }) {
                         }
                     }, void 0, false, {
                         fileName: "[project]/components/game-mode.tsx",
-                        lineNumber: 634,
+                        lineNumber: 783,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 633,
+                    lineNumber: 782,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1714,7 +1972,7 @@ function TimeAttackMode({ onExit }) {
                             children: "✓ +100 pts +3s"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 637,
+                            lineNumber: 786,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1722,19 +1980,19 @@ function TimeAttackMode({ onExit }) {
                             children: "✗ −5s"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 638,
+                            lineNumber: 787,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 636,
+                    lineNumber: 785,
                     columnNumber: 11
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 622,
+            lineNumber: 771,
             columnNumber: 9
         }, this),
         footer: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1744,12 +2002,12 @@ function TimeAttackMode({ onExit }) {
             children: "Quit Game"
         }, void 0, false, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 642,
+            lineNumber: 791,
             columnNumber: 15
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 620,
+        lineNumber: 769,
         columnNumber: 5
     }, this);
 }
@@ -1757,6 +2015,7 @@ function TimeAttackMode({ onExit }) {
 function StreakMasterMode({ onExit }) {
     const { questions: allQ } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$contexts$2f$questions$2d$context$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useQuestions"])();
     const cfg = MODES[3];
+    const [filter, setFilter] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(DEFAULT_FILTER);
     const [phase, setPhase] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("menu");
     const [pool, setPool] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])([]);
     const [qi, setQi] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(0);
@@ -1824,7 +2083,7 @@ function StreakMasterMode({ onExit }) {
         setPhase("over");
     }
     function start() {
-        const p = makeSrc(allQ);
+        const p = makeFilteredSrc(allQ, filter);
         setPool(p);
         r.current.pool = p;
         setQi(0);
@@ -1846,11 +2105,14 @@ function StreakMasterMode({ onExit }) {
     if (phase === "menu") return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ModeMenu, {
         mode: cfg,
         hs: hs,
+        allQ: allQ,
+        filter: filter,
+        onFilterChange: setFilter,
         onStart: start,
         onBack: onExit
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 700,
+        lineNumber: 846,
         columnNumber: 32
     }, this);
     if (phase === "over") {
@@ -1880,7 +2142,7 @@ function StreakMasterMode({ onExit }) {
             onExit: onExit
         }, void 0, false, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 704,
+            lineNumber: 850,
             columnNumber: 12
         }, this);
     }
@@ -1903,7 +2165,7 @@ function StreakMasterMode({ onExit }) {
                             children: "🔥"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 715,
+                            lineNumber: 861,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1913,7 +2175,7 @@ function StreakMasterMode({ onExit }) {
                                     children: "Streak"
                                 }, void 0, false, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 717,
+                                    lineNumber: 863,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1924,19 +2186,19 @@ function StreakMasterMode({ onExit }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 718,
+                                    lineNumber: 864,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 716,
+                            lineNumber: 862,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 714,
+                    lineNumber: 860,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1954,13 +2216,13 @@ function StreakMasterMode({ onExit }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/game-mode.tsx",
-                                    lineNumber: 722,
+                                    lineNumber: 868,
                                     columnNumber: 68
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 722,
+                            lineNumber: 868,
                             columnNumber: 13
                         }, this),
                         msg && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1968,20 +2230,20 @@ function StreakMasterMode({ onExit }) {
                             children: msg
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 723,
+                            lineNumber: 869,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 721,
+                    lineNumber: 867,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "flex-1"
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 725,
+                    lineNumber: 871,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1992,7 +2254,7 @@ function StreakMasterMode({ onExit }) {
                             children: "Answered"
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 727,
+                            lineNumber: 873,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2000,19 +2262,19 @@ function StreakMasterMode({ onExit }) {
                             children: totalQ
                         }, void 0, false, {
                             fileName: "[project]/components/game-mode.tsx",
-                            lineNumber: 728,
+                            lineNumber: 874,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 726,
+                    lineNumber: 872,
                     columnNumber: 11
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 713,
+            lineNumber: 859,
             columnNumber: 9
         }, this),
         footer: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2026,7 +2288,7 @@ function StreakMasterMode({ onExit }) {
                     children: "Finish Game"
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 734,
+                    lineNumber: 880,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2036,18 +2298,18 @@ function StreakMasterMode({ onExit }) {
                     children: "Quit"
                 }, void 0, false, {
                     fileName: "[project]/components/game-mode.tsx",
-                    lineNumber: 737,
+                    lineNumber: 883,
                     columnNumber: 11
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/game-mode.tsx",
-            lineNumber: 733,
+            lineNumber: 879,
             columnNumber: 9
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 711,
+        lineNumber: 857,
         columnNumber: 5
     }, this);
 }
@@ -2057,28 +2319,28 @@ function GameMode({ onExit }) {
         onExit: ()=>setActiveMode(null)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 750,
+        lineNumber: 896,
         columnNumber: 38
     }, this);
     if (activeMode === "sudden") return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SuddenDeathMode, {
         onExit: ()=>setActiveMode(null)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 751,
+        lineNumber: 897,
         columnNumber: 39
     }, this);
     if (activeMode === "timeatk") return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(TimeAttackMode, {
         onExit: ()=>setActiveMode(null)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 752,
+        lineNumber: 898,
         columnNumber: 40
     }, this);
     if (activeMode === "streak") return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StreakMasterMode, {
         onExit: ()=>setActiveMode(null)
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 753,
+        lineNumber: 899,
         columnNumber: 39
     }, this);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$2$2e$9_$40$babel$2b$core$40$7$2e$29$2e$7_$40$opentelemetry$2b$api$40$1$2e$9$2e$1_react$2d$dom$40$19$2e$2$2e$7_react$40$19$2e$2$2e$7_$5f$react$40$19$2e$2$2e$7$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(ModeSelectScreen, {
@@ -2086,7 +2348,7 @@ function GameMode({ onExit }) {
         onBack: onExit
     }, void 0, false, {
         fileName: "[project]/components/game-mode.tsx",
-        lineNumber: 755,
+        lineNumber: 901,
         columnNumber: 10
     }, this);
 }
