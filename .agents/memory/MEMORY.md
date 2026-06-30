@@ -6,3 +6,4 @@
 - [Live Assessments Architecture](live-assessments.md) — mednexus_assessments + mednexus_assessment_attempts tables, share_token UUID for guest URLs at /exam/[token], safeScreen guards live-assessments-admin
 - [User Auth Architecture](user-auth.md) — mednexus_registered_users table, index number auto-format/auto-approve, OTP reset via must_change_password flag, 3-role landing page
 - [Game Mode Architecture](game-mode-arch.md) — 7 modes: 5 solo (game-mode.tsx) + 2 multiplayer (game-mode-multiplayer.tsx); DB table mednexus_game_rooms; polling-based realtime at 1.5s intervals
+- [Virtual Economy Architecture](economy-arch.md) — Nexus Points wallet; DB tables mednexus_wallet/bounty_progress/user_inventory; payout calculated server-side in /api/economy/payout; EconomyProvider wraps app in page.tsx

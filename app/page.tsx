@@ -4,6 +4,7 @@ import { AppProvider } from "@/contexts/app-context"
 import { QuestionsProvider } from "@/contexts/questions-context"
 import { AdminProvider } from "@/contexts/admin-context"
 import { StudyModeProvider } from "@/contexts/study-mode-context"
+import { EconomyProvider } from "@/contexts/economy-context"
 
 /**
  * Provider order:
@@ -12,6 +13,7 @@ import { StudyModeProvider } from "@/contexts/study-mode-context"
  *  3. AdminProvider      — admin session (token-based)
  *  4. QuestionsProvider  — shared question bank (DB-backed, polls every 30s)
  *  5. StudyModeProvider  — global trial/exam toggle (persisted to localStorage)
+ *  6. EconomyProvider    — Nexus Points wallet, bounties, inventory
  */
 export default function Page() {
   return (
@@ -20,7 +22,9 @@ export default function Page() {
         <AdminProvider>
           <QuestionsProvider>
             <StudyModeProvider>
-              <MedNexusApp />
+              <EconomyProvider>
+                <MedNexusApp />
+              </EconomyProvider>
             </StudyModeProvider>
           </QuestionsProvider>
         </AdminProvider>
