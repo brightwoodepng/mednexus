@@ -1,9 +1,10 @@
 import crypto from "crypto"
 
-const SECRET = process.env.ADMIN_SECRET ?? "mednexus-tok-9x2km4p7wq"
+const SECRET = process.env.ADMIN_SECRET
 
 /** Create a signed token valid for 24 h. */
 export function createAdminToken(password: string): string {
+  if (!SECRET) throw new Error("ADMIN_SECRET is not set")
   const exp = Math.floor(Date.now() / 1000) + 86400
   const sig = crypto
     .createHmac("sha256", SECRET)
@@ -15,6 +16,7 @@ export function createAdminToken(password: string): string {
 /** Verify a token. Returns true if valid and not expired. */
 export function verifyAdminToken(token: string): boolean {
   try {
+    if (!SECRET) return false
     const { exp, sig } = JSON.parse(Buffer.from(token, "base64url").toString())
     if (!exp || !sig) return false
     if (exp < Math.floor(Date.now() / 1000)) return false
