@@ -1,0 +1,148 @@
+MedNexus Game Mode Engine
+Comprehensive Architecture & Blueprint
+1. The Global Lobby Architecture
+The game modes are organized into an intent-driven routing system that splits the user journey based
+on whether they want an isolated training session or a group experience.
+The Hero Split: The entry screen presents a clean two-card navigation system: [ 👤 Solo
+Training ] and [ 👥 Multiplayer ].
+Solo Routing: Opens the upgraded solo roster equipped with progression rewards and power-ups.
+Multiplayer Routing: Opens the competitive game roster and includes a permanently docked "Join
+via 6-Digit PIN" input field at the top of the interface.
+2. The Upgraded Solo Experience & Mechanics
+To prevent solo play from feeling like a raw quiz, the engine incorporates meta-progression, scaling
+score modifiers, and functional gameplay items.
+The Modes
+Rapid Fire: A high-speed mode featuring a strict 30-second clock per question and a 3-lives system.
+Sudden Death: An endurance mode where a single incorrect answer triggers an immediate game
+over.
+Time Attack: Players start with a 90-second global countdown bank. Correct answers add 3
+seconds; incorrect answers instantly drain 5 seconds.
+Streak Master: A self-paced mode with no active timers where players build a consecutive correct
+answer streak and must choose when to manually "cash out" to secure their rewards.
+Engagement Mechanics
+Dynamic Streak Multipliers: Building a consecutive correct-answer streak scales the player's
+performance score (e.g., x1.5 up to x3.0). At a 5x streak, visual indicators (like the timer bar)
+transition into a high-alert color state, increasing base score rewards per question.
+In-Match Lifelines (Consumables): Users can earn or equip single-use lifeline tokens to navigate
+high-yield clinical questions: 
+Consult Attending (50/50): Instantly disables two incorrect multiple-choice options.
+Stat Labs (Time Freeze): Pauses the active question timer for 10 seconds, allowing uninterrupted
+reading of lengthy clinical vignettes.
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+◦ 
+◦ 
+Page 1 of 4
+3. The Multiplayer Roster
+Multiplayer modes are architected around strict synchronization rules to support diverse group sizes and
+dynamics.
+Multiplayer Clash (Free-for-All): Strictly hard-capped at a maximum of 5 players. Players race
+against the same questions simultaneously, and the full leaderboard is rendered for all participants
+during a mandatory 5-second pause between questions.
+Cohort Review (Kahoot Style): A large-scale lecture-hall mode with no player cap. It utilizes a split
+screen layout: the host projects the full clinical vignette and a Top 10 leaderboard on a main display,
+while individual student devices act purely as input buzzers displaying large, color-coded answer
+choices (A, B, C, D).
+Wager Wars: Players enter the room with a starting balance of virtual currency. The clinical vignette
+is revealed, but the four diagnostic options remain hidden. Players must place a point wager based
+purely on their confidence in the text before the options drop. Players who lose all points enter a
+view-only "Spectator Mode" for the remainder of the match.
+4. The Virtual Economy (Nexus Points / Clinical Credits)
+A persistent ecosystem rewarding accuracy and engagement, providing utility across both solo and
+multiplayer environments.
+The Earning Engine
+Base Payouts: Completing any solo or multiplayer game awards a flat-rate participation payout to
+ensure continuous progression.
+Performance Bonuses: High streaks, podium finishes in Multiplayer Clash, and perfect rounds
+award scaling currency bonuses.
+Daily Bounties: Three rotating objectives are pinned to the dashboard daily (e.g., "Solve 5
+Respiratory questions in Time Attack"), paying out lump-sum currency rewards upon completion.
+The Spending Sinks
+The Supply Closet (Consumables): Before launching a high-stakes solo run (like Sudden Death),
+users can spend accumulated currency to buy and equip their Consult Attending or Stat Labs
+lifelines.
+Premium Clinical Simulations ("The Vault"): A locked tier of complex, multi-step case studies.
+Users spend a large sum of currency to permanently unlock deep-dive virtual patient simulations that
+test case management over time.
+The Cosmetic Store: Custom text titles (e.g., Chief Resident), animated avatar frames, and
+leaderboard visual highlights that allow top-tier students to customize their presence during
+multiplayer match pauses.
+Wager Wars Buy-In: Serves as the high-roller room where players must stake their actual wallet
+balance to compete.
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+Page 2 of 4
+5. Technical Architecture & Eliminating Hindrances
+To prevent network desyncs, page-reload state wipes, and hosting bottlenecks, the React and
+Supabase real-time engines use the following structural rules:
+Resolving the "Wrong When Correct" Sync Bug: Completely detach answer verification from
+local array indexing. When a user selects an option, the client payload sent to the backend database
+verification function must explicitly include the unique question_id. The logic evaluates the
+equation strictly on the specific question ID matches, ensuring accuracy regardless of network lag.
+Removing the Host-as-Player Bottleneck: The match becomes entirely self-driven. The Supabase
+Realtime engine monitors the active room's Answers table. The exact millisecond the last connected
+player submits their choice (or when the countdown timer hits zero), the database automatically
+initiates a 3-second leaderboard flash payload, then automatically pushes the next question index
+out to all synchronized clients.
+Mitigating Background Tab Timer Desyncs: Do not calculate time using incremental ticks. The
+moment a question renders, record an absolute expiration timestamp: Expiration Timestamp =
+Date.now() + 30000. The UI timer then continuously calculates remaining time by running 
+Expiration Timestamp - Date.now(). If a user leaves the tab and returns, the timer will have
+accurately advanced or expired in real time.
+Graceful Forfeits & Host Migration: A prominent [ 🚪 Leave Match ] button is added to the
+active HUD. Clicking it updates that user's status row in Supabase to disconnected. The room's
+auto-advance engine immediately drops them from the active counts, keeping the room alive. If the
+host leaves, a Postgres database trigger instantly promotes the oldest remaining active connection to
+room host.
+Page Refresh State Recovery: Cache the current match_id, user room_pin, and active 
+question_id inside the browser's persistent sessionStorage. On application mount, a global 
+useEffect check scans for an ongoing match session; if one is found, it bypasses the lobby
+entirely and forces the game board to re-initialize and sync back into the live room state.
+Post-Match Answer Review Side-Drawer: The final scoreboard screen houses a prominent [ 📖
+Review Vignettes ] button. When clicked, a wide side-drawer surfaces a scrollable list of every
+question from that specific match session. It renders the complete clinical vignette, a red highlight
+over the user's wrong choice (if applicable), a green highlight over the correct option, and the
+complete text explanation (EXP) pulled from your database.
+6. Secure Database Architecture (The Wallet Ledger)
+To secure the in-game currency against frontend manipulation (such as users executing client-side
+scripts to artificially inflate their balances), all transaction logic is centralized within protected backend
+systems.
+• 
+• 
+• 
+• 
+• 
+• 
+Page 3 of 4
+React Frontend Client
+Sends encrypted payload: { match_id, user_answers_array }
+▼
+Supabase Postgres RPC
+Calculates scores & determines correct payout
+▼
+Secure Users/Profiles DB
+Updates [wallet_balance] Column Directly
+• 
+• 
+The Data Constraints: The user's wallet balance exists as a protected integer column on a server
+side profiles table.
+The Execution: When a game concludes, the client transmits only the raw transaction details (the 
+match_id and the user's answers_array). It never transmits a point value. A database function
+calculates the accuracy, matches it against the room type, and securely writes the updated point total
+directly to the server ledger.
+Page 4 of 4
