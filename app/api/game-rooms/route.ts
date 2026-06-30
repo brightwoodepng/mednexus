@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     await ensureSchema()
     const body = await req.json()
     const { mode, hostId, hostName, questionPool } = body as {
-      mode: "clash" | "cohort"
+      mode: "clash" | "cohort" | "wager"
       hostId: string
       hostName: string
       questionPool: Question[]
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
     }
 
-    if (mode !== "clash" && mode !== "cohort") {
+    if (mode !== "clash" && mode !== "cohort" && mode !== "wager") {
       return NextResponse.json({ error: "Invalid mode" }, { status: 400 })
     }
 
@@ -49,7 +49,10 @@ export async function POST(req: Request) {
     }
     if (!pin) return NextResponse.json({ error: "Could not generate PIN" }, { status: 500 })
 
-    const hostPlayer = { id: hostId, name: hostName, score: 0, streak: 0, answer: null, answeredAt: null, isHost: true }
+    const hostPlayer = {
+      id: hostId, name: hostName, score: 0, streak: 0, answer: null, answeredAt: null, isHost: true,
+      ...(mode === "wager" ? { balance: 1000, wagerAmount: null, isSpectator: false } : {}),
+    }
 
     await pool.query(
       `INSERT INTO mednexus_game_rooms (pin, mode, host_id, host_name, question_pool, current_qi, phase, players)
