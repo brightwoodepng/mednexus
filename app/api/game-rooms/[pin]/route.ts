@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
 import pool, { ensureSchema } from "@/lib/db"
 
-type RoomPhase = "lobby" | "question" | "reveal" | "done"
+type RoomPhase = "lobby" | "wager" | "question" | "reveal" | "done"
 
 interface RoomPlayer {
   id: string; name: string; score: number; streak: number
   answer: string | null; answeredAt: number | null; isHost: boolean
+  // Wager Wars fields
+  balance?: number; wagerAmount?: number | null; isSpectator?: boolean
 }
 
 interface SlimQuestion {
@@ -16,16 +18,20 @@ interface SlimQuestion {
 }
 
 interface RawRoom {
-  pin: string; mode: "clash" | "cohort"; host_id: string; host_name: string
+  pin: string; mode: "clash" | "cohort" | "wager"; host_id: string; host_name: string
   question_pool: SlimQuestion[]; current_qi: number; phase: RoomPhase
   players: RoomPlayer[]; version: number; created_at: Date
 }
 
 function buildResponse(row: RawRoom, myId?: string) {
-  // Never expose correctAnswer while players are still answering
   const isRevealedPhase = row.phase === "reveal" || row.phase === "done"
+  const isWagerPhase = row.phase === "wager"
+
   const safePool = row.question_pool.map((q) => ({
     ...q,
+    // Hide options during wager phase (show vignette only)
+    options: isWagerPhase ? [] : q.options,
+    // Hide correct answer until reveal
     correctAnswer: isRevealedPhase ? q.correctAnswer : undefined,
   }))
 
@@ -81,11 +87,12 @@ export async function PATCH(
     await ensureSchema()
     const { pin } = await params
     const body = await req.json() as {
-      action: "join" | "start" | "answer" | "advance" | "finish"
+      action: "join" | "start" | "answer" | "advance" | "finish" | "place_wager"
       playerId?: string
       playerName?: string
       answer?: string
-      requesterId?: string // caller's ID — required for host-only actions
+      wagerAmount?: number
+      requesterId?: string
     }
 
     await client.query("BEGIN")
@@ -124,16 +131,22 @@ export async function PATCH(
           }
         }
 
-        // Clash: max 5 players
+        // Clash: max 5 players; Wager: max 8
         if (row.mode === "clash" && players.length >= 5) {
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Room is full (max 5 players)" }, { status: 409 })
         }
+        if (row.mode === "wager" && players.length >= 8) {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Room is full (max 8 players)" }, { status: 409 })
+        }
 
-        players.push({
+        const newPlayer: RoomPlayer = {
           id: body.playerId, name: body.playerName,
           score: 0, streak: 0, answer: null, answeredAt: null, isHost: false,
-        })
+          ...(row.mode === "wager" ? { balance: 1000, wagerAmount: null, isSpectator: false } : {}),
+        }
+        players.push(newPlayer)
 
         await client.query(
           "UPDATE mednexus_game_rooms SET players = $1, version = COALESCE(version, 0) + 1 WHERE pin = $2",
@@ -147,11 +160,55 @@ export async function PATCH(
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Already started" }, { status: 409 })
         }
-        players = players.map(p => ({ ...p, answer: null, answeredAt: null }))
+        const startPhase: RoomPhase = row.mode === "wager" ? "wager" : "question"
+        players = players.map(p => ({
+          ...p,
+          answer: null, answeredAt: null,
+          ...(row.mode === "wager" ? { balance: 1000, wagerAmount: null, isSpectator: false } : {}),
+        }))
         await client.query(
-          "UPDATE mednexus_game_rooms SET phase = 'question', current_qi = 0, players = $1, version = COALESCE(version, 0) + 1 WHERE pin = $2",
+          "UPDATE mednexus_game_rooms SET phase = $1, current_qi = 0, players = $2, version = COALESCE(version, 0) + 1 WHERE pin = $3",
+          [startPhase, JSON.stringify(players), pin]
+        )
+        break
+      }
+
+      case "place_wager": {
+        if (!body.playerId || body.wagerAmount === undefined) {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Missing playerId or wagerAmount" }, { status: 400 })
+        }
+        if (row.phase !== "wager") {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Not in wager phase" }, { status: 409 })
+        }
+        if (row.mode !== "wager") {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Not a wager room" }, { status: 400 })
+        }
+
+        players = players.map(p => {
+          if (p.id !== body.playerId) return p
+          if (p.wagerAmount !== null) return p // already wagered
+          if (p.isSpectator) return p
+          const balance = p.balance ?? 1000
+          const clampedWager = Math.max(10, Math.min(Math.floor(body.wagerAmount!), balance))
+          return { ...p, wagerAmount: clampedWager }
+        })
+
+        await client.query(
+          "UPDATE mednexus_game_rooms SET players = $1, version = COALESCE(version, 0) + 1 WHERE pin = $2",
           [JSON.stringify(players), pin]
         )
+
+        // Auto-advance to question phase when all active players have wagered
+        const activePlayers = players.filter(p => !p.isSpectator)
+        if (activePlayers.length > 0 && activePlayers.every(p => p.wagerAmount !== null)) {
+          await client.query(
+            "UPDATE mednexus_game_rooms SET phase = 'question', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+            [pin]
+          )
+        }
         break
       }
 
@@ -160,7 +217,6 @@ export async function PATCH(
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Missing playerId or answer" }, { status: 400 })
         }
-        // Verify caller is the player they claim to be
         if (body.requesterId && body.requesterId !== body.playerId) {
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -175,6 +231,21 @@ export async function PATCH(
         players = players.map(p => {
           if (p.id !== body.playerId) return p
           if (p.answer !== null) return p // already answered
+
+          if (row.mode === "wager") {
+            const wagerAmt = p.wagerAmount ?? 0
+            const currentBal = p.balance ?? 1000
+            const newBalance = correct ? currentBal + wagerAmt : Math.max(0, currentBal - wagerAmt)
+            const becameSpectator = newBalance <= 0
+            return {
+              ...p,
+              answer: body.answer!, answeredAt: now,
+              score: newBalance, balance: newBalance,
+              isSpectator: becameSpectator || !!p.isSpectator,
+            }
+          }
+
+          // Normal modes
           const newStreak = correct ? p.streak + 1 : 0
           const newScore = correct ? p.score + 100 + Math.max(0, p.streak * 10) : p.score
           return { ...p, answer: body.answer!, answeredAt: now, score: newScore, streak: newStreak }
@@ -184,10 +255,53 @@ export async function PATCH(
           "UPDATE mednexus_game_rooms SET players = $1, version = COALESCE(version, 0) + 1 WHERE pin = $2",
           [JSON.stringify(players), pin]
         )
+
+        // Wager mode: auto-advance to reveal when all active players answered
+        if (row.mode === "wager") {
+          const activePlayers = players.filter(p => !p.isSpectator)
+          const allDone = activePlayers.length === 0 || activePlayers.every(p => p.answer !== null)
+          if (allDone) {
+            await client.query(
+              "UPDATE mednexus_game_rooms SET phase = 'reveal', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+              [pin]
+            )
+          }
+        }
         break
       }
 
       case "advance": {
+        if (row.mode === "wager") {
+          // Wager mode: reveal → next wager or done
+          if (row.phase === "reveal") {
+            const nextQi = row.current_qi + 1
+            if (nextQi >= row.question_pool.length) {
+              await client.query(
+                "UPDATE mednexus_game_rooms SET phase = 'done', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+                [pin]
+              )
+            } else {
+              // Check if any players remain active
+              const anyActive = players.some(p => !p.isSpectator)
+              if (!anyActive) {
+                await client.query(
+                  "UPDATE mednexus_game_rooms SET phase = 'done', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+                  [pin]
+                )
+              } else {
+                // Reset answer + wagerAmount for all players, go to wager phase
+                players = players.map(p => ({ ...p, answer: null, answeredAt: null, wagerAmount: null }))
+                await client.query(
+                  "UPDATE mednexus_game_rooms SET phase = 'wager', current_qi = $1, players = $2, version = COALESCE(version, 0) + 1 WHERE pin = $3",
+                  [nextQi, JSON.stringify(players), pin]
+                )
+              }
+            }
+          }
+          break
+        }
+
+        // Normal modes
         if (row.phase === "question") {
           await client.query(
             "UPDATE mednexus_game_rooms SET phase = 'reveal', version = COALESCE(version, 0) + 1 WHERE pin = $1",
@@ -226,7 +340,6 @@ export async function PATCH(
 
     await client.query("COMMIT")
 
-    // Return updated state (pass requesterId as myId for personalized response)
     const updated = await client.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1", [pin])
     return NextResponse.json(buildResponse(updated.rows[0] as RawRoom, body.playerId ?? body.requesterId))
   } catch (err) {

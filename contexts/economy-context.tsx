@@ -17,6 +17,7 @@ export interface EconomyContextValue {
   refresh: () => Promise<void>
   claimBounty: (bountyId: string) => Promise<{ ok: boolean; earned?: number; error?: string }>
   purchase: (itemId: string) => Promise<{ ok: boolean; error?: string }>
+  useItem: (itemId: string) => Promise<boolean>
   submitGameResult: (payload: {
     mode: string
     score: number
@@ -102,6 +103,31 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid])
 
+  const useItem = useCallback(async (itemId: string) => {
+    const uid = user?.uid
+    if (!uid) return false
+    try {
+      const res = await fetch("/api/economy/inventory", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, itemId }),
+      })
+      if (!res.ok) return false
+      setInventory(prev => {
+        const newQty = (prev[itemId] ?? 0) - 1
+        if (newQty <= 0) {
+          const next = { ...prev }
+          delete next[itemId]
+          return next
+        }
+        return { ...prev, [itemId]: newQty }
+      })
+      return true
+    } catch {
+      return false
+    }
+  }, [user?.uid])
+
   const submitGameResult = useCallback(async (payload: {
     mode: string; score: number; correct: number; total: number
     bestStreak: number; isNewHigh: boolean; survivedCount?: number
@@ -131,7 +157,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   }, [user?.uid])
 
   return (
-    <EconomyContext.Provider value={{ balance, bounties, inventory, loading, refresh, claimBounty, purchase, submitGameResult }}>
+    <EconomyContext.Provider value={{ balance, bounties, inventory, loading, refresh, claimBounty, purchase, useItem, submitGameResult }}>
       {children}
     </EconomyContext.Provider>
   )
