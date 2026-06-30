@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useMemo } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { MultiplayerClash, CohortReview } from "@/components/game-mode-multiplayer"
+import { useEconomy } from "@/contexts/economy-context"
+import { WalletBadge, DailyBountiesPanel, StoreModal, PayoutResult } from "@/components/economy-panel"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort"
@@ -218,11 +220,31 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer }: {
 }
 
 // ── Shared game-over screen ───────────────────────────────────────────────────
-function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onReplay, onExit }: {
+interface GameResult {
+  mode: string; score: number; correct: number; total: number
+  bestStreak: number; isNewHigh: boolean; survivedCount?: number
+}
+
+function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameResult, onReplay, onExit }: {
   emoji: string; headline: string; scoreLabel: string; score: number
   stats: { label: string; value: string }[]
-  isNewHigh: boolean; onReplay: () => void; onExit: () => void
+  isNewHigh: boolean; gameResult?: GameResult
+  onReplay: () => void; onExit: () => void
 }) {
+  const { submitGameResult } = useEconomy()
+  const [payoutData, setPayoutData] = useState<{
+    earned: number
+    breakdown: { label: string; amount: number }[]
+    bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[]
+  } | null>(null)
+  const submitted = useRef(false)
+
+  useEffect(() => {
+    if (!gameResult || submitted.current) return
+    submitted.current = true
+    submitGameResult(gameResult).then(data => { if (data) setPayoutData(data) })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="flex min-h-full flex-col items-center justify-center p-4 sm:p-8">
       <div className="w-full max-w-md">
@@ -240,13 +262,18 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, onRepl
           <p className="text-5xl font-extrabold tabular-nums text-foreground">{score.toLocaleString()}</p>
         </div>
         {stats.length > 0 && (
-          <div className="mb-6 grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(stats.length, 3)}, 1fr)` }}>
+          <div className="mb-5 grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(stats.length, 3)}, 1fr)` }}>
             {stats.map(s => (
               <div key={s.label} className="rounded-2xl border border-border bg-card p-3 text-center">
                 <p className="text-xl font-extrabold text-foreground">{s.value}</p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">{s.label}</p>
               </div>
             ))}
+          </div>
+        )}
+        {payoutData && (
+          <div className="mb-5">
+            <PayoutResult earned={payoutData.earned} breakdown={payoutData.breakdown} bountyUpdates={payoutData.bountyUpdates} />
           </div>
         )}
         <button type="button" onClick={onReplay} className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-4 text-base font-bold text-white shadow-lg shadow-violet-500/20 transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.99]">
@@ -490,19 +517,42 @@ function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules
 function ModeSelectScreen({ onSelect, onBack }: {
   onSelect: (id: GameModeId) => void; onBack: () => void
 }) {
+  const [storeOpen, setStoreOpen] = useState(false)
+
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6 lg:p-8">
+      {storeOpen && <StoreModal onClose={() => setStoreOpen(false)} />}
       <div className="mx-auto w-full max-w-2xl">
-        <div className="mb-7 text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 shadow-xl shadow-violet-500/20">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={38} height={38}>
-              <line x1="6" x2="10" y1="12" y2="12" /><line x1="8" x2="8" y1="10" y2="14" />
-              <line x1="15" x2="17" y1="11" y2="11" /><line x1="15" x2="17" y1="13" y2="13" />
-              <rect width="20" height="12" x="2" y="6" rx="2" />
-            </svg>
+        <div className="mb-7">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 shadow-lg shadow-violet-500/20">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={28} height={28}>
+                  <line x1="6" x2="10" y1="12" y2="12" /><line x1="8" x2="8" y1="10" y2="14" />
+                  <line x1="15" x2="17" y1="11" y2="11" /><line x1="15" x2="17" y1="13" y2="13" />
+                  <rect width="20" height="12" x="2" y="6" rx="2" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-xl font-extrabold tracking-tight text-foreground">Game Mode</h1>
+                <p className="text-xs text-muted-foreground">Pick a game type and start playing</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <WalletBadge onOpenStore={() => setStoreOpen(true)} />
+              <button
+                type="button" onClick={() => setStoreOpen(true)}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground hover:border-primary/40"
+              >
+                🏪 Store
+              </button>
+            </div>
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Game Mode</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Pick a game type and start playing</p>
+        </div>
+
+        {/* Daily Bounties */}
+        <div className="mb-6">
+          <DailyBountiesPanel />
         </div>
 
         {/* Solo modes */}
@@ -611,7 +661,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
-    return <GameOver emoji={acc >= 80 ? "🏆" : acc >= 60 ? "🎯" : "💪"} headline="Game Over!" scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }, { label: "Best Streak", value: `${bestStreak}×` }]} isNewHigh={isNewHigh} onReplay={start} onExit={onExit} />
+    return <GameOver emoji={acc >= 80 ? "🏆" : acc >= 60 ? "🎯" : "💪"} headline="Game Over!" scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }, { label: "Best Streak", value: `${bestStreak}×` }]} isNewHigh={isNewHigh} gameResult={{ mode: "rapid", score, correct: totalRight, total: totalQ, bestStreak, isNewHigh }} onReplay={start} onExit={onExit} />
   }
   const q = pool[qi]; if (!q) return null
   const pct = (timeLeft / RAPID_TIME) * 100
@@ -710,7 +760,7 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const score = survived * BASE_PTS
-    return <GameOver emoji={survived >= 20 ? "💀🏆" : survived >= 10 ? "😤" : "💀"} headline={survived === 0 ? "Out on Question 1!" : `${survived} Questions Survived`} scoreLabel="Score" score={score} stats={[{ label: "Survived", value: String(survived) }, { label: "Best", value: `${hs} questions` }]} isNewHigh={isNewHigh} onReplay={start} onExit={onExit} />
+    return <GameOver emoji={survived >= 20 ? "💀🏆" : survived >= 10 ? "😤" : "💀"} headline={survived === 0 ? "Out on Question 1!" : `${survived} Questions Survived`} scoreLabel="Score" score={score} stats={[{ label: "Survived", value: String(survived) }, { label: "Best", value: `${hs} questions` }]} isNewHigh={isNewHigh} gameResult={{ mode: "sudden", score, correct: survived, total: Math.max(survived + 1, 1), bestStreak: survived, isNewHigh, survivedCount: survived }} onReplay={start} onExit={onExit} />
   }
   const q = pool[qi]; if (!q) return null
   const pct = (timeLeft / SUDDEN_TIME) * 100
@@ -811,7 +861,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
-    return <GameOver emoji={acc >= 80 ? "⚡🏆" : acc >= 60 ? "⏱️" : "💨"} headline="Time's Up!" scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Correct", value: String(totalRight) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} onReplay={start} onExit={onExit} />
+    return <GameOver emoji={acc >= 80 ? "⚡🏆" : acc >= 60 ? "⏱️" : "💨"} headline="Time's Up!" scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Correct", value: String(totalRight) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} gameResult={{ mode: "timeatk", score, correct: totalRight, total: totalQ, bestStreak: 0, isNewHigh }} onReplay={start} onExit={onExit} />
   }
   const q = pool[qi]; if (!q) return null
   const pct = Math.min((timeLeft / TIMEATK_START) * 100, 100)
@@ -939,6 +989,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
           { label: "Biggest Wager", value: bestWager.toLocaleString() },
         ]}
         isNewHigh={isNewHigh}
+        gameResult={{ mode: "double", score: bank, correct: totalRight, total: totalQ, bestStreak: 0, isNewHigh }}
         onReplay={start}
         onExit={onExit}
       />
@@ -1078,7 +1129,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
     const finalScore = bestStreak * 50 + totalRight * 10
-    return <GameOver emoji={bestStreak >= 15 ? "🔥🏆" : bestStreak >= 8 ? "🔥" : "💪"} headline="Great run!" scoreLabel="Score" score={finalScore} stats={[{ label: "Best Streak", value: `${bestStreak}×` }, { label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} onReplay={start} onExit={onExit} />
+    return <GameOver emoji={bestStreak >= 15 ? "🔥🏆" : bestStreak >= 8 ? "🔥" : "💪"} headline="Great run!" scoreLabel="Score" score={finalScore} stats={[{ label: "Best Streak", value: `${bestStreak}×` }, { label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} gameResult={{ mode: "streak", score: finalScore, correct: totalRight, total: totalQ, bestStreak, isNewHigh }} onReplay={start} onExit={onExit} />
   }
 
   const q = pool[qi]; if (!q) return null

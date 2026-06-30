@@ -94,6 +94,25 @@ export async function ensureSchema() {
     );
     ALTER TABLE mednexus_game_rooms ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
     DELETE FROM mednexus_game_rooms WHERE expires_at < NOW();
+    CREATE TABLE IF NOT EXISTS mednexus_wallet (
+      uid TEXT PRIMARY KEY,
+      balance INTEGER NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_bounty_progress (
+      uid TEXT NOT NULL,
+      bounty_id TEXT NOT NULL,
+      bounty_date TEXT NOT NULL,
+      progress INTEGER NOT NULL DEFAULT 0,
+      claimed BOOLEAN NOT NULL DEFAULT FALSE,
+      PRIMARY KEY (uid, bounty_id, bounty_date)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_user_inventory (
+      uid TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      PRIMARY KEY (uid, item_id)
+    );
   `)
   initialized = true
 }
