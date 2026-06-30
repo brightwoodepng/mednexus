@@ -1,0 +1,75 @@
+MedNexus Master Plan
+Architecture & Implementation Blueprint
+1. The Core Architecture: Tags, Not Folders
+Your database does not use physical "folders." It is a single, flat table of questions organized
+entirely by tags and statuses.
+The Tag System: Every question is assigned a module_id (e.g., Cardiology) and an optional 
+discipline_id (e.g., Internal Medicine).
+The Status Cascade: You have absolute control over visibility. 
+Module Level (Live / Offline): If an entire module is set to Offline, it disappears from the
+student's app entirely. This lets you build massive question banks in the background.
+Question Level (Live / Draft / Offline): When a module is Live, students only see the
+specific questions inside it that are also marked Live.
+2. The Student UI: "Study Modules" & The View Toggle
+We give the student instant control over their library without duplicating any data.
+The Toggle Placement: Right below the top header, you place a large, segmented toggle:
+[ 🏥 View by Body System (Module) ] | [ 🩺 View by Specialty (Discipline) ]
+How it works:
+When Module is active, the grid renders cards like Cardiology and Dermatology. Clicking
+one reveals the sub-disciplines inside it.
+When Discipline is active, the React frontend instantly re-sorts those exact same questions.
+The cards display specialties (Internal Medicine, Surgery). Clicking one reveals the body
+systems attached to that specialty.
+3. The Admin UI: The Question Editor Dashboard
+Your admin side is built for speed and bulk management. It abandons the "card" look for a high
+density Data Table.
+The Control Bar: At the top, you have a Search bar, followed by strict dropdown filters: 
+[ Module ▾ ], [ Discipline ▾ ], and [ Status ▾ ].
+Primary Actions: [ 📥 Import PDF ], [ 📤 Export JSON ], and [ + Add Question ].
+• 
+• 
+◦ 
+◦ 
+• 
+• 
+◦ 
+◦ 
+• 
+• 
+Bulk Actions & JSON: The data table features checkboxes next to every row. 
+Selecting multiple rows summons a floating action bar: [ Set Offline ], 
+[ Change Module ], [ Delete ].
+Clicking [ 📤 Export JSON ] downloads only the filtered, selected rows. The tags export
+with it for easy re-import.
+4. Adding vs. Editing Questions (Modals & Drawers)
+A. Adding a New Question (The Center Pop-up Modal)
+Clicking [ + Add Question ] opens a focused, central pop-up.
+Inline Tag Creation: The Module and Discipline fields are searchable comboboxes. If you type
+"Endocrinology" and it doesn't exist, a [ + Create "Endocrinology" ] button appears inside
+the dropdown to instantly save and select the new tag.
+B. Editing Existing Questions (The Continuous Side Drawer)
+Clicking a question row in the Admin Table slides open a wide Side Drawer from the right edge
+of the screen, giving room to read full clinical vignettes.
+The Flow: The top features [ ← Previous ] | [ Next → ] buttons. You can fix a typo, hit
+"Save," and click "Next" to instantly load the next question without returning to the main table.
+5. The PDF Import & Staging Workflow
+To import hundreds of questions flawlessly, rely on an AI parser combined with a staging area.
+The Golden PDF Template
+Format your offline documents with strict bracket tags so the AI never guesses:
+[MODULE: Cardiology]
+[DISCIPLINE: Internal Medicine]
+1. A 55-year-old man from Cape Coast presents with...
+A. Option 1
+B. Option 2
+ANS: A
+EXP: Rationale goes here...
+The Staging Area
+When uploaded, these parsed questions enter your Admin Table marked as Draft. You review the
+list, quickly fix any tags if needed, select all, and flip their status to Live.
+• 
+◦ 
+◦ 
+• 
+• 
+• 
+• 
