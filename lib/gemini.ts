@@ -6,7 +6,7 @@
  */
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-const apiKey = process.env.GEMINI_API_KEY ?? ""
+const apiKey = process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY ?? ""
 
 if (!apiKey && process.env.NODE_ENV !== "test") {
   console.warn("[gemini] GEMINI_API_KEY is not set — AI parsing will be skipped.")
