@@ -19,12 +19,18 @@ pnpm install && pnpm dev
 
 Runs on port **5000** at `http://0.0.0.0:5000`.
 
-## Environment variables
+## Environment variables / Secrets
 
-- `DATABASE_URL` — auto-injected by Replit's built-in PostgreSQL (runtime-managed; do not set manually)
-- `ADMIN_PASSWORD` — password for the admin panel login (set as a Replit Secret)
-- `ADMIN_SECRET` — optional HMAC secret for admin token signing (defaults to a built-in fallback)
-- Firebase and OpenAI vars are optional and commented out in `.env.example`
+Set these in the **Replit Secrets tab** (not as plain env vars). See `.env.example` for local development.
+
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `GEMINI_API_KEY` | **Yes** | Powers AI question extraction from Word (.docx) and PDF imports. Free key at https://aistudio.google.com/app/apikey |
+| `ADMIN_PASSWORD` | **Yes** | Password for the admin panel login screen |
+| `ADMIN_SECRET` | No | HMAC secret for signing admin tokens (falls back to a built-in default if unset) |
+| `DATABASE_URL` | Auto | Injected automatically by Replit's built-in PostgreSQL — do not set manually |
+
+> **Importing from GitHub?** Open the Secrets tab and add `GEMINI_API_KEY`, `ADMIN_PASSWORD`, and optionally `ADMIN_SECRET` before running the app.
 
 ## Database schema
 
