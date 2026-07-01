@@ -46,5 +46,3 @@ externalPort = 3002
 [userenv]
 
 [userenv.shared]
-ADMIN_PASSWORD = "Britechinc@18!"
-ADMIN_SECRET = "531116bd60ed4e44fec1ec2ceb7b9b51041af02b1484d8a35544ac35bb2e8fca"
