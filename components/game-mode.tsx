@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
+import { RichText } from "@/components/rich-text"
 import { MultiplayerClash, CohortReview } from "@/components/game-mode-multiplayer"
 import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, StoreModal, PayoutResult } from "@/components/economy-panel"
@@ -224,7 +225,7 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer, eliminated 
             </span>
           )}
         </div>
-        <p className="text-sm leading-relaxed text-foreground sm:text-base">{question.vignette}</p>
+        <RichText content={question.vignette} className="text-sm text-foreground sm:text-base" />
       </div>
       <div className="grid gap-2">
         {question.options.map(opt => (
@@ -292,7 +293,7 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
                       <span className="text-[11px] font-bold text-primary">{entry.question.subject}</span>
                       {entry.question.module && <span className="text-[10px] text-muted-foreground">{entry.question.module}</span>}
                     </div>
-                    <p className="mb-3 text-xs leading-relaxed text-foreground">{entry.question.vignette}</p>
+                    <RichText content={entry.question.vignette} className="mb-3 text-xs text-foreground" />
                     <div className="space-y-1.5">
                       {entry.question.options.map(opt => {
                         const isOpt = opt.id === entry.question.correctAnswer
@@ -1331,7 +1332,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">{q.subject}</span>
             {q.module && <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground">{q.module}</span>}
           </div>
-          <p className="text-sm leading-relaxed text-foreground sm:text-base">{q.vignette}</p>
+          <RichText content={q.vignette} className="text-sm text-foreground sm:text-base" />
         </div>
 
         {/* Bet panel */}

@@ -7,6 +7,7 @@ import {
   ClockIcon, CheckIcon, XIcon, ChevronLeftIcon, ChevronRightIcon,
   AlertTriangleIcon, FlagIcon, CalculatorIcon, PaletteIcon,
 } from "@/components/icons"
+import { RichText } from "@/components/rich-text"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Props {
@@ -479,9 +480,7 @@ export function AssessmentExamRunner({
                 <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary">
                   Shared Clinical Context
                 </p>
-                <p className="text-[14px] leading-relaxed text-foreground whitespace-pre-wrap">
-                  {q.contextContent}
-                </p>
+                <RichText content={q.contextContent} className="text-[14px] text-foreground" />
               </div>
             </div>
           )}
@@ -506,7 +505,7 @@ export function AssessmentExamRunner({
                   {flagged.has(q.id) ? "Flagged" : "Flag"}
                 </button>
               </div>
-              <p className="text-base leading-relaxed text-foreground">{q.vignette}</p>
+              <RichText content={q.vignette} className="text-base text-foreground" />
             </div>
 
             <div className="space-y-2.5">
