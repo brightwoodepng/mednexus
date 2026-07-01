@@ -5,27 +5,34 @@ import type { QuestionContextType, QuestionType } from "@/lib/types"
 
 export const maxDuration = 60
 
-// ── Image → base-64 data URI ──────────────────────────────────────────────────
-// Embeds the raw image bytes as a self-contained data URI so the image is
-// stored directly in the question's JSONB and renders anywhere without an
-// external upload step.  Large images are acceptable here — medical question
-// banks are admin-only and infrequently imported.
-async function uploadToCloud(buffer: Buffer, contentType: string): Promise<string> {
-  const base64 = buffer.toString("base64")
-  return `data:${contentType};base64,${base64}`
+// ── Mammoth: convert .docx → HTML with image placeholders ────────────────────
+//
+// Images are extracted into a side-map keyed by placeholder tokens
+// (__IMG_1__, __IMG_2__, …).  Gemini only sees the lightweight placeholder
+// tokens — it never receives the raw base64 payload, keeping token counts
+// small.  After Gemini returns we substitute the real data URIs back in.
+//
+interface ImageMap {
+  [placeholder: string]: string // placeholder → "data:<mime>;base64,<b64>"
 }
 
-// ── Mammoth: convert .docx → HTML with embedded images ───────────────────────
-async function convertDocxToHtml(arrayBuffer: ArrayBuffer): Promise<string> {
+async function convertDocxToHtml(
+  arrayBuffer: ArrayBuffer,
+): Promise<{ html: string; images: ImageMap }> {
+  const images: ImageMap = {}
+  let imgCounter = 0
+
   const result = await mammoth.convertToHtml(
     { buffer: Buffer.from(arrayBuffer) },
     {
       convertImage: mammoth.images.imgElement(async (image) => {
+        imgCounter += 1
+        const placeholder = `__IMG_${imgCounter}__`
         const buffer = Buffer.from(await image.read())
-        const url = await uploadToCloud(buffer, image.contentType ?? "image/png")
-        // The <img> tag is woven back into the HTML stream in place of the
-        // original embedded image, so Gemini sees it as inline context.
-        return { src: url, alt: "embedded-image" }
+        const mime = image.contentType ?? "image/png"
+        images[placeholder] = `data:${mime};base64,${buffer.toString("base64")}`
+        // The placeholder becomes the src; Gemini sees a tiny token, not MB of base64.
+        return { src: placeholder, alt: `[image ${imgCounter}]` }
       }),
     },
   )
@@ -37,18 +44,24 @@ async function convertDocxToHtml(arrayBuffer: ArrayBuffer): Promise<string> {
     }
   }
 
-  return result.value
+  return { html: result.value, images }
+}
+
+// ── Placeholder substitution ──────────────────────────────────────────────────
+//
+// After Gemini returns, swap every __IMG_N__ token that appears in any string
+// field with its real data URI so the client receives embeddable images.
+//
+function restoreImages(text: string, images: ImageMap): string {
+  return text.replace(/__IMG_\d+__/g, (token) => images[token] ?? token)
 }
 
 // ── Gemini system instruction ─────────────────────────────────────────────────
-// Instructs the model to group shared clinical material into Context objects
-// and link individual questions to them via contextId — matching our new
-// Parent-Child database schema.
 const SYSTEM_INSTRUCTION = `
 You are a medical education data extractor specializing in question bank imports.
 
 You will receive HTML extracted from a .docx file. It may contain clinical vignettes,
-tables, images (as <img> tags), and multiple-choice questions.
+tables, images (as <img> tags whose src is a placeholder like __IMG_1__), and multiple-choice questions.
 
 Your task is to parse ALL questions and return a single JSON object with two keys:
   "contexts"  — array of shared clinical material blocks (the PARENT)
@@ -59,7 +72,7 @@ CONTEXT OBJECT (create one when 2+ questions share the same vignette, table, or 
 {
   "id":      string,   // short slug, e.g. "ctx-1", "ctx-2"
   "type":    "TEXT" | "TABLE" | "IMAGE" | "MIXED",
-  "content": string    // the shared clinical passage, table HTML, or image src URL
+  "content": string    // the shared clinical passage, full table HTML, or the <img> tag verbatim
 }
 
 QUESTION OBJECT:
@@ -67,7 +80,7 @@ QUESTION OBJECT:
   "contextId":    string | null,  // matches a Context id above; null for standalone questions
   "questionType": "STANDARD_MCQ" | "ASSERTION_REASON" | "MATCHING",
   "subject":      string,         // medical discipline / topic (use moduleName if unknown)
-  "vignette":     string,         // the specific question stem (NOT the shared context text)
+  "vignette":     string,         // the specific question stem (NOT the shared context text); include the <img> tag verbatim if the image belongs to this question alone
   "options":      [{ "id": "A", "text": "..." }, ...],  // A–E only
   "correctAnswer": string | null, // single uppercase letter; null if not stated in source
   "explanation": {                // null if no explanation in source
@@ -79,16 +92,18 @@ QUESTION OBJECT:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RULES:
-1. If several questions share the same opening clinical vignette or table, extract that
-   shared text into ONE Context object and set contextId on each child question.
+1. If several questions share the same opening clinical vignette, table, or image, extract that
+   shared material into ONE Context object and set contextId on each child question.
    The question's "vignette" field should then contain ONLY the question-specific stem.
 2. If a question stands alone (no shared context), set contextId to null.
-3. For ASSERTION_REASON questions: put the assertion in the vignette, and the reason
+3. When an <img> tag appears, preserve the ENTIRE <img ...> tag verbatim in the content/vignette
+   string — do NOT replace it with a description or drop it.
+4. For ASSERTION_REASON questions: put the assertion in the vignette, and the reason
    options as A/B/C/D choices (e.g. A=Both true and related, B=Both true but unrelated…).
-4. For MATCHING questions: put the premise list in the vignette, options as the response list.
-5. Preserve complete clinical detail — do not truncate vignettes.
-6. Ignore page headers, footers, and page numbers.
-7. Return ONLY the JSON object — no markdown, no preamble, no trailing text.
+5. For MATCHING questions: put the premise list in the vignette, options as the response list.
+6. Preserve complete clinical detail — do not truncate vignettes.
+7. Ignore page headers, footers, and page numbers.
+8. Return ONLY the JSON object — no markdown, no preamble, no trailing text.
 `.trim()
 
 // ── Output shapes returned by Gemini ──────────────────────────────────────────
@@ -127,8 +142,7 @@ async function parseWithGemini(
     return null
   }
 
-  // Gemini 1.5 Flash context window is ~1 M tokens; trim generously only if
-  // truly enormous to stay within safe limits while preserving content.
+  // Trim only if truly enormous (placeholder HTML is compact; images are stripped out)
   const excerpt =
     html.length > 400_000
       ? html.slice(0, 200_000) + "\n\n<!-- [middle truncated] -->\n\n" + html.slice(-200_000)
@@ -156,10 +170,11 @@ async function parseWithGemini(
 // ── Output validation ──────────────────────────────────────────────────────────
 const VALID_OPTION_IDS = new Set(["A", "B", "C", "D", "E"])
 
-function validateGeminiOutput(raw: GeminiOutput): GeminiOutput {
-  const contexts = (raw.contexts ?? []).filter(
-    (c) => typeof c.id === "string" && typeof c.content === "string",
-  )
+function validateAndRestoreImages(raw: GeminiOutput, images: ImageMap): GeminiOutput {
+  const contexts = (raw.contexts ?? [])
+    .filter((c) => typeof c.id === "string" && typeof c.content === "string")
+    .map((c) => ({ ...c, content: restoreImages(c.content, images) }))
+
   const validContextIds = new Set(contexts.map((c) => c.id))
 
   const questions = (raw.questions ?? []).filter((q) => {
@@ -171,6 +186,8 @@ function validateGeminiOutput(raw: GeminiOutput): GeminiOutput {
       if (!VALID_OPTION_IDS.has(q.correctAnswer)) q.correctAnswer = null
     }
     if (q.contextId && !validContextIds.has(q.contextId)) q.contextId = null
+    // Restore images in vignette too (for standalone image questions)
+    q.vignette = restoreImages(q.vignette, images)
     return true
   })
 
@@ -206,23 +223,29 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 1. Convert .docx → HTML (images become <img src="..."> tags)
     const arrayBuffer = await file.arrayBuffer()
-    const html = await convertDocxToHtml(arrayBuffer)
+
+    // 1. Convert .docx → placeholder HTML + image map
+    const { html, images } = await convertDocxToHtml(arrayBuffer)
 
     if (!html.trim()) {
       return NextResponse.json({ error: "The document appears to be empty" }, { status: 422 })
     }
 
-    // 2. Parse with Gemini (Parent-Child schema)
+    console.log(
+      `[parse-docx] extracted ${Object.keys(images).length} image(s); HTML length: ${html.length}`,
+    )
+
+    // 2. Parse with Gemini (placeholder HTML — images not in token budget)
     const raw = await parseWithGemini(html, moduleName)
 
     if (raw && raw.questions.length > 0) {
-      const { contexts, questions } = validateGeminiOutput(raw)
+      // 3. Swap placeholders back to real data URIs before returning to client
+      const { contexts, questions } = validateAndRestoreImages(raw, images)
       return NextResponse.json({ contexts, questions, source: "gemini" })
     }
 
-    // 3. Gemini unavailable or returned nothing — surface the extracted text
+    // 4. Gemini unavailable or returned nothing — surface the extracted text
     //    so the client can fall back to its own regex parser.
     const textResult = await mammoth.extractRawText({ buffer: Buffer.from(arrayBuffer) })
     return NextResponse.json({
