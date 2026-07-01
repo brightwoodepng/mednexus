@@ -1,0 +1,39 @@
+Role & Task: You are a lead React frontend developer. I have successfully styled the UI for our bulk edits and I have an existing modal design for PDF imports. I need to build a new <WordImportModal /> that matches the PDF modal's design, update the format tips for our new Gemini AI pipeline, and ensure the bulk edit toolbar is fully functional.
+
+Instructions:
+
+1. The Word Import Modal UI:
+
+Create a modal that triggers when clicking [Import Word].
+
+Module Input: Include an optional text input at the top: "MODULE NAME (all imported questions will be assigned here)".
+
+Dropzone: Create a drag-and-drop zone (or click to browse) specifically configured to accept .docx files.
+
+Format Tips Section: Below the dropzone, add a "FORMAT TIPS" section with these specific bullet points tailored for our AI:
+
+✓ Use standard numbering (e.g., 1., 2., Q1.) for question stems.
+
+✓ Format options clearly (e.g., A. text, B. text) below the stem.
+
+✓ For clinical vignettes, place the shared passage or table immediately above the group of questions it belongs to.
+
+✓ You can paste medical images (X-rays, ECGs) directly into the Word document next to the relevant text.
+
+✓ If answer keys are omitted, the questions will be imported as Drafts for manual review.
+
+2. The Upload Logic:
+
+When a .docx file is dropped, append it to a FormData object. If the user typed a Module Name, append that as well.
+
+Send a POST request to our Gemini extraction backend route. Show a loading state on the button while the AI processes the document.
+
+On success, close the modal, add the new questions to the tree-view state, and show a success toast/notification.
+
+3. Bulk Edit Wiring (Verification):
+
+Ensure the bulk edit buttons ([Live], [Draft], [Offline], [Delete Selected]) shown in the UI are actively tied to functions that execute PUT or DELETE requests to the backend using the selectedIds array.
+
+Clear the selectedIds array and refresh the tree-view after a successful bulk operation.
+
+Execution: Please build the <WordImportModal /> component, update the main Question Editor to use it, and verify the bulk action functions.

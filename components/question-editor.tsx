@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { PdfImportModal } from "@/components/pdf-import-modal"
+import { WordImportModal } from "@/components/word-import-modal"
 import type { Question, QuestionOption, ModuleStatus } from "@/lib/types"
 import {
   TrashIcon, PencilIcon, PlusIcon, XIcon, CheckIcon, DatabaseIcon,
@@ -823,12 +824,9 @@ export function QuestionEditor() {
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
   const [drawerTarget, setDrawerTarget] = useState<{ q: Question; isDraft: boolean } | null>(null)
   const [pdfImportOpen, setPdfImportOpen] = useState(false)
+  const [wordImportOpen, setWordImportOpen] = useState(false)
   const [expandedModule, setExpandedModule] = useState<string | null>(null)
 
-  // Docx import state
-  const [docxLoading, setDocxLoading] = useState(false)
-  const [docxError, setDocxError] = useState<string | null>(null)
-  const docxFileRef = useRef<HTMLInputElement>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const [confirm, setConfirm] = useState<{ title: string; message: string; confirmLabel: string; action: () => void; danger?: boolean } | null>(null)
   const [renameTarget, setRenameTarget] = useState<{ moduleName: string } | null>(null)
@@ -1033,73 +1031,10 @@ export function QuestionEditor() {
     questions.filter((q) => getModuleKey(q) === moduleName).forEach((q) => updateQuestion({ ...q, moduleStatus: status }))
   }
 
-  // ── Draft import from PDF ──
-  function handlePdfImport(imported: Question[]) {
+  // ── Draft import from PDF or Word ──
+  function handleDraftImport(imported: Question[]) {
     setDraftQuestions((prev) => [...prev, ...imported])
     setFilterMode("draft")
-  }
-
-  // ── Draft import from Word (.docx) ──
-  async function handleDocxFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (docxFileRef.current) docxFileRef.current.value = ""
-    if (!file) return
-
-    setDocxLoading(true)
-    setDocxError(null)
-
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("moduleName", "Imported Module")
-
-      const res = await fetch("/api/parse-docx", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as any).error ?? `Server error ${res.status}`)
-      }
-
-      const data = await res.json() as {
-        source: "gemini" | "fallback"
-        questions: Array<{
-          contextId?: string | null
-          questionType?: string
-          subject?: string
-          vignette: string
-          options: { id: string; text: string }[]
-          correctAnswer: string | null
-          explanation: { objective: string; details: string; incorrectReasoning: string } | null
-        }>
-      }
-
-      if (!data.questions || data.questions.length === 0) {
-        setDocxError("No questions could be extracted from this file. Make sure it contains MCQ content.")
-        return
-      }
-
-      const imported: Question[] = data.questions.map((q, idx) => ({
-        id: `docx-${Date.now()}-${idx}`,
-        module: "Imported Module",
-        subject: q.subject?.trim() || "General",
-        vignette: q.vignette,
-        options: q.options,
-        correctAnswer: q.correctAnswer ?? null,
-        explanation: q.explanation ?? null,
-        contextId: q.contextId ?? null,
-        questionType: (q.questionType as any) ?? "STANDARD_MCQ",
-      }))
-
-      setDraftQuestions((prev) => [...prev, ...imported])
-      setFilterMode("draft")
-    } catch (err) {
-      setDocxError(err instanceof Error ? err.message : "Failed to import Word document.")
-    } finally {
-      setDocxLoading(false)
-    }
   }
 
   // ── Review drawer handlers ──
@@ -1135,6 +1070,7 @@ export function QuestionEditor() {
   // ── Bulk module status ──
   function handleBulkSetModuleStatus(status: ModuleStatus) {
     selectedModules.forEach((m) => handleSetModuleStatus(m.name, status))
+    clearSelection()
   }
 
   const emptyState = hierarchy.length === 0 && totalLive === 0 && totalDrafts === 0
@@ -1188,18 +1124,12 @@ export function QuestionEditor() {
             </button>
             <button
               type="button"
-              disabled={docxLoading}
-              onClick={() => { setDocxError(null); docxFileRef.current?.click() }}
-              className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed dark:border-blue-800/40 dark:bg-blue-900/20 dark:text-blue-400"
+              onClick={() => setWordImportOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors dark:border-blue-800/40 dark:bg-blue-900/20 dark:text-blue-400"
             >
-              {docxLoading ? (
-                <svg className="animate-spin" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" strokeOpacity={0.3}/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-              ) : (
-                <WordIcon size={13} />
-              )}
-              {docxLoading ? "Importing…" : "Import Word"}
+              <WordIcon size={13} />
+              Import Word
             </button>
-            <input ref={docxFileRef} type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={handleDocxFileChange} />
             <button type="button" onClick={() => jsonInputRef.current?.click()}
               className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
             >
@@ -1373,8 +1303,17 @@ export function QuestionEditor() {
       {pdfImportOpen && (
         <PdfImportModal
           defaultModule=""
-          onImport={handlePdfImport}
+          onImport={handleDraftImport}
           onClose={() => setPdfImportOpen(false)}
+        />
+      )}
+
+      {/* ── Word import modal ── */}
+      {wordImportOpen && (
+        <WordImportModal
+          defaultModule=""
+          onImport={handleDraftImport}
+          onClose={() => setWordImportOpen(false)}
         />
       )}
 
@@ -1401,17 +1340,6 @@ export function QuestionEditor() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ── Docx import error toast ── */}
-      {docxError && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-3 shadow-lg backdrop-blur-sm max-w-md">
-          <AlertTriangleIcon size={15} className="shrink-0 text-destructive" />
-          <p className="text-sm text-destructive">{docxError}</p>
-          <button type="button" onClick={() => setDocxError(null)} className="ml-auto text-destructive/60 hover:text-destructive transition-colors">
-            <XIcon size={14} />
-          </button>
         </div>
       )}
 
