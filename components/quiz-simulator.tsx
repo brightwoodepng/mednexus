@@ -6,6 +6,7 @@ import { computeResult } from "@/lib/modules"
 import type { QuizMode, HistoryEntry, BlockResult, Question } from "@/lib/types"
 import { CalculatorModal } from "@/components/calculator-modal"
 import { LabValuesModal } from "@/components/lab-values-modal"
+import { RichText } from "@/components/rich-text"
 import {
   XIcon,
   FlagIcon,
@@ -169,9 +170,7 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
               <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary">
                 Shared Clinical Context
               </p>
-              <p className="text-[14px] leading-relaxed text-foreground whitespace-pre-wrap">
-                {current.contextContent}
-              </p>
+              <RichText content={current.contextContent} className="text-[14px] text-foreground" />
             </div>
           </div>
         )}
@@ -192,7 +191,7 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
               </button>
             </div>
 
-            <p className="text-[15px] leading-relaxed text-foreground text-pretty sm:text-base">{current.vignette}</p>
+            <RichText content={current.vignette} className="text-[15px] text-foreground text-pretty sm:text-base" />
 
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-6 sm:gap-3">
               {current.options.map((opt) => {

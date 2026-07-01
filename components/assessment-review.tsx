@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import type { Question } from "@/lib/types"
 import { CheckIcon, XIcon, SearchIcon, TrophyIcon, AlertTriangleIcon } from "@/components/icons"
+import { RichText } from "@/components/rich-text"
 
 interface Props {
   questions: Question[]
@@ -139,7 +140,7 @@ export function AssessmentReview({
 
               <div className="p-4 space-y-3 bg-card">
                 {/* Vignette */}
-                <p className="text-sm leading-relaxed text-foreground">{q.vignette}</p>
+                <RichText content={q.vignette} className="text-sm text-foreground" />
 
                 {/* Options */}
                 <div className="space-y-1.5">

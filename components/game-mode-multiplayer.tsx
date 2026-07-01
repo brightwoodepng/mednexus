@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
+import { RichText } from "@/components/rich-text"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MultiMode = "clash" | "cohort"
@@ -469,7 +470,7 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish }: {
               <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">{q.subject}</span>
               {q.module && <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground">{q.module}</span>}
             </div>
-            <p className="text-sm leading-relaxed text-foreground sm:text-base">{q.vignette}</p>
+            <RichText content={q.vignette} className="text-sm text-foreground sm:text-base" />
           </div>
 
           <div className="grid gap-2">
@@ -556,7 +557,7 @@ function CohortHostHUD({ room, onAdvance, onFinish }: {
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
             </div>
-            <p className="text-lg leading-relaxed font-medium text-foreground sm:text-xl">{q.vignette}</p>
+            <RichText content={q.vignette} className="text-lg font-medium text-foreground sm:text-xl" />
             <div className="mt-5 grid grid-cols-2 gap-3">
               {q.options.map((opt, i) => (
                 <div key={opt.id} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-white font-bold ${OPTION_COLORS[i]}`}>

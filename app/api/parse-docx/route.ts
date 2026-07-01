@@ -5,14 +5,14 @@ import type { QuestionContextType, QuestionType } from "@/lib/types"
 
 export const maxDuration = 60
 
-// ── Placeholder cloud uploader ─────────────────────────────────────────────────
-// Replace this with your real storage logic (e.g. S3, GCS, Cloudinary).
-// It receives the raw image Buffer and its MIME type, and must return a
-// publicly-accessible URL string.
+// ── Image → base-64 data URI ──────────────────────────────────────────────────
+// Embeds the raw image bytes as a self-contained data URI so the image is
+// stored directly in the question's JSONB and renders anywhere without an
+// external upload step.  Large images are acceptable here — medical question
+// banks are admin-only and infrequently imported.
 async function uploadToCloud(buffer: Buffer, contentType: string): Promise<string> {
-  // TODO: implement real upload (e.g. await s3.putObject({ Body: buffer, ... }))
   const base64 = buffer.toString("base64")
-  return `data:${contentType};base64,${base64.slice(0, 64)}…[mock-url]`
+  return `data:${contentType};base64,${base64}`
 }
 
 // ── Mammoth: convert .docx → HTML with embedded images ───────────────────────
