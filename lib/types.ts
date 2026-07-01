@@ -69,6 +69,13 @@ export interface Question {
    */
   contextId?: string | null // FK → mednexus_question_contexts.id
 
+  /**
+   * Denormalized content of the parent Context, populated at query time so
+   * the UI can render the split-screen panel without a second fetch.
+   * Plain text, Markdown, or HTML depending on the context type.
+   */
+  contextContent?: string | null
+
   // ── Question format ───────────────────────────────────────────────────────
   /** Defaults to STANDARD_MCQ when omitted (backward-compatible). */
   questionType?: QuestionType

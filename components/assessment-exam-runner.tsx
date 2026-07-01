@@ -467,8 +467,28 @@ export function AssessmentExamRunner({
 
       <div className="flex flex-1 overflow-hidden">
         {/* ── Question area ── */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-3xl space-y-5">
+        <div className="flex-1 flex overflow-hidden">
+
+          {/* ── Shared context panel — left column, sticky ───────────────────
+              Rendered only when the current question is linked to a Context.
+              The inner wrapper is sticky so the content stays pinned while
+              the right column (question + options) scrolls independently.   */}
+          {q.contextId && q.contextContent && (
+            <div className="hidden md:flex w-[42%] max-w-xs xl:max-w-sm shrink-0 flex-col overflow-y-auto border-r border-border bg-muted/20">
+              <div className="sticky top-0 p-5 sm:p-6 lg:p-8">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary">
+                  Shared Clinical Context
+                </p>
+                <p className="text-[14px] leading-relaxed text-foreground whitespace-pre-wrap">
+                  {q.contextContent}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Right: question + options scroll normally ── */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div className={q.contextId ? "space-y-5" : "mx-auto max-w-3xl space-y-5"}>
 
             <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
               <div className="mb-3 flex items-center justify-between gap-2">
@@ -533,8 +553,9 @@ export function AssessmentExamRunner({
                 </button>
               </div>
             )}
-          </div>
-        </div>
+          </div>{/* closes space-y-5 inner div */}
+          </div>{/* closes right column overflow-y-auto */}
+        </div>{/* closes outer flex-1 flex overflow-hidden wrapper */}
 
         {/* ── Desktop navigator sidebar (lg+) ── */}
         <div className="hidden lg:flex w-56 shrink-0 flex-col border-l border-border bg-muted/30 p-3 overflow-y-auto">

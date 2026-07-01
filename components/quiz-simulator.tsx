@@ -158,8 +158,27 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
 
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-1 flex-col overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-5 sm:px-6 sm:py-8">
+
+        {/* ── Shared context panel — left column, sticky ─────────────────────
+            Rendered only when the current question is linked to a Context.
+            The inner wrapper is sticky so the content stays pinned while the
+            right column (question + options) scrolls independently.          */}
+        {current.contextId && current.contextContent && (
+          <div className="hidden md:flex w-[42%] max-w-xs xl:max-w-sm shrink-0 flex-col overflow-y-auto border-r border-border bg-muted/20">
+            <div className="sticky top-0 p-5 sm:p-6">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary">
+                Shared Clinical Context
+              </p>
+              <p className="text-[14px] leading-relaxed text-foreground whitespace-pre-wrap">
+                {current.contextContent}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Question + options column — scrolls independently ── */}
+        <div className="flex flex-1 flex-col overflow-y-auto min-w-0">
+          <div className={`flex-1 px-4 py-5 sm:px-6 sm:py-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}>
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Question {index + 1} of {questions.length}
