@@ -97,10 +97,10 @@ function questionToForm(q: Question): FormState {
     subject: q.subject, vignette: q.vignette,
     optA: opts.optA ?? "", optB: opts.optB ?? "",
     optC: opts.optC ?? "", optD: opts.optD ?? "", optE: opts.optE ?? "",
-    correctAnswer: q.correctAnswer,
-    objective: q.explanation.objective,
-    details: q.explanation.details,
-    incorrectReasoning: q.explanation.incorrectReasoning,
+    correctAnswer: q.correctAnswer ?? "",
+    objective: q.explanation?.objective ?? "",
+    details: q.explanation?.details ?? "",
+    incorrectReasoning: q.explanation?.incorrectReasoning ?? "",
   }
 }
 
@@ -110,10 +110,23 @@ function formToQuestion(f: FormState, id: string): Question {
     { id: "C", text: f.optC }, { id: "D", text: f.optD },
   ]
   if (f.optE.trim()) options.push({ id: "E", text: f.optE })
+  // Normalize: an empty correctAnswer from the form means "not yet set" (draft).
+  const correctAnswer = f.correctAnswer.trim() || null
+
+  // Normalize: if every explanation field is blank, keep explanation as null
+  // (preserves the draft semantic rather than storing an all-empty object).
+  const objective = f.objective.trim()
+  const details = f.details.trim()
+  const incorrectReasoning = f.incorrectReasoning.trim()
+  const explanation =
+    objective || details || incorrectReasoning
+      ? { objective, details, incorrectReasoning }
+      : null
+
   const q: Question = {
     id, subject: f.subject.trim(), vignette: f.vignette.trim(), options,
-    correctAnswer: f.correctAnswer,
-    explanation: { objective: f.objective.trim(), details: f.details.trim(), incorrectReasoning: f.incorrectReasoning.trim() },
+    correctAnswer,
+    explanation,
   }
   if (f.module.trim()) q.module = f.module.trim()
   return q
@@ -219,8 +232,8 @@ function buildHierarchy(live: Question[], drafts: Question[], search: string, fi
       getModuleKey(item).toLowerCase().includes(q) ||
       num.includes(q) ||
       item.options.some((o) => o.text.toLowerCase().includes(q)) ||
-      item.explanation.objective.toLowerCase().includes(q) ||
-      item.explanation.details.toLowerCase().includes(q)
+      (item.explanation?.objective ?? "").toLowerCase().includes(q) ||
+      (item.explanation?.details ?? "").toLowerCase().includes(q)
     )
   })
 

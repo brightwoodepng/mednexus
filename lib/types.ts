@@ -18,6 +18,41 @@ export interface QuestionExplanation {
 /** Publication status for a module (stored on each question in the module). */
 export type ModuleStatus = "live" | "draft" | "offline"
 
+// ─── Context (Parent) ────────────────────────────────────────────────────────
+
+/**
+ * The type of shared clinical material a Context holds.
+ *   TEXT  – a plain clinical vignette / passage shared across questions
+ *   TABLE – a structured data table (e.g. lab results, vitals chart)
+ *   IMAGE – a medical image (URL or base-64 data URI)
+ *   MIXED – a combination of the above
+ */
+export type QuestionContextType = "TEXT" | "TABLE" | "IMAGE" | "MIXED"
+
+/**
+ * A Context is the *parent* record that holds shared clinical material
+ * (a vignette, table, or image) that one or more child questions reference.
+ * Stored in the `mednexus_question_contexts` database table.
+ */
+export interface QuestionContext {
+  id: string // UUID primary key
+  type: QuestionContextType
+  /** Raw content: plain text, Markdown table, or image URL / base-64 URI. */
+  content: string
+  createdAt: string // ISO timestamp
+  updatedAt: string // ISO timestamp
+}
+
+// ─── Question (Child) ─────────────────────────────────────────────────────────
+
+/**
+ * The structural format of a question stem.
+ *   STANDARD_MCQ    – a regular single-best-answer MCQ
+ *   ASSERTION_REASON – an assertion + reason pair (both can be T/F, related or not)
+ *   MATCHING        – a premise list matched to a response list
+ */
+export type QuestionType = "STANDARD_MCQ" | "ASSERTION_REASON" | "MATCHING"
+
 /** A single Q-Bank question. */
 export interface Question {
   id: string
@@ -25,9 +60,32 @@ export interface Question {
   moduleStatus?: ModuleStatus // Publication status of the parent module
   subject: string // Discipline tag (e.g. "Internal Medicine")
   vignette: string
+
+  // ── Context link (optional) ───────────────────────────────────────────────
+  /**
+   * When set, this question is a *child* of a shared Context.
+   * The referenced Context holds the clinical vignette / table / image that
+   * is displayed above this question (and possibly siblings that share it).
+   */
+  contextId?: string | null // FK → mednexus_question_contexts.id
+
+  // ── Question format ───────────────────────────────────────────────────────
+  /** Defaults to STANDARD_MCQ when omitted (backward-compatible). */
+  questionType?: QuestionType
+
   options: QuestionOption[]
-  correctAnswer: string // matches a QuestionOption.id
-  explanation: QuestionExplanation
+
+  /**
+   * The id of the correct option (matches a QuestionOption.id).
+   * Nullable to support draft imports where the answer key is not yet set.
+   */
+  correctAnswer: string | null
+
+  /**
+   * Structured explanation shown after answering.
+   * Nullable to support draft imports where the explanation is not yet written.
+   */
+  explanation: QuestionExplanation | null
 }
 
 /** Quiz delivery modes. */
@@ -42,7 +100,7 @@ export interface HistoryEntry {
   vignetteSnippet: string
   mode: QuizMode
   selectedOption: string | null // null = omitted
-  correctOption: string
+  correctOption: string | null // null when question is a draft without an answer key
   isCorrect: boolean
   timestamp: number // epoch ms
 }

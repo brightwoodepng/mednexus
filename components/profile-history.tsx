@@ -399,7 +399,7 @@ function HistoryRow({ entry }: { entry: HistoryEntry }) {
             value={omitted ? "—" : entry.selectedOption!}
             tone={omitted ? "neutral" : correct ? "correct" : "incorrect"}
           />
-          <AnswerPill label="Key" value={entry.correctOption} tone="correct" />
+          <AnswerPill label="Key" value={entry.correctOption ?? "—"} tone="correct" />
           <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${
             omitted
               ? "bg-muted text-muted-foreground"

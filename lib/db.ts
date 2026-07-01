@@ -18,7 +18,34 @@ let initialized = false
 
 export async function ensureSchema() {
   if (initialized) return
+
+  // ── Enums ────────────────────────────────────────────────────────────────
+  // PostgreSQL does not support CREATE TYPE IF NOT EXISTS, so we guard with a
+  // DO block that silently skips if the type already exists.
   await pool.query(`
+    DO $ BEGIN
+      CREATE TYPE question_context_type AS ENUM ('TEXT', 'TABLE', 'IMAGE', 'MIXED');
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $;
+
+    DO $ BEGIN
+      CREATE TYPE question_type AS ENUM ('STANDARD_MCQ', 'ASSERTION_REASON', 'MATCHING');
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $;
+  `)
+
+  await pool.query(`
+    -- ── Context (parent) table ──────────────────────────────────────────────
+    -- Stores shared clinical material (vignette, table, image, or mixed)
+    -- that one or more child questions reference via contextId.
+    CREATE TABLE IF NOT EXISTS mednexus_question_contexts (
+      id          TEXT                  PRIMARY KEY,
+      type        question_context_type NOT NULL DEFAULT 'TEXT',
+      content     TEXT                  NOT NULL,
+      created_at  TIMESTAMPTZ           NOT NULL DEFAULT NOW(),
+      updated_at  TIMESTAMPTZ           NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS mednexus_users (
       uid TEXT PRIMARY KEY,
       name TEXT NOT NULL DEFAULT 'Clinician',
