@@ -194,7 +194,7 @@ function PreviewCard({ q, index, onRemove }: { q: Question; index: number; onRem
               </span>
             ))}
           </div>
-          {q.explanation.details && (
+          {q.explanation?.details && (
             <p className="mt-1 border-t border-border pt-2 text-xs italic text-muted-foreground">{q.explanation.details}</p>
           )}
         </div>

@@ -59,7 +59,7 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
       vignetteSnippet: q.vignette.slice(0, 120) + (q.vignette.length > 120 ? "…" : ""),
       mode,
       selectedOption: answers[q.id] ?? null,
-      correctOption: q.correctAnswer,
+      correctOption: q.correctAnswer ?? null,
       isCorrect: answers[q.id] === q.correctAnswer,
       timestamp: now,
     }))
@@ -231,14 +231,27 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
 
             {revealed && (
               <div className="mt-5 overflow-hidden rounded-2xl border border-border sm:mt-6">
-                <div className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold sm:px-5 ${selected === current.correctAnswer ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
-                  {selected === current.correctAnswer ? <CheckIcon size={18} /> : <XIcon size={18} />}
-                  {selected === current.correctAnswer ? "Correct" : "Incorrect"} — Answer is {current.correctAnswer}
+                {/* Draft questions without an answer key show a neutral banner */}
+                <div className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold sm:px-5 ${
+                  current.correctAnswer === null
+                    ? "bg-muted text-muted-foreground"
+                    : selected === current.correctAnswer
+                      ? "bg-success/10 text-success"
+                      : "bg-destructive/10 text-destructive"
+                }`}>
+                  {current.correctAnswer === null ? (
+                    <span>No answer key — this question is a draft</span>
+                  ) : (
+                    <>
+                      {selected === current.correctAnswer ? <CheckIcon size={18} /> : <XIcon size={18} />}
+                      {selected === current.correctAnswer ? "Correct" : "Incorrect"} — Answer is {current.correctAnswer}
+                    </>
+                  )}
                 </div>
                 <div className="flex flex-col gap-4 bg-card p-4 sm:p-5">
-                  <ExplanationBlock title="Learning Objective" body={current.explanation.objective} />
-                  <ExplanationBlock title="Why It's Correct" body={current.explanation.details} />
-                  <ExplanationBlock title="Distractor Reasoning" body={current.explanation.incorrectReasoning} />
+                  <ExplanationBlock title="Learning Objective" body={current.explanation?.objective ?? ""} />
+                  <ExplanationBlock title="Why It's Correct" body={current.explanation?.details ?? ""} />
+                  <ExplanationBlock title="Distractor Reasoning" body={current.explanation?.incorrectReasoning ?? ""} />
                 </div>
               </div>
             )}
