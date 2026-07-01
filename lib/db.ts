@@ -23,15 +23,15 @@ export async function ensureSchema() {
   // PostgreSQL does not support CREATE TYPE IF NOT EXISTS, so we guard with a
   // DO block that silently skips if the type already exists.
   await pool.query(`
-    DO $ BEGIN
+    DO $$ BEGIN
       CREATE TYPE question_context_type AS ENUM ('TEXT', 'TABLE', 'IMAGE', 'MIXED');
     EXCEPTION WHEN duplicate_object THEN NULL;
-    END $;
+    END $$;
 
-    DO $ BEGIN
+    DO $$ BEGIN
       CREATE TYPE question_type AS ENUM ('STANDARD_MCQ', 'ASSERTION_REASON', 'MATCHING');
     EXCEPTION WHEN duplicate_object THEN NULL;
-    END $;
+    END $$;
   `)
 
   await pool.query(`
