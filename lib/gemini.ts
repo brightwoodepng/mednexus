@@ -15,12 +15,12 @@ if (!apiKey && process.env.NODE_ENV !== "test") {
 const genAI = new GoogleGenerativeAI(apiKey)
 
 /**
- * gemini-1.5-flash configured to return strict JSON.
+ * gemini-2.0-flash configured to return strict JSON.
  * Pass a `systemInstruction` when calling `getGenerativeModel` per-request,
  * or use this shared instance directly for simple prompts.
  */
 export const flashModel = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
+  model: "gemini-2.0-flash",
   generationConfig: {
     responseMimeType: "application/json",
     temperature: 0,
@@ -33,7 +33,7 @@ export const flashModel = genAI.getGenerativeModel({
  */
 export function getFlashModel(systemInstruction: string) {
   return genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash",
     systemInstruction,
     generationConfig: {
       responseMimeType: "application/json",
