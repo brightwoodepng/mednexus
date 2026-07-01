@@ -11,7 +11,7 @@ import type { QuizMode, BlockResult, Question, ExamScore } from "@/lib/types"
 import { AuthScreen } from "@/components/auth-screen"
 import { Sidebar } from "@/components/sidebar"
 import { Dashboard } from "@/components/dashboard"
-import { ModulesScreen } from "@/components/modules-screen"
+import { ModuleLibrary } from "@/components/module-library"
 import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
@@ -528,7 +528,7 @@ export function MedNexusApp() {
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
           )}
-          {safeScreen === "modules" && <ModulesScreen onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
+          {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} />}
           {safeScreen === "profile" && <ProfileHistory />}
           {safeScreen === "question-editor" && isAdmin && <QuestionEditor />}
