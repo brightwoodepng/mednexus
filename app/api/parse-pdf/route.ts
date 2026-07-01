@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getFlashModel } from "@/lib/gemini"
 
 export const maxDuration = 45
 
@@ -137,79 +138,105 @@ function parseBlock(block: string, defaultSubject: string): ParsedQuestion | nul
   }
 }
 
-// ── JSON extraction (handles raw JSON or ```json fences) ─────────────────────
-function extractJson(raw: string): unknown {
-  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]+?)```/)
-  const candidate = fenceMatch ? fenceMatch[1] : raw
-  return JSON.parse(candidate.trim())
-}
-
-// ── OpenAI-enhanced parsing ───────────────────────────────────────────────────
-async function parseWithAI(text: string, moduleName: string): Promise<ParsedQuestion[] | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
-
-  // Send up to 20 000 chars; if longer, take first 10 000 + last 10 000 so we
-  // capture both early and late questions in long PDFs
-  let excerpt = text
-  if (text.length > 20000) {
-    excerpt = text.slice(0, 10000) + "\n\n[...middle truncated...]\n\n" + text.slice(-10000)
-  }
-
-  try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0,
-        max_tokens: 8000,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: `You are a medical education data extractor. Parse all MCQ questions from the supplied text and return a JSON object with a single key "questions" whose value is an array.
+// ── Gemini-enhanced parsing ───────────────────────────────────────────────────
+const PARSE_PDF_SYSTEM_INSTRUCTION = `
+You are a medical education data extractor. Parse all MCQ questions from the
+supplied text and return a JSON object with a single key "questions" whose
+value is an array.
 
 Each element must exactly match:
 {
-  "subject": string,          // discipline or topic from context; use "${moduleName}" if unknown
-  "vignette": string,         // full question stem — preserve clinical detail
-  "options": [{ "id": "A", "text": "..." }, ...],  // A-E only
-  "correctAnswer": "A",       // single uppercase letter
+  "subject":      string,  // discipline or topic from context; use the supplied moduleName if unknown
+  "vignette":     string,  // full question stem — preserve all clinical detail
+  "options":      [{ "id": "A", "text": "..." }, ...],  // A–E only, each id must be unique
+  "correctAnswer": string | null,  // single uppercase letter matching an option id; null if not stated
   "explanation": {
-    "objective": string,      // ≤1 sentence: what concept is tested
-    "details": string,        // why the correct answer is right
-    "incorrectReasoning": string  // why each distractor is wrong (can be empty "")
-  }
+    "objective":          string,  // ≤1 sentence: what concept is tested
+    "details":            string,  // why the correct answer is right
+    "incorrectReasoning": string   // why each distractor is wrong (may be "")
+  } | null
 }
 
 Rules:
-- Return ONLY the JSON object — no markdown, no preamble.
-- If a question has no explanation in the source text, set details to "" and incorrectReasoning to "".
-- If the correct answer is not stated, infer it from context if possible; otherwise use "A".
+- Return ONLY the JSON object — no markdown fences, no preamble.
+- If a question has no explanation, set explanation to null.
+- If the correct answer is not stated and cannot be inferred, set correctAnswer to null.
 - Preserve the complete clinical vignette — do not truncate.
-- Ignore page headers, footers, and page numbers.`,
-          },
-          {
-            role: "user",
-            content: `Module: ${moduleName}\n\nText:\n${excerpt}`,
-          },
-        ],
-      }),
-    })
+- Ignore page headers, footers, and page numbers.
+`.trim()
 
-    if (!res.ok) {
-      console.error("[parse-pdf AI] HTTP", res.status, await res.text())
-      return null
-    }
+// Raw shape Gemini may return (nullable fields before normalisation)
+interface GeminiParsedQuestion {
+  subject?: string
+  vignette?: string
+  options?: { id: string; text: string }[]
+  correctAnswer?: string | null
+  explanation?: {
+    objective: string
+    details: string
+    incorrectReasoning: string
+  } | null
+}
 
-    const data = await res.json()
-    const content: string = data.choices?.[0]?.message?.content ?? ""
-    const parsed = extractJson(content) as { questions?: ParsedQuestion[] }
-    if (Array.isArray(parsed)) return parsed
-    if (Array.isArray(parsed?.questions)) return parsed.questions
+/**
+ * Normalise a Gemini-returned question into the ParsedQuestion contract:
+ * - correctAnswer: always a non-empty string (falls back to first option id or "A")
+ * - explanation:   always a non-null object (falls back to empty strings)
+ * Preserves the existing API contract so consumers are never broken.
+ */
+function normaliseQuestion(q: GeminiParsedQuestion, moduleName: string): ParsedQuestion | null {
+  const vignette = q.vignette?.trim()
+  const options = q.options?.filter(
+    (o) => typeof o.id === "string" && /^[A-E]$/i.test(o.id) && typeof o.text === "string",
+  )
+  if (!vignette || !options || options.length < 2) return null
+
+  const correctAnswer =
+    typeof q.correctAnswer === "string" && q.correctAnswer.trim()
+      ? q.correctAnswer.trim().toUpperCase()
+      : options[0].id
+
+  const explanation = q.explanation ?? { objective: "", details: "", incorrectReasoning: "" }
+
+  return {
+    subject: q.subject?.trim() || moduleName,
+    vignette,
+    options,
+    correctAnswer,
+    explanation,
+  }
+}
+
+async function parseWithAI(text: string, moduleName: string): Promise<ParsedQuestion[] | null> {
+  if (!process.env.GEMINI_API_KEY) return null
+
+  // Send up to 200 000 chars; if longer, take first 100 000 + last 100 000 so
+  // we capture both early and late questions in very long documents.
+  const excerpt =
+    text.length > 200_000
+      ? text.slice(0, 100_000) + "\n\n[...middle truncated...]\n\n" + text.slice(-100_000)
+      : text
+
+  try {
+    const model = getFlashModel(PARSE_PDF_SYSTEM_INSTRUCTION)
+    const result = await model.generateContent(
+      `Module: ${moduleName}\n\nText:\n${excerpt}`,
+    )
+    // responseMimeType: "application/json" guarantees valid JSON — no fence stripping needed.
+    const parsed = JSON.parse(result.response.text()) as
+      | { questions?: GeminiParsedQuestion[] }
+      | GeminiParsedQuestion[]
+
+    const raw: GeminiParsedQuestion[] = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray((parsed as { questions?: GeminiParsedQuestion[] }).questions)
+        ? (parsed as { questions: GeminiParsedQuestion[] }).questions
+        : []
+
+    const normalised = raw.map((q) => normaliseQuestion(q, moduleName)).filter(Boolean) as ParsedQuestion[]
+    return normalised.length > 0 ? normalised : null
   } catch (err) {
-    console.error("[parse-pdf AI] parse error", err)
+    console.error("[parse-pdf AI] Gemini error:", err)
   }
 
   return null
