@@ -58,6 +58,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ui
       return NextResponse.json({ success: true, otp })
     }
 
+    if (action === "edit-level") {
+      const { level } = body as { level?: string }
+      if (!level || typeof level !== "string" || !level.trim()) {
+        return NextResponse.json({ error: "level is required" }, { status: 400 })
+      }
+      await pool.query(
+        `UPDATE mednexus_registered_users SET level = $1, class_level = $1 WHERE uid = $2`,
+        [level.trim(), uid]
+      )
+      return NextResponse.json({ success: true })
+    }
+
     return NextResponse.json({ error: "Unknown action" }, { status: 400 })
   } catch (err) {
     console.error("[admin/users PATCH]", err)
