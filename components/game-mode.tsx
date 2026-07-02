@@ -5,6 +5,7 @@ import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
 import { MultiplayerClash, CohortReview } from "@/components/game-mode-multiplayer"
+import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, StoreModal, PayoutResult } from "@/components/economy-panel"
 
@@ -1506,7 +1507,12 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export function GameMode({ onExit }: { onExit: () => void }) {
-  const [activeMode, setActiveMode] = useState<GameModeId | null>(null)
+  // Auto-resume an in-progress multiplayer match on mount (e.g. after a page
+  // refresh) instead of forcing the player back through mode selection.
+  const [activeMode, setActiveMode] = useState<GameModeId | null>(() => {
+    const active = loadActiveRoomSession()
+    return active ? active.mode : null
+  })
 
   if (activeMode === "rapid") return <RapidFireMode onExit={() => setActiveMode(null)} />
   if (activeMode === "sudden") return <SuddenDeathMode onExit={() => setActiveMode(null)} />

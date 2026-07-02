@@ -26,6 +26,7 @@ import { NotificationBell } from "@/components/notification-bell"
 import { ProfileHistory } from "@/components/profile-history"
 import { WeakAreasScreen } from "@/components/weak-areas-screen"
 import { GameMode } from "@/components/game-mode"
+import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import {
   MenuIcon,
   StethoscopeIcon,
@@ -384,6 +385,17 @@ export function MedNexusApp() {
       }
     }
   }, [user?.uid, user?.role, user?.status, requiresPasswordUpdate])
+
+  // Global auto-rejoin: if a multiplayer match was in progress when the app
+  // was refreshed/reloaded, jump straight back into the Game screen instead
+  // of leaving the player stranded on the dashboard. GameMode itself reads
+  // the same cached session to auto-select clash/cohort and skip the lobby.
+  useEffect(() => {
+    if (loadActiveRoomSession()) {
+      setScreen("game")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const adminOnlyScreens: Screen[] = ["question-editor", "broadcast", "live-assessments-admin", "user-management"]
   const safeScreen = adminOnlyScreens.includes(screen) && !isAdmin ? "dashboard" : screen
