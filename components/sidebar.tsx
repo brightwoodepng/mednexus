@@ -190,7 +190,7 @@ export function Sidebar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              {isAdmin && !user ? "Admin" : user?.name ?? "Clinician"}
+              {isAdmin && !user ? "Britechinc" : user?.name ?? "Clinician"}
             </p>
             <p className="text-[11px] text-sidebar-foreground/55">
               {isAdmin && !user
