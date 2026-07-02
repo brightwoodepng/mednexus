@@ -31,6 +31,7 @@ interface RoomState {
   players: RoomPlayer[]
   leaderboard: RoomPlayer[] // top-5 sorted by score
   ranks: Record<string, number>
+  version: number
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
