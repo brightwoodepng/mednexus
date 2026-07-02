@@ -6,6 +6,7 @@ import { useAdmin } from "@/contexts/admin-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
 import { StethoscopeIcon, ArrowRightIcon } from "@/components/icons"
+import { CLASS_LEVELS } from "@/lib/levels"
 
 function WhatsAppIcon({ size = 14 }: { size?: number }) {
   return (
@@ -37,6 +38,23 @@ function BackButton({ onClick }: { onClick: () => void }) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}><path d="m15 18-6-6 6-6"/></svg>
       Back
     </button>
+  )
+}
+
+function LevelSelect({ id, value, onChange, required }: { id: string; value: string; onChange: (v: string) => void; required?: boolean }) {
+  return (
+    <select
+      id={id}
+      required={required}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30 appearance-none"
+    >
+      <option value="" disabled>Select your level…</option>
+      {CLASS_LEVELS.map((lvl) => (
+        <option key={lvl} value={lvl}>{lvl}</option>
+      ))}
+    </select>
   )
 }
 
@@ -144,12 +162,14 @@ function GuestForm({ onBack }: { onBack: () => void }) {
   const { enterApp } = useApp()
   const { glassEnabled } = useTheme()
   const [name, setName] = useState("")
+  const [classLevel, setClassLevel] = useState("")
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!name.trim() || !classLevel) return
     setLoading(true)
-    await enterApp(name)
+    await enterApp(name, classLevel)
     setLoading(false)
   }
 
@@ -174,15 +194,78 @@ function GuestForm({ onBack }: { onBack: () => void }) {
             className="w-full rounded-xl border border-input bg-background px-4 py-3 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
           />
         </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="guest-level">Level / Year</label>
+          <LevelSelect id="guest-level" value={classLevel} onChange={setClassLevel} required />
+        </div>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !name.trim() || !classLevel}
           className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
         >
           {loading ? "Setting up…" : "Enter MedNexus"}
           {!loading && <ArrowRightIcon size={16} />}
         </button>
       </form>
+    </div>
+  )
+}
+
+// ── Guest Modal (inline from Login) ──────────────────────────────────────────
+function GuestModal({ onClose }: { onClose: () => void }) {
+  const { enterApp } = useApp()
+  const [name, setName] = useState("")
+  const [classLevel, setClassLevel] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim() || !classLevel) return
+    setLoading(true)
+    await enterApp(name, classLevel)
+    setLoading(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Continue as Guest</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Progress saves locally on this device only.</p>
+          </div>
+          <button type="button" onClick={onClose} className="shrink-0 rounded-xl p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="gm-name">Your name</label>
+            <input
+              id="gm-name"
+              type="text"
+              autoFocus
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Dr. Jane Doe"
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground" htmlFor="gm-level">Level / Year</label>
+            <LevelSelect id="gm-level" value={classLevel} onChange={setClassLevel} required />
+          </div>
+          <button
+            type="submit"
+            disabled={loading || !name.trim() || !classLevel}
+            className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+          >
+            {loading ? "Setting up…" : "Enter MedNexus"}
+            {!loading && <ArrowRightIcon size={16} />}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -324,6 +407,7 @@ function LoginFields() {
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [guestModalOpen, setGuestModalOpen] = useState(false)
 
   if (mode === "otp") {
     return <OtpResetFields onBack={() => setMode("login")} />
@@ -340,62 +424,77 @@ function LoginFields() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-muted-foreground" htmlFor="login-index">Index Number</label>
-        <input
-          id="login-index"
-          type="text"
-          autoFocus
-          value={indexNumber}
-          onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
-          placeholder="sm/sms/22/0092"
-          className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-muted-foreground" htmlFor="login-pw">Password</label>
-        <div className="relative">
+    <>
+      {guestModalOpen && <GuestModal onClose={() => setGuestModalOpen(false)} />}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="login-index">Index Number</label>
           <input
-            id="login-pw"
-            type={showPw ? "text" : "password"}
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setError("") }}
-            placeholder="Your password"
-            className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+            id="login-index"
+            type="text"
+            autoFocus
+            value={indexNumber}
+            onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
+            placeholder="sm/sms/22/0092"
+            className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
           />
-          <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-            <EyeIcon open={showPw} />
-          </button>
         </div>
-      </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="login-pw">Password</label>
+          <div className="relative">
+            <input
+              id="login-pw"
+              type={showPw ? "text" : "password"}
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError("") }}
+              placeholder="Your password"
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+            <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <EyeIcon open={showPw} />
+            </button>
+          </div>
+        </div>
 
-      {error && (
-        <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15} className="mt-0.5 shrink-0">
-            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+        {error && (
+          <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15} className="mt-0.5 shrink-0">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+            </svg>
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading || !indexNumber.trim() || !password.trim()}
+          className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+        >
+          {loading ? "Signing in…" : "Log In"}
+          {!loading && <ArrowRightIcon size={16} />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setGuestModalOpen(true)}
+          className="flex items-center justify-center gap-2 rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            <line x1="17" x2="22" y1="8" y2="8"/>
           </svg>
-          {error}
-        </div>
-      )}
+          Continue as Guest
+        </button>
 
-      <button
-        type="submit"
-        disabled={loading || !indexNumber.trim() || !password.trim()}
-        className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
-      >
-        {loading ? "Signing in…" : "Log In"}
-        {!loading && <ArrowRightIcon size={16} />}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => setMode("otp")}
-        className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        Forgot password? <span className="font-semibold text-primary">Enter with OTP</span>
-      </button>
-    </form>
+        <button
+          type="button"
+          onClick={() => setMode("otp")}
+          className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Forgot password? <span className="font-semibold text-primary">Enter with OTP</span>
+        </button>
+      </form>
+    </>
   )
 }
 
@@ -480,14 +579,7 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
       </div>
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground" htmlFor="reg-level">Level / Year</label>
-        <input
-          id="reg-level"
-          type="text"
-          value={level}
-          onChange={(e) => { setLevel(e.target.value); setError("") }}
-          placeholder="e.g. Level 300, Year 2, Intern…"
-          className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-        />
+        <LevelSelect id="reg-level" value={level} onChange={(v) => { setLevel(v); setError("") }} required />
       </div>
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground" htmlFor="reg-index">Index Number</label>
