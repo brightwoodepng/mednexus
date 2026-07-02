@@ -21,6 +21,7 @@ export interface AppUser {
   status?: string
   indexNumber?: string
   level?: string
+  classLevel?: string
 }
 
 interface AppContextValue {
@@ -29,7 +30,7 @@ interface AppContextValue {
   cloudEnabled: boolean
   requiresPasswordUpdate: boolean
   progress: UserProgress
-  enterApp: (name: string) => Promise<void>
+  enterApp: (name: string, classLevel: string) => Promise<void>
   loginUser: (indexNumber: string, password: string) => Promise<{ ok: boolean; error?: string }>
   registerUser: (name: string, level: string, indexNumber: string, password: string) => Promise<{ ok: boolean; error?: string; status?: string }>
   updatePassword: (newPassword: string) => Promise<{ ok: boolean; error?: string }>
@@ -65,6 +66,8 @@ const LS_ROLE = "mednexus-role"
 const LS_STATUS = "mednexus-status"
 const LS_PROGRESS = "mednexus-progress"
 const LS_REQUIRES_PW_UPDATE = "mednexus-requires-pw-update"
+const LS_CLASS_LEVEL = "mednexus-class-level"
+const LS_GUEST_TOKEN = "mednexus-guest-token"
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
@@ -148,10 +151,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const role = (typeof window !== "undefined" ? localStorage.getItem(LS_ROLE) : null) as UserRole | null
       const status = typeof window !== "undefined" ? localStorage.getItem(LS_STATUS) ?? undefined : undefined
       const needsPwUpdate = typeof window !== "undefined" ? localStorage.getItem(LS_REQUIRES_PW_UPDATE) === "true" : false
+      const classLevel = typeof window !== "undefined" ? localStorage.getItem(LS_CLASS_LEVEL) ?? undefined : undefined
 
       if (uid) {
         const local = loadLocal(uid)
-        const appUser: AppUser = { uid, name, role: role ?? "guest", status: status ?? undefined }
+        const appUser: AppUser = { uid, name, role: role ?? "guest", status: status ?? undefined, classLevel }
         setUser(appUser)
         setProgress(local)
         setRequiresPasswordUpdate(needsPwUpdate)
@@ -161,7 +165,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (remote) {
           setCloudEnabled(true)
           setProgress(remote.progress)
-          setUser({ uid, name: remote.name, role: role ?? "guest" })
+          setUser({ uid, name: remote.name, role: role ?? "guest", classLevel })
         }
       } else {
         setAuthReady(true)
@@ -170,19 +174,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     init()
   }, [])
 
-  const enterApp = useCallback(async (name: string) => {
-    const uid = crypto.randomUUID()
+  const enterApp = useCallback(async (name: string, classLevel: string) => {
     const trimmed = name.trim() || "Clinician"
+    const trimmedLevel = classLevel.trim()
+
+    let uid: string
+    let sessionToken: string | null = null
+
+    try {
+      const res = await fetch("/api/auth/guest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed, classLevel: trimmedLevel }),
+        signal: AbortSignal.timeout(8000),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        uid = data.uid
+        sessionToken = data.sessionToken ?? null
+      } else {
+        uid = `guest_${crypto.randomUUID()}`
+      }
+    } catch {
+      uid = `guest_${crypto.randomUUID()}`
+    }
+
     try {
       localStorage.setItem(LS_UID, uid)
       localStorage.setItem(LS_NAME, trimmed)
       localStorage.setItem(LS_ROLE, "guest")
+      localStorage.setItem(LS_CLASS_LEVEL, trimmedLevel)
       localStorage.removeItem(LS_REQUIRES_PW_UPDATE)
+      if (sessionToken) localStorage.setItem(LS_GUEST_TOKEN, sessionToken)
     } catch {}
-    const appUser: AppUser = { uid, name: trimmed, role: "guest" }
+
+    const appUser: AppUser = { uid, name: trimmed, role: "guest", classLevel: trimmedLevel }
     setUser(appUser)
     setProgress(EMPTY_PROGRESS)
     setRequiresPasswordUpdate(false)
+
     const ok = await apiPost(uid, trimmed, EMPTY_PROGRESS)
     if (ok) setCloudEnabled(true)
   }, [])
@@ -267,6 +297,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(LS_ROLE)
       localStorage.removeItem(LS_STATUS)
       localStorage.removeItem(LS_REQUIRES_PW_UPDATE)
+      localStorage.removeItem(LS_CLASS_LEVEL)
+      localStorage.removeItem(LS_GUEST_TOKEN)
     } catch {}
     setUser(null)
     setProgress(EMPTY_PROGRESS)
