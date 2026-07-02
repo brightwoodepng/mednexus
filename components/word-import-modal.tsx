@@ -159,6 +159,12 @@ function parseTextFallback(raw: string): RawQuestion[] {
 }
 
 // ── Build Question from Gemini output ────────────────────────────────────────
+interface ServerContext {
+  id: string
+  type: string
+  content: string
+}
+
 interface ServerQuestion {
   contextId?: string | null
   questionType?: string
@@ -173,7 +179,13 @@ interface ServerQuestion {
   } | null
 }
 
-function makeQuestionFromServer(q: ServerQuestion, index: number, moduleName: string): Question {
+function makeQuestionFromServer(
+  q: ServerQuestion,
+  index: number,
+  moduleName: string,
+  contextMap: Map<string, string>,
+): Question {
+  const ctxId = q.contextId ?? null
   return {
     id: `docx-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
     module: moduleName || undefined,
@@ -182,7 +194,10 @@ function makeQuestionFromServer(q: ServerQuestion, index: number, moduleName: st
     options: q.options,
     correctAnswer: q.correctAnswer ?? null,
     explanation: q.explanation ?? null,
-    contextId: q.contextId ?? null,
+    contextId: ctxId,
+    // Denormalize the shared context content so the quiz/exam can render it
+    // without a separate fetch — same pattern used by the live assessment flow.
+    contextContent: ctxId ? (contextMap.get(ctxId) ?? null) : null,
     questionType: (q.questionType as any) ?? "STANDARD_MCQ",
   }
 }
@@ -332,14 +347,18 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
       const data = await res.json() as {
         source: "gemini" | "fallback"
         questions?: ServerQuestion[]
-        contexts?: unknown[]
+        contexts?: ServerContext[]
         extractedText?: string
       }
 
-      // ── Gemini succeeded ──
+      // ── Gemini succeeded (or server-side fallback returned structured data) ──
       if (data.source === "gemini" && data.questions && data.questions.length > 0) {
         setParseStep("parsing-ai")
-        const questions = data.questions.map((q, i) => makeQuestionFromServer(q, i, mod))
+        // Build contextId → content map so each question gets its shared passage/table/image
+        const contextMap = new Map<string, string>(
+          (data.contexts ?? []).map((c) => [c.id, c.content])
+        )
+        const questions = data.questions.map((q, i) => makeQuestionFromServer(q, i, mod, contextMap))
         setParsedQuestions(questions)
         setParseSource("ai")
         setStep("review")
