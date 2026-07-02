@@ -7,6 +7,7 @@ const allowedDevOrigins = [
   "*.kirk.replit.dev",
   "*.picard.replit.dev",
   "*.repl.co",
+  "127.0.0.1",
 ]
 if (replitDevDomain) allowedDevOrigins.push(replitDevDomain)
 
