@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
     const pool = await getPool()
 
     const result = await pool.query(
-      `SELECT uid, name, level, index_number, password_hash, status, must_change_password, otp_hash
+      `SELECT uid, name, level, class_level, role, index_number,
+              password_hash, status, must_change_password, otp_hash
        FROM mednexus_registered_users WHERE index_number = $1`,
       [formatted]
     )
@@ -48,13 +49,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Your account has been rejected. Please contact the admin for more information." }, { status: 403 })
     }
 
+    // Resolve classLevel: prefer the canonical class_level column; fall back to
+    // the legacy level column for rows not yet migrated.
+    const classLevel: string = user.class_level || user.level || ""
+    const role: string = user.role || "REGISTERED"
+
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
 
     if (passwordMatch) {
       return NextResponse.json({
         uid: user.uid,
         name: user.name,
-        level: user.level,
+        classLevel,
+        role,
+        // Keep legacy "level" field so older clients don't break
+        level: classLevel,
         status: user.status,
         indexNumber: user.index_number,
         requiresPasswordUpdate: user.must_change_password,
@@ -71,7 +80,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           uid: user.uid,
           name: user.name,
-          level: user.level,
+          classLevel,
+          role,
+          level: classLevel,
           status: user.status,
           indexNumber: user.index_number,
           requiresPasswordUpdate: true,
