@@ -55,8 +55,8 @@ export async function POST(req: Request) {
     }
 
     await pool.query(
-      `INSERT INTO mednexus_game_rooms (pin, mode, host_id, host_name, question_pool, current_qi, phase, players)
-       VALUES ($1, $2, $3, $4, $5, 0, 'lobby', $6)`,
+      `INSERT INTO mednexus_game_rooms (pin, mode, host_id, host_name, question_pool, current_qi, phase, players, phase_started_at)
+       VALUES ($1, $2, $3, $4, $5, 0, 'lobby', $6, NOW())`,
       [pin, mode, hostId, hostName, JSON.stringify(slim), JSON.stringify([hostPlayer])]
     )
 

@@ -190,6 +190,12 @@ export async function ensureSchema() {
     ALTER TABLE mednexus_game_rooms
       ADD COLUMN IF NOT EXISTS scored_uids JSONB NOT NULL DEFAULT '[]';
 
+    -- phase_started_at: timestamp of the most recent phase transition.
+    -- Used to self-drive match advancement (question timeout, reveal→next)
+    -- purely from polling reads — no host click or external realtime engine required.
+    ALTER TABLE mednexus_game_rooms
+      ADD COLUMN IF NOT EXISTS phase_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();
     DELETE FROM mednexus_guest_users  WHERE expires_at < NOW();

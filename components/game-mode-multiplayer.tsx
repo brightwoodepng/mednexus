@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
+import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MultiMode = "clash" | "cohort"
@@ -16,6 +17,7 @@ const DEFAULT_FILTER: GameFilter = { scope: "all", value: null }
 interface RoomPlayer {
   id: string; name: string; score: number; streak: number
   answer: string | null; answeredAt: number | null; isHost: boolean
+  reactionTimeMs?: number | null
 }
 
 interface SlimQuestion {
@@ -836,13 +838,18 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
 
 // ── GAME ROOM CONTROLLER ──────────────────────────────────────────────────────
 // Manages polling and action dispatch for an active room
-function GameRoomController({ pin, myId, isHost, isCohortHost, onExit }: {
-  pin: string; myId: string; isHost: boolean; isCohortHost: boolean; onExit: () => void
+function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
+  pin: string; myId: string; isHost: boolean; isCohortHost: boolean; mode: MultiMode; onExit: () => void
 }) {
   const [room, setRoom] = useState<RoomState | null>(null)
   const [error, setError] = useState("")
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const lastVersionRef = useRef<number>(-1)
+  // Timestamp the current question rendered — used to compute reactionTimeMs
+  // (server-side speed bonus input). Reset whenever a NEW question comes on
+  // screen (phase flips to "question" for a different currentQi).
+  const questionStartRef = useRef<number>(Date.now())
+  const questionKeyRef = useRef<string>("")
 
   const poll = useCallback(async () => {
     const state = await apiPollRoom(pin, myId)
@@ -863,6 +870,26 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, onExit }: {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [poll])
 
+  // Reset the reaction-time clock the moment a new question appears, and
+  // cache enough of the session (pin/myId/questionId) in sessionStorage so a
+  // refresh can silently resume this exact match instead of dropping back
+  // to the lobby.
+  useEffect(() => {
+    if (!room) return
+    const currentQuestionId = room.questionPool[room.currentQi]?.id ?? String(room.currentQi)
+    const key = `${room.phase === "question" ? "q" : room.phase}-${room.currentQi}`
+    if (room.phase === "question" && questionKeyRef.current !== key) {
+      questionStartRef.current = Date.now()
+      questionKeyRef.current = key
+    }
+
+    if (room.phase !== "done") {
+      saveActiveRoomSession({ pin, myId, mode, isHost, isCohortHost, questionId: currentQuestionId })
+    } else {
+      clearActiveRoomSession()
+    }
+  }, [room, pin, myId, mode, isHost, isCohortHost])
+
   async function doAction(payload: Record<string, unknown>) {
     const updated = await apiAction(pin, { ...payload, requesterId: myId })
     if (updated) {
@@ -872,12 +899,17 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, onExit }: {
   }
 
   async function handleStart() { await doAction({ action: "start" }) }
-  async function handleAnswer(answer: string) { await doAction({ action: "answer", playerId: myId, answer }) }
+  async function handleAnswer(answer: string) {
+    const reactionTimeMs = Date.now() - questionStartRef.current
+    await doAction({ action: "answer", playerId: myId, answer, reactionTimeMs })
+  }
   async function handleAdvance() { await doAction({ action: "advance" }) }
   async function handleFinish() { await doAction({ action: "finish" }) }
 
   async function handleExit() {
+    clearActiveRoomSession()
     if (isHost) await apiDeleteRoom(pin, myId)
+    else await doAction({ action: "disconnect", playerId: myId })
     onExit()
   }
 
@@ -947,10 +979,12 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, onExit }: {
 type MultiView = "select" | "create" | "join" | "room"
 
 export function MultiplayerClash({ onExit }: { onExit: () => void }) {
-  const [view, setView] = useState<MultiView>("select")
-  const [pin, setPin] = useState("")
-  const [myId, setMyId] = useState("")
-  const [isHost, setIsHost] = useState(false)
+  const resumed = useRef(loadActiveRoomSession())
+  const canResume = resumed.current?.mode === "clash"
+  const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
+  const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
+  const [myId, setMyId] = useState(canResume ? resumed.current!.myId : "")
+  const [isHost, setIsHost] = useState(canResume ? resumed.current!.isHost : false)
 
   if (view === "select") {
     return (
@@ -995,14 +1029,16 @@ export function MultiplayerClash({ onExit }: { onExit: () => void }) {
     )
   }
 
-  return <GameRoomController pin={pin} myId={myId} isHost={isHost} isCohortHost={false} onExit={onExit} />
+  return <GameRoomController pin={pin} myId={myId} isHost={isHost} isCohortHost={false} mode="clash" onExit={onExit} />
 }
 
 export function CohortReview({ onExit }: { onExit: () => void }) {
-  const [view, setView] = useState<MultiView>("select")
-  const [pin, setPin] = useState("")
-  const [myId, setMyId] = useState("")
-  const [isHost, setIsHost] = useState(false)
+  const resumed = useRef(loadActiveRoomSession())
+  const canResume = resumed.current?.mode === "cohort"
+  const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
+  const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
+  const [myId, setMyId] = useState(canResume ? resumed.current!.myId : "")
+  const [isHost, setIsHost] = useState(canResume ? resumed.current!.isHost : false)
 
   if (view === "select") {
     return (
@@ -1047,5 +1083,5 @@ export function CohortReview({ onExit }: { onExit: () => void }) {
     )
   }
 
-  return <GameRoomController pin={pin} myId={myId} isHost={isHost} isCohortHost={isHost} onExit={onExit} />
+  return <GameRoomController pin={pin} myId={myId} isHost={isHost} isCohortHost={isHost} mode="cohort" onExit={onExit} />
 }

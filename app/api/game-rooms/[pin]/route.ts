@@ -7,6 +7,9 @@ interface RoomPlayer {
   id: string; name: string; score: number; streak: number
   answer: string | null; answeredAt: number | null; isHost: boolean
   status?: "active" | "disconnected"
+  // Client-measured time (ms) between question render and answer submission.
+  // Used server-side to award a speed bonus — never trusted for correctness.
+  reactionTimeMs?: number | null
   // Wager Wars fields
   balance?: number; wagerAmount?: number | null; isSpectator?: boolean
 }
@@ -22,7 +25,82 @@ interface RawRoom {
   pin: string; mode: "clash" | "cohort" | "wager"; host_id: string; host_name: string
   question_pool: SlimQuestion[]; current_qi: number; phase: RoomPhase
   players: RoomPlayer[]; version: number; created_at: Date
-  scored_uids: string[]
+  scored_uids: string[]; phase_started_at: Date
+}
+
+// ── Self-driven match pacing ────────────────────────────────────────────────
+// This app has no push/realtime infra (no Supabase, no websockets) — clients
+// poll GET every 1.5s. Rather than requiring the host to click through every
+// step, we treat each GET/PATCH as a "tick": if enough time has elapsed since
+// the last phase change (or every active player has already answered), the
+// server advances the match itself. This removes the host as a bottleneck
+// while staying entirely inside the existing Postgres + polling architecture.
+const QUESTION_TIME_LIMIT_MS = 20_000
+const REVEAL_DURATION_MS = 3_000
+
+function activePlayers(players: RoomPlayer[]): RoomPlayer[] {
+  return players.filter(p => p.status !== "disconnected" && !p.isSpectator)
+}
+
+function allActiveAnswered(players: RoomPlayer[]): boolean {
+  const active = activePlayers(players)
+  return active.length > 0 && active.every(p => p.answer !== null)
+}
+
+/**
+ * Advances a room's phase automatically when conditions are met, entirely
+ * server-side. Safe to call opportunistically from GET or after a PATCH —
+ * the UPDATE's WHERE clause double-checks the phase so concurrent calls
+ * can't double-advance the same room.
+ */
+async function autoTick(pin: string): Promise<void> {
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    const res = await client.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE", [pin])
+    if (res.rows.length === 0) { await client.query("ROLLBACK"); return }
+
+    const row = res.rows[0] as RawRoom
+    // Wager mode already has its own manual/auto-advance flow (place_wager →
+    // question, answer → reveal). We only self-drive the "no host bottleneck"
+    // pacing for clash/cohort, so wager behavior is left untouched.
+    if (row.mode === "wager") { await client.query("ROLLBACK"); return }
+
+    const elapsedMs = Date.now() - new Date(row.phase_started_at).getTime()
+
+    if (row.phase === "question") {
+      const shouldReveal = allActiveAnswered(row.players) || elapsedMs >= QUESTION_TIME_LIMIT_MS
+      if (shouldReveal) {
+        await client.query(
+          "UPDATE mednexus_game_rooms SET phase = 'reveal', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1 AND phase = 'question'",
+          [pin]
+        )
+      }
+    } else if (row.phase === "reveal") {
+      if (elapsedMs >= REVEAL_DURATION_MS) {
+        const nextQi = row.current_qi + 1
+        if (nextQi >= row.question_pool.length) {
+          await client.query(
+            "UPDATE mednexus_game_rooms SET phase = 'done', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1 AND phase = 'reveal'",
+            [pin]
+          )
+        } else {
+          const resetPlayers = row.players.map(p => ({ ...p, answer: null, answeredAt: null, reactionTimeMs: null }))
+          await client.query(
+            "UPDATE mednexus_game_rooms SET phase = 'question', current_qi = $1, players = $2, phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $3 AND phase = 'reveal'",
+            [nextQi, JSON.stringify(resetPlayers), pin]
+          )
+        }
+      }
+    }
+
+    await client.query("COMMIT")
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {})
+    console.error("[game-rooms autoTick]", err)
+  } finally {
+    client.release()
+  }
 }
 
 function buildResponse(row: RawRoom, myId?: string) {
@@ -69,6 +147,11 @@ export async function GET(
     const { pin } = await params
     const myId = new URL(req.url).searchParams.get("playerId") ?? undefined
 
+    // Every poll is a pacing "tick" — self-drives reveal/next-question
+    // transitions without any host click, using elapsed phase_started_at time
+    // or "all active players answered" as the trigger.
+    await autoTick(pin)
+
     const res = await pool.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1", [pin])
     if (res.rows.length === 0) return NextResponse.json({ error: "Room not found" }, { status: 404 })
 
@@ -95,6 +178,8 @@ export async function PATCH(
       answer?: string
       wagerAmount?: number
       requesterId?: string
+      // Client-measured ms between question render and answer submission (speed bonus input)
+      reactionTimeMs?: number
     }
 
     await client.query("BEGIN")
@@ -169,7 +254,7 @@ export async function PATCH(
           ...(row.mode === "wager" ? { balance: 1000, wagerAmount: null, isSpectator: false } : {}),
         }))
         await client.query(
-          "UPDATE mednexus_game_rooms SET phase = $1, current_qi = 0, players = $2, version = COALESCE(version, 0) + 1 WHERE pin = $3",
+          "UPDATE mednexus_game_rooms SET phase = $1, current_qi = 0, players = $2, phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $3",
           [startPhase, JSON.stringify(players), pin]
         )
         break
@@ -230,6 +315,18 @@ export async function PATCH(
         const correct = body.answer === q.correctAnswer
         const now = Date.now()
 
+        // Clamp reactionTimeMs to a sane range — never trust it blindly, it's
+        // only used to compute a bonus, never to determine correctness.
+        const rawReaction = body.reactionTimeMs
+        const reactionTimeMs = (typeof rawReaction === "number" && Number.isFinite(rawReaction) && rawReaction >= 0)
+          ? Math.min(rawReaction, QUESTION_TIME_LIMIT_MS)
+          : null
+        // Speed bonus: up to +50 points for an instant answer, decaying to 0
+        // by the time the question's time limit is reached.
+        const speedBonus = (correct && reactionTimeMs !== null)
+          ? Math.round(50 * (1 - reactionTimeMs / QUESTION_TIME_LIMIT_MS))
+          : 0
+
         players = players.map(p => {
           if (p.id !== body.playerId) return p
           if (p.answer !== null) return p // already answered
@@ -241,7 +338,7 @@ export async function PATCH(
             const becameSpectator = newBalance <= 0
             return {
               ...p,
-              answer: body.answer!, answeredAt: now,
+              answer: body.answer!, answeredAt: now, reactionTimeMs,
               score: newBalance, balance: newBalance,
               isSpectator: becameSpectator || !!p.isSpectator,
             }
@@ -249,8 +346,8 @@ export async function PATCH(
 
           // Normal modes
           const newStreak = correct ? p.streak + 1 : 0
-          const newScore = correct ? p.score + 100 + Math.max(0, p.streak * 10) : p.score
-          return { ...p, answer: body.answer!, answeredAt: now, score: newScore, streak: newStreak }
+          const newScore = correct ? p.score + 100 + Math.max(0, p.streak * 10) + speedBonus : p.score
+          return { ...p, answer: body.answer!, answeredAt: now, reactionTimeMs, score: newScore, streak: newStreak }
         })
 
         await client.query(
@@ -260,14 +357,21 @@ export async function PATCH(
 
         // Wager mode: auto-advance to reveal when all active players answered
         if (row.mode === "wager") {
-          const activePlayers = players.filter(p => !p.isSpectator)
-          const allDone = activePlayers.length === 0 || activePlayers.every(p => p.answer !== null)
+          const activePlayersW = players.filter(p => !p.isSpectator)
+          const allDone = activePlayersW.length === 0 || activePlayersW.every(p => p.answer !== null)
           if (allDone) {
             await client.query(
-              "UPDATE mednexus_game_rooms SET phase = 'reveal', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+              "UPDATE mednexus_game_rooms SET phase = 'reveal', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1",
               [pin]
             )
           }
+        } else if (allActiveAnswered(players)) {
+          // Clash/cohort: the moment the LAST connected player answers, reveal
+          // immediately rather than waiting for the next 1.5s poll tick.
+          await client.query(
+            "UPDATE mednexus_game_rooms SET phase = 'reveal', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1 AND phase = 'question'",
+            [pin]
+          )
         }
         break
       }
@@ -279,7 +383,7 @@ export async function PATCH(
             const nextQi = row.current_qi + 1
             if (nextQi >= row.question_pool.length) {
               await client.query(
-                "UPDATE mednexus_game_rooms SET phase = 'done', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+                "UPDATE mednexus_game_rooms SET phase = 'done', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1",
                 [pin]
               )
             } else {
@@ -287,14 +391,14 @@ export async function PATCH(
               const anyActive = players.some(p => !p.isSpectator)
               if (!anyActive) {
                 await client.query(
-                  "UPDATE mednexus_game_rooms SET phase = 'done', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+                  "UPDATE mednexus_game_rooms SET phase = 'done', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1",
                   [pin]
                 )
               } else {
                 // Reset answer + wagerAmount for all players, go to wager phase
                 players = players.map(p => ({ ...p, answer: null, answeredAt: null, wagerAmount: null }))
                 await client.query(
-                  "UPDATE mednexus_game_rooms SET phase = 'wager', current_qi = $1, players = $2, version = COALESCE(version, 0) + 1 WHERE pin = $3",
+                  "UPDATE mednexus_game_rooms SET phase = 'wager', current_qi = $1, players = $2, phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $3",
                   [nextQi, JSON.stringify(players), pin]
                 )
               }
@@ -303,23 +407,24 @@ export async function PATCH(
           break
         }
 
-        // Normal modes
+        // Normal modes — manual host override, still supported alongside the
+        // automatic self-driven advancement in autoTick().
         if (row.phase === "question") {
           await client.query(
-            "UPDATE mednexus_game_rooms SET phase = 'reveal', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+            "UPDATE mednexus_game_rooms SET phase = 'reveal', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1",
             [pin]
           )
         } else if (row.phase === "reveal") {
           const nextQi = row.current_qi + 1
           if (nextQi >= row.question_pool.length) {
             await client.query(
-              "UPDATE mednexus_game_rooms SET phase = 'done', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+              "UPDATE mednexus_game_rooms SET phase = 'done', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1",
               [pin]
             )
           } else {
-            players = players.map(p => ({ ...p, answer: null, answeredAt: null }))
+            players = players.map(p => ({ ...p, answer: null, answeredAt: null, reactionTimeMs: null }))
             await client.query(
-              "UPDATE mednexus_game_rooms SET phase = 'question', current_qi = $1, players = $2, version = COALESCE(version, 0) + 1 WHERE pin = $3",
+              "UPDATE mednexus_game_rooms SET phase = 'question', current_qi = $1, players = $2, phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $3",
               [nextQi, JSON.stringify(players), pin]
             )
           }
@@ -329,7 +434,7 @@ export async function PATCH(
 
       case "finish": {
         await client.query(
-          "UPDATE mednexus_game_rooms SET phase = 'done', version = COALESCE(version, 0) + 1 WHERE pin = $1",
+          "UPDATE mednexus_game_rooms SET phase = 'done', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1",
           [pin]
         )
         break
