@@ -668,22 +668,51 @@
 .rich-text img {
   max-width: 100%;
   height: auto;
+  display: block;
   border-radius: 0.5rem;
   margin-block: 0.75rem;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.12);
 }
+
+/* Context panel (split-screen) — image may be large; constrain it */
+.rich-text.context-panel img {
+  max-height: 420px;
+  object-fit: contain;
+  margin-inline: auto;
+}
+
 .rich-text table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85em;
   margin-block: 0.75rem;
+  overflow-x: auto;
+  display: block;
 }
 .rich-text th,
 .rich-text td {
   border: 1px solid var(--border);
-  padding: 0.35rem 0.6rem;
+  padding: 0.35rem 0.7rem;
   text-align: left;
+  vertical-align: top;
+  line-height: 1.4;
 }
 .rich-text th {
   background: var(--muted);
   font-weight: 600;
+  white-space: nowrap;
 }
+.rich-text td {
+  white-space: pre-wrap;
+}
+/* Zebra rows for readability */
+.rich-text tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
+}
+
+/* Inline formatting */
+.rich-text p { margin-block: 0.35em; }
+.rich-text strong, .rich-text b { font-weight: 600; }
+.rich-text em, .rich-text i { font-style: italic; }
+.rich-text ul, .rich-text ol { padding-left: 1.25rem; margin-block: 0.35em; }
+.rich-text li { margin-block: 0.15em; }
