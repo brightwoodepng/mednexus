@@ -6,6 +6,7 @@ type RoomPhase = "lobby" | "wager" | "question" | "reveal" | "done"
 interface RoomPlayer {
   id: string; name: string; score: number; streak: number
   answer: string | null; answeredAt: number | null; isHost: boolean
+  status?: "active" | "disconnected"
   // Wager Wars fields
   balance?: number; wagerAmount?: number | null; isSpectator?: boolean
 }
@@ -21,6 +22,7 @@ interface RawRoom {
   pin: string; mode: "clash" | "cohort" | "wager"; host_id: string; host_name: string
   question_pool: SlimQuestion[]; current_qi: number; phase: RoomPhase
   players: RoomPlayer[]; version: number; created_at: Date
+  scored_uids: string[]
 }
 
 function buildResponse(row: RawRoom, myId?: string) {
@@ -87,7 +89,7 @@ export async function PATCH(
     await ensureSchema()
     const { pin } = await params
     const body = await req.json() as {
-      action: "join" | "start" | "answer" | "advance" | "finish" | "place_wager"
+      action: "join" | "start" | "answer" | "advance" | "finish" | "place_wager" | "disconnect"
       playerId?: string
       playerName?: string
       answer?: string
@@ -330,6 +332,36 @@ export async function PATCH(
           "UPDATE mednexus_game_rooms SET phase = 'done', version = COALESCE(version, 0) + 1 WHERE pin = $1",
           [pin]
         )
+        break
+      }
+
+      case "disconnect": {
+        // Mark a player as disconnected. The mednexus_host_migration DB trigger
+        // fires automatically on this UPDATE: if the disconnecting player is the
+        // host, the trigger promotes the oldest remaining active player and bumps
+        // version — pollers notice without any extra application code.
+        if (!body.playerId || !body.requesterId) {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Missing playerId or requesterId" }, { status: 400 })
+        }
+        // Only the player themselves may mark themselves disconnected
+        if (body.requesterId !== body.playerId) {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+
+        players = players.map(p =>
+          p.id === body.playerId ? { ...p, status: "disconnected" as const } : p
+        )
+
+        await client.query(
+          `UPDATE mednexus_game_rooms
+             SET players = $1, version = COALESCE(version, 0) + 1
+           WHERE pin = $2`,
+          [JSON.stringify(players), pin]
+        )
+        // Note: trigger may have already bumped version again if host changed —
+        // the SELECT after COMMIT will return the final authoritative state.
         break
       }
 

@@ -138,6 +138,8 @@ export async function ensureSchema() {
       phase         TEXT    NOT NULL DEFAULT 'lobby',
       players       JSONB   NOT NULL DEFAULT '[]',
       version       INTEGER NOT NULL DEFAULT 0,
+      -- tracks which player UIDs have already received their match payout (dedup guard)
+      scored_uids   JSONB   NOT NULL DEFAULT '[]',
       created_at    TIMESTAMPTZ DEFAULT NOW(),
       expires_at    TIMESTAMPTZ DEFAULT NOW() + INTERVAL '4 hours'
     );
@@ -183,9 +185,79 @@ export async function ensureSchema() {
     ALTER TABLE mednexus_game_rooms
       ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
 
+    -- scored_uids: JSONB array of player UIDs who have received their match payout.
+    -- Prevents double-submission of the secure score RPC.
+    ALTER TABLE mednexus_game_rooms
+      ADD COLUMN IF NOT EXISTS scored_uids JSONB NOT NULL DEFAULT '[]';
+
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();
     DELETE FROM mednexus_guest_users  WHERE expires_at < NOW();
+  `)
+
+  // ── Step 4: Host-migration trigger ────────────────────────────────────────
+  // When a player whose id matches host_id has their status set to
+  // 'disconnected', the trigger instantly promotes the oldest remaining active
+  // player (first non-disconnected, non-spectator entry in the players array)
+  // to be the new host — updating host_id, host_name, isHost flags, and
+  // bumping version so pollers notice the change immediately.
+  await pool.query(`
+    CREATE OR REPLACE FUNCTION mednexus_migrate_host()
+    RETURNS TRIGGER AS $func$
+    DECLARE
+      host_player JSONB;
+      new_host    JSONB;
+    BEGIN
+      -- Find the current host's player record in the updated array
+      SELECT elem INTO host_player
+      FROM jsonb_array_elements(NEW.players) AS elem
+      WHERE (elem->>'id') = NEW.host_id
+      LIMIT 1;
+
+      -- Only act if the host is now disconnected
+      IF host_player IS NOT NULL AND (host_player->>'status') = 'disconnected' THEN
+
+        -- Oldest active player = first entry in the array that is not
+        -- disconnected, not a spectator, and not the departing host.
+        SELECT elem INTO new_host
+        FROM jsonb_array_elements(NEW.players) AS elem
+        WHERE (elem->>'id')         != NEW.host_id
+          AND COALESCE(elem->>'status', 'active') != 'disconnected'
+          AND COALESCE((elem->>'isSpectator')::boolean, false) = false
+        LIMIT 1;
+
+        IF new_host IS NOT NULL THEN
+          -- Promote the new host
+          NEW.host_id   := new_host->>'id';
+          NEW.host_name := new_host->>'name';
+
+          -- Rewrite isHost flags across the whole players array
+          NEW.players := (
+            SELECT jsonb_agg(
+              CASE
+                WHEN (elem->>'id') = NEW.host_id
+                  THEN elem || '{"isHost": true}'::jsonb
+                ELSE
+                  elem || '{"isHost": false}'::jsonb
+              END
+            )
+            FROM jsonb_array_elements(NEW.players) AS elem
+          );
+
+          -- Bump version so pollers detect the host change in the next tick
+          NEW.version := COALESCE(NEW.version, 0) + 1;
+        END IF;
+      END IF;
+
+      RETURN NEW;
+    END;
+    $func$ LANGUAGE plpgsql;
+
+    DROP TRIGGER IF EXISTS mednexus_host_migration ON mednexus_game_rooms;
+    CREATE TRIGGER mednexus_host_migration
+      BEFORE UPDATE ON mednexus_game_rooms
+      FOR EACH ROW
+      EXECUTE FUNCTION mednexus_migrate_host();
   `)
 
   initialized = true
