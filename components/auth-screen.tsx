@@ -6,7 +6,7 @@ import { useAdmin } from "@/contexts/admin-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
 import { StethoscopeIcon, ArrowRightIcon } from "@/components/icons"
-import { CLASS_LEVELS } from "@/lib/levels"
+import { CLASS_LEVELS, ALL_LEVELS } from "@/lib/levels"
 
 function WhatsAppIcon({ size = 14 }: { size?: number }) {
   return (
@@ -41,7 +41,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
   )
 }
 
-function LevelSelect({ id, value, onChange, required }: { id: string; value: string; onChange: (v: string) => void; required?: boolean }) {
+function LevelSelect({ id, value, onChange, required, levels = CLASS_LEVELS }: { id: string; value: string; onChange: (v: string) => void; required?: boolean; levels?: readonly string[] }) {
   return (
     <select
       id={id}
@@ -51,7 +51,7 @@ function LevelSelect({ id, value, onChange, required }: { id: string; value: str
       className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30 appearance-none"
     >
       <option value="" disabled>Select your level…</option>
-      {CLASS_LEVELS.map((lvl) => (
+      {levels.map((lvl) => (
         <option key={lvl} value={lvl}>{lvl}</option>
       ))}
     </select>
@@ -196,7 +196,7 @@ function GuestForm({ onBack }: { onBack: () => void }) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground" htmlFor="guest-level">Level / Year</label>
-          <LevelSelect id="guest-level" value={classLevel} onChange={setClassLevel} required />
+          <LevelSelect id="guest-level" value={classLevel} onChange={setClassLevel} required levels={ALL_LEVELS} />
         </div>
         <button
           type="submit"
@@ -254,7 +254,7 @@ function GuestModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-muted-foreground" htmlFor="gm-level">Level / Year</label>
-            <LevelSelect id="gm-level" value={classLevel} onChange={setClassLevel} required />
+            <LevelSelect id="gm-level" value={classLevel} onChange={setClassLevel} required levels={ALL_LEVELS} />
           </div>
           <button
             type="submit"
