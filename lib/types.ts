@@ -2,6 +2,68 @@
 // MedNexus - Shared Type Definitions
 // ============================================================================
 
+// ─── User Roles ──────────────────────────────────────────────────────────────
+
+/**
+ * Platform-wide role assigned to every user account.
+ *   ADMIN       – full administrative access (managed via admin-auth.ts tokens)
+ *   REGISTERED  – a verified student account in mednexus_registered_users
+ *   GUEST       – a temporary, password-free session in mednexus_guest_users
+ */
+export type UserRole = "ADMIN" | "REGISTERED" | "GUEST"
+
+/**
+ * The shape of a registered student as returned by the auth API.
+ * Passwords and hashes are never included in API responses.
+ */
+export interface RegisteredUser {
+  uid: string
+  name: string
+  /** The student's academic class level, e.g. "Level 400". */
+  classLevel: string
+  /** Backward-compat alias for classLevel — same value, kept for old clients. */
+  level: string
+  indexNumber: string
+  role: "REGISTERED"
+  status: "pending" | "approved" | "rejected"
+  requiresPasswordUpdate: boolean
+}
+
+/**
+ * Persistent record for a guest user (stored in mednexus_guest_users).
+ * Does not include the raw session token — that is returned only once at
+ * creation via GuestAuthResponse.
+ */
+export interface GuestUser {
+  uid: string
+  name: string
+  classLevel: string
+  role: "GUEST"
+  /** ISO timestamp — when this guest session expires (7 days from creation). */
+  expiresAt: string
+  createdAt: string
+}
+
+/**
+ * Response shape returned by POST /api/auth/guest.
+ * Extends GuestUser with the one-time session token.
+ */
+export interface GuestAuthResponse extends GuestUser {
+  /**
+   * Signed HMAC session token.  Store on the client (localStorage / cookie)
+   * and send as the `x-guest-token` header on subsequent API requests.
+   * This is the only time the raw token is ever transmitted — it is never
+   * stored in plain text on the server.
+   */
+  sessionToken: string
+}
+
+/**
+ * Discriminated union of every authenticated user type.
+ * Use the `role` discriminant to narrow to the specific shape.
+ */
+export type AuthUser = RegisteredUser | GuestUser
+
 /** A single answer choice for a question. */
 export interface QuestionOption {
   id: string // e.g. "A", "B", "C"

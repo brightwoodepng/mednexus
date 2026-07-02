@@ -1,41 +1,69 @@
 ---
 name: User Auth Architecture
-description: How registered user auth works — DB schema, index number validation, OTP password reset, role-based landing page
+description: Full user model — registered users, guest users, roles, session tokens, and DB schema
 ---
 
-## DB Table: mednexus_registered_users
-- uid, name, level, index_number (formatted), password_hash (bcrypt), status ('approved'|'pending'|'rejected'), must_change_password BOOLEAN, otp_hash, created_at
-- Separate from mednexus_users (which holds uid+name for all users including guests)
+## Roles (UserRole type)
+Three roles across the platform:
+- `REGISTERED` — student with index number + password in `mednexus_registered_users`
+- `GUEST` — password-free temporary session in `mednexus_guest_users` (7-day TTL)
+- `ADMIN` — stateless HMAC admin token via `lib/admin-auth.ts`; no DB row required
 
-## Index Number Auto-Validation
-- Strip all non-alphanumeric chars, match `/^sm(sms|gem)(\d{2})(\d{4})$/i`
-- If match → format as `sm/sms/YY/NNNN` or `sm/gem/YY/NNNN`, status = 'approved'
-- Otherwise → store raw trimmed lowercase, status = 'pending'
-- Logic lives in both `/api/auth/register` and `/api/auth/login` (formatIndexNumber helper)
+## Master level list
+`lib/levels.ts` is the single source of truth:
+- Public levels: `CLASS_LEVELS` const array (Level 100–600, GEM 250, GEM 300)
+- Hidden level: `ENTRANCE_LEVEL = "Entrance Level"` (kept separate from CLASS_LEVELS)
+- Validator: `isValidLevel(value)` — use in all API routes that accept classLevel
 
-## OTP Reset Flow (Admin → User)
-1. Admin hits PATCH `/api/admin/users/[uid]` with `{action: "reset-password"}`
-2. Server generates 6-digit OTP, stores bcrypt hash in `otp_hash`, sets `must_change_password = TRUE`
-3. Returns plaintext OTP to admin UI (OtpModal shows it with copy button)
-4. User logs in with OTP as password → server detects otp_hash match → clears otp_hash, sets must_change_password = TRUE, returns `requiresPasswordUpdate: true`
-5. App context stores flag in localStorage (`mednexus-requires-pw-update`)
-6. ForcePasswordUpdate screen shown before full app access
-7. User submits new password → PATCH `/api/auth/update-password` → clears must_change_password
+## DB schema — mednexus_registered_users
+Columns: uid (PK), name, level (legacy), class_level (canonical), role (DEFAULT 'REGISTERED'),
+index_number (UNIQUE), password_hash, status, must_change_password, otp_hash, created_at
 
-## Role-Based Landing Page (auth-screen.tsx)
-- Three cards: Create Account, Log In, Continue as Guest
-- Guest: name only, generates UUID, same as old flow
-- User: index number + password login via `/api/auth/login`
-- Pending users → PendingApprovalScreen (not full app access)
-- AppUser now has `role: 'guest' | 'user'`, `status`, `level`, `indexNumber` fields
-- LS keys: mednexus-uid, mednexus-name, mednexus-role, mednexus-requires-pw-update
+**Why two level columns**: `level` is the legacy column (used by pre-migration clients);
+`class_level` is the canonical name going forward. Registration writes BOTH; login falls back to `level` if `class_level` is empty.
 
-## Admin User Management
-- GET `/api/admin/users` — search, filter by status, sort (name/created_at/status)
-- PATCH `/api/admin/users/[uid]` — actions: approve, reject, reset-password
-- DELETE `/api/admin/users/[uid]` — deletes from mednexus_registered_users + mednexus_users + mednexus_progress
-- All routes protected by x-admin-token header (verifyAdminToken)
-- UI: AdminUserManagement component, accessible via "Users" nav in admin sidebar section
+## DB schema — mednexus_guest_users
+Columns: uid (PK, prefix `guest_`), name, class_level, role (DEFAULT 'GUEST'),
+token_hash (SHA-256 of session token, for future revocation), created_at, expires_at (NOW() + 7 days)
 
-**Why:** Required a full registered-user system on top of the existing anonymous UUID flow without breaking guests.
-**How to apply:** Any future auth changes must handle both guest (role='guest') and user (role='user') branches in app-context.tsx. The mednexus_registered_users table is the source of truth for registered users; mednexus_users holds display names for all UIDs.
+Sweep: `DELETE FROM mednexus_guest_users WHERE expires_at < NOW()` runs every cold start.
+
+## ensureSchema() migration order (CRITICAL)
+Three sequential pool.query calls:
+1. Enum creation (question_context_type, question_type) with `DO $$ ... $$` blocks
+2. CREATE TABLE IF NOT EXISTS for all tables — new tables include role/class_level from the start
+3. ALTER TABLE … ADD COLUMN IF NOT EXISTS for existing DBs + back-fill UPDATE + sweep DELETEs
+
+**Why**: ALTER TABLE on mednexus_registered_users MUST come after its CREATE TABLE. Running ALTER before CREATE causes "relation does not exist" on fresh deployments.
+
+## Guest session tokens — lib/guest-auth.ts
+Format: `base64url(payload) + "." + base64url(HMAC-SHA256)`
+Payload: `{ uid, role: "GUEST", exp: unix_epoch_seconds }`
+Key: SESSION_SECRET env var — throws hard in production if unset; warns in development
+Functions: `createGuestToken(uid, ttlHours=168)` / `verifyGuestToken(token) → payload | null`
+
+Token is returned ONCE at creation (POST /api/auth/guest → GuestAuthResponse.sessionToken).
+Server stores only SHA-256 hash (token_hash column) for optional future revocation.
+Client sends token as `x-guest-token` header.
+
+## API contracts
+
+### POST /api/auth/guest
+Body: `{ name: string, classLevel: AnyClassLevel }`
+201 Response: `{ uid, name, classLevel, role:"GUEST", sessionToken, expiresAt, createdAt }`
+422 Response: `{ error, validLevels[] }` — when classLevel fails isValidLevel()
+
+### POST /api/auth/login
+Returns: `{ uid, name, classLevel, level (legacy alias), role:"REGISTERED", status, indexNumber, requiresPasswordUpdate }`
+
+### POST /api/auth/register
+Accepts: `classLevel` (new) OR `level` (legacy) — resolves classLevel = classLevel ?? level ?? ""
+Validates against isValidLevel() when non-empty
+Returns: `{ uid, name, classLevel, level (legacy alias), role:"REGISTERED", status, indexNumber }`
+
+## TypeScript types (lib/types.ts)
+- `UserRole` = "ADMIN" | "REGISTERED" | "GUEST"
+- `RegisteredUser` — includes `level` legacy alias alongside `classLevel`
+- `GuestUser` — DB record shape (no sessionToken)
+- `GuestAuthResponse extends GuestUser` — adds `sessionToken` for the creation response
+- `AuthUser` = `RegisteredUser | GuestUser` (discriminated by `role`)
