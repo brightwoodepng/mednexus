@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyAdminToken } from "@/lib/admin-auth"
 
+export const maxDuration = 120
+
 // Lazy-load DB drivers so missing env vars don't crash the module
 async function getPgPool() {
   if (!process.env.DATABASE_URL) return null
