@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getFlashModel } from "@/lib/gemini"
+import { generateWithFallback } from "@/lib/gemini"
 
 export const maxDuration = 45
 
@@ -146,7 +146,7 @@ value is an array.
 
 Each element must exactly match:
 {
-  "subject":      string,  // discipline or topic from context; use the supplied moduleName if unknown
+  "subject":      string,  // the specific medical discipline this question tests
   "vignette":     string,  // full question stem — preserve all clinical detail
   "options":      [{ "id": "A", "text": "..." }, ...],  // A–E only, each id must be unique
   "correctAnswer": string | null,  // single uppercase letter matching an option id; null if not stated
@@ -156,6 +156,21 @@ Each element must exactly match:
     "incorrectReasoning": string   // why each distractor is wrong (may be "")
   } | null
 }
+
+SUBJECT DETECTION (important — do this per question, do NOT just copy the module name):
+- Determine the actual clinical discipline being tested from the vignette content
+  itself, e.g. "Cardiology", "Endocrinology", "Pulmonology", "Nephrology",
+  "Gastroenterology", "Neurology", "Infectious Disease", "Obstetrics &
+  Gynecology", "Pediatrics", "Psychiatry", "Hematology", "Rheumatology",
+  "Dermatology", "General Surgery", "Pharmacology", etc.
+- Use the disease, organ system, or drug class discussed — not the file/module
+  name the user supplied — to pick the subject for EACH question.
+- Different questions in the same document commonly belong to different
+  disciplines (e.g. a document titled "Internal Medicine" may mix cardiology,
+  endocrine, and pulmonary questions) — assign each one its own specific
+  subject rather than a single blanket label.
+- Only fall back to the supplied moduleName if the vignette gives no
+  discernible clinical clue at all.
 
 Rules:
 - Return ONLY the JSON object — no markdown fences, no preamble.
@@ -218,12 +233,14 @@ async function parseWithAI(text: string, moduleName: string): Promise<ParsedQues
       : text
 
   try {
-    const model = getFlashModel(PARSE_PDF_SYSTEM_INSTRUCTION)
-    const result = await model.generateContent(
+    const responseText = await generateWithFallback(
+      PARSE_PDF_SYSTEM_INSTRUCTION,
       `Module: ${moduleName}\n\nText:\n${excerpt}`,
     )
+    if (!responseText) return null
+
     // responseMimeType: "application/json" guarantees valid JSON — no fence stripping needed.
-    const parsed = JSON.parse(result.response.text()) as
+    const parsed = JSON.parse(responseText) as
       | { questions?: GeminiParsedQuestion[] }
       | GeminiParsedQuestion[]
 

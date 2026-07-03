@@ -416,7 +416,7 @@ QUESTION object:
 {
   "contextId":     string | null,          // id of parent Context, or null
   "questionType":  "STANDARD_MCQ" | "ASSERTION_REASON" | "MATCHING",
-  "subject":       string,                 // discipline / topic
+  "subject":       string,                 // specific medical discipline this question tests (see SUBJECT DETECTION below)
   "vignette":      string,                 // question-specific stem (HTML allowed)
   "options":       [{"id":"A","text":"…"}, …],   // A–E only
   "correctAnswer": string | null,          // "A"–"E", or null if unstated
@@ -477,6 +477,21 @@ QUESTION FORMAT RULES
    If the source uses different labels for these options, map them to A–E above.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBJECT DETECTION (important — do this per question, do NOT just copy the module name)
+• Determine the actual clinical discipline being tested from the vignette content
+  itself, e.g. "Cardiology", "Endocrinology", "Pulmonology", "Nephrology",
+  "Gastroenterology", "Neurology", "Infectious Disease", "Obstetrics &
+  Gynecology", "Pediatrics", "Psychiatry", "Hematology", "Rheumatology",
+  "Dermatology", "General Surgery", "Pharmacology", etc.
+• Use the disease, organ system, or drug class discussed — not the module name
+  the user supplied — to pick the subject for EACH question.
+• Different questions in the same document commonly belong to different
+  disciplines — assign each one its own specific subject rather than a single
+  blanket label for the whole document.
+• Only fall back to the supplied module name if the vignette gives no
+  discernible clinical clue at all.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 GENERAL RULES
 • When in doubt whether text is shared context vs individual vignette: if 2+
   questions reference it, extract as Context; if only 1 question, keep in vignette.
@@ -518,14 +533,14 @@ interface GeminiOutput {
 // GEMINI CALL — tries multiple models (free-tier safe)
 // ═══════════════════════════════════════════════════════════════════════════════
 //
-// gemini-2.0-flash has limit=0 on free-tier keys.  We cascade through models
+// gemini-2.0-* and gemini-1.5-* families have limit=0 on free-tier keys
+// (completely unavailable — every call 429s/404s). Use current-gen models
 // that ARE available on the free tier.
-
 const CANDIDATE_MODELS = [
-  "gemini-2.0-flash-lite",
-  "gemini-1.5-flash-8b",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-latest",
+  "gemini-2.5-flash-lite",
+  "gemini-flash-lite-latest",
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
 ]
 
 async function parseWithGemini(
@@ -573,12 +588,12 @@ async function parseWithGemini(
       return parsed
     } catch (err: any) {
       const status = err?.status ?? err?.statusCode
-      if (status === 429 || status === 404 || status === 400) {
-        console.warn(`[parse-docx] ${modelName} failed (${status}) — trying next model`)
-        continue
-      }
-      console.error(`[parse-docx] ${modelName} unexpected error:`, err?.message ?? err)
-      return null
+      // Try the next model on quota/not-found/bad-request AND transient
+      // server-side errors (503 overloaded, 500, timeouts) — cascading
+      // through every candidate model is cheap and avoids dropping to the
+      // dumber regex fallback on a one-off blip.
+      console.warn(`[parse-docx] ${modelName} failed (${status ?? err?.message ?? "unknown"}) — trying next model`)
+      continue
     }
   }
 
