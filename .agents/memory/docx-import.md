@@ -13,8 +13,9 @@ description: Architecture decisions and gotchas for the Word document question i
 
 ## Gemini API key is free-tier
 - `gemini-2.0-flash` has `limit: 0` on the free tier (completely unavailable)
-- Cascade order: `gemini-2.0-flash-lite` → `gemini-1.5-flash-8b` → `gemini-1.5-flash` → `gemini-1.5-flash-latest`
-- 429/404/400 → try next model; JSON parse errors → also try next model; other errors → bail
+- As of July 2026 the entire `gemini-1.5-*` series returns 404 (deprecated/removed) and `gemini-2.0-*` is limit=0 on this key — the working cascade is `gemini-2.5-flash-lite` → `gemini-flash-lite-latest` → `gemini-2.5-flash` → `gemini-flash-latest`. Model availability drifts over time; if imports silently fall back to regex again, re-probe candidate model names directly against the Gemini API before assuming the prompt is at fault.
+- Cascade must continue to the next model on ANY error status (429/404/400 AND transient 5xx/503 "high demand" — these do occur and are not rare), not just quota/not-found — bailing early on a transient error wastes the whole cascade and silently drops to the regex fallback.
+- JSON parse errors → also try next model
 - If ALL models fail, the server-side block-based HTML fallback runs
 
 ## Block-based HTML fallback parser
@@ -40,5 +41,9 @@ description: Architecture decisions and gotchas for the Word document question i
 - `RichText` component in `components/rich-text.tsx` — detects HTML via tag regex, sanitizes via DOM allowlist
 - Sanitizer allows: img (src, alt, width, height, loading), table/th/td (colspan/rowspan), standard formatting
 - CSS in `app/globals.css` under `.rich-text` handles img max-width, table borders, zebra rows
+
+## Per-question subject/discipline detection
+- The Gemini system prompts (both parse-pdf and parse-docx) must explicitly instruct the model to infer each question's clinical discipline (Cardiology, Endocrinology, etc.) from the vignette content itself, and only fall back to the user-supplied moduleName when no clue exists.
+- Without this explicit instruction, Gemini defaults to echoing the supplied moduleName for every question even when it successfully parses — so all questions land in one discipline bucket even though AI parsing "worked" (source: "ai"/"gemini"). A working AI path is not sufficient; verify per-question subjects actually differ when the source text spans multiple disciplines.
 
 **Why:** The GEMINI_API_KEY is on the free tier which blocks gemini-2.0-flash. Without the cascade and fallback, imports silently fall back to plain-text regex parsing and all images are lost.
