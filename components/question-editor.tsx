@@ -809,7 +809,7 @@ type FilterMode = "all" | "live" | "draft"
 interface EditTarget { question: Question | null; moduleName: string; disciplineName: string; isDraft: boolean }
 
 export function QuestionEditor() {
-  const { questions, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb } = useQuestions()
+  const { questions, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb, appendQuestions, suppressNextAutoSave } = useQuestions()
   const { adminToken } = useAdmin()
 
   // Draft questions (imported from PDF/Word but not yet committed to DB)
@@ -839,6 +839,7 @@ export function QuestionEditor() {
   // Auto-save to DB on question changes
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
+    if (suppressNextAutoSave.current) { suppressNextAutoSave.current = false; return }
     if (!adminToken) return
     setSaveStatus("saving")
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -848,7 +849,7 @@ export function QuestionEditor() {
       setTimeout(() => setSaveStatus("idle"), 3000)
     }, 800)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [questions, adminToken, saveToDb])
+  }, [questions, adminToken, saveToDb, suppressNextAutoSave])
 
   const hierarchy = useMemo(
     () => buildHierarchy(questions, draftQuestions, searchQuery, filterMode),
@@ -944,20 +945,54 @@ export function QuestionEditor() {
     })
   }
 
-  function handleMakeLive() {
+  async function handleMakeLive() {
     const draftIds = new Set(draftQuestions.map((d) => d.id))
     const toMakeLive = [...selectedIds].filter((id) => draftIds.has(id))
     if (toMakeLive.length === 0) return
     const toSave = draftQuestions.filter((d) => toMakeLive.includes(d.id))
-    toSave.forEach((q) => addQuestion(q))
     setDraftQuestions((prev) => prev.filter((d) => !toMakeLive.includes(d.id)))
     setSelectedIds((prev) => { const next = new Set(prev); toMakeLive.forEach((id) => next.delete(id)); return next })
+
+    if (!adminToken) {
+      toSave.forEach((q) => addQuestion(q))
+      return
+    }
+
+    setSaveStatus("saving")
+    const ok = await appendQuestions(toSave, adminToken)
+    setSaveStatus(ok ? "saved" : "error")
+    setTimeout(() => setSaveStatus("idle"), 3000)
+    if (!ok) {
+      setDraftQuestions((prev) => [...prev, ...toSave])
+      alert("Failed to save the selected questions — please check your connection and try again.")
+    }
   }
 
-  function handleMakeAllLive() {
-    draftQuestions.forEach((q) => addQuestion(q))
+  async function handleMakeAllLive() {
+    if (draftQuestions.length === 0) return
+    const toApprove = draftQuestions
     setDraftQuestions([])
     clearSelection()
+
+    if (!adminToken) {
+      // No admin session — fall back to local-only state (auto-save effect
+      // will no-op without a token).
+      toApprove.forEach((q) => addQuestion(q))
+      return
+    }
+
+    // Fast path: append only the new questions instead of re-sending the
+    // entire (potentially huge) question bank in one PUT request, which for
+    // large imports could take 1-2+ minutes and time out.
+    setSaveStatus("saving")
+    const ok = await appendQuestions(toApprove, adminToken)
+    setSaveStatus(ok ? "saved" : "error")
+    setTimeout(() => setSaveStatus("idle"), 3000)
+    if (!ok) {
+      // Re-stage as drafts so nothing is silently lost if the save failed.
+      setDraftQuestions(toApprove)
+      alert("Failed to save the imported questions — please check your connection and try again.")
+    }
   }
 
   // ── Module rename ──

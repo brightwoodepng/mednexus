@@ -8,6 +8,7 @@ import {
   useEffect,
   useRef,
   type ReactNode,
+  type MutableRefObject,
 } from "react"
 import { questionsDatabase } from "@/lib/questions-database"
 import type { Question } from "@/lib/types"
@@ -29,6 +30,14 @@ interface QuestionsContextValue {
   deleteAllQuestions: () => Promise<void>
   resetToDefault: () => Promise<void>
   saveToDb: (qs: Question[], token: string) => Promise<boolean>
+  appendQuestions: (qs: Question[], token: string) => Promise<boolean>
+  /**
+   * Ref flag consumers (e.g. the admin editor's own auto-save effect) can
+   * check to know the most recent `questions` state change was already
+   * persisted by this context (via appendQuestions or a remote poll), so
+   * they should skip re-saving the full bank themselves.
+   */
+  suppressNextAutoSave: MutableRefObject<boolean>
 }
 
 const QuestionsContext = createContext<QuestionsContextValue | undefined>(undefined)
@@ -58,15 +67,40 @@ async function pushToDb(questions: Question[], token: string): Promise<boolean> 
   }
 }
 
+/**
+ * Appends only the given (new) questions to the DB-backed bank, instead of
+ * re-sending the entire existing bank. Postgres merges them into the JSONB
+ * array server-side. This keeps bulk operations (e.g. approving a large
+ * PDF/Word import) fast and avoids multi-minute PUT requests that can time
+ * out through the browser/proxy as the bank grows.
+ */
+async function appendToDb(questions: Question[], token: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/questions/append", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ questions }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 export function QuestionsProvider({ children }: { children: ReactNode }) {
   const [questions, setQuestions] = useState<Question[]>([...questionsDatabase])
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const questionsRef = useRef(questions)
   questionsRef.current = questions
+  const suppressNextAutoSave = useRef(false)
 
-  // Sync to custom-questions cache so modules.ts picks up changes
-  function persist(qs: Question[]) {
+  // Sync to custom-questions cache so modules.ts picks up changes.
+  // `alreadySaved` marks state changes this context has already persisted
+  // to the DB itself (append, remote poll) so downstream consumers with
+  // their own full-bank auto-save effects know to skip re-saving.
+  function persist(qs: Question[], alreadySaved = false) {
+    if (alreadySaved) suppressNextAutoSave.current = true
     saveActiveQuestions(qs)
     setQuestions([...qs])
     questionsRef.current = qs
@@ -79,7 +113,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     async function load() {
       const { questions: dbQuestions, updatedAt } = await fetchFromDb()
       if (dbQuestions !== null) {
-        persist(dbQuestions)
+        persist(dbQuestions, true)
         if (updatedAt) setLastUpdated(new Date(updatedAt))
       }
       setIsLoading(false)
@@ -91,7 +125,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
       const dbUpdated = updatedAt ? new Date(updatedAt).getTime() : 0
       const localUpdated = lastUpdated?.getTime() ?? 0
       if (dbUpdated > localUpdated) {
-        persist(dbQuestions)
+        persist(dbQuestions, true)
         setLastUpdated(new Date(updatedAt!))
       }
     }
@@ -107,6 +141,21 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const saveToDb = useCallback(async (qs: Question[], token: string) => {
     const ok = await pushToDb(qs, token)
     if (ok) setLastUpdated(new Date())
+    return ok
+  }, [])
+
+  /**
+   * Appends only newly-created questions to the DB (fast path for bulk
+   * imports). Also merges them into local state so the UI is consistent
+   * without waiting on the next poll.
+   */
+  const appendQuestions = useCallback(async (qs: Question[], token: string) => {
+    if (qs.length === 0) return true
+    const ok = await appendToDb(qs, token)
+    if (ok) {
+      persist([...questionsRef.current, ...qs], true)
+      setLastUpdated(new Date())
+    }
     return ok
   }, [])
 
@@ -154,6 +203,8 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         deleteAllQuestions,
         resetToDefault,
         saveToDb,
+        appendQuestions,
+        suppressNextAutoSave,
       }}
     >
       {children}
