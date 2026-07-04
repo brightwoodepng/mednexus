@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateWithFallback } from "@/lib/gemini"
+import { detectSubject } from "@/lib/subject-detect"
 
 export const maxDuration = 45
 
@@ -126,7 +127,7 @@ function parseBlock(block: string, defaultSubject: string): ParsedQuestion | nul
     : vignetteText.slice(0, 120).trim()
 
   return {
-    subject: defaultSubject,
+    subject: detectSubject(vignetteText, defaultSubject),
     vignette: vignetteText,
     options,
     correctAnswer,
@@ -214,7 +215,7 @@ function normaliseQuestion(q: GeminiParsedQuestion, moduleName: string): ParsedQ
   const explanation = q.explanation ?? { objective: "", details: "", incorrectReasoning: "" }
 
   return {
-    subject: q.subject?.trim() || moduleName,
+    subject: q.subject?.trim() || detectSubject(vignette, moduleName),
     vignette,
     options,
     correctAnswer,

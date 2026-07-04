@@ -6,6 +6,7 @@ import {
   XIcon, CheckIcon, AlertTriangleIcon, PlusIcon, TrashIcon,
   ChevronDownIcon, ChevronRightIcon, RefreshCwIcon,
 } from "@/components/icons"
+import { detectSubject } from "@/lib/subject-detect"
 
 // ── Format tips (match what both the regex and Gemini parsers support) ────────
 const FORMAT_TIPS = [
@@ -203,10 +204,14 @@ function makeQuestionFromServer(
 }
 
 function makeQuestionFromRaw(r: RawQuestion, index: number, moduleName: string): Question {
+  const fallbackSubject = r.module || moduleName || "Imported"
   return {
     id: `docx-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
     module: r.module || moduleName || undefined,
-    subject: r.discipline || r.module || moduleName || "Imported",
+    // Explicit DISCIPLINE:/SUBJECT: markers win; otherwise detect from the
+    // vignette content so a document without markers doesn't dump every
+    // question under one blanket subject.
+    subject: r.discipline || detectSubject(r.vignette, fallbackSubject),
     vignette: r.vignette,
     options: r.options,
     correctAnswer: r.correctAnswer,
