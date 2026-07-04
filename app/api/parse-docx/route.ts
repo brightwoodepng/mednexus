@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import mammoth from "mammoth"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import type { QuestionContextType, QuestionType } from "@/lib/types"
+import { detectSubject } from "@/lib/subject-detect"
 
 export const maxDuration = 60
 
@@ -684,7 +685,7 @@ export async function POST(req: NextRequest) {
       const questions: GeminiQuestion[] = fallback.questions.map((q) => ({
         contextId:    q.contextId,
         questionType: q.questionType,
-        subject:      moduleName,
+        subject:      detectSubject(q.vignette, moduleName),
         vignette:     q.vignette,
         options:      q.options,
         correctAnswer: q.correctAnswer,

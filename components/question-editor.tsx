@@ -604,12 +604,13 @@ function QuestionCard({ item, questionNumber, isSelected, onToggle, onEdit, onDe
 // ─────────────────────────────────────────────────────────────────────────────
 // Discipline Section
 // ─────────────────────────────────────────────────────────────────────────────
-function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, onReview, forceExpand, qOffset, isExpanded, onToggleExpand }: {
+function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, onReview, onRenameDiscipline, forceExpand, qOffset, isExpanded, onToggleExpand }: {
   group: DiscGroup; moduleName: string; selectedIds: Set<string>
   onToggleItem: (id: string) => void; onToggleAll: (ids: string[], select: boolean) => void
   onEdit: (q: Question, isDraft: boolean) => void; onDelete: (q: Question, isDraft: boolean) => void
   onReview: (q: Question, isDraft: boolean) => void
-  onAddQuestion: (mod: string, disc: string) => void; forceExpand: boolean; qOffset: number
+  onAddQuestion: (mod: string, disc: string) => void; onRenameDiscipline: (mod: string, disc: string) => void
+  forceExpand: boolean; qOffset: number
   isExpanded: boolean; onToggleExpand: () => void
 }) {
   const ids = group.items.map((i) => i.q.id)
@@ -638,11 +639,18 @@ function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onTog
             <span className="rounded-full bg-amber-100/80 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{draftCount} draft</span>
           )}
         </div>
-        <button type="button" onClick={() => onAddQuestion(moduleName, group.name)}
-          className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
-        >
-          <PlusIcon size={11} /> Add
-        </button>
+        <div className="ml-auto flex items-center gap-1.5 shrink-0">
+          <button type="button" onClick={() => onRenameDiscipline(moduleName, group.name)}
+            className="rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            Rename
+          </button>
+          <button type="button" onClick={() => onAddQuestion(moduleName, group.name)}
+            className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <PlusIcon size={11} /> Add
+          </button>
+        </div>
       </div>
 
       {/* Questions */}
@@ -716,12 +724,13 @@ function ModuleStatusPicker({ status, onChange }: { status: ModuleStatus; onChan
 // ─────────────────────────────────────────────────────────────────────────────
 // Module Section
 // ─────────────────────────────────────────────────────────────────────────────
-function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, onReview, onRename, onDeleteModule, onSetStatus, forceExpand, isExpanded, onToggleExpand }: {
+function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, onDelete, onAddQuestion, onReview, onRename, onRenameDiscipline, onDeleteModule, onSetStatus, forceExpand, isExpanded, onToggleExpand }: {
   group: ModGroup; selectedIds: Set<string>
   onToggleItem: (id: string) => void; onToggleAll: (ids: string[], select: boolean) => void
   onEdit: (q: Question, isDraft: boolean) => void; onDelete: (q: Question, isDraft: boolean) => void
   onReview: (q: Question, isDraft: boolean) => void
   onAddQuestion: (mod: string, disc: string) => void; onRename: (mod: string) => void
+  onRenameDiscipline: (mod: string, disc: string) => void
   onDeleteModule: (mod: string) => void; onSetStatus: (mod: string, status: ModuleStatus) => void
   forceExpand: boolean; isExpanded: boolean; onToggleExpand: () => void
 }) {
@@ -779,6 +788,7 @@ function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, 
                 onDelete={onDelete}
                 onReview={onReview}
                 onAddQuestion={onAddQuestion}
+                onRenameDiscipline={onRenameDiscipline}
                 forceExpand={forceExpand}
                 qOffset={qOffset}
                 isExpanded={discIsExpanded}
@@ -829,7 +839,7 @@ export function QuestionEditor() {
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const [confirm, setConfirm] = useState<{ title: string; message: string; confirmLabel: string; action: () => void; danger?: boolean } | null>(null)
-  const [renameTarget, setRenameTarget] = useState<{ moduleName: string } | null>(null)
+  const [renameTarget, setRenameTarget] = useState<{ moduleName: string; disciplineName?: string } | null>(null)
   const [renameValue, setRenameValue] = useState("")
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -995,16 +1005,35 @@ export function QuestionEditor() {
     }
   }
 
-  // ── Module rename ──
+  // ── Module / Discipline rename ──
   function startRename(moduleName: string) { setRenameTarget({ moduleName }); setRenameValue(moduleName) }
+  function startRenameDiscipline(moduleName: string, disciplineName: string) {
+    setRenameTarget({ moduleName, disciplineName })
+    setRenameValue(disciplineName)
+  }
   function commitRename() {
-    if (!renameTarget || !renameValue.trim() || renameValue.trim() === renameTarget.moduleName) { setRenameTarget(null); return }
-    const oldName = renameTarget.moduleName
+    if (!renameTarget || !renameValue.trim()) { setRenameTarget(null); return }
     const newName = renameValue.trim()
-    // Update live questions
-    questions.filter((q) => getModuleKey(q) === oldName).forEach((q) => updateQuestion({ ...q, module: newName }))
-    // Update drafts
-    setDraftQuestions((prev) => prev.map((q) => getModuleKey(q) === oldName ? { ...q, module: newName } : q))
+
+    if (renameTarget.disciplineName !== undefined) {
+      // Discipline rename — scoped to this module so a same-named
+      // discipline in another module is unaffected.
+      const oldDisc = renameTarget.disciplineName
+      const modName = renameTarget.moduleName
+      if (newName === oldDisc) { setRenameTarget(null); return }
+      questions
+        .filter((q) => getModuleKey(q) === modName && q.subject === oldDisc)
+        .forEach((q) => updateQuestion({ ...q, subject: newName }))
+      setDraftQuestions((prev) => prev.map((q) =>
+        getModuleKey(q) === modName && q.subject === oldDisc ? { ...q, subject: newName } : q
+      ))
+    } else {
+      // Module rename
+      const oldName = renameTarget.moduleName
+      if (newName === oldName) { setRenameTarget(null); return }
+      questions.filter((q) => getModuleKey(q) === oldName).forEach((q) => updateQuestion({ ...q, module: newName }))
+      setDraftQuestions((prev) => prev.map((q) => getModuleKey(q) === oldName ? { ...q, module: newName } : q))
+    }
     setRenameTarget(null)
   }
 
@@ -1296,6 +1325,7 @@ export function QuestionEditor() {
               onReview={openReview}
               onAddQuestion={openAdd}
               onRename={startRename}
+              onRenameDiscipline={startRenameDiscipline}
               onDeleteModule={handleDeleteModule}
               onSetStatus={handleSetModuleStatus}
               forceExpand={isSearching}
@@ -1352,23 +1382,32 @@ export function QuestionEditor() {
         />
       )}
 
-      {/* ── Rename module dialog ── */}
+      {/* ── Rename module / discipline dialog ── */}
       {renameTarget && (
         <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
           <div className="glass-modal w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
-            <h3 className="font-bold text-foreground">Rename Module</h3>
-            <p className="text-sm text-muted-foreground">All questions in "{renameTarget.moduleName}" will be updated.</p>
+            <h3 className="font-bold text-foreground">
+              {renameTarget.disciplineName !== undefined ? "Rename Discipline" : "Rename Module"}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {renameTarget.disciplineName !== undefined
+                ? <>All questions in "{renameTarget.disciplineName}" (within {renameTarget.moduleName}) will be updated.</>
+                : <>All questions in "{renameTarget.moduleName}" will be updated.</>}
+            </p>
             <input
               autoFocus
               className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && renameValue.trim()) commitRename() }}
-              placeholder="New module name"
+              placeholder={renameTarget.disciplineName !== undefined ? "New discipline name" : "New module name"}
             />
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setRenameTarget(null)} className="rounded-xl px-4 py-2 text-sm font-medium text-foreground border border-border hover:bg-muted transition-colors">Cancel</button>
-              <button type="button" disabled={!renameValue.trim() || renameValue.trim() === renameTarget.moduleName} onClick={commitRename}
+              <button
+                type="button"
+                disabled={!renameValue.trim() || renameValue.trim() === (renameTarget.disciplineName ?? renameTarget.moduleName)}
+                onClick={commitRename}
                 className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <CheckIcon size={14} /> Rename

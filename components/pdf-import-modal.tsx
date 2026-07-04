@@ -7,6 +7,7 @@ import {
   XIcon, CheckIcon, AlertTriangleIcon, PlusIcon, TrashIcon,
   ChevronDownIcon, ChevronRightIcon, RefreshCwIcon,
 } from "@/components/icons"
+import { detectSubject } from "@/lib/subject-detect"
 
 // ── Parser patterns (tips derived directly from these) ───────────────────────
 const PARSER_PATTERNS = [
@@ -130,7 +131,7 @@ function makeQuestionFromServer(sq: ServerQuestion, index: number, moduleName: s
   return {
     id: `draft-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
     module: moduleName || undefined,
-    subject: sq.subject || moduleName || "Imported",
+    subject: sq.subject || detectSubject(sq.vignette, moduleName || "Imported"),
     vignette: sq.vignette,
     options: sq.options,
     correctAnswer: sq.correctAnswer,
@@ -143,10 +144,11 @@ function makeQuestionFromServer(sq: ServerQuestion, index: number, moduleName: s
 }
 
 function makeQuestionFromRaw(r: RawQuestion, index: number): Question {
+  const fallbackSubject = r.module || "Imported"
   return {
     id: `draft-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
     module: r.module || undefined,
-    subject: r.discipline || r.module || "Imported",
+    subject: r.discipline || detectSubject(r.vignette, fallbackSubject),
     vignette: r.vignette,
     options: r.options,
     correctAnswer: r.correctAnswer,

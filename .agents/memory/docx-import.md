@@ -47,3 +47,8 @@ description: Architecture decisions and gotchas for the Word document question i
 - Without this explicit instruction, Gemini defaults to echoing the supplied moduleName for every question even when it successfully parses — so all questions land in one discipline bucket even though AI parsing "worked" (source: "ai"/"gemini"). A working AI path is not sufficient; verify per-question subjects actually differ when the source text spans multiple disciplines.
 
 **Why:** The GEMINI_API_KEY is on the free tier which blocks gemini-2.0-flash. Without the cascade and fallback, imports silently fall back to plain-text regex parsing and all images are lost.
+
+## Non-AI fallback parsers need their own subject detection
+- The Gemini prompt instructions alone don't help when Gemini is skipped/exhausted — the server-side block-based HTML fallback (parse-docx), the regex fallback (parse-pdf), and the client-side regex fallbacks (word-import-modal.tsx, pdf-import-modal.tsx) all previously hardcoded `subject = moduleName` for every question, silently reintroducing the single-discipline-dump bug whenever the AI path wasn't used.
+- Fixed via a shared heuristic in `lib/subject-detect.ts` (`detectSubject(text, fallback)`) — scores vignette text against per-discipline keyword lists and picks the best match, falling back to the supplied module/file name only if nothing matches. Wired into all four fallback code paths plus Gemini's own `q.subject` null-fallback.
+- **How to apply:** any new import/parse path (new file format, new fallback tier) must call `detectSubject()` rather than defaulting bare to the module name, or this bug will resurface.
