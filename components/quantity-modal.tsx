@@ -63,6 +63,10 @@ export function QuantityModal({ open, label, sublabel, questions, onClose, onSta
     return null
   }
 
+  // "All" is only true when the dedicated "All" button is active (not a custom
+  // value that happens to equal the total, nor a preset that equals it).
+  const isAllSelected = !useCustom && selectedPreset === available && available > 0
+
   // ── Range helpers ──
   function getRangeSlice(): Question[] | null {
     const s = parseInt(rangeStart, 10)
@@ -77,8 +81,9 @@ export function QuantityModal({ open, label, sublabel, questions, onClose, onSta
     if (tab === "quantity") {
       const qty = getQuantity()
       if (qty === null) return
-      const cocktail = buildCocktail(questions, qty)
-      reset(); onStart(cocktail)
+      // "All" selection keeps original order — only custom/preset subsets get shuffled
+      const result = isAllSelected ? questions.slice(0, qty) : buildCocktail(questions, qty)
+      reset(); onStart(result)
     } else {
       const slice = getRangeSlice()
       if (!slice || slice.length === 0) return
@@ -182,7 +187,7 @@ export function QuantityModal({ open, label, sublabel, questions, onClose, onSta
                   type="button"
                   onClick={handleAll}
                   className={`col-span-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all
-                    ${!useCustom && selectedPreset === available && available > 0
+                    ${isAllSelected
                       ? "border-primary bg-primary text-primary-foreground shadow-sm"
                       : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted"
                     }`}
@@ -209,8 +214,17 @@ export function QuantityModal({ open, label, sublabel, questions, onClose, onSta
             </div>
 
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ShuffleIcon size={13} />
-              <span>Questions will be randomly shuffled</span>
+              {isAllSelected ? (
+                <>
+                  <HashIcon size={13} />
+                  <span>All questions selected — answered in their original order, no shuffle</span>
+                </>
+              ) : (
+                <>
+                  <ShuffleIcon size={13} />
+                  <span>Questions will be randomly shuffled</span>
+                </>
+              )}
             </div>
           </>
         ) : (
