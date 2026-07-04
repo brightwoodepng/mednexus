@@ -716,10 +716,13 @@ function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules
   )
 }
 
+type ModeCategory = "solo" | "multi"
+
 function ModeSelectScreen({ onSelect, onBack }: {
   onSelect: (id: GameModeId) => void; onBack: () => void
 }) {
   const [storeOpen, setStoreOpen] = useState(false)
+  const [category, setCategory] = useState<ModeCategory>("solo")
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6 lg:p-8">
@@ -757,25 +760,47 @@ function ModeSelectScreen({ onSelect, onBack }: {
           <DailyBountiesPanel />
         </div>
 
-        {/* Solo modes */}
-        <div className="mb-3">
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Solo Modes</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {MODES.map(m => (
-              <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
-            ))}
-          </div>
+        {/* Category tabs — Solo vs Multiplayer */}
+        <div className="mb-5 flex gap-1 rounded-2xl bg-muted p-1">
+          <button
+            type="button" onClick={() => setCategory("solo")}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-all ${category === "solo" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            🧍 Solo Modes
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${category === "solo" ? "bg-primary/10 text-primary" : "bg-border/60 text-muted-foreground"}`}>{MODES.length}</span>
+          </button>
+          <button
+            type="button" onClick={() => setCategory("multi")}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-all ${category === "multi" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            👥 Multiplayer
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${category === "multi" ? "bg-primary/10 text-primary" : "bg-border/60 text-muted-foreground"}`}>{MULTI_MODES.length}</span>
+          </button>
         </div>
 
-        {/* Multiplayer modes */}
-        <div className="mt-6 mb-3">
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Multiplayer Modes</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {MULTI_MODES.map(m => (
-              <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
-            ))}
+        {/* Solo modes window */}
+        {category === "solo" && (
+          <div className="mb-3">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Play by yourself — practice at your own pace</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {MODES.map(m => (
+                <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Multiplayer modes window */}
+        {category === "multi" && (
+          <div className="mb-3">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Compete live with classmates via a shared room PIN</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {MULTI_MODES.map(m => (
+                <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
+              ))}
+            </div>
+          </div>
+        )}
 
         <button type="button" onClick={onBack} className="mt-6 w-full rounded-2xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
           Back to Dashboard
