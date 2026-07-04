@@ -841,6 +841,8 @@ export function QuestionEditor() {
   const [confirm, setConfirm] = useState<{ title: string; message: string; confirmLabel: string; action: () => void; danger?: boolean } | null>(null)
   const [renameTarget, setRenameTarget] = useState<{ moduleName: string; disciplineName?: string } | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  const [reassignOpen, setReassignOpen] = useState(false)
+  const [reassignValue, setReassignValue] = useState("")
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFirstRender = useRef(true)
@@ -1137,6 +1139,31 @@ export function QuestionEditor() {
     clearSelection()
   }
 
+  // ── Bulk discipline reassignment ──
+  const allDisciplines = useMemo(() => {
+    const set = new Set<string>()
+    questions.forEach((q) => q.subject && set.add(q.subject))
+    draftQuestions.forEach((q) => q.subject && set.add(q.subject))
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [questions, draftQuestions])
+
+  function handleBulkReassignDiscipline() {
+    const newSubject = reassignValue.trim()
+    if (!newSubject || selectedIds.size === 0) return
+    const draftIdSet = new Set(draftQuestions.map((d) => d.id))
+    selectedIds.forEach((id) => {
+      if (draftIdSet.has(id)) {
+        setDraftQuestions((prev) => prev.map((d) => d.id === id ? { ...d, subject: newSubject } : d))
+      } else {
+        const q = questions.find((qq) => qq.id === id)
+        if (q) updateQuestion({ ...q, subject: newSubject })
+      }
+    })
+    setReassignOpen(false)
+    setReassignValue("")
+    clearSelection()
+  }
+
   const emptyState = hierarchy.length === 0 && totalLive === 0 && totalDrafts === 0
 
   return (
@@ -1274,6 +1301,11 @@ export function QuestionEditor() {
                 <CheckIcon size={12} /> Make Live ({selectedDraftCount})
               </button>
             )}
+            <button type="button" onClick={() => { setReassignValue(""); setReassignOpen(true) }}
+              className="flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100 transition-colors dark:border-sky-800/40 dark:bg-sky-900/20 dark:text-sky-400"
+            >
+              <RefreshCwIcon size={12} /> Reassign Discipline
+            </button>
             <button type="button" onClick={handleBulkDelete}
               className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors"
             >
@@ -1411,6 +1443,41 @@ export function QuestionEditor() {
                 className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <CheckIcon size={14} /> Rename
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk reassign discipline dialog ── */}
+      {reassignOpen && (
+        <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+          <div className="glass-modal w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
+            <h3 className="font-bold text-foreground">Reassign Discipline</h3>
+            <p className="text-sm text-muted-foreground">
+              {selectedIds.size} selected question{selectedIds.size !== 1 ? "s" : ""} will be moved to a new discipline. Useful for correcting mis-sorted imports.
+            </p>
+            <input
+              autoFocus
+              list="discipline-suggestions"
+              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              value={reassignValue}
+              onChange={(e) => setReassignValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && reassignValue.trim()) handleBulkReassignDiscipline() }}
+              placeholder="e.g. Cardiology"
+            />
+            <datalist id="discipline-suggestions">
+              {allDisciplines.map((d) => <option key={d} value={d} />)}
+            </datalist>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setReassignOpen(false)} className="rounded-xl px-4 py-2 text-sm font-medium text-foreground border border-border hover:bg-muted transition-colors">Cancel</button>
+              <button
+                type="button"
+                disabled={!reassignValue.trim()}
+                onClick={handleBulkReassignDiscipline}
+                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <CheckIcon size={14} /> Reassign
               </button>
             </div>
           </div>
