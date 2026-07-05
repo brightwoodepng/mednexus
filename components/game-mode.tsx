@@ -276,43 +276,99 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
       {/* ── Review Drawer ── */}
       {reviewOpen && (
         <div className="fixed inset-0 z-50 flex" onClick={() => setReviewOpen(false)}>
-          <div className="ml-auto flex h-full w-full max-w-lg flex-col bg-background shadow-2xl" onClick={e => e.stopPropagation()}>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          {/* Drawer panel — slides in from right */}
+          <div
+            className="relative ml-auto flex h-full w-full max-w-2xl flex-col bg-background shadow-2xl animate-in slide-in-from-right duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
-              <h2 className="text-base font-extrabold text-foreground">📖 Vignette Review</h2>
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-lg shadow-md">
+                  📖
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-foreground">Vignette Review</h2>
+                  <p className="text-[11px] text-muted-foreground">
+                    {(() => {
+                      const history = answerHistory ?? []
+                      const correct = history.filter(e => e.selected === e.question.correctAnswer).length
+                      return `${correct}/${history.length} correct`
+                    })()}
+                  </p>
+                </div>
+              </div>
               <button type="button" onClick={() => setReviewOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground text-lg">✕</button>
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground text-lg">✕
+              </button>
             </div>
+
+            {/* Question list */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {(answerHistory ?? []).map((entry, i) => {
                 const isCorrect = entry.selected === entry.question.correctAnswer
+                const expl = entry.question.explanation
                 return (
-                  <div key={i} className="rounded-3xl border border-border bg-card p-4">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-extrabold text-white ${isCorrect ? "bg-emerald-500" : "bg-rose-500"}`}>
-                        {isCorrect ? "✓" : "✗"}
+                  <div key={i} className={`rounded-3xl border bg-card p-4 ${isCorrect ? "border-emerald-200 dark:border-emerald-800/40" : "border-rose-200 dark:border-rose-800/40"}`}>
+                    {/* Status row */}
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white ${isCorrect ? "bg-emerald-500" : "bg-rose-500"}`}>
+                        {i + 1}
                       </span>
-                      <span className="text-[11px] font-bold text-primary">{entry.question.subject}</span>
-                      {entry.question.module && <span className="text-[10px] text-muted-foreground">{entry.question.module}</span>}
+                      <span className={`text-[11px] font-extrabold ${isCorrect ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                        {isCorrect ? "Correct" : "Incorrect"}
+                      </span>
+                      <span className="text-[11px] font-bold text-primary ml-1">{entry.question.subject}</span>
+                      {entry.question.module && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{entry.question.module}</span>
+                      )}
                     </div>
-                    <RichText content={entry.question.vignette} className="mb-3 text-xs text-foreground" />
-                    <div className="space-y-1.5">
+
+                    {/* Vignette */}
+                    <div className="mb-3 rounded-2xl bg-muted/40 p-3">
+                      <RichText content={entry.question.vignette} className="text-xs text-foreground" />
+                    </div>
+
+                    {/* Options */}
+                    <div className="space-y-1.5 mb-3">
                       {entry.question.options.map(opt => {
                         const isOpt = opt.id === entry.question.correctAnswer
                         const isSel = opt.id === entry.selected && !isOpt
                         let cls = "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs "
                         if (isOpt) cls += "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 font-semibold text-emerald-700 dark:text-emerald-400"
-                        else if (isSel) cls += "border-rose-400 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"
-                        else cls += "border-border bg-muted/30 text-muted-foreground"
+                        else if (isSel) cls += "border-rose-400 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 line-through"
+                        else cls += "border-border bg-muted/20 text-muted-foreground"
                         return (
                           <div key={opt.id} className={cls}>
-                            <span className="font-bold w-4 shrink-0">{opt.id}.</span>
+                            <span className={`font-extrabold w-5 shrink-0 ${isOpt ? "text-emerald-600 dark:text-emerald-400" : isSel ? "text-rose-500" : "text-muted-foreground"}`}>{opt.id}.</span>
                             <span className="flex-1">{opt.text}</span>
-                            {isOpt && <span className="text-emerald-500 text-xs">✓</span>}
-                            {isSel && <span className="text-rose-500 text-xs">✗</span>}
+                            {isOpt && <span className="text-emerald-500 text-xs font-bold">✓</span>}
+                            {isSel && <span className="text-rose-500 text-xs font-bold">✗</span>}
                           </div>
                         )
                       })}
                     </div>
+
+                    {/* Explanation block — shown for all questions with available explanation */}
+                    {expl && (
+                      <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/30 p-3 space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">📋 Explanation</p>
+                        {expl.objective && (
+                          <p className="text-xs font-semibold text-foreground leading-relaxed">{expl.objective}</p>
+                        )}
+                        {expl.details && (
+                          <p className="text-xs text-muted-foreground leading-relaxed">{expl.details}</p>
+                        )}
+                        {!isCorrect && expl.incorrectReasoning && (
+                          <div className="rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-3 py-2">
+                            <p className="text-[10px] font-bold text-rose-600 dark:text-rose-400 mb-0.5">Why the common mistake?</p>
+                            <p className="text-xs text-rose-700 dark:text-rose-300 leading-relaxed">{expl.incorrectReasoning}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -926,11 +982,17 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   const msg = streakMsg(streak); const bonus = rapidBonus(streak + 1)
   const qty5050 = inventory["lifeline_50_50"] ?? 0
   const qtyFreeze = inventory["lifeline_freeze"] ?? 0
+  // High-alert mode: streak ≥ 5 — glowing HUD border + fire timer bar
+  const isHighAlert = streak >= 5
 
   return (
     <QuestionView question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
       hud={
-        <div className="flex flex-col gap-2">
+        <div className={`flex flex-col gap-2 rounded-2xl p-2.5 -mx-1 transition-all duration-500 ${
+          isHighAlert
+            ? "mednexus-high-alert-ring ring-2 ring-amber-500/50 bg-amber-50/40 dark:bg-amber-950/30"
+            : ""
+        }`}>
           <div className="flex items-center gap-3">
             <div className="flex gap-1">
               {Array.from({ length: MAX_LIVES }).map((_, i) => (
@@ -940,15 +1002,29 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
               ))}
             </div>
             <div className="flex-1" />
-            {streak >= 3 && <div className="flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-400">🔥 {streak}×</div>}
+            {streak >= 3 && (
+              <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition-all duration-300 ${
+                isHighAlert
+                  ? "bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/30"
+                  : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+              }`}>
+                {isHighAlert ? "🔥🔥" : "🔥"} {streak}×
+                {isHighAlert && <span className="ml-0.5 text-[10px] font-extrabold opacity-90">MAX</span>}
+              </div>
+            )}
             <p className="text-xl font-extrabold tabular-nums text-foreground">{score.toLocaleString()}</p>
           </div>
-          <div className="relative h-2 overflow-hidden rounded-full bg-muted">
-            <div className={`absolute inset-y-0 left-0 rounded-full transition-all duration-200 ease-linear ${tc}`} style={{ width: `${pct}%` }} />
+          <div className={`relative h-2.5 overflow-hidden rounded-full transition-all duration-300 ${isHighAlert ? "bg-amber-900/20" : "bg-muted"}`}>
+            <div
+              className={`absolute inset-y-0 left-0 rounded-full transition-all duration-200 ease-linear ${
+                isHighAlert ? "bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 mednexus-fire-bar" : tc
+              }`}
+              style={{ width: `${pct}%` }}
+            />
           </div>
           <div className="flex items-center justify-between px-0.5">
-            <span className={`text-xs font-bold tabular-nums ${timeLeft <= 5 ? "text-rose-500" : "text-muted-foreground"}`}>{timeLeft}s</span>
-            {msg ? <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{msg}</span> : bonus > 0 && fb === null ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">+{BASE_PTS + bonus} if correct</span> : null}
+            <span className={`text-xs font-bold tabular-nums ${timeLeft <= 5 ? "text-rose-500" : isHighAlert ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{timeLeft}s</span>
+            {msg ? <span className={`text-xs font-bold ${isHighAlert ? "text-rose-500 animate-pulse" : "text-amber-600 dark:text-amber-400"}`}>{msg}</span> : bonus > 0 && fb === null ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">+{BASE_PTS + bonus} if correct</span> : null}
           </div>
           <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} onUse50_50={use50_50} onUseFreeze={useFreeze}
             disabled5050={fb !== null || eliminated.length > 0} disabledFreeze={fb !== null} />
@@ -1493,21 +1569,36 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 
   const q = pool[qi]; if (!q) return null
   const msg = streakMsg(streak)
+  // High-alert mode: streak ≥ 5 — pulsing glow on the streak card
+  const isHighAlert = streak >= 5
 
   return (
     <QuestionView question={q} fb={fb} picked={picked} onAnswer={doAnswer}
       hud={
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
-            <span className="text-base">🔥</span>
+        <div className={`flex items-center gap-3 rounded-2xl p-2 -mx-1 transition-all duration-500 ${
+          isHighAlert ? "mednexus-high-alert-ring ring-2 ring-amber-500/50 bg-amber-50/40 dark:bg-amber-950/30" : ""
+        }`}>
+          <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 transition-all duration-500 ${
+            isHighAlert
+              ? "border-amber-500/70 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/60 dark:to-orange-950/60 shadow-md shadow-amber-500/20"
+              : "border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/30"
+          }`}>
+            <span className={`text-base transition-all ${isHighAlert ? "animate-bounce" : ""}`}>🔥</span>
             <div>
               <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold leading-none">Streak</p>
-              <p className="text-xl font-extrabold tabular-nums text-amber-700 dark:text-amber-300 leading-none mt-0.5">{streak}×</p>
+              <p className={`text-xl font-extrabold tabular-nums leading-none mt-0.5 ${isHighAlert ? "text-orange-600 dark:text-orange-400" : "text-amber-700 dark:text-amber-300"}`}>
+                {streak}×
+              </p>
             </div>
+            {isHighAlert && (
+              <span className="ml-0.5 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-2 py-0.5 text-[9px] font-extrabold text-white shadow-sm">
+                MAX
+              </span>
+            )}
           </div>
           <div className="flex flex-col gap-0.5">
             <p className="text-[11px] text-muted-foreground">Best: <span className="font-bold text-foreground">{bestStreak}×</span></p>
-            {msg && <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">{msg}</p>}
+            {msg && <p className={`text-[11px] font-bold ${isHighAlert ? "text-rose-500 animate-pulse" : "text-amber-600 dark:text-amber-400"}`}>{msg}</p>}
           </div>
           <div className="flex-1" />
           <div className="text-right">

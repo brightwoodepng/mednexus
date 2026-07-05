@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useEconomy } from "@/contexts/economy-context"
-import { STORE_ITEMS } from "@/lib/economy"
+import { STORE_ITEMS, BOUNTY_POOL } from "@/lib/economy"
 
 // ── Wallet Badge ───────────────────────────────────────────────────────────────
 export function WalletBadge({ onOpenStore }: { onOpenStore: () => void }) {
@@ -29,9 +29,9 @@ export function PayoutResult({
   breakdown: { label: string; amount: number }[]
   bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[]
 }) {
-  const completedBounties = bountyUpdates.filter(b => b.newlyComplete)
   return (
     <div className="rounded-3xl border-2 border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 p-4">
+      {/* Earned amount header */}
       <div className="mb-3 flex items-center gap-2">
         <span className="text-xl">🪙</span>
         <div>
@@ -39,6 +39,8 @@ export function PayoutResult({
           <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-300">+{earned.toLocaleString()} NP</p>
         </div>
       </div>
+
+      {/* Breakdown lines */}
       <div className="grid gap-1.5">
         {breakdown.map(b => (
           <div key={b.label} className="flex items-center justify-between">
@@ -47,12 +49,38 @@ export function PayoutResult({
           </div>
         ))}
       </div>
-      {completedBounties.length > 0 && (
-        <div className="mt-3 rounded-2xl border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/30 p-2.5">
-          <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">🎯 Bounty Progress!</p>
-          {completedBounties.map(b => (
-            <p key={b.id} className="text-[11px] text-emerald-600 dark:text-emerald-400">✓ Bounty completed — claim it in the store!</p>
-          ))}
+
+      {/* Bounty progress — show every bounty that got a delta, with mini progress bar */}
+      {bountyUpdates.length > 0 && (
+        <div className="mt-3 rounded-2xl border border-amber-300/60 dark:border-amber-700/40 bg-white/60 dark:bg-amber-950/40 p-3 space-y-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">🎯 Bounty Progress</p>
+          {bountyUpdates.map(b => {
+            const def = BOUNTY_POOL.find(p => p.id === b.id)
+            const pct = Math.min((b.progress / b.target) * 100, 100)
+            return (
+              <div key={b.id}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1">
+                    <span>{def?.icon ?? "🎯"}</span>
+                    <span className="truncate max-w-[150px]">{def?.label ?? b.id}</span>
+                  </span>
+                  {b.newlyComplete ? (
+                    <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">✓ Complete! Claim →</span>
+                  ) : (
+                    <span className="text-[10px] tabular-nums font-bold text-amber-600 dark:text-amber-400">
+                      {Math.min(b.progress, b.target)}/{b.target}
+                    </span>
+                  )}
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900/50">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${b.newlyComplete ? "bg-emerald-500" : "bg-gradient-to-r from-amber-400 to-orange-500"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
