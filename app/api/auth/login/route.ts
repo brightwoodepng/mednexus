@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
+import { createSessionToken } from "@/lib/session-auth"
 
 function formatIndexNumber(raw: string): string {
   const cleaned = raw.toLowerCase().replace(/[^a-z0-9]/g, "")
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
 
     if (passwordMatch) {
+      const sessionToken = createSessionToken(user.uid, role)
       return NextResponse.json({
         uid: user.uid,
         name: user.name,
@@ -67,6 +69,7 @@ export async function POST(req: NextRequest) {
         status: user.status,
         indexNumber: user.index_number,
         requiresPasswordUpdate: user.must_change_password,
+        sessionToken,
       })
     }
 
@@ -77,6 +80,7 @@ export async function POST(req: NextRequest) {
           `UPDATE mednexus_registered_users SET otp_hash = NULL, must_change_password = TRUE WHERE uid = $1`,
           [user.uid]
         )
+        const sessionToken = createSessionToken(user.uid, role)
         return NextResponse.json({
           uid: user.uid,
           name: user.name,
@@ -86,6 +90,7 @@ export async function POST(req: NextRequest) {
           status: user.status,
           indexNumber: user.index_number,
           requiresPasswordUpdate: true,
+          sessionToken,
         })
       }
     }

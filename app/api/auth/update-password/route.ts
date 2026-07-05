@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
+import { verifySessionToken } from "@/lib/session-auth"
 
 async function getPool() {
   const { default: pool, ensureSchema } = await import("@/lib/db")
@@ -16,6 +17,13 @@ export async function PATCH(req: NextRequest) {
     }
     if (newPassword.length < 6) {
       return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 })
+    }
+
+    // Verify the caller owns this uid via a signed session token
+    const token = req.headers.get("x-session-token") ?? ""
+    const session = verifySessionToken(token)
+    if (!session || session.uid !== uid) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const pool = await getPool()

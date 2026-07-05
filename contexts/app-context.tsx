@@ -68,6 +68,7 @@ const LS_PROGRESS = "mednexus-progress"
 const LS_REQUIRES_PW_UPDATE = "mednexus-requires-pw-update"
 const LS_CLASS_LEVEL = "mednexus-class-level"
 const LS_GUEST_TOKEN = "mednexus-guest-token"
+const LS_USER_TOKEN = "mednexus-user-token"
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
@@ -95,9 +96,14 @@ function loadLocal(uid: string): UserProgress {
   return EMPTY_PROGRESS
 }
 
-async function apiGet(uid: string): Promise<{ name: string; progress: UserProgress } | null> {
+type AuthHeader = { key: string; value: string } | null
+
+async function apiGet(uid: string, auth: AuthHeader): Promise<{ name: string; progress: UserProgress } | null> {
   try {
+    const headers: Record<string, string> = {}
+    if (auth) headers[auth.key] = auth.value
     const res = await fetch(`/api/sync?uid=${encodeURIComponent(uid)}`, {
+      headers,
       signal: AbortSignal.timeout(6000),
     })
     if (!res.ok) return null
@@ -108,11 +114,13 @@ async function apiGet(uid: string): Promise<{ name: string; progress: UserProgre
   }
 }
 
-async function apiPost(uid: string, name: string, progress: UserProgress): Promise<boolean> {
+async function apiPost(uid: string, name: string, progress: UserProgress, auth: AuthHeader): Promise<boolean> {
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (auth) headers[auth.key] = auth.value
     const res = await fetch("/api/sync", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ uid, name, progress }),
       signal: AbortSignal.timeout(6000),
     })
@@ -134,11 +142,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const progressRef = useRef(progress)
   progressRef.current = progress
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Holds the auth header sent with every sync/update-password request.
+  // Updated on login, enterApp, and signOut.
+  const tokenRef = useRef<AuthHeader>(null)
 
   const scheduleSync = useCallback((uid: string, name: string, next: UserProgress) => {
     if (syncTimer.current) clearTimeout(syncTimer.current)
     syncTimer.current = setTimeout(() => {
-      apiPost(uid, name, next).then((ok) => {
+      apiPost(uid, name, next, tokenRef.current).then((ok) => {
         if (ok) setCloudEnabled(true)
       })
     }, 1500)
@@ -154,6 +165,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const classLevel = typeof window !== "undefined" ? localStorage.getItem(LS_CLASS_LEVEL) ?? undefined : undefined
 
       if (uid) {
+        // Restore auth header from localStorage
+        const guestToken = localStorage.getItem(LS_GUEST_TOKEN)
+        const userToken = localStorage.getItem(LS_USER_TOKEN)
+        if (guestToken) {
+          tokenRef.current = { key: "x-guest-token", value: guestToken }
+        } else if (userToken) {
+          tokenRef.current = { key: "x-session-token", value: userToken }
+        }
+
         const local = loadLocal(uid)
         const appUser: AppUser = { uid, name, role: role ?? "guest", status: status ?? undefined, classLevel }
         setUser(appUser)
@@ -161,7 +181,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRequiresPasswordUpdate(needsPwUpdate)
         setAuthReady(true)
 
-        const remote = await apiGet(uid)
+        const remote = await apiGet(uid, tokenRef.current)
         if (remote) {
           setCloudEnabled(true)
           setProgress(remote.progress)
@@ -205,15 +225,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(LS_ROLE, "guest")
       localStorage.setItem(LS_CLASS_LEVEL, trimmedLevel)
       localStorage.removeItem(LS_REQUIRES_PW_UPDATE)
+      localStorage.removeItem(LS_USER_TOKEN)
       if (sessionToken) localStorage.setItem(LS_GUEST_TOKEN, sessionToken)
     } catch {}
+
+    tokenRef.current = sessionToken ? { key: "x-guest-token", value: sessionToken } : null
 
     const appUser: AppUser = { uid, name: trimmed, role: "guest", classLevel: trimmedLevel }
     setUser(appUser)
     setProgress(EMPTY_PROGRESS)
     setRequiresPasswordUpdate(false)
 
-    const ok = await apiPost(uid, trimmed, EMPTY_PROGRESS)
+    const ok = await apiPost(uid, trimmed, EMPTY_PROGRESS, tokenRef.current)
     if (ok) setCloudEnabled(true)
   }, [])
 
@@ -227,14 +250,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await res.json()
       if (!res.ok) return { ok: false, error: data.error ?? "Login failed" }
 
-      const { uid, name, requiresPasswordUpdate: needsPw } = data
+      const { uid, name, requiresPasswordUpdate: needsPw, sessionToken: userToken } = data
       try {
         localStorage.setItem(LS_UID, uid)
         localStorage.setItem(LS_NAME, name)
         localStorage.setItem(LS_ROLE, "user")
         localStorage.setItem(LS_REQUIRES_PW_UPDATE, needsPw ? "true" : "false")
         if (data.status) localStorage.setItem(LS_STATUS, data.status)
+        localStorage.removeItem(LS_GUEST_TOKEN)
+        if (userToken) localStorage.setItem(LS_USER_TOKEN, userToken)
       } catch {}
+
+      tokenRef.current = userToken ? { key: "x-session-token", value: userToken } : null
 
       const local = loadLocal(uid)
       const appUser: AppUser = { uid, name, role: "user", status: data.status, indexNumber: data.indexNumber, level: data.level }
@@ -243,7 +270,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setRequiresPasswordUpdate(!!needsPw)
       setCloudEnabled(false)
 
-      const remote = await apiGet(uid)
+      const remote = await apiGet(uid, tokenRef.current)
       if (remote) {
         setCloudEnabled(true)
         setProgress(remote.progress)
@@ -274,9 +301,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const uid = userRef.current?.uid
     if (!uid) return { ok: false, error: "Not logged in" }
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      const auth = tokenRef.current
+      if (auth) headers[auth.key] = auth.value
       const res = await fetch("/api/auth/update-password", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ uid, newPassword }),
       })
       const data = await res.json()
@@ -291,6 +321,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const signOutUser = useCallback(() => {
     if (syncTimer.current) clearTimeout(syncTimer.current)
+    tokenRef.current = null
     try {
       localStorage.removeItem(LS_UID)
       localStorage.removeItem(LS_NAME)
@@ -299,6 +330,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(LS_REQUIRES_PW_UPDATE)
       localStorage.removeItem(LS_CLASS_LEVEL)
       localStorage.removeItem(LS_GUEST_TOKEN)
+      localStorage.removeItem(LS_USER_TOKEN)
     } catch {}
     setUser(null)
     setProgress(EMPTY_PROGRESS)
@@ -313,7 +345,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(LS_NAME, trimmed) } catch {}
     const updated = { ...u, name: trimmed }
     setUser(updated)
-    await apiPost(u.uid, trimmed, progressRef.current)
+    await apiPost(u.uid, trimmed, progressRef.current, tokenRef.current)
   }, [])
 
   const toggleFlag = useCallback(
