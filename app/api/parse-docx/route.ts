@@ -551,7 +551,7 @@ const CANDIDATE_MODELS = [
  * Splits are taken at paragraph-level question boundaries so no question
  * is ever cut in half between chunks.
  */
-function chunkHtml(html: string, targetWords = 2500): string[] {
+function chunkHtml(html: string, targetWords = 1500): string[] {
   // Matches mammoth's <p>, <div>, <hN>, and <li> tags that open with a question
   // number in any format the parsers already recognise (including parenthetical
   // "(1)" style and 4-digit numbers).
@@ -584,6 +584,12 @@ function chunkHtml(html: string, targetWords = 2500): string[] {
 
 // ── Single-chunk Gemini call ──────────────────────────────────────────────────
 
+// Per-chunk timeout: 90 s is generous but keeps a single slow call from
+// blocking its batch wave.  The AbortController actually cancels the
+// in-flight HTTP request and breaks the model-cascade loop so we don't
+// accumulate background Gemini calls on timeout.
+const CHUNK_TIMEOUT_MS = 90_000
+
 /**
  * Send one HTML chunk to Gemini (cascading through CANDIDATE_MODELS).
  * Returns null if all models fail — never throws.
@@ -596,7 +602,19 @@ async function parseChunkWithGemini(
 ): Promise<GeminiOutput | null> {
   const prompt = `Module: ${moduleName}\n\nExtracted HTML:\n${htmlChunk}`
 
+  // One AbortController covers all model attempts for this chunk.
+  // Aborting terminates the in-flight HTTP request and breaks the cascade.
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(new Error(`chunk ${chunkIndex} timed out`)), CHUNK_TIMEOUT_MS)
+
+  try {
   for (const modelName of CANDIDATE_MODELS) {
+    // If the timeout already fired, don't bother trying more models.
+    if (ac.signal.aborted) {
+      console.warn(`[parse-docx] Chunk ${chunkIndex}: aborted — skipping remaining models`)
+      break
+    }
+
     try {
       console.log(`[parse-docx] Chunk ${chunkIndex}: trying model ${modelName}`)
       const model = genAI.getGenerativeModel({
@@ -604,7 +622,7 @@ async function parseChunkWithGemini(
         systemInstruction: SYSTEM_INSTRUCTION,
         generationConfig: { responseMimeType: "application/json", temperature: 0 },
       })
-      const result = await model.generateContent(prompt)
+      const result = await model.generateContent(prompt, { signal: ac.signal })
       const text = result.response.text()
 
       let parsed: GeminiOutput
@@ -634,13 +652,23 @@ async function parseChunkWithGemini(
     }
   }
 
-  // All models failed for this chunk — log and return null so the caller
-  // can skip it without aborting the rest of the document.
-  console.warn(`[parse-docx] Chunk ${chunkIndex}: all models exhausted — skipping chunk`)
-  return null
+    // All models failed for this chunk — log and return null so the caller
+    // can skip it without aborting the rest of the document.
+    console.warn(`[parse-docx] Chunk ${chunkIndex}: all models exhausted — skipping chunk`)
+    return null
+  } finally {
+    // Always clear the timeout, whether we succeeded, failed, or were aborted.
+    clearTimeout(timer)
+  }
 }
 
-// ── Orchestrator: chunks → sequential calls → stitched result ─────────────────
+// ── Orchestrator: chunks → parallel batches → stitched result ─────────────────
+//
+// Processes up to BATCH_SIZE chunks concurrently to stay well under the
+// Replit reverse-proxy timeout (~60 s).  Results are reassembled in the
+// original chunk order before stitching so question numbering is stable.
+
+const BATCH_SIZE = 3
 
 async function parseWithGemini(
   html: string,
@@ -652,29 +680,44 @@ async function parseWithGemini(
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-  const chunks = chunkHtml(html)
-  console.log(`[parse-docx] ${chunks.length} HTML chunk(s) to process sequentially`)
+  const chunks = chunkHtml(html) // default 1 500 words per chunk
+  console.log(
+    `[parse-docx] ${chunks.length} chunk(s) — processing in parallel batches of ${BATCH_SIZE}`,
+  )
 
+  // Slot to hold each chunk's result in original order (null = failed/skipped)
+  const orderedResults: (GeminiOutput | null)[] = new Array(chunks.length).fill(null)
+
+  for (let batchStart = 0; batchStart < chunks.length; batchStart += BATCH_SIZE) {
+    const batchChunks = chunks.slice(batchStart, batchStart + BATCH_SIZE)
+
+    const settled = await Promise.allSettled(
+      batchChunks.map((chunk, j) =>
+        parseChunkWithGemini(genAI, chunk, moduleName, batchStart + j + 1),
+      ),
+    )
+
+    settled.forEach((outcome, j) => {
+      if (outcome.status === "fulfilled") {
+        orderedResults[batchStart + j] = outcome.value
+      } else {
+        console.error(
+          `[parse-docx] Chunk ${batchStart + j + 1} settled as rejected:`,
+          outcome.reason,
+        )
+      }
+    })
+  }
+
+  // Stitch results in original chunk order
   const masterContexts: GeminiContext[] = []
   const masterQuestions: GeminiQuestion[] = []
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunkNum = i + 1
-    let result: GeminiOutput | null = null
-    try {
-      result = await parseChunkWithGemini(genAI, chunks[i], moduleName, chunkNum)
-    } catch (err) {
-      // Defensive catch — parseChunkWithGemini itself should never throw,
-      // but guard here so one chunk can never crash the whole upload.
-      console.error(`[parse-docx] Chunk ${chunkNum} threw unexpectedly — skipping:`, err)
-      continue
-    }
+  orderedResults.forEach((result, i) => {
+    if (!result) return
 
-    if (!result) continue
-
-    // Prefix every context ID with "cN-" so IDs from different chunks
-    // never collide when the arrays are concatenated.
-    const prefix = `c${chunkNum}-`
+    // Prefix context IDs with "cN-" so IDs from different chunks never collide
+    const prefix = `c${i + 1}-`
     const remappedContexts = (result.contexts ?? []).map((c) => ({
       ...c,
       id: `${prefix}${c.id}`,
@@ -686,7 +729,7 @@ async function parseWithGemini(
 
     masterContexts.push(...remappedContexts)
     masterQuestions.push(...remappedQuestions)
-  }
+  })
 
   console.log(
     `[parse-docx] Total: ${masterQuestions.length} question(s), ` +
