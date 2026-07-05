@@ -12,7 +12,7 @@ const KEY = "mednexus-active-room"
 export interface ActiveRoomSession {
   pin: string
   myId: string
-  mode: "clash" | "cohort"
+  mode: "clash" | "cohort" | "wager"
   isHost: boolean
   isCohortHost: boolean
   /** id of the question that was on screen when we last persisted, for diagnostics/recovery UX */
