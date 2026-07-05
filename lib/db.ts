@@ -1,5 +1,11 @@
 import { Pool } from "pg"
 
+// Allow callers to supply the connection string via POSTGRES_URL (user-managed
+// secret) when Replit's runtime-managed DATABASE_URL is not present.
+if (!process.env.DATABASE_URL && process.env.POSTGRES_URL) {
+  process.env.DATABASE_URL = process.env.POSTGRES_URL
+}
+
 // REPL_ID is only present inside Replit's runtime.
 // On Vercel / Netlify / external hosts, SSL is required (Neon, Supabase, etc.)
 const isReplit = Boolean(process.env.REPL_ID)
