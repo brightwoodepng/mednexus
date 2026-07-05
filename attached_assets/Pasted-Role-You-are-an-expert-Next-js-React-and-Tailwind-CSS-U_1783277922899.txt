@@ -1,0 +1,27 @@
+Role: You are an expert Next.js, React, and Tailwind CSS UI/UX developer working on the MedNexus platform.
+Task: We need a comprehensive, global mobile-responsiveness overhaul. The application looks great on desktop, but on mobile devices, elements overlap, the right-hand question navigator crushes the main layout, modals are getting cut off at the bottom, and the bottom navigation bar hides crucial buttons.
+
+Please execute a global mobile-first CSS audit and implement the following architecture across the codebase:
+
+### Step 1: The Question Navigator (Off-Canvas Drawer)
+1. Desktop: Keep the right-hand question number grid (e.g., 1-256) permanently visible on medium/large screens (md:block md:w-80).
+2. Mobile: Hide this grid completely by default on small screens (hidden md:block). 
+3. Mobile Trigger: Add a mobile-only toggle button (e.g., a grid icon or "Questions" button) to the top header to open the navigator.
+4. Drawer Implementation: When toggled open on mobile, render the number grid inside a sleek slide-over drawer entering from the right edge. Use Tailwind classes: fixed inset-y-0 right-0 z-50 w-4/5 max-w-sm bg-white shadow-2xl overflow-y-auto. 
+5. Include a darkened backdrop (fixed inset-0 bg-black/50 z-40) that closes the drawer when tapped. Automatically close the drawer when a user selects a question number.
+
+### Step 2: The Bottom Navigation & Safe Areas (CRITICAL)
+1. Update the question-answering navigation bar (containing Previous/Next buttons) to act as a sticky/fixed bottom bar ONLY on mobile screens (fixed bottom-0 left-0 w-full z-50 bg-white border-t p-3 md:relative md:bg-transparent md:border-0 md:p-0).
+2. Padding Fix: Add significant bottom padding (pb-24 or pb-28) to the main <main> layout wrapper or the central quiz container. This ensures the last MCQ option or the "Submit" button is never hidden beneath the newly fixed mobile navigation bar.
+
+### Step 3: Modals, Dialogs, and Windows
+1. Modal Height Limits: Fix all modal cut-offs (such as Review screens or Import windows) by forcing a maximum height and enabling internal scrolling. Apply max-h-[85vh] and overflow-y-auto to the main modal content containers.
+2. Responsive Width: Ensure modal widths scale properly on small screens: w-[95%] md:max-w-2xl mx-auto.
+3. Sticky Footers: Ensure action buttons (Save, Close, Import) remain constantly visible at the bottom of the modal, even if the content above them is scrolling.
+
+### Step 4: Global Layout Shifts & Touch Targets
+1. Flex Reversals: Find any side-by-side button groups, filter bars, or toolbars that are squished together on mobile. Update them to stack cleanly using flex-col md:flex-row with appropriate spacing (gap-3).
+2. Touch Targets: Ensure all interactive elements (buttons, text inputs, dropdowns) have a minimum height of 44px (min-h-[44px] py-2) so they are easily tapped with a thumb.
+3. Overflow: Ensure there is no overflow-hidden on the main <body> that might clip mobile content. Use overflow-x-hidden globally to prevent accidental horizontal scrolling.
+
+Execution: Review the main layout components, the MCQ quiz interface, and the admin tools. Apply these exact Tailwind patterns so the platform feels exactly like a native mobile app for phone users, while leaving the desktop experience entirely intact.
