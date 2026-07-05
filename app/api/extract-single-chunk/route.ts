@@ -5,40 +5,56 @@ import { generateWithFallback } from "@/lib/gemini"
 // but bounded so a stuck call doesn't block the client's progress loop.
 export const maxDuration = 120
 
-// ── System prompt ─────────────────────────────────────────────────────────────
+// ── System prompt generator ───────────────────────────────────────────────────
+// Accepts the running context from the Relay Race orchestrator so that
+// categorisation state is carried across chunk boundaries.
 
-const SYSTEM_INSTRUCTION = `
-You are a medical exam question extractor. Parse every MCQ question from the raw text provided and return them as a JSON array.
+function buildSystemInstruction(
+  fallbackModule: string | null,
+  fallbackDiscipline: string | null,
+): string {
+  return `
+You are a strict medical document extraction system. Extract every MCQ question from the raw text provided and return them as a JSON array.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CATEGORIZATION HIERARCHY — apply PER QUESTION in this exact order:
+CRITICAL FORMATTING RULE — QUESTION TEXT CLEANING
 
-Priority 1 — EXPLICIT TAGS IMMEDIATELY BEFORE THE QUESTION (or its group)
-  Scan backwards from each question to find the nearest tag line:
-    MODULE: <name>
-    DISCIPLINE: <name>   (or SUBJECT: / TOPIC:)
-  If a tag appears anywhere above this question (before the next previous
-  question), use those exact names. A new tag resets the active value for
-  all questions that follow it — so different groups in the same chunk CAN
-  have different module/discipline values.
+You MUST strip all leading numbers, letters, and punctuation from the start
+of every question's vignette text. Do NOT include prefixes such as:
+  "1. "  "Q2: "  "(3)"  "Q1."  "4)"  "Question 5:"
+Start directly with the first word of the actual question content.
 
-Priority 2 — FALLBACK MODULE (per-question)
-  If no MODULE: tag precedes this specific question, use the
-  "fallbackModule" value from the user prompt for "module".
+WRONG:  "1. A 35-year-old woman presents with…"
+RIGHT:  "A 35-year-old woman presents with…"
 
-Priority 3 — UNCATEGORIZED (per-question)
-  If no tag precedes this question AND fallbackModule is null or empty,
-  set module to "Uncategorized".
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL CATEGORIZATION RULES — STRICT HIERARCHY (apply PER QUESTION)
 
-DISCIPLINE — STRICT ANTI-HALLUCINATION RULE (applied per question):
-  Priority 1: If a DISCIPLINE:/SUBJECT:/TOPIC: tag is active for this question
-  (i.e., it appears above this question in the text, before any previous question),
-  extract exactly what is written — do not alter a single character.
-  Priority 2: If NO DISCIPLINE:/SUBJECT:/TOPIC: tag is active for this question,
-  set "discipline" to "" (empty string). You are STRICTLY FORBIDDEN from
-  guessing, inferring, or inventing a discipline from the question's clinical
-  content. Zero creativity — if it was not explicitly written in the source
-  text with a DISCIPLINE:/SUBJECT:/TOPIC: tag, return "".
+MODULE assignment:
+  Priority 1 (Explicit Tag): If the text contains a "MODULE: <name>" tag
+    above this question, use exactly what is written.
+  Priority 2 (Running Context): If no MODULE: tag is present, use the
+    Running Module Context provided below.
+  Priority 3 (Fallback): If no tag and no context, set module to "Uncategorized".
+
+DISCIPLINE assignment — ZERO CREATIVITY RULE:
+  Priority 1 (Explicit Tag): If a DISCIPLINE:/SUBJECT:/TOPIC: tag is active
+    for this question, extract exactly what is written — do not alter a single
+    character.
+  Priority 2 (Running Context): If NO explicit tag is active for this question,
+    you MUST use the Running Discipline Context provided below. Because documents
+    are processed in sequential chunks, this running context carries the last
+    known discipline tag forward from the previous chunk.
+  Priority 3 (Empty String): If no tag exists and no running context is provided
+    (value is EMPTY), set "discipline" to "" (empty string).
+
+  You are STRICTLY FORBIDDEN from guessing, inferring, or inventing a discipline
+  from the question's clinical content. ZERO CREATIVITY — if a discipline was not
+  explicitly written in the source text or provided in the Running Context, return "".
+  If you invent a discipline, the system will fail.
+
+Running Module Context:     ${fallbackModule     ?? "EMPTY"}
+Running Discipline Context: ${fallbackDiscipline ?? "EMPTY"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT FORMAT
@@ -56,6 +72,7 @@ Each element must follow this exact shape:
 }
 
 Rules:
+• vignette must NOT start with a question number, letter prefix, or punctuation.
 • Options must be labelled A–E only (uppercase single letter).
 • correctAnswer is a single uppercase letter A–E matching the answer key,
   or null if no answer key is present.
@@ -63,6 +80,7 @@ Rules:
 • Parse EVERY question — do not skip, merge, or reorder any.
 • Return an empty array [] if no parseable questions are found.
 `.trim()
+}
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
@@ -77,18 +95,24 @@ interface ChunkQuestion {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { textChunk?: string; fallbackModule?: string | null }
+    const body = await req.json() as {
+      textChunk?: string
+      fallbackModule?: string | null
+      fallbackDiscipline?: string | null
+    }
 
     const textChunk = (body.textChunk ?? "").trim()
     if (!textChunk) {
       return NextResponse.json({ questions: [] })
     }
 
-    const fallbackModule = body.fallbackModule?.trim() || null
+    const fallbackModule     = (body.fallbackModule     ?? "").trim() || null
+    const fallbackDiscipline = (body.fallbackDiscipline ?? "").trim() || null
 
-    const prompt = `fallbackModule: ${fallbackModule ?? "null"}\n\nText chunk:\n${textChunk}`
+    const systemInstruction = buildSystemInstruction(fallbackModule, fallbackDiscipline)
+    const prompt = `Text chunk:\n${textChunk}`
 
-    const raw = await generateWithFallback(SYSTEM_INSTRUCTION, prompt)
+    const raw = await generateWithFallback(systemInstruction, prompt)
 
     if (!raw) {
       console.warn("[extract-single-chunk] Gemini returned nothing — returning []")
@@ -124,11 +148,14 @@ export async function POST(req: NextRequest) {
             ? q.module.trim()
             : fallbackModule ?? "Uncategorized"
 
-        // Discipline: explicit DISCIPLINE: tag from AI only → "" if absent (never inferred)
+        // Discipline priority (mirrors Relay Race contract):
+        //   1. Non-empty value returned by AI (explicit tag in this chunk)
+        //   2. Running discipline context passed in from the previous chunk
+        //   3. "" — never infer from clinical content
         const disc =
           typeof q.discipline === "string" && q.discipline.trim()
             ? q.discipline.trim()
-            : ""
+            : fallbackDiscipline ?? ""
 
         // Keep only valid A–E options with string text
         const options = (q.options as any[])
@@ -151,10 +178,32 @@ export async function POST(req: NextRequest) {
           if (VALID_ANSWER_IDS.has(ca)) correctAnswer = ca
         }
 
+        // Server-side backstop: strip clear question-number prefixes that Gemini
+        // sometimes returns despite the prompt instruction.
+        //
+        // Patterns matched (requires explicit punctuation or parens — not bare space):
+        //   (3)        → parenthesized number
+        //   Q2.  Q2:  Q2)  Q2 → letter Q + number + any separator
+        //   Question 5. / Question 5: → word "Question" + number + separator
+        //   1.  1)  1: → number + punctuation (. ) :) then whitespace
+        //
+        // NOT matched (safe):
+        //   "2024 guidelines…"  — year/number followed only by space, no punctuation
+        //   "35-year-old…"      — hyphen after number is not in the pattern
+        const vignette = q.vignette
+          .trim()
+          .replace(
+            /^(?:\(\d{1,4}\)\s*|Q\.?\s*\d{1,4}[.):\-\s]\s*|Question\s+\d{1,4}[.):\-\s]\s*|\d{1,4}[.):]\s+)/i,
+            "",
+          )
+          .trim()
+
+        if (!vignette) return null   // degenerate after strip
+
         return {
           module: mod,
           discipline: disc,
-          vignette: q.vignette.trim(),
+          vignette,
           options,
           correctAnswer,
           explanation: typeof q.explanation === "string" && q.explanation.trim() ? q.explanation.trim() : null,

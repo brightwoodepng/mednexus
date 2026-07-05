@@ -1,0 +1,44 @@
+Role: You are an expert Next.js and React full-stack developer working on the MedNexus medical education platform.
+Task: We need to build the ultimate, bulletproof Word (.docx) document ingestion pipeline. We are prioritizing the Word parser for our bulk data extraction, but it currently suffers from Vercel 504 Gateway Timeouts on large files (e.g., 500+ questions), loses categorization context across chunks, and fails to strip leading numbers from questions.
+
+Implement a "Relay Race" chunking architecture that passes categorization context forward safely.
+
+### Step 1: The Frontend Orchestrator (components/DocumentImporter.tsx or equivalent)
+Update the handleWordUpload function to handle infinite scaling without timeouts:
+1. Ensure the UI text input for "Module Name" is strictly optional (allow empty uploads).
+2. Extract the raw text from the Word file via a dedicated, non-AI route (/api/parse-docx).
+3. Split the raw text into chunks of ~2,000 words to optimize AI processing and prevent cutting questions in half.
+4. Establish "Context Trackers" before the chunking loop: 
+   let runningModule = fallbackModule;
+   let runningDiscipline = null;
+5. Loop through the chunks sequentially, posting to /api/extract-single-chunk. The JSON payload MUST include textChunk, fallbackModule: runningModule, and fallbackDiscipline: runningDiscipline.
+6. After each chunk resolves, update the context trackers based on the LAST item in the returned array:
+   - if (lastItem.module) runningModule = lastItem.module;
+   - if (lastItem.discipline) runningDiscipline = lastItem.discipline;
+7. Stitch all returned chunk arrays into a single allDrafts array and pass it to the drafts state.
+
+### Step 2: The Chunk Extraction Route (app/api/extract-single-chunk/route.ts)
+1. Create or update this endpoint to receive the chunked payload.
+2. Destructure textChunk, fallbackModule, and fallbackDiscipline from the request body.
+3. Pass both fallback variables into the Gemini system prompt generator.
+4. Call the Gemini AI, ensuring the response is enforced as structured JSON, and return the extractedItems.
+
+### Step 3: The Strict Anti-Hallucination AI Prompt (utils/gemini-prompts.ts or equivalent)
+Update the system instruction generator to accept (fallbackModule: string | null, fallbackDiscipline: string | null) and enforce these exact rules:
+
+"You are a strict medical document extraction system. Extract questions, options, answers, and metadata from the provided text.
+
+CRITICAL FORMATTING RULE:
+- QUESTION TEXT CLEANING: You MUST strip all leading numbers, letters, and punctuation from the start of the question text. Do not include '1. ', 'Q2: ', '(3)', etc. Start directly with the first word of the question's actual content.
+
+CRITICAL CATEGORIZATION RULES (STRICT HIERARCHY):
+1. Priority 1 (Explicit Tags): If the text explicitly contains 'MODULE: [Name]' or 'DISCIPLINE: [Name]', extract exactly what is written. Do not alter a single letter.
+2. Priority 2 (Chunking Context): Because documents are processed in sequential chunks, if the text does NOT contain a 'DISCIPLINE:' tag, you MUST use the running discipline context provided below. 
+3. Priority 3 (Fallback): If no tags exist and no context is provided, use an empty string '' for the discipline. You are strictly forbidden from guessing, inferring, or inventing disciplines based on clinical content.
+
+Running Module Context: ${fallbackModule  'EMPTY'}
+Running Discipline Context: ${fallbackDiscipline  'EMPTY'}
+
+ZERO CREATIVITY: If you invent a discipline that was not explicitly written in the source text or provided in the Running Context, the system will fail."
+
+Execution: Review the full codebase, implement this unified architecture exactly as described, and ensure the Word pipeline is completely immune to serverless timeouts while retaining 100% accurate grouping.
