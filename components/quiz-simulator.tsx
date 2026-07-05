@@ -193,6 +193,15 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
 
             <RichText content={current.vignette} className="text-[15px] text-foreground text-pretty sm:text-base" />
 
+            {current.mediaBase64 && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={current.mediaBase64}
+                alt="Question image"
+                className="mt-4 max-h-80 w-auto max-w-full rounded-lg border border-border object-contain"
+              />
+            )}
+
             <div className="mt-5 flex flex-col gap-2.5 sm:mt-6 sm:gap-3">
               {current.options.map((opt) => {
                 const isStruck = struckSet.has(opt.id)
