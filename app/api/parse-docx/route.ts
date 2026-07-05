@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 import type { QuestionContextType, QuestionType } from "@/lib/types"
 import { detectSubject } from "@/lib/subject-detect"
 
-export const maxDuration = 60
+export const maxDuration = 300
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // IMAGE PLACEHOLDER SYSTEM
@@ -531,7 +531,7 @@ interface GeminiOutput {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GEMINI CALL — tries multiple models (free-tier safe)
+// GEMINI CALL — chunked sequential processing, tries multiple models
 // ═══════════════════════════════════════════════════════════════════════════════
 //
 // gemini-2.0-* and gemini-1.5-* families have limit=0 on free-tier keys
@@ -544,27 +544,61 @@ const CANDIDATE_MODELS = [
   "gemini-flash-latest",
 ]
 
-async function parseWithGemini(
-  html: string,
-  moduleName: string,
-): Promise<GeminiOutput | null> {
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn("[parse-docx] GEMINI_API_KEY not set — skipping AI parse")
-    return null
+// ── HTML chunking ─────────────────────────────────────────────────────────────
+
+/**
+ * Split mammoth HTML into chunks of ~targetWords words.
+ * Splits are taken at paragraph-level question boundaries so no question
+ * is ever cut in half between chunks.
+ */
+function chunkHtml(html: string, targetWords = 2500): string[] {
+  // Matches mammoth's <p>, <div>, <hN>, and <li> tags that open with a question
+  // number in any format the parsers already recognise (including parenthetical
+  // "(1)" style and 4-digit numbers).
+  const Q_BOUNDARY =
+    /^<(?:p|div|h[1-6]|li)[^>]*>\s*(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
+
+  // Split on all paragraph-level block openers, including list items
+  const parts = html.split(/(?=<(?:p|h[1-6]|div|li)[^>]*>)/i)
+
+  const chunks: string[] = []
+  let current = ""
+  let wordCount = 0
+
+  for (const part of parts) {
+    const plainText = part.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+    const words = plainText.split(" ").filter(Boolean).length
+
+    // Flush at a question boundary once the target word count is reached
+    if (wordCount >= targetWords && Q_BOUNDARY.test(part.trimStart()) && current) {
+      chunks.push(current)
+      current = ""
+      wordCount = 0
+    }
+    current += part
+    wordCount += words
   }
+  if (current.trim()) chunks.push(current)
+  return chunks.filter((c) => c.trim())
+}
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+// ── Single-chunk Gemini call ──────────────────────────────────────────────────
 
-  const excerpt =
-    html.length > 400_000
-      ? html.slice(0, 200_000) + "\n\n<!-- [middle truncated] -->\n\n" + html.slice(-200_000)
-      : html
-
-  const prompt = `Module: ${moduleName}\n\nExtracted HTML:\n${excerpt}`
+/**
+ * Send one HTML chunk to Gemini (cascading through CANDIDATE_MODELS).
+ * Returns null if all models fail — never throws.
+ */
+async function parseChunkWithGemini(
+  genAI: GoogleGenerativeAI,
+  htmlChunk: string,
+  moduleName: string,
+  chunkIndex: number,
+): Promise<GeminiOutput | null> {
+  const prompt = `Module: ${moduleName}\n\nExtracted HTML:\n${htmlChunk}`
 
   for (const modelName of CANDIDATE_MODELS) {
     try {
-      console.log(`[parse-docx] Trying model: ${modelName}`)
+      console.log(`[parse-docx] Chunk ${chunkIndex}: trying model ${modelName}`)
       const model = genAI.getGenerativeModel({
         model: modelName,
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -577,29 +611,94 @@ async function parseWithGemini(
       try {
         parsed = JSON.parse(text) as GeminiOutput
       } catch {
-        console.warn(`[parse-docx] ${modelName} returned non-JSON — trying next model`)
+        console.warn(`[parse-docx] Chunk ${chunkIndex}: ${modelName} non-JSON — trying next model`)
         continue
       }
       if (!Array.isArray(parsed?.questions)) {
-        console.warn(`[parse-docx] ${modelName} returned unexpected shape — trying next model`)
+        console.warn(`[parse-docx] Chunk ${chunkIndex}: ${modelName} unexpected shape — trying next model`)
         continue
       }
 
-      console.log(`[parse-docx] ${modelName} succeeded — ${parsed.questions.length} questions, ${parsed.contexts?.length ?? 0} contexts`)
+      console.log(
+        `[parse-docx] Chunk ${chunkIndex}: ${modelName} ok — ` +
+        `${parsed.questions.length} question(s), ${parsed.contexts?.length ?? 0} context(s)`,
+      )
       return parsed
     } catch (err: any) {
       const status = err?.status ?? err?.statusCode
-      // Try the next model on quota/not-found/bad-request AND transient
-      // server-side errors (503 overloaded, 500, timeouts) — cascading
-      // through every candidate model is cheap and avoids dropping to the
-      // dumber regex fallback on a one-off blip.
-      console.warn(`[parse-docx] ${modelName} failed (${status ?? err?.message ?? "unknown"}) — trying next model`)
+      console.warn(
+        `[parse-docx] Chunk ${chunkIndex}: ${modelName} failed ` +
+        `(${status ?? err?.message ?? "unknown"}) — trying next model`,
+      )
       continue
     }
   }
 
-  console.warn("[parse-docx] All Gemini models exhausted — using fallback parser")
+  // All models failed for this chunk — log and return null so the caller
+  // can skip it without aborting the rest of the document.
+  console.warn(`[parse-docx] Chunk ${chunkIndex}: all models exhausted — skipping chunk`)
   return null
+}
+
+// ── Orchestrator: chunks → sequential calls → stitched result ─────────────────
+
+async function parseWithGemini(
+  html: string,
+  moduleName: string,
+): Promise<GeminiOutput | null> {
+  if (!process.env.GEMINI_API_KEY) {
+    console.warn("[parse-docx] GEMINI_API_KEY not set — skipping AI parse")
+    return null
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  const chunks = chunkHtml(html)
+  console.log(`[parse-docx] ${chunks.length} HTML chunk(s) to process sequentially`)
+
+  const masterContexts: GeminiContext[] = []
+  const masterQuestions: GeminiQuestion[] = []
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunkNum = i + 1
+    let result: GeminiOutput | null = null
+    try {
+      result = await parseChunkWithGemini(genAI, chunks[i], moduleName, chunkNum)
+    } catch (err) {
+      // Defensive catch — parseChunkWithGemini itself should never throw,
+      // but guard here so one chunk can never crash the whole upload.
+      console.error(`[parse-docx] Chunk ${chunkNum} threw unexpectedly — skipping:`, err)
+      continue
+    }
+
+    if (!result) continue
+
+    // Prefix every context ID with "cN-" so IDs from different chunks
+    // never collide when the arrays are concatenated.
+    const prefix = `c${chunkNum}-`
+    const remappedContexts = (result.contexts ?? []).map((c) => ({
+      ...c,
+      id: `${prefix}${c.id}`,
+    }))
+    const remappedQuestions = (result.questions ?? []).map((q) => ({
+      ...q,
+      contextId: q.contextId ? `${prefix}${q.contextId}` : null,
+    }))
+
+    masterContexts.push(...remappedContexts)
+    masterQuestions.push(...remappedQuestions)
+  }
+
+  console.log(
+    `[parse-docx] Total: ${masterQuestions.length} question(s), ` +
+    `${masterContexts.length} context(s) across ${chunks.length} chunk(s)`,
+  )
+
+  if (masterQuestions.length === 0) {
+    console.warn("[parse-docx] All chunks yielded no questions — using fallback parser")
+    return null
+  }
+
+  return { contexts: masterContexts, questions: masterQuestions }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

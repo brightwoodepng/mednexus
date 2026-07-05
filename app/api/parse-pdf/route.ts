@@ -223,24 +223,50 @@ function normaliseQuestion(q: GeminiParsedQuestion, moduleName: string): ParsedQ
   }
 }
 
-async function parseWithAI(text: string, moduleName: string): Promise<ParsedQuestion[] | null> {
-  if (!process.env.GEMINI_API_KEY) return null
+// ── Text chunking ─────────────────────────────────────────────────────────────
 
-  // Send up to 200 000 chars; if longer, take first 100 000 + last 100 000 so
-  // we capture both early and late questions in very long documents.
-  const excerpt =
-    text.length > 200_000
-      ? text.slice(0, 100_000) + "\n\n[...middle truncated...]\n\n" + text.slice(-100_000)
-      : text
+/**
+ * Split plain text into chunks of ~targetWords words.
+ * Breaks are taken at question-number boundaries so no question is split
+ * across two chunks (a chunk may exceed the target slightly to honour this).
+ */
+function chunkText(text: string, targetWords = 2500): string[] {
+  // Matches the same question-start formats the fallback parser recognises:
+  //   "1."  "1)"  "1:"  "Q1."  "Question 1."  "(1)"  and up to 4-digit numbers
+  const Q_BOUNDARY = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
+  const lines = text.split("\n")
+  const chunks: string[] = []
+  let current: string[] = []
+  let wordCount = 0
 
+  for (const line of lines) {
+    const lineWords = line.trim().split(/\s+/).filter(Boolean).length
+    // Flush the current chunk at a question boundary once the target is reached
+    if (wordCount >= targetWords && Q_BOUNDARY.test(line.trim()) && current.length > 0) {
+      chunks.push(current.join("\n"))
+      current = []
+      wordCount = 0
+    }
+    current.push(line)
+    wordCount += lineWords
+  }
+  if (current.length > 0) chunks.push(current.join("\n"))
+  return chunks.filter((c) => c.trim())
+}
+
+/** Send a single text chunk to the AI and return normalised questions (never throws). */
+async function parseChunkWithAI(
+  chunk: string,
+  moduleName: string,
+  chunkIndex: number,
+): Promise<ParsedQuestion[]> {
   try {
     const responseText = await generateWithFallback(
       PARSE_PDF_SYSTEM_INSTRUCTION,
-      `Module: ${moduleName}\n\nText:\n${excerpt}`,
+      `Module: ${moduleName}\n\nText:\n${chunk}`,
     )
-    if (!responseText) return null
+    if (!responseText) return []
 
-    // responseMimeType: "application/json" guarantees valid JSON — no fence stripping needed.
     const parsed = JSON.parse(responseText) as
       | { questions?: GeminiParsedQuestion[] }
       | GeminiParsedQuestion[]
@@ -252,12 +278,29 @@ async function parseWithAI(text: string, moduleName: string): Promise<ParsedQues
         : []
 
     const normalised = raw.map((q) => normaliseQuestion(q, moduleName)).filter(Boolean) as ParsedQuestion[]
-    return normalised.length > 0 ? normalised : null
+    console.log(`[parse-pdf] Chunk ${chunkIndex}: ${normalised.length} question(s) extracted`)
+    return normalised
   } catch (err) {
-    console.error("[parse-pdf AI] Gemini error:", err)
+    // Log and skip — one bad chunk must not abort the whole upload
+    console.error(`[parse-pdf] Chunk ${chunkIndex} failed — skipping:`, err)
+    return []
+  }
+}
+
+async function parseWithAI(text: string, moduleName: string): Promise<ParsedQuestion[] | null> {
+  if (!process.env.GEMINI_API_KEY) return null
+
+  const chunks = chunkText(text)
+  console.log(`[parse-pdf] ${chunks.length} chunk(s) to process sequentially`)
+
+  const master: ParsedQuestion[] = []
+  for (let i = 0; i < chunks.length; i++) {
+    const questions = await parseChunkWithAI(chunks[i], moduleName, i + 1)
+    master.push(...questions)
   }
 
-  return null
+  console.log(`[parse-pdf] Total questions extracted: ${master.length}`)
+  return master.length > 0 ? master : null
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
