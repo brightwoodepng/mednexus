@@ -145,7 +145,7 @@ export function Sidebar({
               <NavButton glass={glassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
               <NavButton glass={glassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
               <NavButton glass={glassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} icon={<ClipboardListIcon size={18} />} label="Assessments" adminBadge="Admin" />
-              <NavButton glass={glassEnabled} active={false} onClick={() => { onOpenImporter?.(); onCloseMobile() }} icon={<ArrowUpDownIcon size={18} />} label="Import / Export" adminBadge="Admin" />
+              <NavButton glass={glassEnabled} active={false} onClick={() => { onOpenImporter?.(); onCloseMobile() }} icon={<ArrowUpDownIcon size={18} />} label="Importer" adminBadge="Admin" />
             </>
           )}
 
@@ -246,7 +246,7 @@ export function Sidebar({
           <IconButton glass={glassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
           <IconButton glass={glassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
           <IconButton glass={glassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} label="Assessments (Admin)"><ClipboardListIcon size={18} /></IconButton>
-          <IconButton glass={glassEnabled} active={false} onClick={() => onOpenImporter?.()} label="Import / Export"><ArrowUpDownIcon size={18} /></IconButton>
+          <IconButton glass={glassEnabled} active={false} onClick={() => onOpenImporter?.()} label="Importer"><ArrowUpDownIcon size={18} /></IconButton>
         </>
       )}
 
