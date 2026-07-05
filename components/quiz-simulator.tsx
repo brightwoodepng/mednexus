@@ -154,6 +154,15 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
             <FlagIcon size={17} />
             <span className="hidden sm:inline">{isFlagged ? "Flagged" : "Flag"}</span>
           </button>
+          {/* Mobile nav toggle — always visible in header on phones */}
+          <button
+            type="button"
+            onClick={() => setNavOpenMobile((v) => !v)}
+            className={`flex md:hidden items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold tabular-nums transition-colors ${navOpenMobile ? "bg-primary/10 text-primary" : "bg-muted text-foreground hover:bg-muted/80"}`}
+            title="Question navigator"
+          >
+            ⊞ {answeredCount}/{questions.length}
+          </button>
         </div>
       </header>
 
@@ -177,18 +186,11 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
 
         {/* ── Question + options column — scrolls independently ── */}
         <div className="flex flex-1 flex-col overflow-y-auto min-w-0">
-          <div className={`flex-1 px-4 pt-5 pb-24 sm:px-6 sm:pt-8 sm:pb-24 md:pb-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}>
-            <div className="mb-3 flex items-center justify-between">
+          <div className={`flex-1 px-4 pt-5 pb-6 sm:px-6 sm:pt-8 sm:pb-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}>
+            <div className="mb-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Question {index + 1} of {questions.length}
               </span>
-              <button
-                type="button"
-                onClick={() => setNavOpenMobile((v) => !v)}
-                className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground md:hidden"
-              >
-                {answeredCount}/{questions.length} answered
-              </button>
             </div>
 
             <RichText content={current.vignette} className="text-[15px] text-foreground text-pretty sm:text-base" />
@@ -283,40 +285,6 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
               </div>
             )}
           </div>
-
-          {/* Bottom bar */}
-          <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border bg-card px-4 py-3 sm:px-5">
-            <button
-              type="button"
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              disabled={index === 0}
-              className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-3 text-sm font-medium transition-colors hover:bg-muted active:bg-muted disabled:opacity-40 sm:py-2.5"
-            >
-              <ChevronLeftIcon size={18} />
-              <span className="hidden sm:inline">Previous</span>
-            </button>
-
-            {index === questions.length - 1 ? (
-              <button
-                type="button"
-                onClick={submitBlock}
-                className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80 sm:py-2.5"
-              >
-                Submit Block
-                <CheckIcon size={18} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIndex((i) => Math.min(questions.length - 1, i + 1))}
-                className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80 sm:py-2.5"
-              >
-                <span className="hidden sm:inline">Next</span>
-                <span className="sm:hidden">Next →</span>
-                <ChevronRightIcon size={18} className="hidden sm:block" />
-              </button>
-            )}
-          </div>
         </div>
 
         <NavGrid
@@ -327,6 +295,38 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
           flagged={progress.flaggedQuestionIds}
           onJump={(i) => setIndex(i)}
         />
+      </div>
+
+      {/* ── Bottom nav bar — always visible, outside the scroll area ── */}
+      <div className="shrink-0 flex items-center justify-between gap-3 border-t border-border bg-card px-4 py-3 sm:px-5">
+        <button
+          type="button"
+          onClick={() => setIndex((i) => Math.max(0, i - 1))}
+          disabled={index === 0}
+          className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted active:bg-muted disabled:opacity-40"
+        >
+          <ChevronLeftIcon size={18} />
+          <span className="hidden sm:inline">Previous</span>
+        </button>
+
+        {index === questions.length - 1 ? (
+          <button
+            type="button"
+            onClick={submitBlock}
+            className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+          >
+            Submit Block
+            <CheckIcon size={18} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIndex((i) => Math.min(questions.length - 1, i + 1))}
+            className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+          >
+            Next <ChevronRightIcon size={18} />
+          </button>
+        )}
       </div>
 
       {navOpenMobile && (
