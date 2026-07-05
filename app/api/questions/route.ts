@@ -5,7 +5,7 @@ export const maxDuration = 120
 
 // Lazy-load DB drivers so missing env vars don't crash the module
 async function getPgPool() {
-  if (!process.env.DATABASE_URL) return null
+  if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
   try {
     const { default: pool, ensureSchema } = await import("@/lib/db")
     await ensureSchema()
