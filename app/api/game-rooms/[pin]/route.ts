@@ -12,6 +12,10 @@ interface RoomPlayer {
   reactionTimeMs?: number | null
   // Wager Wars fields
   balance?: number; wagerAmount?: number | null; isSpectator?: boolean
+  // Cosmetics — embedded at join/create time for display during leaderboard reveals
+  equippedTitle?:     string | null
+  equippedFrame?:     string | null
+  equippedHighlight?: string | null
 }
 
 interface SlimQuestion {
@@ -243,6 +247,9 @@ export async function PATCH(
           id: body.playerId, name: body.playerName,
           score: 0, streak: 0, answer: null, answeredAt: null, isHost: false,
           ...(row.mode === "wager" ? { balance: 1000, wagerAmount: null, isSpectator: false } : {}),
+          equippedTitle:     (body.equippedTitle     as string | null) ?? null,
+          equippedFrame:     (body.equippedFrame     as string | null) ?? null,
+          equippedHighlight: (body.equippedHighlight as string | null) ?? null,
         }
         players.push(newPlayer)
 

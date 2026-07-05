@@ -168,6 +168,13 @@ export async function ensureSchema() {
       quantity INTEGER NOT NULL DEFAULT 1,
       PRIMARY KEY (uid, item_id)
     );
+    CREATE TABLE IF NOT EXISTS mednexus_user_cosmetics (
+      uid               TEXT    PRIMARY KEY,
+      equipped_title    TEXT,
+      equipped_frame    TEXT,
+      equipped_highlight TEXT,
+      updated_at        TIMESTAMPTZ DEFAULT NOW()
+    );
   `)
 
   // ── Step 3: Idempotent migrations for existing databases ───────────────────

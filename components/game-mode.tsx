@@ -7,7 +7,8 @@ import { RichText } from "@/components/rich-text"
 import { MultiplayerClash, CohortReview, WagerWars } from "@/components/game-mode-multiplayer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
-import { WalletBadge, DailyBountiesPanel, StoreModal, PayoutResult } from "@/components/economy-panel"
+import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/economy-panel"
+import { GameStoreModal } from "@/components/game-store-modal"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort" | "wager"
@@ -654,7 +655,7 @@ function HeroSplitScreen({ onSolo, onMulti, onBack }: {
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6">
-      {storeOpen && <StoreModal onClose={() => setStoreOpen(false)} />}
+      {storeOpen && <GameStoreModal onClose={() => setStoreOpen(false)} />}
       <div className="mx-auto w-full max-w-md">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -782,7 +783,7 @@ function ModeSelectScreen({ onSelect, onBack }: {
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6 lg:p-8">
-      {storeOpen && <StoreModal onClose={() => setStoreOpen(false)} />}
+      {storeOpen && <GameStoreModal onClose={() => setStoreOpen(false)} />}
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-7">
           <div className="flex items-center justify-between mb-5">

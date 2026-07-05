@@ -9,15 +9,23 @@ export interface BountyWithProgress extends BountyDef {
   claimed: boolean
 }
 
+export interface EquippedCosmetics {
+  title:     string | null
+  frame:     string | null
+  highlight: string | null
+}
+
 export interface EconomyContextValue {
   balance: number
   bounties: BountyWithProgress[]
   inventory: Record<string, number>
+  equippedCosmetics: EquippedCosmetics
   loading: boolean
   refresh: () => Promise<void>
   claimBounty: (bountyId: string) => Promise<{ ok: boolean; earned?: number; error?: string }>
   purchase: (itemId: string) => Promise<{ ok: boolean; error?: string }>
   useItem: (itemId: string) => Promise<boolean>
+  equipCosmetic: (type: "title" | "frame" | "highlight", itemId: string | null) => Promise<{ ok: boolean; error?: string }>
   submitGameResult: (payload: {
     mode: string
     score: number
@@ -31,12 +39,15 @@ export interface EconomyContextValue {
 
 const EconomyContext = createContext<EconomyContextValue | undefined>(undefined)
 
+const DEFAULT_COSMETICS: EquippedCosmetics = { title: null, frame: null, highlight: null }
+
 export function EconomyProvider({ children }: { children: ReactNode }) {
   const { user } = useApp()
-  const [balance, setBalance] = useState(0)
-  const [bounties, setBounties] = useState<BountyWithProgress[]>([])
-  const [inventory, setInventory] = useState<Record<string, number>>({})
-  const [loading, setLoading] = useState(false)
+  const [balance, setBalance]                       = useState(0)
+  const [bounties, setBounties]                     = useState<BountyWithProgress[]>([])
+  const [inventory, setInventory]                   = useState<Record<string, number>>({})
+  const [equippedCosmetics, setEquippedCosmetics]   = useState<EquippedCosmetics>(DEFAULT_COSMETICS)
+  const [loading, setLoading]                       = useState(false)
   const initialized = useRef(false)
 
   const refresh = useCallback(async () => {
@@ -44,15 +55,18 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     if (!uid) return
     setLoading(true)
     try {
-      const [walletRes, bountiesRes, storeRes] = await Promise.all([
+      const [walletRes, bountiesRes, storeRes, cosmeticsRes] = await Promise.all([
         fetch(`/api/economy/wallet?uid=${encodeURIComponent(uid)}`).then(r => r.json()),
         fetch(`/api/economy/bounties?uid=${encodeURIComponent(uid)}`).then(r => r.json()),
         fetch(`/api/economy/store?uid=${encodeURIComponent(uid)}`).then(r => r.json()),
+        fetch(`/api/economy/cosmetics?uid=${encodeURIComponent(uid)}`).then(r => r.json()),
       ])
       setBalance(walletRes.balance ?? 0)
       setBounties(bountiesRes.bounties ?? [])
       setInventory(storeRes.inventory ?? {})
+      setEquippedCosmetics(cosmeticsRes.equipped ?? DEFAULT_COSMETICS)
     } catch {
+      // silent — keep stale state
     } finally {
       setLoading(false)
     }
@@ -128,6 +142,27 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid])
 
+  const equipCosmetic = useCallback(async (
+    type: "title" | "frame" | "highlight",
+    itemId: string | null
+  ) => {
+    const uid = user?.uid
+    if (!uid) return { ok: false, error: "Not logged in" }
+    try {
+      const res = await fetch("/api/economy/cosmetics", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, type, itemId }),
+      })
+      const data = await res.json()
+      if (!res.ok) return { ok: false, error: data.error }
+      setEquippedCosmetics(prev => ({ ...prev, [type]: itemId }))
+      return { ok: true }
+    } catch {
+      return { ok: false, error: "Network error" }
+    }
+  }, [user?.uid])
+
   const submitGameResult = useCallback(async (payload: {
     mode: string; score: number; correct: number; total: number
     bestStreak: number; isNewHigh: boolean; survivedCount?: number
@@ -157,7 +192,10 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   }, [user?.uid])
 
   return (
-    <EconomyContext.Provider value={{ balance, bounties, inventory, loading, refresh, claimBounty, purchase, useItem, submitGameResult }}>
+    <EconomyContext.Provider value={{
+      balance, bounties, inventory, equippedCosmetics, loading,
+      refresh, claimBounty, purchase, useItem, equipCosmetic, submitGameResult,
+    }}>
       {children}
     </EconomyContext.Provider>
   )
