@@ -7,7 +7,6 @@ import {
   XIcon, CheckIcon, AlertTriangleIcon, PlusIcon, TrashIcon,
   ChevronDownIcon, ChevronRightIcon, RefreshCwIcon,
 } from "@/components/icons"
-import { detectSubject } from "@/lib/subject-detect"
 
 // ── Parser patterns (tips derived directly from these) ───────────────────────
 const PARSER_PATTERNS = [
@@ -120,18 +119,24 @@ function parseTextFallback(raw: string): RawQuestion[] {
 
 // ── Build Question ────────────────────────────────────────────────────────────
 interface ServerQuestion {
-  subject: string
+  // module: returned by AI when a MODULE: tag is present in the text
+  module?: string
+  // discipline: returned only when a DISCIPLINE: tag is present; "" otherwise (never inferred)
+  discipline: string
   vignette: string
   options: { id: string; text: string }[]
   correctAnswer: string
   explanation: { objective: string; details: string; incorrectReasoning: string }
 }
 
-function makeQuestionFromServer(sq: ServerQuestion, index: number, moduleName: string): Question {
+function makeQuestionFromServer(sq: ServerQuestion, index: number, fallbackModule: string | null): Question {
+  // Module priority: explicit MODULE: tag from AI → user-supplied fallback → undefined
+  const mod = sq.module?.trim() || fallbackModule || undefined
   return {
     id: `draft-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
-    module: moduleName || undefined,
-    subject: sq.subject || detectSubject(sq.vignette, moduleName || "Imported"),
+    module: mod,
+    // discipline: only what the document explicitly tagged — never inferred
+    subject: sq.discipline?.trim() || "",
     vignette: sq.vignette,
     options: sq.options,
     correctAnswer: sq.correctAnswer,
@@ -144,11 +149,11 @@ function makeQuestionFromServer(sq: ServerQuestion, index: number, moduleName: s
 }
 
 function makeQuestionFromRaw(r: RawQuestion, index: number): Question {
-  const fallbackSubject = r.module || "Imported"
   return {
     id: `draft-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
     module: r.module || undefined,
-    subject: r.discipline || detectSubject(r.vignette, fallbackSubject),
+    // discipline: only what was explicitly tagged in the document — never inferred
+    subject: r.discipline || "",
     vignette: r.vignette,
     options: r.options,
     correctAnswer: r.correctAnswer,
@@ -247,7 +252,9 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
 
   async function runParser(text: string) {
     setError("")
-    const mod = moduleName.trim() || "Imported Module"
+    // null when the user left the field blank so that MODULE:/DISCIPLINE: tags
+    // in the document are respected without any override.
+    const fallbackModule = moduleName.trim() || null
 
     // Try server-side parser (AI + regex)
     try {
@@ -255,13 +262,13 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
       const res = await fetch("/api/parse-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, moduleName: mod }),
+        body: JSON.stringify({ text, fallbackModule }),
       })
       if (res.ok) {
         const data = await res.json()
         const qs: ServerQuestion[] = data.questions ?? []
         if (qs.length > 0) {
-          setParsedQuestions(qs.map((q, i) => makeQuestionFromServer(q, i, mod)))
+          setParsedQuestions(qs.map((q, i) => makeQuestionFromServer(q, i, fallbackModule)))
           setParseSource(data.source === "ai" ? "ai" : "regex")
           setStep("review")
           return
@@ -281,7 +288,8 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
     }
     const questions = raw.map((r, i) => {
       const q = makeQuestionFromRaw(r, i)
-      if (mod) q.module = mod
+      // Apply fallback module only when the document had no MODULE: tag for this question
+      if (fallbackModule && !q.module) q.module = fallbackModule
       return q
     })
     setParsedQuestions(questions)
@@ -351,17 +359,21 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
         <div className="flex-1 overflow-y-auto">
           {step === "upload" ? (
             <div className="space-y-5 p-6">
-              {/* Module name */}
+              {/* Optional fallback module name */}
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Module Name <span className="normal-case font-normal text-muted-foreground/70">(all imported questions will be assigned here)</span>
+                  Module Name{" "}
+                  <span className="normal-case font-normal text-muted-foreground/70">
+                    (optional — MODULE: tags in the document take priority)
+                  </span>
                 </label>
                 <input
                   type="text"
                   value={moduleName}
                   onChange={(e) => setModuleName(e.target.value)}
-                  placeholder="e.g. Level 400 Clinicals"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  placeholder="e.g. Level 400 Clinicals (Optional fallback)"
+                  disabled={isProcessing}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
                 />
               </div>
 

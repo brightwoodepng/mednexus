@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateWithFallback } from "@/lib/gemini"
-import { detectSubject } from "@/lib/subject-detect"
 
 export const maxDuration = 45
 
 interface ParsedQuestion {
-  subject: string
+  module: string
+  discipline: string  // explicit DISCIPLINE: tag only; "" if not tagged
   vignette: string
   options: { id: string; text: string }[]
   correctAnswer: string
@@ -27,9 +27,17 @@ function cleanText(t: string): string {
 }
 
 // ── Regex-based MCQ parser ────────────────────────────────────────────────────
-function parseQuestions(raw: string, defaultSubject: string): ParsedQuestion[] {
+/**
+ * Regex-based MCQ parser with stateful MODULE:/DISCIPLINE: tag tracking.
+ * Tag priority: explicit tag in text > fallbackModule > "Uncategorized" (module)
+ *               explicit tag in text > ""                                (discipline)
+ */
+function parseQuestions(raw: string, fallbackModule: string): ParsedQuestion[] {
   const text = cleanText(raw)
   const results: ParsedQuestion[] = []
+
+  const TAG_MODULE     = /^MODULE\s*[:.-]\s*(.+)/i
+  const TAG_DISCIPLINE = /^(?:DISCIPLINE|SUBJECT|TOPIC)\s*[:.-]\s*(.+)/i
 
   // Split on question boundaries: "1." / "1)" / "(1)" / "Q1." / "Q1)" / "Question 1"
   const qSplitter = /(?:^|\n)[ \t]*(?:Question\s+|Q\.?\s*)?(\d{1,3})[.):\s][ \t]*\S/gm
@@ -40,16 +48,43 @@ function parseQuestions(raw: string, defaultSubject: string): ParsedQuestion[] {
   }
   if (boundaries.length === 0) return results
 
+  // Scan the full text before the first question boundary for initial tags
+  let activeModule     = fallbackModule
+  let activeDiscipline = ""
+
+  const prefixLines = text.slice(0, boundaries[0]).split("\n")
+  for (const line of prefixLines) {
+    const modM = TAG_MODULE.exec(line.trim())
+    if (modM) { activeModule = modM[1].trim(); continue }
+    const discM = TAG_DISCIPLINE.exec(line.trim())
+    if (discM) { activeDiscipline = discM[1].trim() }
+  }
+
   for (let i = 0; i < boundaries.length; i++) {
-    const block = text.slice(boundaries[i], i + 1 < boundaries.length ? boundaries[i + 1] : text.length).trim()
-    const q = parseBlock(block, defaultSubject)
+    const blockStart = boundaries[i]
+    const blockEnd   = i + 1 < boundaries.length ? boundaries[i + 1] : text.length
+    const blockText  = text.slice(blockStart, blockEnd)
+
+    // Scan this block for leading tag lines before the question stem
+    const blockLines = blockText.split("\n")
+    for (const line of blockLines) {
+      const modM = TAG_MODULE.exec(line.trim())
+      if (modM) { activeModule = modM[1].trim(); continue }
+      const discM = TAG_DISCIPLINE.exec(line.trim())
+      if (discM) { activeDiscipline = discM[1].trim() }
+    }
+
+    const q = parseBlock(blockText.trim(), activeModule, activeDiscipline)
     if (q) results.push(q)
   }
 
   return results
 }
 
-function parseBlock(block: string, defaultSubject: string): ParsedQuestion | null {
+function parseBlock(block: string, activeModule: string, activeDiscipline: string): ParsedQuestion | null {
+  const TAG_MODULE     = /^MODULE\s*[:.-]\s*(.+)/i
+  const TAG_DISCIPLINE = /^(?:DISCIPLINE|SUBJECT|TOPIC)\s*[:.-]\s*(.+)/i
+
   const lines = block.split("\n").map((l) => l.trim()).filter(Boolean)
   if (lines.length < 3) return null
 
@@ -72,6 +107,12 @@ function parseBlock(block: string, defaultSubject: string): ParsedQuestion | nul
 
     if (inExplanation) { explanationLines.push(line); continue }
 
+    // Tag lines within a block update the active values for this block
+    const modM = TAG_MODULE.exec(line)
+    if (modM) { activeModule = modM[1].trim(); continue }
+    const discM = TAG_DISCIPLINE.exec(line)
+    if (discM) { activeDiscipline = discM[1].trim(); continue }
+
     const ansM = line.match(answerPattern)
     if (ansM) { answerLine = ansM[1].toUpperCase(); inExplanation = false; continue }
 
@@ -87,14 +128,12 @@ function parseBlock(block: string, defaultSubject: string): ParsedQuestion | nul
       inOptions = true
       const id = (optM[1] ?? optM[2]).toUpperCase()
       const text = optM[3].trim()
-      // Avoid duplicate IDs
       if (!options.find((o) => o.id === id)) options.push({ id, text })
       continue
     }
 
     // Option continuation: indented line after an option, no new pattern matched
     if (inOptions && options.length > 0 && !line.match(/^(?:Question\s+|Q\.?\s*)?\d{1,3}[.):\s]/)) {
-      // Only append if not a new question boundary
       options[options.length - 1].text += " " + line
       continue
     }
@@ -127,7 +166,8 @@ function parseBlock(block: string, defaultSubject: string): ParsedQuestion | nul
     : vignetteText.slice(0, 120).trim()
 
   return {
-    subject: detectSubject(vignetteText, defaultSubject),
+    module: activeModule,
+    discipline: activeDiscipline,  // explicit DISCIPLINE: tag only; "" if not tagged
     vignette: vignetteText,
     options,
     correctAnswer,
@@ -147,10 +187,11 @@ value is an array.
 
 Each element must exactly match:
 {
-  "subject":      string,  // the specific medical discipline this question tests
-  "vignette":     string,  // full question stem — preserve all clinical detail
-  "options":      [{ "id": "A", "text": "..." }, ...],  // A–E only, each id must be unique
-  "correctAnswer": string | null,  // single uppercase letter matching an option id; null if not stated
+  "module":        string,        // see MODULE rules below
+  "discipline":    string,        // see DISCIPLINE rules below — may be ""
+  "vignette":      string,        // full question stem — preserve all clinical detail
+  "options":       [{ "id": "A", "text": "..." }, ...],  // A–E only, each id must be unique
+  "correctAnswer": string | null, // single uppercase letter matching an option id; null if not stated
   "explanation": {
     "objective":          string,  // ≤1 sentence: what concept is tested
     "details":            string,  // why the correct answer is right
@@ -158,21 +199,28 @@ Each element must exactly match:
   } | null
 }
 
-SUBJECT DETECTION (important — do this per question, do NOT just copy the module name):
-- Determine the actual clinical discipline being tested from the vignette content
-  itself, e.g. "Cardiology", "Endocrinology", "Pulmonology", "Nephrology",
-  "Gastroenterology", "Neurology", "Infectious Disease", "Obstetrics &
-  Gynecology", "Pediatrics", "Psychiatry", "Hematology", "Rheumatology",
-  "Dermatology", "General Surgery", "Pharmacology", etc.
-- Use the disease, organ system, or drug class discussed — not the file/module
-  name the user supplied — to pick the subject for EACH question.
-- Different questions in the same document commonly belong to different
-  disciplines (e.g. a document titled "Internal Medicine" may mix cardiology,
-  endocrine, and pulmonary questions) — assign each one its own specific
-  subject rather than a single blanket label.
-- Only fall back to the supplied moduleName if the vignette gives no
-  discernible clinical clue at all.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CATEGORIZATION RULES — apply per question in this exact order:
 
+MODULE (field: "module"):
+  Priority 1: If the text contains a line MODULE: [Name] above this question
+    (before any subsequent MODULE: line), extract exactly what is written — do
+    not alter a single character.
+  Priority 2: If no MODULE: tag precedes this question, use the fallbackModule
+    value provided in the input prompt.
+  Priority 3: If no MODULE: tag exists AND fallbackModule is null or empty,
+    set "module" to "Uncategorized".
+
+DISCIPLINE (field: "discipline") — STRICT ANTI-HALLUCINATION RULE:
+  Priority 1: If the text contains a line DISCIPLINE: [Name] or SUBJECT: [Name]
+    or TOPIC: [Name] above this question (before any subsequent tag of that
+    kind), extract exactly what is written — do not alter a single character.
+  Priority 2: If NO such tag precedes this question, set "discipline" to ""
+    (empty string). You are STRICTLY FORBIDDEN from guessing, inferring, or
+    inventing a discipline from the question's clinical content. Zero creativity —
+    if it was not explicitly written in the source text with a tag, return "".
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Rules:
 - Return ONLY the JSON object — no markdown fences, no preamble.
 - If a question has no explanation, set explanation to null.
@@ -183,7 +231,8 @@ Rules:
 
 // Raw shape Gemini may return (nullable fields before normalisation)
 interface GeminiParsedQuestion {
-  subject?: string
+  module?: string
+  discipline?: string
   vignette?: string
   options?: { id: string; text: string }[]
   correctAnswer?: string | null
@@ -196,11 +245,15 @@ interface GeminiParsedQuestion {
 
 /**
  * Normalise a Gemini-returned question into the ParsedQuestion contract:
+ * - module:        explicit MODULE: tag → fallbackModule → "Uncategorized"
+ * - discipline:    explicit DISCIPLINE:/SUBJECT:/TOPIC: tag only → "" if absent (no inference)
  * - correctAnswer: always a non-empty string (falls back to first option id or "A")
  * - explanation:   always a non-null object (falls back to empty strings)
- * Preserves the existing API contract so consumers are never broken.
  */
-function normaliseQuestion(q: GeminiParsedQuestion, moduleName: string): ParsedQuestion | null {
+function normaliseQuestion(
+  q: GeminiParsedQuestion,
+  fallbackModule: string,
+): ParsedQuestion | null {
   const vignette = q.vignette?.trim()
   const options = q.options?.filter(
     (o) => typeof o.id === "string" && /^[A-E]$/i.test(o.id) && typeof o.text === "string",
@@ -215,7 +268,9 @@ function normaliseQuestion(q: GeminiParsedQuestion, moduleName: string): ParsedQ
   const explanation = q.explanation ?? { objective: "", details: "", incorrectReasoning: "" }
 
   return {
-    subject: q.subject?.trim() || detectSubject(vignette, moduleName),
+    module: q.module?.trim() || fallbackModule,
+    // discipline: only what was explicitly tagged — never inferred from clinical content
+    discipline: q.discipline?.trim() ?? "",
     vignette,
     options,
     correctAnswer,
@@ -257,13 +312,13 @@ function chunkText(text: string, targetWords = 2500): string[] {
 /** Send a single text chunk to the AI and return normalised questions (never throws). */
 async function parseChunkWithAI(
   chunk: string,
-  moduleName: string,
+  fallbackModule: string,
   chunkIndex: number,
 ): Promise<ParsedQuestion[]> {
   try {
     const responseText = await generateWithFallback(
       PARSE_PDF_SYSTEM_INSTRUCTION,
-      `Module: ${moduleName}\n\nText:\n${chunk}`,
+      `fallbackModule: ${fallbackModule}\n\nText:\n${chunk}`,
     )
     if (!responseText) return []
 
@@ -277,7 +332,7 @@ async function parseChunkWithAI(
         ? (parsed as { questions: GeminiParsedQuestion[] }).questions
         : []
 
-    const normalised = raw.map((q) => normaliseQuestion(q, moduleName)).filter(Boolean) as ParsedQuestion[]
+    const normalised = raw.map((q) => normaliseQuestion(q, fallbackModule)).filter(Boolean) as ParsedQuestion[]
     console.log(`[parse-pdf] Chunk ${chunkIndex}: ${normalised.length} question(s) extracted`)
     return normalised
   } catch (err) {
@@ -287,7 +342,7 @@ async function parseChunkWithAI(
   }
 }
 
-async function parseWithAI(text: string, moduleName: string): Promise<ParsedQuestion[] | null> {
+async function parseWithAI(text: string, fallbackModule: string): Promise<ParsedQuestion[] | null> {
   if (!process.env.GEMINI_API_KEY) return null
 
   const chunks = chunkText(text)
@@ -295,7 +350,7 @@ async function parseWithAI(text: string, moduleName: string): Promise<ParsedQues
 
   const master: ParsedQuestion[] = []
   for (let i = 0; i < chunks.length; i++) {
-    const questions = await parseChunkWithAI(chunks[i], moduleName, i + 1)
+    const questions = await parseChunkWithAI(chunks[i], fallbackModule, i + 1)
     master.push(...questions)
   }
 
@@ -306,17 +361,21 @@ async function parseWithAI(text: string, moduleName: string): Promise<ParsedQues
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const { text, moduleName = "Imported Module" } = await req.json()
-    if (!text || typeof text !== "string") {
+    const body = await req.json()
+    if (!body.text || typeof body.text !== "string") {
       return NextResponse.json({ error: "text is required" }, { status: 400 })
     }
+    const text: string = body.text
+    // Accept fallbackModule (new) or moduleName (legacy) — null/empty → "Uncategorized"
+    const fallbackModule: string =
+      (body.fallbackModule ?? body.moduleName ?? "").trim() || "Uncategorized"
 
-    const aiResult = await parseWithAI(text, moduleName)
+    const aiResult = await parseWithAI(text, fallbackModule)
     if (aiResult && aiResult.length > 0) {
       return NextResponse.json({ questions: aiResult, source: "ai" })
     }
 
-    const questions = parseQuestions(text, moduleName)
+    const questions = parseQuestions(text, fallbackModule)
     return NextResponse.json({ questions, source: "regex" })
   } catch (err) {
     console.error("[parse-pdf]", err)
