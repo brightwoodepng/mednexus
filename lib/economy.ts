@@ -26,7 +26,6 @@ export const BOUNTY_POOL: BountyDef[] = [
 
 /** Pick 3 bounties for today, deterministically based on date */
 export function getTodaysBounties(): BountyDef[] {
-  const today = new Date().toISOString().slice(0, 10)
   const dayNum = Math.floor(Date.now() / 86_400_000)
   const indices: number[] = []
   let seed = dayNum
@@ -48,12 +47,68 @@ export interface StoreItem {
   desc: string
   icon: string
   price: number
-  category: "lifeline" | "cosmetic"
-  maxQuantity?: number // undefined = unlimited stacking
+  category: "lifeline" | "cosmetic" | "vault"
+  maxQuantity?: number // undefined = unlimited stacking; 1 = one-time purchase
   gradient: string
+  cosmeticType?: "title" | "frame" | "highlight"
+}
+
+// ── Vault metadata for rich case-study display ──────────────────────────────
+export interface VaultMeta {
+  difficulty: "Intermediate" | "Advanced" | "Expert"
+  steps: number
+  discipline: string
+  preview: string
+}
+
+export const VAULT_META: Record<string, VaultMeta> = {
+  vault_sepsis_cascade: {
+    difficulty: "Advanced", steps: 6, discipline: "Critical Care",
+    preview: "Hour 1 in the ED: lactate 4.2 mmol/L, BP 82/54…",
+  },
+  vault_stemi_2am: {
+    difficulty: "Advanced", steps: 5, discipline: "Cardiology",
+    preview: "ST elevation II, III, aVF — door-to-balloon clock ticking…",
+  },
+  vault_dka_peds: {
+    difficulty: "Expert", steps: 7, discipline: "Pediatrics",
+    preview: "pH 7.08, glucose 480 mg/dL, altered 12-year-old…",
+  },
+  vault_bacterial_meningitis: {
+    difficulty: "Intermediate", steps: 5, discipline: "Neurology",
+    preview: "Neck stiffness, petechiae, GCS 13 and falling…",
+  },
+  vault_hepatic_failure: {
+    difficulty: "Expert", steps: 8, discipline: "Gastroenterology",
+    preview: "INR 3.8, encephalopathy grade II, transplant center on hold…",
+  },
+}
+
+// ── Cosmetic display helpers ──────────────────────────────────────────────────
+
+/** Short display label for title cosmetics shown in-game */
+export const TITLE_LABELS: Record<string, string> = {
+  title_chief_resident: "Chief Resident",
+  title_attending:      "Attending",
+  title_fellow:         "Fellow",
+  title_intern:         "The Intern",
+}
+
+/** Tailwind ring classes for avatar frame cosmetics */
+export const FRAME_RING_CLASSES: Record<string, string> = {
+  frame_gold: "ring-2 ring-amber-400 ring-offset-1",
+  frame_neon: "ring-2 ring-cyan-400 ring-offset-1 animate-pulse",
+  frame_fire: "ring-2 ring-orange-500 ring-offset-1",
+}
+
+/** Tailwind border+bg classes for leaderboard highlight cosmetics */
+export const HIGHLIGHT_ROW_CLASSES: Record<string, string> = {
+  highlight_gold: "border-amber-300 dark:border-amber-600/50 bg-amber-50/70 dark:bg-amber-900/25",
+  highlight_neon: "border-emerald-300 dark:border-emerald-600/50 bg-emerald-50/70 dark:bg-emerald-900/25",
 }
 
 export const STORE_ITEMS: StoreItem[] = [
+  // ── Supply Closet — Consumable lifelines ─────────────────────────────────
   {
     id: "lifeline_50_50",
     name: "Consult Attending",
@@ -72,35 +127,162 @@ export const STORE_ITEMS: StoreItem[] = [
     category: "lifeline",
     gradient: "from-blue-500 to-cyan-600",
   },
+
+  // ── The Vault — Premium clinical simulations ─────────────────────────────
+  {
+    id: "vault_sepsis_cascade",
+    name: "The Sepsis Cascade",
+    desc: "6-step sepsis management simulation. Fluid resuscitation, cultures, and antibiotic escalation under time pressure.",
+    icon: "🧬",
+    price: 800,
+    category: "vault",
+    maxQuantity: 1,
+    gradient: "from-rose-500 to-orange-600",
+  },
+  {
+    id: "vault_stemi_2am",
+    name: "STEMI at 2 AM",
+    desc: "5-step STEMI pathway. Navigate cath lab decision, anticoagulation choice, and post-PCI management.",
+    icon: "❤️",
+    price: 750,
+    category: "vault",
+    maxQuantity: 1,
+    gradient: "from-red-500 to-rose-600",
+  },
+  {
+    id: "vault_dka_peds",
+    name: "Pediatric DKA",
+    desc: "7-step new-onset DKA with cerebral edema risk. Insulin dosing, fluid rate, and neuro monitoring.",
+    icon: "🩸",
+    price: 700,
+    category: "vault",
+    maxQuantity: 1,
+    gradient: "from-violet-500 to-indigo-600",
+  },
+  {
+    id: "vault_bacterial_meningitis",
+    name: "Bacterial Meningitis",
+    desc: "5-step meningitis emergency. LP timing, empiric antibiotics, steroid decision, and ICP management.",
+    icon: "🧠",
+    price: 650,
+    category: "vault",
+    maxQuantity: 1,
+    gradient: "from-amber-500 to-yellow-600",
+  },
+  {
+    id: "vault_hepatic_failure",
+    name: "Acute Liver Failure",
+    desc: "8-step acute-on-chronic liver failure. Encephalopathy grading, coagulopathy management, and transplant criteria.",
+    icon: "🫀",
+    price: 900,
+    category: "vault",
+    maxQuantity: 1,
+    gradient: "from-green-500 to-emerald-600",
+  },
+
+  // ── Cosmetics — Custom Titles ─────────────────────────────────────────────
   {
     id: "title_chief_resident",
-    name: "\"Chief Resident\"",
-    desc: "Display the Chief Resident title on your profile",
+    name: '"Chief Resident"',
+    desc: "Displayed as a badge next to your name during multiplayer leaderboard reveals",
     icon: "⭐",
     price: 500,
     category: "cosmetic",
     maxQuantity: 1,
     gradient: "from-amber-500 to-orange-500",
+    cosmeticType: "title",
   },
   {
     id: "title_attending",
-    name: "\"Attending\"",
-    desc: "Display the Attending title on your profile",
+    name: '"Attending"',
+    desc: "Display the Attending title next to your name in multiplayer",
     icon: "🎓",
     price: 300,
     category: "cosmetic",
     maxQuantity: 1,
     gradient: "from-violet-500 to-purple-600",
+    cosmeticType: "title",
   },
   {
     id: "title_fellow",
-    name: "\"Fellow\"",
-    desc: "Display the Fellow title on your profile",
+    name: '"Fellow"',
+    desc: "Display the Fellow title next to your name in multiplayer",
     icon: "🔬",
     price: 200,
     category: "cosmetic",
     maxQuantity: 1,
     gradient: "from-fuchsia-500 to-pink-600",
+    cosmeticType: "title",
+  },
+  {
+    id: "title_intern",
+    name: '"The Intern"',
+    desc: "A badge of honor for surviving the first year — displayed in multiplayer",
+    icon: "😅",
+    price: 75,
+    category: "cosmetic",
+    maxQuantity: 1,
+    gradient: "from-sky-400 to-blue-500",
+    cosmeticType: "title",
+  },
+
+  // ── Cosmetics — Avatar Frames ─────────────────────────────────────────────
+  {
+    id: "frame_gold",
+    name: "Gold Frame",
+    desc: "Glowing golden ring around your player avatar in multiplayer rooms",
+    icon: "🏅",
+    price: 400,
+    category: "cosmetic",
+    maxQuantity: 1,
+    gradient: "from-yellow-400 to-amber-500",
+    cosmeticType: "frame",
+  },
+  {
+    id: "frame_neon",
+    name: "Neon Pulse",
+    desc: "Animated cyan neon ring that pulses around your avatar during leaderboard reveals",
+    icon: "💫",
+    price: 600,
+    category: "cosmetic",
+    maxQuantity: 1,
+    gradient: "from-cyan-400 to-teal-500",
+    cosmeticType: "frame",
+  },
+  {
+    id: "frame_fire",
+    name: "On Fire",
+    desc: "Flickering red-orange flame ring for top scorers",
+    icon: "🔥",
+    price: 700,
+    category: "cosmetic",
+    maxQuantity: 1,
+    gradient: "from-orange-500 to-red-600",
+    cosmeticType: "frame",
+  },
+
+  // ── Cosmetics — Leaderboard Highlights ───────────────────────────────────
+  {
+    id: "highlight_gold",
+    name: "Gold Row",
+    desc: "Your leaderboard row glows gold during multiplayer score reveals",
+    icon: "✨",
+    price: 350,
+    category: "cosmetic",
+    maxQuantity: 1,
+    gradient: "from-yellow-400 to-orange-400",
+    cosmeticType: "highlight",
+  },
+  {
+    id: "highlight_neon",
+    name: "Neon Row",
+    desc: "Neon green highlight on your leaderboard entry when scores are shown",
+    icon: "🟢",
+    price: 300,
+    category: "cosmetic",
+    maxQuantity: 1,
+    gradient: "from-emerald-400 to-green-500",
+    cosmeticType: "highlight",
   },
 ]
 

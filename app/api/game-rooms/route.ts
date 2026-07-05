@@ -23,11 +23,14 @@ export async function POST(req: Request) {
   try {
     await ensureSchema()
     const body = await req.json()
-    const { mode, hostId, hostName, questionPool } = body as {
+    const { mode, hostId, hostName, questionPool, equippedTitle, equippedFrame, equippedHighlight } = body as {
       mode: "clash" | "cohort" | "wager"
       hostId: string
       hostName: string
       questionPool: Question[]
+      equippedTitle?: string | null
+      equippedFrame?: string | null
+      equippedHighlight?: string | null
     }
 
     if (!mode || !hostId || !hostName || !Array.isArray(questionPool) || questionPool.length === 0) {
@@ -52,6 +55,9 @@ export async function POST(req: Request) {
     const hostPlayer = {
       id: hostId, name: hostName, score: 0, streak: 0, answer: null, answeredAt: null, isHost: true,
       ...(mode === "wager" ? { balance: 1000, wagerAmount: null, isSpectator: false } : {}),
+      equippedTitle:     equippedTitle     ?? null,
+      equippedFrame:     equippedFrame     ?? null,
+      equippedHighlight: equippedHighlight ?? null,
     }
 
     await pool.query(

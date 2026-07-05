@@ -5,6 +5,8 @@ import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
+import { useEconomy } from "@/contexts/economy-context"
+import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES } from "@/lib/economy"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MultiMode = "clash" | "cohort" | "wager"
@@ -21,6 +23,10 @@ interface RoomPlayer {
   status?: "active" | "disconnected"
   // Wager Wars
   balance?: number; wagerAmount?: number | null; isSpectator?: boolean
+  // Cosmetics (equipped by the player; embedded at join/create time)
+  equippedTitle?:     string | null
+  equippedFrame?:     string | null
+  equippedHighlight?: string | null
 }
 
 interface SlimQuestion {
@@ -81,11 +87,17 @@ function countFilter(allQ: Question[], filter: GameFilter): number {
 }
 
 // ── API helpers ───────────────────────────────────────────────────────────────
-async function apiCreateRoom(mode: MultiMode, hostId: string, hostName: string, pool: Question[]): Promise<string> {
+async function apiCreateRoom(
+  mode: MultiMode,
+  hostId: string,
+  hostName: string,
+  pool: Question[],
+  cosmetics?: { equippedTitle?: string | null; equippedFrame?: string | null; equippedHighlight?: string | null }
+): Promise<string> {
   const res = await fetch("/api/game-rooms", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode, hostId, hostName, questionPool: pool }),
+    body: JSON.stringify({ mode, hostId, hostName, questionPool: pool, ...cosmetics }),
   })
   if (!res.ok) throw new Error(await res.text())
   const data = await res.json()
@@ -136,21 +148,29 @@ function CopyPinCard({ pin }: { pin: string }) {
 }
 
 function PlayerRow({ player, rank, showScore }: { player: RoomPlayer; rank?: number; showScore?: boolean }) {
+  const frameClass  = player.equippedFrame     ? (FRAME_RING_CLASSES[player.equippedFrame]         ?? "") : ""
+  const rowClass    = player.equippedHighlight ? (HIGHLIGHT_ROW_CLASSES[player.equippedHighlight]  ?? "") : ""
+  const titleLabel  = player.equippedTitle     ? (TITLE_LABELS[player.equippedTitle]               ?? null) : null
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5">
+    <div className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-all ${rowClass || "border-border bg-card"}`}>
       {rank !== undefined && (
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${frameClass}
           ${rank === 1 ? "bg-amber-400 text-white" : rank === 2 ? "bg-slate-400 text-white" : rank === 3 ? "bg-amber-700 text-white" : "bg-muted text-muted-foreground"}`}>
           {rank}
         </span>
       )}
       {!rank && player.isHost && (
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs">👑</span>
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs ${frameClass}`}>👑</span>
       )}
       {!rank && !player.isHost && (
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs">👤</span>
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs ${frameClass}`}>👤</span>
       )}
       <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{player.name}</span>
+      {titleLabel && (
+        <span className="shrink-0 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+          {titleLabel}
+        </span>
+      )}
       {showScore && <span className="tabular-nums text-sm font-bold text-primary">{player.score.toLocaleString()}</span>}
       {player.isHost && !rank && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">Host</span>}
     </div>
@@ -225,16 +245,26 @@ function Leaderboard({ players, highlight }: { players: RoomPlayer[]; highlight?
   return (
     <div className="grid gap-2">
       {sorted.map((p, i) => {
-        const pct = Math.max((p.score / maxScore) * 100, 2)
-        const isMe = p.id === highlight
+        const pct        = Math.max((p.score / maxScore) * 100, 2)
+        const isMe       = p.id === highlight
+        const frameClass = p.equippedFrame     ? (FRAME_RING_CLASSES[p.equippedFrame]         ?? "") : ""
+        const rowClass   = p.equippedHighlight ? (HIGHLIGHT_ROW_CLASSES[p.equippedHighlight]  ?? "") : ""
+        const titleLabel = p.equippedTitle     ? (TITLE_LABELS[p.equippedTitle]               ?? null) : null
+        // "You" highlight takes priority; cosmetic highlight applies to others
+        const rowStyle   = isMe ? "border-primary bg-primary/5" : (rowClass || "border-border bg-card")
         return (
-          <div key={p.id} className={`rounded-2xl border p-3 ${isMe ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
+          <div key={p.id} className={`rounded-2xl border p-3 transition-all ${rowStyle}`}>
             <div className="mb-1.5 flex items-center gap-2">
-              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${frameClass}
                 ${i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-slate-400 text-white" : i === 2 ? "bg-amber-700 text-white" : "bg-muted text-muted-foreground"}`}>
                 {i + 1}
               </span>
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{p.name}{isMe ? " (You)" : ""}</span>
+              {titleLabel && (
+                <span className="shrink-0 rounded-full bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:text-amber-300">
+                  {titleLabel}
+                </span>
+              )}
               <span className="tabular-nums text-sm font-bold text-foreground">{p.score.toLocaleString()}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -779,6 +809,7 @@ function JoinScreen({ onJoined, onBack }: {
   onJoined: (pin: string, playerId: string) => void
   onBack: () => void
 }) {
+  const { equippedCosmetics } = useEconomy()
   const [pin, setPin] = useState("")
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
@@ -789,7 +820,14 @@ function JoinScreen({ onJoined, onBack }: {
     setLoading(true); setError("")
     try {
       const pid = getOrCreatePlayerId()
-      const res = await apiAction(pin.trim(), { action: "join", playerId: pid, playerName: name.trim() })
+      const res = await apiAction(pin.trim(), {
+        action: "join",
+        playerId: pid,
+        playerName: name.trim(),
+        equippedTitle:     equippedCosmetics.title,
+        equippedFrame:     equippedCosmetics.frame,
+        equippedHighlight: equippedCosmetics.highlight,
+      })
       if (!res) { setError("Room not found or already started."); setLoading(false); return }
       onJoined(pin.trim(), pid)
     } catch {
@@ -836,6 +874,7 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
   mode: MultiMode; onCreated: (pin: string, hostId: string) => void; onBack: () => void
 }) {
   const { questions: allQ } = useQuestions()
+  const { equippedCosmetics } = useEconomy()
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
   const [qCount, setQCount] = useState(10)
   const [hostName, setHostName] = useState("")
@@ -855,7 +894,11 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
       const pool = filterQuestions(allQ, filter).slice(0, clampedCount)
       if (pool.length === 0) { setError("No questions found for the selected filter."); setLoading(false); return }
       const hostId = getOrCreatePlayerId()
-      const pin = await apiCreateRoom(mode, hostId, hostName.trim(), pool)
+      const pin = await apiCreateRoom(mode, hostId, hostName.trim(), pool, {
+        equippedTitle:     equippedCosmetics.title,
+        equippedFrame:     equippedCosmetics.frame,
+        equippedHighlight: equippedCosmetics.highlight,
+      })
       onCreated(pin, hostId)
     } catch {
       setError("Failed to create room. Please try again.")
