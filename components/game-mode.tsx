@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
-import { MultiplayerClash, CohortReview } from "@/components/game-mode-multiplayer"
+import { MultiplayerClash, CohortReview, WagerWars } from "@/components/game-mode-multiplayer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, StoreModal, PayoutResult } from "@/components/economy-panel"
@@ -1546,6 +1546,7 @@ export function GameMode({ onExit }: { onExit: () => void }) {
   if (activeMode === "double") return <DoubleJeopardyMode onExit={() => setActiveMode(null)} />
   if (activeMode === "clash") return <MultiplayerClash onExit={() => setActiveMode(null)} />
   if (activeMode === "cohort") return <CohortReview onExit={() => setActiveMode(null)} />
+  if (activeMode === "wager") return <WagerWars onExit={() => setActiveMode(null)} />
 
   return <ModeSelectScreen onSelect={setActiveMode} onBack={onExit} />
 }

@@ -7,8 +7,8 @@ import { RichText } from "@/components/rich-text"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type MultiMode = "clash" | "cohort"
-type RoomPhase = "lobby" | "question" | "reveal" | "done"
+type MultiMode = "clash" | "cohort" | "wager"
+type RoomPhase = "lobby" | "wager" | "question" | "reveal" | "done"
 type FilterScope = "all" | "module" | "subject"
 
 interface GameFilter { scope: FilterScope; value: string | null }
@@ -18,6 +18,8 @@ interface RoomPlayer {
   id: string; name: string; score: number; streak: number
   answer: string | null; answeredAt: number | null; isHost: boolean
   reactionTimeMs?: number | null
+  // Wager Wars
+  balance?: number; wagerAmount?: number | null; isSpectator?: boolean
 }
 
 interface SlimQuestion {
@@ -532,9 +534,11 @@ function CohortHostHUD({ room, onAdvance, onFinish, onLeave }: {
   const revealed = room.phase === "reveal"
   const totalPlayers = room.players.length
   const answered = room.players.filter(p => p.answer !== null).length
+  // Sort locally so we can show up to top 10 without changing the server payload
+  const top10 = [...room.players].sort((a, b) => b.score - a.score).slice(0, 10)
 
   return (
-    <div className="flex min-h-full flex-col gap-4 p-4 sm:p-6 max-w-3xl mx-auto">
+    <div className="flex min-h-full flex-col gap-4 p-4 sm:p-6 max-w-5xl mx-auto">
       {/* Progress bar */}
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
         <span className="text-sm font-bold text-foreground">Q {room.currentQi + 1}/{room.questionPool.length}</span>
@@ -551,8 +555,8 @@ function CohortHostHUD({ room, onAdvance, onFinish, onLeave }: {
       {/* Main content */}
       {revealed ? (
         <div className="flex-1 rounded-3xl border border-border bg-card p-5">
-          <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Top 5 Leaderboard</p>
-          <Leaderboard players={room.leaderboard} />
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Top 10 Leaderboard</p>
+          <Leaderboard players={top10} />
           <div className="mt-5 flex gap-2">
             {room.currentQi + 1 < room.questionPool.length ? (
               <button type="button" onClick={onAdvance}
@@ -569,21 +573,28 @@ function CohortHostHUD({ room, onAdvance, onFinish, onLeave }: {
         </div>
       ) : (
         <>
-          <div className="flex-1 rounded-3xl border-2 border-primary/20 bg-card p-6">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
+          {/* Split-screen: vignette on left + live Top 10 on right */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div className="lg:col-span-3 rounded-3xl border-2 border-primary/20 bg-card p-6">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
+              </div>
+              <RichText content={q.vignette} className="text-lg font-medium text-foreground sm:text-xl" />
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                {q.options.map((opt, i) => (
+                  <div key={opt.id} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-white font-bold ${OPTION_COLORS[i]}`}>
+                    <span className="text-xl">{OPTION_ICONS[i]}</span>
+                    <span className="text-sm">{opt.id}. {opt.text}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <RichText content={q.vignette} className="text-lg font-medium text-foreground sm:text-xl" />
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              {q.options.map((opt, i) => (
-                <div key={opt.id} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-white font-bold ${OPTION_COLORS[i]}`}>
-                  <span className="text-xl">{OPTION_ICONS[i]}</span>
-                  <span className="text-sm">{opt.id}. {opt.text}</span>
-                </div>
-              ))}
+            <div className="lg:col-span-2 rounded-3xl border border-border bg-card p-5">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">🔴 Live Top 10</p>
+              <Leaderboard players={top10} />
             </div>
           </div>
-          {/* Answer tick counter */}
+          {/* Answer tick counter + host reveal button */}
           <div className="flex gap-2">
             <div className="flex-1 rounded-2xl border border-border bg-card p-3 text-center">
               <p className="text-2xl font-extrabold tabular-nums text-foreground">{answered}</p>
@@ -710,8 +721,10 @@ function FinalResults({ room, myId, onExit }: { room: RoomState; myId: string; o
 
         {me && (
           <div className="mb-5 rounded-3xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-5 text-center">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Your Final Score</p>
-            <p className="text-5xl font-extrabold tabular-nums text-foreground">{me.score.toLocaleString()}</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">{room.mode === "wager" ? "Final Balance" : "Your Final Score"}</p>
+            <p className="text-5xl font-extrabold tabular-nums text-foreground">
+              {me.score.toLocaleString()}{room.mode === "wager" ? " 🪙" : ""}
+            </p>
             <p className="mt-2 text-sm text-muted-foreground">Rank #{myRank} of {sorted.length}</p>
           </div>
         )}
@@ -800,9 +813,9 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
 
   const maxQ = Math.max(countFilter(allQ, filter), 5)
   const clampedCount = Math.min(qCount, maxQ)
-  const modeLabel = mode === "clash" ? "Multiplayer Clash" : "Cohort Review"
-  const modeIcon = mode === "clash" ? "⚔️" : "🎓"
-  const modeGradient = mode === "clash" ? "from-violet-600 to-fuchsia-600" : "from-teal-500 to-cyan-500"
+  const modeLabel = mode === "clash" ? "Multiplayer Clash" : mode === "cohort" ? "Cohort Review" : "Wager Wars"
+  const modeIcon = mode === "clash" ? "⚔️" : mode === "cohort" ? "🎓" : "🎰"
+  const modeGradient = mode === "clash" ? "from-violet-600 to-fuchsia-600" : mode === "cohort" ? "from-teal-500 to-cyan-500" : "from-amber-500 to-orange-500"
 
   async function create() {
     if (!hostName.trim()) { setError("Please enter your display name."); return }
@@ -827,7 +840,7 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
           <div className="mb-3 text-4xl">{modeIcon}</div>
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">{modeLabel}</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            {mode === "clash" ? "Competitive room · Max 5 players" : "Lecture hall mode · Unlimited players"}
+            {mode === "clash" ? "Competitive room · Max 5 players" : mode === "cohort" ? "Lecture hall mode · Unlimited players" : "Betting game · Max 8 players · Starting balance: 1,000 chips"}
           </p>
         </div>
 
@@ -849,6 +862,234 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
           Back
         </button>
       </div>
+    </div>
+  )
+}
+
+// ── WAGER HUD ─────────────────────────────────────────────────────────────────
+// Handles all three active wager-mode phases: wager → question → reveal
+const WAGER_PRESETS = [10, 25, 50, 100]
+
+function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, onLeave, myLastAnswerCorrect }: {
+  room: RoomState; myId: string; isHost: boolean
+  onWager: (amount: number) => void
+  onAnswer: (answer: string, answerText: string) => void
+  onAdvance: () => void
+  onFinish: () => void
+  onLeave: () => void
+  myLastAnswerCorrect: boolean | null
+}) {
+  const q = room.questionPool[room.currentQi]
+  if (!q) return null
+
+  const me = room.players.find(p => p.id === myId)
+  const myAnswer = me?.answer ?? null
+  const myWager = me?.wagerAmount ?? null
+  const myBalance = me?.balance ?? 1000
+  const isSpectator = me?.isSpectator ?? false
+  const isWagerPhase = room.phase === "wager"
+  const isQuestionPhase = room.phase === "question"
+  const revealed = room.phase === "reveal"
+
+  // During question phase, show tentative balance = balance minus locked wager
+  // to convey "you've already committed these chips"
+  const displayBalance = isQuestionPhase && myWager !== null ? myBalance - myWager : myBalance
+
+  // Presets that fit within the current balance
+  const affordablePresets = WAGER_PRESETS.filter(amt => amt <= myBalance)
+
+  return (
+    <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
+      {/* HUD bar */}
+      <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
+        <span className="text-xs font-bold text-muted-foreground">Q {room.currentQi + 1}/{room.questionPool.length}</span>
+        <div className="flex-1" />
+        {isWagerPhase && (
+          <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+            Wager Phase
+          </span>
+        )}
+        {isSpectator && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+            👁 Spectator
+          </span>
+        )}
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] text-amber-600 dark:text-amber-400">🪙</span>
+          <span className="tabular-nums text-sm font-extrabold text-foreground">{displayBalance.toLocaleString()}</span>
+          {revealed && myLastAnswerCorrect !== null && myWager !== null && (
+            <span className={`text-xs font-bold ${myLastAnswerCorrect ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
+              ({myLastAnswerCorrect ? `+${myWager}` : `-${myWager}`})
+            </span>
+          )}
+        </div>
+        <button type="button" onClick={onLeave}
+          className="flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:opacity-80 active:scale-95">
+          ✕ Leave
+        </button>
+      </div>
+
+      {/* Spectator banner */}
+      {isSpectator && (
+        <div className="rounded-2xl border border-amber-200 dark:border-amber-800/30 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-center">
+          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">👁 Spectator Mode</p>
+          <p className="text-xs text-amber-600/80 dark:text-amber-500/80 mt-0.5">Balance hit 0 — you can still follow along.</p>
+        </div>
+      )}
+
+      {/* Vignette — always visible; options hidden by server during wager phase */}
+      <div className={`rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-amber-300/60 dark:border-amber-700/40" : "border-primary/20"}`}>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
+          {isWagerPhase && (
+            <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+              Place your wager — options revealed after everyone bets
+            </span>
+          )}
+        </div>
+        <RichText content={q.vignette} className="text-sm font-medium text-foreground sm:text-base" />
+      </div>
+
+      {/* ── WAGER PHASE ── */}
+      {isWagerPhase && !isSpectator && (
+        myWager !== null ? (
+          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800/30 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3 text-center">
+            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">🔒 Wager locked — {myWager.toLocaleString()} chips</p>
+            <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-0.5">Waiting for all players to wager…</p>
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-border bg-card p-4">
+            <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">How much will you wager?</p>
+            <p className="mb-3 text-[11px] text-muted-foreground">
+              Balance: <strong className="text-foreground">{myBalance.toLocaleString()} chips</strong>
+            </p>
+            {affordablePresets.length > 0 && (
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {affordablePresets.map(amt => (
+                  <button key={amt} type="button" onClick={() => onWager(amt)}
+                    className="rounded-2xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 py-3 text-sm font-extrabold text-amber-700 dark:text-amber-400 transition-all hover:bg-amber-100 dark:hover:bg-amber-900/40 active:scale-95">
+                    {amt}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button type="button" onClick={() => onWager(myBalance)}
+              className="w-full rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-extrabold text-white shadow-lg transition-all hover:opacity-90 active:scale-95">
+              🎰 All-In — {myBalance.toLocaleString()} chips
+            </button>
+            {affordablePresets.length === 0 && myBalance > 0 && (
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">All presets exceed your balance — All-In is your only option</p>
+            )}
+          </div>
+        )
+      )}
+
+      {/* WAGER PHASE: spectator waiting message */}
+      {isWagerPhase && isSpectator && (
+        <div className="rounded-2xl border border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground">
+          ⏳ Waiting for active players to place their wagers…
+        </div>
+      )}
+
+      {/* ── QUESTION PHASE: answer options ── */}
+      {isQuestionPhase && (
+        <>
+          <div className="grid gap-2">
+            {q.options.map((opt, i) => (
+              <MultiOptionBtn
+                key={opt.id} id={opt.id} text={opt.text}
+                sel={myAnswer === opt.id}
+                correct={opt.id === q.correctAnswer}
+                revealed={false}
+                colorIndex={i}
+                disabled={myAnswer !== null || isSpectator}
+                onSel={() => { if (!isSpectator) onAnswer(opt.id, opt.text) }}
+              />
+            ))}
+          </div>
+          {myAnswer !== null ? (
+            myLastAnswerCorrect !== null ? (
+              <p className="text-center text-xs font-semibold text-muted-foreground">
+                {myLastAnswerCorrect ? "✅ Correct! Waiting for others…" : "❌ Wrong. Waiting for others…"}
+              </p>
+            ) : (
+              <p className="text-center text-xs font-semibold text-muted-foreground">⏳ Submitted! Waiting for others…</p>
+            )
+          ) : isSpectator ? (
+            <p className="text-center text-xs font-semibold text-muted-foreground">👁 Spectating — answer locked</p>
+          ) : (
+            myWager !== null && (
+              <p className="text-center text-[11px] text-muted-foreground">
+                Wagered: <strong className="text-amber-600 dark:text-amber-400">{myWager.toLocaleString()} chips</strong> · Pick your answer
+              </p>
+            )
+          )}
+        </>
+      )}
+
+      {/* ── REVEAL PHASE ── */}
+      {revealed && (
+        <>
+          <div className="grid gap-2">
+            {q.options.map((opt, i) => (
+              <MultiOptionBtn
+                key={opt.id} id={opt.id} text={opt.text}
+                sel={myAnswer === opt.id}
+                correct={opt.id === q.correctAnswer}
+                revealed={true}
+                colorIndex={i}
+                disabled={true}
+                onSel={() => {}}
+              />
+            ))}
+          </div>
+
+          <div className={`rounded-2xl border px-4 py-3 text-center ${
+            isSpectator ? "border-border bg-muted/40"
+            : myLastAnswerCorrect ? "border-emerald-200 dark:border-emerald-800/30 bg-emerald-50 dark:bg-emerald-950/20"
+            : myAnswer !== null ? "border-rose-200 dark:border-rose-800/30 bg-rose-50 dark:bg-rose-950/20"
+            : "border-border bg-muted/40"
+          }`}>
+            {isSpectator ? (
+              <p className="text-sm font-semibold text-muted-foreground">👁 Spectating</p>
+            ) : myLastAnswerCorrect && myWager !== null ? (
+              <>
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">✅ Correct! +{myWager.toLocaleString()} chips</p>
+                <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-0.5">New balance: {myBalance.toLocaleString()} chips</p>
+              </>
+            ) : myAnswer !== null && myWager !== null ? (
+              <>
+                <p className="text-sm font-bold text-rose-600 dark:text-rose-400">❌ Wrong — {myWager.toLocaleString()} chips lost</p>
+                {myBalance <= 0
+                  ? <p className="text-xs text-rose-500/80 mt-0.5">Balance depleted — entering Spectator Mode next round</p>
+                  : <p className="text-xs text-rose-500/80 mt-0.5">Remaining balance: {myBalance.toLocaleString()} chips</p>
+                }
+              </>
+            ) : (
+              <p className="text-sm font-semibold text-muted-foreground">⏱ No answer submitted — wager lost</p>
+            )}
+          </div>
+
+          {isHost && (
+            <div className="flex gap-2">
+              {room.currentQi + 1 < room.questionPool.length ? (
+                <button type="button" onClick={onAdvance}
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-3.5 text-base font-bold text-white shadow-lg transition-all hover:opacity-90">
+                  Next Round →
+                </button>
+              ) : (
+                <button type="button" onClick={onFinish}
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3.5 text-base font-bold text-white shadow-lg transition-all hover:opacity-90">
+                  End & Show Results
+                </button>
+              )}
+            </div>
+          )}
+          {!isHost && (
+            <p className="text-center text-xs text-muted-foreground animate-pulse">⏳ Waiting for host to advance…</p>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -898,11 +1139,14 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   useEffect(() => {
     if (!room) return
     const currentQuestionId = room.questionPool[room.currentQi]?.id ?? String(room.currentQi)
-    const key = `${room.phase === "question" ? "q" : room.phase}-${room.currentQi}`
-    if (room.phase === "question" && questionKeyRef.current !== key) {
+    // Key on currentQi only — wager mode starts a new round in "wager" phase,
+    // normal modes start in "question" phase. Either way, a new qi = new round.
+    const key = String(room.currentQi)
+    const isNewRound = questionKeyRef.current !== key
+    if ((room.phase === "question" || room.phase === "wager") && isNewRound) {
       questionStartRef.current = Date.now()
       questionKeyRef.current = key
-      setMyLastAnswerCorrect(null) // fresh question — clear previous result
+      setMyLastAnswerCorrect(null) // fresh round — clear previous result
     }
 
     if (room.phase !== "done") {
@@ -921,6 +1165,12 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   }
 
   async function handleStart() { await doAction({ action: "start" }) }
+
+  // Wager Wars: lock in a chip wager before options are revealed.
+  // The server clamps the amount to [10, player.balance].
+  async function handleWager(amount: number) {
+    await doAction({ action: "place_wager", playerId: myId, wagerAmount: amount })
+  }
 
   // Send both the option ID (answer) and its full display text (answerText).
   // The server validates by matching the selected text against the correct
@@ -986,6 +1236,23 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
 
   if (room.phase === "done") {
     return <FinalResults room={room} myId={myId} onExit={onExit} />
+  }
+
+  // Wager Wars — single HUD handles wager/question/reveal phases
+  if (room.mode === "wager") {
+    return (
+      <WagerHUD
+        room={room}
+        myId={myId}
+        isHost={isHost}
+        onWager={handleWager}
+        onAnswer={handleAnswer}
+        onAdvance={handleAdvance}
+        onFinish={handleFinish}
+        onLeave={handleExit}
+        myLastAnswerCorrect={myLastAnswerCorrect}
+      />
+    )
   }
 
   // Playing phase (question or reveal)
@@ -1135,4 +1402,59 @@ export function CohortReview({ onExit }: { onExit: () => void }) {
   }
 
   return <GameRoomController pin={pin} myId={myId} isHost={isHost} isCohortHost={isHost} mode="cohort" onExit={onExit} />
+}
+
+// ── WAGER WARS ENTRY POINT ────────────────────────────────────────────────────
+export function WagerWars({ onExit }: { onExit: () => void }) {
+  const resumed = useRef(loadActiveRoomSession())
+  const canResume = resumed.current?.mode === "wager"
+  const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
+  const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
+  const [myId, setMyId] = useState(canResume ? resumed.current!.myId : "")
+  const [isHost, setIsHost] = useState(canResume ? resumed.current!.isHost : false)
+
+  if (view === "select") {
+    return (
+      <div className="flex min-h-full flex-col items-center justify-center p-6 gap-4">
+        <div className="w-full max-w-sm">
+          <div className="mb-6 text-center">
+            <div className="text-4xl mb-3">🎰</div>
+            <h1 className="text-xl font-extrabold tracking-tight text-foreground">Wager Wars</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Max 8 players · Bet chips · Balance hits 0 → Spectator</p>
+          </div>
+          <div className="grid gap-3">
+            <button type="button" onClick={() => setView("create")}
+              className="w-full rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-4 text-base font-bold text-white shadow-lg transition-all hover:opacity-90">
+              👑 Create a Room
+            </button>
+            <button type="button" onClick={() => setView("join")}
+              className="w-full rounded-2xl border border-border bg-card py-4 text-base font-bold text-foreground transition-all hover:bg-muted">
+              🎰 Join a Room
+            </button>
+          </div>
+          <button type="button" onClick={onExit} className="mt-4 w-full rounded-2xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+            Back
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (view === "create") {
+    return (
+      <CreateRoomScreen mode="wager" onBack={() => setView("select")} onCreated={(p, id) => {
+        setPin(p); setMyId(id); setIsHost(true); setView("room")
+      }} />
+    )
+  }
+
+  if (view === "join") {
+    return (
+      <JoinScreen onBack={() => setView("select")} onJoined={(p, id) => {
+        setPin(p); setMyId(id); setIsHost(false); setView("room")
+      }} />
+    )
+  }
+
+  return <GameRoomController pin={pin} myId={myId} isHost={isHost} isCohortHost={false} mode="wager" onExit={onExit} />
 }

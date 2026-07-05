@@ -269,6 +269,11 @@ export async function PATCH(
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Missing playerId or wagerAmount" }, { status: 400 })
         }
+        // Only the player themselves may place their own wager
+        if (!body.requesterId || body.requesterId !== body.playerId) {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
         if (row.phase !== "wager") {
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Not in wager phase" }, { status: 409 })
@@ -283,7 +288,11 @@ export async function PATCH(
           if (p.wagerAmount !== null) return p // already wagered
           if (p.isSpectator) return p
           const balance = p.balance ?? 1000
-          const clampedWager = Math.max(10, Math.min(Math.floor(body.wagerAmount!), balance))
+          // If balance is below the 10-chip floor, allow wagering whatever
+          // remains — prevents the Math.max(10, ...) from inflating the wager
+          // above the player's actual balance (which would award free chips).
+          const minWager = Math.min(10, balance)
+          const clampedWager = Math.max(minWager, Math.min(Math.floor(body.wagerAmount!), balance))
           return { ...p, wagerAmount: clampedWager }
         })
 
@@ -343,6 +352,9 @@ export async function PATCH(
         players = players.map(p => {
           if (p.id !== body.playerId) return p
           if (p.answer !== null) return p // already answered
+          // Spectators in wager mode cannot submit answers — they're locked out
+          // of scoring and their vote would corrupt the "all answered" check
+          if (row.mode === "wager" && p.isSpectator) return p
 
           if (row.mode === "wager") {
             const wagerAmt = p.wagerAmount ?? 0
