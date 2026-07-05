@@ -177,7 +177,7 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
 
         {/* ── Question + options column — scrolls independently ── */}
         <div className="flex flex-1 flex-col overflow-y-auto min-w-0">
-          <div className={`flex-1 px-4 py-5 sm:px-6 sm:py-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}>
+          <div className={`flex-1 px-4 pt-5 pb-24 sm:px-6 sm:pt-8 sm:pb-24 md:pb-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}>
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Question {index + 1} of {questions.length}
@@ -185,7 +185,7 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
               <button
                 type="button"
                 onClick={() => setNavOpenMobile((v) => !v)}
-                className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground lg:hidden"
+                className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground md:hidden"
               >
                 {answeredCount}/{questions.length} answered
               </button>
@@ -320,7 +320,7 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
         </div>
 
         <NavGrid
-          className="hidden w-60 shrink-0 lg:flex"
+          className="hidden w-60 shrink-0 md:flex"
           questions={questions}
           index={index}
           answers={answers}
@@ -330,7 +330,7 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
       </div>
 
       {navOpenMobile && (
-        <div className="fixed inset-0 z-30 lg:hidden">
+        <div className="fixed inset-0 z-30 md:hidden">
           <button
             type="button"
             aria-label="Close navigator"
