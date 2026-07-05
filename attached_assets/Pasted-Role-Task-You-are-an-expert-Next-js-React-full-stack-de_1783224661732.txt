@@ -1,0 +1,63 @@
+Role & Task: You are an expert Next.js/React full-stack developer. We need to completely refactor our Word Document Importer to resolve two critical issues: (1) We are hitting a 504 Gateway Timeout on Vercel because a single backend request takes too long to process all Gemini chunks for large files. (2) The required "MODULE NAME" frontend input field accidentally overrides the smart MODULE: and DISCIPLINE: tags written inside the actual Word documents.
+
+Instructions to Fix Both Issues:
+
+1. Refactor the Frontend UI (Make Input an Optional Fallback):
+
+Open the Word Importer modal component in the frontend.
+
+Change the "MODULE NAME" text input field to be strictly optional.
+
+Update its placeholder text to say: e.g. Level 400 Clinicals (Optional fallback)
+
+Ensure the file dropzone remains fully active and allows files to be dropped even if this input text field is left completely empty.
+
+2. Implement Frontend Orchestration & Progress Tracking:
+
+Inside the Word Importer component, add React state variables to track processing status: [progressMessage, setProgressMessage] and [isProcessing, setIsProcessing].
+
+Update the asynchronous file upload handler function to follow this exact pipeline:
+
+Send the raw uploaded file to our text extraction endpoint (/api/parse-docx) to get the document's complete raw text string.
+
+If the user did type something into the optional "MODULE NAME" field, capture it as a variable called fallbackModule. If they left it blank, set it to null.
+
+Inside the browser, chunk the giant raw text string into smaller blocks of approximately 1,500 words each.
+
+Initialize an empty master array to collect the final stitched question objects.
+
+Run a sequential for...of loop to process the text chunks one by one. For each chunk, update the UI progress message (e.g., setProgressMessage("Processing batch ${index + 1} of ${totalChunks}...")).
+
+Send a POST request to our new endpoint /api/extract-single-chunk passing both the { textChunk } and the { fallbackModule }.
+
+Push the returned JSON question array from each chunk into your master array.
+
+Once the loop finishes processing all chunks, pass the completely combined master array to the application's central tree-view drafts area.
+
+3. Refactor the Text-Extraction Route (Backend):
+
+Open the main Word document upload API route (e.g., app/api/parse-docx/route.ts).
+
+Completely strip out all Gemini AI extraction, chunking, and loops from this route.
+
+Refactor this endpoint so it strictly parses the file, extracts the raw unparsed text string from the Word document, and instantly returns it to the client: { text: "..." }. This ensures the endpoint resolves in less than 2 seconds, completely avoiding timeouts.
+
+4. Create the Single-Chunk Processing Route with Smart Hierarchy (Backend):
+
+Create a new, dedicated API endpoint: POST /api/extract-single-chunk.
+
+This endpoint must accept a JSON payload containing: { textChunk, fallbackModule }.
+
+Pass the text chunk to the Gemini API using our standard medical parsing system instructions.
+
+Update the AI Categorization Rules in the system prompt to enforce this strict hierarchy:
+
+Priority 1: If the text chunk explicitly contains a MODULE: or DISCIPLINE: tag before a question, you MUST categorize it under those exact names.
+
+Priority 2: If the text chunk does NOT contain tags, check the provided fallbackModule variable. If it exists, apply it to the questions.
+
+Priority 3: If no tags exist in the text AND the fallbackModule is null, use 'Uncategorized'.
+
+Safely parse the Gemini JSON array response and return it to the client.
+
+Execution: Implement this end-to-end client-side orchestration and fallback priority logic. Include robust error catch blocks in the frontend loop so that if a single chunk fails, it skips it or logs it but continues processing the remaining chunks so the entire upload doesn't fail. Confirm when fully deployed.

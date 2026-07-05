@@ -8,14 +8,14 @@ import {
 } from "@/components/icons"
 import { detectSubject } from "@/lib/subject-detect"
 
-// ── Format tips (match what both the regex and Gemini parsers support) ────────
+// ── Format tips ───────────────────────────────────────────────────────────────
 const FORMAT_TIPS = [
   {
-    text: 'Start a module section with:  MODULE: Module Name  on its own line',
+    text: 'Tag a module section with:  MODULE: Module Name  on its own line',
     color: "text-emerald-500",
   },
   {
-    text: 'Start a discipline section with:  DISCIPLINE: Name  (or SUBJECT: / TOPIC:)',
+    text: 'Tag a discipline with:  DISCIPLINE: Name  (or SUBJECT: / TOPIC:)',
     color: "text-emerald-500",
   },
   {
@@ -35,11 +35,11 @@ const FORMAT_TIPS = [
     color: "text-emerald-500",
   },
   {
-    text: 'For shared clinical vignettes, place the passage immediately above the group of questions it belongs to — Gemini will group them automatically',
+    text: 'MODULE: and DISCIPLINE: tags in the document always take priority over the optional fallback name below',
     color: "text-sky-500",
   },
   {
-    text: 'You can embed images (X-rays, ECGs, tables) directly in the Word document — Gemini reads them as visual context',
+    text: 'For shared clinical vignettes, place the passage immediately above the group of questions',
     color: "text-sky-500",
   },
   {
@@ -48,7 +48,30 @@ const FORMAT_TIPS = [
   },
 ]
 
-// ── Client-side regex fallback (same parser as PDF modal) ─────────────────────
+// ── Client-side text chunker (question-boundary-aware) ────────────────────────
+function chunkText(text: string, targetWords = 1500): string[] {
+  const Q_BOUNDARY = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
+  const lines = text.split(/\r?\n/)
+  const chunks: string[] = []
+  let current = ""
+  let wordCount = 0
+
+  for (const line of lines) {
+    const words = line.split(/\s+/).filter(Boolean).length
+    // Flush at a question boundary once the target word count is reached
+    if (wordCount >= targetWords && Q_BOUNDARY.test(line.trimStart()) && current) {
+      chunks.push(current)
+      current = ""
+      wordCount = 0
+    }
+    current += line + "\n"
+    wordCount += words
+  }
+  if (current.trim()) chunks.push(current)
+  return chunks.filter((c) => c.trim())
+}
+
+// ── Client-side regex fallback (used only if ALL network calls fail) ──────────
 interface RawQuestion {
   module: string
   discipline: string
@@ -103,18 +126,10 @@ function parseTextFallback(raw: string): RawQuestion[] {
     if (discM) { flush(); currentDiscipline = discM[1].trim(); continue }
 
     const ansM = ansPattern.exec(line)
-    if (ansM && pending) {
-      pending.correctAnswer = ansM[1].toUpperCase()
-      collectingExplanation = false
-      continue
-    }
+    if (ansM && pending) { pending.correctAnswer = ansM[1].toUpperCase(); collectingExplanation = false; continue }
 
     const expM = explPattern.exec(line)
-    if (expM && pending) {
-      collectingExplanation = true
-      pending.explanation = line.replace(explPattern, "").trim()
-      continue
-    }
+    if (expM && pending) { collectingExplanation = true; pending.explanation = line.replace(explPattern, "").trim(); continue }
 
     const optM = optPattern.exec(line)
     if (optM && (pending || inOptions)) {
@@ -136,13 +151,7 @@ function parseTextFallback(raw: string): RawQuestion[] {
     const qM = /^(?:Question\s+|Q\.?\s*)?(\d{1,4})[.):\s]+(.+)/.exec(line)
     if (qM) {
       flush()
-      pending = {
-        module: currentModule,
-        discipline: currentDiscipline,
-        vignette: qM[2].trim(),
-        correctAnswer: "A",
-        explanation: "",
-      }
+      pending = { module: currentModule, discipline: currentDiscipline, vignette: qM[2].trim(), correctAnswer: "A", explanation: "" }
       continue
     }
 
@@ -154,63 +163,42 @@ function parseTextFallback(raw: string): RawQuestion[] {
       }
     }
   }
-
   flush()
   return results
 }
 
-// ── Build Question from Gemini output ────────────────────────────────────────
-interface ServerContext {
-  id: string
-  type: string
-  content: string
-}
-
-interface ServerQuestion {
-  contextId?: string | null
-  questionType?: string
-  subject?: string
+// ── Question builders ─────────────────────────────────────────────────────────
+interface ChunkQuestion {
+  module?: string
+  discipline?: string
   vignette: string
   options: { id: string; text: string }[]
   correctAnswer: string | null
-  explanation: {
-    objective: string
-    details: string
-    incorrectReasoning: string
-  } | null
+  explanation: string | null
 }
 
-function makeQuestionFromServer(
-  q: ServerQuestion,
-  index: number,
-  moduleName: string,
-  contextMap: Map<string, string>,
-): Question {
-  const ctxId = q.contextId ?? null
+function makeQuestionFromChunk(q: ChunkQuestion, index: number, fallbackModule: string | null): Question {
+  const mod = q.module?.trim() || fallbackModule || undefined
   return {
     id: `docx-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
-    module: moduleName || undefined,
-    subject: q.subject?.trim() || moduleName || "Imported",
+    module: mod,
+    subject: q.discipline?.trim() || mod || "Imported",
     vignette: q.vignette,
     options: q.options,
-    correctAnswer: q.correctAnswer ?? null,
-    explanation: q.explanation ?? null,
-    contextId: ctxId,
-    // Denormalize the shared context content so the quiz/exam can render it
-    // without a separate fetch — same pattern used by the live assessment flow.
-    contextContent: ctxId ? (contextMap.get(ctxId) ?? null) : null,
-    questionType: (q.questionType as any) ?? "STANDARD_MCQ",
+    correctAnswer: q.correctAnswer,
+    explanation: q.explanation
+      ? { objective: "", details: q.explanation, incorrectReasoning: "" }
+      : null,
+    questionType: "STANDARD_MCQ",
   }
 }
 
-function makeQuestionFromRaw(r: RawQuestion, index: number, moduleName: string): Question {
-  const fallbackSubject = r.module || moduleName || "Imported"
+function makeQuestionFromRaw(r: RawQuestion, index: number, fallbackModule: string | null): Question {
+  const mod = r.module || fallbackModule || undefined
+  const fallbackSubject = mod || "Imported"
   return {
     id: `docx-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
-    module: r.module || moduleName || undefined,
-    // Explicit DISCIPLINE:/SUBJECT: markers win; otherwise detect from the
-    // vignette content so a document without markers doesn't dump every
-    // question under one blanket subject.
+    module: mod,
     subject: r.discipline || detectSubject(r.vignette, fallbackSubject),
     vignette: r.vignette,
     options: r.options,
@@ -232,7 +220,7 @@ function Spinner({ size = 20 }: { size?: number }) {
   )
 }
 
-// ── Preview Card (mirrors PDF modal exactly) ──────────────────────────────────
+// ── Preview Card ──────────────────────────────────────────────────────────────
 function PreviewCard({ q, index, onRemove }: { q: Question; index: number; onRemove: () => void }) {
   const [open, setOpen] = useState(false)
   return (
@@ -291,22 +279,6 @@ function PreviewCard({ q, index, onRemove }: { q: Question; index: number; onRem
   )
 }
 
-// ── Parse step labels ─────────────────────────────────────────────────────────
-type ParseStep = "idle" | "uploading" | "parsing-ai" | "parsing-regex"
-const parseStatusLabel: Record<ParseStep, string> = {
-  idle: "",
-  uploading: "Extracting document content…",
-  "parsing-ai": "AI is reading your questions…",
-  "parsing-regex": "Parsing with fallback parser…",
-}
-
-// ── Source badge config ───────────────────────────────────────────────────────
-type ParseSource = "ai" | "regex" | null
-const sourceLabel: Record<string, { label: string; color: string }> = {
-  ai: { label: "✦ AI parsed", color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" },
-  regex: { label: "Fallback parsed", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-}
-
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface WordImportModalProps {
   defaultModule?: string
@@ -318,14 +290,14 @@ interface WordImportModalProps {
 export function WordImportModal({ defaultModule = "", onImport, onClose }: WordImportModalProps) {
   const [step, setStep] = useState<"upload" | "review">("upload")
   const [dragOver, setDragOver] = useState(false)
-  const [parseStep, setParseStep] = useState<ParseStep>("idle")
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [progressMessage, setProgressMessage] = useState("")
   const [error, setError] = useState("")
   const [parsedQuestions, setParsedQuestions] = useState<Question[]>([])
+  // Optional fallback module — MODULE:/DISCIPLINE: tags in the doc always win
   const [moduleName, setModuleName] = useState(defaultModule)
-  const [parseSource, setParseSource] = useState<ParseSource>(null)
+  const [parseSource, setParseSource] = useState<"ai" | "regex" | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const isProcessing = parseStep !== "idle"
 
   async function processFile(file: File) {
     if (!file.name.toLowerCase().endsWith(".docx")) {
@@ -334,50 +306,81 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
     }
 
     setError("")
-    const mod = moduleName.trim() || "Imported Module"
+    setIsProcessing(true)
+    setProgressMessage("Extracting document text…")
+
+    // fallbackModule is null when the user left the field blank so that
+    // the AI respects MODULE:/DISCIPLINE: tags without any override.
+    const fallbackModule = moduleName.trim() || null
 
     try {
-      setParseStep("uploading")
+      // ── Step 1: Extract raw text from the document ──────────────────────────
       const formData = new FormData()
       formData.append("file", file)
-      formData.append("moduleName", mod)
 
-      const res = await fetch("/api/parse-docx", { method: "POST", body: formData })
+      const extractRes = await fetch("/api/parse-docx", { method: "POST", body: formData })
+      if (!extractRes.ok) {
+        const body = await extractRes.json().catch(() => ({}))
+        throw new Error((body as any).error ?? `Server error ${extractRes.status}`)
+      }
+      const { text } = await extractRes.json() as { text: string }
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error((body as any).error ?? `Server error ${res.status}`)
+      if (!text?.trim()) {
+        throw new Error("The document appears to be empty or could not be read.")
       }
 
-      const data = await res.json() as {
-        source: "gemini" | "fallback"
-        questions?: ServerQuestion[]
-        contexts?: ServerContext[]
-        extractedText?: string
+      // ── Step 2: Chunk the text client-side (~1 500 words per chunk) ─────────
+      const chunks = chunkText(text, 1500)
+      if (chunks.length === 0) {
+        throw new Error("No content found in the document.")
       }
 
-      // ── Gemini succeeded (or server-side fallback returned structured data) ──
-      if (data.source === "gemini" && data.questions && data.questions.length > 0) {
-        setParseStep("parsing-ai")
-        // Build contextId → content map so each question gets its shared passage/table/image
-        const contextMap = new Map<string, string>(
-          (data.contexts ?? []).map((c) => [c.id, c.content])
-        )
-        const questions = data.questions.map((q, i) => makeQuestionFromServer(q, i, mod, contextMap))
-        setParsedQuestions(questions)
+      setProgressMessage(`Preparing ${chunks.length} batch${chunks.length !== 1 ? "es" : ""}…`)
+
+      // ── Step 3: Sequential loop — send each chunk to the AI endpoint ────────
+      const master: Question[] = []
+      let questionIndex = 0
+      let chunksSucceeded = 0
+
+      for (let i = 0; i < chunks.length; i++) {
+        setProgressMessage(`Processing batch ${i + 1} of ${chunks.length}…`)
+
+        try {
+          const res = await fetch("/api/extract-single-chunk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ textChunk: chunks[i], fallbackModule }),
+          })
+
+          if (!res.ok) {
+            console.warn(`[word-import] Chunk ${i + 1} returned ${res.status} — skipping`)
+            continue
+          }
+
+          const data = await res.json() as { questions?: ChunkQuestion[] }
+          const chunkQuestions = data.questions ?? []
+
+          for (const q of chunkQuestions) {
+            master.push(makeQuestionFromChunk(q, questionIndex++, fallbackModule))
+          }
+          chunksSucceeded++
+        } catch (chunkErr) {
+          // Log the failure but continue — a single bad chunk must not abort the job.
+          console.warn(`[word-import] Chunk ${i + 1} failed:`, chunkErr)
+        }
+      }
+
+      // ── Step 4: Handle result ───────────────────────────────────────────────
+      if (master.length > 0) {
+        setParsedQuestions(master)
         setParseSource("ai")
         setStep("review")
         return
       }
 
-      // ── Gemini unavailable — use returned extractedText with client regex ──
-      setParseStep("parsing-regex")
-      const text = data.extractedText ?? ""
-      if (!text.trim()) {
-        setError("The document appears to be empty or could not be read.")
-        return
-      }
-
+      // AI succeeded at the network level but returned no questions for any
+      // chunk — fall back to the client-side regex parser on the full text.
+      setProgressMessage("AI returned no questions — using fallback parser…")
       const raw = parseTextFallback(text)
       if (raw.length === 0) {
         setError(
@@ -385,15 +388,15 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
         )
         return
       }
-
-      const questions = raw.map((r, i) => makeQuestionFromRaw(r, i, mod))
+      const questions = raw.map((r, i) => makeQuestionFromRaw(r, i, fallbackModule))
       setParsedQuestions(questions)
       setParseSource("regex")
       setStep("review")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to process document.")
     } finally {
-      setParseStep("idle")
+      setIsProcessing(false)
+      setProgressMessage("")
     }
   }
 
@@ -404,7 +407,12 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
     if (file) processFile(file)
   }
 
-  const src = parseSource ? sourceLabel[parseSource] : null
+  const sourceBadge =
+    parseSource === "ai"
+      ? { label: "✦ AI parsed", color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" }
+      : parseSource === "regex"
+      ? { label: "Fallback parsed", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" }
+      : null
 
   return (
     <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
@@ -417,8 +425,8 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
               <h3 className="font-bold text-foreground">
                 {step === "upload" ? "Import from Word (.docx)" : `Review Questions (${parsedQuestions.length})`}
               </h3>
-              {step === "review" && src && (
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${src.color}`}>{src.label}</span>
+              {step === "review" && sourceBadge && (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${sourceBadge.color}`}>{sourceBadge.label}</span>
               )}
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -441,24 +449,25 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
           {step === "upload" ? (
             <div className="space-y-5 p-6">
 
-              {/* Module name */}
+              {/* Optional fallback module name */}
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Module Name{" "}
                   <span className="normal-case font-normal text-muted-foreground/70">
-                    (all imported questions will be assigned here)
+                    (optional — MODULE: tags in the document take priority)
                   </span>
                 </label>
                 <input
                   type="text"
                   value={moduleName}
                   onChange={(e) => setModuleName(e.target.value)}
-                  placeholder="e.g. Level 400 Clinicals"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  placeholder="e.g. Level 400 Clinicals (Optional fallback)"
+                  disabled={isProcessing}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
                 />
               </div>
 
-              {/* Drop zone */}
+              {/* Drop zone — always active, even when module name is empty */}
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
                 onDragLeave={() => setDragOver(false)}
@@ -494,26 +503,23 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
 
                 <div>
                   <p className="font-semibold text-foreground">
-                    {isProcessing ? parseStatusLabel[parseStep] : "Drop your Word document here"}
+                    {isProcessing
+                      ? (progressMessage || "Processing…")
+                      : "Drop your Word document here"}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {isProcessing
-                      ? parseStep === "parsing-ai"
-                        ? "Gemini is reading your clinical MCQs — this may take a moment"
-                        : "Please wait…"
+                      ? "AI is reading your clinical MCQs — please wait"
                       : "Accepts .docx only · or click to browse"}
                   </p>
                 </div>
 
-                {/* Progress dots */}
+                {/* Progress bar */}
                 {isProcessing && (
-                  <div className="flex items-center gap-2 mt-1">
-                    {(["uploading", "parsing-ai", "parsing-regex"] as ParseStep[]).map((s) => (
-                      <div
-                        key={s}
-                        className={`h-1.5 rounded-full transition-all ${parseStep === s ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/30"}`}
-                      />
-                    ))}
+                  <div className="w-full max-w-xs">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full animate-pulse rounded-full bg-primary/60" style={{ width: "100%" }} />
+                    </div>
                   </div>
                 )}
               </div>
@@ -551,6 +557,9 @@ C. Aortic dissection
 D. Pulmonary embolism
 Answer: A
 Explanation: Elevated troponin and ST changes confirm…
+
+MODULE: Surgery
+DISCIPLINE: General Surgery
 
 2. Which finding best supports the diagnosis?
 A. Troponin I > 2.0 ng/mL
