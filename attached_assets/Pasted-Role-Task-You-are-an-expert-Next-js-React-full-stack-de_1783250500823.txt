@@ -1,0 +1,27 @@
+Role & Task: You are an expert Next.js/React full-stack developer. We need to completely overhaul our document ingestion architecture for both Word (.docx) and PDF files. We have three main objectives: (1) Prevent Vercel 504 Gateway Timeouts for large Word files by using a frontend chunking orchestrator, (2) Stop the required "MODULE NAME" frontend input from overriding internal document tags, and (3) Stop the Gemini AI from "hallucinating" or inventing its own medical disciplines.
+Instructions:
+Part 1: Shared Frontend UI Refactor (Word & PDF Importers)
+Open both the Word Importer and PDF Importer modal components.
+Change the "MODULE NAME" text input field in both components to be strictly optional.
+Update the placeholder text to: e.g. Level 400 Clinicals (Optional fallback).
+Ensure the file dropzones remain fully active and allow uploads even if this input is left completely empty.
+Part 2: Word Importer Specifics (Frontend Orchestrator)
+Inside the Word Importer component, add React state variables for progress tracking: [progressMessage, setProgressMessage].
+Update the Word upload handler to use a chunking pipeline:
+Send the file to our text extraction route (/api/parse-docx) to get the raw text string.
+Capture the optional Module input as fallbackModule (pass null if blank).
+Chunk the raw text into blocks of ~1,500 words.
+Run a sequential for...of loop, updating the progress state, and sending each chunk to a new endpoint POST /api/extract-single-chunk with both { textChunk } and { fallbackModule }.
+Stitch the returned arrays and pass them to the application's drafts state.
+Part 3: Backend Routes Refactor
+Word Extraction (/api/parse-docx): Completely remove all Gemini AI calls and loops. This route must ONLY extract the raw unparsed text from the Word document and instantly return it: { text: "..." }.
+PDF Extraction (/api/parse-pdf): Do NOT add chunking logic here, as our PDF parser can handle large files. However, ensure the PDF extraction utility strictly preserves newlines (\n) so tags are clearly separated from questions. Pass the raw text and the fallbackModule directly to the Gemini API within this route.
+New Single-Chunk Route (/api/extract-single-chunk): Create this endpoint to accept { textChunk, fallbackModule } and pass it to Gemini for the Word pipeline.
+Part 4: The "Anti-Hallucination" Categorization Rules (CRITICAL)
+Open the Gemini system prompts in BOTH /api/parse-pdf and /api/extract-single-chunk.
+You must update the Categorization Rules to enforce this exact strictness hierarchy:
+Priority 1: If the extracted text explicitly contains MODULE: [Name] or DISCIPLINE: [Name], extract exactly what is written. Do not alter a single letter.
+Priority 2: If the text does NOT contain a DISCIPLINE: tag, you MUST assign the discipline as an empty string "" or omit the key entirely. You are strictly forbidden from guessing, inferring, or inventing disciplines based on the clinical content of the questions.
+Priority 3: If the text does NOT contain a MODULE: tag, check the provided fallbackModule variable. If it exists, apply it. If no tags exist in the text AND the fallbackModule is empty, use 'Uncategorized'.
+Zero Creativity: If you invent a discipline that was not explicitly written in the source text with a DISCIPLINE: tag, the system will fail.
+Execution: Implement this unified architecture. Ensure the Word pipeline uses the chunking orchestrator to bypass timeouts, the PDF pipeline maintains its bulk capacity, and both strictly follow the new anti-hallucination rules and optional fallback UI.
