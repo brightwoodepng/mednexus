@@ -315,13 +315,23 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         const body = await extractRes.json().catch(() => ({}))
         throw new Error((body as { error?: string }).error ?? `Server error ${extractRes.status}`)
       }
-      const { text } = await extractRes.json() as { text: string }
+      const { text, images = [] } = await extractRes.json() as {
+        text: string
+        images: { id: string; dataUri: string }[]
+      }
       if (!text?.trim()) throw new Error("The document appears to be empty or could not be read.")
+
+      // Build a map of IMAGE_N → data URI for quick lookup
+      const imageMap = new Map<string, string>(images.map((img) => [img.id, img.dataUri]))
 
       const chunks = chunkText(text, 2000)
       if (chunks.length === 0) throw new Error("No content found in the document.")
 
-      setProgressMessage(`Preparing ${chunks.length} batch${chunks.length !== 1 ? "es" : ""}…`)
+      if (images.length > 0) {
+        setProgressMessage(`Found ${images.length} image${images.length !== 1 ? "s" : ""} — preparing ${chunks.length} batch${chunks.length !== 1 ? "es" : ""}…`)
+      } else {
+        setProgressMessage(`Preparing ${chunks.length} batch${chunks.length !== 1 ? "es" : ""}…`)
+      }
 
       let runningModule: string | null = null
       let runningDiscipline: string | null = null
@@ -356,8 +366,41 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         if (lastItem?.module) runningModule = lastItem.module
         if (lastItem?.discipline) runningDiscipline = lastItem.discipline
 
-        for (const q of chunkQuestions) {
-          master.push(makeFromChunk(q, questionIndex++, null))
+        // ── Image assignment ────────────────────────────────────────────────
+        // For each AI-returned question, find [IMAGE_N] markers in the chunk
+        // that appear within that question's text block, then attach the image.
+        // Strategy: count question boundaries before each image marker to
+        // determine which question index (0-based within this chunk) owns it.
+        const Q_BOUNDARY_GLOBAL = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
+        const chunkText_ = chunks[i]
+
+        // Map: question index within chunk → first image data URI found for it
+        const questionImageMap = new Map<number, string>()
+        const imagePlaceholderMatches = [...chunkText_.matchAll(/\[IMAGE_(\d+)\]/g)]
+        for (const match of imagePlaceholderMatches) {
+          const imageId = `IMAGE_${match[1]}`
+          const imageDataUri = imageMap.get(imageId)
+          if (!imageDataUri) continue
+
+          // Count question boundaries before this image marker position
+          const textBefore = chunkText_.slice(0, match.index ?? 0)
+          const boundariesBefore = [...textBefore.matchAll(Q_BOUNDARY_GLOBAL)].length
+          const qIdx = Math.max(0, boundariesBefore - 1)
+
+          // Only assign first image found for each question slot
+          if (!questionImageMap.has(qIdx)) {
+            questionImageMap.set(qIdx, imageDataUri)
+          }
+        }
+
+        for (let j = 0; j < chunkQuestions.length; j++) {
+          const q = makeFromChunk(chunkQuestions[j], questionIndex++, null)
+          // Strip any [IMAGE_N] markers the AI may have left in the vignette
+          q.vignette = q.vignette.replace(/\[IMAGE_\d+\]/gi, "").replace(/\s{2,}/g, " ").trim()
+          // Attach image if one was found for this question's slot
+          const imgForQ = questionImageMap.get(j)
+          if (imgForQ) q.mediaBase64 = imgForQ
+          master.push(q)
         }
       }
 

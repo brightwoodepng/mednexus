@@ -27,6 +27,12 @@ Start directly with the first word of the actual question content.
 WRONG:  "1. A 35-year-old woman presents with…"
 RIGHT:  "A 35-year-old woman presents with…"
 
+IMAGE PLACEHOLDERS — the text may contain markers like [IMAGE_1], [IMAGE_2], etc.
+These mark where an embedded image appears in the source document.
+You MUST remove these markers entirely from the vignette text — do not include
+"[IMAGE_1]" or any similar placeholder in any output field.
+Images will be attached separately by the system; set mediaBase64 to null.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRITICAL CATEGORIZATION RULES — STRICT HIERARCHY (apply PER QUESTION)
 
