@@ -134,6 +134,13 @@ function buildResponse(row: RawRoom, myId?: string) {
     leaderboard,
     ranks,
     myRank: myId ? (ranks[myId] ?? null) : null,
+    // Absolute epoch-ms when the current question expires so clients can run a
+    // live countdown without trusting their own clock drift relative to the
+    // server. Only provided for clash/cohort question phase — wager mode has no
+    // absolute time limit (it auto-advances when every non-spectator answers).
+    phaseDeadlineMs: (row.phase === "question" && row.mode !== "wager")
+      ? new Date(row.phase_started_at).getTime() + QUESTION_TIME_LIMIT_MS
+      : null,
   }
 }
 
@@ -379,6 +386,32 @@ export async function PATCH(
           "UPDATE mednexus_game_rooms SET players = $1, version = COALESCE(version, 0) + 1 WHERE pin = $2",
           [JSON.stringify(players), pin]
         )
+
+        // ── Pressure timer ──────────────────────────────────────────────────────
+        // Exactly when N-1 active players have answered (one slow player left),
+        // check the remaining time. If >5 s remain, back-date phase_started_at
+        // so exactly 5 s remain on the server clock. The next GET response will
+        // carry a new phaseDeadlineMs ~now+5000 and every polling client turns
+        // its timer red simultaneously. Skip in wager mode (no absolute timer).
+        if (row.mode !== "wager" && !allActiveAnswered(players)) {
+          const pressureActive = activePlayers(players)
+          const pressureAnswered = pressureActive.filter(p => p.answer !== null).length
+          if (pressureActive.length > 1 && pressureAnswered === pressureActive.length - 1) {
+            const elapsed = Date.now() - new Date(row.phase_started_at).getTime()
+            const remaining = QUESTION_TIME_LIMIT_MS - elapsed
+            if (remaining > 5000) {
+              // Set phase_started_at to (now - (QUESTION_TIME_LIMIT_MS - 5000))
+              // so the autoTick elapsedMs check fires in exactly 5 s.
+              const newStart = new Date(Date.now() - (QUESTION_TIME_LIMIT_MS - 5000))
+              await client.query(
+                `UPDATE mednexus_game_rooms
+                    SET phase_started_at = $1, version = COALESCE(version, 0) + 1
+                  WHERE pin = $2 AND phase = 'question'`,
+                [newStart, pin]
+              )
+            }
+          }
+        }
 
         // Wager mode: auto-advance to reveal when all active players answered
         if (row.mode === "wager") {
