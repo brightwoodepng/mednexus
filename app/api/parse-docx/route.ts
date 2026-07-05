@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import mammoth from "mammoth"
 
-// This route only extracts raw text from the .docx and returns it immediately.
-// All AI parsing has been moved to /api/extract-single-chunk so that this
-// endpoint always resolves in <2 s and never hits a gateway timeout.
+// Extracts raw text AND embedded images from a .docx file.
+// Images are returned as base64 data URIs; their positions in the text are
+// marked with [IMAGE_1], [IMAGE_2] … placeholders so the client can later
+// associate each image with the question it belongs to.
 export const maxDuration = 30
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
@@ -27,13 +28,54 @@ export async function POST(req: NextRequest) {
     }
 
     const arrayBuffer = await file.arrayBuffer()
-    const result = await mammoth.extractRawText({ buffer: Buffer.from(arrayBuffer) })
+    const buffer = Buffer.from(arrayBuffer)
 
-    if (!result.value.trim()) {
+    // Collect images as they are encountered during conversion
+    const images: { id: string; dataUri: string }[] = []
+    let imageCounter = 0
+
+    const result = await mammoth.convertToHtml(
+      { buffer },
+      {
+        convertImage: mammoth.images.imgElement(async (image) => {
+          try {
+            imageCounter++
+            const id = `IMAGE_${imageCounter}`
+            const base64 = await image.read("base64")
+            const dataUri = `data:${image.contentType};base64,${base64}`
+            images.push({ id, dataUri })
+            // Embed placeholder in the HTML so we can locate it in the text
+            return { src: id, alt: id }
+          } catch {
+            // If a single image fails, skip it gracefully
+            return { src: "", alt: "" }
+          }
+        }),
+      },
+    )
+
+    // Convert HTML → plain text, keeping image placeholders
+    let text = result.value
+      // Replace <img> tags with [IMAGE_N] inline markers
+      .replace(/<img[^>]+alt="(IMAGE_\d+)"[^>]*>/gi, "\n[$1]\n")
+      // Strip all remaining HTML tags
+      .replace(/<[^>]+>/g, "\n")
+      // Decode common HTML entities
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      // Collapse excessive blank lines
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+
+    if (!text) {
       return NextResponse.json({ error: "The document appears to be empty" }, { status: 422 })
     }
 
-    return NextResponse.json({ text: result.value })
+    return NextResponse.json({ text, images })
   } catch (err) {
     console.error("[parse-docx]", err)
     return NextResponse.json({ error: "Failed to process document" }, { status: 500 })
