@@ -30,12 +30,15 @@ Priority 3 — UNCATEGORIZED (per-question)
   If no tag precedes this question AND fallbackModule is null or empty,
   set module to "Uncategorized".
 
-For "discipline" (applied per question):
-  Detect the specific clinical discipline from each question's own content
-  (e.g. Cardiology, Pharmacology, Nephrology, Neurology, Surgery…).
-  If a DISCIPLINE:/SUBJECT:/TOPIC: tag is active for this question, use that
-  exact value. Only copy the module name into discipline if there is genuinely
-  no clinical clue at all.
+DISCIPLINE — STRICT ANTI-HALLUCINATION RULE (applied per question):
+  Priority 1: If a DISCIPLINE:/SUBJECT:/TOPIC: tag is active for this question
+  (i.e., it appears above this question in the text, before any previous question),
+  extract exactly what is written — do not alter a single character.
+  Priority 2: If NO DISCIPLINE:/SUBJECT:/TOPIC: tag is active for this question,
+  set "discipline" to "" (empty string). You are STRICTLY FORBIDDEN from
+  guessing, inferring, or inventing a discipline from the question's clinical
+  content. Zero creativity — if it was not explicitly written in the source
+  text with a DISCIPLINE:/SUBJECT:/TOPIC: tag, return "".
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT FORMAT
@@ -121,11 +124,11 @@ export async function POST(req: NextRequest) {
             ? q.module.trim()
             : fallbackModule ?? "Uncategorized"
 
-        // Discipline: explicit AI value → fallback to module as last resort
+        // Discipline: explicit DISCIPLINE: tag from AI only → "" if absent (never inferred)
         const disc =
           typeof q.discipline === "string" && q.discipline.trim()
             ? q.discipline.trim()
-            : mod
+            : ""
 
         // Keep only valid A–E options with string text
         const options = (q.options as any[])

@@ -182,7 +182,8 @@ function makeQuestionFromChunk(q: ChunkQuestion, index: number, fallbackModule: 
   return {
     id: `docx-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
     module: mod,
-    subject: q.discipline?.trim() || mod || "Imported",
+    // discipline: only what was explicitly tagged in the document — never inferred
+    subject: q.discipline?.trim() || "",
     vignette: q.vignette,
     options: q.options,
     correctAnswer: q.correctAnswer,
@@ -199,7 +200,8 @@ function makeQuestionFromRaw(r: RawQuestion, index: number, fallbackModule: stri
   return {
     id: `docx-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
     module: mod,
-    subject: r.discipline || detectSubject(r.vignette, fallbackSubject),
+    // discipline: only what was explicitly tagged in the document — never inferred
+    subject: r.discipline || "",
     vignette: r.vignette,
     options: r.options,
     correctAnswer: r.correctAnswer,
