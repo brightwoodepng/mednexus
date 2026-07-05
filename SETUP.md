@@ -40,7 +40,7 @@ connection string, and paste it as the value of `DATABASE_URL`.
 pnpm dev
 ```
 
-Open http://localhost:3000 in your browser.
+Open http://localhost:5000 in your browser.
 
 ---
 
