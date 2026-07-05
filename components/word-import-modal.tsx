@@ -331,15 +331,20 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
         throw new Error("The document appears to be empty or could not be read.")
       }
 
-      // ── Step 2: Chunk the text client-side (~1 500 words per chunk) ─────────
-      const chunks = chunkText(text, 1500)
+      // ── Step 2: Chunk the text client-side (~2 000 words per chunk) ─────────
+      const chunks = chunkText(text, 2000)
       if (chunks.length === 0) {
         throw new Error("No content found in the document.")
       }
 
       setProgressMessage(`Preparing ${chunks.length} batch${chunks.length !== 1 ? "es" : ""}…`)
 
-      // ── Step 3: Sequential loop — send each chunk to the AI endpoint ────────
+      // ── Step 3: Sequential "Relay Race" loop ────────────────────────────────
+      // Context trackers carry categorisation state across chunk boundaries so
+      // that a DISCIPLINE: tag in chunk 3 still applies to questions in chunk 4.
+      let runningModule     = fallbackModule          // last seen MODULE context
+      let runningDiscipline: string | null = null     // last seen DISCIPLINE context
+
       const master: Question[] = []
       let questionIndex = 0
       let chunksSucceeded = 0
@@ -347,28 +352,56 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
       for (let i = 0; i < chunks.length; i++) {
         setProgressMessage(`Processing batch ${i + 1} of ${chunks.length}…`)
 
-        try {
-          const res = await fetch("/api/extract-single-chunk", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ textChunk: chunks[i], fallbackModule }),
-          })
+        // Helper: attempt one fetch; returns questions array, or null on ANY failure
+        // (non-OK HTTP or thrown network exception) — never throws.
+        const attemptChunk = async (): Promise<ChunkQuestion[] | null> => {
+          try {
+            const res = await fetch("/api/extract-single-chunk", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                textChunk:          chunks[i],
+                fallbackModule:     runningModule,
+                fallbackDiscipline: runningDiscipline,
+              }),
+            })
+            if (!res.ok) return null
+            const data = await res.json() as { questions?: ChunkQuestion[] }
+            return data.questions ?? []
+          } catch {
+            return null
+          }
+        }
 
-          if (!res.ok) {
-            console.warn(`[word-import] Chunk ${i + 1} returned ${res.status} — skipping`)
+        // One retry on failure to guard against transient serverless cold-starts.
+        // Both HTTP errors and thrown network exceptions are caught by attemptChunk.
+        let chunkQuestions = await attemptChunk()
+        if (chunkQuestions === null) {
+          console.warn(`[word-import] Chunk ${i + 1} failed — retrying in 1.5 s…`)
+          await new Promise((r) => setTimeout(r, 1500))
+          chunkQuestions = await attemptChunk()
+        }
+
+        try {
+          if (chunkQuestions === null) {
+            // Both attempts failed — skip, but preserve context (baton not advanced)
+            console.warn(`[word-import] Chunk ${i + 1} skipped after retry`)
             continue
           }
 
-          const data = await res.json() as { questions?: ChunkQuestion[] }
-          const chunkQuestions = data.questions ?? []
+          // Pass the baton — update context trackers from the last item in the
+          // returned array so the next chunk inherits the correct categorisation.
+          const lastItem = chunkQuestions.at(-1)
+          if (lastItem?.module)     runningModule     = lastItem.module
+          if (lastItem?.discipline) runningDiscipline = lastItem.discipline
 
           for (const q of chunkQuestions) {
             master.push(makeQuestionFromChunk(q, questionIndex++, fallbackModule))
           }
           chunksSucceeded++
         } catch (chunkErr) {
-          // Log the failure but continue — a single bad chunk must not abort the job.
-          console.warn(`[word-import] Chunk ${i + 1} failed:`, chunkErr)
+          // Network-level exception — log and continue.
+          console.warn(`[word-import] Chunk ${i + 1} threw:`, chunkErr)
         }
       }
 
