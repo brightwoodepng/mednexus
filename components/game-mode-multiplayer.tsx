@@ -18,6 +18,7 @@ interface RoomPlayer {
   id: string; name: string; score: number; streak: number
   answer: string | null; answeredAt: number | null; isHost: boolean
   reactionTimeMs?: number | null
+  status?: "active" | "disconnected"
   // Wager Wars
   balance?: number; wagerAmount?: number | null; isSpectator?: boolean
 }
@@ -36,6 +37,8 @@ interface RoomState {
   leaderboard: RoomPlayer[] // top-5 sorted by score
   ranks: Record<string, number>
   version: number
+  /** Absolute epoch-ms when the current question expires. Null outside question phase or in wager mode. */
+  phaseDeadlineMs?: number | null
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -358,6 +361,27 @@ function ErrorBanner({ msg }: { msg: string }) {
   )
 }
 
+// ── QUESTION TIMER ────────────────────────────────────────────────────────────
+// Live countdown badge shown in every in-room HUD bar during the question phase.
+// Turns amber at ≤10 s, then red and pulsing when pressure mode activates
+// (server has shortened the deadline to 5 s because N-1 players have answered).
+function QuestionTimer({ timeLeftMs, isPressure }: { timeLeftMs: number | null; isPressure: boolean }) {
+  if (timeLeftMs === null) return null
+  const secs = Math.ceil(timeLeftMs / 1000)
+  const cls = isPressure
+    ? "text-rose-500 animate-pulse"
+    : secs <= 5
+      ? "text-rose-400"
+      : secs <= 10
+        ? "text-amber-500"
+        : "text-foreground"
+  return (
+    <span className={`tabular-nums text-sm font-extrabold transition-colors ${cls}`}>
+      ⏱ {secs}s
+    </span>
+  )
+}
+
 // ── LOBBY (shared between host and players after joining) ─────────────────────
 function RoomLobby({ room, myId, isHost, onStart, onExit }: {
   room: RoomState; myId: string; isHost: boolean; onStart: () => void; onExit: () => void
@@ -418,13 +442,15 @@ function RoomLobby({ room, myId, isHost, onStart, onExit }: {
 }
 
 // ── QUESTION HUD (Clash host + players, and Cohort host) ─────────────────────
-function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeave, myLastAnswerCorrect }: {
+function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeave, myLastAnswerCorrect, timeLeftMs, isPressure }: {
   room: RoomState; myId: string; isHost: boolean
   onAnswer: (answer: string, answerText: string) => void
   onAdvance: () => void
   onFinish: () => void
   onLeave: () => void
   myLastAnswerCorrect: boolean | null
+  timeLeftMs: number | null
+  isPressure: boolean
 }) {
   const q = room.questionPool[room.currentQi]
   if (!q) return null
@@ -443,6 +469,7 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeav
         {me && <span className="tabular-nums text-sm font-extrabold text-foreground">{me.score.toLocaleString()} pts</span>}
         {me && me.streak >= 3 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">🔥 {me.streak}×</span>}
         <AnswerProgress players={room.players} total={room.players.length} />
+        {room.phase === "question" && <QuestionTimer timeLeftMs={timeLeftMs} isPressure={isPressure} />}
         <button type="button" onClick={onLeave}
           className="flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:opacity-80 active:scale-95">
           ✕ Leave
@@ -526,8 +553,9 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeav
 }
 
 // ── COHORT HOST VIEW ──────────────────────────────────────────────────────────
-function CohortHostHUD({ room, onAdvance, onFinish, onLeave }: {
+function CohortHostHUD({ room, onAdvance, onFinish, onLeave, timeLeftMs, isPressure }: {
   room: RoomState; onAdvance: () => void; onFinish: () => void; onLeave: () => void
+  timeLeftMs: number | null; isPressure: boolean
 }) {
   const q = room.questionPool[room.currentQi]
   if (!q) return null
@@ -546,6 +574,7 @@ function CohortHostHUD({ room, onAdvance, onFinish, onLeave }: {
           <div className="h-full bg-primary transition-all" style={{ width: `${((room.currentQi + 1) / room.questionPool.length) * 100}%` }} />
         </div>
         <span className="text-xs font-semibold text-muted-foreground">{answered}/{totalPlayers} answered</span>
+        {room.phase === "question" && <QuestionTimer timeLeftMs={timeLeftMs} isPressure={isPressure} />}
         <button type="button" onClick={onLeave}
           className="flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:opacity-80 active:scale-95">
           ✕ Leave Match
@@ -616,8 +645,9 @@ function CohortHostHUD({ room, onAdvance, onFinish, onLeave }: {
 }
 
 // ── COHORT PLAYER VIEW ────────────────────────────────────────────────────────
-function CohortPlayerHUD({ room, myId, onAnswer, onLeave }: {
+function CohortPlayerHUD({ room, myId, onAnswer, onLeave, timeLeftMs, isPressure }: {
   room: RoomState; myId: string; onAnswer: (answer: string, answerText: string) => void; onLeave: () => void
+  timeLeftMs: number | null; isPressure: boolean
 }) {
   const q = room.questionPool[room.currentQi]
   const me = room.players.find(p => p.id === myId)
@@ -643,6 +673,7 @@ function CohortPlayerHUD({ room, myId, onAnswer, onLeave }: {
           <p className="text-xs text-muted-foreground">Q</p>
           <p className="text-xl font-extrabold tabular-nums text-foreground">{room.currentQi + 1}/{room.questionPool.length}</p>
         </div>
+        {room.phase === "question" && <QuestionTimer timeLeftMs={timeLeftMs} isPressure={isPressure} />}
         <button type="button" onClick={onLeave}
           className="flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:opacity-80 active:scale-95 shrink-0">
           ✕ Leave
@@ -870,7 +901,7 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
 // Handles all three active wager-mode phases: wager → question → reveal
 const WAGER_PRESETS = [10, 25, 50, 100]
 
-function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, onLeave, myLastAnswerCorrect }: {
+function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, onLeave, myLastAnswerCorrect, timeLeftMs, isPressure }: {
   room: RoomState; myId: string; isHost: boolean
   onWager: (amount: number) => void
   onAnswer: (answer: string, answerText: string) => void
@@ -878,6 +909,8 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
   onFinish: () => void
   onLeave: () => void
   myLastAnswerCorrect: boolean | null
+  timeLeftMs: number | null
+  isPressure: boolean
 }) {
   const q = room.questionPool[room.currentQi]
   if (!q) return null
@@ -923,6 +956,7 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
             </span>
           )}
         </div>
+        {isQuestionPhase && <QuestionTimer timeLeftMs={timeLeftMs} isPressure={isPressure} />}
         <button type="button" onClick={onLeave}
           className="flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:opacity-80 active:scale-95">
           ✕ Leave
@@ -1105,6 +1139,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   // Derived from score delta (server response) because correctAnswer is hidden
   // from the client payload during the question phase to prevent cheating.
   const [myLastAnswerCorrect, setMyLastAnswerCorrect] = useState<boolean | null>(null)
+  const [timeLeftMs, setTimeLeftMs] = useState<number | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const lastVersionRef = useRef<number>(-1)
   // Absolute timestamp when the current question rendered — used to compute
@@ -1155,6 +1190,36 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
       clearActiveRoomSession()
     }
   }, [room, pin, myId, mode, isHost, isCohortHost])
+
+  // ── Countdown timer ───────────────────────────────────────────────────────
+  // Ticks every 100 ms using the server-supplied phaseDeadlineMs as the source
+  // of truth. Only re-initialised when the deadline or phase actually changes,
+  // so normal 1.5 s poll ticks (where the deadline is stable) don't reset it.
+  useEffect(() => {
+    if (!room || room.phase !== "question" || !room.phaseDeadlineMs) {
+      setTimeLeftMs(null)
+      return
+    }
+    const deadline = room.phaseDeadlineMs
+    function tick() { setTimeLeftMs(Math.max(0, deadline - Date.now())) }
+    tick()
+    const id = setInterval(tick, 100)
+    return () => clearInterval(id)
+  }, [room?.phase, room?.phaseDeadlineMs])
+
+  // ── Pressure-mode flag ────────────────────────────────────────────────────
+  // True when exactly one active player hasn't answered yet and ≤5 s remain.
+  // The server back-dates phase_started_at the moment the N-1th answer arrives,
+  // so the next poll already carries a reduced phaseDeadlineMs. This is purely
+  // a display flag — no client-side timer overrides scoring or phase logic.
+  const activePl = room
+    ? room.players.filter(p => p.status !== "disconnected" && !p.isSpectator)
+    : []
+  const answeredActivePl = activePl.filter(p => p.answer !== null).length
+  const isPressure = timeLeftMs !== null
+    && timeLeftMs <= 5000
+    && activePl.length > 1
+    && answeredActivePl === activePl.length - 1
 
   async function doAction(payload: Record<string, unknown>) {
     const updated = await apiAction(pin, { ...payload, requesterId: myId })
@@ -1251,6 +1316,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
         onFinish={handleFinish}
         onLeave={handleExit}
         myLastAnswerCorrect={myLastAnswerCorrect}
+        timeLeftMs={timeLeftMs}
+        isPressure={isPressure}
       />
     )
   }
@@ -1263,6 +1330,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
         onAdvance={handleAdvance}
         onFinish={handleFinish}
         onLeave={handleExit}
+        timeLeftMs={timeLeftMs}
+        isPressure={isPressure}
       />
     )
   }
@@ -1274,6 +1343,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
         myId={myId}
         onAnswer={handleAnswer}
         onLeave={handleExit}
+        timeLeftMs={timeLeftMs}
+        isPressure={isPressure}
       />
     )
   }
@@ -1289,6 +1360,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
       onFinish={handleFinish}
       onLeave={handleExit}
       myLastAnswerCorrect={myLastAnswerCorrect}
+      timeLeftMs={timeLeftMs}
+      isPressure={isPressure}
     />
   )
 }
