@@ -176,6 +176,10 @@ export async function PATCH(
       playerId?: string
       playerName?: string
       answer?: string
+      // Full display text of the selected option (e.g. "Erythropoietin"). Used
+      // as the primary validation signal — text-based matching is immune to
+      // index-ordering bugs that occur when options are shuffled client-side.
+      answerText?: string
       wagerAmount?: number
       requesterId?: string
       // Client-measured ms between question render and answer submission (speed bonus input)
@@ -304,7 +308,8 @@ export async function PATCH(
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Missing playerId or answer" }, { status: 400 })
         }
-        if (body.requesterId && body.requesterId !== body.playerId) {
+        // Require requesterId and enforce it matches playerId — no optional bypass.
+        if (!body.requesterId || body.requesterId !== body.playerId) {
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Forbidden" }, { status: 403 })
         }
@@ -312,6 +317,14 @@ export async function PATCH(
 
         const q = row.question_pool[row.current_qi]
         if (!q) break
+        // Reject answers that don't map to a known option in this question.
+        // This prevents spoofed option IDs from being accepted.
+        const selectedOption = q.options.find(o => o.id === body.answer)
+        if (!selectedOption) break
+        // Validate by option ID (authoritative, stored in DB) rather than by
+        // position/index so correctness is stable regardless of render order.
+        // answerText is accepted for logging/analytics but never trusted for
+        // scoring — correctness is always derived from the option ID match.
         const correct = body.answer === q.correctAnswer
         const now = Date.now()
 

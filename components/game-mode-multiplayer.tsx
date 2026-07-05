@@ -188,7 +188,7 @@ function MultiOptionBtn({ id, text, sel, correct, revealed, onSel, disabled, col
 // Big buzzer squares for Cohort player view
 function BuzzerSquares({ options, onAnswer, answered, revealed }: {
   options: { id: string; text: string }[]
-  onAnswer: (id: string) => void
+  onAnswer: (id: string, text: string) => void
   answered: string | null
   revealed: boolean
 }) {
@@ -198,7 +198,7 @@ function BuzzerSquares({ options, onAnswer, answered, revealed }: {
         <button
           key={opt.id} type="button"
           disabled={answered !== null || revealed}
-          onClick={() => onAnswer(opt.id)}
+          onClick={() => onAnswer(opt.id, opt.text)}
           className={`relative flex h-32 flex-col items-center justify-center gap-2 rounded-3xl text-white text-xl font-extrabold shadow-lg transition-all active:scale-95
             ${OPTION_COLORS[i]}
             ${answered === opt.id ? "ring-4 ring-white ring-offset-2 scale-95" : ""}
@@ -416,11 +416,13 @@ function RoomLobby({ room, myId, isHost, onStart, onExit }: {
 }
 
 // ── QUESTION HUD (Clash host + players, and Cohort host) ─────────────────────
-function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish }: {
+function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeave, myLastAnswerCorrect }: {
   room: RoomState; myId: string; isHost: boolean
-  onAnswer: (answer: string) => void
+  onAnswer: (answer: string, answerText: string) => void
   onAdvance: () => void
   onFinish: () => void
+  onLeave: () => void
+  myLastAnswerCorrect: boolean | null
 }) {
   const q = room.questionPool[room.currentQi]
   if (!q) return null
@@ -439,6 +441,10 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish }: {
         {me && <span className="tabular-nums text-sm font-extrabold text-foreground">{me.score.toLocaleString()} pts</span>}
         {me && me.streak >= 3 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">🔥 {me.streak}×</span>}
         <AnswerProgress players={room.players} total={room.players.length} />
+        <button type="button" onClick={onLeave}
+          className="flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:opacity-80 active:scale-95">
+          ✕ Leave
+        </button>
       </div>
 
       {/* Reveal / leaderboard phase */}
@@ -485,15 +491,18 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish }: {
                 revealed={revealed}
                 colorIndex={i}
                 disabled={myAnswer !== null}
-                onSel={() => onAnswer(opt.id)}
+                onSel={() => onAnswer(opt.id, opt.text)}
               />
             ))}
           </div>
 
-          {myAnswer !== null && (
+          {myAnswer !== null && myLastAnswerCorrect !== null && (
             <p className="text-center text-xs font-semibold text-muted-foreground">
-              {myAnswer === q.correctAnswer ? "✅ Correct! Waiting for others…" : "❌ Wrong. Waiting for others…"}
+              {myLastAnswerCorrect ? "✅ Correct! Waiting for others…" : "❌ Wrong. Waiting for others…"}
             </p>
+          )}
+          {myAnswer !== null && myLastAnswerCorrect === null && (
+            <p className="text-center text-xs font-semibold text-muted-foreground">⏳ Submitted! Waiting for others…</p>
           )}
 
           {isHost && allAnswered && (
@@ -515,8 +524,8 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish }: {
 }
 
 // ── COHORT HOST VIEW ──────────────────────────────────────────────────────────
-function CohortHostHUD({ room, onAdvance, onFinish }: {
-  room: RoomState; onAdvance: () => void; onFinish: () => void
+function CohortHostHUD({ room, onAdvance, onFinish, onLeave }: {
+  room: RoomState; onAdvance: () => void; onFinish: () => void; onLeave: () => void
 }) {
   const q = room.questionPool[room.currentQi]
   if (!q) return null
@@ -533,6 +542,10 @@ function CohortHostHUD({ room, onAdvance, onFinish }: {
           <div className="h-full bg-primary transition-all" style={{ width: `${((room.currentQi + 1) / room.questionPool.length) * 100}%` }} />
         </div>
         <span className="text-xs font-semibold text-muted-foreground">{answered}/{totalPlayers} answered</span>
+        <button type="button" onClick={onLeave}
+          className="flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:opacity-80 active:scale-95">
+          ✕ Leave Match
+        </button>
       </div>
 
       {/* Main content */}
@@ -592,8 +605,8 @@ function CohortHostHUD({ room, onAdvance, onFinish }: {
 }
 
 // ── COHORT PLAYER VIEW ────────────────────────────────────────────────────────
-function CohortPlayerHUD({ room, myId, onAnswer }: {
-  room: RoomState; myId: string; onAnswer: (answer: string) => void
+function CohortPlayerHUD({ room, myId, onAnswer, onLeave }: {
+  room: RoomState; myId: string; onAnswer: (answer: string, answerText: string) => void; onLeave: () => void
 }) {
   const q = room.questionPool[room.currentQi]
   const me = room.players.find(p => p.id === myId)
@@ -619,6 +632,10 @@ function CohortPlayerHUD({ room, myId, onAnswer }: {
           <p className="text-xs text-muted-foreground">Q</p>
           <p className="text-xl font-extrabold tabular-nums text-foreground">{room.currentQi + 1}/{room.questionPool.length}</p>
         </div>
+        <button type="button" onClick={onLeave}
+          className="flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:opacity-80 active:scale-95 shrink-0">
+          ✕ Leave
+        </button>
       </div>
 
       {revealed ? (
@@ -843,11 +860,15 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
 }) {
   const [room, setRoom] = useState<RoomState | null>(null)
   const [error, setError] = useState("")
+  // Tracks whether the player's most recent answer was correct.
+  // Derived from score delta (server response) because correctAnswer is hidden
+  // from the client payload during the question phase to prevent cheating.
+  const [myLastAnswerCorrect, setMyLastAnswerCorrect] = useState<boolean | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const lastVersionRef = useRef<number>(-1)
-  // Timestamp the current question rendered — used to compute reactionTimeMs
-  // (server-side speed bonus input). Reset whenever a NEW question comes on
-  // screen (phase flips to "question" for a different currentQi).
+  // Absolute timestamp when the current question rendered — used to compute
+  // reactionTimeMs for the server-side speed bonus. Never trusted for
+  // correctness; only used as a latency measurement input.
   const questionStartRef = useRef<number>(Date.now())
   const questionKeyRef = useRef<string>("")
 
@@ -870,10 +891,10 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [poll])
 
-  // Reset the reaction-time clock the moment a new question appears, and
-  // cache enough of the session (pin/myId/questionId) in sessionStorage so a
-  // refresh can silently resume this exact match instead of dropping back
-  // to the lobby.
+  // Reset the reaction-time clock the moment a new question appears.
+  // Also reset the per-question correctness indicator so stale feedback
+  // from the previous question is never shown on the new one.
+  // Cache session to sessionStorage so a refresh can silently resume.
   useEffect(() => {
     if (!room) return
     const currentQuestionId = room.questionPool[room.currentQi]?.id ?? String(room.currentQi)
@@ -881,6 +902,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
     if (room.phase === "question" && questionKeyRef.current !== key) {
       questionStartRef.current = Date.now()
       questionKeyRef.current = key
+      setMyLastAnswerCorrect(null) // fresh question — clear previous result
     }
 
     if (room.phase !== "done") {
@@ -899,17 +921,42 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   }
 
   async function handleStart() { await doAction({ action: "start" }) }
-  async function handleAnswer(answer: string) {
+
+  // Send both the option ID (answer) and its full display text (answerText).
+  // The server validates by matching the selected text against the correct
+  // option's text — immune to index-ordering bugs. Score delta is used
+  // client-side to determine immediate correct/wrong feedback because
+  // correctAnswer is withheld from the client payload until reveal.
+  async function handleAnswer(answer: string, answerText: string) {
     const reactionTimeMs = Date.now() - questionStartRef.current
-    await doAction({ action: "answer", playerId: myId, answer, reactionTimeMs })
+    const prevScore = room?.players.find(p => p.id === myId)?.score ?? 0
+    const updated = await apiAction(pin, {
+      action: "answer", playerId: myId, requesterId: myId,
+      answer, answerText, reactionTimeMs,
+    })
+    if (updated) {
+      const newScore = updated.players.find(p => p.id === myId)?.score ?? 0
+      setMyLastAnswerCorrect(newScore > prevScore)
+      lastVersionRef.current = updated.version
+      setRoom(updated)
+    }
   }
+
   async function handleAdvance() { await doAction({ action: "advance" }) }
   async function handleFinish() { await doAction({ action: "finish" }) }
 
   async function handleExit() {
     clearActiveRoomSession()
-    if (isHost) await apiDeleteRoom(pin, myId)
-    else await doAction({ action: "disconnect", playerId: myId })
+    // Derive host status from live room state (not the stale isHost prop) so
+    // that host-migration during the match triggers the correct exit path.
+    const amCurrentHost = room?.hostId === myId
+    try {
+      if (amCurrentHost) await apiDeleteRoom(pin, myId)
+      else await doAction({ action: "disconnect", playerId: myId })
+    } catch {
+      // Proceed to exit even if the network call fails — local session is
+      // already cleared and the server will auto-expire the room.
+    }
     onExit()
   }
 
@@ -948,6 +995,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
         room={room}
         onAdvance={handleAdvance}
         onFinish={handleFinish}
+        onLeave={handleExit}
       />
     )
   }
@@ -958,6 +1006,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
         room={room}
         myId={myId}
         onAnswer={handleAnswer}
+        onLeave={handleExit}
       />
     )
   }
@@ -971,6 +1020,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
       onAnswer={handleAnswer}
       onAdvance={handleAdvance}
       onFinish={handleFinish}
+      onLeave={handleExit}
+      myLastAnswerCorrect={myLastAnswerCorrect}
     />
   )
 }
