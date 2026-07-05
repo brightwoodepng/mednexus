@@ -155,6 +155,13 @@ export interface Question {
    * Nullable to support draft imports where the explanation is not yet written.
    */
   explanation: QuestionExplanation | null
+
+  /**
+   * Optional base-64 encoded image extracted from the source document
+   * (e.g. a diagram embedded in a Word/PDF file).
+   * Stored as a data URI string (e.g. "data:image/png;base64,…") or null.
+   */
+  mediaBase64?: string | null
 }
 
 /** Quiz delivery modes. */

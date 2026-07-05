@@ -19,6 +19,7 @@ import {
   ClipboardListIcon,
   RadioIcon,
   GamepadIcon,
+  ArrowUpDownIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 
@@ -36,6 +37,7 @@ interface SidebarProps {
   onNavigate: (screen: Screen) => void
   onOpenThemes: () => void
   onOpenAdminLogin: () => void
+  onOpenImporter?: () => void
   mobileOpen: boolean
   onCloseMobile: () => void
   onReadyForQuiz: (config: { module: string; discipline: string | null }) => void
@@ -50,6 +52,7 @@ export function Sidebar({
   onNavigate,
   onOpenThemes,
   onOpenAdminLogin,
+  onOpenImporter,
   mobileOpen,
   onCloseMobile,
   onReadyForQuiz,
@@ -142,6 +145,7 @@ export function Sidebar({
               <NavButton glass={glassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
               <NavButton glass={glassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
               <NavButton glass={glassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} icon={<ClipboardListIcon size={18} />} label="Assessments" adminBadge="Admin" />
+              <NavButton glass={glassEnabled} active={false} onClick={() => { onOpenImporter?.(); onCloseMobile() }} icon={<ArrowUpDownIcon size={18} />} label="Import / Export" adminBadge="Admin" />
             </>
           )}
 
@@ -242,6 +246,7 @@ export function Sidebar({
           <IconButton glass={glassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
           <IconButton glass={glassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
           <IconButton glass={glassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} label="Assessments (Admin)"><ClipboardListIcon size={18} /></IconButton>
+          <IconButton glass={glassEnabled} active={false} onClick={() => onOpenImporter?.()} label="Import / Export"><ArrowUpDownIcon size={18} /></IconButton>
         </>
       )}
 

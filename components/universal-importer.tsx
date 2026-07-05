@@ -1,0 +1,721 @@
+"use client"
+
+import { useState, useRef, useCallback } from "react"
+import { useQuestions } from "@/contexts/questions-context"
+import { extractTextFromPdf } from "@/lib/pdf-extract"
+import type { Question, QuestionOption } from "@/lib/types"
+import {
+  XIcon,
+  CheckIcon,
+  AlertTriangleIcon,
+  TrashIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  RefreshCwIcon,
+  DownloadIcon,
+  UploadIcon,
+  ArrowUpDownIcon,
+  ImageIcon,
+} from "@/components/icons"
+
+// ── Spinner ───────────────────────────────────────────────────────────────────
+function Spinner({ size = 20 }: { size?: number }) {
+  return (
+    <svg className="animate-spin" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  )
+}
+
+// ── Chunking helper (question-boundary-aware, same as word-import-modal) ─────
+function chunkText(text: string, targetWords = 1500): string[] {
+  const Q_BOUNDARY = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
+  const lines = text.split(/\r?\n/)
+  const chunks: string[] = []
+  let current = ""
+  let wordCount = 0
+  for (const line of lines) {
+    const words = line.split(/\s+/).filter(Boolean).length
+    if (wordCount >= targetWords && Q_BOUNDARY.test(line.trimStart()) && current) {
+      chunks.push(current)
+      current = ""
+      wordCount = 0
+    }
+    current += line + "\n"
+    wordCount += words
+  }
+  if (current.trim()) chunks.push(current)
+  return chunks.filter((c) => c.trim())
+}
+
+// ── Regex fallback parser ─────────────────────────────────────────────────────
+interface RawQuestion {
+  module: string
+  discipline: string
+  vignette: string
+  options: QuestionOption[]
+  correctAnswer: string
+  explanation: string
+}
+
+function parseTextFallback(raw: string): RawQuestion[] {
+  const lines = raw.replace(/--- Page Break ---/gi, "\n").split(/\r?\n/).map((l) => l.trim())
+  const results: RawQuestion[] = []
+  let currentModule = ""
+  let currentDiscipline = ""
+  let pending: Partial<RawQuestion> | null = null
+  let pendingOptions: QuestionOption[] = []
+  let collectingExplanation = false
+  let inOptions = false
+
+  const flush = () => {
+    if (pending?.vignette && pendingOptions.length >= 2) {
+      results.push({
+        module: pending.module ?? currentModule,
+        discipline: pending.discipline ?? currentDiscipline,
+        vignette: pending.vignette,
+        options: [...pendingOptions],
+        correctAnswer: pending.correctAnswer ?? pendingOptions[0]?.id ?? "A",
+        explanation: pending.explanation ?? "",
+      })
+    }
+    pending = null; pendingOptions = []; collectingExplanation = false; inOptions = false
+  }
+
+  const optPattern = /^(?:\(([A-Ea-e])\)|([A-Ea-e])[.):\-])[ \t]*(.+)$/
+  const ansPattern = /^(?:correct[\s_]?answer|answer|ans(?:wer)?|key)[\s.:—-]*([A-Ea-e])\b/i
+  const explPattern = /^(?:explanation|rationale|discussion|reason|solution)[.:\s—-]/i
+
+  for (const line of lines) {
+    if (!line) continue
+    const modM = /^MODULE\s*[:.-]\s*(.+)/i.exec(line)
+    if (modM) { flush(); currentModule = modM[1].trim(); continue }
+    const discM = /^(?:DISCIPLINE|SUBJECT|TOPIC)\s*[:.-]\s*(.+)/i.exec(line)
+    if (discM) { flush(); currentDiscipline = discM[1].trim(); continue }
+    const ansM = ansPattern.exec(line)
+    if (ansM && pending) { pending.correctAnswer = ansM[1].toUpperCase(); collectingExplanation = false; continue }
+    const expM = explPattern.exec(line)
+    if (expM && pending) { collectingExplanation = true; pending.explanation = line.replace(explPattern, "").trim(); continue }
+    const optM = optPattern.exec(line)
+    if (optM && (pending || inOptions)) {
+      inOptions = true
+      const id = (optM[1] ?? optM[2]).toUpperCase()
+      const text = optM[3].trim()
+      if (!pendingOptions.find((o) => o.id === id)) pendingOptions.push({ id, text })
+      collectingExplanation = false; continue
+    }
+    if (inOptions && pendingOptions.length > 0 && pending && !collectingExplanation) {
+      if (!/^(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]/.test(line)) {
+        pendingOptions[pendingOptions.length - 1].text += " " + line; continue
+      }
+    }
+    const qM = /^(?:Question\s+|Q\.?\s*)?(\d{1,4})[.):\s]+(.+)/.exec(line)
+    if (qM) { flush(); pending = { module: currentModule, discipline: currentDiscipline, vignette: qM[2].trim(), correctAnswer: "A", explanation: "" }; continue }
+    if (pending) {
+      if (collectingExplanation) pending.explanation = (pending.explanation ?? "") + " " + line
+      else if (!inOptions) pending.vignette = (pending.vignette ?? "") + " " + line
+    }
+  }
+  flush()
+  return results
+}
+
+// ── Question builders ─────────────────────────────────────────────────────────
+interface ChunkQuestion {
+  module?: string
+  discipline?: string
+  vignette: string
+  options: { id: string; text: string }[]
+  correctAnswer: string | null
+  explanation: string | null
+  mediaBase64?: string | null
+}
+
+function makeFromChunk(q: ChunkQuestion, index: number, fallbackModule: string | null): Question {
+  return {
+    id: `import-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
+    module: q.module?.trim() || fallbackModule || undefined,
+    subject: q.discipline?.trim() || "",
+    vignette: q.vignette,
+    options: q.options,
+    correctAnswer: q.correctAnswer,
+    explanation: q.explanation ? { objective: "", details: q.explanation, incorrectReasoning: "" } : null,
+    questionType: "STANDARD_MCQ",
+    mediaBase64: q.mediaBase64 ?? null,
+  }
+}
+
+function makeFromRaw(r: RawQuestion, index: number, fallbackModule: string | null): Question {
+  return {
+    id: `import-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
+    module: r.module || fallbackModule || undefined,
+    subject: r.discipline || "",
+    vignette: r.vignette,
+    options: r.options,
+    correctAnswer: r.correctAnswer,
+    explanation: { objective: "", details: r.explanation, incorrectReasoning: "" },
+    questionType: "STANDARD_MCQ",
+    mediaBase64: null,
+  }
+}
+
+// ── Preview Card ──────────────────────────────────────────────────────────────
+function PreviewCard({ q, index, onRemove }: { q: Question; index: number; onRemove: () => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="overflow-hidden rounded-xl border border-border">
+      <div
+        className="flex cursor-pointer items-start gap-2.5 px-4 py-3 hover:bg-muted/30"
+        onClick={() => setOpen((v) => !v)}
+        role="button" tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && setOpen((v) => !v)}
+      >
+        <div className="mt-0.5 text-muted-foreground">
+          {open ? <ChevronDownIcon size={13} /> : <ChevronRightIcon size={13} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Q{index + 1}</span>
+            {q.correctAnswer ? (
+              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{q.correctAnswer}</span>
+            ) : (
+              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Draft</span>
+            )}
+            {q.module && (
+              <span className="rounded-full bg-violet-100/80 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">{q.module}</span>
+            )}
+            {q.subject && (
+              <span className="rounded-full bg-sky-100/80 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">{q.subject}</span>
+            )}
+            {q.mediaBase64 && (
+              <span className="flex items-center gap-0.5 rounded-full bg-orange-100/80 px-1.5 py-0.5 text-[10px] font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                <ImageIcon size={9} />
+                img
+              </span>
+            )}
+          </div>
+          <p className="line-clamp-1 text-sm text-foreground">{q.vignette}</p>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRemove() }}
+          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+        >
+          <TrashIcon size={12} />
+        </button>
+      </div>
+
+      {open && (
+        <div className="space-y-3 border-t border-border bg-muted/20 px-4 py-3">
+          {/* Image */}
+          {q.mediaBase64 && (
+            <div className="overflow-hidden rounded-lg border border-border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={q.mediaBase64}
+                alt="Embedded diagram"
+                className="max-h-48 w-full object-contain bg-white"
+              />
+            </div>
+          )}
+          <p className="text-xs text-foreground leading-relaxed">{q.vignette}</p>
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+            {q.options.map((o) => (
+              <span
+                key={o.id}
+                className={`text-xs ${o.id === q.correctAnswer ? "font-semibold text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}
+              >
+                {o.id}. {o.text}
+              </span>
+            ))}
+          </div>
+          {q.explanation?.details && (
+            <p className="mt-1 border-t border-border pt-2 text-xs italic text-muted-foreground">{q.explanation.details}</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
+interface UniversalImporterProps {
+  onImport: (questions: Question[]) => void
+  onClose: () => void
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
+export function UniversalImporter({ onImport, onClose }: UniversalImporterProps) {
+  const { questions: liveQuestions } = useQuestions()
+
+  const [view, setView] = useState<"input" | "preview">("input")
+  const [dragOver, setDragOver] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [progressMessage, setProgressMessage] = useState("")
+  const [error, setError] = useState("")
+  const [textInput, setTextInput] = useState("")
+  const [pendingImport, setPendingImport] = useState<Question[]>([])
+  const [parseSource, setParseSource] = useState<"ai" | "regex" | "json" | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Export JSON ─────────────────────────────────────────────────────────────
+  function handleExport() {
+    const date = new Date().toISOString().slice(0, 10)
+    const blob = new Blob([JSON.stringify(liveQuestions, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `mednexus-questions-${date}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // ── Stage questions for preview ─────────────────────────────────────────────
+  function stageQuestions(qs: Question[], source: "ai" | "regex" | "json") {
+    setPendingImport(qs)
+    setParseSource(source)
+    setView("preview")
+  }
+
+  // ── JSON file handler ───────────────────────────────────────────────────────
+  function processJsonFile(file: File) {
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string)
+        if (!Array.isArray(parsed)) throw new Error("File must contain a JSON array.")
+        if (parsed.length === 0) throw new Error("The file contains no questions.")
+        const invalid = parsed.find((q: unknown) => typeof (q as Question).vignette !== "string" || !Array.isArray((q as Question).options))
+        if (invalid) throw new Error("One or more questions have an invalid format.")
+        // Ensure IDs
+        const withIds: Question[] = parsed.map((q: Question) => ({
+          ...q,
+          id: q.id || `json-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        }))
+        stageQuestions(withIds, "json")
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Invalid JSON file.")
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  // ── DOCX handler — relay race chunking orchestrator ─────────────────────────
+  async function processDocxFile(file: File) {
+    setError("")
+    setIsProcessing(true)
+    setProgressMessage("Extracting document text…")
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const extractRes = await fetch("/api/parse-docx", { method: "POST", body: formData })
+      if (!extractRes.ok) {
+        const body = await extractRes.json().catch(() => ({}))
+        throw new Error((body as { error?: string }).error ?? `Server error ${extractRes.status}`)
+      }
+      const { text } = await extractRes.json() as { text: string }
+      if (!text?.trim()) throw new Error("The document appears to be empty or could not be read.")
+
+      const chunks = chunkText(text, 2000)
+      if (chunks.length === 0) throw new Error("No content found in the document.")
+
+      setProgressMessage(`Preparing ${chunks.length} batch${chunks.length !== 1 ? "es" : ""}…`)
+
+      let runningModule: string | null = null
+      let runningDiscipline: string | null = null
+      const master: Question[] = []
+      let questionIndex = 0
+
+      for (let i = 0; i < chunks.length; i++) {
+        setProgressMessage(`Processing batch ${i + 1} of ${chunks.length}…`)
+
+        const attemptChunk = async (): Promise<ChunkQuestion[] | null> => {
+          try {
+            const res = await fetch("/api/extract-single-chunk", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ textChunk: chunks[i], fallbackModule: runningModule, fallbackDiscipline: runningDiscipline }),
+            })
+            if (!res.ok) return null
+            const data = await res.json() as { questions?: ChunkQuestion[] }
+            return data.questions ?? []
+          } catch { return null }
+        }
+
+        let chunkQuestions = await attemptChunk()
+        if (chunkQuestions === null) {
+          await new Promise((r) => setTimeout(r, 1500))
+          chunkQuestions = await attemptChunk()
+        }
+
+        if (chunkQuestions === null) continue
+
+        const lastItem = chunkQuestions.at(-1)
+        if (lastItem?.module) runningModule = lastItem.module
+        if (lastItem?.discipline) runningDiscipline = lastItem.discipline
+
+        for (const q of chunkQuestions) {
+          master.push(makeFromChunk(q, questionIndex++, null))
+        }
+      }
+
+      if (master.length > 0) {
+        stageQuestions(master, "ai")
+        return
+      }
+
+      // AI returned nothing — regex fallback
+      setProgressMessage("AI returned no questions — using fallback parser…")
+      const raw = parseTextFallback(text)
+      if (raw.length === 0) {
+        setError("No questions detected. Check that questions are numbered (1., Q1.) and options are labelled (A., B., etc.).")
+        return
+      }
+      stageQuestions(raw.map((r, i) => makeFromRaw(r, i, null)), "regex")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process document.")
+    } finally {
+      setIsProcessing(false)
+      setProgressMessage("")
+    }
+  }
+
+  // ── PDF handler ─────────────────────────────────────────────────────────────
+  async function processPdfFile(file: File) {
+    setError("")
+    setIsProcessing(true)
+    setProgressMessage("Extracting PDF text…")
+
+    try {
+      const { text, pageCount } = await extractTextFromPdf(file)
+      if (!text.trim()) throw new Error("Could not extract text from this PDF.")
+
+      setProgressMessage(`Parsing ${pageCount} page${pageCount !== 1 ? "s" : ""} with AI…`)
+
+      const res = await fetch("/api/parse-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, fallbackModule: null }),
+      })
+      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      const data = await res.json() as { questions: ChunkQuestion[]; source: string }
+
+      if (!data.questions || data.questions.length === 0) {
+        throw new Error("No questions detected in this PDF.")
+      }
+
+      const qs = data.questions.map((q, i) => makeFromChunk(q, i, null))
+      stageQuestions(qs, data.source === "regex" ? "regex" : "ai")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process PDF.")
+    } finally {
+      setIsProcessing(false)
+      setProgressMessage("")
+    }
+  }
+
+  // ── Raw text handler ─────────────────────────────────────────────────────────
+  async function processText() {
+    const text = textInput.trim()
+    if (!text) { setError("Paste some text first."); return }
+
+    setError("")
+    setIsProcessing(true)
+    setProgressMessage("Parsing text with AI…")
+
+    try {
+      const res = await fetch("/api/extract-single-chunk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ textChunk: text, fallbackModule: null, fallbackDiscipline: null }),
+      })
+      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      const data = await res.json() as { questions?: ChunkQuestion[] }
+      const questions = data.questions ?? []
+
+      if (questions.length > 0) {
+        stageQuestions(questions.map((q, i) => makeFromChunk(q, i, null)), "ai")
+        return
+      }
+
+      // AI fallback — regex
+      setProgressMessage("AI returned no questions — using fallback parser…")
+      const raw = parseTextFallback(text)
+      if (raw.length === 0) {
+        setError("No questions detected. Make sure questions are numbered and options are labelled A–E.")
+        return
+      }
+      stageQuestions(raw.map((r, i) => makeFromRaw(r, i, null)), "regex")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to parse text.")
+    } finally {
+      setIsProcessing(false)
+      setProgressMessage("")
+    }
+  }
+
+  // ── File routing ─────────────────────────────────────────────────────────────
+  const processFile = useCallback((file: File) => {
+    const name = file.name.toLowerCase()
+    if (name.endsWith(".json")) {
+      processJsonFile(file)
+    } else if (name.endsWith(".docx")) {
+      processDocxFile(file)
+    } else if (name.endsWith(".pdf")) {
+      processPdfFile(file)
+    } else {
+      setError("Unsupported file type. Please drop a .json, .docx, or .pdf file.")
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) processFile(file)
+  }
+
+  const sourceBadge =
+    parseSource === "ai"
+      ? { label: "✦ AI parsed", cls: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400" }
+      : parseSource === "regex"
+      ? { label: "Fallback parsed", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" }
+      : parseSource === "json"
+      ? { label: "JSON imported", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" }
+      : null
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  return (
+    <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="glass-modal flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+
+        {/* Header */}
+        <div className="glass-modal-header flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <ArrowUpDownIcon size={16} className="text-primary" />
+              <h3 className="font-bold text-foreground">
+                {view === "input" ? "Import / Export Data" : `Preview — ${pendingImport.length} question${pendingImport.length !== 1 ? "s" : ""}`}
+              </h3>
+              {view === "preview" && sourceBadge && (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${sourceBadge.cls}`}>{sourceBadge.label}</span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {view === "input"
+                ? "Drop a file or paste text to import · Export the full live question bank as JSON"
+                : "Review staged questions, remove any mis-parsed entries, then confirm"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <XIcon size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto">
+          {view === "input" ? (
+            <div className="space-y-4 p-6">
+
+              {/* ── File drop zone ───────────────────────────────────────── */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => !isProcessing && fileInputRef.current?.click()}
+                className={`relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-all
+                  ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/20"}
+                  ${isProcessing ? "pointer-events-none opacity-70" : ""}`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,.docx,.pdf,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) processFile(f)
+                    if (fileInputRef.current) fileInputRef.current.value = ""
+                  }}
+                />
+
+                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${isProcessing ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  {isProcessing ? <Spinner size={28} /> : <UploadIcon size={26} />}
+                </div>
+
+                <div>
+                  <p className="font-semibold text-foreground">
+                    {isProcessing ? (progressMessage || "Processing…") : "Drop file here or click to browse"}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {isProcessing
+                      ? "Please wait while your questions are extracted"
+                      : "Accepts .json · .docx · .pdf"}
+                  </p>
+                </div>
+
+                {isProcessing && (
+                  <div className="w-full max-w-xs">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full animate-pulse rounded-full bg-primary/60 w-full" />
+                    </div>
+                  </div>
+                )}
+
+                {/* File type badges */}
+                {!isProcessing && (
+                  <div className="flex items-center gap-2">
+                    {[
+                      { label: "JSON", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+                      { label: "DOCX", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+                      { label: "PDF", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+                    ].map(({ label, cls }) => (
+                      <span key={label} className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${cls}`}>{label}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Divider ──────────────────────────────────────────────── */}
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">or paste text</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+
+              {/* ── Raw text textarea ─────────────────────────────────────── */}
+              <div>
+                <textarea
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder={`Paste raw question text here…\n\nExample:\nMODULE: Internal Medicine\nDISCIPLINE: Cardiology\n\n1. A 55-year-old man presents with chest pain…\nA. Option one\nB. Option two\nC. Option three\nD. Option four\nAnswer: A\nExplanation: …`}
+                  disabled={isProcessing}
+                  rows={8}
+                  className="w-full resize-y rounded-xl border border-border bg-background px-4 py-3 font-mono text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+                />
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertTriangleIcon size={15} className="mt-0.5 shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              {/* ── Format tips ───────────────────────────────────────────── */}
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                <p className="mb-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Format Tips</p>
+                <ul className="space-y-1.5">
+                  {[
+                    { text: "Tag a module section with:  MODULE: Module Name  on its own line", color: "text-emerald-500" },
+                    { text: "Tag a discipline with:  DISCIPLINE: Name  (or SUBJECT: / TOPIC:)", color: "text-emerald-500" },
+                    { text: "Number questions as:  1.  or  1)  or  Q1.  or  Q1)", color: "text-emerald-500" },
+                    { text: "Format options as:  A. text  or  A) text  — one per line", color: "text-emerald-500" },
+                    { text: "Mark the correct answer:  Answer: A  or  Correct Answer: B", color: "text-emerald-500" },
+                    { text: "JSON export retains mediaBase64 image strings — re-importing restores them", color: "text-sky-500" },
+                  ].map((tip, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                      <CheckIcon size={11} className={`mt-0.5 shrink-0 ${tip.color}`} />
+                      {tip.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+          ) : (
+            /* Preview staging area */
+            <div className="space-y-2 p-6">
+              {pendingImport.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-10 text-center">
+                  <AlertTriangleIcon size={32} className="text-amber-500" />
+                  <p className="font-semibold">All questions removed</p>
+                  <button
+                    type="button"
+                    onClick={() => { setView("input"); setParseSource(null) }}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Go back to import
+                  </button>
+                </div>
+              ) : (
+                pendingImport.map((q, i) => (
+                  <PreviewCard
+                    key={q.id}
+                    q={q}
+                    index={i}
+                    onRemove={() => setPendingImport((prev) => prev.filter((_, j) => j !== i))}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          {view === "preview" ? (
+            <>
+              <button
+                type="button"
+                onClick={() => { setView("input"); setParseSource(null) }}
+                className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <RefreshCwIcon size={13} /> Try another file
+              </button>
+              <button
+                type="button"
+                disabled={pendingImport.length === 0}
+                onClick={() => { onImport(pendingImport); onClose() }}
+                className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <CheckIcon size={14} />
+                Confirm & Import {pendingImport.length} to Editor
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                >
+                  <DownloadIcon size={14} />
+                  Export JSON
+                  <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                    {liveQuestions.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessing || !textInput.trim()}
+                  onClick={processText}
+                  className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? <Spinner size={14} /> : <UploadIcon size={14} />}
+                  Process Import
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

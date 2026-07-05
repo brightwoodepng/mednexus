@@ -818,7 +818,12 @@ type FilterMode = "all" | "live" | "draft"
 
 interface EditTarget { question: Question | null; moduleName: string; disciplineName: string; isDraft: boolean }
 
-export function QuestionEditor() {
+interface QuestionEditorProps {
+  pendingImport?: Question[] | null
+  onPendingImportConsumed?: () => void
+}
+
+export function QuestionEditor({ pendingImport, onPendingImportConsumed }: QuestionEditorProps = {}) {
   const { questions, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb, appendQuestions, suppressNextAutoSave } = useQuestions()
   const { adminToken } = useAdmin()
 
@@ -847,6 +852,15 @@ export function QuestionEditor() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFirstRender = useRef(true)
   const jsonInputRef = useRef<HTMLInputElement>(null)
+
+  // Consume questions staged by the Universal Importer modal
+  useEffect(() => {
+    if (!pendingImport || pendingImport.length === 0) return
+    setDraftQuestions((prev) => [...prev, ...pendingImport])
+    setFilterMode("draft")
+    onPendingImportConsumed?.()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingImport])
 
   // Auto-save to DB on question changes
   useEffect(() => {
