@@ -14,6 +14,7 @@ interface ParsedQuestion {
     details: string
     incorrectReasoning: string
   }
+  mediaBase64?: string | null
 }
 
 // ── Text cleaning ─────────────────────────────────────────────────────────────
@@ -196,7 +197,8 @@ Each element must exactly match:
     "objective":          string,  // ≤1 sentence: what concept is tested
     "details":            string,  // why the correct answer is right
     "incorrectReasoning": string   // why each distractor is wrong (may be "")
-  } | null
+  } | null,
+  "mediaBase64": string | null    // base64 data URI of an embedded image/diagram if present, else null
 }
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -241,6 +243,7 @@ interface GeminiParsedQuestion {
     details: string
     incorrectReasoning: string
   } | null
+  mediaBase64?: string | null
 }
 
 /**
@@ -275,6 +278,7 @@ function normaliseQuestion(
     options,
     correctAnswer,
     explanation,
+    mediaBase64: typeof q.mediaBase64 === "string" && q.mediaBase64.trim() ? q.mediaBase64.trim() : null,
   }
 }
 

@@ -68,8 +68,13 @@ Each element must follow this exact shape:
   "vignette":      string,
   "options":       [{"id":"A","text":"…"}, {"id":"B","text":"…"}, …],
   "correctAnswer": "A" | "B" | "C" | "D" | "E" | null,
-  "explanation":   string | null
+  "explanation":   string | null,
+  "mediaBase64":   string | null
 }
+
+mediaBase64: If the question refers to an image or diagram present in the source
+document, extract that image and include it as a base64-encoded data URI string
+(e.g. "data:image/png;base64,…"). If no image is present or extractable, set to null.
 
 Rules:
 • vignette must NOT start with a question number, letter prefix, or punctuation.
@@ -91,6 +96,7 @@ interface ChunkQuestion {
   options: { id: string; text: string }[]
   correctAnswer: string | null
   explanation: string | null
+  mediaBase64?: string | null
 }
 
 export async function POST(req: NextRequest) {
@@ -207,6 +213,7 @@ export async function POST(req: NextRequest) {
           options,
           correctAnswer,
           explanation: typeof q.explanation === "string" && q.explanation.trim() ? q.explanation.trim() : null,
+          mediaBase64: typeof q.mediaBase64 === "string" && q.mediaBase64.trim() ? q.mediaBase64.trim() : null,
         } satisfies ChunkQuestion
       })
       .filter(Boolean) as ChunkQuestion[]

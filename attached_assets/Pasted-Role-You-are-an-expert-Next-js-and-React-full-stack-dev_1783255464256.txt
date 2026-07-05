@@ -1,0 +1,36 @@
+Role: You are an expert Next.js and React full-stack developer working on MedNexus, a medical education platform.
+Task: We need to build a "Universal Importer/Exporter" tool accessible via the Admin Tools Sidebar. It must handle JSON, raw text pasting, and multimodal document extraction (Word/PDF with embedded images), and include a Visual Preview staging area before committing the data to the main editor state.
+
+Please implement the following complete architecture:
+
+### Step 1: Update the Question Schema
+Update our frontend state and database schemas to accept an optional image field. 
+- Add mediaBase64: string | null to the question object to store extracted diagrams/images directly within the JSON.
+
+### Step 2: Admin Sidebar Integration & Modal UI
+1. Add an "Import/Export Data" button to the existing Admin Tools Sidebar.
+2. Clicking this button should open a clean, high-contrast modal or drawer containing:
+   - A single file dropzone that accepts .json, .pdf, and .docx files.
+   - A <textarea> directly below for pasting raw text.
+   - Two primary action buttons: "Process Import" and "Export JSON".
+
+### Step 3: The Client-Side JSON Loop (Instant)
+1. Export: A function that takes the current array of live questions/drafts, stringifies it, and triggers a browser download for mednexus-questions-[DATE].json.
+2. Import: A function that intercepts a .json file dropped in the dropzone, parses it, and sends it directly to the Preview Staging Area (Step 4).
+
+### Step 4: The Visual Preview Staging Area (NEW)
+Before pushing parsed or imported data into the main application state, it must be staged.
+1. Create a pendingImport React state to hold the parsed questions temporarily.
+2. Build a "Preview UI" within the modal that renders the pendingImport array as simplified question cards. 
+3. Each card must display the question text, the extracted MODULE / DISCIPLINE tags, and render the mediaBase64 string as an actual image if it exists.
+4. Include a "Confirm & Import to Editor" button that finally moves the pendingImport data into the main drafts/editor state.
+
+### Step 5: The Multimodal Backend Pipeline (Word, PDF, & Text)
+Update the extraction API routes to handle image extraction and strict categorization:
+1. Text Paste: Route raw text to the parsing endpoint to be formatted into the JSON array by Gemini.
+2. Multimodal Extraction: For Word and PDF files, use Gemini 1.5 Pro's native multimodal capabilities (or a library like mammoth) to read both the text AND embedded images.
+   - Inject this instruction into the Gemini system prompt: "If a question refers to an image or diagram in the source document, extract that image and include it as a base64 string in the mediaBase64 field of the JSON response."
+   - Retain the strict Anti-Hallucination rules: Extract exactly what is written in the "MODULE:" and "DISCIPLINE:" tags. Do not invent or guess disciplines. 
+3. Chunking Orchestrator: Ensure the Word parser utilizes the frontend chunking loop (~2,000 words per chunk) to bypass Vercel 504 serverless timeouts, passing the runningModule and runningDiscipline context forward between chunks.
+
+Execution: Review the existing admin sidebar and state management. Build this unified component maintaining a sophisticated, minimalist aesthetic. Ensure the JSON export includes the new mediaBase64 strings so that exported question banks retain their images perfectly when re-imported.

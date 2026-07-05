@@ -26,6 +26,7 @@ import { NotificationBell } from "@/components/notification-bell"
 import { ProfileHistory } from "@/components/profile-history"
 import { WeakAreasScreen } from "@/components/weak-areas-screen"
 import { GameMode } from "@/components/game-mode"
+import { UniversalImporter } from "@/components/universal-importer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import {
   MenuIcon,
@@ -364,6 +365,8 @@ export function MedNexusApp() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [adminLoginOpen, setAdminLoginOpen] = useState(false)
+  const [importerOpen, setImporterOpen] = useState(false)
+  const [pendingEditorImport, setPendingEditorImport] = useState<import("@/lib/types").Question[] | null>(null)
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
@@ -511,6 +514,7 @@ export function MedNexusApp() {
         onNavigate={setScreen}
         onOpenThemes={() => setThemeOpen(true)}
         onOpenAdminLogin={() => setAdminLoginOpen(true)}
+        onOpenImporter={() => setImporterOpen(true)}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
         onReadyForQuiz={handleReadyForQuiz}
@@ -543,7 +547,12 @@ export function MedNexusApp() {
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} />}
           {safeScreen === "profile" && <ProfileHistory />}
-          {safeScreen === "question-editor" && isAdmin && <QuestionEditor />}
+          {safeScreen === "question-editor" && isAdmin && (
+            <QuestionEditor
+              pendingImport={pendingEditorImport}
+              onPendingImportConsumed={() => setPendingEditorImport(null)}
+            />
+          )}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen />}
           {safeScreen === "live-assessments-admin" && isAdmin && <LiveAssessmentsAdmin />}
@@ -566,6 +575,16 @@ export function MedNexusApp() {
 
       <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
       {adminLoginOpen && <AdminLoginModal onClose={() => setAdminLoginOpen(false)} />}
+      {importerOpen && isAdmin && (
+        <UniversalImporter
+          onImport={(qs) => {
+            setPendingEditorImport(qs)
+            setScreen("question-editor")
+            setImporterOpen(false)
+          }}
+          onClose={() => setImporterOpen(false)}
+        />
+      )}
       <CreditsModal open={creditsOpen} onClose={() => setCreditsOpen(false)} />
       {showWelcome && user && <WelcomeModal name={user.name} onClose={() => setShowWelcome(false)} />}
     </div>
