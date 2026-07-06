@@ -11,6 +11,7 @@ function slimQuestion(q: Question) {
     vignette: q.vignette,
     options: q.options,
     correctAnswer: q.correctAnswer,
+    explanation: q.explanation ?? null,
   }
 }
 
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     await ensureSchema()
     const body = await req.json()
     const { mode, hostId, hostName, questionPool, equippedTitle, equippedFrame, equippedHighlight } = body as {
-      mode: "clash" | "cohort" | "wager"
+      mode: "clash" | "cohort" | "wager" | "djmulti"
       hostId: string
       hostName: string
       questionPool: Question[]
@@ -37,7 +38,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
     }
 
-    if (mode !== "clash" && mode !== "cohort" && mode !== "wager") {
+    const VALID_MODES = ["clash", "cohort", "wager", "djmulti"]
+    if (!VALID_MODES.includes(mode)) {
       return NextResponse.json({ error: "Invalid mode" }, { status: 400 })
     }
 
@@ -52,9 +54,13 @@ export async function POST(req: Request) {
     }
     if (!pin) return NextResponse.json({ error: "Could not generate PIN" }, { status: 500 })
 
+    // djmulti starts players with a 500-chip bank (Double Jeopardy mechanics)
+    const isWagerLike = mode === "wager" || mode === "djmulti"
+    const startingBalance = mode === "wager" ? 1000 : mode === "djmulti" ? 500 : undefined
+
     const hostPlayer = {
       id: hostId, name: hostName, score: 0, streak: 0, answer: null, answeredAt: null, isHost: true,
-      ...(mode === "wager" ? { balance: 1000, wagerAmount: null, isSpectator: false } : {}),
+      ...(isWagerLike ? { balance: startingBalance, wagerAmount: null, isSpectator: false } : {}),
       equippedTitle:     equippedTitle     ?? null,
       equippedFrame:     equippedFrame     ?? null,
       equippedHighlight: equippedHighlight ?? null,

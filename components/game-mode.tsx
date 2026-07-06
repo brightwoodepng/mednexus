@@ -4,13 +4,13 @@ import { useState, useEffect, useRef, useMemo } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
-import { MultiplayerClash, CohortReview, WagerWars } from "@/components/game-mode-multiplayer"
+import { MultiplayerClash, CohortReview, WagerWars, DoubleJeopardyMulti } from "@/components/game-mode-multiplayer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/economy-panel"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort" | "wager"
+type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort" | "wager" | "djmulti"
 type AppView = "hero" | "solo" | "multi" | "quickjoin" | GameModeId
 type Phase = "menu" | "playing" | "over"
 type Feedback = "correct" | "wrong" | null
@@ -106,6 +106,13 @@ const MULTI_MODES: MultiModeCard[] = [
     icon: "🎰", gradient: "from-amber-500 to-rose-500", shadow: "shadow-amber-500/20",
     desc: "Bet before seeing options. Win big or lose it all — spectate when broke.",
     rules: ["Vignette shown first, options hidden", "Wager: Safe / Moderate / Bold / All-In", "Balance hits 0 → Spectator mode"],
+  },
+  {
+    id: "djmulti", name: "Double Jeopardy", badge: "Confidence",
+    badgeColor: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+    icon: "🎲", gradient: "from-indigo-500 to-purple-600", shadow: "shadow-indigo-500/20",
+    desc: "Read the vignette, wager your confidence — then see the options. Now with friends.",
+    rules: ["Max 5 players · Starting bank 500 pts", "Wager: Safe 10% / Moderate 25% / Bold 50% / All In 100%", "Bank hits 0 → Spectator mode"],
   },
 ]
 
@@ -1641,6 +1648,7 @@ export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenSt
   if (activeMode === "clash") return <MultiplayerClash onExit={() => setActiveMode(null)} />
   if (activeMode === "cohort") return <CohortReview onExit={() => setActiveMode(null)} />
   if (activeMode === "wager") return <WagerWars onExit={() => setActiveMode(null)} />
+  if (activeMode === "djmulti") return <DoubleJeopardyMulti onExit={() => setActiveMode(null)} />
 
   return <ModeSelectScreen onSelect={setActiveMode} onBack={onExit} onOpenStore={onOpenStore} />
 }

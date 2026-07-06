@@ -9,7 +9,7 @@ import { useEconomy } from "@/contexts/economy-context"
 import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES } from "@/lib/economy"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type MultiMode = "clash" | "cohort" | "wager"
+type MultiMode = "clash" | "cohort" | "wager" | "djmulti"
 type RoomPhase = "lobby" | "wager" | "question" | "reveal" | "done"
 type FilterScope = "all" | "module" | "subject"
 
@@ -34,7 +34,10 @@ interface SlimQuestion {
   vignette: string
   options: { id: string; text: string }[]
   correctAnswer: string
+  explanation?: { objective?: string; details?: string; incorrectReasoning?: string } | null
 }
+
+interface MultiAnswerEntry { question: SlimQuestion; selected: string }
 
 interface RoomState {
   pin: string; mode: MultiMode; hostId: string; hostName: string
@@ -423,8 +426,16 @@ function QuestionTimer({ timeLeftMs, isPressure }: { timeLeftMs: number | null; 
 function RoomLobby({ room, myId, isHost, onStart, onExit }: {
   room: RoomState; myId: string; isHost: boolean; onStart: () => void; onExit: () => void
 }) {
-  const modeLabel = room.mode === "clash" ? "Multiplayer Clash" : "Cohort Review"
-  const modeIcon = room.mode === "clash" ? "⚔️" : "🎓"
+  const modeLabel = room.mode === "clash" ? "Multiplayer Clash"
+    : room.mode === "cohort" ? "Cohort Review"
+    : room.mode === "djmulti" ? "Double Jeopardy"
+    : "Wager Wars"
+  const modeIcon = room.mode === "clash" ? "⚔️" : room.mode === "cohort" ? "🎓" : room.mode === "djmulti" ? "🎲" : "🎰"
+  const capacityLabel = room.mode === "clash" || room.mode === "djmulti" ? "/5" : room.mode === "wager" ? "/8" : ""
+  const modeDesc = room.mode === "clash" ? "Max 5 players · Fastest answer wins"
+    : room.mode === "cohort" ? "Unlimited players · Host controls pace"
+    : room.mode === "djmulti" ? "Max 5 players · Wager your confidence"
+    : "Max 8 players · Bet chips on every question"
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6">
@@ -432,9 +443,7 @@ function RoomLobby({ room, myId, isHost, onStart, onExit }: {
         <div className="mb-5 text-center">
           <div className="mb-3 text-4xl">{modeIcon}</div>
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">{modeLabel}</h1>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {room.mode === "clash" ? "Max 5 players · Fastest answer wins" : "Unlimited players · Host controls pace"}
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{modeDesc}</p>
         </div>
 
         <CopyPinCard pin={room.pin} />
@@ -443,7 +452,7 @@ function RoomLobby({ room, myId, isHost, onStart, onExit }: {
           <div className="mb-3 flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Players</p>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-              {room.players.length}{room.mode === "clash" ? "/5" : ""}
+              {room.players.length}{capacityLabel}
             </span>
           </div>
           <div className="grid gap-2">
@@ -770,44 +779,138 @@ function CohortPlayerHUD({ room, myId, onAnswer, onLeave, timeLeftMs, isPressure
 }
 
 // ── FINAL RESULTS ─────────────────────────────────────────────────────────────
-function FinalResults({ room, myId, onExit }: { room: RoomState; myId: string; onExit: () => void }) {
+function FinalResults({ room, myId, onExit, answerHistory }: {
+  room: RoomState; myId: string; onExit: () => void
+  answerHistory?: MultiAnswerEntry[]
+}) {
+  const [reviewOpen, setReviewOpen] = useState(false)
   const sorted = [...room.players].sort((a, b) => b.score - a.score)
   const me = sorted.find(p => p.id === myId)
   const myRank = sorted.findIndex(p => p.id === myId) + 1
-  const modeLabel = room.mode === "clash" ? "Multiplayer Clash" : "Cohort Review"
-
+  const modeLabel = room.mode === "clash" ? "Multiplayer Clash"
+    : room.mode === "cohort" ? "Cohort Review"
+    : room.mode === "djmulti" ? "Double Jeopardy"
+    : "Wager Wars"
+  const isWagerLike = room.mode === "wager" || room.mode === "djmulti"
   const podiumEmoji = myRank === 1 ? "🏆" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🎯"
+  const history = answerHistory ?? []
 
   return (
-    <div className="flex min-h-full flex-col p-4 sm:p-6">
-      <div className="mx-auto w-full max-w-md">
-        <div className="mb-6 text-center">
-          <div className="text-5xl mb-3">{podiumEmoji}</div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Match Over!</h1>
-          <p className="text-sm text-muted-foreground mt-1">{modeLabel}</p>
-        </div>
-
-        {me && (
-          <div className="mb-5 rounded-3xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-5 text-center">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">{room.mode === "wager" ? "Final Balance" : "Your Final Score"}</p>
-            <p className="text-5xl font-extrabold tabular-nums text-foreground">
-              {me.score.toLocaleString()}{room.mode === "wager" ? " 🪙" : ""}
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">Rank #{myRank} of {sorted.length}</p>
+    <>
+      {/* ── Review Vignettes Drawer ── */}
+      {reviewOpen && (
+        <div className="fixed inset-0 z-50 flex" onClick={() => setReviewOpen(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative ml-auto flex h-full w-full max-w-2xl flex-col bg-background shadow-2xl animate-in slide-in-from-right duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-lg shadow-md">📖</div>
+                <div>
+                  <h2 className="text-base font-extrabold text-foreground">Vignette Review</h2>
+                  <p className="text-[11px] text-muted-foreground">
+                    {history.filter(e => e.selected === e.question.correctAnswer).length}/{history.length} correct
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setReviewOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground text-lg">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {history.map((entry, i) => {
+                const isCorrect = entry.selected === entry.question.correctAnswer
+                const expl = entry.question.explanation
+                return (
+                  <div key={i} className={`rounded-3xl border bg-card p-4 ${isCorrect ? "border-emerald-200 dark:border-emerald-800/40" : "border-rose-200 dark:border-rose-800/40"}`}>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white ${isCorrect ? "bg-emerald-500" : "bg-rose-500"}`}>{i + 1}</span>
+                      <span className={`text-[11px] font-extrabold ${isCorrect ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>{isCorrect ? "Correct" : "Incorrect"}</span>
+                      <span className="text-[11px] font-bold text-primary ml-1">{entry.question.subject}</span>
+                      {entry.question.module && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{entry.question.module}</span>}
+                    </div>
+                    <div className="mb-3 rounded-2xl bg-muted/40 p-3">
+                      <RichText content={entry.question.vignette} className="text-xs text-foreground" />
+                    </div>
+                    <div className="space-y-1.5 mb-3">
+                      {entry.question.options.map(opt => {
+                        const isOpt = opt.id === entry.question.correctAnswer
+                        const isSel = opt.id === entry.selected && !isOpt
+                        let cls = "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs "
+                        if (isOpt) cls += "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 font-semibold text-emerald-700 dark:text-emerald-400"
+                        else if (isSel) cls += "border-rose-400 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 line-through"
+                        else cls += "border-border bg-muted/20 text-muted-foreground"
+                        return (
+                          <div key={opt.id} className={cls}>
+                            <span className={`font-extrabold w-5 shrink-0 ${isOpt ? "text-emerald-600 dark:text-emerald-400" : isSel ? "text-rose-500" : "text-muted-foreground"}`}>{opt.id}.</span>
+                            <span className="flex-1">{opt.text}</span>
+                            {isOpt && <span className="text-emerald-500 text-xs font-bold">✓</span>}
+                            {isSel && <span className="text-rose-500 text-xs font-bold">✗</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {expl && (
+                      <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/30 p-3 space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">📋 Explanation</p>
+                        {expl.objective && <p className="text-xs font-semibold text-foreground leading-relaxed">{expl.objective}</p>}
+                        {expl.details && <p className="text-xs text-muted-foreground leading-relaxed">{expl.details}</p>}
+                        {!isCorrect && expl.incorrectReasoning && (
+                          <div className="rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-3 py-2">
+                            <p className="text-[10px] font-bold text-rose-600 dark:text-rose-400 mb-0.5">Why the common mistake?</p>
+                            <p className="text-xs text-rose-700 dark:text-rose-300 leading-relaxed">{expl.incorrectReasoning}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        )}
-
-        <div className="mb-6 rounded-3xl border border-border bg-card p-4">
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Final Leaderboard</p>
-          <Leaderboard players={sorted} highlight={myId} />
         </div>
+      )}
 
-        <button type="button" onClick={onExit}
-          className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-4 text-base font-bold text-white shadow-lg shadow-violet-500/20 transition-all hover:opacity-90">
-          Back to Game Mode
-        </button>
+      <div className="flex min-h-full flex-col p-4 sm:p-6">
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-6 text-center">
+            <div className="text-5xl mb-3">{podiumEmoji}</div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Match Over!</h1>
+            <p className="text-sm text-muted-foreground mt-1">{modeLabel}</p>
+          </div>
+
+          {me && (
+            <div className="mb-5 rounded-3xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-5 text-center">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                {isWagerLike ? (room.mode === "djmulti" ? "Final Bank" : "Final Balance") : "Your Final Score"}
+              </p>
+              <p className="text-5xl font-extrabold tabular-nums text-foreground">
+                {me.score.toLocaleString()}{isWagerLike ? (room.mode === "djmulti" ? " 🏦" : " 🪙") : ""}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">Rank #{myRank} of {sorted.length}</p>
+            </div>
+          )}
+
+          <div className="mb-5 rounded-3xl border border-border bg-card p-4">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Final Leaderboard</p>
+            <Leaderboard players={sorted} highlight={myId} />
+          </div>
+
+          {history.length > 0 && (
+            <button type="button" onClick={() => setReviewOpen(true)}
+              className="mb-3 w-full rounded-2xl border border-border py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+              📖 Review Vignettes ({history.length})
+            </button>
+          )}
+
+          <button type="button" onClick={onExit}
+            className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-4 text-base font-bold text-white shadow-lg shadow-violet-500/20 transition-all hover:opacity-90">
+            Back to Game Mode
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -890,9 +993,9 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
 
   const maxQ = Math.max(countFilter(allQ, filter), 5)
   const clampedCount = Math.min(qCount, maxQ)
-  const modeLabel = mode === "clash" ? "Multiplayer Clash" : mode === "cohort" ? "Cohort Review" : "Wager Wars"
-  const modeIcon = mode === "clash" ? "⚔️" : mode === "cohort" ? "🎓" : "🎰"
-  const modeGradient = mode === "clash" ? "from-violet-600 to-fuchsia-600" : mode === "cohort" ? "from-teal-500 to-cyan-500" : "from-amber-500 to-orange-500"
+  const modeLabel = mode === "clash" ? "Multiplayer Clash" : mode === "cohort" ? "Cohort Review" : mode === "djmulti" ? "Double Jeopardy" : "Wager Wars"
+  const modeIcon = mode === "clash" ? "⚔️" : mode === "cohort" ? "🎓" : mode === "djmulti" ? "🎲" : "🎰"
+  const modeGradient = mode === "clash" ? "from-violet-600 to-fuchsia-600" : mode === "cohort" ? "from-teal-500 to-cyan-500" : mode === "djmulti" ? "from-indigo-500 to-purple-600" : "from-amber-500 to-orange-500"
 
   async function create() {
     if (!hostName.trim()) { setError("Please enter your display name."); return }
@@ -921,7 +1024,10 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
           <div className="mb-3 text-4xl">{modeIcon}</div>
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">{modeLabel}</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            {mode === "clash" ? "Competitive room · Max 5 players" : mode === "cohort" ? "Lecture hall mode · Unlimited players" : "Betting game · Max 8 players · Starting balance: 1,000 chips"}
+            {mode === "clash" ? "Competitive room · Max 5 players"
+            : mode === "cohort" ? "Lecture hall mode · Unlimited players"
+            : mode === "djmulti" ? "Confidence wagering · Max 5 players · Starting bank: 500 pts"
+            : "Betting game · Max 8 players · Starting balance: 1,000 chips"}
           </p>
         </div>
 
@@ -946,6 +1052,15 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
     </div>
   )
 }
+
+// ── DJ MULTI WAGER PRESETS ────────────────────────────────────────────────────
+// Percentage-of-bank bets for Double Jeopardy multiplayer (mirrors solo DJ)
+const DJ_MULTI_BETS = [
+  { label: "Safe",     pct: 0.10, icon: "🛡️", color: "from-emerald-500 to-teal-500",   shadow: "shadow-emerald-500/20" },
+  { label: "Moderate", pct: 0.25, icon: "🎯", color: "from-blue-500 to-indigo-500",     shadow: "shadow-blue-500/20"    },
+  { label: "Bold",     pct: 0.50, icon: "🔥", color: "from-amber-500 to-orange-500",    shadow: "shadow-amber-500/20"   },
+  { label: "All In",   pct: 1.00, icon: "💎", color: "from-rose-500 to-fuchsia-600",    shadow: "shadow-rose-500/20"    },
+]
 
 // ── WAGER HUD ─────────────────────────────────────────────────────────────────
 // Handles all three active wager-mode phases: wager → question → reveal
@@ -1178,6 +1293,226 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
   )
 }
 
+// ── DOUBLE JEOPARDY MULTIPLAYER HUD ──────────────────────────────────────────
+// Handles the three active DJ-multi phases: wager → question → reveal
+function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, onLeave, myLastAnswerCorrect }: {
+  room: RoomState; myId: string; isHost: boolean
+  onWager: (amount: number) => void
+  onAnswer: (answer: string, answerText: string) => void
+  onAdvance: () => void
+  onFinish: () => void
+  onLeave: () => void
+  myLastAnswerCorrect: boolean | null
+}) {
+  const q = room.questionPool[room.currentQi]
+  if (!q) return null
+
+  const me = room.players.find(p => p.id === myId)
+  const myAnswer = me?.answer ?? null
+  const myWager = me?.wagerAmount ?? null
+  const myBank = me?.balance ?? 500
+  const isSpectator = me?.isSpectator ?? false
+  const isWagerPhase = room.phase === "wager"
+  const isQuestionPhase = room.phase === "question"
+  const revealed = room.phase === "reveal"
+
+  return (
+    <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
+      {/* HUD bar */}
+      <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
+        <span className="text-xs font-bold text-muted-foreground">Q {room.currentQi + 1}/{room.questionPool.length}</span>
+        <div className="flex-1" />
+        {isWagerPhase && (
+          <span className="rounded-full bg-indigo-100 dark:bg-indigo-900/30 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wide">
+            Wager Phase
+          </span>
+        )}
+        {isSpectator && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+            👁 Spectator
+          </span>
+        )}
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] text-indigo-600 dark:text-indigo-400">🏦</span>
+          <span className="tabular-nums text-sm font-extrabold text-foreground">{myBank.toLocaleString()}</span>
+          {revealed && myLastAnswerCorrect !== null && myWager !== null && (
+            <span className={`text-xs font-bold ${myLastAnswerCorrect ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
+              ({myLastAnswerCorrect ? `+${myWager}` : `-${myWager}`})
+            </span>
+          )}
+        </div>
+        <button type="button" onClick={onLeave}
+          className="flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-all hover:opacity-80 active:scale-95">
+          ✕ Leave
+        </button>
+      </div>
+
+      {isSpectator && (
+        <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800/30 bg-indigo-50 dark:bg-indigo-950/20 px-4 py-3 text-center">
+          <p className="text-sm font-bold text-indigo-700 dark:text-indigo-400">👁 Spectator Mode</p>
+          <p className="text-xs text-indigo-600/80 dark:text-indigo-500/80 mt-0.5">Bank depleted — you can still follow along.</p>
+        </div>
+      )}
+
+      {/* Vignette card */}
+      <div className={`rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-indigo-300/60 dark:border-indigo-700/40" : "border-primary/20"}`}>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
+          {isWagerPhase && (
+            <span className="rounded-full bg-indigo-100 dark:bg-indigo-900/30 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-400">
+              Place your wager — options revealed after everyone bets
+            </span>
+          )}
+        </div>
+        <RichText content={q.vignette} className="text-sm font-medium text-foreground sm:text-base" />
+      </div>
+
+      {/* ── WAGER PHASE ── */}
+      {isWagerPhase && !isSpectator && (
+        myWager !== null ? (
+          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800/30 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3 text-center">
+            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">🔒 Wager locked — {myWager.toLocaleString()} pts</p>
+            <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-0.5">Waiting for all players to wager…</p>
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-indigo-200 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/30 p-4">
+            <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-indigo-700 dark:text-indigo-400">
+              🎲 Place Your Wager
+            </p>
+            <p className="mb-3 text-center text-[11px] text-muted-foreground">
+              Bank: <strong className="text-foreground">{myBank.toLocaleString()} pts</strong>
+            </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {DJ_MULTI_BETS.map(bet => {
+                const amount = Math.max(10, Math.floor(myBank * bet.pct))
+                return (
+                  <button key={bet.label} type="button" onClick={() => onWager(amount)}
+                    className={`flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br ${bet.color} px-4 py-3.5 text-white shadow-md ${bet.shadow} transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]`}>
+                    <span className="text-xl">{bet.icon}</span>
+                    <span className="text-sm font-extrabold">{bet.label}</span>
+                    <span className="text-xs font-semibold opacity-90">+/− {amount.toLocaleString()} pts</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      )}
+
+      {isWagerPhase && isSpectator && (
+        <div className="rounded-2xl border border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground">
+          ⏳ Waiting for active players to place their wagers…
+        </div>
+      )}
+
+      {/* ── QUESTION PHASE ── */}
+      {isQuestionPhase && (
+        <>
+          <div className="grid gap-2">
+            {q.options.map((opt, i) => (
+              <MultiOptionBtn
+                key={opt.id} id={opt.id} text={opt.text}
+                sel={myAnswer === opt.id}
+                correct={opt.id === q.correctAnswer}
+                revealed={false}
+                colorIndex={i}
+                disabled={myAnswer !== null || isSpectator}
+                onSel={() => { if (!isSpectator) onAnswer(opt.id, opt.text) }}
+              />
+            ))}
+          </div>
+          {myAnswer !== null ? (
+            myLastAnswerCorrect !== null ? (
+              <p className="text-center text-xs font-semibold text-muted-foreground">
+                {myLastAnswerCorrect ? "✅ Correct! Waiting for others…" : "❌ Wrong. Waiting for others…"}
+              </p>
+            ) : (
+              <p className="text-center text-xs font-semibold text-muted-foreground">⏳ Submitted! Waiting for others…</p>
+            )
+          ) : isSpectator ? (
+            <p className="text-center text-xs font-semibold text-muted-foreground">👁 Spectating — answer locked</p>
+          ) : (
+            myWager !== null && (
+              <p className="text-center text-[11px] text-muted-foreground">
+                Wagered: <strong className="text-indigo-600 dark:text-indigo-400">{myWager.toLocaleString()} pts</strong> · Pick your answer
+              </p>
+            )
+          )}
+        </>
+      )}
+
+      {/* ── REVEAL PHASE ── */}
+      {revealed && (
+        <>
+          <div className="grid gap-2">
+            {q.options.map((opt, i) => (
+              <MultiOptionBtn
+                key={opt.id} id={opt.id} text={opt.text}
+                sel={myAnswer === opt.id}
+                correct={opt.id === q.correctAnswer}
+                revealed={true}
+                colorIndex={i}
+                disabled={true}
+                onSel={() => {}}
+              />
+            ))}
+          </div>
+
+          <div className={`rounded-2xl border px-4 py-3 text-center ${
+            isSpectator ? "border-border bg-muted/40"
+            : myLastAnswerCorrect ? "border-emerald-200 dark:border-emerald-800/30 bg-emerald-50 dark:bg-emerald-950/20"
+            : myAnswer !== null ? "border-rose-200 dark:border-rose-800/30 bg-rose-50 dark:bg-rose-950/20"
+            : "border-border bg-muted/40"
+          }`}>
+            {isSpectator ? (
+              <p className="text-sm font-semibold text-muted-foreground">👁 Spectating</p>
+            ) : myLastAnswerCorrect && myWager !== null ? (
+              <>
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">✅ Correct! +{myWager.toLocaleString()} pts</p>
+                <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-0.5">New bank: {myBank.toLocaleString()} pts</p>
+              </>
+            ) : myAnswer !== null && myWager !== null ? (
+              <>
+                <p className="text-sm font-bold text-rose-600 dark:text-rose-400">❌ Wrong — {myWager.toLocaleString()} pts lost</p>
+                {myBank <= 0
+                  ? <p className="text-xs text-rose-500/80 mt-0.5">Bank depleted — entering Spectator Mode next round</p>
+                  : <p className="text-xs text-rose-500/80 mt-0.5">Remaining bank: {myBank.toLocaleString()} pts</p>
+                }
+              </>
+            ) : (
+              <p className="text-sm font-semibold text-muted-foreground">⏱ No answer submitted — wager lost</p>
+            )}
+          </div>
+
+          <div className="rounded-3xl border border-border bg-card p-4">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Leaderboard</p>
+            <Leaderboard players={room.players} highlight={myId} />
+          </div>
+
+          {isHost && (
+            <div className="flex gap-2">
+              {room.currentQi + 1 < room.questionPool.length ? (
+                <button type="button" onClick={onAdvance}
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 py-3.5 text-base font-bold text-white shadow-lg transition-all hover:opacity-90">
+                  Next Round →
+                </button>
+              ) : (
+                <button type="button" onClick={onFinish}
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3.5 text-base font-bold text-white shadow-lg transition-all hover:opacity-90">
+                  End & Show Results
+                </button>
+              )}
+            </div>
+          )}
+          {!isHost && (
+            <p className="text-center text-xs text-muted-foreground animate-pulse">⏳ Waiting for host to advance…</p>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── GAME ROOM CONTROLLER ──────────────────────────────────────────────────────
 // Manages polling and action dispatch for an active room
 function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
@@ -1189,6 +1524,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   // Derived from score delta (server response) because correctAnswer is hidden
   // from the client payload during the question phase to prevent cheating.
   const [myLastAnswerCorrect, setMyLastAnswerCorrect] = useState<boolean | null>(null)
+  // Per-match answer history for the post-game Review Vignettes drawer
+  const [answerHistory, setAnswerHistory] = useState<MultiAnswerEntry[]>([])
   const [timeLeftMs, setTimeLeftMs] = useState<number | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const lastVersionRef = useRef<number>(-1)
@@ -1295,6 +1632,9 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   async function handleAnswer(answer: string, answerText: string) {
     const reactionTimeMs = Date.now() - questionStartRef.current
     const prevScore = room?.players.find(p => p.id === myId)?.score ?? 0
+    // Snapshot the current question before the API call so it's available for
+    // the review drawer even if the room state advances before we store it.
+    const currentQ = room?.questionPool[room.currentQi] ?? null
     const updated = await apiAction(pin, {
       action: "answer", playerId: myId, requesterId: myId,
       answer, answerText, reactionTimeMs,
@@ -1304,6 +1644,10 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
       setMyLastAnswerCorrect(newScore > prevScore)
       lastVersionRef.current = updated.version
       setRoom(updated)
+      // Record this answer for the post-game Review Vignettes drawer
+      if (currentQ) {
+        setAnswerHistory(prev => [...prev, { question: currentQ, selected: answer }])
+      }
     }
   }
 
@@ -1329,7 +1673,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
     return (
       <div className="flex min-h-full flex-col items-center justify-center p-8 gap-4">
         <ErrorBanner msg={error} />
-        <button type="button" onClick={onExit} className="rounded-2xl border border-border px-6 py-3 text-sm font-medium text-foreground">Back to Game Mode</button>
+        {/* Use handleExit (not onExit) so clearActiveRoomSession() always runs */}
+        <button type="button" onClick={handleExit} className="rounded-2xl border border-border px-6 py-3 text-sm font-medium text-foreground">Back to Game Mode</button>
       </div>
     )
   }
@@ -1350,7 +1695,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   }
 
   if (room.phase === "done") {
-    return <FinalResults room={room} myId={myId} onExit={onExit} />
+    return <FinalResults room={room} myId={myId} onExit={onExit} answerHistory={answerHistory} />
   }
 
   // Wager Wars — single HUD handles wager/question/reveal phases
@@ -1368,6 +1713,23 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
         myLastAnswerCorrect={myLastAnswerCorrect}
         timeLeftMs={timeLeftMs}
         isPressure={isPressure}
+      />
+    )
+  }
+
+  // Double Jeopardy Multiplayer — percentage-based wagers, no timer
+  if (room.mode === "djmulti") {
+    return (
+      <DoubleJeopardyMultiHUD
+        room={room}
+        myId={myId}
+        isHost={isHost}
+        onWager={handleWager}
+        onAnswer={handleAnswer}
+        onAdvance={handleAdvance}
+        onFinish={handleFinish}
+        onLeave={handleExit}
+        myLastAnswerCorrect={myLastAnswerCorrect}
       />
     )
   }
@@ -1525,6 +1887,61 @@ export function CohortReview({ onExit }: { onExit: () => void }) {
   }
 
   return <GameRoomController pin={pin} myId={myId} isHost={isHost} isCohortHost={isHost} mode="cohort" onExit={onExit} />
+}
+
+// ── DOUBLE JEOPARDY MULTIPLAYER ENTRY POINT ──────────────────────────────────
+export function DoubleJeopardyMulti({ onExit }: { onExit: () => void }) {
+  const resumed = useRef(loadActiveRoomSession())
+  const canResume = resumed.current?.mode === "djmulti"
+  const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
+  const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
+  const [myId, setMyId] = useState(canResume ? resumed.current!.myId : "")
+  const [isHost, setIsHost] = useState(canResume ? resumed.current!.isHost : false)
+
+  if (view === "select") {
+    return (
+      <div className="flex min-h-full flex-col items-center justify-center p-6 gap-4">
+        <div className="w-full max-w-sm">
+          <div className="mb-6 text-center">
+            <div className="text-4xl mb-3">🎲</div>
+            <h1 className="text-xl font-extrabold tracking-tight text-foreground">Double Jeopardy</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Max 5 players · Read the vignette · Wager your confidence</p>
+          </div>
+          <div className="grid gap-3">
+            <button type="button" onClick={() => setView("create")}
+              className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 py-4 text-base font-bold text-white shadow-lg transition-all hover:opacity-90">
+              👑 Create a Room
+            </button>
+            <button type="button" onClick={() => setView("join")}
+              className="w-full rounded-2xl border border-border bg-card py-4 text-base font-bold text-foreground transition-all hover:bg-muted">
+              🎲 Join a Room
+            </button>
+          </div>
+          <button type="button" onClick={onExit} className="mt-4 w-full rounded-2xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+            Back
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (view === "create") {
+    return (
+      <CreateRoomScreen mode="djmulti" onBack={() => setView("select")} onCreated={(p, id) => {
+        setPin(p); setMyId(id); setIsHost(true); setView("room")
+      }} />
+    )
+  }
+
+  if (view === "join") {
+    return (
+      <JoinScreen onBack={() => setView("select")} onJoined={(p, id) => {
+        setPin(p); setMyId(id); setIsHost(false); setView("room")
+      }} />
+    )
+  }
+
+  return <GameRoomController pin={pin} myId={myId} isHost={isHost} isCohortHost={false} mode="djmulti" onExit={onExit} />
 }
 
 // ── WAGER WARS ENTRY POINT ────────────────────────────────────────────────────
