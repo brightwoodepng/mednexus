@@ -17,7 +17,7 @@ import { useEffect } from "react"
 import { GlassCard } from "@/components/ui/glass-card"
 import { useTheme } from "@/contexts/theme-context"
 import { THEMES, type ThemeId, type ThemeMeta } from "@/lib/themes"
-import { XIcon, CheckIcon } from "@/components/icons"
+import { XIcon, CheckIcon, SparklesIcon } from "@/components/icons"
 import { cn } from "@/lib/utils"
 
 // ── Theme subsets ─────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ const LIGHT_IDS: ThemeId[] = [
   "rose-quartz",
   "solar-flare",
 ]
-const DARK_IDS: ThemeId[] = ["classic-dark", "midnight-purple"]
+const DARK_IDS: ThemeId[] = ["classic-dark", "midnight-purple", "forest-night", "nebula"]
 
 const LIGHT_THEMES = THEMES.filter((t) => LIGHT_IDS.includes(t.id))
 const DARK_THEMES = THEMES.filter((t) => DARK_IDS.includes(t.id))
@@ -109,8 +109,10 @@ export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
               onClick={() => setIsGlassEnabled(!isGlassEnabled)}
               className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-muted/30"
             >
-              {/* Glass preview icon */}
-              <GlassPreviewIcon />
+              {/* Liquid Glass icon */}
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-border bg-primary/10 text-primary shadow-sm">
+                <SparklesIcon size={28} />
+              </div>
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -173,43 +175,6 @@ function ThemeCircles({ swatch }: { swatch: ThemeMeta["swatch"] }) {
   )
 }
 
-/** Frosted-glass preview swatch for the Liquid Glass toggle. */
-function GlassPreviewIcon() {
-  return (
-    <div
-      className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border shadow-sm"
-      style={{
-        background:
-          "linear-gradient(135deg, #c9d8f0 0%, #e8f0fa 50%, #d0e8f8 100%)",
-      }}
-    >
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(160deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.1) 100%)",
-          backdropFilter: "blur(2px)",
-        }}
-      />
-      <div
-        className="absolute left-2 top-2 h-6 w-9 rounded-lg shadow-sm"
-        style={{
-          background: "rgba(255,255,255,0.5)",
-          border: "1px solid rgba(255,255,255,0.7)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8)",
-        }}
-      />
-      <div
-        className="absolute bottom-2 right-2 h-5 w-5 rounded-full"
-        style={{
-          background: "rgba(255,255,255,0.55)",
-          border: "1px solid rgba(255,255,255,0.8)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)",
-        }}
-      />
-    </div>
-  )
-}
 
 /** "On" badge shown next to an active item label. */
 function ActiveBadge() {
