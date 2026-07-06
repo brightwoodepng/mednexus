@@ -11,7 +11,7 @@ interface ThemeModalProps {
 }
 
 export function ThemeModal({ open, onClose }: ThemeModalProps) {
-  const { theme, setTheme, glassEnabled, setGlassEnabled } = useTheme()
+  const { activeTheme, setActiveTheme, isGlassEnabled, setIsGlassEnabled } = useTheme()
 
   const light = THEMES.filter((t) => t.mode === "light")
   const dark = THEMES.filter((t) => t.mode === "dark")
@@ -26,7 +26,7 @@ export function ThemeModal({ open, onClose }: ThemeModalProps) {
       <div className="mb-6 overflow-hidden rounded-2xl border border-border">
         <button
           type="button"
-          onClick={() => setGlassEnabled(!glassEnabled)}
+          onClick={() => setIsGlassEnabled(!isGlassEnabled)}
           className="flex w-full items-center gap-4 p-4 text-left hover:bg-muted/30 transition-colors"
         >
           {/* Glass preview swatch */}
@@ -58,7 +58,7 @@ export function ThemeModal({ open, onClose }: ThemeModalProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold">Liquid Glass</p>
-              {glassEnabled && (
+              {isGlassEnabled && (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
                   <CheckIcon size={10} /> On
                 </span>
@@ -72,20 +72,20 @@ export function ThemeModal({ open, onClose }: ThemeModalProps) {
           {/* Toggle pill */}
           <div
             className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-              glassEnabled ? "bg-primary" : "bg-muted-foreground/30"
+              isGlassEnabled ? "bg-primary" : "bg-muted-foreground/30"
             }`}
           >
             <span
               className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
-                glassEnabled ? "translate-x-5" : "translate-x-0.5"
+                isGlassEnabled ? "translate-x-5" : "translate-x-0.5"
               }`}
             />
           </div>
         </button>
       </div>
 
-      <ThemeGroup label="☀️  Light" themes={light} active={theme} onSelect={setTheme} />
-      <ThemeGroup label="🌙  Dark" themes={dark} active={theme} onSelect={setTheme} />
+      <ThemeGroup label="☀️  Light" themes={light} active={activeTheme} onSelect={setActiveTheme} />
+      <ThemeGroup label="🌙  Dark" themes={dark} active={activeTheme} onSelect={setActiveTheme} />
     </Modal>
   )
 }

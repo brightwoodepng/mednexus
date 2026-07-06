@@ -160,7 +160,7 @@ function RoleSelect({ onSelect, glass }: { onSelect: (tab: "guest" | "student" |
 // ── Guest Form ────────────────────────────────────────────────────────────────
 function GuestForm({ onBack }: { onBack: () => void }) {
   const { enterApp } = useApp()
-  const { glassEnabled } = useTheme()
+  const { isGlassEnabled } = useTheme()
   const [name, setName] = useState("")
   const [classLevel, setClassLevel] = useState("")
   const [loading, setLoading] = useState(false)
@@ -174,7 +174,7 @@ function GuestForm({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glassEnabled ? "glass-auth-card" : ""}`}>
+    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${isGlassEnabled ? "glass-auth-card" : ""}`}>
       <BackButton onClick={onBack} />
       <h2 className="mb-1 text-xl font-semibold tracking-tight">Guest Access</h2>
       <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
@@ -273,10 +273,10 @@ function GuestModal({ onClose }: { onClose: () => void }) {
 // ── Student Form (Login + Register toggled) ───────────────────────────────────
 function StudentForm({ onBack }: { onBack: () => void }) {
   const [mode, setMode] = useState<"login" | "register">("login")
-  const { glassEnabled } = useTheme()
+  const { isGlassEnabled } = useTheme()
 
   return (
-    <div className={`rounded-3xl border border-border bg-card shadow-2xl overflow-hidden ${glassEnabled ? "glass-auth-card" : ""}`}>
+    <div className={`rounded-3xl border border-border bg-card shadow-2xl overflow-hidden ${isGlassEnabled ? "glass-auth-card" : ""}`}>
       {/* Tab toggle */}
       <div className="flex border-b border-border">
         <button
@@ -645,7 +645,7 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
 // ── Admin Access Form ─────────────────────────────────────────────────────────
 function AdminForm({ onBack }: { onBack: () => void }) {
   const { loginAdmin } = useAdmin()
-  const { glassEnabled } = useTheme()
+  const { isGlassEnabled } = useTheme()
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -662,7 +662,7 @@ function AdminForm({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glassEnabled ? "glass-auth-card" : ""}`}>
+    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${isGlassEnabled ? "glass-auth-card" : ""}`}>
       <BackButton onClick={onBack} />
       <div className="mb-5 flex items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
@@ -721,7 +721,7 @@ function AdminForm({ onBack }: { onBack: () => void }) {
 export function AuthScreen() {
   const [view, setView] = useState<"role-select" | "guest" | "student" | "admin">("role-select")
   const [themeOpen, setThemeOpen] = useState(false)
-  const { glassEnabled } = useTheme()
+  const { isGlassEnabled } = useTheme()
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-5 py-12 safe-area-inset">
@@ -739,7 +739,7 @@ export function AuthScreen() {
 
       <div className="w-full max-w-sm">
         <Brand />
-        {view === "role-select" && <RoleSelect onSelect={setView} glass={glassEnabled} />}
+        {view === "role-select" && <RoleSelect onSelect={setView} glass={isGlassEnabled} />}
         {view === "guest" && <GuestForm onBack={() => setView("role-select")} />}
         {view === "student" && <StudentForm onBack={() => setView("role-select")} />}
         {view === "admin" && <AdminForm onBack={() => setView("role-select")} />}
