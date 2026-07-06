@@ -543,7 +543,8 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    /* Background is provided by ThematicCanvas (fixed, z-index: -10) */
+    @apply text-foreground;
   }
   html {
     @apply font-sans;
@@ -557,20 +558,7 @@
    second for dark color-scheme, matching each theme's color-scheme setting.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* ── Background enhancement so glass has something to refract through ── */
-[data-glass="true"] body {
-  background-image:
-    radial-gradient(
-      ellipse 90% 55% at 10% 35%,
-      color-mix(in oklch, var(--primary) 7%, transparent),
-      transparent 65%
-    ),
-    radial-gradient(
-      ellipse 65% 45% at 90% 75%,
-      color-mix(in oklch, var(--primary) 4%, transparent),
-      transparent 60%
-    );
-}
+/* ── Glass has ThematicCanvas to refract — no extra body gradient needed ── */
 
 @layer utilities {
   /* ── Sidebar panel ── */
@@ -657,6 +645,163 @@
       inset 0 1.5px 0 light-dark(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.2)),
       0 12px 40px light-dark(rgba(0, 0, 0, 0.07), rgba(0, 0, 0, 0.36));
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THEMATIC CANVAS — Layer 1: animated background mesh
+   Per-theme orb colour palette. Each theme exposes two orb colours:
+     --canvas-orb-1  primary bloom  (usually the theme's --primary hue)
+     --canvas-orb-2  secondary glow (contrasting accent for depth)
+   ThematicCanvas reads these via radial-gradient() in CSS classes below.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 1 · Clinical Light — calm teal blooms on crisp white */
+:root,
+[data-theme='clinical-light'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.58 0.12 195) 20%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.70 0.10 160) 13%, transparent);
+}
+/* 2 · Classic Dark — teal glow on deep slate */
+[data-theme='classic-dark'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.68 0.13 190) 34%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.52 0.16 230) 23%, transparent);
+}
+/* 3 · Midnight Purple — vivid violet + hot-pink flares on deep indigo */
+[data-theme='midnight-purple'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.66 0.18 295) 44%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.64 0.26 340) 38%, transparent);
+}
+/* 4 · Ocean Breeze — sapphire + cerulean on airy blue-white */
+[data-theme='ocean-breeze'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.55 0.15 245) 20%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.65 0.13 210) 14%, transparent);
+}
+/* 5 · Sandstone — warm amber + terracotta on parchment */
+[data-theme='sandstone'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.55 0.12 45) 24%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.62 0.14 30) 16%, transparent);
+}
+/* 6 · Rose Quartz — soft rose + deep blush on petal white */
+[data-theme='rose-quartz'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.62 0.19 15) 22%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.52 0.20 350) 15%, transparent);
+}
+/* 7 · Forest Night — vivid emerald + golden amber on deep green */
+[data-theme='forest-night'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.72 0.19 155) 40%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.78 0.15 85) 26%, transparent);
+}
+/* 8 · Solar Flare — amber-orange + crimson on warm ivory */
+[data-theme='solar-flare'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.65 0.20 48) 25%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.60 0.23 28) 18%, transparent);
+}
+/* 9 · Nebula — hot-pink + electric cyan on cosmic dark-violet */
+[data-theme='nebula'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.72 0.22 330) 46%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.65 0.21 215) 32%, transparent);
+}
+/* 10 · Liquid Glass Light — icy azure on pearl white */
+[data-theme='liquid-glass-light'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.56 0.22 234) 20%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.65 0.15 200) 14%, transparent);
+}
+/* 11 · Liquid Glass Dark — electric cyan on deep navy */
+[data-theme='liquid-glass-dark'] {
+  --canvas-orb-1: color-mix(in oklch, oklch(0.76 0.165 212) 36%, transparent);
+  --canvas-orb-2: color-mix(in oklch, oklch(0.60 0.18 260) 24%, transparent);
+}
+
+/* ── Canvas drift keyframes ──────────────────────────────────────────────── */
+@keyframes canvas-drift-a {
+  0%, 100% { transform: translate(0,    0   ) scale(1);    }
+  25%       { transform: translate(3%,  -4% ) scale(1.05); }
+  55%       { transform: translate(5%,   2% ) scale(1.02); }
+  80%       { transform: translate(-2%,  4% ) scale(0.97); }
+}
+@keyframes canvas-drift-b {
+  0%, 100% { transform: translate(0,    0   ) scale(1);    }
+  30%       { transform: translate(-5%,  3% ) scale(1.06); }
+  60%       { transform: translate(2%,  -5% ) scale(0.95); }
+  85%       { transform: translate(-3%, -2% ) scale(1.03); }
+}
+@keyframes canvas-drift-c {
+  0%, 100% { transform: translate(0,   0  ) scale(1)    rotate(0deg);  }
+  33%       { transform: translate(4%,  5% ) scale(1.08) rotate(3deg);  }
+  66%       { transform: translate(-3%, -3%) scale(0.93) rotate(-2deg); }
+}
+
+/* ── Canvas root ─────────────────────────────────────────────────────────── */
+.thematic-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -10;           /* sits behind ALL application content             */
+  pointer-events: none;   /* never intercepts clicks                         */
+  overflow: hidden;
+  background: var(--background);
+  transition: background 700ms ease; /* smooth base-colour cross-fade on theme switch */
+}
+
+/* ── Orb base ────────────────────────────────────────────────────────────── */
+.canvas-orb {
+  position: absolute;
+  border-radius: 9999px;
+}
+
+/* Orb A — large primary bloom, top-left anchor */
+.canvas-orb-a {
+  width: 80vmax;
+  height: 80vmax;
+  top: -20%;
+  left: -18%;
+  background: radial-gradient(circle at center, var(--canvas-orb-1) 0%, transparent 70%);
+  animation: canvas-drift-a 28s ease-in-out infinite;
+}
+
+/* Orb B — large primary bloom, bottom-right anchor */
+.canvas-orb-b {
+  width: 90vmax;
+  height: 90vmax;
+  bottom: -28%;
+  right: -22%;
+  background: radial-gradient(circle at center, var(--canvas-orb-1) 0%, transparent 70%);
+  animation: canvas-drift-b 35s ease-in-out infinite;
+  animation-delay: -14s;
+}
+
+/* Orb C — secondary accent, top-right anchor */
+.canvas-orb-c {
+  width: 55vmax;
+  height: 55vmax;
+  top: 5%;
+  right: -8%;
+  background: radial-gradient(circle at center, var(--canvas-orb-2) 0%, transparent 65%);
+  animation: canvas-drift-c 22s ease-in-out infinite;
+  animation-delay: -7s;
+}
+
+/* Orb D — secondary whisper, bottom-left anchor */
+.canvas-orb-d {
+  width: 40vmax;
+  height: 40vmax;
+  bottom: 2%;
+  left: 8%;
+  background: radial-gradient(circle at center, var(--canvas-orb-2) 0%, transparent 65%);
+  animation: canvas-drift-a 30s ease-in-out infinite;
+  animation-delay: -20s;
+}
+
+/* Orb E — centre depth glow */
+.canvas-orb-e {
+  width: 60vmax;
+  height: 60vmax;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at center, var(--canvas-orb-1) 0%, transparent 60%);
+  animation: canvas-drift-b 42s ease-in-out infinite;
+  animation-delay: -25s;
+  opacity: 0.5;
 }
 
 /* ── iOS 26-style sheet entrance animation ── */
