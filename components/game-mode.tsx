@@ -8,7 +8,6 @@ import { MultiplayerClash, CohortReview, WagerWars } from "@/components/game-mod
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/economy-panel"
-import { GameStoreModal } from "@/components/game-store-modal"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort" | "wager"
@@ -632,10 +631,9 @@ function LifelineBar({ onUse50_50, onUseFreeze, qty5050, qtyFreeze, disabled5050
 }
 
 // ── Hero Split Screen ─────────────────────────────────────────────────────────
-function HeroSplitScreen({ onSolo, onMulti, onBack }: {
-  onSolo: () => void; onMulti: () => void; onBack: () => void
+function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
+  onSolo: () => void; onMulti: () => void; onBack: () => void; onOpenStore?: () => void
 }) {
-  const [storeOpen, setStoreOpen] = useState(false)
   const [pin, setPin] = useState("")
   const [joinError, setJoinError] = useState("")
   const [joining, setJoining] = useState(false)
@@ -655,7 +653,6 @@ function HeroSplitScreen({ onSolo, onMulti, onBack }: {
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6">
-      {storeOpen && <GameStoreModal onClose={() => setStoreOpen(false)} />}
       <div className="mx-auto w-full max-w-md">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -663,8 +660,8 @@ function HeroSplitScreen({ onSolo, onMulti, onBack }: {
             <p className="text-xs text-muted-foreground">Choose your challenge</p>
           </div>
           <div className="flex items-center gap-2">
-            <WalletBadge onOpenStore={() => setStoreOpen(true)} />
-            <button type="button" onClick={() => setStoreOpen(true)}
+            <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
+            <button type="button" onClick={onOpenStore}
               className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40">
               🏪 Store
             </button>
@@ -775,15 +772,13 @@ function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules
 
 type ModeCategory = "solo" | "multi"
 
-function ModeSelectScreen({ onSelect, onBack }: {
-  onSelect: (id: GameModeId) => void; onBack: () => void
+function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
+  onSelect: (id: GameModeId) => void; onBack: () => void; onOpenStore?: () => void
 }) {
-  const [storeOpen, setStoreOpen] = useState(false)
   const [category, setCategory] = useState<ModeCategory>("solo")
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6 lg:p-8">
-      {storeOpen && <GameStoreModal onClose={() => setStoreOpen(false)} />}
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-7">
           <div className="flex items-center justify-between mb-5">
@@ -801,9 +796,9 @@ function ModeSelectScreen({ onSelect, onBack }: {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <WalletBadge onOpenStore={() => setStoreOpen(true)} />
+              <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
               <button
-                type="button" onClick={() => setStoreOpen(true)}
+                type="button" onClick={onOpenStore}
                 className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground hover:border-primary/40"
               >
                 🏪 Store
@@ -1623,7 +1618,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
-export function GameMode({ onExit }: { onExit: () => void }) {
+export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenStore?: () => void }) {
   // Auto-resume an in-progress multiplayer match on mount (e.g. after a page
   // refresh) instead of forcing the player back through mode selection.
   const [activeMode, setActiveMode] = useState<GameModeId | null>(() => {
@@ -1640,5 +1635,5 @@ export function GameMode({ onExit }: { onExit: () => void }) {
   if (activeMode === "cohort") return <CohortReview onExit={() => setActiveMode(null)} />
   if (activeMode === "wager") return <WagerWars onExit={() => setActiveMode(null)} />
 
-  return <ModeSelectScreen onSelect={setActiveMode} onBack={onExit} />
+  return <ModeSelectScreen onSelect={setActiveMode} onBack={onExit} onOpenStore={onOpenStore} />
 }
