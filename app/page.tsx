@@ -1,4 +1,5 @@
 import { MedNexusApp } from "@/components/mednexus-app"
+import { ThematicCanvas } from "@/components/thematic-canvas"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { AppProvider } from "@/contexts/app-context"
 import { QuestionsProvider } from "@/contexts/questions-context"
@@ -18,6 +19,7 @@ import { EconomyProvider } from "@/contexts/economy-context"
 export default function Page() {
   return (
     <ThemeProvider>
+      <ThematicCanvas />
       <AppProvider>
         <AdminProvider>
           <QuestionsProvider>

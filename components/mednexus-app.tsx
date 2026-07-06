@@ -153,7 +153,7 @@ function ForcePasswordUpdate() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-5 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600">
@@ -240,7 +240,7 @@ function WhatsAppButton({ label }: { label: string }) {
 function PendingApprovalScreen() {
   const { signOutUser, user } = useApp()
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-5 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
       <div className="w-full max-w-sm text-center">
         <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-500/15 text-amber-600">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={38} height={38}>
@@ -267,7 +267,7 @@ function PendingApprovalScreen() {
 function RejectedScreen() {
   const { signOutUser, user } = useApp()
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-5 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
       <div className="w-full max-w-sm text-center">
         <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-destructive/10 text-destructive">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={38} height={38}>
@@ -439,7 +439,7 @@ export function MedNexusApp() {
 
   if (!authReady || !adminReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <div className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-primary text-primary-foreground">
             <StethoscopeIcon size={26} />
@@ -501,14 +501,14 @@ export function MedNexusApp() {
 
   if (safeScreen === "quiz" && activeQuiz) {
     return (
-      <div className="h-screen bg-background">
+      <div className="h-screen">
         <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} onExit={exitQuiz} onComplete={handleQuizComplete} />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar
         screen={safeScreen}
         onNavigate={setScreen}

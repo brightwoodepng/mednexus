@@ -724,7 +724,7 @@ export function AuthScreen() {
   const { isGlassEnabled } = useTheme()
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-5 py-12 safe-area-inset">
+    <main className="relative flex min-h-screen flex-col items-center justify-center px-5 py-12 safe-area-inset">
       <button
         type="button"
         onClick={() => setThemeOpen(true)}
