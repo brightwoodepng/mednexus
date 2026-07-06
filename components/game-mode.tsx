@@ -139,11 +139,18 @@ function streakMsg(streak: number): string {
   return ""
 }
 
-/** Returns a shuffled pool of live questions, optionally filtered by module or subject.
+/** Returns true when a question has multiple correct answers (SATA).
+ *  Single-item arrays ["A"] are treated as single-answer (normalised on save).
+ *  Game modes only support single-answer MCQs so true SATA must be excluded. */
+function isSATA(q: Question): boolean {
+  return Array.isArray(q.correctAnswer) && q.correctAnswer.length > 1
+}
+
+/** Returns a shuffled pool of live, single-answer questions, optionally filtered by module or subject.
  *  Falls back to the full set if the filtered result is fewer than 3 questions. */
 function makeFilteredSrc(allQ: Question[], filter: GameFilter): Question[] {
-  let base = allQ.filter(q => !q.moduleStatus || q.moduleStatus === "live")
-  if (base.length < 5) base = [...allQ]
+  let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
+  if (base.length < 5) base = allQ.filter(q => !isSATA(q))
   if (filter.scope === "module" && filter.value) {
     const f = base.filter(q => q.module === filter.value)
     if (f.length >= 3) base = f
@@ -154,10 +161,10 @@ function makeFilteredSrc(allQ: Question[], filter: GameFilter): Question[] {
   return shuffle(base)
 }
 
-/** Count how many (live) questions match a filter. */
+/** Count how many (live, single-answer) questions match a filter. */
 function countForFilter(allQ: Question[], filter: GameFilter): number {
-  let base = allQ.filter(q => !q.moduleStatus || q.moduleStatus === "live")
-  if (base.length < 5) base = [...allQ]
+  let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
+  if (base.length < 5) base = allQ.filter(q => !isSATA(q))
   if (filter.scope === "module" && filter.value) return base.filter(q => q.module === filter.value).length
   if (filter.scope === "subject" && filter.value) return base.filter(q => q.subject === filter.value).length
   return base.length

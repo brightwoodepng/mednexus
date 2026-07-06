@@ -145,10 +145,12 @@ export interface Question {
   options: QuestionOption[]
 
   /**
-   * The id of the correct option (matches a QuestionOption.id).
-   * Nullable to support draft imports where the answer key is not yet set.
+   * The id(s) of the correct option(s) (matches QuestionOption.id).
+   * - string:   single-best-answer (standard MCQ)
+   * - string[]: multiple correct answers (SATA — Select All That Apply)
+   * - null:     draft/unset
    */
-  correctAnswer: string | null
+  correctAnswer: string | string[] | null
 
   /**
    * Structured explanation shown after answering.
@@ -176,7 +178,7 @@ export interface HistoryEntry {
   vignetteSnippet: string
   mode: QuizMode
   selectedOption: string | null // null = omitted
-  correctOption: string | null // null when question is a draft without an answer key
+  correctOption: string | string[] | null // null when question is a draft without an answer key
   isCorrect: boolean
   timestamp: number // epoch ms
 }
