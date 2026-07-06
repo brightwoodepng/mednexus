@@ -396,7 +396,7 @@ function HistoryRow({ entry }: { entry: HistoryEntry }) {
         <div className="flex shrink-0 items-center gap-2">
           <AnswerPill
             label="You"
-            value={omitted ? "—" : entry.selectedOption!}
+            value={omitted ? "—" : Array.isArray(entry.selectedOption) ? entry.selectedOption.join(", ") : entry.selectedOption!}
             tone={omitted ? "neutral" : correct ? "correct" : "incorrect"}
           />
           <AnswerPill label="Key" value={Array.isArray(entry.correctOption) ? entry.correctOption.join(", ") : (entry.correctOption ?? "—")} tone="correct" />

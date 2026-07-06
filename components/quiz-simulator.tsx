@@ -33,8 +33,10 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
   const { progress, toggleFlag, recordHistory } = useApp()
 
   const [index, setIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string | null>>({})
+  const [answers, setAnswers] = useState<Record<string, string | string[] | null>>({})
   const [struck, setStruck] = useState<Record<string, Set<string>>>({})
+  const [sataSelections, setSataSelections] = useState<Record<string, string[]>>({})
+  const [sataLocked, setSataLocked] = useState<Set<string>>(new Set())
   const [timeLeft, setTimeLeft] = useState(questions.length * SECONDS_PER_QUESTION)
   const [calcOpen, setCalcOpen] = useState(false)
   const [labsOpen, setLabsOpen] = useState(false)
@@ -43,10 +45,34 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
   const startedAt = useRef(Date.now())
 
   const current = questions[index]
-  const selected = current ? answers[current.id] ?? null : null
+  const isSATA = current
+    ? Array.isArray(current.correctAnswer) && (current.correctAnswer as string[]).length > 1
+    : false
+  const sataSelected = current ? (sataSelections[current.id] ?? []) : []
+  const isLocked = current ? sataLocked.has(current.id) : false
+  const sataCorrectAnswers: string[] = isSATA ? (current!.correctAnswer as string[]) : []
+  const sataIsCorrect =
+    isSATA && isLocked &&
+    sataSelected.length === sataCorrectAnswers.length &&
+    sataCorrectAnswers.length > 0 &&
+    sataSelected.every(id => sataCorrectAnswers.includes(id))
+  const selected = current ? (answers[current.id] ?? null) : null
   const isFlagged = current ? progress.flaggedQuestionIds.includes(current.id) : false
   const struckSet = current ? struck[current.id] ?? new Set<string>() : new Set<string>()
-  const revealed = mode === "trial" && selected !== null
+  const revealed = mode === "trial" && (isSATA ? isLocked : selected !== null)
+
+  function isAnswerCorrect(
+    ans: string | string[] | null,
+    correct: string | string[] | null,
+  ): boolean {
+    if (ans == null || correct == null) return false
+    if (Array.isArray(correct) && Array.isArray(ans)) {
+      const ca = [...(correct as string[])].sort()
+      const sa = [...(ans as string[])].sort()
+      return ca.length === sa.length && ca.every((c, i) => c === sa[i])
+    }
+    return ans === correct
+  }
 
   const submitBlock = useCallback(() => {
     const timeTakenMs = Date.now() - startedAt.current
@@ -61,11 +87,12 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
       mode,
       selectedOption: answers[q.id] ?? null,
       correctOption: q.correctAnswer ?? null,
-      isCorrect: answers[q.id] === q.correctAnswer,
+      isCorrect: isAnswerCorrect(answers[q.id] ?? null, q.correctAnswer ?? null),
       timestamp: now,
     }))
     recordHistory(history)
     onComplete(result, history)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions, answers, mode, recordHistory, onComplete])
 
   // Exam timer
@@ -85,9 +112,26 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
   }
 
   function selectOption(optionId: string) {
+    if (isSATA) {
+      if (isLocked) return
+      setSataSelections(prev => {
+        const cur = prev[current.id] ?? []
+        const next = cur.includes(optionId)
+          ? cur.filter(x => x !== optionId)
+          : [...cur, optionId]
+        return { ...prev, [current.id]: next }
+      })
+      return
+    }
     if (struckSet.has(optionId)) return
     if (mode === "trial" && selected !== null) return
-    setAnswers((prev) => ({ ...prev, [current.id]: optionId }))
+    setAnswers(prev => ({ ...prev, [current.id]: optionId }))
+  }
+
+  function lockInSata() {
+    if (!isSATA || isLocked || sataSelected.length === 0) return
+    setAnswers(prev => ({ ...prev, [current.id]: sataSelected }))
+    setSataLocked(prev => { const n = new Set(prev); n.add(current.id); return n })
   }
 
   function toggleStrike(e: React.MouseEvent, optionId: string) {
@@ -107,7 +151,10 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
     })
   }
 
-  const answeredCount = questions.filter((q) => answers[q.id] != null).length
+  const answeredCount = questions.filter((q) => {
+    const isSataQ = Array.isArray(q.correctAnswer) && (q.correctAnswer as string[]).length > 1
+    return isSataQ ? sataLocked.has(q.id) : answers[q.id] != null
+  }).length
 
   return (
     <div className="flex h-full flex-col">
@@ -204,8 +251,74 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
               />
             )}
 
-            <div className="mt-5 flex flex-col gap-2.5 sm:mt-6 sm:gap-3">
+            {/* SATA instruction badge */}
+            {isSATA && (
+              <div className="mt-5 flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3.5 py-2.5 sm:mt-6">
+                <span className="text-sm">☑️</span>
+                <span className="text-xs font-semibold text-primary">
+                  Select ALL that apply — choose every correct option, then press Lock In Answers.
+                </span>
+              </div>
+            )}
+
+            <div className={`flex flex-col gap-2.5 sm:gap-3 ${isSATA ? "mt-3" : "mt-5 sm:mt-6"}`}>
               {current.options.map((opt) => {
+                /* ── SATA multi-select rendering ─────────────────────────── */
+                if (isSATA) {
+                  const isSataSelected = sataSelected.includes(opt.id)
+                  const isOptCorrect = sataCorrectAnswers.includes(opt.id)
+                  const isWrongSelected = revealed && isSataSelected && !isOptCorrect
+                  const isMissed = revealed && isOptCorrect && !isSataSelected
+
+                  let stateClass = "border-border bg-card"
+                  if (revealed) {
+                    if (isOptCorrect && isSataSelected) stateClass = "border-success bg-success/10"
+                    else if (isWrongSelected) stateClass = "border-destructive bg-destructive/10"
+                    else if (isMissed) stateClass = "border-warning bg-warning/10"
+                    else stateClass = "border-border bg-card opacity-60"
+                  } else if (isSataSelected) {
+                    stateClass = "border-primary bg-primary/5 ring-1 ring-primary/30"
+                  } else if (!isLocked) {
+                    stateClass = "border-border bg-card hover:border-primary/50 hover:bg-accent/40"
+                  }
+
+                  const badgeCls = revealed && isOptCorrect && isSataSelected
+                    ? "border-success bg-success text-success-foreground"
+                    : revealed && isWrongSelected
+                      ? "border-destructive bg-destructive text-destructive-foreground"
+                      : revealed && isMissed
+                        ? "border-warning bg-warning/20 text-warning"
+                        : isSataSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-muted text-muted-foreground"
+
+                  return (
+                    <div
+                      key={opt.id}
+                      role="checkbox"
+                      aria-checked={isSataSelected}
+                      tabIndex={isLocked ? -1 : 0}
+                      onClick={() => selectOption(opt.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectOption(opt.id) }
+                      }}
+                      className={`flex min-h-[52px] items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${isLocked ? "cursor-default" : "cursor-pointer active:scale-[0.99]"} ${stateClass}`}
+                    >
+                      {/* Square checkbox indicator */}
+                      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${badgeCls}`}>
+                        {(isSataSelected || (revealed && isOptCorrect)) ? <CheckIcon size={13} /> : null}
+                      </span>
+                      <span className="flex-1 text-sm leading-snug">{opt.text}</span>
+                      {revealed && isOptCorrect && isSataSelected && <CheckIcon size={18} className="shrink-0 text-success" />}
+                      {revealed && isWrongSelected && <XIcon size={18} className="shrink-0 text-destructive" />}
+                      {revealed && isMissed && (
+                        <span className="shrink-0 rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-bold text-warning">Missed</span>
+                      )}
+                    </div>
+                  )
+                }
+
+                /* ── Standard single-answer rendering ────────────────────── */
                 const isStruck = struckSet.has(opt.id)
                 const isSelected = selected === opt.id
                 const isCorrect = opt.id === current.correctAnswer
@@ -258,17 +371,43 @@ export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete 
               })}
             </div>
 
+            {/* ── Lock In Answers button (SATA only, before lock) ── */}
+            {isSATA && !isLocked && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={lockInSata}
+                  disabled={sataSelected.length === 0}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary px-4 py-3.5 text-sm font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  🔒 Lock In Answers
+                  {sataSelected.length > 0 && (
+                    <span className="rounded-full bg-primary-foreground/20 px-2 py-0.5 text-xs font-extrabold">
+                      {sataSelected.length} selected
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
             {revealed && (
               <div className="mt-5 overflow-hidden rounded-2xl border border-border sm:mt-6">
-                {/* Draft questions without an answer key show a neutral banner */}
+                {/* Result banner */}
                 <div className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold sm:px-5 ${
-                  current.correctAnswer === null
-                    ? "bg-muted text-muted-foreground"
-                    : selected === current.correctAnswer
-                      ? "bg-success/10 text-success"
-                      : "bg-destructive/10 text-destructive"
+                  isSATA
+                    ? (sataIsCorrect ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")
+                    : current.correctAnswer === null
+                      ? "bg-muted text-muted-foreground"
+                      : selected === current.correctAnswer
+                        ? "bg-success/10 text-success"
+                        : "bg-destructive/10 text-destructive"
                 }`}>
-                  {current.correctAnswer === null ? (
+                  {isSATA ? (
+                    <>
+                      {sataIsCorrect ? <CheckIcon size={18} /> : <XIcon size={18} />}
+                      {sataIsCorrect ? "Correct!" : "Incorrect"} — Correct answers: {sataCorrectAnswers.join(", ")}
+                    </>
+                  ) : current.correctAnswer === null ? (
                     <span>No answer key — this question is a draft</span>
                   ) : (
                     <>
@@ -360,7 +499,7 @@ function NavGrid({ className, questions, index, answers, flagged, onJump }: {
   className: string
   questions: Question[]
   index: number
-  answers: Record<string, string | null>
+  answers: Record<string, string | string[] | null>
   flagged: string[]
   onJump: (i: number) => void
 }) {
