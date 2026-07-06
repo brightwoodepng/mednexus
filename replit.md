@@ -19,18 +19,30 @@ pnpm install && pnpm dev
 
 Runs on port **5000** at `http://0.0.0.0:5000`.
 
+The configured Replit workflow is **"Start application"** and runs this command automatically.
+
+## localStorage-only mode (no database required)
+
+The app works out of the box with no secrets configured. In this mode:
+- Quiz progress and user state are saved to the browser's **localStorage** only
+- Progress is device-specific and will be lost if the browser cache is cleared
+- Student account registration and the Admin panel are unavailable
+- Use **"Continue as Guest"** on the landing screen
+
+To unlock full functionality (accounts, admin panel, cloud sync), see the secrets table below.
+
 ## Environment variables / Secrets
 
 Set these in the **Replit Secrets tab** (not as plain env vars). See `.env.example` for local development.
 
 | Secret | Required | Description |
 |--------|----------|-------------|
-| `GEMINI_API_KEY` | **Yes** | Powers AI question extraction from Word (.docx) and PDF imports. Free key at https://aistudio.google.com/app/apikey |
-| `ADMIN_PASSWORD` | **Yes** | Password for the admin panel login screen |
-| `ADMIN_SECRET` | No | HMAC secret for signing admin tokens (falls back to a built-in default if unset) |
 | `DATABASE_URL` | Auto | Injected automatically by Replit's built-in PostgreSQL — do not set manually |
+| `ADMIN_PASSWORD` | For admin | Password for the admin panel login screen |
+| `ADMIN_SECRET` | For admin | HMAC secret for signing admin tokens (generate: `openssl rand -hex 32`) |
+| `GEMINI_API_KEY` | For AI import | Powers AI question extraction from Word (.docx) and PDF imports. Free key at https://aistudio.google.com/app/apikey |
 
-> **Importing from GitHub?** Open the Secrets tab and add `GEMINI_API_KEY`, `ADMIN_PASSWORD`, and optionally `ADMIN_SECRET` before running the app.
+> **No secrets needed to start.** Guest mode (localStorage) works immediately. Add `ADMIN_PASSWORD` + `ADMIN_SECRET` to unlock the admin panel; add `DATABASE_URL` for persistent cloud-synced accounts.
 
 ## Database schema
 
