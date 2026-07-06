@@ -65,9 +65,16 @@ function getOrCreatePlayerId(): string {
   } catch { return `p-${Date.now()}` }
 }
 
+/** Returns true when a question has multiple correct answers (SATA).
+ *  Single-item arrays ["A"] are treated as single-answer (normalised on save).
+ *  Multiplayer game modes only support single-answer MCQs so true SATA must be excluded. */
+function isSATA(q: Question): boolean {
+  return Array.isArray(q.correctAnswer) && q.correctAnswer.length > 1
+}
+
 function filterQuestions(allQ: Question[], filter: GameFilter): Question[] {
-  let base = allQ.filter(q => !q.moduleStatus || q.moduleStatus === "live")
-  if (base.length < 5) base = [...allQ]
+  let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
+  if (base.length < 5) base = allQ.filter(q => !isSATA(q))
   if (filter.scope === "module" && filter.value) {
     const f = base.filter(q => q.module === filter.value)
     if (f.length >= 3) base = f
@@ -79,8 +86,8 @@ function filterQuestions(allQ: Question[], filter: GameFilter): Question[] {
 }
 
 function countFilter(allQ: Question[], filter: GameFilter): number {
-  let base = allQ.filter(q => !q.moduleStatus || q.moduleStatus === "live")
-  if (base.length < 5) base = [...allQ]
+  let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
+  if (base.length < 5) base = allQ.filter(q => !isSATA(q))
   if (filter.scope === "module" && filter.value) return base.filter(q => q.module === filter.value).length
   if (filter.scope === "subject" && filter.value) return base.filter(q => q.subject === filter.value).length
   return base.length

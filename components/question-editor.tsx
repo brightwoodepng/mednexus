@@ -107,8 +107,39 @@ function SaveStatusPill({ status }: { status: SaveStatus }) {
 const EMPTY_FORM = {
   module: "", subject: "", vignette: "",
   optA: "", optB: "", optC: "", optD: "", optE: "",
-  correctAnswer: "A",
+  correctAnswer: "",
   objective: "", details: "", incorrectReasoning: "",
+}
+
+// ── SATA helpers ──────────────────────────────────────────────────────────────
+/** Normalise a Question's correctAnswer to a sorted comma-separated string for form state. */
+function correctAnswerToForm(ca: string | string[] | null): string {
+  if (!ca) return ""
+  if (Array.isArray(ca)) return [...ca].sort().join(",")
+  return ca
+}
+/** Parse a form's correctAnswer string back to the typed Question field. */
+function correctAnswerFromForm(raw: string): string | string[] | null {
+  const parts = raw.split(",").map((s) => s.trim()).filter(Boolean).sort()
+  if (parts.length === 0) return null
+  if (parts.length === 1) return parts[0]
+  return parts
+}
+/** Toggle a single letter in/out of a comma-separated answer string. */
+function toggleAnswerLetter(current: string, letter: string): string {
+  const set = new Set(current.split(",").filter(Boolean))
+  if (set.has(letter)) set.delete(letter); else set.add(letter)
+  return Array.from(set).sort().join(",")
+}
+/** Display helper — renders an array as "A, C" or a plain string as-is. */
+function displayCorrectAnswer(ca: string | string[] | null): string {
+  if (!ca) return ""
+  return Array.isArray(ca) ? ca.join(", ") : ca
+}
+/** Returns true when the option id is among the correct answer(s). */
+function isCorrectOption(ca: string | string[] | null, optId: string): boolean {
+  if (!ca) return false
+  return Array.isArray(ca) ? ca.includes(optId) : ca === optId
 }
 type FormState = typeof EMPTY_FORM
 
@@ -120,7 +151,7 @@ function questionToForm(q: Question): FormState {
     subject: q.subject, vignette: q.vignette,
     optA: opts.optA ?? "", optB: opts.optB ?? "",
     optC: opts.optC ?? "", optD: opts.optD ?? "", optE: opts.optE ?? "",
-    correctAnswer: q.correctAnswer ?? "",
+    correctAnswer: correctAnswerToForm(q.correctAnswer),
     objective: q.explanation?.objective ?? "",
     details: q.explanation?.details ?? "",
     incorrectReasoning: q.explanation?.incorrectReasoning ?? "",
@@ -133,8 +164,8 @@ function formToQuestion(f: FormState, id: string): Question {
     { id: "C", text: f.optC }, { id: "D", text: f.optD },
   ]
   if (f.optE.trim()) options.push({ id: "E", text: f.optE })
-  // Normalize: an empty correctAnswer from the form means "not yet set" (draft).
-  const correctAnswer = f.correctAnswer.trim() || null
+  // Normalize: parse comma-separated letters; empty means draft/unset.
+  const correctAnswer = correctAnswerFromForm(f.correctAnswer)
 
   // Normalize: if every explanation field is blank, keep explanation as null
   // (preserves the draft semantic rather than storing an all-empty object).
@@ -192,13 +223,22 @@ function QuestionForm({ initial, questionId, defaultModule, defaultSubject, admi
         ))}
       </div>
       <div>
-        <label className={labelCls}>Correct Answer</label>
-        <div className="flex gap-2 flex-wrap">
-          {["A", "B", "C", "D", "E"].map((l) => (
-            <button key={l} type="button" onClick={() => set("correctAnswer", l)}
-              className={`flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-bold transition-colors ${form.correctAnswer === l ? "bg-primary text-primary-foreground border-primary shadow-sm" : "border-border text-muted-foreground hover:bg-muted"}`}
-            >{l}</button>
-          ))}
+        <label className={labelCls}>
+          Correct Answer
+          <span className="ml-2 normal-case font-normal text-muted-foreground">— select one or more (SATA)</span>
+        </label>
+        <div className="flex gap-2 flex-wrap items-center">
+          {["A", "B", "C", "D", "E"].map((l) => {
+            const active = form.correctAnswer.split(",").filter(Boolean).includes(l)
+            return (
+              <button key={l} type="button" onClick={() => set("correctAnswer", toggleAnswerLetter(form.correctAnswer, l))}
+                className={`flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-bold transition-colors ${active ? "bg-primary text-primary-foreground border-primary shadow-sm" : "border-border text-muted-foreground hover:bg-muted"}`}
+              >{l}</button>
+            )
+          })}
+          {form.correctAnswer.split(",").filter(Boolean).length > 1 && (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">SATA</span>
+          )}
         </div>
       </div>
       <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-4">
@@ -301,7 +341,7 @@ function drawerFormFromQ(q: Question): DrawerForm {
     vignette: q.vignette,
     optA: opts.optA ?? "", optB: opts.optB ?? "",
     optC: opts.optC ?? "", optD: opts.optD ?? "", optE: opts.optE ?? "",
-    correctAnswer: q.correctAnswer ?? "",
+    correctAnswer: correctAnswerToForm(q.correctAnswer),
     objective: q.explanation?.objective ?? "",
     details: q.explanation?.details ?? "",
     incorrectReasoning: q.explanation?.incorrectReasoning ?? "",
@@ -314,7 +354,7 @@ function drawerFormToQ(f: DrawerForm, original: Question): Question {
     { id: "C", text: f.optC }, { id: "D", text: f.optD },
   ]
   if (f.optE.trim()) options.push({ id: "E", text: f.optE })
-  const correctAnswer = f.correctAnswer.trim() || null
+  const correctAnswer = correctAnswerFromForm(f.correctAnswer)
   const objective = f.objective.trim()
   const details = f.details.trim()
   const incorrectReasoning = f.incorrectReasoning.trim()
@@ -439,19 +479,22 @@ function ReviewDrawer({ item, onClose, onApprove, onSave }: {
           <div>
             <label className={labelCls}>Answer Options *</label>
             <div className="space-y-2">
-              {(["A", "B", "C", "D", "E"] as const).map((letter) => (
-                <div key={letter} className="flex items-center gap-2">
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold border-2 transition-colors ${form.correctAnswer === letter ? "bg-primary border-primary text-primary-foreground" : "border-border text-muted-foreground"}`}>
-                    {letter}
-                  </span>
-                  <input
-                    className={inputCls}
-                    value={form[`opt${letter}` as keyof DrawerForm] as string}
-                    onChange={(e) => set(`opt${letter}` as keyof DrawerForm, e.target.value)}
-                    placeholder={letter === "E" ? "Option E (optional)" : `Option ${letter} *`}
-                  />
-                </div>
-              ))}
+              {(["A", "B", "C", "D", "E"] as const).map((letter) => {
+                const isAnswerCorrect = form.correctAnswer.split(",").filter(Boolean).includes(letter)
+                return (
+                  <div key={letter} className="flex items-center gap-2">
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold border-2 transition-colors ${isAnswerCorrect ? "bg-primary border-primary text-primary-foreground" : "border-border text-muted-foreground"}`}>
+                      {letter}
+                    </span>
+                    <input
+                      className={inputCls}
+                      value={form[`opt${letter}` as keyof DrawerForm] as string}
+                      onChange={(e) => set(`opt${letter}` as keyof DrawerForm, e.target.value)}
+                      placeholder={letter === "E" ? "Option E (optional)" : `Option ${letter} *`}
+                    />
+                  </div>
+                )
+              })}
             </div>
           </div>
 
@@ -463,12 +506,18 @@ function ReviewDrawer({ item, onClose, onApprove, onSave }: {
                 <span className="ml-2 normal-case font-normal text-amber-600">— required before approving</span>
               )}
             </label>
-            <div className="flex gap-2 flex-wrap">
-              {["A", "B", "C", "D", "E"].map((l) => (
-                <button key={l} type="button" onClick={() => set("correctAnswer", form.correctAnswer === l ? "" : l)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-bold transition-colors ${form.correctAnswer === l ? "bg-primary text-primary-foreground border-primary shadow-sm" : "border-border text-muted-foreground hover:bg-muted"}`}
-                >{l}</button>
-              ))}
+            <div className="flex gap-2 flex-wrap items-center">
+              {["A", "B", "C", "D", "E"].map((l) => {
+                const active = form.correctAnswer.split(",").filter(Boolean).includes(l)
+                return (
+                  <button key={l} type="button" onClick={() => set("correctAnswer", toggleAnswerLetter(form.correctAnswer, l))}
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-bold transition-colors ${active ? "bg-primary text-primary-foreground border-primary shadow-sm" : "border-border text-muted-foreground hover:bg-muted"}`}
+                  >{l}</button>
+                )
+              })}
+              {form.correctAnswer.split(",").filter(Boolean).length > 1 && (
+                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">SATA</span>
+              )}
               {form.correctAnswer && (
                 <button type="button" onClick={() => set("correctAnswer", "")}
                   className="flex h-9 items-center rounded-xl border border-border px-3 text-xs text-muted-foreground hover:bg-muted transition-colors"
@@ -570,7 +619,10 @@ function QuestionCard({ item, questionNumber, isSelected, onToggle, onEdit, onDe
             </span>
           )}
           {q.correctAnswer && (
-            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">{q.correctAnswer}</span>
+            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">{displayCorrectAnswer(q.correctAnswer)}</span>
+          )}
+          {Array.isArray(q.correctAnswer) && (
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">SATA</span>
           )}
           {!q.correctAnswer && (
             <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">No answer set</span>
@@ -582,7 +634,7 @@ function QuestionCard({ item, questionNumber, isSelected, onToggle, onEdit, onDe
         <p className="line-clamp-2 text-sm text-foreground">{q.vignette}</p>
         <div className="mt-1.5 flex flex-wrap gap-3">
           {q.options.map((o) => (
-            <span key={o.id} className={`text-xs ${o.id === q.correctAnswer ? "font-semibold text-primary" : "text-muted-foreground"}`}>
+            <span key={o.id} className={`text-xs ${isCorrectOption(q.correctAnswer, o.id) ? "font-semibold text-primary" : "text-muted-foreground"}`}>
               {o.id}. {o.text.slice(0, 28)}{o.text.length > 28 ? "…" : ""}
             </span>
           ))}
