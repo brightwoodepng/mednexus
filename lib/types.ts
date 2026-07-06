@@ -177,7 +177,7 @@ export interface HistoryEntry {
   subject: string // discipline
   vignetteSnippet: string
   mode: QuizMode
-  selectedOption: string | null // null = omitted
+  selectedOption: string | string[] | null // null = omitted; string[] for SATA
   correctOption: string | string[] | null // null when question is a draft without an answer key
   isCorrect: boolean
   timestamp: number // epoch ms

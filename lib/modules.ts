@@ -182,14 +182,20 @@ export function rankFor(percentage: number): ProficiencyRank {
 }
 
 /** Compute the result summary for a finished block. */
-export function computeResult(questions: Question[], answers: Record<string, string | null>, timeTakenMs?: number): BlockResult {
+export function computeResult(questions: Question[], answers: Record<string, string | string[] | null>, timeTakenMs?: number): BlockResult {
   let correct = 0
   let incorrect = 0
   let omitted = 0
   for (const q of questions) {
     const a = answers[q.id]
     if (a == null) omitted++
-    else if (a === q.correctAnswer) correct++
+    else if (Array.isArray(q.correctAnswer) && Array.isArray(a)) {
+      // SATA: correct only when selected set exactly matches correct set
+      const ca = [...(q.correctAnswer as string[])].sort()
+      const sa = [...(a as string[])].sort()
+      if (ca.length === sa.length && ca.every((c, i) => c === sa[i])) correct++
+      else incorrect++
+    } else if (a === q.correctAnswer) correct++
     else incorrect++
   }
   const total = questions.length
