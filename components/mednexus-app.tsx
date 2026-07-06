@@ -15,7 +15,7 @@ import { ModuleLibrary } from "@/components/module-library"
 import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
-import { ThemeModal } from "@/components/theme-modal"
+import { AppearanceModal } from "@/components/appearance-modal"
 import { QuestionEditor } from "@/components/question-editor"
 import { BroadcastScreen } from "@/components/broadcast-screen"
 import { LiveAssessmentsScreen } from "@/components/live-assessments-screen"
@@ -573,7 +573,7 @@ export function MedNexusApp() {
         onStart={handleStartQuiz}
       />
 
-      <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
+      <AppearanceModal open={themeOpen} onClose={() => setThemeOpen(false)} />
       {adminLoginOpen && <AdminLoginModal onClose={() => setAdminLoginOpen(false)} />}
       {importerOpen && isAdmin && (
         <UniversalImporter
