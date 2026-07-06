@@ -26,6 +26,7 @@ import { NotificationBell } from "@/components/notification-bell"
 import { ProfileHistory } from "@/components/profile-history"
 import { WeakAreasScreen } from "@/components/weak-areas-screen"
 import { GameMode } from "@/components/game-mode"
+import { NexusStorePage } from "@/components/game-store-modal"
 import { UniversalImporter } from "@/components/universal-importer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import {
@@ -557,7 +558,8 @@ export function MedNexusApp() {
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen />}
           {safeScreen === "live-assessments-admin" && isAdmin && <LiveAssessmentsAdmin />}
           {safeScreen === "user-management" && isAdmin && <AdminUserManagement />}
-          {safeScreen === "game" && <GameMode onExit={() => setScreen("dashboard")} />}
+          {safeScreen === "game" && <GameMode onExit={() => setScreen("dashboard")} onOpenStore={() => setScreen("store")} />}
+          {safeScreen === "store" && <NexusStorePage />}
           {safeScreen === "results" && lastResult && (
             <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />
           )}

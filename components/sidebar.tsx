@@ -20,6 +20,7 @@ import {
   RadioIcon,
   GamepadIcon,
   ArrowUpDownIcon,
+  StoreIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 
@@ -136,6 +137,7 @@ export function Sidebar({
           <NavButton glass={isGlassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
           <NavButton glass={isGlassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} icon={<RadioIcon size={18} />} label="Live Assessments" liveDot={hasLiveAssessment} />
           <NavButton glass={isGlassEnabled} active={screen === "game"} onClick={() => nav("game")} icon={<GamepadIcon size={18} />} label="Game Mode" />
+          <NavButton glass={isGlassEnabled} active={screen === "store"} onClick={() => nav("store")} icon={<StoreIcon size={18} />} label="Nexus Store" />
 
           {isAdmin && (
             <>
@@ -238,6 +240,7 @@ export function Sidebar({
       <IconButton glass={isGlassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
       <IconButton glass={isGlassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
       <IconButton glass={isGlassEnabled} active={screen === "game"} onClick={() => nav("game")} label="Game Mode"><GamepadIcon size={18} /></IconButton>
+      <IconButton glass={isGlassEnabled} active={screen === "store"} onClick={() => nav("store")} label="Nexus Store"><StoreIcon size={18} /></IconButton>
 
       {isAdmin && (
         <>
