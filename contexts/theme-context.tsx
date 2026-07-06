@@ -10,19 +10,22 @@ const GLASS_STORAGE_KEY = "mednexus-glass"
 const LEGACY_GLASS_THEMES = ["liquid-glass-light", "liquid-glass-dark"]
 
 interface ThemeContextValue {
-  theme: ThemeId
-  setTheme: (theme: ThemeId) => void
-  glassEnabled: boolean
-  setGlassEnabled: (enabled: boolean) => void
+  /** The active color theme ID (e.g. "clinical-light", "ocean-breeze", "midnight-purple"). */
+  activeTheme: ThemeId
+  setActiveTheme: (theme: ThemeId) => void
+  /** Whether the Liquid Glass frosted-glass overlay is enabled. Independent of activeTheme. */
+  isGlassEnabled: boolean
+  setIsGlassEnabled: (enabled: boolean) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>(DEFAULT_THEME)
-  const [glassEnabled, setGlassState] = useState(false)
+  // Two fully independent state variables — toggling one never touches the other.
+  const [activeTheme, setThemeState] = useState<ThemeId>(DEFAULT_THEME)
+  const [isGlassEnabled, setGlassState] = useState(false)
 
-  // Load persisted preferences on mount (with legacy migration)
+  // ── Hydrate from localStorage on first mount (with legacy migration) ────────
   useEffect(() => {
     if (typeof window === "undefined") return
 
@@ -30,7 +33,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const storedGlass = localStorage.getItem(GLASS_STORAGE_KEY)
 
     if (storedTheme && LEGACY_GLASS_THEMES.includes(storedTheme)) {
-      // Migrate: was using liquid-glass theme → switch to default + enable glass
+      // Migrate: old liquid-glass theme → default color theme + glass ON
       setThemeState(DEFAULT_THEME)
       setGlassState(true)
       localStorage.setItem(STORAGE_KEY, DEFAULT_THEME)
@@ -43,36 +46,44 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Apply theme + glass attributes to <html>
+  // ── Apply activeTheme to <html data-theme="…"> ────────────────────────────
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme)
-  }, [theme])
+    document.documentElement.setAttribute("data-theme", activeTheme)
+  }, [activeTheme])
 
+  // ── Apply isGlassEnabled to <html data-glass="true"> — independent effect ──
   useEffect(() => {
-    if (glassEnabled) {
+    if (isGlassEnabled) {
       document.documentElement.setAttribute("data-glass", "true")
     } else {
       document.documentElement.removeAttribute("data-glass")
     }
-  }, [glassEnabled])
+  }, [isGlassEnabled])
 
-  const setTheme = useCallback((next: ThemeId) => {
+  // ── Stable setters — each persists its own key, never touches the other ────
+  const setActiveTheme = useCallback((next: ThemeId) => {
     setThemeState(next)
     try { localStorage.setItem(STORAGE_KEY, next) } catch {}
   }, [])
 
-  const setGlassEnabled = useCallback((enabled: boolean) => {
+  const setIsGlassEnabled = useCallback((enabled: boolean) => {
     setGlassState(enabled)
     try { localStorage.setItem(GLASS_STORAGE_KEY, String(enabled)) } catch {}
   }, [])
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, glassEnabled, setGlassEnabled }}>
+    <ThemeContext.Provider value={{ activeTheme, setActiveTheme, isGlassEnabled, setIsGlassEnabled }}>
       {children}
     </ThemeContext.Provider>
   )
 }
 
+/**
+ * Hook to access appearance state from any component inside ThemeProvider.
+ *
+ * @example
+ * const { activeTheme, setActiveTheme, isGlassEnabled, setIsGlassEnabled } = useTheme()
+ */
 export function useTheme() {
   const ctx = useContext(ThemeContext)
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider")

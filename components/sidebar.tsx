@@ -63,7 +63,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { user, cloudEnabled, signOutUser, progress } = useApp()
   const { isAdmin, logoutAdmin } = useAdmin()
-  const { glassEnabled } = useTheme()
+  const { isGlassEnabled } = useTheme()
 
   const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
 
@@ -89,15 +89,15 @@ export function Sidebar({
   }, [])
 
   // ── Derived class helpers ──────────────────────────────────────────────────
-  const panelCls = glassEnabled
+  const panelCls = isGlassEnabled
     ? "glass-sidebar"
     : "bg-sidebar border-r border-sidebar-border"
 
-  const cardCls = glassEnabled
+  const cardCls = isGlassEnabled
     ? "glass-card"
     : "border border-sidebar-border bg-sidebar-accent/50"
 
-  const dividerCls = glassEnabled
+  const dividerCls = isGlassEnabled
     ? "glass-divider"
     : "bg-sidebar-border/60"
 
@@ -109,7 +109,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={onCollapse}
-            className={`hidden rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:flex ${glassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
+            className={`hidden rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:flex ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
             aria-label="Collapse sidebar"
           >
             <ChevronLeftIcon size={18} />
@@ -117,7 +117,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={onCloseMobile}
-            className={`rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:hidden ${glassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
+            className={`rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:hidden ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
             aria-label="Close menu"
           >
             <XIcon size={20} />
@@ -127,25 +127,25 @@ export function Sidebar({
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <nav className="flex flex-col gap-0.5">
-          <NavButton glass={glassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
-          <NavButton glass={glassEnabled} active={screen === "profile"} onClick={() => nav("profile")} icon={<UserIcon size={18} />} label="Profile" />
+          <NavButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
+          <NavButton glass={isGlassEnabled} active={screen === "profile"} onClick={() => nav("profile")} icon={<UserIcon size={18} />} label="Profile" />
 
           <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
 
-          <NavButton glass={glassEnabled} active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getLiveModules().length)} />
-          <NavButton glass={glassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
-          <NavButton glass={glassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} icon={<RadioIcon size={18} />} label="Live Assessments" liveDot={hasLiveAssessment} />
-          <NavButton glass={glassEnabled} active={screen === "game"} onClick={() => nav("game")} icon={<GamepadIcon size={18} />} label="Game Mode" />
+          <NavButton glass={isGlassEnabled} active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getLiveModules().length)} />
+          <NavButton glass={isGlassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
+          <NavButton glass={isGlassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} icon={<RadioIcon size={18} />} label="Live Assessments" liveDot={hasLiveAssessment} />
+          <NavButton glass={isGlassEnabled} active={screen === "game"} onClick={() => nav("game")} icon={<GamepadIcon size={18} />} label="Game Mode" />
 
           {isAdmin && (
             <>
               <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
               <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">Admin</p>
-              <NavButton glass={glassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
-              <NavButton glass={glassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
-              <NavButton glass={glassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
-              <NavButton glass={glassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} icon={<ClipboardListIcon size={18} />} label="Assessments" adminBadge="Admin" />
-              <NavButton glass={glassEnabled} active={false} onClick={() => { onOpenImporter?.(); onCloseMobile() }} icon={<ArrowUpDownIcon size={18} />} label="Importer" adminBadge="Admin" />
+              <NavButton glass={isGlassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
+              <NavButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Question Editor" adminBadge="Admin" />
+              <NavButton glass={isGlassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
+              <NavButton glass={isGlassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} icon={<ClipboardListIcon size={18} />} label="Assessments" adminBadge="Admin" />
+              <NavButton glass={isGlassEnabled} active={false} onClick={() => { onOpenImporter?.(); onCloseMobile() }} icon={<ArrowUpDownIcon size={18} />} label="Importer" adminBadge="Admin" />
             </>
           )}
 
@@ -154,7 +154,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => { onOpenThemes(); onCloseMobile() }}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 transition-colors ${glassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 transition-colors ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
           >
             <PaletteIcon size={18} />
             Themes
@@ -172,7 +172,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={logoutAdmin}
-              className={`rounded-lg px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 transition-colors ${glassEnabled ? "glass-pill-hover" : "hover:bg-amber-500/20"}`}
+              className={`rounded-lg px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 transition-colors ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-amber-500/20"}`}
             >
               Exit
             </button>
@@ -209,7 +209,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }}
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:text-destructive ${glassEnabled ? "glass-pill-hover" : "hover:bg-destructive/10"}`}
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:text-destructive ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-destructive/10"}`}
         >
           <LogOutIcon size={18} />
           Sign Out
@@ -223,38 +223,38 @@ export function Sidebar({
       <button
         type="button"
         onClick={onExpand}
-        className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors ${glassEnabled ? "glass-pill-hover" : "border border-sidebar-border hover:bg-sidebar-accent"}`}
+        className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors ${isGlassEnabled ? "glass-pill-hover" : "border border-sidebar-border hover:bg-sidebar-accent"}`}
         aria-label="Expand sidebar"
       >
         <ChevronLeftIcon size={18} className="rotate-180" />
       </button>
 
-      <IconButton glass={glassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
-      <IconButton glass={glassEnabled} active={screen === "profile"} onClick={() => nav("profile")} label="Profile"><UserIcon size={18} /></IconButton>
+      <IconButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
+      <IconButton glass={isGlassEnabled} active={screen === "profile"} onClick={() => nav("profile")} label="Profile"><UserIcon size={18} /></IconButton>
 
       <div className={`my-2 w-6 h-px ${dividerCls}`} />
 
-      <IconButton glass={glassEnabled} active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
-      <IconButton glass={glassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
-      <IconButton glass={glassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
-      <IconButton glass={glassEnabled} active={screen === "game"} onClick={() => nav("game")} label="Game Mode"><GamepadIcon size={18} /></IconButton>
+      <IconButton glass={isGlassEnabled} active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
+      <IconButton glass={isGlassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
+      <IconButton glass={isGlassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
+      <IconButton glass={isGlassEnabled} active={screen === "game"} onClick={() => nav("game")} label="Game Mode"><GamepadIcon size={18} /></IconButton>
 
       {isAdmin && (
         <>
           <div className={`my-2 w-6 h-px ${dividerCls}`} />
-          <IconButton glass={glassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} label="Users"><UsersIcon size={18} /></IconButton>
-          <IconButton glass={glassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
-          <IconButton glass={glassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
-          <IconButton glass={glassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} label="Assessments (Admin)"><ClipboardListIcon size={18} /></IconButton>
-          <IconButton glass={glassEnabled} active={false} onClick={() => onOpenImporter?.()} label="Importer"><ArrowUpDownIcon size={18} /></IconButton>
+          <IconButton glass={isGlassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} label="Users"><UsersIcon size={18} /></IconButton>
+          <IconButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Question Editor"><DatabaseIcon size={18} /></IconButton>
+          <IconButton glass={isGlassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
+          <IconButton glass={isGlassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} label="Assessments (Admin)"><ClipboardListIcon size={18} /></IconButton>
+          <IconButton glass={isGlassEnabled} active={false} onClick={() => onOpenImporter?.()} label="Importer"><ArrowUpDownIcon size={18} /></IconButton>
         </>
       )}
 
       <div className={`my-2 w-6 h-px ${dividerCls}`} />
-      <IconButton glass={glassEnabled} active={false} onClick={onOpenThemes} label="Themes"><PaletteIcon size={18} /></IconButton>
+      <IconButton glass={isGlassEnabled} active={false} onClick={onOpenThemes} label="Themes"><PaletteIcon size={18} /></IconButton>
 
       <div className="mt-auto">
-        <IconButton glass={glassEnabled} active={false} onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }} label="Sign Out"><LogOutIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={false} onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }} label="Sign Out"><LogOutIcon size={18} /></IconButton>
       </div>
     </div>
   )
