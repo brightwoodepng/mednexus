@@ -1,0 +1,26 @@
+Role: You are the Senior Principal Architect for MedNexus.
+Task: I need an exhaustive, highly detailed Master System Architecture and Feature Blueprint of the entire MedNexus platform based on our current codebase. 
+
+Once you have analyzed the code and written the breakdown, you MUST generate a downloadable Word document (.docx) or PDF and save it in the root directory so I can download it.
+
+### Step 1: Analyze and Document Every Single Feature
+Scan the codebase and write an exhaustive breakdown including:
+1. Tech Stack & Infrastructure: Frontend, backend, database, and styling.
+2. Account System: The exact logic separating Guest Sessions from full Student Accounts.
+3. Core Study Engines:
+   - Trial Mode: Untimed logic, instant validation, and explanation rendering.
+   - Exam Mode: Timer logic, locked feedback, pressure-testing rules, and final grading.
+4. Game Mode (Clash Mode): The complete multiplayer architecture, room creation, matchmaking, performance tracking, and all the rules/refuses built into this mode.
+5. Live Assessments: How cohort-wide synchronized testing works.
+6. The Admin & Content Pipeline: 
+   - The AI Importer (extracting from Word/PDF).
+   - The Question Editor (how questions are manually uploaded, edited, and staged).
+7. Push Notifications: Real-time alerts for clash challenges and system updates.
+8. Dashboard & Analytics: Tracking performance across clinical disciplines and identifying weak areas.
+9. UI/UX: Custom themes (Dark mode) and mobile-responsive layout handling.
+10. Database Schema: Full map of all data models.
+
+### Step 2: Generate the Downloadable File
+1. Save this exhaustive documentation temporarily as a markdown file.
+2. Write and execute a script (using a library like docx or markdown-pdf via npm, or a python script) to convert this documentation into a final, formatted file named MedNexus_Complete_Blueprint.docx (or .pdf).
+3. Save it to the root directory and confirm in the chat when it is ready for me to download from the file explorer.
