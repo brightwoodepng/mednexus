@@ -645,6 +645,77 @@
       inset 0 1.5px 0 light-dark(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.2)),
       0 12px 40px light-dark(rgba(0, 0, 0, 0.07), rgba(0, 0, 0, 0.36));
   }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     GlassCard component — Layer 2 visual surface
+     Two CSS classes toggled by the GlassCard React component based on
+     isGlassEnabled.  All values are light-dark() aware so they adapt to
+     whichever theme is active without any JavaScript.
+
+     Layer 3 Rule enforcement:
+       • Background alpha is on background-color, NOT on opacity — children
+         are never made translucent by this wrapper.
+       • backdrop-filter acts only on content BEHIND the element.
+       • isolation: isolate creates a fresh stacking context so no parent
+         filter leaks into child elements.
+     ════════════════════════════════════════════════════════════════════════ */
+
+  /* ── Glass ON ── */
+  .gc-glass {
+    /* Frosted Lens: heavy blur + high saturation pulls canvas colours through */
+    backdrop-filter: blur(48px) saturate(1.6);
+    -webkit-backdrop-filter: blur(48px) saturate(1.6);
+
+    /* Base Fill
+       Light mode: faint white tint (≈ bg-white/15)
+       Dark mode : highly transparent deep slate/900 (≈ bg-slate-900/40)     */
+    background: light-dark(
+      rgba(255, 255, 255, 0.15),
+      rgba(15,  23,  42,  0.40)
+    );
+
+    /* Physical Edge: 1 px light-catching border
+       Light mode: white/30  — visible specular highlight
+       Dark mode : white/10  — razor-thin translucent seam               */
+    border: 1px solid light-dark(
+      rgba(255, 255, 255, 0.32),
+      rgba(255, 255, 255, 0.10)
+    );
+
+    /* Depth: inset top-edge highlight + soft dispersed drop shadow */
+    box-shadow:
+      inset 0 1.5px 0 light-dark(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.13)),
+      0 8px  32px light-dark(rgba(0,   0,   0,   0.08), rgba(0,   0,   0,   0.32)),
+      0 2px  8px  light-dark(rgba(0,   0,   0,   0.04), rgba(0,   0,   0,   0.20));
+
+    /* Fresh stacking context — children unaffected by wrapper transparency */
+    isolation: isolate;
+
+    /* Smooth cross-fade when switching glass on/off or changing themes */
+    transition:
+      background     500ms ease,
+      border-color   500ms ease,
+      box-shadow     500ms ease,
+      backdrop-filter 400ms ease;
+  }
+
+  /* ── Glass OFF — standard solid opaque surface ── */
+  .gc-solid {
+    /* Solid opaque background — matches the active theme's card token */
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.07),
+      0 1px 2px rgba(0, 0, 0, 0.04);
+
+    /* Fresh stacking context — same guarantee as gc-glass for consistency */
+    isolation: isolate;
+
+    transition:
+      background   500ms ease,
+      border-color 500ms ease,
+      box-shadow   500ms ease;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
