@@ -554,13 +554,55 @@ function FilterPicker({ allQ, filter, onChange }: {
 }
 
 // ── Shared per-mode menu (start screen) ──────────────────────────────────────
+const GAME_PRESETS = [10, 20, 50, 75, 100, 150] as const
+
 function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
   mode: ModeConfig; hs: number
   allQ: Question[]; filter: GameFilter; onFilterChange: (f: GameFilter) => void
-  onStart: () => void; onBack: () => void
+  onStart: (qty: number | null) => void; onBack: () => void
 }) {
   const count = countForFilter(allQ, filter)
   const tooFew = filter.scope !== "all" && filter.value && count < 3
+
+  // — Quantity selection state —
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
+  const [customValue, setCustomValue] = useState("")
+  const [useCustom, setUseCustom] = useState(false)
+
+  // "All" is the default: no preset chosen, no custom value
+  const isAllSelected = !useCustom && selectedPreset === null
+
+  function handlePreset(n: number) {
+    if (n > count) return
+    setUseCustom(false)
+    setCustomValue("")
+    setSelectedPreset(prev => prev === n ? null : n)
+  }
+
+  function handleAll() {
+    setUseCustom(false)
+    setCustomValue("")
+    setSelectedPreset(null)
+  }
+
+  function handleCustomChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value.replace(/[^0-9]/g, "")
+    setCustomValue(v)
+    setUseCustom(v.length > 0)
+    setSelectedPreset(null)
+  }
+
+  function getQty(): number | null {
+    if (useCustom) {
+      const n = parseInt(customValue, 10)
+      if (!isNaN(n) && n > 0) return Math.min(n, count)
+    }
+    if (selectedPreset !== null) return Math.min(selectedPreset, count)
+    return null // null = All
+  }
+
+  const qty = getQty()
+  const startLabel = qty !== null ? `Start — ${qty} Question${qty === 1 ? "" : "s"}` : `Start Game`
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-8">
@@ -584,6 +626,59 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
         {/* Filter picker */}
         <FilterPicker allQ={allQ} filter={filter} onChange={onFilterChange} />
 
+        {/* Question Count */}
+        <div className="mb-5 rounded-3xl border border-border bg-card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Question Count</p>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+              {count} available
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {GAME_PRESETS.map(n => {
+              const enabled = n <= count
+              const active = !useCustom && selectedPreset === n
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={!enabled}
+                  onClick={() => handlePreset(n)}
+                  className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all
+                    ${active
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : enabled
+                        ? "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted"
+                        : "border-border/40 bg-muted/30 text-muted-foreground/40 cursor-not-allowed"
+                    }`}
+                >
+                  {n}
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={handleAll}
+              className={`col-span-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all
+                ${isAllSelected
+                  ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                  : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted"
+                }`}
+            >
+              All ({count})
+            </button>
+          </div>
+          <input
+            type="number"
+            min={1}
+            max={count}
+            value={customValue}
+            onChange={handleCustomChange}
+            placeholder={`Custom (1 – ${count})`}
+            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </div>
+
         {/* Rules */}
         <div className="mb-5 rounded-3xl border border-border bg-card p-4">
           <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Rules</p>
@@ -604,10 +699,10 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
         )}
 
         <button
-          type="button" onClick={onStart}
+          type="button" onClick={() => onStart(getQty())}
           className={`w-full rounded-2xl bg-gradient-to-r ${mode.gradient} py-4 text-base font-bold text-white shadow-lg ${mode.shadow} transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.99]`}
         >
-          Start Game
+          {startLabel}
         </button>
         <button type="button" onClick={onBack} className="mt-3 w-full rounded-2xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
           Back to Mode Select
@@ -968,8 +1063,9 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
     expiryRef.current += 10000
   }
 
-  function start() {
-    const p = makeFilteredSrc(allQ, filter)
+  function start(qty: number | null = null) {
+    let p = makeFilteredSrc(allQ, filter)
+    if (qty !== null && qty > 0 && qty < p.length) p = p.slice(0, qty)
     setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
     setLives(MAX_LIVES); r.current.lives = MAX_LIVES
     setScore(0); r.current.score = 0; setStreak(0); r.current.streak = 0
@@ -1127,8 +1223,9 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
     expiryRef.current += 10000
   }
 
-  function start() {
-    const p = makeFilteredSrc(allQ, filter)
+  function start(qty: number | null = null) {
+    let p = makeFilteredSrc(allQ, filter)
+    if (qty !== null && qty > 0 && qty < p.length) p = p.slice(0, qty)
     setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
     setSurvived(0); r.current.survived = 0; setTimeLeft(SUDDEN_TIME)
     setFb(null); r.current.fb = null; setPicked(null)
@@ -1256,8 +1353,9 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     expiryRef.current += 10000
   }
 
-  function start() {
-    const p = makeFilteredSrc(allQ, filter)
+  function start(qty: number | null = null) {
+    let p = makeFilteredSrc(allQ, filter)
+    if (qty !== null && qty > 0 && qty < p.length) p = p.slice(0, qty)
     setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
     setScore(0); r.current.score = 0; setTimeLeft(TIMEATK_START); r.current.timeLeft = TIMEATK_START
     setFb(null); r.current.fb = null; setPicked(null)
@@ -1341,8 +1439,9 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
 
   const qty5050dj = inventory["lifeline_50_50"] ?? 0
 
-  function start() {
-    const p = makeFilteredSrc(allQ, filter)
+  function start(qty: number | null = null) {
+    let p = makeFilteredSrc(allQ, filter)
+    if (qty !== null && qty > 0 && qty < p.length) p = p.slice(0, qty)
     setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
     setBank(DJ_STARTING_BANK); r.current.bank = DJ_STARTING_BANK
     setWager(0); r.current.wager = 0
@@ -1560,8 +1659,9 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
     setHsState(best); writeHs(cfg.hsKey, best); setPhase("over")
   }
 
-  function start() {
-    const p = makeFilteredSrc(allQ, filter)
+  function start(qty: number | null = null) {
+    let p = makeFilteredSrc(allQ, filter)
+    if (qty !== null && qty > 0 && qty < p.length) p = p.slice(0, qty)
     setPool(p); r.current.pool = p; setQi(0); r.current.qi = 0
     setStreak(0); r.current.streak = 0; setBestStreak(0); r.current.bestStreak = 0
     setTotalQ(0); r.current.totalQ = 0; setTotalRight(0); r.current.totalRight = 0
