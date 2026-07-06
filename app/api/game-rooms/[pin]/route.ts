@@ -23,10 +23,11 @@ interface SlimQuestion {
   vignette: string
   options: { id: string; text: string }[]
   correctAnswer: string
+  explanation?: { objective?: string; details?: string; incorrectReasoning?: string } | null
 }
 
 interface RawRoom {
-  pin: string; mode: "clash" | "cohort" | "wager"; host_id: string; host_name: string
+  pin: string; mode: "clash" | "cohort" | "wager" | "djmulti"; host_id: string; host_name: string
   question_pool: SlimQuestion[]; current_qi: number; phase: RoomPhase
   players: RoomPlayer[]; version: number; created_at: Date
   scored_uids: string[]; phase_started_at: Date
@@ -39,7 +40,18 @@ interface RawRoom {
 // the last phase change (or every active player has already answered), the
 // server advances the match itself. This removes the host as a bottleneck
 // while staying entirely inside the existing Postgres + polling architecture.
-const QUESTION_TIME_LIMIT_MS = 20_000
+
+// Per-mode strict question time limits
+const CLASH_TIME_LIMIT_MS  = 45_000  // Multiplayer Clash: 45 seconds
+const COHORT_TIME_LIMIT_MS = 30_000  // Cohort Review (Kahoot Style): 30 seconds
+
+/** Returns the question time limit in ms for a given mode.
+ *  wager/djmulti have no absolute deadline (auto-advance when all answer). */
+function getTimeLimitMs(mode: string): number {
+  if (mode === "cohort") return COHORT_TIME_LIMIT_MS
+  return CLASH_TIME_LIMIT_MS // clash default
+}
+
 const REVEAL_DURATION_MS = 3_000
 
 function activePlayers(players: RoomPlayer[]): RoomPlayer[] {
@@ -65,15 +77,15 @@ async function autoTick(pin: string): Promise<void> {
     if (res.rows.length === 0) { await client.query("ROLLBACK"); return }
 
     const row = res.rows[0] as RawRoom
-    // Wager mode already has its own manual/auto-advance flow (place_wager →
-    // question, answer → reveal). We only self-drive the "no host bottleneck"
-    // pacing for clash/cohort, so wager behavior is left untouched.
-    if (row.mode === "wager") { await client.query("ROLLBACK"); return }
+    // wager/djmulti have their own manual/auto-advance flow (place_wager →
+    // question, answer → reveal). We only self-drive pacing for clash/cohort.
+    if (row.mode === "wager" || row.mode === "djmulti") { await client.query("ROLLBACK"); return }
 
     const elapsedMs = Date.now() - new Date(row.phase_started_at).getTime()
+    const timeLimitMs = getTimeLimitMs(row.mode)
 
     if (row.phase === "question") {
-      const shouldReveal = allActiveAnswered(row.players) || elapsedMs >= QUESTION_TIME_LIMIT_MS
+      const shouldReveal = allActiveAnswered(row.players) || elapsedMs >= timeLimitMs
       if (shouldReveal) {
         await client.query(
           "UPDATE mednexus_game_rooms SET phase = 'reveal', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1 AND phase = 'question'",
@@ -140,10 +152,10 @@ function buildResponse(row: RawRoom, myId?: string) {
     myRank: myId ? (ranks[myId] ?? null) : null,
     // Absolute epoch-ms when the current question expires so clients can run a
     // live countdown without trusting their own clock drift relative to the
-    // server. Only provided for clash/cohort question phase — wager mode has no
-    // absolute time limit (it auto-advances when every non-spectator answers).
-    phaseDeadlineMs: (row.phase === "question" && row.mode !== "wager")
-      ? new Date(row.phase_started_at).getTime() + QUESTION_TIME_LIMIT_MS
+    // server. Only provided for clash/cohort question phase — wager/djmulti have
+    // no absolute time limit (auto-advance when every non-spectator answers).
+    phaseDeadlineMs: (row.phase === "question" && row.mode !== "wager" && row.mode !== "djmulti")
+      ? new Date(row.phase_started_at).getTime() + getTimeLimitMs(row.mode)
       : null,
   }
 }
@@ -195,6 +207,10 @@ export async function PATCH(
       requesterId?: string
       // Client-measured ms between question render and answer submission (speed bonus input)
       reactionTimeMs?: number
+      // Equipped cosmetics sent by the joining player (used for join action only)
+      equippedTitle?: string | null
+      equippedFrame?: string | null
+      equippedHighlight?: string | null
     }
 
     await client.query("BEGIN")
@@ -233,8 +249,8 @@ export async function PATCH(
           }
         }
 
-        // Clash: max 5 players; Wager: max 8
-        if (row.mode === "clash" && players.length >= 5) {
+        // Clash/djmulti: max 5 players; Wager: max 8
+        if ((row.mode === "clash" || row.mode === "djmulti") && players.length >= 5) {
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Room is full (max 5 players)" }, { status: 409 })
         }
@@ -243,10 +259,14 @@ export async function PATCH(
           return NextResponse.json({ error: "Room is full (max 8 players)" }, { status: 409 })
         }
 
+        // djmulti: 500 starting bank; wager: 1000
+        const startBal = row.mode === "wager" ? 1000 : row.mode === "djmulti" ? 500 : undefined
+        const isWagerLike = row.mode === "wager" || row.mode === "djmulti"
+
         const newPlayer: RoomPlayer = {
           id: body.playerId, name: body.playerName,
           score: 0, streak: 0, answer: null, answeredAt: null, isHost: false,
-          ...(row.mode === "wager" ? { balance: 1000, wagerAmount: null, isSpectator: false } : {}),
+          ...(isWagerLike ? { balance: startBal, wagerAmount: null, isSpectator: false } : {}),
           equippedTitle:     (body.equippedTitle     as string | null) ?? null,
           equippedFrame:     (body.equippedFrame     as string | null) ?? null,
           equippedHighlight: (body.equippedHighlight as string | null) ?? null,
@@ -265,11 +285,13 @@ export async function PATCH(
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Already started" }, { status: 409 })
         }
-        const startPhase: RoomPhase = row.mode === "wager" ? "wager" : "question"
+        const isWagerLikeStart = row.mode === "wager" || row.mode === "djmulti"
+        const startPhase: RoomPhase = isWagerLikeStart ? "wager" : "question"
+        const startBal = row.mode === "wager" ? 1000 : row.mode === "djmulti" ? 500 : undefined
         players = players.map(p => ({
           ...p,
           answer: null, answeredAt: null,
-          ...(row.mode === "wager" ? { balance: 1000, wagerAmount: null, isSpectator: false } : {}),
+          ...(isWagerLikeStart ? { balance: startBal, wagerAmount: null, isSpectator: false } : {}),
         }))
         await client.query(
           "UPDATE mednexus_game_rooms SET phase = $1, current_qi = 0, players = $2, phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $3",
@@ -292,9 +314,9 @@ export async function PATCH(
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Not in wager phase" }, { status: 409 })
         }
-        if (row.mode !== "wager") {
+        if (row.mode !== "wager" && row.mode !== "djmulti") {
           await client.query("ROLLBACK")
-          return NextResponse.json({ error: "Not a wager room" }, { status: 400 })
+          return NextResponse.json({ error: "Not a wager/djmulti room" }, { status: 400 })
         }
 
         players = players.map(p => {
@@ -351,28 +373,34 @@ export async function PATCH(
         const correct = body.answer === q.correctAnswer
         const now = Date.now()
 
-        // Clamp reactionTimeMs to a sane range — never trust it blindly, it's
-        // only used to compute a bonus, never to determine correctness.
+        // Clamp reactionTimeMs to a sane range using per-mode time limit.
+        // wager/djmulti have no hard deadline so use clash limit as fallback.
+        const modeTimeLimitMs = (row.mode !== "wager" && row.mode !== "djmulti")
+          ? getTimeLimitMs(row.mode)
+          : CLASH_TIME_LIMIT_MS
         const rawReaction = body.reactionTimeMs
         const reactionTimeMs = (typeof rawReaction === "number" && Number.isFinite(rawReaction) && rawReaction >= 0)
-          ? Math.min(rawReaction, QUESTION_TIME_LIMIT_MS)
+          ? Math.min(rawReaction, modeTimeLimitMs)
           : null
         // Speed bonus: up to +50 points for an instant answer, decaying to 0
-        // by the time the question's time limit is reached.
-        const speedBonus = (correct && reactionTimeMs !== null)
-          ? Math.round(50 * (1 - reactionTimeMs / QUESTION_TIME_LIMIT_MS))
+        // by the time the question's time limit is reached. Not applied in
+        // wager/djmulti (balance-based scoring — speed bonus not used).
+        const speedBonus = (correct && reactionTimeMs !== null && row.mode !== "wager" && row.mode !== "djmulti")
+          ? Math.round(50 * (1 - reactionTimeMs / modeTimeLimitMs))
           : 0
+
+        const isWagerLikeAnswer = row.mode === "wager" || row.mode === "djmulti"
 
         players = players.map(p => {
           if (p.id !== body.playerId) return p
           if (p.answer !== null) return p // already answered
-          // Spectators in wager mode cannot submit answers — they're locked out
+          // Spectators in wager/djmulti cannot submit answers — they're locked out
           // of scoring and their vote would corrupt the "all answered" check
-          if (row.mode === "wager" && p.isSpectator) return p
+          if (isWagerLikeAnswer && p.isSpectator) return p
 
-          if (row.mode === "wager") {
+          if (isWagerLikeAnswer) {
             const wagerAmt = p.wagerAmount ?? 0
-            const currentBal = p.balance ?? 1000
+            const currentBal = p.balance ?? (row.mode === "djmulti" ? 500 : 1000)
             const newBalance = correct ? currentBal + wagerAmt : Math.max(0, currentBal - wagerAmt)
             const becameSpectator = newBalance <= 0
             return {
@@ -397,19 +425,18 @@ export async function PATCH(
         // ── Pressure timer ──────────────────────────────────────────────────────
         // Exactly when N-1 active players have answered (one slow player left),
         // check the remaining time. If >5 s remain, back-date phase_started_at
-        // so exactly 5 s remain on the server clock. The next GET response will
-        // carry a new phaseDeadlineMs ~now+5000 and every polling client turns
-        // its timer red simultaneously. Skip in wager mode (no absolute timer).
-        if (row.mode !== "wager" && !allActiveAnswered(players)) {
+        // so exactly 5 s remain on the server clock. Skip in wager/djmulti
+        // (no absolute timer — auto-advance when all answer).
+        if (!isWagerLikeAnswer && !allActiveAnswered(players)) {
           const pressureActive = activePlayers(players)
           const pressureAnswered = pressureActive.filter(p => p.answer !== null).length
           if (pressureActive.length > 1 && pressureAnswered === pressureActive.length - 1) {
             const elapsed = Date.now() - new Date(row.phase_started_at).getTime()
-            const remaining = QUESTION_TIME_LIMIT_MS - elapsed
+            const remaining = modeTimeLimitMs - elapsed
             if (remaining > 5000) {
-              // Set phase_started_at to (now - (QUESTION_TIME_LIMIT_MS - 5000))
+              // Set phase_started_at to (now - (modeTimeLimitMs - 5000))
               // so the autoTick elapsedMs check fires in exactly 5 s.
-              const newStart = new Date(Date.now() - (QUESTION_TIME_LIMIT_MS - 5000))
+              const newStart = new Date(Date.now() - (modeTimeLimitMs - 5000))
               await client.query(
                 `UPDATE mednexus_game_rooms
                     SET phase_started_at = $1, version = COALESCE(version, 0) + 1
@@ -420,8 +447,8 @@ export async function PATCH(
           }
         }
 
-        // Wager mode: auto-advance to reveal when all active players answered
-        if (row.mode === "wager") {
+        // wager/djmulti: auto-advance to reveal when all active players answered
+        if (isWagerLikeAnswer) {
           const activePlayersW = players.filter(p => !p.isSpectator)
           const allDone = activePlayersW.length === 0 || activePlayersW.every(p => p.answer !== null)
           if (allDone) {
@@ -442,7 +469,7 @@ export async function PATCH(
       }
 
       case "advance": {
-        if (row.mode === "wager") {
+        if (row.mode === "wager" || row.mode === "djmulti") {
           // Wager mode: reveal → next wager or done
           if (row.phase === "reveal") {
             const nextQi = row.current_qi + 1
