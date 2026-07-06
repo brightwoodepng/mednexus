@@ -272,7 +272,7 @@ function GuestModal({ onClose }: { onClose: () => void }) {
 
 // ── Student Form (Login + Register toggled) ───────────────────────────────────
 function StudentForm({ onBack }: { onBack: () => void }) {
-  const [mode, setMode] = useState<"login" | "register">("login")
+  const [mode, setMode] = useState<"login" | "register">("register")
   const { isGlassEnabled } = useTheme()
 
   return (
@@ -281,17 +281,17 @@ function StudentForm({ onBack }: { onBack: () => void }) {
       <div className="flex border-b border-border">
         <button
           type="button"
-          onClick={() => setMode("login")}
-          className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${mode === "login" ? "bg-card text-foreground border-b-2 border-primary" : "bg-muted/50 text-muted-foreground hover:text-foreground"}`}
-        >
-          Log In
-        </button>
-        <button
-          type="button"
           onClick={() => setMode("register")}
           className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${mode === "register" ? "bg-card text-foreground border-b-2 border-primary" : "bg-muted/50 text-muted-foreground hover:text-foreground"}`}
         >
           Create Account
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("login")}
+          className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${mode === "login" ? "bg-card text-foreground border-b-2 border-primary" : "bg-muted/50 text-muted-foreground hover:text-foreground"}`}
+        >
+          Log In
         </button>
       </div>
 
@@ -500,7 +500,7 @@ function LoginFields() {
 
 // ── Register Fields ───────────────────────────────────────────────────────────
 function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
-  const { registerUser } = useApp()
+  const { registerUser, loginUser } = useApp()
   const [name, setName] = useState("")
   const [level, setLevel] = useState("")
   const [indexNumber, setIndexNumber] = useState("")
@@ -519,11 +519,21 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
     setLoading(true)
     setError("")
     const result = await registerUser(name, level, indexNumber, password)
-    setLoading(false)
     if (!result.ok) {
+      setLoading(false)
       setError(result.error ?? "Registration failed")
+    } else if (result.status === "approved") {
+      // Auto-login: seamlessly authenticate and go straight to the dashboard
+      const login = await loginUser(indexNumber, password)
+      setLoading(false)
+      if (!login.ok) {
+        // Account was created but auto-login failed — let user log in manually
+        setError(login.error ?? "Account created! Automatic sign-in failed — please log in manually.")
+        onRegistered()
+      }
     } else {
-      setSuccess({ status: result.status ?? "approved" })
+      setLoading(false)
+      setSuccess({ status: result.status ?? "pending" })
     }
   }
 
