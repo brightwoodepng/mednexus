@@ -338,8 +338,8 @@ export function NexusStorePage() {
 
   const TABS: { id: StoreTab; label: string; badge?: string }[] = [
     { id: "supply",   label: "⚗️ Supply Closet" },
-    { id: "vault",    label: "🔐 The Vault", badge: `${ownedVaultCount}/${vaultItems.length}` },
     { id: "cosmetic", label: "✨ Cosmetics" },
+    { id: "vault",    label: "🔐 The Vault", badge: `${ownedVaultCount}/${vaultItems.length}` },
   ]
 
   return (
@@ -367,11 +367,11 @@ export function NexusStorePage() {
         </div>
 
         {/* ── Tab bar ── */}
-        <div className="flex border-b border-border gap-0.5 overflow-x-auto">
+        <div className="flex border-b border-border overflow-x-auto no-scrollbar">
           {TABS.map(t => (
             <button
               key={t.id} type="button" onClick={() => setTab(t.id)}
-              className={`flex shrink-0 items-center gap-1.5 pb-3 px-4 text-sm font-semibold border-b-2 transition-all -mb-px ${
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap pb-2.5 px-3 text-sm font-semibold border-b-2 transition-all -mb-px ${
                 tab === t.id
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
