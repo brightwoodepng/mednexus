@@ -218,6 +218,16 @@ export async function ensureSchema() {
     ALTER TABLE mednexus_game_rooms
       ADD COLUMN IF NOT EXISTS knockout_winner_id TEXT;
 
+    -- rank_points: cumulative Clinical Ladder progression points. Grows with
+    -- every NP payout; tier-up bonuses are awarded when crossing thresholds.
+    ALTER TABLE mednexus_wallet
+      ADD COLUMN IF NOT EXISTS rank_points INTEGER NOT NULL DEFAULT 0;
+
+    -- last_multiplayer_win_at: tracks when the user last achieved rank-1 in a
+    -- multiplayer match, used for the First Win of the Day (+250 NP) bonus.
+    ALTER TABLE mednexus_wallet
+      ADD COLUMN IF NOT EXISTS last_multiplayer_win_at TIMESTAMPTZ;
+
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();
     DELETE FROM mednexus_guest_users  WHERE expires_at < NOW();

@@ -625,6 +625,46 @@ export const STORE_ITEMS: StoreItem[] = [
   },
 ]
 
+// ── Clinical Ladder ──────────────────────────────────────────────────────────
+// Rank points accumulate from every NP payout. Crossing a tier boundary
+// triggers a one-time +1000 NP bonus awarded server-side.
+
+export const CLINICAL_TIERS = [
+  { name: "Medical Student", minPoints: 0 },
+  { name: "Clerkship",       minPoints: 500 },
+  { name: "Intern",          minPoints: 1_500 },
+  { name: "Resident",        minPoints: 3_500 },
+  { name: "Fellow",          minPoints: 7_000 },
+  { name: "Attending",       minPoints: 12_000 },
+] as const
+
+export type ClinicalTierName = (typeof CLINICAL_TIERS)[number]["name"]
+
+/** Returns the 0-based tier index for a given rank_points total. */
+export function getClinicalTierIndex(rankPoints: number): number {
+  let idx = 0
+  for (let i = 0; i < CLINICAL_TIERS.length; i++) {
+    if (rankPoints >= CLINICAL_TIERS[i].minPoints) idx = i
+  }
+  return idx
+}
+
+export const RANK_UP_BONUS_NP = 1_000
+
+/** Compute rank-up bonus when rank_points cross one or more Clinical Ladder tiers. */
+export function computeRankUpBonus(oldPoints: number, newPoints: number): {
+  tiersGained: number
+  bonusNP: number
+  newTierNames: string[]
+} {
+  const oldIdx = getClinicalTierIndex(Math.max(0, oldPoints))
+  const newIdx = getClinicalTierIndex(Math.max(0, newPoints))
+  if (newIdx <= oldIdx) return { tiersGained: 0, bonusNP: 0, newTierNames: [] }
+  const tiersGained = newIdx - oldIdx
+  const newTierNames = CLINICAL_TIERS.slice(oldIdx + 1, newIdx + 1).map(t => t.name)
+  return { tiersGained, bonusNP: tiersGained * RANK_UP_BONUS_NP, newTierNames }
+}
+
 // ── Payout calculator (run server-side) ───────────────────────────────────────
 
 export interface GameResult {
@@ -636,6 +676,8 @@ export interface GameResult {
   isNewHigh: boolean
   survivedCount?: number
   accuracy: number
+  /** True when the player activated at least one Supply Closet lifeline this session. */
+  lifelineUsed?: boolean
 }
 
 export interface PayoutBreakdown {
@@ -655,8 +697,17 @@ export function calculatePayout(result: GameResult): { total: number; breakdown:
   if (result.bestStreak >= 5)  breakdown.push({ label: `Streak Bonus (${result.bestStreak}×)`, amount: Math.min(Math.floor(result.bestStreak / 5) * 25, 150) })
   if (result.isNewHigh)        breakdown.push({ label: "New Personal Best!", amount: 75 })
 
-  const total = breakdown.reduce((s, b) => s + b.amount, 0)
-  return { total, breakdown }
+  let subtotal = breakdown.reduce((s, b) => s + b.amount, 0)
+
+  // ── Flawless Execution (solo only) ────────────────────────────────────────
+  // 100% accuracy with ≥3 questions answered AND no lifelines used → 2× payout.
+  const isSoloMode = !["clash", "cohort", "wager", "djmulti"].includes(result.mode)
+  if (isSoloMode && result.accuracy === 100 && result.total >= 3 && !result.lifelineUsed) {
+    breakdown.push({ label: "⚡ Flawless Execution (2×)", amount: subtotal })
+    subtotal *= 2
+  }
+
+  return { total: subtotal, breakdown }
 }
 
 /** Compute bounty progress delta for a completed game */

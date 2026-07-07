@@ -35,6 +35,7 @@ export interface EconomyContextValue {
     bestStreak: number
     isNewHigh: boolean
     survivedCount?: number
+    lifelineUsed?: boolean
   }) => Promise<{ earned: number; breakdown: { label: string; amount: number }[]; bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[] } | null>
 }
 
@@ -167,6 +168,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const submitGameResult = useCallback(async (payload: {
     mode: string; score: number; correct: number; total: number
     bestStreak: number; isNewHigh: boolean; survivedCount?: number
+    lifelineUsed?: boolean
   }) => {
     const uid = user?.uid
     if (!uid) return null
