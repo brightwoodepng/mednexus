@@ -213,6 +213,11 @@ export async function ensureSchema() {
     ALTER TABLE mednexus_game_rooms
       ADD COLUMN IF NOT EXISTS phase_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
+    -- knockout_winner_id: set when a wager/djmulti match ends early because
+    -- all but one player went bankrupt before the final question was reached.
+    ALTER TABLE mednexus_game_rooms
+      ADD COLUMN IF NOT EXISTS knockout_winner_id TEXT;
+
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();
     DELETE FROM mednexus_guest_users  WHERE expires_at < NOW();

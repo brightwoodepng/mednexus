@@ -31,6 +31,7 @@ interface RawRoom {
   question_pool: SlimQuestion[]; current_qi: number; phase: RoomPhase
   players: RoomPlayer[]; version: number; created_at: Date
   scored_uids: string[]; phase_started_at: Date
+  knockout_winner_id: string | null
 }
 
 // ── Self-driven match pacing ────────────────────────────────────────────────
@@ -56,6 +57,26 @@ const REVEAL_DURATION_MS = 3_000
 
 function activePlayers(players: RoomPlayer[]): RoomPlayer[] {
   return players.filter(p => p.status !== "disconnected" && !p.isSpectator)
+}
+
+/**
+ * Returns the sole surviving player's ID when knockout conditions are met:
+ * - The room originally had more than one non-disconnected participant.
+ * - Exactly one non-spectator, non-disconnected player still has balance > 0.
+ * - There are questions remaining (not already on the final question).
+ * Returns null otherwise.
+ */
+function getKnockoutWinnerId(
+  players: RoomPlayer[],
+  currentQi: number,
+  totalQuestions: number
+): string | null {
+  const totalParticipants = players.filter(p => p.status !== "disconnected").length
+  if (totalParticipants <= 1) return null // solo room — no knockout
+  if (currentQi >= totalQuestions - 1) return null // already on last question — let normal finish handle it
+  const alive = players.filter(p => p.status !== "disconnected" && !p.isSpectator)
+  if (alive.length === 1) return alive[0].id
+  return null
 }
 
 function allActiveAnswered(players: RoomPlayer[]): boolean {
@@ -157,6 +178,7 @@ function buildResponse(row: RawRoom, myId?: string) {
     phaseDeadlineMs: (row.phase === "question" && row.mode !== "wager" && row.mode !== "djmulti")
       ? new Date(row.phase_started_at).getTime() + getTimeLimitMs(row.mode)
       : null,
+    knockoutWinnerId: row.knockout_winner_id ?? null,
   }
 }
 
@@ -474,14 +496,30 @@ export async function PATCH(
           if (row.phase === "reveal") {
             const nextQi = row.current_qi + 1
             if (nextQi >= row.question_pool.length) {
+              // Natural end — all questions played
               await client.query(
                 "UPDATE mednexus_game_rooms SET phase = 'done', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1",
                 [pin]
               )
             } else {
               // Check if any players remain active
-              const anyActive = players.some(p => !p.isSpectator)
-              if (!anyActive) {
+              const anyActive = players.some(p => !p.isSpectator && p.status !== "disconnected")
+
+              // ── Last Man Standing knockout check ──────────────────────────
+              // If exactly one active player remains before the final question,
+              // terminate early and crown them the sole survivor.
+              const knockoutWinner = getKnockoutWinnerId(players, row.current_qi, row.question_pool.length)
+
+              if (knockoutWinner) {
+                await client.query(
+                  `UPDATE mednexus_game_rooms
+                      SET phase = 'done', knockout_winner_id = $1,
+                          phase_started_at = NOW(), version = COALESCE(version, 0) + 1
+                    WHERE pin = $2`,
+                  [knockoutWinner, pin]
+                )
+              } else if (!anyActive) {
+                // All players bankrupt — no survivor
                 await client.query(
                   "UPDATE mednexus_game_rooms SET phase = 'done', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1",
                   [pin]
