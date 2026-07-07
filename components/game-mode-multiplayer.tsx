@@ -1064,7 +1064,7 @@ const DJ_MULTI_BETS = [
 
 // ── WAGER HUD ─────────────────────────────────────────────────────────────────
 // Handles all three active wager-mode phases: wager → question → reveal
-const WAGER_PRESETS = [10, 25, 50, 100]
+const WAGER_PRESETS = [50, 100, 500, 750]
 
 function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, onLeave, myLastAnswerCorrect, timeLeftMs, isPressure }: {
   room: RoomState; myId: string; isHost: boolean
@@ -1092,9 +1092,6 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
   // During question phase, show tentative balance = balance minus locked wager
   // to convey "you've already committed these chips"
   const displayBalance = isQuestionPhase && myWager !== null ? myBalance - myWager : myBalance
-
-  // Presets that fit within the current balance
-  const affordablePresets = WAGER_PRESETS.filter(amt => amt <= myBalance)
 
   return (
     <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
@@ -1162,23 +1159,21 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
             <p className="mb-3 text-[11px] text-muted-foreground">
               Balance: <strong className="text-foreground">{myBalance.toLocaleString()} chips</strong>
             </p>
-            {affordablePresets.length > 0 && (
-              <div className="grid grid-cols-4 gap-2 mb-2">
-                {affordablePresets.map(amt => (
-                  <button key={amt} type="button" onClick={() => onWager(amt)}
-                    className="rounded-2xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 py-3 text-sm font-extrabold text-amber-700 dark:text-amber-400 transition-all hover:bg-amber-100 dark:hover:bg-amber-900/40 active:scale-95">
-                    {amt}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {WAGER_PRESETS.map(amt => {
+                const canAfford = myBalance >= amt
+                return (
+                  <button key={amt} type="button" onClick={() => onWager(amt)} disabled={!canAfford}
+                    className="rounded-2xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 py-3 text-sm font-extrabold text-amber-700 dark:text-amber-400 transition-all hover:bg-amber-100 dark:hover:bg-amber-900/40 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-50 dark:disabled:hover:bg-amber-950/30 disabled:active:scale-100">
+                    {amt.toLocaleString()}
                   </button>
-                ))}
-              </div>
-            )}
-            <button type="button" onClick={() => onWager(myBalance)}
-              className="w-full rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-extrabold text-white shadow-lg transition-all hover:opacity-90 active:scale-95">
-              🎰 All-In — {myBalance.toLocaleString()} chips
-            </button>
-            {affordablePresets.length === 0 && myBalance > 0 && (
-              <p className="mt-2 text-center text-[11px] text-muted-foreground">All presets exceed your balance — All-In is your only option</p>
-            )}
+                )
+              })}
+              <button type="button" onClick={() => onWager(myBalance)} disabled={myBalance <= 0}
+                className="col-span-3 sm:col-span-1 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-extrabold text-white shadow-lg transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50 disabled:active:scale-100">
+                🎰 All In
+              </button>
+            </div>
           </div>
         )
       )}
