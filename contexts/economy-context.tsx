@@ -13,6 +13,7 @@ export interface EquippedCosmetics {
   title:     string | null
   frame:     string | null
   highlight: string | null
+  avatar:    string | null
 }
 
 export interface EconomyContextValue {
@@ -25,7 +26,7 @@ export interface EconomyContextValue {
   claimBounty: (bountyId: string) => Promise<{ ok: boolean; earned?: number; error?: string }>
   purchase: (itemId: string) => Promise<{ ok: boolean; error?: string }>
   useItem: (itemId: string) => Promise<boolean>
-  equipCosmetic: (type: "title" | "frame" | "highlight", itemId: string | null) => Promise<{ ok: boolean; error?: string }>
+  equipCosmetic: (type: "title" | "frame" | "highlight" | "avatar", itemId: string | null) => Promise<{ ok: boolean; error?: string }>
   submitGameResult: (payload: {
     mode: string
     score: number
@@ -39,7 +40,7 @@ export interface EconomyContextValue {
 
 const EconomyContext = createContext<EconomyContextValue | undefined>(undefined)
 
-const DEFAULT_COSMETICS: EquippedCosmetics = { title: null, frame: null, highlight: null }
+const DEFAULT_COSMETICS: EquippedCosmetics = { title: null, frame: null, highlight: null, avatar: null }
 
 export function EconomyProvider({ children }: { children: ReactNode }) {
   const { user } = useApp()
@@ -143,7 +144,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   }, [user?.uid])
 
   const equipCosmetic = useCallback(async (
-    type: "title" | "frame" | "highlight",
+    type: "title" | "frame" | "highlight" | "avatar",
     itemId: string | null
   ) => {
     const uid = user?.uid

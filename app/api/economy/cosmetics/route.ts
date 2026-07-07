@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 })
 
     const { rows } = await pool.query(
-      "SELECT equipped_title, equipped_frame, equipped_highlight FROM mednexus_user_cosmetics WHERE uid = $1",
+      "SELECT equipped_title, equipped_frame, equipped_highlight, equipped_avatar FROM mednexus_user_cosmetics WHERE uid = $1",
       [uid]
     )
     const row = rows[0] ?? {}
@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
         title:     row.equipped_title     ?? null,
         frame:     row.equipped_frame     ?? null,
         highlight: row.equipped_highlight ?? null,
+        avatar:    row.equipped_avatar    ?? null,
       },
     })
   } catch (e) {
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest) {
     if (!uid || !type) {
       return NextResponse.json({ error: "Missing uid or type" }, { status: 400 })
     }
-    if (!["title", "frame", "highlight"].includes(type)) {
+    if (!["title", "frame", "highlight", "avatar"].includes(type)) {
       return NextResponse.json({ error: "Invalid type" }, { status: 400 })
     }
 
@@ -62,7 +63,8 @@ export async function PATCH(req: NextRequest) {
     const col =
       type === "title"     ? "equipped_title"     :
       type === "frame"     ? "equipped_frame"      :
-                             "equipped_highlight"
+      type === "highlight" ? "equipped_highlight"  :
+                             "equipped_avatar"
 
     await pool.query(
       `INSERT INTO mednexus_user_cosmetics (uid, ${col}, updated_at)
