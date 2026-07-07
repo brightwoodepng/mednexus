@@ -48,6 +48,8 @@ interface RoomState {
   version: number
   /** Absolute epoch-ms when the current question expires. Null outside question phase or in wager mode. */
   phaseDeadlineMs?: number | null
+  /** Set when a wager/djmulti match ends early via Last Man Standing knockout. */
+  knockoutWinnerId?: string | null
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -249,7 +251,11 @@ function BuzzerSquares({ options, onAnswer, answered, revealed }: {
 }
 
 // Leaderboard bar chart
-function Leaderboard({ players, highlight }: { players: RoomPlayer[]; highlight?: string }) {
+function Leaderboard({ players, highlight, knockoutWinnerId }: {
+  players: RoomPlayer[]
+  highlight?: string
+  knockoutWinnerId?: string | null
+}) {
   const sorted = [...players].sort((a, b) => b.score - a.score)
   const maxScore = Math.max(...sorted.map(p => p.score), 1)
   return (
@@ -257,11 +263,19 @@ function Leaderboard({ players, highlight }: { players: RoomPlayer[]; highlight?
       {sorted.map((p, i) => {
         const pct        = Math.max((p.score / maxScore) * 100, 2)
         const isMe       = p.id === highlight
+        const isBankrupt = !!p.isSpectator && p.score === 0
+        const isWinner   = knockoutWinnerId && p.id === knockoutWinnerId
         const frameClass = p.equippedFrame     ? (FRAME_RING_CLASSES[p.equippedFrame]         ?? "") : ""
         const rowClass   = p.equippedHighlight ? (HIGHLIGHT_ROW_CLASSES[p.equippedHighlight]  ?? "") : ""
         const titleLabel = p.equippedTitle     ? (TITLE_LABELS[p.equippedTitle]               ?? null) : null
-        // "You" highlight takes priority; cosmetic highlight applies to others
-        const rowStyle   = isMe ? "border-primary bg-primary/5" : (rowClass || "border-border bg-card")
+        // Priority: knockout winner > "You" > bankrupt > cosmetic
+        const rowStyle = isWinner
+          ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30"
+          : isMe
+          ? "border-primary bg-primary/5"
+          : isBankrupt
+          ? "border-rose-200 dark:border-rose-800/30 bg-rose-50/50 dark:bg-rose-950/10 opacity-70"
+          : (rowClass || "border-border bg-card")
         return (
           <div key={p.id} className={`rounded-2xl border p-3 transition-all ${rowStyle}`}>
             <div className="mb-1.5 flex items-center gap-2">
@@ -270,7 +284,17 @@ function Leaderboard({ players, highlight }: { players: RoomPlayer[]; highlight?
                 {i + 1}
               </span>
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{p.name}{isMe ? " (You)" : ""}</span>
-              {titleLabel && (
+              {isWinner && knockoutWinnerId && (
+                <span className="shrink-0 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-extrabold text-white">
+                  👑 SURVIVOR
+                </span>
+              )}
+              {isBankrupt && !isWinner && (
+                <span className="shrink-0 rounded-full bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 text-[9px] font-extrabold text-rose-600 dark:text-rose-400">
+                  💸 Bankrupt
+                </span>
+              )}
+              {titleLabel && !isWinner && !isBankrupt && (
                 <span className="shrink-0 rounded-full bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:text-amber-300">
                   {titleLabel}
                 </span>
@@ -278,7 +302,7 @@ function Leaderboard({ players, highlight }: { players: RoomPlayer[]; highlight?
               <span className="tabular-nums text-sm font-bold text-foreground">{p.score.toLocaleString()}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div className={`h-full rounded-full transition-all duration-700 ${i === 0 ? "bg-amber-400" : "bg-primary"}`}
+              <div className={`h-full rounded-full transition-all duration-700 ${isBankrupt ? "bg-rose-400" : i === 0 ? "bg-amber-400" : "bg-primary"}`}
                 style={{ width: `${pct}%` }} />
             </div>
           </div>
@@ -792,7 +816,10 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
     : room.mode === "djmulti" ? "Double Jeopardy"
     : "Wager Wars"
   const isWagerLike = room.mode === "wager" || room.mode === "djmulti"
-  const podiumEmoji = myRank === 1 ? "🏆" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🎯"
+  const knockoutWinnerId = room.knockoutWinnerId ?? null
+  const isKnockout = isWagerLike && !!knockoutWinnerId
+  const iAmWinner = isKnockout && knockoutWinnerId === myId
+  const podiumEmoji = isKnockout && iAmWinner ? "💀" : myRank === 1 ? "🏆" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🎯"
   const history = answerHistory ?? []
 
   return (
@@ -874,9 +901,29 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
 
       <div className="flex min-h-full flex-col p-4 sm:p-6">
         <div className="mx-auto w-full max-w-md">
+
+          {/* ── Knockout banner ── */}
+          {isKnockout && (
+            <div className={`mb-5 rounded-3xl p-5 text-center ${
+              iAmWinner
+                ? "bg-gradient-to-br from-amber-400 to-orange-500 shadow-xl shadow-amber-500/30"
+                : "bg-gradient-to-br from-rose-500 to-rose-700 shadow-lg shadow-rose-500/20"
+            }`}>
+              <p className="text-4xl mb-1">{iAmWinner ? "💀" : "☠️"}</p>
+              <h2 className="text-2xl font-extrabold tracking-tight text-white leading-tight">
+                {iAmWinner ? "LAST MEDICAL STANDING" : "KNOCKOUT!"}
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-white/80">
+                {iAmWinner
+                  ? "All opponents went bankrupt — you are the sole survivor."
+                  : `${room.players.find(p => p.id === knockoutWinnerId)?.name ?? "One player"} outlasted everyone.`}
+              </p>
+            </div>
+          )}
+
           <div className="mb-6 text-center">
-            <div className="text-5xl mb-3">{podiumEmoji}</div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Match Over!</h1>
+            <div className="text-5xl mb-3">{isKnockout ? "" : podiumEmoji}</div>
+            {!isKnockout && <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Match Over!</h1>}
             <p className="text-sm text-muted-foreground mt-1">{modeLabel}</p>
           </div>
 
@@ -894,7 +941,7 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
 
           <div className="mb-5 rounded-3xl border border-border bg-card p-4">
             <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Final Leaderboard</p>
-            <Leaderboard players={sorted} highlight={myId} />
+            <Leaderboard players={sorted} highlight={myId} knockoutWinnerId={knockoutWinnerId} />
           </div>
 
           {history.length > 0 && (
