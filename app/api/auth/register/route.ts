@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
 
     const pool = await getPool()
 
+    // Duplicate-index check (outside the transaction — cheap read before we acquire a client).
     const existing = await pool.query(
       "SELECT uid FROM mednexus_registered_users WHERE index_number = $1",
       [formatted],
@@ -73,31 +74,58 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Write both `level` (legacy column) and `class_level` (new canonical column)
-    // so older queries and new queries both see correct data.
-    await pool.query(
-      `INSERT INTO mednexus_registered_users
-         (uid, name, level, class_level, role, index_number, password_hash, status)
-       VALUES ($1, $2, $3, $3, 'REGISTERED', $4, $5, $6)`,
-      [uid, name.trim(), resolvedLevel, formatted, passwordHash, status],
-    )
+    // All writes run inside a single transaction so the user row, legacy users
+    // row, 500 NP wallet grant, and optional notification are atomic.
+    // If any step fails the entire registration is rolled back — no orphaned
+    // user rows that can't re-register and no missing wallet grants.
+    const client = await pool.connect()
+    try {
+      await client.query("BEGIN")
 
-    await pool.query(
-      `INSERT INTO mednexus_users (uid, name) VALUES ($1, $2) ON CONFLICT (uid) DO NOTHING`,
-      [uid, name.trim()],
-    )
-
-    if (!autoApprove) {
-      const notifId = `notif-reg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-      await pool.query(
-        `INSERT INTO mednexus_notifications (id, title, body, type, admin_only)
-         VALUES ($1, $2, $3, 'alert', TRUE)`,
-        [
-          notifId,
-          "New Registration Pending",
-          `${name.trim()} (${formatted}) registered and is awaiting approval.`,
-        ],
+      // Write both `level` (legacy column) and `class_level` (new canonical column)
+      // so older queries and new queries both see correct data.
+      await client.query(
+        `INSERT INTO mednexus_registered_users
+           (uid, name, level, class_level, role, index_number, password_hash, status)
+         VALUES ($1, $2, $3, $3, 'REGISTERED', $4, $5, $6)`,
+        [uid, name.trim(), resolvedLevel, formatted, passwordHash, status],
       )
+
+      await client.query(
+        `INSERT INTO mednexus_users (uid, name) VALUES ($1, $2) ON CONFLICT (uid) DO NOTHING`,
+        [uid, name.trim()],
+      )
+
+      // Grant the 500 NP economy stimulus to every new registered account.
+      // ON CONFLICT is a safety net — if a wallet row somehow already exists
+      // (e.g. the user played a game as a guest before registering), leave the
+      // existing balance untouched rather than resetting it.
+      await client.query(
+        `INSERT INTO mednexus_wallet (uid, balance, updated_at)
+         VALUES ($1, 500, NOW())
+         ON CONFLICT (uid) DO NOTHING`,
+        [uid],
+      )
+
+      if (!autoApprove) {
+        const notifId = `notif-reg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+        await client.query(
+          `INSERT INTO mednexus_notifications (id, title, body, type, admin_only)
+           VALUES ($1, $2, $3, 'alert', TRUE)`,
+          [
+            notifId,
+            "New Registration Pending",
+            `${name.trim()} (${formatted}) registered and is awaiting approval.`,
+          ],
+        )
+      }
+
+      await client.query("COMMIT")
+    } catch (txErr) {
+      await client.query("ROLLBACK")
+      throw txErr
+    } finally {
+      client.release()
     }
 
     return NextResponse.json({
