@@ -2,6 +2,10 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/* Hide scrollbar while keeping scroll behaviour */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* ── MedNexus custom keyframes ───────────────────────────────────────────────
    Used by game-mode high-alert streak animations and the review side drawer. */
 @keyframes mednexus-glow-pulse {
