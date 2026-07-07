@@ -105,7 +105,7 @@ const MULTI_MODES: MultiModeCard[] = [
     badgeColor: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
     icon: "🎰", gradient: "from-amber-500 to-rose-500", shadow: "shadow-amber-500/20",
     desc: "Bet before seeing options. Win big or lose it all — spectate when broke.",
-    rules: ["Vignette shown first, options hidden", "Wager: Safe / Moderate / Bold / All-In", "Balance hits 0 → Spectator mode"],
+    rules: ["Vignette shown first, options hidden", "Wager: 50 / 100 / 500 / 750 / All-In", "Balance hits 0 → Spectator mode"],
   },
   {
     id: "djmulti", name: "Double Jeopardy", badge: "Confidence",
