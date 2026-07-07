@@ -146,7 +146,7 @@ export function NotificationBell() {
                 type="button"
                 onClick={() => setShowPrefs((v) => !v)}
                 title="Notification preferences"
-                className={`rounded-lg p-3 text-xs font-medium transition-colors ${showPrefs ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+                className={`rounded-lg p-3 font-medium transition-colors text-[18px] ${showPrefs ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
               >
                 ⚙
               </button>
