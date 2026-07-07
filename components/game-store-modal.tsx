@@ -158,38 +158,40 @@ function CosmeticCard({
   const tier = tierBadge(item.price)
 
   return (
-    <div className={`rounded-2xl border p-4 transition-all ${
+    <div className={`rounded-2xl border p-3 transition-all ${
       equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
     }`}>
-      <div className="flex items-start gap-3">
-        <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${highlightCls || `bg-gradient-to-br ${item.gradient}`} ${frameClass} text-2xl shadow-sm`}>
+      <div className="flex items-center gap-3">
+        <div className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${highlightCls || `bg-gradient-to-br ${item.gradient}`} ${frameClass} text-xl shadow-sm`}>
           {item.icon}
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2 mb-0.5">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
-              {tier && (
-                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
-                  {tier.label}
-                </span>
-              )}
-            </div>
-            {equipped && (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">
-                ● Equipped
+          {/* Row 1: name + tier badge */}
+          <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
+            <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
+            {tier && (
+              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
+                {tier.label}
               </span>
             )}
-            {!owned && <PriceTag price={item.price} />}
           </div>
-          <p className="text-xs text-muted-foreground mb-2.5">{item.desc}</p>
+          <p className="text-[11px] text-muted-foreground leading-tight mb-2">{item.desc}</p>
 
-          <div className="flex items-center justify-end gap-2">
+          {/* Row 2: price OR equipped badge + action button */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="shrink-0">
+              {equipped && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                  ● Equipped
+                </span>
+              )}
+              {!owned && !equipped && <PriceTag price={item.price} />}
+            </div>
             {owned ? (
               <button
                 type="button" disabled={equipping} onClick={onEquip}
-                className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-all ${
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all ${
                   equipped
                     ? "bg-muted text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400"
                     : `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90`
@@ -200,13 +202,13 @@ function CosmeticCard({
             ) : (
               <button
                 type="button" disabled={buying || !canAfford} onClick={onBuy}
-                className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-all ${
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all ${
                   didBuy    ? "bg-emerald-500 text-white" :
                   canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
                               "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
               >
-                {buying ? "…" : didBuy ? "Purchased!" : canAfford ? "Buy" : "Need more NP"}
+                {buying ? "…" : didBuy ? "Bought!" : canAfford ? "Buy" : "Need NP"}
               </button>
             )}
           </div>
@@ -226,47 +228,51 @@ function AvatarCard({
   const tier = tierBadge(item.price)
 
   return (
-    <div className={`rounded-2xl border p-4 transition-all ${
+    <div className={`rounded-2xl border p-3 transition-all ${
       equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
     }`}>
-      <div className="flex items-start gap-3">
-        {/* Avatar image preview */}
-        <div className={`relative h-14 w-14 shrink-0 rounded-2xl overflow-hidden bg-gradient-to-br ${item.gradient} shadow-sm flex items-center justify-center`}>
-          {item.imagePath ? (
+      <div className="flex items-center gap-3">
+        {/* Avatar image preview — fixed 44×44, never grows */}
+        <div className={`relative h-11 w-11 shrink-0 rounded-xl overflow-hidden bg-gradient-to-br ${item.gradient} shadow-sm`}>
+          {item.imagePath && (
             <img
               src={item.imagePath}
               alt={item.name}
               className="h-full w-full object-cover"
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
             />
-          ) : null}
-          <span className="absolute text-2xl">{item.icon}</span>
+          )}
+          {!item.imagePath && (
+            <span className="absolute inset-0 flex items-center justify-center text-xl">{item.icon}</span>
+          )}
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2 mb-0.5">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
-              {tier && (
-                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
-                  {tier.label}
-                </span>
-              )}
-            </div>
-            {equipped && (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">
-                ● Equipped
+          {/* Row 1: name + tier badge */}
+          <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
+            <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
+            {tier && (
+              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
+                {tier.label}
               </span>
             )}
-            {!owned && <PriceTag price={item.price} />}
           </div>
-          <p className="text-xs text-muted-foreground mb-2.5">{item.desc}</p>
+          <p className="text-[11px] text-muted-foreground leading-tight mb-2">{item.desc}</p>
 
-          <div className="flex items-center justify-end gap-2">
+          {/* Row 2: price OR equipped badge + action button */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="shrink-0">
+              {equipped && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                  ● Equipped
+                </span>
+              )}
+              {!owned && !equipped && <PriceTag price={item.price} />}
+            </div>
             {owned ? (
               <button
                 type="button" disabled={equipping} onClick={onEquip}
-                className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-all ${
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all ${
                   equipped
                     ? "bg-muted text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400"
                     : `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90`
@@ -277,13 +283,13 @@ function AvatarCard({
             ) : (
               <button
                 type="button" disabled={buying || !canAfford} onClick={onBuy}
-                className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-all ${
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all ${
                   didBuy    ? "bg-emerald-500 text-white" :
                   canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
                               "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
               >
-                {buying ? "…" : didBuy ? "Purchased!" : canAfford ? "Buy" : "Need more NP"}
+                {buying ? "…" : didBuy ? "Bought!" : canAfford ? "Buy" : "Need NP"}
               </button>
             )}
           </div>
@@ -437,11 +443,11 @@ export function NexusStorePage() {
           {tab === "cosmetic" && (
             <div>
               {/* Sub-section pill tabs */}
-              <div className="mb-4 flex gap-1 rounded-2xl bg-muted p-1 overflow-x-auto">
+              <div className="mb-4 flex gap-1 rounded-2xl bg-muted p-1 overflow-x-auto no-scrollbar">
                 {(["title", "frame", "highlight", "avatar"] as CosmeticSection[]).map(s => (
                   <button
                     key={s} type="button" onClick={() => setCosSection(s)}
-                    className={`flex-1 shrink-0 rounded-xl py-2 text-xs font-semibold transition-all ${
+                    className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-all whitespace-nowrap ${
                       cosSection === s
                         ? "bg-card text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"

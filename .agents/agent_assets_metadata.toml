@@ -1,5 +1,64 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "6n6ogtER4IuaKerJoB_h-"
+uri = "file://public/avatars/scrubs.png"
+type = "image"
+title = "scrub tech avatar"
+
+[[generated]]
+id = "zXwHIbCO7Tec3hFkQZEVP"
+uri = "file://public/avatars/coffee-iv.png"
+type = "image"
+title = "coffee iv drip avatar"
+
+[[generated]]
+id = "m8xYlccMs983tg3ui-W-6"
+uri = "file://public/avatars/lab-rat.png"
+type = "image"
+title = "lab rat avatar"
+
+[[generated]]
+id = "4cBgOVUAKrD8coEQsjbca"
+uri = "file://public/avatars/night-shift.png"
+type = "image"
+title = "night shift nurse avatar"
+
+[[generated]]
+id = "tJYXyFz5rEawJTG6YyB5E"
+uri = "file://public/avatars/gold-steth.png"
+type = "image"
+title = "golden stethoscope legendary avatar"
+
+[[generated]]
+id = "yAMJ11nLOhBYjmE0QFaXh"
+uri = "file://public/avatars/plague-doctor.png"
+type = "image"
+title = "plague doctor legendary avatar"
+
+[[generated]]
+id = "NnqAzCq8F5aRpQaCnwO2i"
+uri = "file://public/avatars/cyber-surgeon.png"
+type = "image"
+title = "cyber surgeon legendary avatar"
+
+[[generated]]
+id = "ut5LpbSupOBSsjAYw_u51"
+uri = "file://public/avatars/ascended.png"
+type = "image"
+title = "ascended healer mythic avatar"
+
+[[generated]]
+id = "4AT6ctumgjmX3e1im7K-g"
+uri = "file://public/avatars/marble.png"
+type = "image"
+title = "marble first do no harm mythic avatar"
+
+[[generated]]
+id = "FZDIjiGB1RPMrt9VLVJpG"
+uri = "file://public/avatars/vital-sign.png"
+type = "image"
+title = "vital sign mythic avatar"
 
 [[outputs]]
 id = "iwqF00QxWhVRJDF8l77mK"
