@@ -9,7 +9,7 @@ import {
 } from "@/lib/economy"
 
 type StoreTab = "supply" | "vault" | "cosmetic"
-type CosmeticSection = "title" | "frame" | "highlight"
+type CosmeticSection = "title" | "frame" | "highlight" | "avatar"
 
 // ── Small shared atoms ────────────────────────────────────────────────────────
 
@@ -140,6 +140,12 @@ function VaultCard({
   )
 }
 
+function tierBadge(price: number) {
+  if (price >= 5000) return { label: "Mythic",    cls: "bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white" }
+  if (price >= 1500) return { label: "Legendary", cls: "bg-gradient-to-r from-amber-400 to-orange-500 text-white" }
+  return null
+}
+
 function CosmeticCard({
   item, owned, equipped, buying, equipping, didBuy, canAfford, onBuy, onEquip,
 }: {
@@ -147,23 +153,106 @@ function CosmeticCard({
   buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
   onBuy: () => void; onEquip: () => void
 }) {
-  // Show a live preview swatch for frames and highlights
-  const frameClass   = item.cosmeticType === "frame"     ? FRAME_RING_CLASSES[item.id]   : ""
-  const highlightCls = item.cosmeticType === "highlight"  ? HIGHLIGHT_ROW_CLASSES[item.id] : ""
+  const frameClass   = item.cosmeticType === "frame"     ? FRAME_RING_CLASSES[item.id]    : ""
+  const highlightCls = item.cosmeticType === "highlight" ? HIGHLIGHT_ROW_CLASSES[item.id] : ""
+  const tier = tierBadge(item.price)
 
   return (
     <div className={`rounded-2xl border p-4 transition-all ${
       equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
     }`}>
       <div className="flex items-start gap-3">
-        {/* Avatar preview — shows the frame/highlight effect */}
         <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${highlightCls || `bg-gradient-to-br ${item.gradient}`} ${frameClass} text-2xl shadow-sm`}>
           {item.icon}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2 mb-0.5">
-            <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
+              {tier && (
+                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
+                  {tier.label}
+                </span>
+              )}
+            </div>
+            {equipped && (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">
+                ● Equipped
+              </span>
+            )}
+            {!owned && <PriceTag price={item.price} />}
+          </div>
+          <p className="text-xs text-muted-foreground mb-2.5">{item.desc}</p>
+
+          <div className="flex items-center justify-end gap-2">
+            {owned ? (
+              <button
+                type="button" disabled={equipping} onClick={onEquip}
+                className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-all ${
+                  equipped
+                    ? "bg-muted text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400"
+                    : `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90`
+                }`}
+              >
+                {equipping ? "…" : equipped ? "Unequip" : "Equip"}
+              </button>
+            ) : (
+              <button
+                type="button" disabled={buying || !canAfford} onClick={onBuy}
+                className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-all ${
+                  didBuy    ? "bg-emerald-500 text-white" :
+                  canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
+                              "bg-muted text-muted-foreground cursor-not-allowed"
+                }`}
+              >
+                {buying ? "…" : didBuy ? "Purchased!" : canAfford ? "Buy" : "Need more NP"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AvatarCard({
+  item, owned, equipped, buying, equipping, didBuy, canAfford, onBuy, onEquip,
+}: {
+  item: StoreItem; owned: boolean; equipped: boolean
+  buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
+  onBuy: () => void; onEquip: () => void
+}) {
+  const tier = tierBadge(item.price)
+
+  return (
+    <div className={`rounded-2xl border p-4 transition-all ${
+      equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
+    }`}>
+      <div className="flex items-start gap-3">
+        {/* Avatar image preview */}
+        <div className={`relative h-14 w-14 shrink-0 rounded-2xl overflow-hidden bg-gradient-to-br ${item.gradient} shadow-sm flex items-center justify-center`}>
+          {item.imagePath ? (
+            <img
+              src={item.imagePath}
+              alt={item.name}
+              className="h-full w-full object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
+            />
+          ) : null}
+          <span className="absolute text-2xl">{item.icon}</span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2 mb-0.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
+              {tier && (
+                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
+                  {tier.label}
+                </span>
+              )}
+            </div>
             {equipped && (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">
                 ● Equipped
@@ -348,17 +437,17 @@ export function NexusStorePage() {
           {tab === "cosmetic" && (
             <div>
               {/* Sub-section pill tabs */}
-              <div className="mb-4 flex gap-1 rounded-2xl bg-muted p-1">
-                {(["title", "frame", "highlight"] as CosmeticSection[]).map(s => (
+              <div className="mb-4 flex gap-1 rounded-2xl bg-muted p-1 overflow-x-auto">
+                {(["title", "frame", "highlight", "avatar"] as CosmeticSection[]).map(s => (
                   <button
                     key={s} type="button" onClick={() => setCosSection(s)}
-                    className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
+                    className={`flex-1 shrink-0 rounded-xl py-2 text-xs font-semibold transition-all ${
                       cosSection === s
                         ? "bg-card text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {s === "title" ? "🏷️ Titles" : s === "frame" ? "🖼️ Frames" : "🌟 Highlights"}
+                    {s === "title" ? "🏷️ Titles" : s === "frame" ? "🖼️ Frames" : s === "highlight" ? "🌟 Highlights" : "🧑‍⚕️ Avatars"}
                   </button>
                 ))}
               </div>
@@ -368,11 +457,28 @@ export function NexusStorePage() {
                   {cosSection === "title"     && "Displayed as a badge next to your name during multiplayer leaderboard reveals."}
                   {cosSection === "frame"     && "Animated ring shown around your player avatar badge during multiplayer pauses."}
                   {cosSection === "highlight" && "Your row glows on the leaderboard when scores are revealed to everyone."}
+                  {cosSection === "avatar"    && "Your personal avatar displayed in multiplayer lobbies and leaderboards."}
                 </p>
 
                 {cosItems.map(item => {
                   const owned    = (inventory[item.id] ?? 0) >= 1
                   const equipped = equippedCosmetics[cosSection] === item.id
+                  if (item.cosmeticType === "avatar") {
+                    return (
+                      <AvatarCard
+                        key={item.id}
+                        item={item}
+                        owned={owned}
+                        equipped={equipped}
+                        buying={buying === item.id}
+                        equipping={equipping === item.id}
+                        didBuy={flash === item.id}
+                        canAfford={balance >= item.price}
+                        onBuy={() => handleBuy(item.id)}
+                        onEquip={() => handleEquip("avatar", item.id)}
+                      />
+                    )
+                  }
                   return (
                     <CosmeticCard
                       key={item.id}

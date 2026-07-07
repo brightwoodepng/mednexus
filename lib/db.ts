@@ -173,6 +173,7 @@ export async function ensureSchema() {
       equipped_title    TEXT,
       equipped_frame    TEXT,
       equipped_highlight TEXT,
+      equipped_avatar   TEXT,
       updated_at        TIMESTAMPTZ DEFAULT NOW()
     );
   `)
@@ -184,6 +185,9 @@ export async function ensureSchema() {
     -- Backfill new columns for databases that existed before this migration.
     ALTER TABLE mednexus_notifications
       ADD COLUMN IF NOT EXISTS admin_only BOOLEAN NOT NULL DEFAULT FALSE;
+
+    ALTER TABLE mednexus_user_cosmetics
+      ADD COLUMN IF NOT EXISTS equipped_avatar TEXT;
 
     ALTER TABLE mednexus_registered_users
       ADD COLUMN IF NOT EXISTS class_level TEXT NOT NULL DEFAULT '';
