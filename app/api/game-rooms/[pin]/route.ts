@@ -79,8 +79,9 @@ function getKnockoutWinnerId(
   return null
 }
 
-function allActiveAnswered(players: RoomPlayer[]): boolean {
-  const active = activePlayers(players)
+function allActiveAnswered(players: RoomPlayer[], mode?: string): boolean {
+  // In cohort mode the host is a presenter only — exclude from the "answered" check
+  const active = activePlayers(players).filter(p => !(mode === "cohort" && p.isHost))
   return active.length > 0 && active.every(p => p.answer !== null)
 }
 
@@ -106,7 +107,7 @@ async function autoTick(pin: string): Promise<void> {
     const timeLimitMs = getTimeLimitMs(row.mode)
 
     if (row.phase === "question") {
-      const shouldReveal = allActiveAnswered(row.players) || elapsedMs >= timeLimitMs
+      const shouldReveal = allActiveAnswered(row.players, row.mode) || elapsedMs >= timeLimitMs
       if (shouldReveal) {
         await client.query(
           "UPDATE mednexus_game_rooms SET phase = 'reveal', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1 AND phase = 'question'",
@@ -449,8 +450,8 @@ export async function PATCH(
         // check the remaining time. If >5 s remain, back-date phase_started_at
         // so exactly 5 s remain on the server clock. Skip in wager/djmulti
         // (no absolute timer — auto-advance when all answer).
-        if (!isWagerLikeAnswer && !allActiveAnswered(players)) {
-          const pressureActive = activePlayers(players)
+        if (!isWagerLikeAnswer && !allActiveAnswered(players, row.mode)) {
+          const pressureActive = activePlayers(players).filter(p => !(row.mode === "cohort" && p.isHost))
           const pressureAnswered = pressureActive.filter(p => p.answer !== null).length
           if (pressureActive.length > 1 && pressureAnswered === pressureActive.length - 1) {
             const elapsed = Date.now() - new Date(row.phase_started_at).getTime()
@@ -479,7 +480,7 @@ export async function PATCH(
               [pin]
             )
           }
-        } else if (allActiveAnswered(players)) {
+        } else if (allActiveAnswered(players, row.mode)) {
           // Clash/cohort: the moment the LAST connected player answers, reveal
           // immediately rather than waiting for the next 1.5s poll tick.
           await client.query(

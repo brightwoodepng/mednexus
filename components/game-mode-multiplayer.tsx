@@ -808,7 +808,11 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
   answerHistory?: MultiAnswerEntry[]
 }) {
   const [reviewOpen, setReviewOpen] = useState(false)
-  const sorted = [...room.players].sort((a, b) => b.score - a.score)
+  // In cohort mode the host is a presenter — exclude them from all results/rankings
+  const resultPlayers = room.mode === "cohort"
+    ? room.players.filter(p => !p.isHost)
+    : room.players
+  const sorted = [...resultPlayers].sort((a, b) => b.score - a.score)
   const me = sorted.find(p => p.id === myId)
   const myRank = sorted.findIndex(p => p.id === myId) + 1
   const modeLabel = room.mode === "clash" ? "Multiplayer Clash"
@@ -838,7 +842,7 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
                 <div>
                   <h2 className="text-base font-extrabold text-foreground">Vignette Review</h2>
                   <p className="text-[11px] text-muted-foreground">
-                    {history.filter(e => e.selected === e.question.correctAnswer).length}/{history.length} correct
+                    {history.filter(e => e.selected === (room.questionPool.find(q => q.id === e.question.id)?.correctAnswer ?? e.question.correctAnswer)).length}/{history.length} correct
                   </p>
                 </div>
               </div>
@@ -847,7 +851,13 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {history.map((entry, i) => {
-                const isCorrect = entry.selected === entry.question.correctAnswer
+                // correctAnswer is hidden during the question phase when the history
+                // entry is snapshotted. Resolve it from the final room state instead,
+                // which always has correctAnswers populated (phase === "done").
+                const resolvedCorrectAnswer =
+                  room.questionPool.find(q => q.id === entry.question.id)?.correctAnswer
+                  ?? entry.question.correctAnswer
+                const isCorrect = entry.selected === resolvedCorrectAnswer
                 const expl = entry.question.explanation
                 return (
                   <div key={i} className={`rounded-3xl border bg-card p-4 ${isCorrect ? "border-emerald-200 dark:border-emerald-800/40" : "border-rose-200 dark:border-rose-800/40"}`}>
@@ -862,7 +872,7 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
                     </div>
                     <div className="space-y-1.5 mb-3">
                       {entry.question.options.map(opt => {
-                        const isOpt = opt.id === entry.question.correctAnswer
+                        const isOpt = opt.id === resolvedCorrectAnswer
                         const isSel = opt.id === entry.selected && !isOpt
                         let cls = "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs "
                         if (isOpt) cls += "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 font-semibold text-emerald-700 dark:text-emerald-400"
@@ -1657,7 +1667,12 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   // so the next poll already carries a reduced phaseDeadlineMs. This is purely
   // a display flag — no client-side timer overrides scoring or phase logic.
   const activePl = room
-    ? room.players.filter(p => p.status !== "disconnected" && !p.isSpectator)
+    ? room.players.filter(p =>
+        p.status !== "disconnected" &&
+        !p.isSpectator &&
+        // In cohort mode the host is a presenter — exclude from answer-tracking
+        !(room.mode === "cohort" && p.isHost)
+      )
     : []
   const answeredActivePl = activePl.filter(p => p.answer !== null).length
   const isPressure = timeLeftMs !== null
