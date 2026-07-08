@@ -31,18 +31,6 @@ task = "shell.exec"
 args = "pnpm install && pnpm dev"
 waitForPort = 5000
 
-[[ports]]
-localPort = 3000
-externalPort = 3000
-
-[[ports]]
-localPort = 5000
-externalPort = 80
-
-[[ports]]
-localPort = 23636
-externalPort = 3002
-
 [userenv]
 
 [userenv.shared]
