@@ -1081,8 +1081,8 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
           <div className="mb-3 text-4xl">{modeIcon}</div>
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">{modeLabel}</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            {mode === "clash" ? "Competitive room · Max 5 players"
-            : mode === "cohort" ? "Lecture hall mode · Unlimited players"
+            {mode === "clash" ? "Competitive room · Max 5 players · Free Entry"
+            : mode === "cohort" ? "Lecture hall mode · Unlimited players · Free Entry"
             : mode === "djmulti" ? "Confidence wagering · Max 5 players · Starting bank: 500 pts"
             : "Betting game · Max 8 players · Starting balance: 1,000 chips"}
           </p>

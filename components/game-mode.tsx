@@ -91,14 +91,14 @@ const MULTI_MODES: MultiModeCard[] = [
     badgeColor: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
     icon: "⚔️", gradient: "from-fuchsia-500 to-violet-600", shadow: "shadow-fuchsia-500/20",
     desc: "Compete with up to 5 players. Fastest correct answer takes max points.",
-    rules: ["Max 5 players per room", "6-digit PIN to join", "Full leaderboard between questions"],
+    rules: ["Free entry — 0 NP to host or join", "Max 5 players per room · 6-digit PIN", "1st +150 · 2nd +100 · 3rd +50 · Others +25 NP"],
   },
   {
     id: "cohort", name: "Cohort Review", badge: "Kahoot Style",
     badgeColor: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
     icon: "🎓", gradient: "from-teal-500 to-cyan-500", shadow: "shadow-teal-500/20",
     desc: "Lecture hall mode — unlimited players, host controls the pace.",
-    rules: ["Unlimited players", "Players use phones as buzzers (A/B/C/D)", "Top 5 leaderboard · Personal rank banner"],
+    rules: ["Free entry — 0 NP to host or join", "Unlimited players · Players buzz in via phone", "1st +500 · 2nd +350 · 3rd +200 · Top 10 +75 NP"],
   },
   {
     id: "wager", name: "Wager Wars", badge: "High Stakes",

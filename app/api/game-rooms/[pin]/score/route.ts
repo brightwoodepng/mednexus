@@ -177,7 +177,52 @@ export async function POST(
         accuracy,
       }
 
-      const { total: earned, breakdown } = calculatePayout(result)
+      // ── Payout calculation ─────────────────────────────────────────────────
+      // Clash and Cohort use rank-based fixed payouts; all other modes use the
+      // generic accuracy/streak/participation calculator.
+      const isClashOrCohort = room.mode === "clash" || room.mode === "cohort"
+      const isCohortHost = room.mode === "cohort" && room.host_id === playerId
+
+      let earned: number
+      let breakdown: { label: string; amount: number }[]
+
+      if (isClashOrCohort) {
+        // Rank players: non-spectators only; cohort host is presenter — excluded
+        const rankedPlayers = [...room.players]
+          .filter(p => !p.isSpectator && !(room.mode === "cohort" && p.id === room.host_id))
+          .sort((a, b) => b.score - a.score)
+        const playerRankIndex = rankedPlayers.findIndex(p => p.id === playerId)
+        const playerRank  = playerRankIndex + 1  // 1-indexed; 0 = not in ranked list
+        const totalRanked = rankedPlayers.length
+
+        let rankNP    = 0
+        let rankLabel = "🎯 Participation Bonus"
+
+        if (isCohortHost) {
+          rankNP    = 0
+          rankLabel = "📋 Host (Presenter)"
+        } else if (room.mode === "clash") {
+          if      (playerRank === 1)                       { rankNP = 150; rankLabel = "🥇 1st Place"           }
+          else if (playerRank === 2 && totalRanked >= 2)   { rankNP = 100; rankLabel = "🥈 2nd Place"           }
+          else if (playerRank === 3 && totalRanked >= 3)   { rankNP = 50;  rankLabel = "🥉 3rd Place"           }
+          else                                             { rankNP = 25;  rankLabel = "🎯 Participation Bonus"  }
+        } else {
+          // Cohort — Top 10 tier payouts
+          if      (playerRank === 1)              { rankNP = 500; rankLabel = "🥇 1st Place"                    }
+          else if (playerRank === 2)              { rankNP = 350; rankLabel = "🥈 2nd Place"                    }
+          else if (playerRank === 3)              { rankNP = 200; rankLabel = "🥉 3rd Place"                    }
+          else if (playerRank <= 10)              { rankNP = 75;  rankLabel = `🏅 Top 10 (Rank #${playerRank})` }
+          else                                    { rankNP = 25;  rankLabel = "🎯 Participation Bonus"          }
+        }
+
+        earned    = rankNP
+        breakdown = rankNP > 0 ? [{ label: rankLabel, amount: rankNP }] : []
+      } else {
+        const payout = calculatePayout(result)
+        earned   = payout.total
+        breakdown = payout.breakdown
+      }
+
       const extraBreakdown: { label: string; amount: number }[] = []
 
       // ── Determine bonus eligibility ────────────────────────────────────────
