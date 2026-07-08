@@ -1570,6 +1570,12 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   const [answerHistory, setAnswerHistory] = useState<MultiAnswerEntry[]>([])
   const [timeLeftMs, setTimeLeftMs] = useState<number | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
+  // Fast-poll interval fired after a player submits their answer while others
+  // still haven't answered. Ticks at 300 ms so the reveal (which the server
+  // writes atomically the instant the last answer arrives) is visible within
+  // ~300 ms for every player — not up to 1.5 s later. Cleared as soon as the
+  // room leaves the question phase, or when the component unmounts.
+  const fastPollRef = useRef<NodeJS.Timeout | null>(null)
   const lastVersionRef = useRef<number>(-1)
   // Absolute timestamp when the current question rendered — used to compute
   // reactionTimeMs for the server-side speed bonus. Never trusted for
@@ -1584,6 +1590,12 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
       if (state.version >= lastVersionRef.current) {
         lastVersionRef.current = state.version
         setRoom(state)
+        // Stop fast-polling the moment we leave the question phase — the reveal
+        // (or next question) is now visible and we don't need the extra cadence.
+        if (state.phase !== "question" && fastPollRef.current) {
+          clearInterval(fastPollRef.current)
+          fastPollRef.current = null
+        }
       }
     } else {
       setError("Lost connection to room.")
@@ -1593,7 +1605,10 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   useEffect(() => {
     poll()
     pollRef.current = setInterval(poll, 1500)
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+      if (fastPollRef.current) clearInterval(fastPollRef.current)
+    }
   }, [poll])
 
   // Reset the reaction-time clock the moment a new question appears.
@@ -1689,6 +1704,16 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
       // Record this answer for the post-game Review Vignettes drawer
       if (currentQ) {
         setAnswerHistory(prev => [...prev, { question: currentQ, selected: answer }])
+      }
+      // ── Smart auto-advance: fast-poll after answering ──────────────────────
+      // If this player was NOT the last to answer (phase is still "question"),
+      // switch to a 300 ms fast-poll so we detect the server-side reveal
+      // (written atomically when the last answer arrives) within ~300 ms
+      // instead of waiting up to 1.5 s for the regular poll tick.
+      // Safe to restart: clears any pre-existing fast-poll before setting a new one.
+      if (updated.phase === "question" && (mode === "clash" || mode === "cohort")) {
+        if (fastPollRef.current) clearInterval(fastPollRef.current)
+        fastPollRef.current = setInterval(poll, 300)
       }
     }
   }
