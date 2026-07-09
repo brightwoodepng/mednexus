@@ -210,10 +210,10 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     return 0
   })()
 
-  // ── Grand Finale accuracy (Task 6) ───────────────────────────────────────
-  // Computed once when the finale modal is visible; zero otherwise.
-  const finaleAccuracy: number = (() => {
-    if (!showGrandFinale || questions.length === 0) return 0
+  // ── Grand Finale stats (Task 6) ──────────────────────────────────────────
+  // Computed once when the finale modal is visible; zeroed otherwise.
+  const { finaleAccuracy, finaleCorrectCount } = (() => {
+    if (!showGrandFinale || questions.length === 0) return { finaleAccuracy: 0, finaleCorrectCount: 0 }
     const correct = questions.reduce((acc, q) => {
       const isSataQ = Array.isArray(q.correctAnswer) && (q.correctAnswer as string[]).length > 1
       if (isSataQ) {
@@ -223,8 +223,9 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       }
       return acc + (answers[q.id] === (q.correctAnswer as string) ? 1 : 0)
     }, 0)
-    return Math.round((correct / questions.length) * 100)
+    return { finaleCorrectCount: correct, finaleAccuracy: Math.round((correct / questions.length) * 100) }
   })()
+  const finaleTimeTaken = showGrandFinale ? Math.round((Date.now() - startedAt.current) / 1000) : 0
 
   // ── Grand Finale retry handler ────────────────────────────────────────────
   // Resets all quiz state so the user can replay the same question pool.
@@ -252,7 +253,9 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           bestStreak={streakEngine.bestStreak}
           milestoneTier={milestoneTier}
           accuracy={finaleAccuracy}
+          correctCount={finaleCorrectCount}
           totalQuestions={questions.length}
+          timeTakenSeconds={finaleTimeTaken}
           onReturnToMenu={onExit}
           onRetry={handleRetry}
         />
@@ -339,7 +342,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         <div className={`relative flex flex-1 flex-col overflow-y-auto min-w-0 ${isShaking ? "animate-error-shake" : ""}`}>
           {/* Glassmorphic error flash overlay */}
           {isFlashing && (
-            <div className="pointer-events-none absolute inset-0 z-10 bg-rose-500/[0.12] backdrop-blur-[6px]" />
+            <div className="pointer-events-none absolute inset-0 z-10 bg-rose-500/[0.12]" />
           )}
           <div className={`flex-1 px-4 pt-5 pb-6 sm:px-6 sm:pt-8 sm:pb-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}>
             <div className="mb-3">

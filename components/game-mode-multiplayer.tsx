@@ -934,7 +934,7 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
             }`}>
               <p className="text-4xl mb-1">{iAmWinner ? "💀" : "☠️"}</p>
               <h2 className="text-2xl font-extrabold tracking-tight text-white leading-tight">
-                {iAmWinner ? "LAST MEDICAL STANDING" : "KNOCKOUT!"}
+                {iAmWinner ? "LAST MEDIC STANDING" : "KNOCKOUT!"}
               </h2>
               <p className="mt-1 text-sm font-semibold text-white/80">
                 {iAmWinner
