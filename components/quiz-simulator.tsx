@@ -10,6 +10,7 @@ import { RichText } from "@/components/rich-text"
 import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { useStreakEngine } from "@/hooks/use-streak-engine"
 import { StreakCheer } from "@/components/streak-cheer"
+import { GrandFinaleModal } from "@/components/grand-finale-modal"
 import {
   XIcon,
   FlagIcon,
@@ -49,8 +50,10 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const [calcOpen, setCalcOpen] = useState(false)
   const [labsOpen, setLabsOpen] = useState(false)
   const [navOpenMobile, setNavOpenMobile] = useState(false)
+  const [showGrandFinale, setShowGrandFinale] = useState(false)
 
   const startedAt = useRef(Date.now())
+  const finaleTriggeredRef = useRef(false)
 
   const current = questions[index]
   const isSATA = current
@@ -110,6 +113,23 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     const t = setInterval(() => setTimeLeft((s) => s - 1), 1000)
     return () => clearInterval(t)
   }, [mode, timeLeft, submitBlock])
+
+  // Grand Finale trigger — fires the exact moment the last question is answered.
+  // Placed before the early-return guard so hook call order is stable.
+  // answeredCount is computed inline to avoid a forward-reference issue.
+  useEffect(() => {
+    if (!gamificationEnabled || mode !== "trial" || questions.length === 0) return
+    if (finaleTriggeredRef.current) return
+    const count = questions.filter((q) => {
+      const isSataQ = Array.isArray(q.correctAnswer) && (q.correctAnswer as string[]).length > 1
+      return isSataQ ? sataLocked.has(q.id) : answers[q.id] != null
+    }).length
+    if (count === questions.length) {
+      finaleTriggeredRef.current = true
+      setShowGrandFinale(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers, sataLocked])
 
   if (!current) {
     return (
@@ -190,10 +210,53 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     return 0
   })()
 
+  // ── Grand Finale accuracy (Task 6) ───────────────────────────────────────
+  // Computed once when the finale modal is visible; zero otherwise.
+  const finaleAccuracy: number = (() => {
+    if (!showGrandFinale || questions.length === 0) return 0
+    const correct = questions.reduce((acc, q) => {
+      const isSataQ = Array.isArray(q.correctAnswer) && (q.correctAnswer as string[]).length > 1
+      if (isSataQ) {
+        const sel = [...(sataSelections[q.id] ?? [])].sort()
+        const cor = [...(q.correctAnswer as string[])].sort()
+        return acc + (sataLocked.has(q.id) && sel.length === cor.length && sel.every((v, i) => v === cor[i]) ? 1 : 0)
+      }
+      return acc + (answers[q.id] === (q.correctAnswer as string) ? 1 : 0)
+    }, 0)
+    return Math.round((correct / questions.length) * 100)
+  })()
+
+  // ── Grand Finale retry handler ────────────────────────────────────────────
+  // Resets all quiz state so the user can replay the same question pool.
+  function handleRetry() {
+    setShowGrandFinale(false)
+    finaleTriggeredRef.current = false
+    setIndex(0)
+    setAnswers({})
+    setStruck({})
+    setSataSelections({})
+    setSataLocked(new Set())
+    setTimeLeft(questions.length * SECONDS_PER_QUESTION)
+    startedAt.current = Date.now()
+    streakEngine.reset()
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* Dynamic Streak Engine cheer — Trial Mode + gamification only, dormant otherwise */}
       <StreakCheer event={streakEngine.cheerEvent} onDone={streakEngine.clearCheer} />
+
+      {/* Grand Finale — intercepts session end, Trial Mode + gamification only */}
+      {showGrandFinale && (
+        <GrandFinaleModal
+          bestStreak={streakEngine.bestStreak}
+          milestoneTier={milestoneTier}
+          accuracy={finaleAccuracy}
+          totalQuestions={questions.length}
+          onReturnToMenu={onExit}
+          onRetry={handleRetry}
+        />
+      )}
 
       {/* Top bar */}
       <header className="flex items-center gap-1 border-b border-border bg-card px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3">
