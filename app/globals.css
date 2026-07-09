@@ -969,3 +969,14 @@
 .animate-error-shake {
   animation: error-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
+
+/* ── Streak cheer entrance (Dynamic Streak Engine, Trial Mode) ──────────────── */
+@keyframes streak-cheer-in {
+  0%   { opacity: 0; transform: translateY(-14px) scale(0.92); }
+  60%  { opacity: 1; transform: translateY(2px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-streak-cheer-in {
+  animation: streak-cheer-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
