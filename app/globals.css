@@ -970,13 +970,26 @@
   animation: error-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
-/* ── Streak cheer entrance (Dynamic Streak Engine, Trial Mode) ──────────────── */
-@keyframes streak-cheer-in {
-  0%   { opacity: 0; transform: translateY(-14px) scale(0.92); }
-  60%  { opacity: 1; transform: translateY(2px) scale(1.02); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+/* ── Streak cheer — High-Octane Combo Pop-In (Task 4) ───────────────────────── */
+/*
+ * Three-phase lifecycle:
+ *   Phase 1  0%  → 38%  : aggressive scale-up with overshoot + bounce settle (~0.8s)
+ *   Phase 2  38% → 72%  : hold at full size (~0.7s)
+ *   Phase 3  72% → 100% : scale down + fade out (~0.6s)
+ * Total duration: 2.1s
+ * Rotation (-8 deg) baked into every keyframe so it is immune to inline-style conflicts.
+ */
+@keyframes combo-pop-in {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-8deg); }
+  14%  { opacity: 1;   transform: scale(1.32) rotate(-8deg); }
+  24%  { opacity: 1;   transform: scale(0.93) rotate(-8deg); }
+  38%  { opacity: 1;   transform: scale(1.04) rotate(-8deg); }
+  72%  { opacity: 1;   transform: scale(1.04) rotate(-8deg); }
+  90%  { opacity: 0;   transform: scale(0.88) rotate(-8deg); }
+  100% { opacity: 0;   transform: scale(0.85) rotate(-8deg); }
 }
 
-.animate-streak-cheer-in {
-  animation: streak-cheer-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+.animate-combo-pop-in {
+  animation: combo-pop-in 2.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
 }
