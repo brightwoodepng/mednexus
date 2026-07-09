@@ -8,6 +8,8 @@ import { CalculatorModal } from "@/components/calculator-modal"
 import { LabValuesModal } from "@/components/lab-values-modal"
 import { RichText } from "@/components/rich-text"
 import { useErrorFeedback } from "@/hooks/use-error-feedback"
+import { useStreakEngine } from "@/hooks/use-streak-engine"
+import { StreakCheer } from "@/components/streak-cheer"
 import {
   XIcon,
   FlagIcon,
@@ -35,6 +37,8 @@ const SECONDS_PER_QUESTION = 90
 export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled = false, onExit, onComplete }: QuizSimulatorProps) {
   const { progress, toggleFlag, recordHistory } = useApp()
   const { triggerError, isShaking, isFlashing } = useErrorFeedback()
+  // Dynamic Streak Engine — strictly Trial Mode + gamification opt-in. Dormant otherwise.
+  const streakEngine = useStreakEngine(questions.length, mode === "trial" && gamificationEnabled)
 
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | string[] | null>>({})
@@ -130,9 +134,11 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     if (struckSet.has(optionId)) return
     if (mode === "trial" && selected !== null) return
     setAnswers(prev => ({ ...prev, [current.id]: optionId }))
-    // Error feedback: explicitly gated on Trial mode + gamification opt-in
-    if (mode === "trial" && gamificationEnabled && optionId !== (current.correctAnswer as string)) {
-      triggerError()
+    // Error feedback + Streak Engine: explicitly gated on Trial mode + gamification opt-in
+    if (mode === "trial" && gamificationEnabled) {
+      const isCorrect = optionId === (current.correctAnswer as string)
+      if (!isCorrect) triggerError()
+      streakEngine.recordAnswer(isCorrect)
     }
   }
 
@@ -140,12 +146,13 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     if (!isSATA || isLocked || sataSelected.length === 0) return
     setAnswers(prev => ({ ...prev, [current.id]: sataSelected }))
     setSataLocked(prev => { const n = new Set(prev); n.add(current.id); return n })
-    // Error feedback for SATA: explicitly gated on Trial mode + gamification opt-in
+    // Error feedback + Streak Engine for SATA: explicitly gated on Trial mode + gamification opt-in
     if (mode === "trial" && gamificationEnabled) {
       const ca = [...sataCorrectAnswers].sort()
       const sa = [...sataSelected].sort()
       const correct = ca.length === sa.length && ca.every((c, i) => c === sa[i])
       if (!correct) triggerError()
+      streakEngine.recordAnswer(correct)
     }
   }
 
@@ -173,6 +180,9 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
   return (
     <div className="flex h-full flex-col">
+      {/* Dynamic Streak Engine cheer — Trial Mode + gamification only, dormant otherwise */}
+      <StreakCheer event={streakEngine.cheerEvent} onDone={streakEngine.clearCheer} />
+
       {/* Top bar */}
       <header className="flex items-center gap-1 border-b border-border bg-card px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3">
         <button
