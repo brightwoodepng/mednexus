@@ -178,6 +178,18 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     return isSataQ ? sataLocked.has(q.id) : answers[q.id] != null
   }).length
 
+  // ── Dynamic Milestone Tier (Task 5) ──────────────────────────────────────
+  // Percentage-based so pacing feels correct for any quiz length.
+  // Strictly dormant unless Trial Mode + gamification opt-in.
+  const milestoneTier: 0 | 1 | 2 | 3 = (() => {
+    if (!gamificationEnabled || mode !== "trial" || questions.length === 0) return 0
+    const pct = answeredCount / questions.length
+    if (pct >= 0.75) return 3
+    if (pct >= 0.50) return 2
+    if (pct >= 0.25) return 1
+    return 0
+  })()
+
   return (
     <div className="flex h-full flex-col">
       {/* Dynamic Streak Engine cheer — Trial Mode + gamification only, dormant otherwise */}
@@ -202,6 +214,10 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline">
             {mode === "trial" ? "Tutor" : "Exam"}
           </span>
+          {/* Milestone tag — Trial Mode + gamification only; re-animates on tier upgrade */}
+          {milestoneTier > 0 && (
+            <MilestoneTag key={milestoneTier} tier={milestoneTier} />
+          )}
         </div>
 
         <div className="flex items-center gap-1">
@@ -613,4 +629,52 @@ function formatTime(s: number) {
   const m = Math.floor(s / 60)
   const sec = s % 60
   return `${m}:${sec.toString().padStart(2, "0")}`
+}
+
+// ── Milestone Tag (Task 5) ────────────────────────────────────────────────────
+// Displays the highest earned session milestone in the quiz header.
+// Percentage thresholds: 25% → tier 1, 50% → tier 2, 75% → tier 3.
+// The `key` prop on the mount site is set to `milestoneTier` so React remounts
+// the element (re-triggering the CSS animation) each time a new tier is earned.
+
+const MILESTONE_DATA: Record<1 | 2 | 3, { label: string; emoji: string; pill: string; dot: string }> = {
+  1: {
+    label: "Warming Up",
+    emoji: "🏃",
+    pill: "border-sky-400/40 bg-sky-400/10 text-sky-600 dark:text-sky-400",
+    dot:  "bg-sky-400",
+  },
+  2: {
+    label: "In the Zone",
+    emoji: "🧠",
+    pill: "border-violet-400/40 bg-violet-400/10 text-violet-600 dark:text-violet-400",
+    dot:  "bg-violet-400",
+  },
+  3: {
+    label: "Heavyweight",
+    emoji: "🦍",
+    pill: "border-amber-400/40 bg-amber-400/10 text-amber-600 dark:text-amber-400",
+    dot:  "bg-amber-400",
+  },
+}
+
+function MilestoneTag({ tier }: { tier: 1 | 2 | 3 }) {
+  const d = MILESTONE_DATA[tier]
+  return (
+    <span
+      className={`animate-milestone-tag-in inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 ${d.pill}`}
+      title={`Session milestone: ${d.label} ${d.emoji}`}
+    >
+      {/* Pulsing dot — accent for the current tier colour */}
+      <span className={`relative flex h-1.5 w-1.5 shrink-0 rounded-full ${d.dot}`}>
+        <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${d.dot} opacity-60`} />
+      </span>
+      {/* Full label on sm+, emoji-only on xs */}
+      <span className="hidden text-[10px] font-bold uppercase tracking-wide sm:inline">
+        {d.label}
+      </span>
+      <span className="text-[11px] sm:hidden">{d.emoji}</span>
+      <span className="hidden text-[10px] sm:inline">{d.emoji}</span>
+    </span>
+  )
 }
