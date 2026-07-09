@@ -211,29 +211,21 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   })()
 
   // ── Grand Finale stats (Task 6) ──────────────────────────────────────────
-  // Computed once when the finale modal is visible; zeroed/empty otherwise.
-  const { finaleAccuracy, finaleCorrectCount, finaleReviewItems } = (() => {
-    type ReviewItem = { stem: string; isCorrect: boolean; subject: string; correctAnswerText: string; explanation?: { objective: string; details: string; incorrectReasoning: string } }
-    const empty = { finaleAccuracy: 0, finaleCorrectCount: 0, finaleReviewItems: [] as ReviewItem[] }
-    if (!showGrandFinale || questions.length === 0) return empty
+  // Computed once when the finale modal is visible; zeroed otherwise.
+  const { finaleAccuracy, finaleCorrectCount } = (() => {
+    if (!showGrandFinale || questions.length === 0) return { finaleAccuracy: 0, finaleCorrectCount: 0 }
     let correct = 0
-    const items: ReviewItem[] = questions.map((q) => {
+    for (const q of questions) {
       const isSataQ = Array.isArray(q.correctAnswer) && (q.correctAnswer as string[]).length > 1
-      let isCorrect: boolean
       if (isSataQ) {
         const sel = [...(sataSelections[q.id] ?? [])].sort()
         const cor = [...(q.correctAnswer as string[])].sort()
-        isCorrect = sataLocked.has(q.id) && sel.length === cor.length && sel.every((v, i) => v === cor[i])
+        if (sataLocked.has(q.id) && sel.length === cor.length && sel.every((v, i) => v === cor[i])) correct++
       } else {
-        isCorrect = answers[q.id] === (q.correctAnswer as string)
+        if (answers[q.id] === (q.correctAnswer as string)) correct++
       }
-      if (isCorrect) correct++
-      const correctAnswerText = isSataQ
-        ? (q.correctAnswer as string[]).map(id => q.options.find(o => o.id === id)?.text ?? id).join("; ")
-        : (q.options.find(o => o.id === (q.correctAnswer as string))?.text ?? "")
-      return { stem: q.vignette, isCorrect, subject: q.subject, correctAnswerText, explanation: q.explanation }
-    })
-    return { finaleCorrectCount: correct, finaleAccuracy: Math.round((correct / questions.length) * 100), finaleReviewItems: items }
+    }
+    return { finaleCorrectCount: correct, finaleAccuracy: Math.round((correct / questions.length) * 100) }
   })()
   const finaleTimeTaken = showGrandFinale ? Math.round((Date.now() - startedAt.current) / 1000) : 0
 
@@ -266,7 +258,8 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           correctCount={finaleCorrectCount}
           totalQuestions={questions.length}
           timeTakenSeconds={finaleTimeTaken}
-          reviewItems={finaleReviewItems}
+          questions={questions}
+          answers={answers}
           onReturnToMenu={onExit}
           onRetry={handleRetry}
         />
