@@ -213,7 +213,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   // ── Grand Finale stats (Task 6) ──────────────────────────────────────────
   // Computed once when the finale modal is visible; zeroed/empty otherwise.
   const { finaleAccuracy, finaleCorrectCount, finaleReviewItems } = (() => {
-    type ReviewItem = { stem: string; isCorrect: boolean; subject: string }
+    type ReviewItem = { stem: string; isCorrect: boolean; subject: string; correctAnswerText: string; explanation?: { objective: string; details: string; incorrectReasoning: string } }
     const empty = { finaleAccuracy: 0, finaleCorrectCount: 0, finaleReviewItems: [] as ReviewItem[] }
     if (!showGrandFinale || questions.length === 0) return empty
     let correct = 0
@@ -228,7 +228,10 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         isCorrect = answers[q.id] === (q.correctAnswer as string)
       }
       if (isCorrect) correct++
-      return { stem: q.vignette, isCorrect, subject: q.subject }
+      const correctAnswerText = isSataQ
+        ? (q.correctAnswer as string[]).map(id => q.options.find(o => o.id === id)?.text ?? id).join("; ")
+        : (q.options.find(o => o.id === (q.correctAnswer as string))?.text ?? "")
+      return { stem: q.vignette, isCorrect, subject: q.subject, correctAnswerText, explanation: q.explanation }
     })
     return { finaleCorrectCount: correct, finaleAccuracy: Math.round((correct / questions.length) * 100), finaleReviewItems: items }
   })()
