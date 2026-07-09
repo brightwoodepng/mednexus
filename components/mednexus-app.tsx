@@ -53,6 +53,7 @@ interface ActiveQuiz {
   mode: QuizMode
   startedAt: number
   setupModule: string
+  gamificationEnabled: boolean
 }
 
 // ── Credits Modal ─────────────────────────────────────────────────────────────
@@ -461,7 +462,7 @@ export function MedNexusApp() {
     if (user.role === "user" && user.status === "rejected") return <RejectedScreen />
   }
 
-  function handleStartQuiz(selectedQuestions: Question[]) {
+  function handleStartQuiz(selectedQuestions: Question[], gamificationEnabled: boolean) {
     if (!pendingQuiz) return
     setActiveQuiz({
       questions: selectedQuestions,
@@ -470,6 +471,7 @@ export function MedNexusApp() {
       mode: globalMode,
       startedAt: Date.now(),
       setupModule: pendingQuiz.setupModule,
+      gamificationEnabled,
     })
     setPendingQuiz(null)
     setScreen("quiz")
@@ -503,7 +505,7 @@ export function MedNexusApp() {
   if (safeScreen === "quiz" && activeQuiz) {
     return (
       <div className="h-screen">
-        <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} onExit={exitQuiz} onComplete={handleQuizComplete} />
+        <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} gamificationEnabled={activeQuiz.gamificationEnabled} onExit={exitQuiz} onComplete={handleQuizComplete} />
       </div>
     )
   }
@@ -571,6 +573,7 @@ export function MedNexusApp() {
         label={pendingQuiz?.discipline ?? pendingQuiz?.moduleName ?? ""}
         sublabel={pendingQuiz?.discipline ? pendingQuiz.moduleName : undefined}
         questions={pendingQuiz?.questions ?? []}
+        mode={globalMode}
         onClose={() => setPendingQuiz(null)}
         onStart={handleStartQuiz}
       />

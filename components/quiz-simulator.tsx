@@ -23,13 +23,15 @@ interface QuizSimulatorProps {
   questions: Question[]   // pre-selected and shuffled by the caller
   moduleName: string      // display name
   mode: QuizMode
+  /** Whether the user opted into gamification for this Trial Mode session */
+  gamificationEnabled?: boolean
   onExit: () => void
   onComplete: (result: BlockResult, history: HistoryEntry[]) => void
 }
 
 const SECONDS_PER_QUESTION = 90
 
-export function QuizSimulator({ questions, moduleName, mode, onExit, onComplete }: QuizSimulatorProps) {
+export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled = false, onExit, onComplete }: QuizSimulatorProps) {
   const { progress, toggleFlag, recordHistory } = useApp()
 
   const [index, setIndex] = useState(0)

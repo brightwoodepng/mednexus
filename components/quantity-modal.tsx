@@ -3,22 +3,27 @@
 import { useState } from "react"
 import { Modal } from "@/components/ui/modal"
 import { buildCocktail } from "@/lib/modules"
-import { ShuffleIcon, ArrowRightIcon, LayersIcon, HashIcon } from "@/components/icons"
-import type { Question } from "@/lib/types"
+import { ShuffleIcon, ArrowRightIcon, LayersIcon, HashIcon, ZapIcon, SparklesIcon } from "@/components/icons"
+import type { Question, QuizMode } from "@/lib/types"
 
 interface QuantityModalProps {
   open: boolean
   label: string
   sublabel?: string
   questions: Question[]
+  mode?: QuizMode
   onClose: () => void
-  onStart: (questions: Question[]) => void
+  onStart: (questions: Question[], gamificationEnabled: boolean) => void
 }
+
+type Step = "setup" | "gamification"
 
 const PRESETS = [10, 20, 50, 75, 100, 150] as const
 type Tab = "quantity" | "range"
 
-export function QuantityModal({ open, label, sublabel, questions, onClose, onStart }: QuantityModalProps) {
+export function QuantityModal({ open, label, sublabel, questions, mode, onClose, onStart }: QuantityModalProps) {
+  const [step, setStep] = useState<Step>("setup")
+  const [pendingQuestions, setPendingQuestions] = useState<Question[] | null>(null)
   const [tab, setTab] = useState<Tab>("quantity")
 
   // — Quantity tab state —
@@ -78,20 +83,37 @@ export function QuantityModal({ open, label, sublabel, questions, onClose, onSta
 
   // ── Start handlers ──
   function handleStart() {
+    let result: Question[]
     if (tab === "quantity") {
       const qty = getQuantity()
       if (qty === null) return
-      // "All" selection keeps original order — only custom/preset subsets get shuffled
-      const result = isAllSelected ? questions.slice(0, qty) : buildCocktail(questions, qty)
-      reset(); onStart(result)
+      result = isAllSelected ? questions.slice(0, qty) : buildCocktail(questions, qty)
     } else {
       const slice = getRangeSlice()
       if (!slice || slice.length === 0) return
-      reset(); onStart(slice) // no shuffle in range mode
+      result = slice
+    }
+
+    // Trial mode: intercept and show gamification prompt
+    if (mode === "trial") {
+      setPendingQuestions(result)
+      setStep("gamification")
+    } else {
+      reset()
+      onStart(result, false)
     }
   }
 
+  function handleGamificationChoice(enabled: boolean) {
+    if (!pendingQuestions) return
+    const qs = pendingQuestions
+    reset()
+    onStart(qs, enabled)
+  }
+
   function reset() {
+    setStep("setup")
+    setPendingQuestions(null)
     setSelectedPreset(null)
     setCustomValue("")
     setUseCustom(false)
@@ -109,6 +131,62 @@ export function QuantityModal({ open, label, sublabel, questions, onClose, onSta
   const startLabel = tab === "quantity"
     ? (qty !== null ? `Begin ${qty} Question${qty === 1 ? "" : "s"}` : "Begin Quiz")
     : (rangeSlice ? `Begin Q${rangeStart}–Q${rangeEnd} (${rangeSlice.length})` : "Begin Quiz")
+
+  // ── Gamification prompt step ──
+  if (step === "gamification") {
+    const count = pendingQuestions?.length ?? 0
+    return (
+      <Modal open={open} onClose={handleClose} title="Enable Gamification?" widthClass="max-w-sm">
+        <div className="flex flex-col items-center gap-6 py-2">
+          {/* Icon badge */}
+          <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-500/20 via-primary/20 to-cyan-500/20 backdrop-blur-sm ring-1 ring-white/10">
+            <ZapIcon size={38} className="text-primary drop-shadow-sm" />
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow">
+              <SparklesIcon size={10} />
+            </span>
+          </div>
+
+          {/* Copy */}
+          <div className="space-y-2 text-center">
+            <p className="text-sm font-medium text-foreground leading-relaxed">
+              Level up your <span className="font-semibold text-primary">{count}-question</span> session with streaks, milestone rewards, and cheer animations.
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Prefer a distraction-free environment? Choose <span className="font-medium">No</span> for a clean, focused experience.
+            </p>
+          </div>
+
+          {/* Feature pills */}
+          <div className="flex flex-wrap justify-center gap-2">
+            {["🔥 Streaks", "🏆 Milestones", "✨ Cheer Effects"].map((f) => (
+              <span key={f} className="rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-xs font-medium text-primary">
+                {f}
+              </span>
+            ))}
+          </div>
+
+          {/* Choice buttons */}
+          <div className="grid w-full grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => handleGamificationChoice(false)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-all hover:border-border/60 hover:bg-muted active:scale-[0.97]"
+            >
+              No, focus mode
+            </button>
+            <button
+              type="button"
+              onClick={() => handleGamificationChoice(true)}
+              className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm shadow-primary/30 transition-all hover:bg-primary/90 active:scale-[0.97]"
+            >
+              <ZapIcon size={14} />
+              Yes, let&apos;s go!
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
 
   return (
     <Modal open={open} onClose={handleClose} title={label} widthClass="max-w-md">
