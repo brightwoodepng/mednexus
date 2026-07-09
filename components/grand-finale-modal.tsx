@@ -70,13 +70,23 @@ function fireGrandFinaleConfetti() {
   }, 380)
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${s.toString().padStart(2, "0")}`
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface GrandFinaleModalProps {
   bestStreak: number
   milestoneTier: 0 | 1 | 2 | 3
   accuracy: number           // 0–100 percentage
+  correctCount: number
   totalQuestions: number
+  timeTakenSeconds: number
   onReturnToMenu: () => void
   onRetry: () => void
 }
@@ -87,7 +97,9 @@ export function GrandFinaleModal({
   bestStreak,
   milestoneTier,
   accuracy,
+  correctCount,
   totalQuestions,
+  timeTakenSeconds,
   onReturnToMenu,
   onRetry,
 }: GrandFinaleModalProps) {
@@ -98,10 +110,11 @@ export function GrandFinaleModal({
     fired.current = true
     fireGrandFinaleConfetti()
 
-    // Prevent body scroll while modal is open
     document.body.style.overflow = "hidden"
     return () => { document.body.style.overflow = "" }
   }, [])
+
+  const wrongCount = totalQuestions - correctCount
 
   return (
     <div
@@ -122,29 +135,64 @@ export function GrandFinaleModal({
         <div className="px-6 pb-7 pt-8">
 
           {/* Trophy icon */}
-          <div className="mb-5 flex justify-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400/20 via-yellow-500/20 to-orange-500/20 ring-1 ring-white/15 shadow-inner">
-              <span className="text-5xl select-none" role="img" aria-label="trophy">🏆</span>
+          <div className="mb-4 flex justify-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400/20 via-yellow-500/20 to-orange-500/20 ring-1 ring-white/15 shadow-inner">
+              <span className="text-4xl select-none" role="img" aria-label="trophy">🏆</span>
             </div>
           </div>
 
           {/* Heading */}
           <div className="mb-1 text-center">
-            <h2 className="text-2xl font-black tracking-tight text-foreground">
-              TRIAL COMPLETE!
-            </h2>
+            <h2 className="text-2xl font-black tracking-tight text-foreground">TRIAL COMPLETE!</h2>
             <p className="mt-1 text-xs font-medium text-muted-foreground">
-              {totalQuestions} questions · {accuracyVerdict(accuracy)}
+              {accuracyVerdict(accuracy)}
             </p>
           </div>
 
+          {/* ── Score highlight ─────────────────────────────────────────────── */}
+          <div className="mt-4 flex items-center justify-center gap-1.5 rounded-2xl border border-border bg-muted/40 px-4 py-3">
+            <span className={`text-4xl font-black tabular-nums leading-none ${accuracyColor(accuracy)}`}>
+              {correctCount}
+            </span>
+            <span className="text-xl font-bold text-muted-foreground leading-none">/</span>
+            <span className="text-xl font-bold text-muted-foreground tabular-nums leading-none">{totalQuestions}</span>
+            <span className="ml-2 text-sm font-semibold text-muted-foreground">correct</span>
+            <span className="ml-auto text-sm font-black tabular-nums">{accuracy}%</span>
+          </div>
+
+          {/* ── Test stats row ──────────────────────────────────────────────── */}
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
+            <StatCard
+              icon="✅"
+              label="Correct"
+              value={`${correctCount}`}
+              sub="right"
+              valueClass="text-emerald-500 dark:text-emerald-400"
+            />
+            <StatCard
+              icon="❌"
+              label="Missed"
+              value={`${wrongCount}`}
+              sub="wrong"
+              valueClass={wrongCount > 0 ? "text-rose-500 dark:text-rose-400" : "text-muted-foreground"}
+            />
+            <StatCard
+              icon="⏱️"
+              label="Time"
+              value={formatTime(timeTakenSeconds)}
+              sub="elapsed"
+              valueClass="text-foreground"
+            />
+          </div>
+
           {/* Divider */}
-          <div className="my-5 h-px bg-border" />
+          <div className="my-3 h-px bg-border" />
 
-          {/* Stat cards */}
-          <div className="grid grid-cols-3 gap-2.5">
-
-            {/* Best Combo */}
+          {/* ── Gamification row ────────────────────────────────────────────── */}
+          <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Gamification
+          </p>
+          <div className="grid grid-cols-2 gap-2">
             <StatCard
               icon="🔥"
               label="Best Combo"
@@ -152,8 +200,6 @@ export function GrandFinaleModal({
               sub={bestStreak > 0 ? "in a row" : "no streak"}
               valueClass={bestStreak > 0 ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground"}
             />
-
-            {/* Milestone */}
             <StatCard
               icon="🏷️"
               label="Milestone"
@@ -161,20 +207,10 @@ export function GrandFinaleModal({
               sub={milestoneTier > 0 ? MILESTONE_LABELS[milestoneTier] : "not reached"}
               valueClass={MILESTONE_COLORS[milestoneTier]}
             />
-
-            {/* Accuracy */}
-            <StatCard
-              icon="🎯"
-              label="Accuracy"
-              value={`${accuracy}%`}
-              sub={accuracy >= 70 ? "excellent" : accuracy >= 50 ? "fair" : "needs work"}
-              valueClass={accuracyColor(accuracy)}
-            />
-
           </div>
 
           {/* CTA buttons */}
-          <div className="mt-6 flex flex-col gap-2.5">
+          <div className="mt-5 flex flex-col gap-2.5">
             <button
               type="button"
               onClick={onReturnToMenu}
@@ -187,7 +223,7 @@ export function GrandFinaleModal({
               onClick={onRetry}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:bg-muted active:scale-[0.98]"
             >
-              🔄 Play Again
+              🔄 Retry Block
             </button>
           </div>
 
