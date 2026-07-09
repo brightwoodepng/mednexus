@@ -7,6 +7,7 @@ import type { QuizMode, HistoryEntry, BlockResult, Question } from "@/lib/types"
 import { CalculatorModal } from "@/components/calculator-modal"
 import { LabValuesModal } from "@/components/lab-values-modal"
 import { RichText } from "@/components/rich-text"
+import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import {
   XIcon,
   FlagIcon,
@@ -33,6 +34,7 @@ const SECONDS_PER_QUESTION = 90
 
 export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled = false, onExit, onComplete }: QuizSimulatorProps) {
   const { progress, toggleFlag, recordHistory } = useApp()
+  const { triggerError, isShaking, isFlashing } = useErrorFeedback()
 
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | string[] | null>>({})
@@ -128,12 +130,23 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     if (struckSet.has(optionId)) return
     if (mode === "trial" && selected !== null) return
     setAnswers(prev => ({ ...prev, [current.id]: optionId }))
+    // Error feedback: explicitly gated on Trial mode + gamification opt-in
+    if (mode === "trial" && gamificationEnabled && optionId !== (current.correctAnswer as string)) {
+      triggerError()
+    }
   }
 
   function lockInSata() {
     if (!isSATA || isLocked || sataSelected.length === 0) return
     setAnswers(prev => ({ ...prev, [current.id]: sataSelected }))
     setSataLocked(prev => { const n = new Set(prev); n.add(current.id); return n })
+    // Error feedback for SATA: explicitly gated on Trial mode + gamification opt-in
+    if (mode === "trial" && gamificationEnabled) {
+      const ca = [...sataCorrectAnswers].sort()
+      const sa = [...sataSelected].sort()
+      const correct = ca.length === sa.length && ca.every((c, i) => c === sa[i])
+      if (!correct) triggerError()
+    }
   }
 
   function toggleStrike(e: React.MouseEvent, optionId: string) {
@@ -234,7 +247,11 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         )}
 
         {/* ── Question + options column — scrolls independently ── */}
-        <div className="flex flex-1 flex-col overflow-y-auto min-w-0">
+        <div className={`relative flex flex-1 flex-col overflow-y-auto min-w-0 ${isShaking ? "animate-error-shake" : ""}`}>
+          {/* Glassmorphic error flash overlay */}
+          {isFlashing && (
+            <div className="pointer-events-none absolute inset-0 z-10 bg-rose-500/[0.12] backdrop-blur-[6px]" />
+          )}
           <div className={`flex-1 px-4 pt-5 pb-6 sm:px-6 sm:pt-8 sm:pb-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}>
             <div className="mb-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

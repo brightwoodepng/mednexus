@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
+import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { MultiplayerClash, CohortReview, WagerWars, DoubleJeopardyMulti } from "@/components/game-mode-multiplayer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
@@ -226,10 +227,23 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer, eliminated 
   hud: React.ReactNode; footer?: React.ReactNode
   eliminated?: Set<string>
 }) {
+  const { triggerError, isShaking, isFlashing } = useErrorFeedback()
+  const prevFbRef = useRef<Feedback | null>(null)
+
+  // Game Mode: error feedback is always active (no gamification gate)
+  useEffect(() => {
+    if (fb === "wrong" && prevFbRef.current !== "wrong") triggerError()
+    prevFbRef.current = fb
+  }, [fb]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
       {hud}
-      <div className="flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5 sm:p-6">
+      <div className={`relative flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5 sm:p-6 ${isShaking ? "animate-error-shake" : ""}`}>
+        {/* Glassmorphic error flash overlay */}
+        {isFlashing && (
+          <div className="pointer-events-none absolute inset-0 z-10 rounded-3xl bg-rose-500/[0.13] backdrop-blur-[6px]" />
+        )}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="max-w-[200px] truncate rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
             {question.subject}

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
+import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
 import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES } from "@/lib/economy"
@@ -530,6 +531,17 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeav
   const revealed = room.phase === "reveal"
   const allAnswered = room.players.length > 0 && room.players.every(p => p.answer !== null)
 
+  // ── Error feedback ──────────────────────────────────────────────────────────
+  const { triggerError, isShaking, isFlashing } = useErrorFeedback()
+  const prevQiRef = useRef(room.currentQi)
+  const prevAnswerCorrectRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    const qiChanged = room.currentQi !== prevQiRef.current
+    if (qiChanged) { prevQiRef.current = room.currentQi; prevAnswerCorrectRef.current = null; return }
+    if (myLastAnswerCorrect === false && prevAnswerCorrectRef.current === null) triggerError()
+    prevAnswerCorrectRef.current = myLastAnswerCorrect
+  }, [room.currentQi, myLastAnswerCorrect]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
       {/* HUD bar */}
@@ -573,7 +585,8 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeav
       {/* Question card */}
       {!revealed && (
         <>
-          <div className="flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5">
+          <div className={`relative flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5 ${isShaking ? "animate-error-shake" : ""}`}>
+            {isFlashing && <div className="pointer-events-none absolute inset-0 z-10 rounded-3xl bg-rose-500/[0.13] backdrop-blur-[6px]" />}
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">{q.subject}</span>
               {q.module && <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground">{q.module}</span>}
@@ -1139,6 +1152,17 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
 
   const me = room.players.find(p => p.id === myId)
   const myAnswer = me?.answer ?? null
+
+  // ── Error feedback ──────────────────────────────────────────────────────────
+  const { triggerError, isShaking, isFlashing } = useErrorFeedback()
+  const prevQiRef = useRef(room.currentQi)
+  const prevAnswerCorrectRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    const qiChanged = room.currentQi !== prevQiRef.current
+    if (qiChanged) { prevQiRef.current = room.currentQi; prevAnswerCorrectRef.current = null; return }
+    if (myLastAnswerCorrect === false && prevAnswerCorrectRef.current === null) triggerError()
+    prevAnswerCorrectRef.current = myLastAnswerCorrect
+  }, [room.currentQi, myLastAnswerCorrect]) // eslint-disable-line react-hooks/exhaustive-deps
   const myWager = me?.wagerAmount ?? null
   const myBalance = me?.balance ?? 1000
   const isSpectator = me?.isSpectator ?? false
@@ -1191,7 +1215,8 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
       )}
 
       {/* Vignette — always visible; options hidden by server during wager phase */}
-      <div className={`rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-amber-300/60 dark:border-amber-700/40" : "border-primary/20"}`}>
+      <div className={`relative rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-amber-300/60 dark:border-amber-700/40" : "border-primary/20"} ${isShaking ? "animate-error-shake" : ""}`}>
+        {isFlashing && <div className="pointer-events-none absolute inset-0 z-10 rounded-3xl bg-rose-500/[0.13] backdrop-blur-[6px]" />}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
           {isWagerPhase && (
@@ -1361,6 +1386,17 @@ function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvan
 
   const me = room.players.find(p => p.id === myId)
   const myAnswer = me?.answer ?? null
+
+  // ── Error feedback ──────────────────────────────────────────────────────────
+  const { triggerError, isShaking, isFlashing } = useErrorFeedback()
+  const prevQiRef = useRef(room.currentQi)
+  const prevAnswerCorrectRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    const qiChanged = room.currentQi !== prevQiRef.current
+    if (qiChanged) { prevQiRef.current = room.currentQi; prevAnswerCorrectRef.current = null; return }
+    if (myLastAnswerCorrect === false && prevAnswerCorrectRef.current === null) triggerError()
+    prevAnswerCorrectRef.current = myLastAnswerCorrect
+  }, [room.currentQi, myLastAnswerCorrect]) // eslint-disable-line react-hooks/exhaustive-deps
   const myWager = me?.wagerAmount ?? null
   const myBank = me?.balance ?? 500
   const isSpectator = me?.isSpectator ?? false
@@ -1407,7 +1443,8 @@ function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvan
       )}
 
       {/* Vignette card */}
-      <div className={`rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-indigo-300/60 dark:border-indigo-700/40" : "border-primary/20"}`}>
+      <div className={`relative rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-indigo-300/60 dark:border-indigo-700/40" : "border-primary/20"} ${isShaking ? "animate-error-shake" : ""}`}>
+        {isFlashing && <div className="pointer-events-none absolute inset-0 z-10 rounded-3xl bg-rose-500/[0.13] backdrop-blur-[6px]" />}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
           {isWagerPhase && (

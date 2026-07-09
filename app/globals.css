@@ -953,3 +953,19 @@
 .rich-text em, .rich-text i { font-style: italic; }
 .rich-text ul, .rich-text ol { padding-left: 1.25rem; margin-block: 0.35em; }
 .rich-text li { margin-block: 0.15em; }
+
+/* ── Error feedback shake animation ─────────────────────────────────────────── */
+@keyframes error-shake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-7px); }
+  30%  { transform: translateX(7px); }
+  45%  { transform: translateX(-5px); }
+  60%  { transform: translateX(5px); }
+  75%  { transform: translateX(-3px); }
+  90%  { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+
+.animate-error-shake {
+  animation: error-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
