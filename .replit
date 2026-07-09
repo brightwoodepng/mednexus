@@ -28,7 +28,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm install && pnpm dev"
+args = "pnpm dev"
 waitForPort = 5000
 
 [userenv]
