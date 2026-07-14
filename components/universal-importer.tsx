@@ -308,6 +308,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
 
   // ── Format Tips accordion ─────────────────────────────────────────────────────
   const [openTip, setOpenTip] = useState<string | null>(null)
+  const [rulesCopied, setRulesCopied] = useState(false)
   function toggleTip(id: string) { setOpenTip((prev) => (prev === id ? null : id)) }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -865,13 +866,78 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                   },
                 ]
 
+                // Build the full plain-text copy payload from the sections data
+                function buildCopyText() {
+                  const lines: string[] = [
+                    "MEDNEXUS DOCUMENT FORMATTING RULES",
+                    "Use these rules to pre-format raw medical MCQ documents before importing.",
+                    "=".repeat(60),
+                    "",
+                  ]
+                  sections.forEach((s, idx) => {
+                    lines.push(`${idx + 1}. ${s.label.toUpperCase()}`)
+                    lines.push("-".repeat(s.label.length + 4))
+                    s.rules.forEach((r) => {
+                      if (r.good !== undefined) lines.push(`  ✓  ${r.good}`)
+                      if (r.bad  !== undefined) lines.push(`  ✗  ${r.bad}`)
+                      if (r.note !== undefined) lines.push(`  ℹ  ${r.note}`)
+                    })
+                    if (s.example) {
+                      lines.push("")
+                      lines.push("  Example:")
+                      s.example.split("\n").forEach((l) => lines.push(`    ${l}`))
+                    }
+                    lines.push("")
+                  })
+                  lines.push("=".repeat(60))
+                  lines.push("COMPLETE QUESTION BLOCK EXAMPLE")
+                  lines.push("-".repeat(32))
+                  lines.push("")
+                  lines.push("MODULE: Internal Medicine")
+                  lines.push("DISCIPLINE: Cardiology")
+                  lines.push("")
+                  lines.push("1. A 55-year-old hypertensive man presents with sudden-onset tearing chest")
+                  lines.push("   pain radiating to his back. BP is 190/110 mmHg right arm, 160/90 mmHg")
+                  lines.push("   left arm. Chest X-ray shows a widened mediastinum. Most likely diagnosis?")
+                  lines.push("")
+                  lines.push("A. Aortic dissection")
+                  lines.push("B. Pulmonary embolism")
+                  lines.push("C. Myocardial infarction")
+                  lines.push("D. Pericarditis")
+                  lines.push("E. Tension pneumothorax")
+                  lines.push("")
+                  lines.push("Answer: A")
+                  lines.push("")
+                  lines.push("Explanation: Aortic dissection presents with sudden tearing chest pain")
+                  lines.push("radiating to the back, BP differential between arms, and a widened")
+                  lines.push("mediastinum on CXR. The intimal tear allows blood to enter the aortic media.")
+                  return lines.join("\n")
+                }
+
                 return (
                   <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
                     {/* Header */}
                     <div className="flex items-center gap-2 border-b border-border px-4 py-3">
                       <InfoIcon size={13} className="text-muted-foreground shrink-0" />
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Document Formatting Rules</p>
-                      <span className="ml-auto text-[10px] text-muted-foreground/60">click a section to expand</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground/60 mr-2">click a section to expand</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(buildCopyText()).then(() => {
+                            setRulesCopied(true)
+                            setTimeout(() => setRulesCopied(false), 2200)
+                          })
+                        }}
+                        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                          rulesCopied
+                            ? "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        {rulesCopied ? <CheckIcon size={10} /> : <ClipboardListIcon size={10} />}
+                        {rulesCopied ? "Copied!" : "Copy All"}
+                      </button>
                     </div>
 
                     {/* Accordion sections */}
