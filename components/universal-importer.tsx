@@ -867,51 +867,81 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                   },
                 ]
 
-                // Build the full plain-text copy payload from the sections data
+                // Build the AI-ready reformatting prompt
                 function buildCopyText() {
                   const lines: string[] = [
-                    "MEDNEXUS DOCUMENT FORMATTING RULES",
-                    "Use these rules to pre-format raw medical MCQ documents before importing.",
+                    "You are a medical document formatter. I will paste a raw MCQ document below.",
+                    "Your job is to reformat it so it can be imported into MedNexus.",
+                    "Follow these rules EXACTLY. Do not change any content — only reformat.",
+                    "Return ONLY the reformatted document. No explanations, no commentary.",
+                    "",
+                    "=".repeat(60),
+                    "FORMATTING RULES",
                     "=".repeat(60),
                     "",
+                    "1. MODULE & DISCIPLINE TAGS",
+                    "   • Place MODULE: <name> on its own line before the first question it applies to.",
+                    "   • Place DISCIPLINE: <name> on its own line before the questions in that discipline.",
+                    "   • Tags apply to all questions that follow until the next tag of the same type.",
+                    "   • Use exactly these keywords: MODULE: and DISCIPLINE: (colon, then a space).",
+                    "   • Do NOT invent or infer a DISCIPLINE if it is not clearly stated in the source — leave it out.",
+                    "   • One MODULE per document is normal. Multiple DISCIPLINE sections within that module is fine.",
+                    "",
+                    "2. QUESTION NUMBERING",
+                    "   • Number every question starting from 1.",
+                    "   • Format: <number>. <question text on the same line>",
+                    "   • Example:  1. A 55-year-old man presents with…",
+                    "   • The question text MUST start on the SAME line as the number — never the next line.",
+                    "   • Multi-line vignettes are fine; continuation lines are indented or flush-left.",
+                    "",
+                    "3. ANSWER OPTIONS",
+                    "   • Each option on its own line.",
+                    "   • Format: A. <text>   (letter, period, space, text)",
+                    "   • Use letters A through E only.",
+                    "   • Minimum 2 options per question.",
+                    "",
+                    "4. CORRECT ANSWER LINE",
+                    "   • After the last option, write:  Answer: <letter>",
+                    "   • Example:  Answer: A",
+                    "   • One letter only — never write the answer text, only the letter.",
+                    "",
+                    "5. EXPLANATION",
+                    "   • After the Answer line, write:  Explanation: <text>",
+                    "   • Multi-line explanations are fine.",
+                    "   • If the source has no explanation, omit the line entirely.",
+                    "",
+                    "=".repeat(60),
+                    "EXAMPLE OF A CORRECTLY FORMATTED BLOCK",
+                    "=".repeat(60),
+                    "",
+                    "MODULE: Internal Medicine",
+                    "",
+                    "DISCIPLINE: Cardiology",
+                    "",
+                    "1. A 55-year-old hypertensive man presents with sudden-onset tearing chest",
+                    "   pain radiating to his back. BP is 190/110 mmHg right arm, 160/90 mmHg",
+                    "   left arm. CXR shows a widened mediastinum. Most likely diagnosis?",
+                    "",
+                    "A. Aortic dissection",
+                    "B. Pulmonary embolism",
+                    "C. Myocardial infarction",
+                    "D. Pericarditis",
+                    "E. Tension pneumothorax",
+                    "",
+                    "Answer: A",
+                    "",
+                    "Explanation: Aortic dissection classically presents with sudden tearing chest",
+                    "pain radiating to the back, a BP differential between arms, and a widened",
+                    "mediastinum. The intimal tear allows blood to enter the aortic wall media.",
+                    "",
+                    "DISCIPLINE: Pulmonology",
+                    "",
+                    "2. A 30-year-old smoker presents with progressive dyspnoea and barrel chest…",
+                    "",
+                    "=".repeat(60),
+                    "NOW REFORMAT THE DOCUMENT I PASTE BELOW:",
+                    "=".repeat(60),
                   ]
-                  sections.forEach((s, idx) => {
-                    lines.push(`${idx + 1}. ${s.label.toUpperCase()}`)
-                    lines.push("-".repeat(s.label.length + 4))
-                    s.rules.forEach((r) => {
-                      if (r.good !== undefined) lines.push(`  ✓  ${r.good}`)
-                      if (r.bad  !== undefined) lines.push(`  ✗  ${r.bad}`)
-                      if (r.note !== undefined) lines.push(`  ℹ  ${r.note}`)
-                    })
-                    if (s.example) {
-                      lines.push("")
-                      lines.push("  Example:")
-                      s.example.split("\n").forEach((l) => lines.push(`    ${l}`))
-                    }
-                    lines.push("")
-                  })
-                  lines.push("=".repeat(60))
-                  lines.push("COMPLETE QUESTION BLOCK EXAMPLE")
-                  lines.push("-".repeat(32))
-                  lines.push("")
-                  lines.push("MODULE: Internal Medicine")
-                  lines.push("DISCIPLINE: Cardiology")
-                  lines.push("")
-                  lines.push("1. A 55-year-old hypertensive man presents with sudden-onset tearing chest")
-                  lines.push("   pain radiating to his back. BP is 190/110 mmHg right arm, 160/90 mmHg")
-                  lines.push("   left arm. Chest X-ray shows a widened mediastinum. Most likely diagnosis?")
-                  lines.push("")
-                  lines.push("A. Aortic dissection")
-                  lines.push("B. Pulmonary embolism")
-                  lines.push("C. Myocardial infarction")
-                  lines.push("D. Pericarditis")
-                  lines.push("E. Tension pneumothorax")
-                  lines.push("")
-                  lines.push("Answer: A")
-                  lines.push("")
-                  lines.push("Explanation: Aortic dissection presents with sudden tearing chest pain")
-                  lines.push("radiating to the back, BP differential between arms, and a widened")
-                  lines.push("mediastinum on CXR. The intimal tear allows blood to enter the aortic media.")
                   return lines.join("\n")
                 }
 
@@ -920,8 +950,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                     {/* Header */}
                     <div className="flex items-center gap-2 border-b border-border px-4 py-3">
                       <InfoIcon size={13} className="text-muted-foreground shrink-0" />
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Document Formatting Rules</p>
-                      <span className="ml-auto text-[10px] text-muted-foreground/60 mr-2">click a section to expand</span>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Formatting Rules</p>
+                        <p className="text-[10px] text-muted-foreground/60">Copy → paste into Claude or Gemini before your document</p>
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
@@ -930,14 +962,14 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                             setTimeout(() => setRulesCopied(false), 2200)
                           })
                         }}
-                        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        className={`ml-auto flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
                           rulesCopied
                             ? "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                             : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                         }`}
                       >
                         {rulesCopied ? <CheckIcon size={10} /> : <ClipboardListIcon size={10} />}
-                        {rulesCopied ? "Copied!" : "Copy All"}
+                        {rulesCopied ? "Copied!" : "Copy Prompt"}
                       </button>
                     </div>
 
