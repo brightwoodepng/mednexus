@@ -10,7 +10,7 @@ import {
   TrashIcon, PencilIcon, PlusIcon, XIcon, CheckIcon, DatabaseIcon,
   RefreshCwIcon, AlertTriangleIcon, CheckSquareIcon, DownloadIcon,
   SearchIcon, ChevronDownIcon, ChevronRightIcon, LayersIcon, BookOpenIcon,
-  ArrowUpDownIcon,
+  ArrowUpDownIcon, ImageIcon,
 } from "@/components/icons"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,6 +110,7 @@ const EMPTY_FORM = {
   optA: "", optB: "", optC: "", optD: "", optE: "",
   correctAnswer: "",
   objective: "", details: "", incorrectReasoning: "",
+  mediaBase64: "",
 }
 
 // ── SATA helpers ──────────────────────────────────────────────────────────────
@@ -156,6 +157,7 @@ function questionToForm(q: Question): FormState {
     objective: q.explanation?.objective ?? "",
     details: q.explanation?.details ?? "",
     incorrectReasoning: q.explanation?.incorrectReasoning ?? "",
+    mediaBase64: q.mediaBase64 ?? "",
   }
 }
 
@@ -182,6 +184,7 @@ function formToQuestion(f: FormState, id: string): Question {
     id, subject: f.subject.trim(), vignette: f.vignette.trim(), options,
     correctAnswer,
     explanation,
+    mediaBase64: f.mediaBase64 || null,
   }
   if (f.module.trim()) q.module = f.module.trim()
   return q
@@ -195,6 +198,7 @@ function QuestionForm({ initial, questionId, defaultModule, defaultSubject, admi
     initial ? questionToForm(initial) : { ...EMPTY_FORM, module: defaultModule, subject: defaultSubject }
   )
   function set(key: keyof FormState, val: string) { setForm((f) => ({ ...f, [key]: val })) }
+  const imgInputRef = useRef<HTMLInputElement>(null)
 
   const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
   const labelCls = "block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1"
@@ -215,6 +219,52 @@ function QuestionForm({ initial, questionId, defaultModule, defaultSubject, admi
         <label className={labelCls}>Clinical Vignette *</label>
         <textarea className={inputCls} rows={4} value={form.vignette} onChange={(e) => set("vignette", e.target.value)} placeholder="A 55-year-old man presents with…" required />
       </div>
+
+      {/* ── Clinical Image ── */}
+      <div>
+        <label className={labelCls}>Clinical Image <span className="normal-case font-normal">(optional)</span></label>
+        <input
+          ref={imgInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            const reader = new FileReader()
+            reader.onload = (ev) => {
+              const result = ev.target?.result
+              if (typeof result === "string") set("mediaBase64", result)
+            }
+            reader.readAsDataURL(file)
+            if (imgInputRef.current) imgInputRef.current.value = ""
+          }}
+        />
+        {form.mediaBase64 ? (
+          <div className="relative w-fit overflow-hidden rounded-xl border border-border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={form.mediaBase64} alt="Question image" className="max-h-48 max-w-full object-contain bg-muted" />
+            <button
+              type="button"
+              onClick={() => set("mediaBase64", "")}
+              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-white shadow-md hover:bg-destructive/90 transition-colors"
+              aria-label="Remove image"
+            >
+              <TrashIcon size={13} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => imgInputRef.current?.click()}
+            className="flex items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-muted/20 transition-colors"
+          >
+            <ImageIcon size={15} />
+            Upload image
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {(["A", "B", "C", "D", "E"] as const).map((letter) => (
           <div key={letter}>
@@ -331,6 +381,7 @@ interface DrawerForm {
   optA: string; optB: string; optC: string; optD: string; optE: string
   correctAnswer: string
   objective: string; details: string; incorrectReasoning: string
+  mediaBase64: string
 }
 
 function drawerFormFromQ(q: Question): DrawerForm {
@@ -346,6 +397,7 @@ function drawerFormFromQ(q: Question): DrawerForm {
     objective: q.explanation?.objective ?? "",
     details: q.explanation?.details ?? "",
     incorrectReasoning: q.explanation?.incorrectReasoning ?? "",
+    mediaBase64: q.mediaBase64 ?? "",
   }
 }
 
@@ -369,6 +421,7 @@ function drawerFormToQ(f: DrawerForm, original: Question): Question {
     options,
     correctAnswer,
     explanation,
+    mediaBase64: f.mediaBase64 || null,
   }
 }
 
@@ -383,6 +436,7 @@ function ReviewDrawer({ item, onClose, onApprove, onSave }: {
   const [saving, setSaving] = useState(false)
 
   function set(key: keyof DrawerForm, val: string) { setForm((f) => ({ ...f, [key]: val })) }
+  const imgInputRef = useRef<HTMLInputElement>(null)
 
   const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
   const labelCls = "block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1"
@@ -474,6 +528,51 @@ function ReviewDrawer({ item, onClose, onApprove, onSave }: {
               onChange={(e) => set("vignette", e.target.value)}
               placeholder="A 55-year-old man presents with…"
             />
+          </div>
+
+          {/* ── Clinical Image ── */}
+          <div>
+            <label className={labelCls}>Clinical Image <span className="normal-case font-normal">(optional)</span></label>
+            <input
+              ref={imgInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                const reader = new FileReader()
+                reader.onload = (ev) => {
+                  const result = ev.target?.result
+                  if (typeof result === "string") set("mediaBase64", result)
+                }
+                reader.readAsDataURL(file)
+                if (imgInputRef.current) imgInputRef.current.value = ""
+              }}
+            />
+            {form.mediaBase64 ? (
+              <div className="relative w-fit overflow-hidden rounded-xl border border-border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.mediaBase64} alt="Question image" className="max-h-48 max-w-full object-contain bg-muted" />
+                <button
+                  type="button"
+                  onClick={() => set("mediaBase64", "")}
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-white shadow-md hover:bg-destructive/90 transition-colors"
+                  aria-label="Remove image"
+                >
+                  <TrashIcon size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => imgInputRef.current?.click()}
+                className="flex items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-muted/20 transition-colors"
+              >
+                <ImageIcon size={15} />
+                Upload image
+              </button>
+            )}
           </div>
 
           {/* Options */}
