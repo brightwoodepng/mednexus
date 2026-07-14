@@ -8,6 +8,7 @@ import {
   getModuleQuestionCount,
   getDisciplineCoverage,
   getQuestionsForModuleAndDiscipline,
+  getQuestionsForModule,
 } from "@/lib/modules"
 import {
   LayersIcon,
@@ -16,6 +17,7 @@ import {
   ChevronLeftIcon,
   StarIcon,
   SearchIcon,
+  DownloadIcon,
 } from "@/components/icons"
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -422,6 +424,17 @@ function ModuleDrillDown({
   const modIndex       = getLiveModules().indexOf(module) % CARD_PALETTES.length
   const palette        = CARD_PALETTES[modIndex]
 
+  function handleExportJSON() {
+    const questions = getQuestionsForModule(module)
+    const blob = new Blob([JSON.stringify(questions, null, 2)], { type: "application/json" })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement("a")
+    a.href     = url
+    a.download = `${module.replace(/\s+/g, "-")}-questions.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
 
@@ -441,6 +454,15 @@ function ModuleDrillDown({
             {totalInModule} questions · {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={handleExportJSON}
+          disabled={totalInModule === 0}
+          className="ml-auto flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <DownloadIcon size={13} />
+          Export JSON
+        </button>
       </div>
 
       {/* Discipline grid */}

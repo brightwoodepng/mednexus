@@ -554,6 +554,7 @@ export function MedNexusApp() {
             <QuestionEditor
               pendingImport={pendingEditorImport}
               onPendingImportConsumed={() => setPendingEditorImport(null)}
+              onOpenImporter={() => setImporterOpen(true)}
             />
           )}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}

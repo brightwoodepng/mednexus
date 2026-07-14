@@ -10,6 +10,7 @@ import {
   TrashIcon, PencilIcon, PlusIcon, XIcon, CheckIcon, DatabaseIcon,
   RefreshCwIcon, AlertTriangleIcon, CheckSquareIcon, DownloadIcon,
   SearchIcon, ChevronDownIcon, ChevronRightIcon, LayersIcon, BookOpenIcon,
+  ArrowUpDownIcon,
 } from "@/components/icons"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -873,9 +874,10 @@ interface EditTarget { question: Question | null; moduleName: string; discipline
 interface QuestionEditorProps {
   pendingImport?: Question[] | null
   onPendingImportConsumed?: () => void
+  onOpenImporter?: () => void
 }
 
-export function QuestionEditor({ pendingImport, onPendingImportConsumed }: QuestionEditorProps = {}) {
+export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenImporter }: QuestionEditorProps = {}) {
   const { questions, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb, appendQuestions, suppressNextAutoSave } = useQuestions()
   const { adminToken } = useAdmin()
 
@@ -1274,30 +1276,6 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed }: Quest
           {/* Right: actions */}
           <div className="flex shrink-0 items-center gap-1.5">
             <SaveStatusPill status={saveStatus} />
-            <button type="button" onClick={() => setPdfImportOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              <UploadIcon size={13} /> Import PDF
-            </button>
-            <button
-              type="button"
-              onClick={() => setWordImportOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors dark:border-blue-800/40 dark:bg-blue-900/20 dark:text-blue-400"
-            >
-              <WordIcon size={13} />
-              Import Word
-            </button>
-            <button type="button" onClick={() => jsonInputRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              <UploadIcon size={13} /> Import JSON
-            </button>
-            <button type="button" onClick={handleExportJSON} disabled={totalLive === 0}
-              className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <DownloadIcon size={13} /> Export JSON
-            </button>
-            <input ref={jsonInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleImportJSON} />
             {totalDrafts > 0 && (
               <button type="button" onClick={handleMakeAllLive}
                 className="flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:text-emerald-400"
@@ -1305,10 +1283,10 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed }: Quest
                 <CheckIcon size={13} /> Make All Live ({totalDrafts})
               </button>
             )}
-            <button type="button" onClick={() => openAdd("", "")}
-              className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+            <button type="button" onClick={onOpenImporter}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
             >
-              <PlusIcon size={13} /> Add Question
+              <ArrowUpDownIcon size={13} /> Importer
             </button>
           </div>
         </div>
@@ -1396,11 +1374,8 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed }: Quest
               <p className="mt-1 text-sm text-muted-foreground">Add a question or import from PDF to get started</p>
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setPdfImportOpen(true)} className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors">
-                <UploadIcon size={14} /> Import PDF
-              </button>
-              <button type="button" onClick={() => openAdd("", "")} className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-                <PlusIcon size={14} /> Add Question
+              <button type="button" onClick={onOpenImporter} className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                <ArrowUpDownIcon size={14} /> Importer
               </button>
             </div>
           </div>
