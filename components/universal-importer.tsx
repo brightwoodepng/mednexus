@@ -27,7 +27,46 @@ function Spinner({ size = 20 }: { size?: number }) {
   )
 }
 
-// ── Chunking helper (question-boundary-aware, same as word-import-modal) ─────
+// ── Question-block splitter + 25-question batcher ────────────────────────────
+// Splits a document into individual question blocks (one per numbered question),
+// then groups them into batches of `batchSize`. Any preamble text (MODULE:,
+// DISCIPLINE: tags before the first question) is prepended to the first batch.
+// Returns [] if no numbered questions are detected (caller falls back to word-chunking).
+function splitIntoQuestionBatches(text: string, batchSize = 25): string[] {
+  const Q_BOUNDARY = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
+  const lines = text.split(/\r?\n/)
+  const questionBlocks: string[] = []
+  let preamble = ""
+  let current = ""
+  let inQuestion = false
+
+  for (const line of lines) {
+    if (Q_BOUNDARY.test(line.trimStart())) {
+      if (current.trim()) questionBlocks.push(current)
+      // Prepend preamble (MODULE/DISCIPLINE tags before Q1) into the first block
+      current = (!inQuestion && preamble ? preamble : "") + line + "\n"
+      preamble = ""
+      inQuestion = true
+    } else {
+      if (inQuestion) {
+        current += line + "\n"
+      } else {
+        preamble += line + "\n"
+      }
+    }
+  }
+  if (current.trim()) questionBlocks.push(current)
+  if (questionBlocks.length === 0) return []
+
+  // Group individual question blocks into batches of batchSize
+  const batches: string[] = []
+  for (let i = 0; i < questionBlocks.length; i += batchSize) {
+    batches.push(questionBlocks.slice(i, i + batchSize).join("\n"))
+  }
+  return batches
+}
+
+// ── Word-count fallback chunker (used when no Q-boundaries found) ─────────────
 function chunkText(text: string, targetWords = 1500): string[] {
   const Q_BOUNDARY = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
   const lines = text.split(/\r?\n/)
@@ -248,7 +287,7 @@ interface UniversalImporterProps {
 export function UniversalImporter({ onImport, onClose }: UniversalImporterProps) {
   const { questions: liveQuestions } = useQuestions()
 
-  const [view, setView] = useState<"input" | "preview">("input")
+  const [view, setView] = useState<"input" | "categorize" | "preview">("input")
   const [dragOver, setDragOver] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [progressMessage, setProgressMessage] = useState("")
@@ -256,6 +295,12 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   const [textInput, setTextInput] = useState("")
   const [pendingImport, setPendingImport] = useState<Question[]>([])
   const [parseSource, setParseSource] = useState<"ai" | "regex" | "json" | null>(null)
+
+  // ── Categorization gate ──────────────────────────────────────────────────────
+  const [rawMaster, setRawMaster] = useState<Question[]>([])
+  const [uncategorizedCount, setUncategorizedCount] = useState(0)
+  const [categorizeModule, setCategorizeModule] = useState("")
+  const [categorizeDiscipline, setCategorizeDiscipline] = useState("")
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -301,11 +346,11 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     reader.readAsText(file)
   }
 
-  // ── DOCX handler — relay race chunking orchestrator ─────────────────────────
+  // ── DOCX handler — sequential image-aware 25-question batch processor ────────
   async function processDocxFile(file: File) {
     setError("")
     setIsProcessing(true)
-    setProgressMessage("Extracting document text…")
+    setProgressMessage("Extracting document text and images…")
 
     try {
       const formData = new FormData()
@@ -313,7 +358,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       const extractRes = await fetch("/api/parse-docx", { method: "POST", body: formData })
       if (!extractRes.ok) {
         const body = await extractRes.json().catch(() => ({}))
-        throw new Error((body as { error?: string }).error ?? `Server error ${extractRes.status}`)
+        throw new Error((body as { error?: string }).error ?? "Upload failed or timed out. Connection closed safely to protect bandwidth.")
       }
       const { text, images = [] } = await extractRes.json() as {
         text: string
@@ -321,16 +366,25 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       }
       if (!text?.trim()) throw new Error("The document appears to be empty or could not be read.")
 
-      // Build a map of IMAGE_N → data URI for quick lookup
+      // Build IMAGE_N → data URI lookup map
       const imageMap = new Map<string, string>(images.map((img) => [img.id, img.dataUri]))
 
-      const chunks = chunkText(text, 2000)
-      if (chunks.length === 0) throw new Error("No content found in the document.")
+      // Split into strict 25-question batches; fall back to word-chunking if no
+      // numbered question boundaries are found in the document.
+      const batches = splitIntoQuestionBatches(text, 25)
+      const usingQuestionBatches = batches.length > 0
+      const finalBatches = usingQuestionBatches ? batches : chunkText(text, 2000)
+
+      if (finalBatches.length === 0) throw new Error("No content found in the document.")
+
+      const batchLabel = usingQuestionBatches
+        ? `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""} of up to 25 questions`
+        : `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""}`
 
       if (images.length > 0) {
-        setProgressMessage(`Found ${images.length} image${images.length !== 1 ? "s" : ""} — preparing ${chunks.length} batch${chunks.length !== 1 ? "es" : ""}…`)
+        setProgressMessage(`Found ${images.length} image${images.length !== 1 ? "s" : ""} — preparing ${batchLabel}…`)
       } else {
-        setProgressMessage(`Preparing ${chunks.length} batch${chunks.length !== 1 ? "es" : ""}…`)
+        setProgressMessage(`Preparing ${batchLabel}…`)
       }
 
       let runningModule: string | null = null
@@ -338,13 +392,24 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       const master: Question[] = []
       let questionIndex = 0
 
-      for (let i = 0; i < chunks.length; i++) {
-        setProgressMessage(`Processing batch ${i + 1} of ${chunks.length}…`)
+      for (let i = 0; i < finalBatches.length; i++) {
+        const startQ = i * 25 + 1
+        const endQ = Math.min((i + 1) * 25, usingQuestionBatches ? questionIndex + 25 : (i + 1) * 25)
+        setProgressMessage(
+          usingQuestionBatches
+            ? `Processing batch ${i + 1} of ${finalBatches.length} (questions ${startQ}–${endQ})…`
+            : `Processing batch ${i + 1} of ${finalBatches.length}…`
+        )
 
+        // ── Circuit breaker: single attempt, immediate throw on failure ────
         const chunkRes = await fetch("/api/extract-single-chunk", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ textChunk: chunks[i], fallbackModule: runningModule, fallbackDiscipline: runningDiscipline }),
+          body: JSON.stringify({
+            textChunk: finalBatches[i],
+            fallbackModule: runningModule,
+            fallbackDiscipline: runningDiscipline,
+          }),
         })
         if (!chunkRes.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
         const chunkData = await chunkRes.json() as { questions?: ChunkQuestion[] }
@@ -355,64 +420,84 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         if (lastItem?.discipline) runningDiscipline = lastItem.discipline
 
         // ── Image assignment ────────────────────────────────────────────────
-        // For each AI-returned question, find [IMAGE_N] markers in the chunk
-        // that appear within that question's text block, then attach the image.
-        // Strategy: count question boundaries before each image marker to
-        // determine which question index (0-based within this chunk) owns it.
+        // Count question boundaries before each [IMAGE_N] marker to determine
+        // which question within the batch owns that image.
         const Q_BOUNDARY_GLOBAL = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
-        const chunkText_ = chunks[i]
-
-        // Map: question index within chunk → first image data URI found for it
+        const batchText = finalBatches[i]
         const questionImageMap = new Map<number, string>()
-        const imagePlaceholderMatches = [...chunkText_.matchAll(/\[IMAGE_(\d+)\]/g)]
-        for (const match of imagePlaceholderMatches) {
-          const imageId = `IMAGE_${match[1]}`
-          const imageDataUri = imageMap.get(imageId)
+
+        for (const match of batchText.matchAll(/\[IMAGE_(\d+)\]/g)) {
+          const imageDataUri = imageMap.get(`IMAGE_${match[1]}`)
           if (!imageDataUri) continue
-
-          // Count question boundaries before this image marker position
-          const textBefore = chunkText_.slice(0, match.index ?? 0)
-          const boundariesBefore = [...textBefore.matchAll(Q_BOUNDARY_GLOBAL)].length
-          const qIdx = Math.max(0, boundariesBefore - 1)
-
-          // Only assign first image found for each question slot
-          if (!questionImageMap.has(qIdx)) {
-            questionImageMap.set(qIdx, imageDataUri)
-          }
+          const textBefore = batchText.slice(0, match.index ?? 0)
+          const qIdx = Math.max(0, [...textBefore.matchAll(Q_BOUNDARY_GLOBAL)].length - 1)
+          if (!questionImageMap.has(qIdx)) questionImageMap.set(qIdx, imageDataUri)
         }
 
         for (let j = 0; j < chunkQuestions.length; j++) {
           const q = makeFromChunk(chunkQuestions[j], questionIndex++, null)
-          // Strip any [IMAGE_N] markers the AI may have left in the vignette
           q.vignette = q.vignette.replace(/\[IMAGE_\d+\]/gi, "").replace(/\s{2,}/g, " ").trim()
-          // Attach image if one was found for this question's slot
           const imgForQ = questionImageMap.get(j)
           if (imgForQ) q.mediaBase64 = imgForQ
           master.push(q)
         }
       }
 
-      if (master.length > 0) {
-        stageQuestions(master, "ai")
+      if (master.length === 0) {
+        // AI returned nothing — regex fallback
+        setProgressMessage("AI returned no questions — using fallback parser…")
+        const raw = parseTextFallback(text)
+        if (raw.length === 0) {
+          setIsProcessing(false)
+          setProgressMessage("")
+          setError("No questions detected. Check that questions are numbered (1., Q1.) and options are labelled (A., B., etc.).")
+          return
+        }
+        setIsProcessing(false)
+        setProgressMessage("")
+        stageQuestions(raw.map((r, i) => makeFromRaw(r, i, null)), "regex")
         return
       }
 
-      // AI returned nothing — regex fallback
-      setProgressMessage("AI returned no questions — using fallback parser…")
-      const raw = parseTextFallback(text)
-      if (raw.length === 0) {
-        setError("No questions detected. Check that questions are numbered (1., Q1.) and options are labelled (A., B., etc.).")
+      // ── Categorization gate ─────────────────────────────────────────────────
+      // Any question missing a module OR discipline requires user input before
+      // the batch can proceed to the preview stage.
+      const uncategorized = master.filter((q) => !q.module || !q.subject)
+      if (uncategorized.length > 0) {
+        setIsProcessing(false)
+        setProgressMessage("")
+        setRawMaster(master)
+        setUncategorizedCount(uncategorized.length)
+        setCategorizeModule("")
+        setCategorizeDiscipline("")
+        setView("categorize")
         return
       }
-      stageQuestions(raw.map((r, i) => makeFromRaw(r, i, null)), "regex")
+
+      setIsProcessing(false)
+      setProgressMessage("")
+      stageQuestions(master, "ai")
     } catch (err) {
       setIsProcessing(false)
       setProgressMessage("")
       setError(err instanceof Error ? err.message : "Upload failed or timed out. Connection closed safely to protect bandwidth.")
+    }
+  }
+
+  // ── Categorization gate: apply and proceed to preview ────────────────────────
+  function applyCategorization() {
+    if (!categorizeModule.trim()) {
+      setError("A module name is required before you can continue.")
       return
     }
-    setIsProcessing(false)
-    setProgressMessage("")
+    setError("")
+    const filled = rawMaster.map((q) => ({
+      ...q,
+      module: q.module || categorizeModule.trim(),
+      subject: q.subject || categorizeDiscipline.trim(),
+    }))
+    setRawMaster([])
+    stageQuestions(filled, "ai")
   }
 
   // ── PDF handler ─────────────────────────────────────────────────────────────
@@ -535,7 +620,11 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
             <div className="flex items-center gap-2">
               <ArrowUpDownIcon size={16} className="text-primary" />
               <h3 className="font-bold text-foreground">
-                {view === "input" ? "Import / Export Data" : `Preview — ${pendingImport.length} question${pendingImport.length !== 1 ? "s" : ""}`}
+                {view === "input"
+                  ? "Import / Export Data"
+                  : view === "categorize"
+                  ? "Categorization Required"
+                  : `Preview — ${pendingImport.length} question${pendingImport.length !== 1 ? "s" : ""}`}
               </h3>
               {view === "preview" && sourceBadge && (
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${sourceBadge.cls}`}>{sourceBadge.label}</span>
@@ -544,6 +633,8 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
             <p className="mt-0.5 text-xs text-muted-foreground">
               {view === "input"
                 ? "Drop a file or paste text to import · Export the full live question bank as JSON"
+                : view === "categorize"
+                ? "Assign a module and discipline to uncategorized questions before importing"
                 : "Review staged questions, remove any mis-parsed entries, then confirm"}
             </p>
           </div>
@@ -668,6 +759,58 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
               </div>
             </div>
 
+          ) : view === "categorize" ? (
+
+            /* ── Categorization gate ─────────────────────────────────────── */
+            <div className="space-y-4 p-6">
+              <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800/40 dark:bg-amber-900/20">
+                <AlertTriangleIcon size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div>
+                  <p className="font-semibold text-amber-800 dark:text-amber-300">
+                    {uncategorizedCount} question{uncategorizedCount !== 1 ? "s" : ""} missing MODULE or DISCIPLINE tags
+                  </p>
+                  <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                    These questions have no <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/40">MODULE:</code> or <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/40">DISCIPLINE:</code> tag in the source document.
+                    Assign them below — questions that already have tags will keep their own values.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                    Module <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={categorizeModule}
+                    onChange={(e) => setCategorizeModule(e.target.value)}
+                    placeholder="e.g. Internal Medicine"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                    Discipline <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={categorizeDiscipline}
+                    onChange={(e) => setCategorizeDiscipline(e.target.value)}
+                    placeholder="e.g. Cardiology"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertTriangleIcon size={15} className="mt-0.5 shrink-0" />
+                  {error}
+                </div>
+              )}
+            </div>
+
           ) : (
             /* Preview staging area */
             <div className="space-y-2 p-6">
@@ -716,6 +859,25 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
               >
                 <CheckIcon size={14} />
                 Confirm & Import {pendingImport.length} to Editor
+              </button>
+            </>
+          ) : view === "categorize" ? (
+            <>
+              <button
+                type="button"
+                onClick={() => { setView("input"); setRawMaster([]); setError("") }}
+                className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <RefreshCwIcon size={13} /> Start Over
+              </button>
+              <button
+                type="button"
+                disabled={!categorizeModule.trim()}
+                onClick={applyCategorization}
+                className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <CheckIcon size={14} />
+                Apply & Continue to Preview
               </button>
             </>
           ) : (
