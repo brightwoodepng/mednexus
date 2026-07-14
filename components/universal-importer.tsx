@@ -16,6 +16,10 @@ import {
   UploadIcon,
   ArrowUpDownIcon,
   ImageIcon,
+  InfoIcon,
+  HashIcon,
+  ListChecksIcon,
+  BookOpenIcon,
 } from "@/components/icons"
 
 // ── Spinner ───────────────────────────────────────────────────────────────────
@@ -301,6 +305,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   const [uncategorizedCount, setUncategorizedCount] = useState(0)
   const [categorizeModule, setCategorizeModule] = useState("")
   const [categorizeDiscipline, setCategorizeDiscipline] = useState("")
+
+  // ── Format Tips accordion ─────────────────────────────────────────────────────
+  const [openTip, setOpenTip] = useState<string | null>(null)
+  function toggleTip(id: string) { setOpenTip((prev) => (prev === id ? null : id)) }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -738,25 +746,193 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                 </div>
               )}
 
-              {/* ── Format tips ───────────────────────────────────────────── */}
-              <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                <p className="mb-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Format Tips</p>
-                <ul className="space-y-1.5">
-                  {[
-                    { text: "Tag a module section with:  MODULE: Module Name  on its own line", color: "text-emerald-500" },
-                    { text: "Tag a discipline with:  DISCIPLINE: Name  (or SUBJECT: / TOPIC:)", color: "text-emerald-500" },
-                    { text: "Number questions as:  1.  or  1)  or  Q1.  or  Q1)", color: "text-emerald-500" },
-                    { text: "Format options as:  A. text  or  A) text  — one per line", color: "text-emerald-500" },
-                    { text: "Mark the correct answer:  Answer: A  or  Correct Answer: B", color: "text-emerald-500" },
-                    { text: "JSON export retains mediaBase64 image strings — re-importing restores them", color: "text-sky-500" },
-                  ].map((tip, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
-                      <CheckIcon size={11} className={`mt-0.5 shrink-0 ${tip.color}`} />
-                      {tip.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {/* ── Format Rules accordion ────────────────────────────────── */}
+              {(() => {
+                const sections: {
+                  id: string
+                  label: string
+                  accent: string
+                  iconBg: string
+                  icon: React.ReactNode
+                  rules: { good?: string; bad?: string; note?: string }[]
+                  example?: string
+                }[] = [
+                  {
+                    id: "tags",
+                    label: "MODULE & DISCIPLINE Tags",
+                    accent: "border-emerald-400/40 dark:border-emerald-600/30",
+                    iconBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
+                    icon: <HashIcon size={12} />,
+                    rules: [
+                      { good: "MODULE: Internal Medicine  —  own line, before the questions it applies to" },
+                      { good: "DISCIPLINE: Cardiology  —  also accepts  SUBJECT:  or  TOPIC:" },
+                      { good: "Separator after keyword: colon  :  period  .  or dash  -  (colon preferred)" },
+                      { good: "Tags are case-insensitive; they apply to every question that follows until a new tag" },
+                      { note: "ZERO-CREATIVITY rule: if no DISCIPLINE tag exists the field is left blank — the AI will never infer it from clinical content. The categorization gate will prompt you." },
+                    ],
+                    example: "MODULE: Internal Medicine\nDISCIPLINE: Cardiology",
+                  },
+                  {
+                    id: "numbering",
+                    label: "Question Numbering",
+                    accent: "border-blue-400/40 dark:border-blue-600/30",
+                    iconBg: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
+                    icon: <ListChecksIcon size={12} />,
+                    rules: [
+                      { good: "Number must start at the very beginning of the line — no leading spaces" },
+                      { good: "Accepted:  1.   1)   1:   Q1.   Q.1.   Question 1.   (1)  — numbers 1–9999" },
+                      { good: "Question text must begin on the SAME LINE as the number, immediately after the separator" },
+                      { bad: "Number on one line, vignette text on the next — parser reads a blank vignette" },
+                      { good: "Multi-line vignettes are fine — continuation lines are appended automatically" },
+                    ],
+                    example: "1. A 55-year-old man presents with sudden-onset tearing chest pain…",
+                  },
+                  {
+                    id: "options",
+                    label: "Answer Options (A – E)",
+                    accent: "border-violet-400/40 dark:border-violet-600/30",
+                    iconBg: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400",
+                    icon: <CheckIcon size={12} />,
+                    rules: [
+                      { good: "Each option on its own dedicated line" },
+                      { good: "Accepted formats:  A. text   A) text   A: text   A- text   (A) text" },
+                      { good: "Letters A–E only (uppercase or lowercase — normalised to uppercase)" },
+                      { good: "Minimum 2 options (A and B) required; option E is optional" },
+                      { bad: "Option label repeated inside the text, e.g.  A. (A) Aortic dissection" },
+                      { bad: "All options on a single line separated by commas or slashes" },
+                    ],
+                    example: "A. Aortic dissection\nB. Pulmonary embolism\nC. Myocardial infarction\nD. Pericarditis",
+                  },
+                  {
+                    id: "answer",
+                    label: "Correct Answer Line",
+                    accent: "border-emerald-400/40 dark:border-emerald-600/30",
+                    iconBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
+                    icon: <CheckIcon size={12} />,
+                    rules: [
+                      { good: "Accepted keywords (case-insensitive):  Answer   Correct Answer   Correct_Answer   Ans   Key" },
+                      { good: "Separator after keyword: colon  :  period  .  space  —  or dash  -" },
+                      { good: "Value: single letter A, B, C, D, or E  (uppercase or lowercase)" },
+                      { good: "Must appear AFTER all options and BEFORE the Explanation" },
+                      { bad: "Answer line placed before the options" },
+                      { bad: "Answer written as a word, e.g.  Answer: Aortic dissection" },
+                    ],
+                    example: "Answer: A",
+                  },
+                  {
+                    id: "explanation",
+                    label: "Explanation / Rationale",
+                    accent: "border-sky-400/40 dark:border-sky-600/30",
+                    iconBg: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400",
+                    icon: <BookOpenIcon size={12} />,
+                    rules: [
+                      { good: "Trigger keywords (case-insensitive):  Explanation   Rationale   Discussion   Reason   Solution" },
+                      { good: "Keyword must be followed by any separator: period  .  colon  :  dash  -  em-dash  —  or a space" },
+                      { good: "Everything after the keyword on that line, plus every subsequent line until the next question number, is the explanation body" },
+                      { good: "Multi-paragraph explanations work — lines are concatenated automatically" },
+                      { good: "Maps to the 'Why the correct answer is right' field in the editor" },
+                      { bad: "No trigger keyword — unlabelled paragraph after the answer will be ignored" },
+                    ],
+                    example: "Explanation: Aortic dissection classically presents with sudden tearing chest pain radiating to the back, with a blood-pressure differential between arms and a widened mediastinum on CXR.",
+                  },
+                  {
+                    id: "images",
+                    label: "Clinical Images (.docx only)",
+                    accent: "border-amber-400/40 dark:border-amber-600/30",
+                    iconBg: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
+                    icon: <ImageIcon size={12} />,
+                    rules: [
+                      { good: "Embed the image directly in your Word document at the correct position within the question block (after the stem, before or between the options)" },
+                      { good: "The system counts question boundaries to assign images — one image per question, first image wins" },
+                      { bad: "Image placed between two question numbers — it will be attached to the preceding question" },
+                      { note: "Do NOT type [IMAGE_1] or any placeholder manually — those are internal markers generated by the extractor. Embedding the image in Word at the right place is all that is needed." },
+                    ],
+                  },
+                  {
+                    id: "donts",
+                    label: "Critical Don'ts",
+                    accent: "border-destructive/30",
+                    iconBg: "bg-destructive/10 text-destructive",
+                    icon: <AlertTriangleIcon size={12} />,
+                    rules: [
+                      { bad: "Blank line between the question number and the vignette text" },
+                      { bad: "MODULE or DISCIPLINE tag placed mid-question (between stem and options)" },
+                      { bad: "Answer: line placed before the options" },
+                      { bad: "Sub-numbering or bullet points inside options (A. 1. sub-item)" },
+                      { bad: "Question number duplicated at the start of the vignette text (1. 1. A patient…)" },
+                      { bad: "Inventing a DISCIPLINE — if unsure, omit the tag and use the categorization gate" },
+                    ],
+                  },
+                ]
+
+                return (
+                  <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+                      <InfoIcon size={13} className="text-muted-foreground shrink-0" />
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Document Formatting Rules</p>
+                      <span className="ml-auto text-[10px] text-muted-foreground/60">click a section to expand</span>
+                    </div>
+
+                    {/* Accordion sections */}
+                    <div className="divide-y divide-border">
+                      {sections.map((s) => {
+                        const isOpen = openTip === s.id
+                        return (
+                          <div key={s.id}>
+                            <button
+                              type="button"
+                              onClick={() => toggleTip(s.id)}
+                              className="flex w-full items-center gap-2.5 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                            >
+                              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${s.iconBg}`}>
+                                {s.icon}
+                              </span>
+                              <span className="flex-1 text-xs font-semibold text-foreground">{s.label}</span>
+                              {isOpen
+                                ? <ChevronDownIcon size={13} className="shrink-0 text-muted-foreground" />
+                                : <ChevronRightIcon size={13} className="shrink-0 text-muted-foreground" />
+                              }
+                            </button>
+
+                            {isOpen && (
+                              <div className={`border-l-2 mx-4 mb-3 rounded-r-xl ${s.accent} bg-background/60 px-4 py-3 space-y-2`}>
+                                {s.rules.map((r, i) => (
+                                  <div key={i} className="flex items-start gap-2">
+                                    {r.good !== undefined && (
+                                      <>
+                                        <CheckIcon size={11} className="mt-0.5 shrink-0 text-emerald-500" />
+                                        <span className="text-xs text-foreground/80">{r.good}</span>
+                                      </>
+                                    )}
+                                    {r.bad !== undefined && (
+                                      <>
+                                        <XIcon size={11} className="mt-0.5 shrink-0 text-destructive" />
+                                        <span className="text-xs text-foreground/70">{r.bad}</span>
+                                      </>
+                                    )}
+                                    {r.note !== undefined && (
+                                      <>
+                                        <InfoIcon size={11} className="mt-0.5 shrink-0 text-amber-500" />
+                                        <span className="text-xs text-amber-700 dark:text-amber-400">{r.note}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                ))}
+                                {s.example && (
+                                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted px-3 py-2.5 font-mono text-[10px] leading-relaxed text-foreground/80">
+                                    {s.example}
+                                  </pre>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
           ) : view === "categorize" ? (
