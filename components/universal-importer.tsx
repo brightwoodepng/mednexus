@@ -20,6 +20,7 @@ import {
   HashIcon,
   ListChecksIcon,
   BookOpenIcon,
+  ClipboardListIcon,
 } from "@/components/icons"
 
 // ── Spinner ───────────────────────────────────────────────────────────────────
