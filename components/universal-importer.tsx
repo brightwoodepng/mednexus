@@ -341,26 +341,14 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       for (let i = 0; i < chunks.length; i++) {
         setProgressMessage(`Processing batch ${i + 1} of ${chunks.length}…`)
 
-        const attemptChunk = async (): Promise<ChunkQuestion[] | null> => {
-          try {
-            const res = await fetch("/api/extract-single-chunk", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ textChunk: chunks[i], fallbackModule: runningModule, fallbackDiscipline: runningDiscipline }),
-            })
-            if (!res.ok) return null
-            const data = await res.json() as { questions?: ChunkQuestion[] }
-            return data.questions ?? []
-          } catch { return null }
-        }
-
-        let chunkQuestions = await attemptChunk()
-        if (chunkQuestions === null) {
-          await new Promise((r) => setTimeout(r, 1500))
-          chunkQuestions = await attemptChunk()
-        }
-
-        if (chunkQuestions === null) continue
+        const chunkRes = await fetch("/api/extract-single-chunk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ textChunk: chunks[i], fallbackModule: runningModule, fallbackDiscipline: runningDiscipline }),
+        })
+        if (!chunkRes.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
+        const chunkData = await chunkRes.json() as { questions?: ChunkQuestion[] }
+        const chunkQuestions = chunkData.questions ?? []
 
         const lastItem = chunkQuestions.at(-1)
         if (lastItem?.module) runningModule = lastItem.module
@@ -418,11 +406,13 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       }
       stageQuestions(raw.map((r, i) => makeFromRaw(r, i, null)), "regex")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process document.")
-    } finally {
       setIsProcessing(false)
       setProgressMessage("")
+      setError(err instanceof Error ? err.message : "Upload failed or timed out. Connection closed safely to protect bandwidth.")
+      return
     }
+    setIsProcessing(false)
+    setProgressMessage("")
   }
 
   // ── PDF handler ─────────────────────────────────────────────────────────────
@@ -442,7 +432,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, fallbackModule: null }),
       })
-      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      if (!res.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
       const data = await res.json() as { questions: ChunkQuestion[]; source: string }
 
       if (!data.questions || data.questions.length === 0) {
@@ -452,11 +442,13 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       const qs = data.questions.map((q, i) => makeFromChunk(q, i, null))
       stageQuestions(qs, data.source === "regex" ? "regex" : "ai")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process PDF.")
-    } finally {
       setIsProcessing(false)
       setProgressMessage("")
+      setError(err instanceof Error ? err.message : "Upload failed or timed out. Connection closed safely to protect bandwidth.")
+      return
     }
+    setIsProcessing(false)
+    setProgressMessage("")
   }
 
   // ── Raw text handler ─────────────────────────────────────────────────────────
@@ -474,7 +466,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ textChunk: text, fallbackModule: null, fallbackDiscipline: null }),
       })
-      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      if (!res.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
       const data = await res.json() as { questions?: ChunkQuestion[] }
       const questions = data.questions ?? []
 
@@ -492,11 +484,13 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       }
       stageQuestions(raw.map((r, i) => makeFromRaw(r, i, null)), "regex")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to parse text.")
-    } finally {
       setIsProcessing(false)
       setProgressMessage("")
+      setError(err instanceof Error ? err.message : "Upload failed or timed out. Connection closed safely to protect bandwidth.")
+      return
     }
+    setIsProcessing(false)
+    setProgressMessage("")
   }
 
   // ── File routing ─────────────────────────────────────────────────────────────
