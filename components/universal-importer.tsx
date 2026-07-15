@@ -309,6 +309,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   // ── Format Tips accordion ─────────────────────────────────────────────────────
   const [openTip, setOpenTip] = useState<string | null>(null)
   const [rulesCopied, setRulesCopied] = useState(false)
+  const [solveCopied, setSolveCopied] = useState(false)
   function toggleTip(id: string) { setOpenTip((prev) => (prev === id ? null : id)) }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -959,6 +960,124 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                   },
                 ]
 
+                // Build the Solve & Categorize prompt (Step 1 — for raw, unsolved, ungrouped questions)
+                function buildSolvePrompt() {
+                  const lines: string[] = [
+                    "You are a senior medical educator and exam expert with deep knowledge across all clinical and basic-science disciplines.",
+                    "I will paste a set of raw MCQ questions below. They have NO answers, NO explanations, and NO discipline grouping.",
+                    "",
+                    "Your job is to:",
+                    "  1. Identify the correct answer for every question using evidence-based medicine.",
+                    "  2. Write a thorough explanation for each question.",
+                    "  3. Group questions by their medical discipline.",
+                    "  4. Assign a single MODULE name from the overall topic of the document.",
+                    "  5. Output everything in the exact structured format described below.",
+                    "",
+                    "Return ONLY the structured output. No preamble, no commentary, no closing note.",
+                    "",
+                    "=".repeat(64),
+                    "OUTPUT FORMAT",
+                    "=".repeat(64),
+                    "",
+                    "Line 1 — Module tag (ONE time, at the very top):",
+                    "  MODULE: <subject name>",
+                    "  Derive the module from the overall topic of the questions.",
+                    "  Example: if the questions are about public health topics → MODULE: Community Medicine",
+                    "  Example: if about heart/lung/GI mixed → MODULE: Internal Medicine",
+                    "",
+                    "Then, for each discipline group:",
+                    "  DISCIPLINE: <discipline name>",
+                    "  (blank line)",
+                    "  <question number>. <question stem>",
+                    "  A. <option>",
+                    "  B. <option>",
+                    "  C. <option>",
+                    "  D. <option>",
+                    "  (E. <option>  — only if a fifth option exists)",
+                    "  Answer: <single uppercase letter>",
+                    "  Explanation: <explanation — see rules below>",
+                    "  (blank line)",
+                    "",
+                    "=".repeat(64),
+                    "RULES",
+                    "=".repeat(64),
+                    "",
+                    "MODULE",
+                    "  • ONE module for the entire document, at the very top.",
+                    "  • Infer it from what the questions collectively cover.",
+                    "  • Keep it short — e.g. 'Surgery', 'Paediatrics', 'Community Medicine', 'Pharmacology'.",
+                    "",
+                    "DISCIPLINE grouping",
+                    "  • Group questions by their medical sub-specialty or topic area.",
+                    "  • Disciplines should be specific but not too narrow.",
+                    "    Good: 'Cardiology', 'Infectious Disease', 'Epidemiology and Biostatistics'",
+                    "    Too narrow: 'Atrial Fibrillation', 'Malaria only'",
+                    "    Too broad: 'Medicine' (use a sub-specialty instead)",
+                    "  • A discipline group must contain at least 2 questions.",
+                    "    If only 1 question fits a very narrow topic, fold it into the closest related discipline.",
+                    "  • Preserve the ORIGINAL question numbers — do not renumber.",
+                    "  • Questions may be reordered within the output to group by discipline,",
+                    "    but their original numbers must be kept.",
+                    "",
+                    "ANSWER",
+                    "  • Every question MUST have an Answer line: Answer: <single uppercase letter>.",
+                    "  • Choose the single best answer using standard medical knowledge (USMLE/licensing-exam level).",
+                    "  • If a question is ambiguous, choose the most defensible option and note it briefly in the explanation.",
+                    "",
+                    "EXPLANATION",
+                    "  • Write one continuous paragraph (no sub-headings, no bullet points inside).",
+                    "  • Structure it as follows (all in the same paragraph):",
+                    "      — Start with WHY the correct answer is right (the key mechanism/fact).",
+                    "      — Then explain why each WRONG option is incorrect (briefly, 1 sentence each).",
+                    "      — End with the key teaching point in 1 sentence.",
+                    "  • Length: 4–8 sentences. Enough to teach, not so long it becomes a textbook chapter.",
+                    "  • Use plain language. Avoid excessive jargon. Spell out acronyms on first use.",
+                    "  • Do NOT start with 'The correct answer is…' — jump straight to the clinical reasoning.",
+                    "",
+                    "ANSWER OPTIONS",
+                    "  • Use UPPERCASE letters: A. B. C. D. (E. if present).",
+                    "  • Each option on its own line, no indentation.",
+                    "  • Keep the original option text exactly — do not paraphrase.",
+                    "",
+                    "BLANK LINES",
+                    "  • One blank line between each question block.",
+                    "  • One blank line between the DISCIPLINE: tag and the first question under it.",
+                    "  • No blank lines between the question stem and its options.",
+                    "  • No blank lines between options.",
+                    "",
+                    "=".repeat(64),
+                    "EXAMPLE OUTPUT",
+                    "=".repeat(64),
+                    "",
+                    "MODULE: Community Medicine",
+                    "",
+                    "DISCIPLINE: Epidemiology and Biostatistics",
+                    "",
+                    "1. Which of the following best describes incidence?",
+                    "A. The number of existing cases of a disease in a population at a given time",
+                    "B. The number of new cases of a disease in a population over a defined period",
+                    "C. The proportion of exposed individuals who develop a disease",
+                    "D. The probability of dying from a disease given that you have it",
+                    "Answer: B",
+                    "Explanation: Incidence measures the rate of new cases arising in a population over a specified time period, making it the key metric for studying disease causation and risk factors. Option A describes prevalence, which counts existing (new + old) cases at a snapshot in time. Option C describes attack rate or risk, typically used in outbreak investigations. Option D describes the case fatality rate, a measure of disease severity rather than frequency. The key distinction to remember is incidence = new cases over time, prevalence = all existing cases at one moment.",
+                    "",
+                    "DISCIPLINE: Health Promotion and Disease Prevention",
+                    "",
+                    "7. Primary prevention refers to:",
+                    "A. Early detection of disease before symptoms appear",
+                    "B. Rehabilitation after a disease has caused disability",
+                    "C. Actions taken to prevent a disease from occurring in the first place",
+                    "D. Treatment of an established disease to prevent complications",
+                    "Answer: C",
+                    "Explanation: Primary prevention targets healthy individuals to stop disease from ever developing, through measures such as vaccination, health education, and environmental modification. Option A describes secondary prevention (screening for pre-symptomatic disease). Option B describes tertiary prevention or rehabilitation, aimed at minimising disability from established disease. Option D describes tertiary prevention in the form of complication control. Remembering the three prevention tiers — primary (stop it), secondary (catch it early), tertiary (limit damage) — is essential for public health questions.",
+                    "",
+                    "=".repeat(64),
+                    "NOW PROCESS THE QUESTIONS BELOW — output starts immediately, no preamble:",
+                    "=".repeat(64),
+                  ]
+                  return lines.join("\n")
+                }
+
                 // Build the AI-ready reformatting prompt
                 function buildCopyText() {
                   const lines: string[] = [
@@ -1084,23 +1203,46 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Formatting Rules</p>
                         <p className="text-[10px] text-muted-foreground/60">Copy → paste into Claude or Gemini before your document</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(buildCopyText()).then(() => {
-                            setRulesCopied(true)
-                            setTimeout(() => setRulesCopied(false), 2200)
-                          })
-                        }}
-                        className={`ml-auto flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                          rulesCopied
-                            ? "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        {rulesCopied ? <CheckIcon size={10} /> : <ClipboardListIcon size={10} />}
-                        {rulesCopied ? "Copied!" : "Copy Prompt"}
-                      </button>
+                      <div className="ml-auto flex items-center gap-1.5">
+                        {/* Step 1 — Solve & Categorize (raw questions) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(buildSolvePrompt()).then(() => {
+                              setSolveCopied(true)
+                              setTimeout(() => setSolveCopied(false), 2200)
+                            })
+                          }}
+                          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                            solveCopied
+                              ? "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                              : "border-violet-300/60 bg-violet-50/60 text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-400 dark:hover:bg-violet-900/40"
+                          }`}
+                          title="Use this first when your questions have no answers, no explanations, and no discipline grouping"
+                        >
+                          {solveCopied ? <CheckIcon size={10} /> : <ClipboardListIcon size={10} />}
+                          {solveCopied ? "Copied!" : "Step 1 — Solve & Categorize"}
+                        </button>
+                        {/* Step 2 — Reformat for import */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(buildCopyText()).then(() => {
+                              setRulesCopied(true)
+                              setTimeout(() => setRulesCopied(false), 2200)
+                            })
+                          }}
+                          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                            rulesCopied
+                              ? "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                              : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                          }`}
+                          title="Use this after Step 1 (or directly if your document already has discipline headings)"
+                        >
+                          {rulesCopied ? <CheckIcon size={10} /> : <ClipboardListIcon size={10} />}
+                          {rulesCopied ? "Copied!" : "Step 2 — Format for Import"}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Accordion sections */}
