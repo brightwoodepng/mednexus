@@ -730,8 +730,19 @@ function QuestionCard({ item, questionNumber, isSelected, onToggle, onEdit, onDe
           {!q.explanation && (
             <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">No explanation</span>
           )}
+          {q.mediaBase64 && (
+            <span className="flex items-center gap-0.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">
+              <ImageIcon size={9} /> Image
+            </span>
+          )}
         </div>
         <p className="line-clamp-2 text-sm text-foreground">{q.vignette}</p>
+        {q.mediaBase64 && (
+          <div className="mt-2 overflow-hidden rounded-lg border border-border w-fit">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={q.mediaBase64} alt="Question image" className="max-h-24 max-w-[280px] object-contain bg-muted" />
+          </div>
+        )}
         <div className="mt-1.5 flex flex-wrap gap-3">
           {q.options.map((o) => (
             <span key={o.id} className={`text-xs ${isCorrectOption(q.correctAnswer, o.id) ? "font-semibold text-primary" : "text-muted-foreground"}`}>
