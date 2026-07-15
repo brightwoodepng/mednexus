@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
-import { extractTextFromPdf } from "@/lib/pdf-extract"
 import type { Question, QuestionOption } from "@/lib/types"
 import {
   XIcon,
@@ -510,40 +509,139 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     stageQuestions(filled, "ai")
   }
 
-  // ── PDF handler ─────────────────────────────────────────────────────────────
+  // ── PDF handler — server-side image-aware batch processor ───────────────────
+  // Mirrors processDocxFile exactly: uploads the raw file to a server route that
+  // uses PyMuPDF to extract both text and embedded images, then feeds the result
+  // through the same 25-question batch pipeline with image assignment.
   async function processPdfFile(file: File) {
     setError("")
     setIsProcessing(true)
-    setProgressMessage("Extracting PDF text…")
+    setProgressMessage("Extracting PDF text and images…")
 
     try {
-      const { text, pageCount } = await extractTextFromPdf(file)
-      if (!text.trim()) throw new Error("Could not extract text from this PDF.")
+      const formData = new FormData()
+      formData.append("file", file)
+      const extractRes = await fetch("/api/parse-pdf-file", { method: "POST", body: formData })
+      if (!extractRes.ok) {
+        const body = await extractRes.json().catch(() => ({}))
+        throw new Error((body as { error?: string }).error ?? "Upload failed or timed out. Connection closed safely to protect bandwidth.")
+      }
+      const { text, images = [] } = await extractRes.json() as {
+        text: string
+        images: { id: string; dataUri: string }[]
+      }
+      if (!text?.trim()) throw new Error("The document appears to be empty or could not be read.")
 
-      setProgressMessage(`Parsing ${pageCount} page${pageCount !== 1 ? "s" : ""} with AI…`)
+      // Build IMAGE_N → data URI lookup map
+      const imageMap = new Map<string, string>(images.map((img) => [img.id, img.dataUri]))
 
-      const res = await fetch("/api/parse-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, fallbackModule: null }),
-      })
-      if (!res.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
-      const data = await res.json() as { questions: ChunkQuestion[]; source: string }
+      // Split into strict 25-question batches; fall back to word-chunking if no
+      // numbered question boundaries are found in the document.
+      const batches = splitIntoQuestionBatches(text, 25)
+      const usingQuestionBatches = batches.length > 0
+      const finalBatches = usingQuestionBatches ? batches : chunkText(text, 2000)
 
-      if (!data.questions || data.questions.length === 0) {
-        throw new Error("No questions detected in this PDF.")
+      if (finalBatches.length === 0) throw new Error("No content found in the document.")
+
+      const batchLabel = usingQuestionBatches
+        ? `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""} of up to 25 questions`
+        : `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""}`
+
+      if (images.length > 0) {
+        setProgressMessage(`Found ${images.length} image${images.length !== 1 ? "s" : ""} — preparing ${batchLabel}…`)
+      } else {
+        setProgressMessage(`Preparing ${batchLabel}…`)
       }
 
-      const qs = data.questions.map((q, i) => makeFromChunk(q, i, null))
-      stageQuestions(qs, data.source === "regex" ? "regex" : "ai")
+      let runningModule: string | null = null
+      let runningDiscipline: string | null = null
+      const master: Question[] = []
+      let questionIndex = 0
+
+      for (let i = 0; i < finalBatches.length; i++) {
+        const startQ = i * 25 + 1
+        const endQ = Math.min((i + 1) * 25, usingQuestionBatches ? questionIndex + 25 : (i + 1) * 25)
+        setProgressMessage(
+          usingQuestionBatches
+            ? `Processing batch ${i + 1} of ${finalBatches.length} (questions ${startQ}–${endQ})…`
+            : `Processing batch ${i + 1} of ${finalBatches.length}…`
+        )
+
+        const chunkRes = await fetch("/api/extract-single-chunk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            textChunk: finalBatches[i],
+            fallbackModule: runningModule,
+            fallbackDiscipline: runningDiscipline,
+          }),
+        })
+        if (!chunkRes.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
+        const chunkData = await chunkRes.json() as { questions?: ChunkQuestion[] }
+        const chunkQuestions = chunkData.questions ?? []
+
+        const lastItem = chunkQuestions.at(-1)
+        if (lastItem?.module) runningModule = lastItem.module
+        if (lastItem?.discipline) runningDiscipline = lastItem.discipline
+
+        // ── Image assignment ──────────────────────────────────────────────────
+        const Q_BOUNDARY_GLOBAL = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
+        const batchText = finalBatches[i]
+        const questionImageMap = new Map<number, string>()
+
+        for (const match of batchText.matchAll(/\[IMAGE_(\d+)\]/g)) {
+          const imageDataUri = imageMap.get(`IMAGE_${match[1]}`)
+          if (!imageDataUri) continue
+          const textBefore = batchText.slice(0, match.index ?? 0)
+          const qIdx = Math.max(0, [...textBefore.matchAll(Q_BOUNDARY_GLOBAL)].length - 1)
+          if (!questionImageMap.has(qIdx)) questionImageMap.set(qIdx, imageDataUri)
+        }
+
+        for (let j = 0; j < chunkQuestions.length; j++) {
+          const q = makeFromChunk(chunkQuestions[j], questionIndex++, null)
+          q.vignette = q.vignette.replace(/\[IMAGE_\d+\]/gi, "").replace(/\s{2,}/g, " ").trim()
+          const imgForQ = questionImageMap.get(j)
+          if (imgForQ) q.mediaBase64 = imgForQ
+          master.push(q)
+        }
+      }
+
+      if (master.length === 0) {
+        setProgressMessage("AI returned no questions — using fallback parser…")
+        const raw = parseTextFallback(text)
+        if (raw.length === 0) {
+          setIsProcessing(false)
+          setProgressMessage("")
+          setError("No questions detected. Check that questions are numbered (1., Q1.) and options are labelled (A., B., etc.).")
+          return
+        }
+        setIsProcessing(false)
+        setProgressMessage("")
+        stageQuestions(raw.map((r, i) => makeFromRaw(r, i, null)), "regex")
+        return
+      }
+
+      // ── Categorization gate ───────────────────────────────────────────────────
+      const uncategorized = master.filter((q) => !q.module || !q.subject)
+      if (uncategorized.length > 0) {
+        setIsProcessing(false)
+        setProgressMessage("")
+        setRawMaster(master)
+        setUncategorizedCount(uncategorized.length)
+        setCategorizeModule("")
+        setCategorizeDiscipline("")
+        setView("categorize")
+        return
+      }
+
+      setIsProcessing(false)
+      setProgressMessage("")
+      stageQuestions(master, "ai")
     } catch (err) {
       setIsProcessing(false)
       setProgressMessage("")
       setError(err instanceof Error ? err.message : "Upload failed or timed out. Connection closed safely to protect bandwidth.")
-      return
     }
-    setIsProcessing(false)
-    setProgressMessage("")
   }
 
   // ── Raw text handler ─────────────────────────────────────────────────────────
