@@ -412,13 +412,19 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         )
 
         // ── Circuit breaker: single attempt, immediate throw on failure ────
+        // Pass images for this batch so the server can do marker-based
+        // reconciliation (more reliable than position counting).
+        const batchText = finalBatches[i]
+        const batchImages = images.filter((img) => batchText.includes(`[${img.id}]`))
+
         const chunkRes = await fetch("/api/extract-single-chunk", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            textChunk: finalBatches[i],
+            textChunk: batchText,
             fallbackModule: runningModule,
             fallbackDiscipline: runningDiscipline,
+            images: batchImages,
           }),
         })
         if (!chunkRes.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
@@ -430,10 +436,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         if (lastItem?.discipline) runningDiscipline = lastItem.discipline
 
         // ── Image assignment ────────────────────────────────────────────────
-        // Count question boundaries before each [IMAGE_N] marker to determine
-        // which question within the batch owns that image.
+        // Primary: server-side marker reconciliation already set q.mediaBase64.
+        // Fallback: position-based count for images between question boundaries
+        // (e.g. images that appear in the document before the question stem).
         const Q_BOUNDARY_GLOBAL = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
-        const batchText = finalBatches[i]
         const questionImageMap = new Map<number, string>()
 
         for (const match of batchText.matchAll(/\[IMAGE_(\d+)\]/g)) {
@@ -447,8 +453,11 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         for (let j = 0; j < chunkQuestions.length; j++) {
           const q = makeFromChunk(chunkQuestions[j], questionIndex++, null)
           q.vignette = q.vignette.replace(/\[IMAGE_\d+\]/gi, "").replace(/\s{2,}/g, " ").trim()
-          const imgForQ = questionImageMap.get(j)
-          if (imgForQ) q.mediaBase64 = imgForQ
+          // Prefer server-side reconciliation; fall back to position-based
+          if (!q.mediaBase64) {
+            const imgForQ = questionImageMap.get(j)
+            if (imgForQ) q.mediaBase64 = imgForQ
+          }
           master.push(q)
         }
       }
@@ -568,13 +577,17 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
             : `Processing batch ${i + 1} of ${finalBatches.length}…`
         )
 
+        const batchText = finalBatches[i]
+        const batchImages = images.filter((img) => batchText.includes(`[${img.id}]`))
+
         const chunkRes = await fetch("/api/extract-single-chunk", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            textChunk: finalBatches[i],
+            textChunk: batchText,
             fallbackModule: runningModule,
             fallbackDiscipline: runningDiscipline,
+            images: batchImages,
           }),
         })
         if (!chunkRes.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
@@ -586,8 +599,9 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         if (lastItem?.discipline) runningDiscipline = lastItem.discipline
 
         // ── Image assignment ──────────────────────────────────────────────────
+        // Primary: server-side marker reconciliation already set q.mediaBase64.
+        // Fallback: position-based count for images not found via markers.
         const Q_BOUNDARY_GLOBAL = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
-        const batchText = finalBatches[i]
         const questionImageMap = new Map<number, string>()
 
         for (const match of batchText.matchAll(/\[IMAGE_(\d+)\]/g)) {
@@ -601,8 +615,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         for (let j = 0; j < chunkQuestions.length; j++) {
           const q = makeFromChunk(chunkQuestions[j], questionIndex++, null)
           q.vignette = q.vignette.replace(/\[IMAGE_\d+\]/gi, "").replace(/\s{2,}/g, " ").trim()
-          const imgForQ = questionImageMap.get(j)
-          if (imgForQ) q.mediaBase64 = imgForQ
+          if (!q.mediaBase64) {
+            const imgForQ = questionImageMap.get(j)
+            if (imgForQ) q.mediaBase64 = imgForQ
+          }
           master.push(q)
         }
       }

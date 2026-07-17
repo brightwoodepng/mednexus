@@ -325,7 +325,7 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
         const body = await extractRes.json().catch(() => ({}))
         throw new Error((body as any).error ?? `Server error ${extractRes.status}`)
       }
-      const { text } = await extractRes.json() as { text: string }
+      const { text, images = [] } = await extractRes.json() as { text: string; images: { id: string; dataUri: string }[] }
 
       if (!text?.trim()) {
         throw new Error("The document appears to be empty or could not be read.")
@@ -363,6 +363,9 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
                 textChunk:          chunks[i],
                 fallbackModule:     runningModule,
                 fallbackDiscipline: runningDiscipline,
+                // Only pass images whose markers appear in this chunk so the
+                // payload stays small and reconciliation is accurate.
+                images: images.filter((img) => chunks[i].includes(`[${img.id}]`)),
               }),
             })
             if (!res.ok) return null
