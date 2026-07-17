@@ -42,12 +42,18 @@ export async function POST(req: NextRequest) {
             imageCounter++
             const id = `IMAGE_${imageCounter}`
             const base64 = await image.read("base64")
-            const dataUri = `data:${image.contentType};base64,${base64}`
+            // Default to image/png if mammoth can't determine the MIME type —
+            // an invalid content-type produces a broken data URI.
+            const mime = image.contentType && image.contentType !== "undefined"
+              ? image.contentType
+              : "image/png"
+            const dataUri = `data:${mime};base64,${base64}`
             images.push({ id, dataUri })
             // Embed placeholder in the HTML so we can locate it in the text
             return { src: id, alt: id }
-          } catch {
-            // If a single image fails, skip it gracefully
+          } catch (imgErr) {
+            // Log the failure so it's visible in server logs, but keep going
+            console.warn("[parse-docx] Failed to extract image:", imgErr)
             return { src: "", alt: "" }
           }
         }),

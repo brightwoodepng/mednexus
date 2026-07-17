@@ -29,9 +29,17 @@ RIGHT:  "A 35-year-old woman presents with…"
 
 IMAGE PLACEHOLDERS — the text may contain markers like [IMAGE_1], [IMAGE_2], etc.
 These mark where an embedded image appears in the source document.
-You MUST PRESERVE these markers exactly as-is inside the vignette field so the
-system can attach the actual image data later. Do NOT remove or alter them.
+CRITICAL: You MUST copy these markers VERBATIM into the vignette field of whichever
+question they belong to. Do NOT remove, rewrite, or omit them — the system depends
+on seeing the exact string [IMAGE_1] (with square brackets) in the vignette to attach
+the actual image data. If you drop a marker, the image will be permanently lost.
 Set mediaBase64 to null — the system will populate it automatically from the marker.
+
+Example — if the raw text contains:
+  [IMAGE_1]
+  45. A 50-year-old man presents with the radiograph shown above. What is the diagnosis?
+Then your vignette MUST include "[IMAGE_1]" like so:
+  "[IMAGE_1] A 50-year-old man presents with the radiograph shown above. What is the diagnosis?"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRITICAL CATEGORIZATION RULES — STRICT HIERARCHY (apply PER QUESTION)
