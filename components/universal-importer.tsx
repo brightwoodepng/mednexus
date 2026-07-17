@@ -299,6 +299,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   const [textInput, setTextInput] = useState("")
   const [pendingImport, setPendingImport] = useState<Question[]>([])
   const [parseSource, setParseSource] = useState<"ai" | "regex" | "json" | null>(null)
+  const [partialImportWarning, setPartialImportWarning] = useState("")
 
   // ── Categorization gate ──────────────────────────────────────────────────────
   const [rawMaster, setRawMaster] = useState<Question[]>([])
@@ -401,6 +402,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       let runningDiscipline: string | null = null
       const master: Question[] = []
       let questionIndex = 0
+      let failedBatches = 0
 
       for (let i = 0; i < finalBatches.length; i++) {
         const startQ = i * 25 + 1
@@ -411,25 +413,36 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
             : `Processing batch ${i + 1} of ${finalBatches.length}…`
         )
 
-        // ── Circuit breaker: single attempt, immediate throw on failure ────
+        // ── Per-batch recovery: a single failed batch is skipped, not fatal ──
         // Pass images for this batch so the server can do marker-based
         // reconciliation (more reliable than position counting).
         const batchText = finalBatches[i]
         const batchImages = images.filter((img) => batchText.includes(`[${img.id}]`))
 
-        const chunkRes = await fetch("/api/extract-single-chunk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            textChunk: batchText,
-            fallbackModule: runningModule,
-            fallbackDiscipline: runningDiscipline,
-            images: batchImages,
-          }),
-        })
-        if (!chunkRes.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
-        const chunkData = await chunkRes.json() as { questions?: ChunkQuestion[] }
-        const chunkQuestions = chunkData.questions ?? []
+        let chunkQuestions: ChunkQuestion[] = []
+        try {
+          const chunkRes = await fetch("/api/extract-single-chunk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              textChunk: batchText,
+              fallbackModule: runningModule,
+              fallbackDiscipline: runningDiscipline,
+              images: batchImages,
+            }),
+          })
+          if (!chunkRes.ok) {
+            console.warn(`[import] Batch ${i + 1} failed (HTTP ${chunkRes.status}) — skipping`)
+            failedBatches++
+            continue
+          }
+          const chunkData = await chunkRes.json() as { questions?: ChunkQuestion[] }
+          chunkQuestions = chunkData.questions ?? []
+        } catch (batchErr) {
+          console.warn(`[import] Batch ${i + 1} network error — skipping`, batchErr)
+          failedBatches++
+          continue
+        }
 
         const lastItem = chunkQuestions.at(-1)
         if (lastItem?.module) runningModule = lastItem.module
@@ -495,6 +508,11 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
 
       setIsProcessing(false)
       setProgressMessage("")
+      if (failedBatches > 0) {
+        setPartialImportWarning(
+          `${failedBatches} of ${finalBatches.length} batch${failedBatches > 1 ? "es" : ""} failed (timeout or API error) — ${master.length} question${master.length !== 1 ? "s" : ""} recovered below. Re-import the document to pick up the rest.`
+        )
+      }
       stageQuestions(master, "ai")
     } catch (err) {
       setIsProcessing(false)
@@ -567,6 +585,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       let runningDiscipline: string | null = null
       const master: Question[] = []
       let questionIndex = 0
+      let failedBatches = 0
 
       for (let i = 0; i < finalBatches.length; i++) {
         const startQ = i * 25 + 1
@@ -577,22 +596,34 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
             : `Processing batch ${i + 1} of ${finalBatches.length}…`
         )
 
+        // ── Per-batch recovery: a single failed batch is skipped, not fatal ──
         const batchText = finalBatches[i]
         const batchImages = images.filter((img) => batchText.includes(`[${img.id}]`))
 
-        const chunkRes = await fetch("/api/extract-single-chunk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            textChunk: batchText,
-            fallbackModule: runningModule,
-            fallbackDiscipline: runningDiscipline,
-            images: batchImages,
-          }),
-        })
-        if (!chunkRes.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
-        const chunkData = await chunkRes.json() as { questions?: ChunkQuestion[] }
-        const chunkQuestions = chunkData.questions ?? []
+        let chunkQuestions: ChunkQuestion[] = []
+        try {
+          const chunkRes = await fetch("/api/extract-single-chunk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              textChunk: batchText,
+              fallbackModule: runningModule,
+              fallbackDiscipline: runningDiscipline,
+              images: batchImages,
+            }),
+          })
+          if (!chunkRes.ok) {
+            console.warn(`[import] Batch ${i + 1} failed (HTTP ${chunkRes.status}) — skipping`)
+            failedBatches++
+            continue
+          }
+          const chunkData = await chunkRes.json() as { questions?: ChunkQuestion[] }
+          chunkQuestions = chunkData.questions ?? []
+        } catch (batchErr) {
+          console.warn(`[import] Batch ${i + 1} network error — skipping`, batchErr)
+          failedBatches++
+          continue
+        }
 
         const lastItem = chunkQuestions.at(-1)
         if (lastItem?.module) runningModule = lastItem.module
@@ -653,6 +684,11 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
 
       setIsProcessing(false)
       setProgressMessage("")
+      if (failedBatches > 0) {
+        setPartialImportWarning(
+          `${failedBatches} of ${finalBatches.length} batch${failedBatches > 1 ? "es" : ""} failed (timeout or API error) — ${master.length} question${master.length !== 1 ? "s" : ""} recovered below. Re-import the document to pick up the rest.`
+        )
+      }
       stageQuestions(master, "ai")
     } catch (err) {
       setIsProcessing(false)
@@ -1377,13 +1413,19 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
           ) : (
             /* Preview staging area */
             <div className="space-y-2 p-6">
+              {partialImportWarning && (
+                <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+                  <AlertTriangleIcon size={14} className="mt-0.5 shrink-0" />
+                  <span>{partialImportWarning}</span>
+                </div>
+              )}
               {pendingImport.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-10 text-center">
                   <AlertTriangleIcon size={32} className="text-amber-500" />
                   <p className="font-semibold">All questions removed</p>
                   <button
                     type="button"
-                    onClick={() => { setView("input"); setParseSource(null) }}
+                    onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning("") }}
                     className="text-sm text-primary hover:underline"
                   >
                     Go back to import
@@ -1409,7 +1451,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
             <>
               <button
                 type="button"
-                onClick={() => { setView("input"); setParseSource(null) }}
+                onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning("") }}
                 className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
               >
                 <RefreshCwIcon size={13} /> Try another file
