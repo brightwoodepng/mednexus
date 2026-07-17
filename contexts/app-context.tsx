@@ -38,6 +38,7 @@ interface AppContextValue {
   updateName: (name: string) => Promise<void>
   toggleFlag: (questionId: string) => void
   recordHistory: (entries: HistoryEntry[]) => void
+  clearWeakAreas: (mode: "trial" | "exam") => void
   saveExamScore: (score: ExamScore) => void
   markNotificationsRead: () => void
   toggleMuteNotificationType: (type: string) => void
@@ -364,6 +365,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [scheduleSync],
   )
 
+  const clearWeakAreas = useCallback(
+    (mode: "trial" | "exam") => {
+      setProgress((prev) => {
+        // Derive the weak question IDs for this mode (mirrors getWeakAreaQuestions logic)
+        const modeHistory = prev.history.filter((e) => e.mode === mode)
+        const latestByQuestion = new Map<string, HistoryEntry>()
+        for (const entry of modeHistory) {
+          const existing = latestByQuestion.get(entry.questionId)
+          if (!existing || entry.timestamp > existing.timestamp) {
+            latestByQuestion.set(entry.questionId, entry)
+          }
+        }
+        const weakIds = new Set<string>()
+        for (const [qId, entry] of latestByQuestion) {
+          if (!entry.isCorrect) weakIds.add(qId)
+        }
+        // Strip every history entry that contributed to a weak-area flag in this mode
+        const history = prev.history.filter(
+          (e) => !(e.mode === mode && weakIds.has(e.questionId)),
+        )
+        const next: UserProgress = { ...prev, history }
+        const u = userRef.current
+        if (u) { saveLocal(u.uid, next); scheduleSync(u.uid, u.name, next) }
+        return next
+      })
+    },
+    [scheduleSync],
+  )
+
   const recordHistory = useCallback(
     (entries: HistoryEntry[]) => {
       if (entries.length === 0) return
@@ -452,6 +482,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateName,
     toggleFlag,
     recordHistory,
+    clearWeakAreas,
     saveExamScore,
     markNotificationsRead,
     toggleMuteNotificationType,

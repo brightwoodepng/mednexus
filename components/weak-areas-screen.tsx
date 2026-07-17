@@ -18,6 +18,7 @@ import {
   ArrowRightIcon,
   ZapIcon,
   TimerIcon,
+  TrashIcon,
 } from "@/components/icons"
 import type { HistoryEntry } from "@/lib/types"
 
@@ -61,9 +62,10 @@ function UrgencyBadge({ dueCount, total }: { dueCount: number; total: number }) 
 }
 
 export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
-  const { progress } = useApp()
+  const { progress, clearWeakAreas } = useApp()
   const [mode, setMode] = useState<"trial" | "exam">("trial")
   const [viewingModule, setViewingModule] = useState<string | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
 
   const srsData: Record<string, SrsEntry> = progress.srsData ?? {}
   const palettes = mode === "trial" ? TRIAL_PALETTES : EXAM_PALETTES
@@ -102,6 +104,13 @@ export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
 
   function switchMode(next: "trial" | "exam") {
     setMode(next)
+    setViewingModule(null)
+    setConfirmClear(false)
+  }
+
+  function handleClearConfirmed() {
+    clearWeakAreas(mode)
+    setConfirmClear(false)
     setViewingModule(null)
   }
 
@@ -175,6 +184,38 @@ export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
             Exam
           </button>
         </div>
+
+        {/* Clear all — only shown when there's something to clear */}
+        {totalWeak > 0 && (
+          confirmClear ? (
+            <div className="flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-1.5">
+              <span className="text-xs font-medium text-destructive">Clear all {totalWeak} weak areas?</span>
+              <button
+                type="button"
+                onClick={handleClearConfirmed}
+                className="rounded-lg bg-destructive px-2.5 py-1 text-xs font-bold text-white transition-colors hover:bg-destructive/90"
+              >
+                Yes, clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmClear(false)}
+                className="rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmClear(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-destructive/50 hover:bg-destructive/5 hover:text-destructive transition-colors"
+            >
+              <TrashIcon size={13} />
+              Clear all
+            </button>
+          )
+        )}
       </div>
 
       {/* Empty state */}
