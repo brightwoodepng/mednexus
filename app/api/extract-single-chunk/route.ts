@@ -29,9 +29,9 @@ RIGHT:  "A 35-year-old woman presents with…"
 
 IMAGE PLACEHOLDERS — the text may contain markers like [IMAGE_1], [IMAGE_2], etc.
 These mark where an embedded image appears in the source document.
-You MUST remove these markers entirely from the vignette text — do not include
-"[IMAGE_1]" or any similar placeholder in any output field.
-Images will be attached separately by the system; set mediaBase64 to null.
+You MUST PRESERVE these markers exactly as-is inside the vignette field so the
+system can attach the actual image data later. Do NOT remove or alter them.
+Set mediaBase64 to null — the system will populate it automatically from the marker.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRITICAL CATEGORIZATION RULES — STRICT HIERARCHY (apply PER QUESTION)
@@ -105,12 +105,18 @@ interface ChunkQuestion {
   mediaBase64?: string | null
 }
 
+interface ImageEntry {
+  id: string       // e.g. "IMAGE_1"
+  dataUri: string  // e.g. "data:image/png;base64,…"
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
       textChunk?: string
       fallbackModule?: string | null
       fallbackDiscipline?: string | null
+      images?: ImageEntry[]
     }
 
     const textChunk = (body.textChunk ?? "").trim()
@@ -120,6 +126,12 @@ export async function POST(req: NextRequest) {
 
     const fallbackModule     = (body.fallbackModule     ?? "").trim() || null
     const fallbackDiscipline = (body.fallbackDiscipline ?? "").trim() || null
+
+    // Build a lookup map so reconciliation is O(1) per question.
+    const imageMap = new Map<string, string>()
+    for (const img of body.images ?? []) {
+      if (img.id && img.dataUri) imageMap.set(img.id.toUpperCase(), img.dataUri)
+    }
 
     const systemInstruction = buildSystemInstruction(fallbackModule, fallbackDiscipline)
     const prompt = `Text chunk:\n${textChunk}`
@@ -212,14 +224,38 @@ export async function POST(req: NextRequest) {
 
         if (!vignette) return null   // degenerate after strip
 
+        // ── Image reconciliation ─────────────────────────────────────────────
+        // Gemini preserves [IMAGE_N] markers in the vignette. Find the first
+        // such marker, resolve it to a base64 data URI from the imageMap, set
+        // mediaBase64, then strip ALL markers from the display text.
+        let mediaBase64: string | null = null
+
+        // First: check if Gemini already returned a real data URI (unlikely but possible)
+        if (typeof q.mediaBase64 === "string" && q.mediaBase64.startsWith("data:")) {
+          mediaBase64 = q.mediaBase64.trim()
+        }
+
+        // Then: scan vignette for [IMAGE_N] markers and resolve via imageMap
+        if (!mediaBase64 && imageMap.size > 0) {
+          const markerMatch = vignette.match(/\[IMAGE_(\d+)\]/i)
+          if (markerMatch) {
+            const key = `IMAGE_${markerMatch[1]}`.toUpperCase()
+            mediaBase64 = imageMap.get(key) ?? null
+          }
+        }
+
+        // Always strip [IMAGE_N] markers from the display vignette
+        const cleanVignette = vignette.replace(/\[IMAGE_\d+\]\s*/gi, "").trim()
+        if (!cleanVignette) return null
+
         return {
           module: mod,
           discipline: disc,
-          vignette,
+          vignette: cleanVignette,
           options,
           correctAnswer,
           explanation: typeof q.explanation === "string" && q.explanation.trim() ? q.explanation.trim() : null,
-          mediaBase64: typeof q.mediaBase64 === "string" && q.mediaBase64.trim() ? q.mediaBase64.trim() : null,
+          mediaBase64,
         } satisfies ChunkQuestion
       })
       .filter(Boolean) as ChunkQuestion[]
