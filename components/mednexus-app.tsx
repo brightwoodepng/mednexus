@@ -379,6 +379,9 @@ export function MedNexusApp() {
     moduleName: string
     discipline: string | null
     lastSetup: { module: string; discipline: string | null } | null
+    mode: QuizMode
+    questions: Question[]
+    answers: Record<string, string | string[] | null>
   } | null>(null)
 
   useEffect(() => {
@@ -477,7 +480,7 @@ export function MedNexusApp() {
     setScreen("quiz")
   }
 
-  function handleQuizComplete(result: BlockResult) {
+  function handleQuizComplete(result: BlockResult, history: HistoryEntry[]) {
     if (!activeQuiz) return
     if (activeQuiz.mode === "exam" && result.timeTakenMs !== undefined) {
       const score: ExamScore = {
@@ -492,7 +495,20 @@ export function MedNexusApp() {
       }
       saveExamScore(score)
     }
-    setLastResult({ result, moduleName: activeQuiz.moduleName, discipline: activeQuiz.discipline, lastSetup: { module: activeQuiz.setupModule, discipline: activeQuiz.discipline } })
+    // Reconstruct the answer map from history so ResultsScreen can open the review panel
+    const answers: Record<string, string | string[] | null> = {}
+    for (const entry of history) {
+      answers[entry.questionId] = entry.selectedOption
+    }
+    setLastResult({
+      result,
+      moduleName: activeQuiz.moduleName,
+      discipline: activeQuiz.discipline,
+      lastSetup: { module: activeQuiz.setupModule, discipline: activeQuiz.discipline },
+      mode: activeQuiz.mode,
+      questions: activeQuiz.questions,
+      answers,
+    })
     setActiveQuiz(null)
     setScreen("results")
   }
@@ -564,7 +580,7 @@ export function MedNexusApp() {
           {safeScreen === "game" && <GameMode onExit={() => setScreen("dashboard")} onOpenStore={() => setScreen("store")} />}
           {safeScreen === "store" && <NexusStorePage />}
           {safeScreen === "results" && lastResult && (
-            <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />
+            <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />
           )}
         </main>
       </div>

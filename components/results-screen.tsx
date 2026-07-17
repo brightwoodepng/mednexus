@@ -1,11 +1,16 @@
 "use client"
 
-import type { BlockResult, ProficiencyRank } from "@/lib/types"
+import { useState } from "react"
+import type { BlockResult, ProficiencyRank, Question, QuizMode } from "@/lib/types"
 import { CheckIcon, XIcon, EyeOffIcon, TrophyIcon, RotateCcwIcon, LayoutDashboardIcon } from "@/components/icons"
+import { TrialReviewPanel } from "@/components/trial-review-panel"
 
 interface ResultsScreenProps {
   result: BlockResult
   moduleName: string
+  mode?: QuizMode
+  questions?: Question[]
+  answers?: Record<string, string | string[] | null>
   onReturn: () => void
   onRetry: () => void
 }
@@ -17,73 +22,105 @@ const RANK_STYLES: Record<ProficiencyRank, { text: string; ring: string; blurb: 
   Novice: { text: "text-destructive", ring: "text-destructive", blurb: "Review the explanations and try again." },
 }
 
-export function ResultsScreen({ result, moduleName, onReturn, onRetry }: ResultsScreenProps) {
+export function ResultsScreen({ result, moduleName, mode, questions, answers, onReturn, onRetry }: ResultsScreenProps) {
+  const [showReview, setShowReview] = useState(false)
   const rankStyle = RANK_STYLES[result.rank]
   // SVG circle geometry for the score ring.
   const radius = 80
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (result.percentage / 100) * circumference
 
-  return (
-    <div className="mx-auto flex max-w-2xl flex-col items-center">
-      <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-        <TrophyIcon size={14} />
-        Block Complete · {moduleName}
-      </div>
-      <h1 className="mb-8 text-2xl font-semibold tracking-tight">Your Proficiency</h1>
+  const canReview = mode === "trial" && questions && questions.length > 0 && answers
 
-      {/* Circular score graphic */}
-      <div className="relative mb-6 flex h-52 w-52 items-center justify-center">
-        <svg className="h-full w-full -rotate-90" viewBox="0 0 200 200" aria-hidden="true">
-          <circle cx="100" cy="100" r={radius} fill="none" stroke="var(--muted)" strokeWidth="14" />
-          <circle
-            cx="100"
-            cy="100"
-            r={radius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="14"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            className={`${rankStyle.ring} transition-all duration-1000 ease-out`}
-          />
-        </svg>
-        <div className="absolute flex flex-col items-center">
-          <span className="text-5xl font-semibold tabular-nums">{result.percentage}%</span>
-          <span className={`mt-1 text-sm font-semibold ${rankStyle.text}`}>{result.rank}</span>
+  return (
+    <>
+      {/* Full-screen answer review — trial mode only */}
+      {showReview && canReview && (
+        <TrialReviewPanel
+          questions={questions}
+          answers={answers}
+          onBack={() => setShowReview(false)}
+        />
+      )}
+
+      <div className="mx-auto flex max-w-2xl flex-col items-center">
+        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+          <TrophyIcon size={14} />
+          Block Complete · {moduleName}
+        </div>
+        <h1 className="mb-8 text-2xl font-semibold tracking-tight">Your Proficiency</h1>
+
+        {/* Circular score graphic */}
+        <div className="relative mb-6 flex h-52 w-52 items-center justify-center">
+          <svg className="h-full w-full -rotate-90" viewBox="0 0 200 200" aria-hidden="true">
+            <circle cx="100" cy="100" r={radius} fill="none" stroke="var(--muted)" strokeWidth="14" />
+            <circle
+              cx="100"
+              cy="100"
+              r={radius}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="14"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              className={`${rankStyle.ring} transition-all duration-1000 ease-out`}
+            />
+          </svg>
+          <div className="absolute flex flex-col items-center">
+            <span className="text-5xl font-semibold tabular-nums">{result.percentage}%</span>
+            <span className={`mt-1 text-sm font-semibold ${rankStyle.text}`}>{result.rank}</span>
+          </div>
+        </div>
+
+        <p className="mb-8 text-center text-sm text-muted-foreground text-pretty">{rankStyle.blurb}</p>
+
+        {/* Raw numbers */}
+        <div className="mb-8 grid w-full grid-cols-3 gap-4">
+          <StatCard label="Correct" value={result.correct} icon={<CheckIcon size={18} />} accent="text-success" />
+          <StatCard label="Incorrect" value={result.incorrect} icon={<XIcon size={18} />} accent="text-destructive" />
+          <StatCard label="Omitted" value={result.omitted} icon={<EyeOffIcon size={18} />} accent="text-muted-foreground" />
+        </div>
+
+        {/* Review Answers — trial mode only */}
+        {canReview && (
+          <button
+            type="button"
+            onClick={() => setShowReview(true)}
+            className="mb-4 flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-base">📋</span>
+              Review Answers
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+                {questions.length}
+              </span>
+            </span>
+            <span className="text-muted-foreground">›</span>
+          </button>
+        )}
+
+        {/* Actions */}
+        <div className="flex w-full flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={onRetry}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <RotateCcwIcon size={18} />
+            Retry Block
+          </button>
+          <button
+            type="button"
+            onClick={onReturn}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <LayoutDashboardIcon size={18} />
+            Return to Dashboard
+          </button>
         </div>
       </div>
-
-      <p className="mb-8 text-center text-sm text-muted-foreground text-pretty">{rankStyle.blurb}</p>
-
-      {/* Raw numbers */}
-      <div className="mb-8 grid w-full grid-cols-3 gap-4">
-        <StatCard label="Correct" value={result.correct} icon={<CheckIcon size={18} />} accent="text-success" />
-        <StatCard label="Incorrect" value={result.incorrect} icon={<XIcon size={18} />} accent="text-destructive" />
-        <StatCard label="Omitted" value={result.omitted} icon={<EyeOffIcon size={18} />} accent="text-muted-foreground" />
-      </div>
-
-      {/* Actions */}
-      <div className="flex w-full flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          onClick={onRetry}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium transition-colors hover:bg-muted"
-        >
-          <RotateCcwIcon size={18} />
-          Retry Block
-        </button>
-        <button
-          type="button"
-          onClick={onReturn}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          <LayoutDashboardIcon size={18} />
-          Return to Dashboard
-        </button>
-      </div>
-    </div>
+    </>
   )
 }
 
