@@ -54,6 +54,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
   const startedAt = useRef(Date.now())
   const finaleTriggeredRef = useRef(false)
+  const historyRecordedRef = useRef(false)
 
   const current = questions[index]
   const isSATA = current
@@ -101,7 +102,13 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       isCorrect: isAnswerCorrect(answers[q.id] ?? null, q.correctAnswer ?? null),
       timestamp: now,
     }))
-    recordHistory(history)
+    // Guard: Grand Finale (gamification path) records history eagerly when the
+    // finale fires so that weak areas clear even if the user exits without
+    // pressing Submit Block. Avoid double-recording here.
+    if (!historyRecordedRef.current) {
+      recordHistory(history)
+      historyRecordedRef.current = true
+    }
     onComplete(result, history)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions, answers, mode, recordHistory, onComplete])
@@ -117,6 +124,9 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   // Grand Finale trigger — fires the exact moment the last question is answered.
   // Placed before the early-return guard so hook call order is stable.
   // answeredCount is computed inline to avoid a forward-reference issue.
+  // History is recorded HERE (not only in submitBlock) so that weak areas clear
+  // immediately even when the user exits via "Return to Menu" without ever
+  // pressing Submit Block.
   useEffect(() => {
     if (!gamificationEnabled || mode !== "trial" || questions.length === 0) return
     if (finaleTriggeredRef.current) return
@@ -126,6 +136,25 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     }).length
     if (count === questions.length) {
       finaleTriggeredRef.current = true
+      // Eagerly persist history so weak-area state reflects the correct answers
+      // right now, regardless of which exit path the user takes afterward.
+      if (!historyRecordedRef.current) {
+        const now = Date.now()
+        const historyEntries: HistoryEntry[] = questions.map((q) => ({
+          id: `${q.id}-${now}-${Math.random().toString(36).slice(2, 7)}`,
+          questionId: q.id,
+          module: q.module,
+          subject: q.subject,
+          vignetteSnippet: q.vignette.slice(0, 120) + (q.vignette.length > 120 ? "…" : ""),
+          mode,
+          selectedOption: answers[q.id] ?? null,
+          correctOption: q.correctAnswer ?? null,
+          isCorrect: isAnswerCorrect(answers[q.id] ?? null, q.correctAnswer ?? null),
+          timestamp: now,
+        }))
+        recordHistory(historyEntries)
+        historyRecordedRef.current = true
+      }
       setShowGrandFinale(true)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -234,6 +263,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   function handleRetry() {
     setShowGrandFinale(false)
     finaleTriggeredRef.current = false
+    historyRecordedRef.current = false
     setIndex(0)
     setAnswers({})
     setStruck({})
