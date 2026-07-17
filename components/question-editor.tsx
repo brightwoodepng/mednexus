@@ -1017,10 +1017,20 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
   const isFirstRender = useRef(true)
   const jsonInputRef = useRef<HTMLInputElement>(null)
 
-  // Consume questions staged by the Universal Importer modal
+  // Consume questions staged by the Universal Importer modal.
+  // Deduplicates against both live questions and existing drafts so that
+  // re-importing the same document (to recover a failed batch) is safe.
   useEffect(() => {
     if (!pendingImport || pendingImport.length === 0) return
-    setDraftQuestions((prev) => [...prev, ...pendingImport])
+    const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ")
+    setDraftQuestions((prev) => {
+      const existingVignettes = new Set([
+        ...questions.map((q) => normalize(q.vignette)),
+        ...prev.map((q) => normalize(q.vignette)),
+      ])
+      const fresh = pendingImport.filter((q) => !existingVignettes.has(normalize(q.vignette)))
+      return [...prev, ...fresh]
+    })
     setFilterMode("draft")
     onPendingImportConsumed?.()
   // eslint-disable-next-line react-hooks/exhaustive-deps
