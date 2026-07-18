@@ -52,8 +52,8 @@ function UserIcon({ size = 22 }: { size?: number }) {
 const TABS = [
   { id: "dashboard", label: "Home",      icon: HomeIcon,    screen: "dashboard"  as Screen },
   { id: "modules",   label: "Modules",   icon: LayersIcon,  screen: "modules"    as Screen },
-  { id: "practice",  label: "Practice",  icon: ZapIcon,     screen: "weak-areas" as Screen },
   { id: "game",      label: "Game Mode", icon: GamepadIcon, screen: "game"       as Screen },
+  { id: "practice",  label: "Practice",  icon: ZapIcon,     screen: "weak-areas" as Screen },
   { id: "profile",   label: "Profile",   icon: UserIcon,    screen: "profile"    as Screen },
 ] as const
 
