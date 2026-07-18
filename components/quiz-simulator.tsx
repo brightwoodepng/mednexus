@@ -313,17 +313,31 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             <XIcon size={20} />
           </button>
 
-          {/* Center: clickable progress indicator that opens the navigator */}
+            {/* Center: navigator pill — visually prominent so users know it's tappable */}
           <button
             type="button"
             onClick={() => setFocusNavOpen((v) => !v)}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold tabular-nums transition-colors hover:bg-muted active:bg-muted"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-muted/60 px-3 py-2 text-sm font-semibold tabular-nums transition-colors hover:bg-muted active:bg-muted"
           >
-            <span>Question {index + 1} of {questions.length}</span>
-            <ChevronDownIcon size={14} className="text-muted-foreground" />
+            {/* mini grid icon */}
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-primary">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            <span>Q {index + 1} / {questions.length}</span>
+            <ChevronDownIcon size={13} className="text-muted-foreground" />
           </button>
 
-          {/* Right: Theme toggle */}
+          {/* Right: Flag + Theme toggle */}
+          <button
+            type="button"
+            onClick={() => toggleFlag(current.id)}
+            aria-pressed={isFlagged}
+            className={`flex min-h-10 min-w-10 items-center justify-center rounded-xl transition-colors ${isFlagged ? "bg-warning/10 text-warning" : "text-muted-foreground hover:bg-muted active:bg-muted"}`}
+            aria-label={isFlagged ? "Unflag question" : "Flag question"}
+          >
+            <FlagIcon size={20} />
+          </button>
           <button
             type="button"
             onClick={() => setThemeOpen(true)}
@@ -640,7 +654,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             <span>Prev</span>
           </button>
 
-          {/* Center: icon-only tool cluster */}
+          {/* Center: icon-only tool cluster — Labs + Calc only */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -657,27 +671,6 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
               aria-label="Calculator"
             >
               <CalculatorIcon size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleFlag(current.id)}
-              aria-pressed={isFlagged}
-              className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${isFlagged ? "border-warning/40 bg-warning/10 text-warning" : "border-border text-muted-foreground hover:bg-muted active:bg-muted"}`}
-              aria-label={isFlagged ? "Unflag question" : "Flag question"}
-            >
-              <FlagIcon size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setFocusNavOpen((v) => !v)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
-              aria-label="Question Navigator"
-            >
-              {/* Grid / Navigator icon */}
-              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-              </svg>
             </button>
           </div>
 
