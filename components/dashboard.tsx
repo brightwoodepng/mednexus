@@ -137,8 +137,8 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
       {/* Live Assessment Banner */}
       {liveExams.length > 0 && (
         <div className="relative overflow-hidden rounded-2xl border border-emerald-400/40 bg-emerald-500 px-5 py-4 shadow-lg sm:rounded-3xl sm:px-6 sm:py-5">
-          <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
-          <div className="pointer-events-none absolute -bottom-8 right-24 h-20 w-20 rounded-full bg-white/8" />
+          <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/[0.07]" />
+          <div className="pointer-events-none absolute -bottom-8 right-24 h-20 w-20 rounded-full bg-white/[0.05]" />
           <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
@@ -161,7 +161,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
             <button
               type="button"
               onClick={onOpenLiveAssessments}
-              className="shrink-0 flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-emerald-700 shadow-sm hover:bg-white/90 transition-colors"
+              className="shrink-0 flex min-h-14 items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-emerald-700 shadow-sm hover:bg-white/90 transition-colors sm:min-h-0"
             >
               Join Now
               <ArrowRightIcon size={15} />
@@ -172,9 +172,9 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
 
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl bg-primary px-5 py-5 text-primary-foreground shadow-lg sm:rounded-3xl sm:px-8 sm:py-8">
-        <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
-        <div className="pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/6" />
-        <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/5" />
+        <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/[0.07]" />
+        <div className="pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/[0.04]" />
+        <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/[0.03]" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-medium opacity-80">{greeting},</p>
@@ -401,7 +401,7 @@ function ModuleCard({
   const pct = total > 0 ? Math.round((attempted / total) * 100) : 0
 
   return (
-    <div className={`group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
+    <div className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
       {/* Color top bar */}
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
 
@@ -433,24 +433,22 @@ function ModuleCard({
           {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
         </p>
 
-        {/* Progress bar */}
-        {pct > 0 && (
-          <>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${pct}%`, background: palette.bar }}
-              />
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">{pct}% attempted</p>
-          </>
-        )}
+        {/* Progress bar — always visible */}
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${pct}%`, background: palette.bar }}
+          />
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {pct > 0 ? `${pct}% Completed` : "Not started"}
+        </p>
 
         {/* Open button */}
         <button
           type="button"
           onClick={onOpen}
-          className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all"
+          className="mt-4 flex min-h-14 w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all sm:min-h-0"
           style={{
             background: `${palette.bar}18`,
             color: palette.bar,
@@ -505,7 +503,7 @@ function DisciplineView({
         <button
           type="button"
           onClick={() => onSelectDiscipline(null)}
-          className="group relative overflow-hidden rounded-2xl border-2 border-primary/25 bg-primary/8 p-5 text-left shadow-sm ring-0 transition-all hover:border-primary/50 hover:shadow-md hover:ring-2 hover:ring-primary/30 active:scale-[0.98]"
+          className="group relative overflow-hidden rounded-3xl border-2 border-primary/25 bg-primary/8 p-5 text-left shadow-sm ring-0 transition-all hover:border-primary/50 hover:shadow-md hover:ring-2 hover:ring-primary/30 active:scale-[0.98]"
         >
           <div className="mb-4 flex items-start justify-between">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
@@ -526,7 +524,7 @@ function DisciplineView({
               key={disc}
               type="button"
               onClick={() => onSelectDiscipline(disc)}
-              className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`}
+              className={`group relative overflow-hidden rounded-3xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`}
             >
               <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: dPalette.bar }} />
               <div className="mb-4 mt-1 flex items-start justify-between">
@@ -539,16 +537,12 @@ function DisciplineView({
               <p className="mt-0.5 text-sm text-muted-foreground">
                 {getQuestionsForModuleAndDiscipline(module, disc).length} questions
               </p>
-              {cov && cov.total > 0 && (
-                <>
-                  <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {pct > 0 ? `${pct}% attempted` : "Not started"}
-                  </p>
-                </>
-              )}
+              <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {pct > 0 ? `${pct}% Completed` : "Not started"}
+              </p>
             </button>
           )
         })}
@@ -651,7 +645,7 @@ function ExamDashboard({
 // ── Sub-components ────────────────────────────────────────────────────────────
 function StatCard({ glass, icon, label, value, sub, color }: { glass: boolean; icon: string; label: string; value: string | number; sub: string; color: string }) {
   return (
-    <div className={`flex flex-col gap-1 rounded-2xl p-4 sm:p-5 ${glass ? "glass-card" : "border bg-card shadow-sm"}`}>
+    <div className={`flex flex-col gap-1 rounded-3xl p-4 sm:p-5 ${glass ? "glass-card" : "border bg-card shadow-sm"}`}>
       <div className="flex items-center justify-between">
         <span className="text-xl">{icon}</span>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide border ${color}`}>{label}</span>
