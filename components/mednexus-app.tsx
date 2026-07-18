@@ -575,10 +575,8 @@ export function MedNexusApp() {
           </div>
           {/* Right: study mode toggle (desktop only) + theme toggle (mobile only) + bell */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            {/* Study mode toggle — desktop only */}
-            <div className="hidden md:flex">
-              <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
-            </div>
+            {/* Study mode toggle — all screen sizes */}
+            <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
             {/* Theme / Appearance toggle — mobile only */}
             <button
               type="button"
