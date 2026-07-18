@@ -15,13 +15,15 @@ import {
   BookOpenIcon,
   ChevronDownIcon,
   LayersIcon,
+  ClipboardListIcon,
 } from "@/components/icons"
 import {
   getLiveModules,
   getDisciplinesForModule,
   getModuleQuestionCount,
 } from "@/lib/modules"
-import type { HistoryEntry, ExamScore } from "@/lib/types"
+import type { HistoryEntry, ExamScore, Question } from "@/lib/types"
+import { TrialReviewPanel } from "@/components/trial-review-panel"
 
 // ── Module + Discipline Coverage ─────────────────────────────────────────────
 
@@ -333,6 +335,157 @@ function ProfileHeader() {
   )
 }
 
+// ── Continuous Module Review ─────────────────────────────────────────────────
+
+function ModuleReviewSection() {
+  const { progress } = useApp()
+  const { questions } = useQuestions()
+  const [openModule, setOpenModule] = useState<string | null>(null)
+
+  // Fast question lookup by ID
+  const questionById = useMemo(() => {
+    const map = new Map<string, Question>()
+    for (const q of questions) map.set(q.id, q)
+    return map
+  }, [questions])
+
+  // Aggregate history → one record per module.
+  // Only the LATEST attempt per questionId within a module is kept so the
+  // answers map and correct-count reflect the user's most recent performance.
+  const moduleData = useMemo(() => {
+    const grouped = new Map<string, HistoryEntry[]>()
+    for (const entry of progress.history) {
+      const mod = entry.module ?? entry.subject ?? "Uncategorized"
+      if (!grouped.has(mod)) grouped.set(mod, [])
+      grouped.get(mod)!.push(entry)
+    }
+
+    const result: {
+      module: string
+      questions: Question[]
+      answers: Record<string, string | string[] | null>
+      correctCount: number
+    }[] = []
+
+    for (const [mod, entries] of grouped) {
+      // Keep latest attempt per question
+      const latestByQ = new Map<string, HistoryEntry>()
+      for (const e of entries) {
+        const prev = latestByQ.get(e.questionId)
+        if (!prev || e.timestamp > prev.timestamp) latestByQ.set(e.questionId, e)
+      }
+
+      const qs: Question[] = []
+      const answers: Record<string, string | string[] | null> = {}
+      let correctCount = 0
+
+      for (const [qId, entry] of latestByQ) {
+        const q = questionById.get(qId)
+        if (!q) continue
+        qs.push(q)
+        answers[qId] = entry.selectedOption
+        if (entry.isCorrect) correctCount++
+      }
+
+      if (qs.length > 0) {
+        result.push({ module: mod, questions: qs, answers, correctCount })
+      }
+    }
+
+    // Most-answered modules first
+    return result.sort((a, b) => b.questions.length - a.questions.length)
+  }, [progress.history, questionById])
+
+  const openData = openModule ? moduleData.find((m) => m.module === openModule) : null
+
+  if (moduleData.length === 0) return null
+
+  return (
+    <>
+      {/* Full-screen review overlay */}
+      {openData && (
+        <TrialReviewPanel
+          questions={openData.questions}
+          answers={openData.answers}
+          subtitle={`${openData.module} · ${openData.questions.length} question${openData.questions.length !== 1 ? "s" : ""}`}
+          onBack={() => setOpenModule(null)}
+        />
+      )}
+
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <ClipboardListIcon size={16} className="text-primary shrink-0" />
+              <h2 className="font-semibold text-foreground">Module Review</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Tap any module to review every question you&apos;ve answered — with All / Correct / Incorrect filters
+            </p>
+          </div>
+          <span className="shrink-0 text-sm text-muted-foreground">
+            {moduleData.length} module{moduleData.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {moduleData.map((mod) => {
+            const total = mod.questions.length
+            const accuracy = total > 0 ? Math.round((mod.correctCount / total) * 100) : 0
+            const incorrect = total - mod.correctCount
+            return (
+              <button
+                key={mod.module}
+                type="button"
+                onClick={() => setOpenModule(mod.module)}
+                className="group flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 active:scale-[0.99]"
+              >
+                {/* Title + accuracy badge */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{mod.module}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {total} question{total !== 1 ? "s" : ""} answered
+                    </p>
+                  </div>
+                  <span className={`shrink-0 text-sm font-bold tabular-nums ${
+                    accuracy >= 70 ? "text-primary" : accuracy >= 50 ? "text-amber-600 dark:text-amber-400" : "text-destructive"
+                  }`}>
+                    {accuracy}%
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${accuracy}%` }}
+                  />
+                </div>
+
+                {/* Correct / Incorrect counts + CTA */}
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-3">
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <CheckIcon size={11} /> {mod.correctCount} correct
+                    </span>
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-destructive">
+                      <XIcon size={11} /> {incorrect} incorrect
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground transition-colors group-hover:text-primary">
+                    Review →
+                  </span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ── Main export ──────────────────────────────────────────────────────────────
 
 export function ProfileHistory() {
@@ -343,6 +496,7 @@ export function ProfileHistory() {
     <div className="mx-auto max-w-3xl space-y-6">
       <ProfileHeader />
       <ModuleCoverage />
+      <ModuleReviewSection />
       <ExamScores scores={examScores} />
 
       {/* Per-question history */}
