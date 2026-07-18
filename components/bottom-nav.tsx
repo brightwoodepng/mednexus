@@ -28,13 +28,14 @@ function ZapIcon({ size = 22 }: { size?: number }) {
     </svg>
   )
 }
-function BarChartIcon({ size = 22 }: { size?: number }) {
+function GamepadIcon({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
-      <line x1="2" y1="20" x2="22" y2="20" />
+      <line x1="6" y1="12" x2="10" y2="12" />
+      <line x1="8" y1="10" x2="8" y2="14" />
+      <line x1="15" y1="13" x2="15.01" y2="13" />
+      <line x1="18" y1="11" x2="18.01" y2="11" />
+      <rect width="20" height="12" x="2" y="6" rx="2" />
     </svg>
   )
 }
@@ -49,11 +50,11 @@ function UserIcon({ size = 22 }: { size?: number }) {
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 const TABS = [
-  { id: "dashboard", label: "Home",     icon: HomeIcon,     screen: "dashboard"   as Screen },
-  { id: "modules",   label: "Modules",  icon: LayersIcon,   screen: "modules"     as Screen },
-  { id: "practice",  label: "Practice", icon: ZapIcon,      screen: "weak-areas"  as Screen },
-  { id: "stats",     label: "Stats",    icon: BarChartIcon, screen: "profile"     as Screen },
-  { id: "profile",   label: "Profile",  icon: UserIcon,     screen: "profile"     as Screen },
+  { id: "dashboard", label: "Home",      icon: HomeIcon,    screen: "dashboard"  as Screen },
+  { id: "modules",   label: "Modules",   icon: LayersIcon,  screen: "modules"    as Screen },
+  { id: "practice",  label: "Practice",  icon: ZapIcon,     screen: "weak-areas" as Screen },
+  { id: "game",      label: "Game Mode", icon: GamepadIcon, screen: "game"       as Screen },
+  { id: "profile",   label: "Profile",   icon: UserIcon,    screen: "profile"    as Screen },
 ] as const
 
 type TabId = typeof TABS[number]["id"]
@@ -63,8 +64,9 @@ function screenToTab(s: Screen): TabId | null {
   if (s === "dashboard")  return "dashboard"
   if (s === "modules")    return "modules"
   if (s === "weak-areas") return "practice"
-  if (s === "profile")    return "stats"   // Stats is the canonical profile tab
-  return null   // quiz, game, results, etc. — keep whatever tab is already active
+  if (s === "game")       return "game"
+  if (s === "profile")    return "profile"
+  return null   // quiz, results, store, etc. — keep whatever tab is already active
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
