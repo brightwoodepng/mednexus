@@ -22,7 +22,9 @@ import {
   CheckIcon,
   ClockIcon,
   BookOpenIcon,
+  PaletteIcon,
 } from "@/components/icons"
+import { AppearanceModal } from "@/components/appearance-modal"
 
 interface QuizSimulatorProps {
   questions: Question[]   // pre-selected and shuffled by the caller
@@ -52,6 +54,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const [labsOpen, setLabsOpen] = useState(false)
   const [focusNavOpen, setFocusNavOpen] = useState(false)
   const [showGrandFinale, setShowGrandFinale] = useState(false)
+  const [themeOpen, setThemeOpen] = useState(false)
 
   const startedAt = useRef(Date.now())
   const finaleTriggeredRef = useRef(false)
@@ -318,21 +321,15 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           <ChevronDownIcon size={14} className="text-muted-foreground" />
         </button>
 
-        {/* Tools */}
-        <div className="flex items-center gap-1">
-          {mode === "exam" && (
-            <div className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold tabular-nums ${timeLeft < 60 ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground"}`}>
-              <ClockIcon size={13} />
-              {formatTime(timeLeft)}
-            </div>
-          )}
-          <button type="button" onClick={() => setLabsOpen(true)} className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted">
-            <FlaskIcon size={18} />
-          </button>
-          <button type="button" onClick={() => setCalcOpen(true)} className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted">
-            <CalculatorIcon size={18} />
-          </button>
-        </div>
+        {/* Right: Theme toggle only */}
+        <button
+          type="button"
+          onClick={() => setThemeOpen(true)}
+          className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
+          aria-label="Appearance"
+        >
+          <PaletteIcon size={20} />
+        </button>
       </header>
 
       {/* ── Desktop top bar (hidden on mobile) ── */}
@@ -612,49 +609,82 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       </div>
 
       {/* ── Mobile focus-mode sticky bottom bar (hidden on md+) ── */}
-      <div className="shrink-0 flex items-center justify-between gap-2 border-t border-border bg-card px-3 py-2.5 md:hidden">
-        {/* Previous */}
-        <button
-          type="button"
-          onClick={() => setIndex((i) => Math.max(0, i - 1))}
-          disabled={index === 0}
-          className="flex min-h-14 flex-1 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-sm font-semibold transition-colors hover:bg-muted active:bg-muted disabled:opacity-40"
-        >
-          <ChevronLeftIcon size={20} />
-          <span>Prev</span>
-        </button>
+      <div className="shrink-0 border-t border-border bg-card px-3 py-2 md:hidden">
+        <div className="flex items-center justify-between gap-2">
 
-        {/* Flag */}
-        <button
-          type="button"
-          onClick={() => toggleFlag(current.id)}
-          aria-pressed={isFlagged}
-          className={`flex min-h-14 w-14 items-center justify-center rounded-xl border transition-colors ${isFlagged ? "border-warning/40 bg-warning/10 text-warning" : "border-border text-muted-foreground hover:bg-muted"}`}
-          aria-label={isFlagged ? "Unflag question" : "Flag question"}
-        >
-          <FlagIcon size={20} />
-        </button>
-
-        {/* Next / Submit */}
-        {index === questions.length - 1 ? (
+          {/* Left: Prev */}
           <button
             type="button"
-            onClick={submitBlock}
-            className="flex min-h-14 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+            onClick={() => setIndex((i) => Math.max(0, i - 1))}
+            disabled={index === 0}
+            className="flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-muted active:bg-muted disabled:opacity-40"
           >
-            <CheckIcon size={18} />
-            <span>Submit</span>
+            <ChevronLeftIcon size={18} />
+            <span>Prev</span>
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setIndex((i) => Math.min(questions.length - 1, i + 1))}
-            className="flex min-h-14 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
-          >
-            <span>Next</span>
-            <ChevronRightIcon size={20} />
-          </button>
-        )}
+
+          {/* Center: icon-only tool cluster */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setLabsOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
+              aria-label="Lab Values"
+            >
+              <FlaskIcon size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCalcOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
+              aria-label="Calculator"
+            >
+              <CalculatorIcon size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleFlag(current.id)}
+              aria-pressed={isFlagged}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${isFlagged ? "border-warning/40 bg-warning/10 text-warning" : "border-border text-muted-foreground hover:bg-muted active:bg-muted"}`}
+              aria-label={isFlagged ? "Unflag question" : "Flag question"}
+            >
+              <FlagIcon size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setFocusNavOpen((v) => !v)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
+              aria-label="Question Navigator"
+            >
+              {/* Grid / Navigator icon */}
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Right: Next / Submit */}
+          {index === questions.length - 1 ? (
+            <button
+              type="button"
+              onClick={submitBlock}
+              className="flex items-center gap-1 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+            >
+              <CheckIcon size={16} />
+              <span>Submit</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIndex((i) => Math.min(questions.length - 1, i + 1))}
+              className="flex items-center gap-1 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
+            >
+              <span>Next</span>
+              <ChevronRightIcon size={18} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Desktop bottom nav bar (hidden on mobile) ── */}
@@ -753,6 +783,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
       <CalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
       <LabValuesModal open={labsOpen} onClose={() => setLabsOpen(false)} question={current} />
+      <AppearanceModal open={themeOpen} onClose={() => setThemeOpen(false)} />
     </div>
   )
 }
