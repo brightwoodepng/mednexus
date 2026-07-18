@@ -778,12 +778,12 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6">
       <div className="mx-auto w-full max-w-md">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-foreground">Game Mode</h1>
-            <p className="text-xs text-muted-foreground">Choose your challenge</p>
+            <h1 className="text-lg font-extrabold tracking-tight text-foreground md:text-xl">Game Mode</h1>
+            <p className="hidden text-xs text-muted-foreground md:block">Choose your challenge</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
             <button type="button" onClick={onOpenStore}
               className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40">
@@ -907,16 +907,21 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
         <div className="mb-7">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 shadow-lg shadow-violet-500/20">
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={28} height={28}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 shadow-lg shadow-violet-500/20 md:h-14 md:w-14">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={22} height={22} className="md:hidden" aria-hidden="true">
+                  <line x1="6" x2="10" y1="12" y2="12" /><line x1="8" x2="8" y1="10" y2="14" />
+                  <line x1="15" x2="17" y1="11" y2="11" /><line x1="15" x2="17" y1="13" y2="13" />
+                  <rect width="20" height="12" x="2" y="6" rx="2" />
+                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={28} height={28} className="hidden md:block" aria-hidden="true">
                   <line x1="6" x2="10" y1="12" y2="12" /><line x1="8" x2="8" y1="10" y2="14" />
                   <line x1="15" x2="17" y1="11" y2="11" /><line x1="15" x2="17" y1="13" y2="13" />
                   <rect width="20" height="12" x="2" y="6" rx="2" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl font-extrabold tracking-tight text-foreground">Game Mode</h1>
-                <p className="text-xs text-muted-foreground">Pick a game type and start playing</p>
+                <h1 className="text-lg font-extrabold tracking-tight text-foreground md:text-xl">Game Mode</h1>
+                <p className="hidden text-xs text-muted-foreground md:block">Pick a game type and start playing</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -957,7 +962,7 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
         {/* Solo modes window */}
         {category === "solo" && (
           <div className="mb-3">
-            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Play by yourself — practice at your own pace</p>
+            <p className="mb-3 hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 md:block">Play by yourself — practice at your own pace</p>
             <div className="grid gap-4 sm:grid-cols-2">
               {MODES.map(m => (
                 <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
@@ -969,7 +974,7 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
         {/* Multiplayer modes window */}
         {category === "multi" && (
           <div className="mb-3">
-            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1">Compete live with classmates via a shared room PIN</p>
+            <p className="mb-3 hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 md:block">Compete live with classmates via a shared room PIN</p>
             <div className="grid gap-4 sm:grid-cols-2">
               {MULTI_MODES.map(m => (
                 <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
