@@ -447,7 +447,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectOption(opt.id) }
                       }}
-                      className={`flex min-h-[52px] items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${isLocked ? "cursor-default" : "cursor-pointer active:scale-[0.99]"} ${stateClass}`}
+                      className={`flex min-h-14 items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${isLocked ? "cursor-default" : "cursor-pointer active:scale-[0.99]"} ${stateClass}`}
                     >
                       {/* Square checkbox indicator */}
                       <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${badgeCls}`}>
@@ -486,7 +486,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectOption(opt.id) }
                     }}
-                    className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.99] ${stateClass} ${isStruck ? "opacity-50" : ""}`}
+                    className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.99] ${stateClass} ${isStruck ? "opacity-50" : ""}`}
                   >
                     <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
                       revealed && isCorrect ? "border-success bg-success text-success-foreground"

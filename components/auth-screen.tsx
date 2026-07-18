@@ -201,7 +201,7 @@ function GuestForm({ onBack }: { onBack: () => void }) {
         <button
           type="submit"
           disabled={loading || !name.trim() || !classLevel}
-          className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+          className="mt-1 flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
         >
           {loading ? "Setting up…" : "Enter MedNexus"}
           {!loading && <ArrowRightIcon size={16} />}
@@ -259,7 +259,7 @@ function GuestModal({ onClose }: { onClose: () => void }) {
           <button
             type="submit"
             disabled={loading || !name.trim() || !classLevel}
-            className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+            className="mt-1 flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
           >
             {loading ? "Setting up…" : "Enter MedNexus"}
             {!loading && <ArrowRightIcon size={16} />}
@@ -468,7 +468,7 @@ function LoginFields() {
         <button
           type="submit"
           disabled={loading || !indexNumber.trim() || !password.trim()}
-          className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+          className="mt-1 flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
         >
           {loading ? "Signing in…" : "Log In"}
           {!loading && <ArrowRightIcon size={16} />}
@@ -643,7 +643,7 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
       <button
         type="submit"
         disabled={loading || !name.trim() || !indexNumber.trim() || !password.trim() || !confirmPassword.trim()}
-        className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+        className="mt-1 flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
       >
         {loading ? "Creating account…" : "Create Account"}
         {!loading && <ArrowRightIcon size={16} />}

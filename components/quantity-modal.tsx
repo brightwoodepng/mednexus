@@ -170,14 +170,14 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
             <button
               type="button"
               onClick={() => handleGamificationChoice(false)}
-              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-all hover:border-border/60 hover:bg-muted active:scale-[0.97]"
+              className="flex min-h-14 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-all hover:border-border/60 hover:bg-muted active:scale-[0.97]"
             >
               No, focus mode
             </button>
             <button
               type="button"
               onClick={() => handleGamificationChoice(true)}
-              className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm shadow-primary/30 transition-all hover:bg-primary/90 active:scale-[0.97]"
+              className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm shadow-primary/30 transition-all hover:bg-primary/90 active:scale-[0.97]"
             >
               <ZapIcon size={14} />
               Yes, let&apos;s go!
@@ -370,7 +370,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
           type="button"
           disabled={!canStart}
           onClick={handleStart}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span>{startLabel}</span>
           <ArrowRightIcon size={15} />

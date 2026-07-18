@@ -38,6 +38,7 @@ import {
   XIcon,
   HeartIcon,
 } from "@/components/icons"
+import { BottomNav } from "@/components/bottom-nav"
 
 interface PendingQuiz {
   questions: Question[]
@@ -545,12 +546,13 @@ export function MedNexusApp() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex items-center gap-2 border-b border-border bg-card px-3 py-2 sm:px-4 sm:py-2.5">
-          <button type="button" onClick={() => setMobileNavOpen(true)} className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-muted lg:hidden" aria-label="Open menu">
+          {/* Hamburger — desktop only; mobile uses BottomNav */}
+          <button type="button" onClick={() => setMobileNavOpen(true)} className="hidden shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-muted lg:hidden" aria-label="Open menu">
             <MenuIcon size={20} />
           </button>
-          <div className="flex min-w-0 items-center gap-1.5 px-1.5 py-1">
+          <div className="flex min-w-0 items-center gap-1.5 px-1 py-1">
             <StethoscopeIcon size={16} className="shrink-0 text-primary" />
-            <span className="truncate text-sm font-semibold">MedNexus</span>
+            <span className="truncate text-sm font-bold tracking-tight">MedNexus</span>
           </div>
           <div className="flex-1" />
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -559,7 +561,7 @@ export function MedNexusApp() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-8" onClick={() => { if (!sidebarCollapsed) setSidebarCollapsed(true) }}>
+        <main className="flex-1 overflow-y-auto p-3 pb-24 sm:p-5 sm:pb-5 lg:p-8" onClick={() => { if (!sidebarCollapsed) setSidebarCollapsed(true) }}>
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
           )}
@@ -584,6 +586,9 @@ export function MedNexusApp() {
           )}
         </main>
       </div>
+
+      {/* Mobile bottom navigation — hidden on md+ (sidebar takes over) */}
+      <BottomNav screen={safeScreen} onNavigate={setScreen} />
 
       <QuantityModal
         open={pendingQuiz !== null}
