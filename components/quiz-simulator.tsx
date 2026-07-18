@@ -300,36 +300,53 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       )}
 
       {/* ── Mobile focus-mode top bar (hidden on md+) ── */}
-      <header className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2 md:hidden">
-        {/* Exit */}
-        <button
-          type="button"
-          onClick={onExit}
-          className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-muted"
-          aria-label="Exit session"
-        >
-          <XIcon size={20} />
-        </button>
+      <header className="flex shrink-0 flex-col border-b border-border bg-card md:hidden">
+        {/* Row 1: Exit | Progress | Theme */}
+        <div className="flex items-center gap-2 px-3 py-2">
+          {/* Exit */}
+          <button
+            type="button"
+            onClick={onExit}
+            className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-muted"
+            aria-label="Exit session"
+          >
+            <XIcon size={20} />
+          </button>
 
-        {/* Center: clickable progress indicator that opens the navigator */}
-        <button
-          type="button"
-          onClick={() => setFocusNavOpen((v) => !v)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold tabular-nums transition-colors hover:bg-muted active:bg-muted"
-        >
-          <span>Question {index + 1} of {questions.length}</span>
-          <ChevronDownIcon size={14} className="text-muted-foreground" />
-        </button>
+          {/* Center: clickable progress indicator that opens the navigator */}
+          <button
+            type="button"
+            onClick={() => setFocusNavOpen((v) => !v)}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold tabular-nums transition-colors hover:bg-muted active:bg-muted"
+          >
+            <span>Question {index + 1} of {questions.length}</span>
+            <ChevronDownIcon size={14} className="text-muted-foreground" />
+          </button>
 
-        {/* Right: Theme toggle only */}
-        <button
-          type="button"
-          onClick={() => setThemeOpen(true)}
-          className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
-          aria-label="Appearance"
-        >
-          <PaletteIcon size={20} />
-        </button>
+          {/* Right: Theme toggle */}
+          <button
+            type="button"
+            onClick={() => setThemeOpen(true)}
+            className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
+            aria-label="Appearance"
+          >
+            <PaletteIcon size={20} />
+          </button>
+        </div>
+
+        {/* Row 2: Module name + mode badge + milestone tag */}
+        <div className="flex items-center gap-2 border-t border-border/50 px-4 py-1.5">
+          <BookOpenIcon size={13} className="shrink-0 text-primary" />
+          <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-foreground">
+            {moduleName}
+          </span>
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {mode === "trial" ? "Tutor" : "Exam"}
+          </span>
+          {milestoneTier > 0 && (
+            <MilestoneTag key={milestoneTier} tier={milestoneTier} />
+          )}
+        </div>
       </header>
 
       {/* ── Desktop top bar (hidden on mobile) ── */}
