@@ -24,6 +24,8 @@ interface Props {
   questions: Question[]
   answers: Record<string, string | string[] | null>
   onBack: () => void
+  /** Optional sub-heading shown in the header (e.g. module name for profile review). */
+  subtitle?: string
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -54,7 +56,7 @@ function isOptionCorrect(q: Question, opt: { id: string }): boolean {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function TrialReviewPanel({ questions, answers, onBack }: Props) {
+export function TrialReviewPanel({ questions, answers, onBack, subtitle }: Props) {
   const [filter, setFilter] = useState<Filter>("all")
   const [search, setSearch] = useState("")
 
@@ -103,7 +105,7 @@ export function TrialReviewPanel({ questions, answers, onBack }: Props) {
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-bold text-foreground truncate">Answer Review</h2>
           <p className="text-[11px] text-muted-foreground">
-            {correctCount}/{questions.length} correct · Trial Mode
+            {correctCount}/{questions.length} correct · {subtitle ?? "Trial Mode"}
           </p>
         </div>
       </header>
