@@ -786,8 +786,8 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
           <div className="flex shrink-0 items-center gap-2">
             <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
             <button type="button" onClick={onOpenStore}
-              className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40">
-              🏪 Store
+              className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1.5 shadow-sm text-sm font-extrabold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]">
+              🏪 <span>Store</span>
             </button>
           </div>
         </div>
@@ -928,9 +928,9 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
               <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
               <button
                 type="button" onClick={onOpenStore}
-                className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground hover:border-primary/40"
+                className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1.5 shadow-sm text-sm font-extrabold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
               >
-                🏪 Store
+                🏪 <span>Store</span>
               </button>
             </div>
           </div>
