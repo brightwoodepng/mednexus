@@ -332,11 +332,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(LS_CLASS_LEVEL)
       localStorage.removeItem(LS_GUEST_TOKEN)
       localStorage.removeItem(LS_USER_TOKEN)
+      // Also clear admin token so admin mode never survives a sign-out
+      localStorage.removeItem("mednexus-admin-token")
+      // Clear all sessionStorage as a defensive sweep
+      sessionStorage.clear()
     } catch {}
     setUser(null)
     setProgress(EMPTY_PROGRESS)
     setCloudEnabled(false)
     setRequiresPasswordUpdate(false)
+    // Hard redirect so all React state (including AdminContext) is fully torn down
+    window.location.href = "/"
   }, [])
 
   const updateName = useCallback(async (name: string) => {

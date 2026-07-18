@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
+import { useAdmin } from "@/contexts/admin-context"
 import { useQuestions } from "@/contexts/questions-context"
 import {
   UserIcon,
@@ -239,6 +240,7 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 
 function ProfileHeader() {
   const { user, cloudEnabled, progress, updateName, signOutUser } = useApp()
+  const { logoutAdmin } = useAdmin()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
@@ -317,7 +319,7 @@ function ProfileHeader() {
         </div>
         <button
           type="button"
-          onClick={signOutUser}
+          onClick={() => { logoutAdmin(); signOutUser() }}
           className="shrink-0 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           Sign out
