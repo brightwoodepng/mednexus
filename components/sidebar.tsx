@@ -262,11 +262,11 @@ export function Sidebar({
 
   return (
     <>
-      <aside className={`hidden shrink-0 lg:block transition-all duration-200 ${panelCls} ${collapsed ? "w-14" : "w-64"}`}>
+      <aside className={`hidden shrink-0 md:block transition-all duration-200 ${panelCls} ${collapsed ? "w-14" : "w-64"}`}>
         {collapsed ? collapsedContent : fullContent}
       </aside>
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
+        <div className="fixed inset-0 z-40 md:hidden">
           <button
             type="button"
             aria-label="Close menu"
