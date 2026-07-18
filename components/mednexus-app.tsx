@@ -550,7 +550,7 @@ export function MedNexusApp() {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex items-center justify-between border-b border-border bg-card px-3 py-2 sm:px-4 sm:py-2.5">
+        <header className={`items-center justify-between border-b border-border bg-card px-3 py-2 sm:px-4 sm:py-2.5 ${safeScreen === "game" ? "hidden md:flex" : "flex"}`}>
           {/* Left: mobile hamburger + logo */}
           <div className="flex items-center gap-0.5">
             {/* Hamburger — mobile only (md:hidden); opens slide-out drawer */}
