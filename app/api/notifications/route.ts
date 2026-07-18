@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
     const isAdmin = verifyAdminToken(token)
     const res = await pool.query(
       isAdmin
-        ? "SELECT id, title, body, type, admin_only, created_at FROM mednexus_notifications ORDER BY created_at DESC LIMIT 100"
-        : "SELECT id, title, body, type, admin_only, created_at FROM mednexus_notifications WHERE admin_only = FALSE ORDER BY created_at DESC LIMIT 100"
+        ? "SELECT id, title, body, type, admin_only, is_read, created_at FROM mednexus_notifications ORDER BY created_at DESC LIMIT 100"
+        : "SELECT id, title, body, type, admin_only, is_read, created_at FROM mednexus_notifications WHERE admin_only = FALSE ORDER BY created_at DESC LIMIT 100"
     )
     return NextResponse.json({
       notifications: res.rows.map((r) => ({
@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
         body: r.body,
         type: r.type,
         adminOnly: r.admin_only,
+        isRead: r.is_read,
         createdAt: r.created_at,
       })),
     })
@@ -71,13 +72,26 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE /api/notifications — admin only, deletes a notification by id
-export async function DELETE(req: NextRequest) {
-  const token = req.headers.get("x-admin-token") ?? ""
-  if (!verifyAdminToken(token)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+// PATCH /api/notifications — mark a notification as read by id (no auth required)
+export async function PATCH(req: NextRequest) {
+  try {
+    const { id } = await req.json()
+    if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 })
+    const pool = await getPool()
+    if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
+    await pool.query(
+      "UPDATE mednexus_notifications SET is_read = TRUE WHERE id = $1",
+      [id]
+    )
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error("[notifications PATCH]", err)
+    return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
+}
 
+// DELETE /api/notifications — permanently removes a notification by id (no auth required)
+export async function DELETE(req: NextRequest) {
   try {
     const { id } = await req.json()
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 })

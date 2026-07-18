@@ -265,6 +265,7 @@ export interface AppNotification {
   type: "info" | "update" | "alert"
   adminOnly?: boolean
   createdAt: string // ISO string
+  isRead: boolean
 }
 
 /** A published live assessment (exam) created by admin. */
