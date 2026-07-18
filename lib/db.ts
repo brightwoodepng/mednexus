@@ -76,6 +76,7 @@ export async function ensureSchema() {
       body       TEXT    NOT NULL,
       type       TEXT    NOT NULL DEFAULT 'info',
       admin_only BOOLEAN NOT NULL DEFAULT FALSE,
+      is_read    BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS mednexus_assessments (
@@ -185,6 +186,8 @@ export async function ensureSchema() {
     -- Backfill new columns for databases that existed before this migration.
     ALTER TABLE mednexus_notifications
       ADD COLUMN IF NOT EXISTS admin_only BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE mednexus_notifications
+      ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE;
 
     ALTER TABLE mednexus_user_cosmetics
       ADD COLUMN IF NOT EXISTS equipped_avatar TEXT;
