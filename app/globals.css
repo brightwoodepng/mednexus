@@ -95,7 +95,7 @@
   --secondary: oklch(0.95 0.01 220);
   --secondary-foreground: oklch(0.3 0.03 240);
   --muted: oklch(0.96 0.008 220);
-  --muted-foreground: oklch(0.52 0.02 240);
+  --muted-foreground: oklch(0.40 0.03 240);
   --accent: oklch(0.93 0.04 195);
   --accent-foreground: oklch(0.3 0.05 220);
   --destructive: oklch(0.58 0.22 25);
@@ -221,7 +221,7 @@
   --secondary: oklch(0.93 0.03 230);
   --secondary-foreground: oklch(0.3 0.05 250);
   --muted: oklch(0.94 0.02 230);
-  --muted-foreground: oklch(0.5 0.04 250);
+  --muted-foreground: oklch(0.40 0.05 250);
   --accent: oklch(0.88 0.06 230);
   --accent-foreground: oklch(0.3 0.06 250);
   --destructive: oklch(0.58 0.22 25);
@@ -263,7 +263,7 @@
   --secondary: oklch(0.92 0.025 75);
   --secondary-foreground: oklch(0.32 0.03 50);
   --muted: oklch(0.93 0.02 75);
-  --muted-foreground: oklch(0.5 0.025 55);
+  --muted-foreground: oklch(0.40 0.03 55);
   --accent: oklch(0.88 0.05 70);
   --accent-foreground: oklch(0.32 0.04 50);
   --destructive: oklch(0.55 0.2 28);
@@ -305,7 +305,7 @@
   --secondary: oklch(0.94 0.025 10);
   --secondary-foreground: oklch(0.3 0.03 15);
   --muted: oklch(0.95 0.018 10);
-  --muted-foreground: oklch(0.52 0.025 15);
+  --muted-foreground: oklch(0.40 0.03 15);
   --accent: oklch(0.91 0.06 10);
   --accent-foreground: oklch(0.3 0.04 15);
   --destructive: oklch(0.58 0.22 25);
@@ -389,7 +389,7 @@
   --secondary: oklch(0.93 0.03 70);
   --secondary-foreground: oklch(0.3 0.04 40);
   --muted: oklch(0.94 0.025 70);
-  --muted-foreground: oklch(0.5 0.03 50);
+  --muted-foreground: oklch(0.40 0.03 50);
   --accent: oklch(0.9 0.07 70);
   --accent-foreground: oklch(0.3 0.05 40);
   --destructive: oklch(0.58 0.22 25);
@@ -473,7 +473,7 @@
   --secondary: oklch(0.92 0.02 226);
   --secondary-foreground: oklch(0.26 0.03 238);
   --muted: oklch(0.935 0.014 223);
-  --muted-foreground: oklch(0.5 0.022 236);
+  --muted-foreground: oklch(0.40 0.025 236);
   --accent: oklch(0.865 0.058 224);
   --accent-foreground: oklch(0.26 0.04 238);
   --destructive: oklch(0.57 0.22 25);
