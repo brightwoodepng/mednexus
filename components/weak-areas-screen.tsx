@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useApp } from "@/contexts/app-context"
 import {
   getWeakModulesForMode,
@@ -16,8 +16,6 @@ import {
   ChevronLeftIcon,
   GraduationCapIcon,
   ArrowRightIcon,
-  ZapIcon,
-  TimerIcon,
   TrashIcon,
 } from "@/components/icons"
 import type { HistoryEntry } from "@/lib/types"
@@ -29,6 +27,7 @@ interface QuizReadyConfig {
 
 interface WeakAreasScreenProps {
   onReadyForQuiz: (config: QuizReadyConfig) => void
+  mode: "trial" | "exam"
 }
 
 const TRIAL_PALETTES = [
@@ -61,11 +60,16 @@ function UrgencyBadge({ dueCount, total }: { dueCount: number; total: number }) 
   )
 }
 
-export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
+export function WeakAreasScreen({ onReadyForQuiz, mode }: WeakAreasScreenProps) {
   const { progress, clearWeakAreas } = useApp()
-  const [mode, setMode] = useState<"trial" | "exam">("trial")
   const [viewingModule, setViewingModule] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
+
+  // Reset drill-down whenever the global mode changes
+  useEffect(() => {
+    setViewingModule(null)
+    setConfirmClear(false)
+  }, [mode])
 
   const srsData: Record<string, SrsEntry> = progress.srsData ?? {}
   const palettes = mode === "trial" ? TRIAL_PALETTES : EXAM_PALETTES
@@ -102,12 +106,6 @@ export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weakModules, progress.history, mode, srsData])
 
-  function switchMode(next: "trial" | "exam") {
-    setMode(next)
-    setViewingModule(null)
-    setConfirmClear(false)
-  }
-
   function handleClearConfirmed() {
     clearWeakAreas(mode)
     setConfirmClear(false)
@@ -140,49 +138,7 @@ export function WeakAreasScreen({ onReadyForQuiz }: WeakAreasScreenProps) {
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight">Weak Areas</h1>
-            <p className="text-xs text-muted-foreground">
-              {totalWeak > 0 ? (
-                <>
-                  {totalWeak} question{totalWeak !== 1 ? "s" : ""} to review
-                  {totalDue > 0 && (
-                    <span className="ml-1.5 text-red-500 font-semibold">
-                      · {totalDue} due now
-                    </span>
-                  )}
-                </>
-              ) : (
-                `No weak areas in ${mode} mode yet`
-              )}
-            </p>
           </div>
-        </div>
-
-        {/* Mode toggle */}
-        <div className="ml-auto flex items-center rounded-xl border border-border bg-muted p-0.5">
-          <button
-            type="button"
-            onClick={() => switchMode("trial")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-              mode === "trial"
-                ? "bg-rose-500 text-white shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <ZapIcon size={12} />
-            Trial
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode("exam")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-              mode === "exam"
-                ? "bg-amber-500 text-white shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <TimerIcon size={12} />
-            Exam
-          </button>
         </div>
 
         {/* Clear all — only shown when there's something to clear */}
