@@ -436,29 +436,41 @@ function ModuleDrillDown({
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
 
       {/* Back + module header */}
-      <div className="flex items-center gap-3">
+      {/*
+        Mobile  (< sm): flex-col — Title [order-1] then Back [order-2], Export hidden
+        Desktop (sm+):  flex-row — Back [sm:order-1] | Title [sm:order-2] | Export [sm:order-3]
+      */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+
+        {/* Title + metadata */}
+        <div className="order-1 sm:order-2 min-w-0 sm:flex-1">
+          <h2 className="truncate text-[25px] sm:text-xl font-bold tracking-tight leading-tight">
+            {module}
+          </h2>
+          <p className="mt-1 text-[15px] sm:text-sm text-muted-foreground">
+            {totalInModule} questions · {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+
+        {/* Back button — below title on mobile, before title on sm+ */}
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+          className="order-2 sm:order-1 mt-3 sm:mt-0 self-start flex items-center gap-1.5 rounded-full sm:rounded-xl border border-border px-4 sm:px-3 py-2.5 sm:py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
         >
           <ChevronLeftIcon size={15} />
           Back
         </button>
-        <div className="min-w-0">
-          <h2 className="truncate text-xl font-bold tracking-tight">{module}</h2>
-          <p className="text-sm text-muted-foreground">
-            {totalInModule} questions · {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""}
-          </p>
-        </div>
+
+        {/* Export JSON — hidden on mobile, visible sm+ */}
         <button
           type="button"
           onClick={handleExportJSON}
           disabled={totalInModule === 0}
-          className="ml-auto flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="hidden sm:flex sm:order-3 sm:ml-auto items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <DownloadIcon size={13} />
           Export JSON
