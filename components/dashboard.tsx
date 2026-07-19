@@ -13,17 +13,15 @@ import {
   getDisciplineCoverage,
 } from "@/lib/modules"
 import {
-  BookOpenIcon,
-  GraduationCapIcon,
   ArrowRightIcon,
   ActivityIcon,
   LayersIcon,
   ChevronLeftIcon,
   AwardIcon,
   TimerIcon,
-  StarIcon,
   ChevronDownIcon,
 } from "@/components/icons"
+import { CARD_PALETTES, UniversalModuleCard, UniversalDisciplineCard } from "@/components/shared-cards"
 
 interface QuizReadyConfig {
   module: string
@@ -96,16 +94,6 @@ const MOTIVATIONS = [
   "Your future patients are counting on today's study.",
 ]
 
-const CARD_PALETTES = [
-  { ring: "hover:ring-rose-400/50",    icon: "bg-rose-100 text-rose-600",      bar: "#f43f5e" },
-  { ring: "hover:ring-sky-400/50",     icon: "bg-sky-100 text-sky-600",         bar: "#0ea5e9" },
-  { ring: "hover:ring-violet-400/50",  icon: "bg-violet-100 text-violet-600",   bar: "#8b5cf6" },
-  { ring: "hover:ring-emerald-400/50", icon: "bg-emerald-100 text-emerald-600", bar: "#10b981" },
-  { ring: "hover:ring-amber-400/50",   icon: "bg-amber-100 text-amber-600",     bar: "#f59e0b" },
-  { ring: "hover:ring-fuchsia-400/50", icon: "bg-fuchsia-100 text-fuchsia-600", bar: "#d946ef" },
-  { ring: "hover:ring-cyan-400/50",    icon: "bg-cyan-100 text-cyan-600",       bar: "#06b6d4" },
-  { ring: "hover:ring-orange-400/50",  icon: "bg-orange-100 text-orange-600",   bar: "#f97316" },
-]
 
 export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOpenLiveAssessments }: DashboardProps) {
   const { user, progress } = useApp()
@@ -132,7 +120,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const bestExamScore = examsTaken ? Math.max(...examScores.map((e) => e.score)) : 0
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
+    <div className="mx-auto max-w-md space-y-5">
 
       {/* Live Assessment Banner */}
       {liveExams.length > 0 && (
@@ -290,12 +278,13 @@ function TrialDashboard({
   onOpenModules: (module?: string) => void
   onOpenWeakAreas: () => void
 }) {
-  const { progress } = useApp()
+  const { progress, toggleFavoriteModule } = useApp()
 
   const modules = getLiveModules()
   const weakAreaQuestions = getWeakAreaQuestions(progress.history)
   const weakAreaCount = weakAreaQuestions.length
   const favorites = progress.favoriteModules ?? []
+  const coverage = getDisciplineCoverage(progress.history)
 
   const starredModules = useMemo(() => {
     const fav = modules.filter((m) => favorites.includes(m))
@@ -348,17 +337,26 @@ function TrialDashboard({
           </div>
         )}
 
-        {/* Module grid — starred/recent preview */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-          {starredModules.map((mod) => (
-            <ModuleCard
-              key={mod}
-              mod={mod}
-              paletteIndex={modules.indexOf(mod) % CARD_PALETTES.length}
-              isFav={favorites.includes(mod)}
-              onOpen={() => onOpenModules(mod)}
-            />
-          ))}
+        {/* Module list — starred/recent preview */}
+        <div className="flex flex-col gap-2">
+          {starredModules.map((mod) => {
+            const discs   = getDisciplinesForModule(mod)
+            const total   = getModuleQuestionCount(mod)
+            const attempted = discs.reduce((s, d) => s + (coverage[d]?.attempted ?? 0), 0)
+            const pct     = total > 0 ? Math.round((attempted / total) * 100) : 0
+            return (
+              <UniversalModuleCard
+                key={mod}
+                mod={mod}
+                paletteIndex={modules.indexOf(mod)}
+                isFav={favorites.includes(mod)}
+                subtitle={`${discs.length} discipline${discs.length !== 1 ? "s" : ""} · ${total}Q`}
+                pct={pct}
+                onOpen={() => onOpenModules(mod)}
+                onToggleFav={toggleFavoriteModule}
+              />
+            )
+          })}
         </div>
 
         {modules.length > starredModules.length && (
@@ -371,93 +369,6 @@ function TrialDashboard({
           </button>
         )}
       </section>
-    </div>
-  )
-}
-
-// ── Module Card ───────────────────────────────────────────────────────────────
-function ModuleCard({
-  mod,
-  paletteIndex,
-  isFav,
-  onOpen,
-}: {
-  mod: string
-  paletteIndex: number
-  isFav: boolean
-  onOpen: () => void
-}) {
-  const { toggleFavoriteModule, progress } = useApp()
-  const coverage = getDisciplineCoverage(progress.history)
-  const palette = CARD_PALETTES[paletteIndex]
-  const total = getModuleQuestionCount(mod)
-  const disciplines = getDisciplinesForModule(mod)
-
-  // compute attempted count for this module
-  const attempted = disciplines.reduce((sum, d) => {
-    const cov = coverage[d]
-    return sum + (cov ? cov.attempted : 0)
-  }, 0)
-  const pct = total > 0 ? Math.round((attempted / total) * 100) : 0
-
-  return (
-    <div className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
-      {/* Color top bar */}
-      <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
-
-      <div className="p-5">
-        <div className="mb-3 mt-1 flex items-start justify-between gap-2">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
-            <LayersIcon size={18} />
-          </div>
-          {/* Star button — always visible */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); toggleFavoriteModule(mod) }}
-            aria-label={isFav ? "Unstar module" : "Star module"}
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${
-              isFav
-                ? "text-amber-400 hover:text-amber-500"
-                : "text-muted-foreground/30 hover:text-amber-400"
-            }`}
-          >
-            <StarIcon
-              size={16}
-              className={isFav ? "fill-amber-400 drop-shadow-sm" : ""}
-            />
-          </button>
-        </div>
-
-        <h3 className="font-bold text-foreground leading-snug">{mod}</h3>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
-        </p>
-
-        {/* Progress bar — always visible */}
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${pct}%`, background: palette.bar }}
-          />
-        </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          {pct > 0 ? `${pct}% Completed` : "Not started"}
-        </p>
-
-        {/* Open button */}
-        <button
-          type="button"
-          onClick={onOpen}
-          className="mt-4 flex min-h-14 w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all sm:min-h-0"
-          style={{
-            background: `${palette.bar}18`,
-            color: palette.bar,
-          }}
-        >
-          Open Module
-          <ArrowRightIcon size={13} className="transition-transform group-hover:translate-x-0.5" />
-        </button>
-      </div>
     </div>
   )
 }
@@ -476,8 +387,6 @@ function DisciplineView({
 }) {
   const disciplines = getDisciplinesForModule(module)
   const totalInModule = getModuleQuestionCount(module)
-  const modIndex = getLiveModules().indexOf(module) % CARD_PALETTES.length
-  const palette = CARD_PALETTES[modIndex]
 
   return (
     <div className="space-y-6">
@@ -497,53 +406,27 @@ function DisciplineView({
         </div>
       </div>
 
-      {/* Discipline grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-        {/* All disciplines card */}
-        <button
-          type="button"
-          onClick={() => onSelectDiscipline(null)}
-          className="group relative overflow-hidden rounded-3xl border-2 border-primary/25 bg-primary/8 p-5 text-left shadow-sm ring-0 transition-all hover:border-primary/50 hover:shadow-md hover:ring-2 hover:ring-primary/30 active:scale-[0.98]"
-        >
-          <div className="mb-4 flex items-start justify-between">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-              <GraduationCapIcon size={22} />
-            </div>
-            <ArrowRightIcon size={18} className="mt-0.5 text-primary opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-          </div>
-          <h3 className="font-bold text-foreground">All Disciplines</h3>
-          <p className="mt-0.5 text-sm text-muted-foreground">{totalInModule} questions · all topics</p>
-        </button>
-
+      {/* Discipline list */}
+      <div className="flex flex-col gap-2">
+        <UniversalDisciplineCard
+          name="All Disciplines"
+          subtitle={`${totalInModule} questions · all topics`}
+          paletteIndex={0}
+          isAllDisciplines
+          onSelect={() => onSelectDiscipline(null)}
+        />
         {disciplines.map((disc, i) => {
-          const dPalette = CARD_PALETTES[i % CARD_PALETTES.length]
           const cov = coverage[disc]
-          const pct = cov ? Math.round((cov.attempted / cov.total) * 100) : 0
+          const pct = cov && cov.total > 0 ? Math.round((cov.attempted / cov.total) * 100) : 0
           return (
-            <button
+            <UniversalDisciplineCard
               key={disc}
-              type="button"
-              onClick={() => onSelectDiscipline(disc)}
-              className={`group relative overflow-hidden rounded-3xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`}
-            >
-              <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: dPalette.bar }} />
-              <div className="mb-4 mt-1 flex items-start justify-between">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${dPalette.icon}`}>
-                  <BookOpenIcon size={20} />
-                </div>
-                <ArrowRightIcon size={18} className="mt-0.5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-              </div>
-              <h3 className="font-bold text-foreground">{disc}</h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                {getQuestionsForModuleAndDiscipline(module, disc).length} questions
-              </p>
-              <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
-              </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {pct > 0 ? `${pct}% Completed` : "Not started"}
-              </p>
-            </button>
+              name={disc}
+              subtitle={`${getQuestionsForModuleAndDiscipline(module, disc).length} questions${pct > 0 ? ` · ${pct}%` : ""}`}
+              paletteIndex={i}
+              pct={pct}
+              onSelect={() => onSelectDiscipline(disc)}
+            />
           )
         })}
       </div>
@@ -607,33 +490,17 @@ function ExamDashboard({
             <ArrowRightIcon size={12} />
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-2">
           {modules.map((mod, i) => {
-            const palette = CARD_PALETTES[i % CARD_PALETTES.length]
             const total = getModuleQuestionCount(mod)
             return (
-              <button
+              <UniversalModuleCard
                 key={mod}
-                type="button"
-                onClick={() => onReadyForQuiz({ module: mod, discipline: null })}
-                className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
-              >
-                <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: palette.bar }} />
-                <div className="mb-3 mt-1 flex items-start justify-between">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${palette.icon}`}>
-                    <TimerIcon size={18} />
-                  </div>
-                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-400">
-                    Timed
-                  </span>
-                </div>
-                <h3 className="font-bold text-foreground">{mod}</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">{total}Q · 90s per question</p>
-                <div className="mt-4 flex items-center gap-1.5 text-xs font-medium" style={{ color: palette.bar }}>
-                  Start Exam
-                  <ArrowRightIcon size={12} className="transition-transform group-hover:translate-x-0.5" />
-                </div>
-              </button>
+                mod={mod}
+                paletteIndex={i}
+                subtitle={`${total}Q · 90s per question`}
+                onOpen={() => onReadyForQuiz({ module: mod, discipline: null })}
+              />
             )
           })}
         </div>
