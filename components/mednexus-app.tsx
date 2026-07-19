@@ -577,15 +577,6 @@ export function MedNexusApp() {
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {/* Study mode toggle — all screen sizes */}
             <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
-            {/* Theme / Appearance toggle — mobile only */}
-            <button
-              type="button"
-              onClick={() => setThemeOpen(true)}
-              className="md:hidden rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-              aria-label="Appearance"
-            >
-              <PaletteIcon size={20} />
-            </button>
             <NotificationBell />
           </div>
         </header>
