@@ -153,54 +153,59 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     <div className="mx-auto max-w-6xl space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+      <div className="flex flex-col md:flex-row md:flex-wrap md:items-center md:gap-3">
 
-        {/* Title */}
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <LayersIcon size={18} />
+        {/* Title + Toggle row (mobile: side-by-side; desktop: unwrapped via contents) */}
+        <div className="flex flex-row items-center justify-between w-full md:contents">
+
+          {/* Title */}
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <LayersIcon size={18} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">Module Library</h1>
+              <p className="text-xs text-muted-foreground">
+                {view === "module"
+                  ? `${modules.length} module${modules.length !== 1 ? "s" : ""}`
+                  : `${allDisciplines.length} discipline${allDisciplines.length !== 1 ? "s" : ""} across ${modules.length} module${modules.length !== 1 ? "s" : ""}`}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Module Library</h1>
-            <p className="text-xs text-muted-foreground">
-              {view === "module"
-                ? `${modules.length} module${modules.length !== 1 ? "s" : ""}`
-                : `${allDisciplines.length} discipline${allDisciplines.length !== 1 ? "s" : ""} across ${modules.length} module${modules.length !== 1 ? "s" : ""}`}
-            </p>
+
+          {/* View toggle — pill style */}
+          <div className="flex items-center justify-center rounded-xl border border-border bg-muted p-0.5 md:w-auto md:justify-start">
+            <button
+              type="button"
+              onClick={() => switchView("module")}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                view === "module"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayersIcon size={13} />
+              By Module
+            </button>
+            <button
+              type="button"
+              onClick={() => switchView("discipline")}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                view === "discipline"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <GraduationCapIcon size={13} />
+              By Discipline
+            </button>
           </div>
+
         </div>
 
-        {/* View toggle — pill style */}
-        <div className="flex w-full items-center justify-center rounded-xl border border-border bg-muted p-0.5 md:w-auto md:justify-start">
-          <button
-            type="button"
-            onClick={() => switchView("module")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-              view === "module"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <LayersIcon size={13} />
-            By Module
-          </button>
-          <button
-            type="button"
-            onClick={() => switchView("discipline")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-              view === "discipline"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <GraduationCapIcon size={13} />
-            By Discipline
-          </button>
-        </div>
-
-        {/* Search + sort */}
-        <div className="flex flex-col gap-3 md:ml-auto md:flex-row md:flex-wrap md:items-center md:gap-2">
-          <div className="relative">
+        {/* Search + sort row (mobile: full-width row below; desktop: pushed to end via ml-auto) */}
+        <div className="flex flex-row items-center gap-2 w-full mt-4 mb-6 md:ml-auto md:mt-0 md:mb-0 md:w-auto md:flex-wrap md:gap-2">
+          <div className="relative flex-1 md:flex-none">
             <SearchIcon
               size={13}
               className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -210,14 +215,14 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={view === "module" ? "Search modules…" : "Search disciplines…"}
-              className="h-8 w-36 rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              className="h-8 w-full rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 md:w-36"
             />
           </div>
 
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+            className="h-8 shrink-0 rounded-lg border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
           >
             {view === "module" && <option value="starred">Starred First</option>}
             <option value="az">A → Z</option>
