@@ -155,6 +155,9 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 w-full mb-6 md:flex-row md:flex-wrap md:items-center md:gap-3 md:mb-0">
 
+        {/* Title + Toggle grouped left */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+
         {/* Title */}
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -197,6 +200,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
             By Discipline
           </button>
         </div>
+        </div>{/* end Title + Toggle group */}
 
         {/* Search + sort */}
         <div className="flex flex-row items-center gap-2 w-full md:w-auto md:ml-auto md:flex-wrap md:gap-2">
