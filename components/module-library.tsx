@@ -13,11 +13,12 @@ import {
 import {
   LayersIcon,
   GraduationCapIcon,
+  ArrowRightIcon,
   ChevronLeftIcon,
+  StarIcon,
   SearchIcon,
   DownloadIcon,
 } from "@/components/icons"
-import { CARD_PALETTES, UniversalModuleCard, UniversalDisciplineCard } from "@/components/shared-cards"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,20 @@ function SortLinesIcon({ size = 15 }: { size?: number }) {
     </svg>
   )
 }
+
+// ── Palette ───────────────────────────────────────────────────────────────────
+// Keyed by module index so colour is stable and consistent between both views.
+
+const CARD_PALETTES = [
+  { ring: "hover:ring-rose-400/50",    icon: "bg-rose-100 text-rose-600",      bar: "#f43f5e" },
+  { ring: "hover:ring-sky-400/50",     icon: "bg-sky-100 text-sky-600",         bar: "#0ea5e9" },
+  { ring: "hover:ring-violet-400/50",  icon: "bg-violet-100 text-violet-600",   bar: "#8b5cf6" },
+  { ring: "hover:ring-emerald-400/50", icon: "bg-emerald-100 text-emerald-600", bar: "#10b981" },
+  { ring: "hover:ring-amber-400/50",   icon: "bg-amber-100 text-amber-600",     bar: "#f59e0b" },
+  { ring: "hover:ring-fuchsia-400/50", icon: "bg-fuchsia-100 text-fuchsia-600", bar: "#d946ef" },
+  { ring: "hover:ring-cyan-400/50",    icon: "bg-cyan-100 text-cyan-600",       bar: "#06b6d4" },
+  { ring: "hover:ring-orange-400/50",  icon: "bg-orange-100 text-orange-600",   bar: "#f97316" },
+]
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -255,7 +270,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
   )
 }
 
-// ── Module list ───────────────────────────────────────────────────────────────
+// ── Module list (high-density horizontal rows) ────────────────────────────────
 
 function ModuleGrid({
   modules,
@@ -273,31 +288,76 @@ function ModuleGrid({
   onToggleFav: (mod: string) => void
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       {modules.map((mod) => {
+        const palette     = CARD_PALETTES[allModules.indexOf(mod) % CARD_PALETTES.length]
         const total       = getModuleQuestionCount(mod)
         const disciplines = getDisciplinesForModule(mod)
         const isFav       = favorites.includes(mod)
-        const attempted   = disciplines.reduce((sum, d) => sum + (coverage[d]?.attempted ?? 0), 0)
-        const pct         = total > 0 ? Math.round((attempted / total) * 100) : 0
+
+        const attempted = disciplines.reduce((sum, d) => sum + (coverage[d]?.attempted ?? 0), 0)
+        const pct       = total > 0 ? Math.round((attempted / total) * 100) : 0
+
         return (
-          <UniversalModuleCard
+          <div
             key={mod}
-            mod={mod}
-            paletteIndex={allModules.indexOf(mod)}
-            isFav={isFav}
-            subtitle={`${disciplines.length} discipline${disciplines.length !== 1 ? "s" : ""} · ${total}Q`}
-            pct={pct}
-            onOpen={() => onOpen(mod)}
-            onToggleFav={onToggleFav}
-          />
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpen(mod)}
+            onKeyDown={(e) => e.key === "Enter" && onOpen(mod)}
+            className={`group relative overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] cursor-pointer ${palette.ring}`}
+          >
+            {/* Thin colour top bar */}
+            <div
+              className="pointer-events-none absolute left-0 right-0 top-0 h-0.5 opacity-90"
+              style={{ background: palette.bar }}
+            />
+
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              {/* Circular icon — left */}
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${palette.icon}`}>
+                <LayersIcon size={16} />
+              </div>
+
+              {/* Text stack — center, grows */}
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-bold leading-tight text-foreground">{mod}</h3>
+                <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                  {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
+                  {pct > 0 && <> · <span style={{ color: palette.bar }}>{pct}%</span></>}
+                </p>
+              </div>
+
+              {/* Star — far right, stops propagation */}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onToggleFav(mod) }}
+                aria-label={isFav ? "Unstar module" : "Star module"}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                  isFav ? "text-amber-400 hover:text-amber-500" : "text-muted-foreground/30 hover:text-amber-400"
+                }`}
+              >
+                <StarIcon size={15} className={isFav ? "fill-amber-400 drop-shadow-sm" : ""} />
+              </button>
+            </div>
+
+            {/* Progress bar — only when there's progress, zero extra height cost */}
+            {pct > 0 && (
+              <div className="h-0.5 w-full overflow-hidden bg-muted">
+                <div
+                  className="h-full transition-all"
+                  style={{ width: `${pct}%`, background: palette.bar }}
+                />
+              </div>
+            )}
+          </div>
         )
       })}
     </div>
   )
 }
 
-// ── Discipline list ───────────────────────────────────────────────────────────
+// ── Discipline list (high-density horizontal rows) ────────────────────────────
 
 function DisciplineGrid({
   disciplines,
@@ -309,19 +369,57 @@ function DisciplineGrid({
   onSelect:    (module: string, discipline: string) => void
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       {disciplines.map(({ discipline, module: mod, moduleIndex, total }) => {
-        const cov = coverage[discipline]
-        const pct = cov && cov.total > 0 ? Math.round((cov.attempted / cov.total) * 100) : 0
+        const palette = CARD_PALETTES[moduleIndex % CARD_PALETTES.length]
+        const cov     = coverage[discipline]
+        const pct     = cov && cov.total > 0 ? Math.round((cov.attempted / cov.total) * 100) : 0
+
         return (
-          <UniversalDisciplineCard
+          <button
             key={`${mod}::${discipline}`}
-            name={discipline}
-            subtitle={`${mod} · ${total}Q${pct > 0 ? ` · ${pct}%` : ""}`}
-            paletteIndex={moduleIndex}
-            pct={pct}
-            onSelect={() => onSelect(mod, discipline)}
-          />
+            type="button"
+            onClick={() => onSelect(mod, discipline)}
+            className={`group relative w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] text-left ${palette.ring}`}
+          >
+            {/* Thin colour top bar */}
+            <div
+              className="pointer-events-none absolute left-0 right-0 top-0 h-0.5 opacity-90"
+              style={{ background: palette.bar }}
+            />
+
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              {/* Circular icon — left */}
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${palette.icon}`}>
+                <GraduationCapIcon size={16} />
+              </div>
+
+              {/* Text stack — center, grows */}
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-bold leading-tight text-foreground">{discipline}</h3>
+                <p className="truncate text-[11px] leading-tight">
+                  <span className="font-semibold uppercase tracking-wide" style={{ color: palette.bar }}>{mod}</span>
+                  <span className="text-muted-foreground"> · {total}Q{pct > 0 && ` · ${pct}%`}</span>
+                </p>
+              </div>
+
+              {/* Arrow — far right */}
+              <ArrowRightIcon
+                size={14}
+                className="shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-foreground"
+              />
+            </div>
+
+            {/* Progress bar */}
+            {pct > 0 && (
+              <div className="h-0.5 w-full overflow-hidden bg-muted">
+                <div
+                  className="h-full transition-all"
+                  style={{ width: `${pct}%`, background: palette.bar }}
+                />
+              </div>
+            )}
+          </button>
         )
       })}
     </div>
@@ -358,10 +456,16 @@ function ModuleDrillDown({
   }
 
   return (
-    <div className="mx-auto max-w-md space-y-4">
+    <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
 
       {/* Back + module header */}
+      {/*
+        Mobile  (< sm): flex-col — Title [order-1] then Back [order-2], Export hidden
+        Desktop (sm+):  flex-row — Back [sm:order-1] | Title [sm:order-2] | Export [sm:order-3]
+      */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+
+        {/* Title + metadata */}
         <div className="order-1 sm:order-2 min-w-0 sm:flex-1">
           <h2 className="truncate text-[25px] sm:text-xl font-bold tracking-tight leading-tight">
             {module}
@@ -370,6 +474,8 @@ function ModuleDrillDown({
             {totalInModule} questions · {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""}
           </p>
         </div>
+
+        {/* Back button — below title on mobile, before title on sm+ */}
         <button
           type="button"
           onClick={onBack}
@@ -378,6 +484,8 @@ function ModuleDrillDown({
           <ChevronLeftIcon size={15} />
           Back
         </button>
+
+        {/* Export JSON — hidden on mobile, visible sm+ */}
         <button
           type="button"
           onClick={handleExportJSON}
@@ -389,27 +497,70 @@ function ModuleDrillDown({
         </button>
       </div>
 
-      {/* Discipline list */}
-      <div className="flex flex-col gap-2">
-        <UniversalDisciplineCard
-          name="All Disciplines"
-          subtitle={`${totalInModule} questions · all topics`}
-          paletteIndex={0}
-          isAllDisciplines
-          onSelect={() => onSelectDiscipline(null)}
-        />
-        {disciplines.map((disc, i) => {
-          const cov = coverage[disc]
-          const pct = cov && cov.total > 0 ? Math.round((cov.attempted / cov.total) * 100) : 0
-          return (
-            <UniversalDisciplineCard
-              key={disc}
-              name={disc}
-              subtitle={cov ? `${cov.total} questions${pct > 0 ? ` · ${pct}%` : ""}` : "no questions yet"}
-              paletteIndex={i}
-              pct={pct}
-              onSelect={() => onSelectDiscipline(disc)}
+      {/* Discipline grid */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+
+        {/* "All Disciplines" card */}
+        <button
+          type="button"
+          onClick={() => onSelectDiscipline(null)}
+          className="group relative overflow-hidden rounded-2xl border-2 border-primary/25 bg-primary/8 p-5 text-left shadow-sm ring-0 transition-all hover:border-primary/50 hover:shadow-md hover:ring-2 hover:ring-primary/30 active:scale-[0.98]"
+        >
+          <div className="mb-4 flex items-start justify-between">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <GraduationCapIcon size={22} />
+            </div>
+            <ArrowRightIcon
+              size={18}
+              className="mt-0.5 text-primary opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
             />
+          </div>
+          <h3 className="font-bold text-foreground">All Disciplines</h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">{totalInModule} questions · all topics</p>
+        </button>
+
+        {disciplines.map((disc, i) => {
+          const dPalette = CARD_PALETTES[i % CARD_PALETTES.length]
+          const cov      = coverage[disc]
+          const pct      = cov && cov.total > 0 ? Math.round((cov.attempted / cov.total) * 100) : 0
+
+          return (
+            <button
+              key={disc}
+              type="button"
+              onClick={() => onSelectDiscipline(disc)}
+              className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`}
+            >
+              <div
+                className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80"
+                style={{ background: dPalette.bar }}
+              />
+              <div className="mb-4 flex items-start justify-between">
+                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${dPalette.icon}`}>
+                  <GraduationCapIcon size={22} />
+                </div>
+                <ArrowRightIcon
+                  size={18}
+                  className="mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+                  style={{ color: dPalette.bar }}
+                />
+              </div>
+              <h3 className="font-bold text-foreground leading-snug">{disc}</h3>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {cov ? `${cov.total} questions` : "no questions yet"}
+              </p>
+              {pct > 0 && (
+                <>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${pct}%`, background: dPalette.bar }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{pct}% attempted</p>
+                </>
+              )}
+            </button>
           )
         })}
       </div>

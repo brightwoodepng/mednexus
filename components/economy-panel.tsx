@@ -13,8 +13,8 @@ export function WalletBadge({ onOpenStore }: { onOpenStore: () => void }) {
       className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-3 py-1.5 shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
     >
       <span className="text-sm">🪙</span>
-      <span className="text-sm font-extrabold tabular-nums text-amber-950 dark:text-white">{balance.toLocaleString()}</span>
-      <span className="text-[10px] font-bold text-amber-950/70 dark:text-white/80">NP</span>
+      <span className="text-sm font-extrabold tabular-nums text-white">{balance.toLocaleString()}</span>
+      <span className="text-[10px] font-bold text-white/80">NP</span>
     </button>
   )
 }

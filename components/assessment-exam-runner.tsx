@@ -212,7 +212,7 @@ function NavPanel({ questions, answers, flagged, currentIdx, answered, unanswere
             <button key={question.id} type="button" onClick={() => onSelect(idx)}
               className={`relative flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
                 isCurrent ? "bg-primary text-primary-foreground shadow-sm"
-                : isFlagged ? "bg-amber-400/80 text-amber-950 dark:bg-amber-500/60 dark:text-white"
+                : isFlagged ? "bg-amber-400/80 text-white dark:bg-amber-500/60 dark:text-white"
                 : isAnswered ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                 : "bg-background border border-border text-muted-foreground hover:bg-muted"
               }`}>
