@@ -104,21 +104,35 @@ export function BottomNav({ screen, onNavigate }: BottomNavProps) {
               type="button"
               onClick={() => tap(tab)}
               aria-label={tab.label}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 px-1 transition-colors active:bg-muted/60 ${
-                isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              /* Full-height button = 64px touch target, well above the 48px minimum */
+              className="flex flex-1 flex-col items-center justify-center px-0.5"
             >
-              {/* Icon with filled/outlined states */}
-              <span className={`relative flex h-6 w-6 items-center justify-center transition-transform ${isActive ? "scale-110" : ""}`}>
-                <Icon size={22} />
-                {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
-                )}
-              </span>
-              <span className={`text-[10px] font-semibold leading-none ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                {tab.label}
+              {/* Pill container — expands on active with teal background */}
+              <span
+                className={`flex flex-col items-center justify-center gap-0.5 rounded-2xl px-3 py-1.5 transition-all duration-200 ${
+                  isActive
+                    ? "bg-primary/10 shadow-sm"
+                    : "bg-transparent"
+                }`}
+              >
+                {/* Icon */}
+                <span
+                  className={`flex h-[22px] w-[22px] items-center justify-center transition-colors duration-200 ${
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  <Icon size={20} />
+                </span>
+                {/* Label */}
+                <span
+                  className={`text-[10px] leading-none transition-colors duration-200 ${
+                    isActive
+                      ? "font-bold text-primary"
+                      : "font-semibold text-muted-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </span>
               </span>
             </button>
           )
