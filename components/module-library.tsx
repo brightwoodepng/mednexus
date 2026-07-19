@@ -267,7 +267,7 @@ function ModuleGrid({
   onToggleFav:(mod: string) => void
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 mt-[0px] mb-[0px] pt-[10px] pb-[10px]">
       {modules.map((mod) => {
         const palette    = CARD_PALETTES[allModules.indexOf(mod) % CARD_PALETTES.length]
         const total      = getModuleQuestionCount(mod)
