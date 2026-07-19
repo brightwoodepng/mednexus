@@ -35,6 +35,24 @@ interface ModuleLibraryProps {
 type ViewMode = "module" | "discipline"
 type SortKey  = "az" | "most" | "starred"
 
+// ── Sort cycle config ─────────────────────────────────────────────────────────
+
+const MODULE_SORT_CYCLE:     SortKey[] = ["starred", "az", "most"]
+const DISCIPLINE_SORT_CYCLE: SortKey[] = ["az", "most"]
+const SORT_BADGE: Record<SortKey, string> = { starred: "★", az: "A–Z", most: "#Q" }
+
+// ── Inline sort icon ──────────────────────────────────────────────────────────
+
+function SortLinesIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="21" y1="7"  x2="3"  y2="7"  />
+      <line x1="21" y1="12" x2="7"  y2="12" />
+      <line x1="21" y1="17" x2="11" y2="17" />
+    </svg>
+  )
+}
+
 // ── Palette ───────────────────────────────────────────────────────────────────
 // Keyed by module index so colour is stable and consistent between both views.
 
@@ -149,84 +167,87 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     ? filteredModules.length === 0
     : filteredDisciplines.length === 0
 
+  // Cycle sort through the valid options for the current view
+  function cycleSort() {
+    const cycle = view === "module" ? MODULE_SORT_CYCLE : DISCIPLINE_SORT_CYCLE
+    const idx = cycle.indexOf(sort)
+    setSort(cycle[(idx + 1) % cycle.length])
+  }
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-md space-y-3">
 
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-center gap-3">
-
-        {/* Title */}
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <LayersIcon size={18} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Module Library</h1>
-            <p className="text-xs text-muted-foreground">
-              {view === "module"
-                ? `${modules.length} module${modules.length !== 1 ? "s" : ""}`
-                : `${allDisciplines.length} discipline${allDisciplines.length !== 1 ? "s" : ""} across ${modules.length} module${modules.length !== 1 ? "s" : ""}`}
-            </p>
-          </div>
+      {/* ── Row 1: Compact title ── */}
+      <div className="flex items-center gap-2">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <LayersIcon size={16} />
         </div>
-
-        {/* View toggle — pill style */}
-        <div className="flex items-center rounded-xl border border-border bg-muted p-0.5">
-          <button
-            type="button"
-            onClick={() => switchView("module")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-              view === "module"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <LayersIcon size={13} />
-            By Module
-          </button>
-          <button
-            type="button"
-            onClick={() => switchView("discipline")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-              view === "discipline"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <GraduationCapIcon size={13} />
-            By Discipline
-          </button>
-        </div>
-
-        {/* Search + sort */}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <SearchIcon
-              size={13}
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={view === "module" ? "Search modules…" : "Search disciplines…"}
-              className="h-8 w-36 rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-            />
-          </div>
-
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-          >
-            {view === "module" && <option value="starred">Starred First</option>}
-            <option value="az">A → Z</option>
-            <option value="most">Most Questions</option>
-          </select>
+        <div className="min-w-0">
+          <h1 className="text-base font-bold tracking-tight leading-tight">Module Library</h1>
+          <p className="text-[11px] leading-none text-muted-foreground">
+            {view === "module"
+              ? `${modules.length} module${modules.length !== 1 ? "s" : ""}`
+              : `${allDisciplines.length} discipline${allDisciplines.length !== 1 ? "s" : ""} across ${modules.length} module${modules.length !== 1 ? "s" : ""}`}
+          </p>
         </div>
       </div>
 
-      {/* ── Grid / empty state ── */}
+      {/* ── Row 2: Full-width segmented toggle ── */}
+      <div className="flex rounded-xl border border-border bg-muted p-0.5">
+        <button
+          type="button"
+          onClick={() => switchView("module")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all ${
+            view === "module"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <LayersIcon size={12} />
+          By Module
+        </button>
+        <button
+          type="button"
+          onClick={() => switchView("discipline")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all ${
+            view === "discipline"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <GraduationCapIcon size={12} />
+          By Discipline
+        </button>
+      </div>
+
+      {/* ── Row 3: Search + sort icon button ── */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <SearchIcon
+            size={13}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={view === "module" ? "Search modules…" : "Search disciplines…"}
+            className="h-8 w-full rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </div>
+        {/* Sort cycle button — tap to cycle through sort modes */}
+        <button
+          type="button"
+          onClick={cycleSort}
+          aria-label={`Sort: ${SORT_BADGE[sort]}`}
+          className="flex h-8 w-auto shrink-0 items-center gap-1 rounded-lg border border-border bg-card px-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <SortLinesIcon size={13} />
+          <span className="text-[10px] font-semibold">{SORT_BADGE[sort]}</span>
+        </button>
+      </div>
+
+      {/* ── List / empty state ── */}
       {isEmpty ? (
         <EmptyState onClear={() => setSearch("")} />
       ) : view === "module" ? (
@@ -249,7 +270,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
   )
 }
 
-// ── Module grid ───────────────────────────────────────────────────────────────
+// ── Module list (high-density horizontal rows) ────────────────────────────────
 
 function ModuleGrid({
   modules,
@@ -259,20 +280,20 @@ function ModuleGrid({
   onOpen,
   onToggleFav,
 }: {
-  modules:    string[]
-  allModules: string[]
-  coverage:   Record<string, { attempted: number; total: number; correct: number }>
-  favorites:  string[]
-  onOpen:     (mod: string) => void
-  onToggleFav:(mod: string) => void
+  modules:     string[]
+  allModules:  string[]
+  coverage:    Record<string, { attempted: number; total: number; correct: number }>
+  favorites:   string[]
+  onOpen:      (mod: string) => void
+  onToggleFav: (mod: string) => void
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+    <div className="flex flex-col gap-1.5">
       {modules.map((mod) => {
-        const palette    = CARD_PALETTES[allModules.indexOf(mod) % CARD_PALETTES.length]
-        const total      = getModuleQuestionCount(mod)
+        const palette     = CARD_PALETTES[allModules.indexOf(mod) % CARD_PALETTES.length]
+        const total       = getModuleQuestionCount(mod)
         const disciplines = getDisciplinesForModule(mod)
-        const isFav      = favorites.includes(mod)
+        const isFav       = favorites.includes(mod)
 
         const attempted = disciplines.reduce((sum, d) => sum + (coverage[d]?.attempted ?? 0), 0)
         const pct       = total > 0 ? Math.round((attempted / total) * 100) : 0
@@ -280,58 +301,55 @@ function ModuleGrid({
         return (
           <div
             key={mod}
-            className={`group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpen(mod)}
+            onKeyDown={(e) => e.key === "Enter" && onOpen(mod)}
+            className={`group relative overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] cursor-pointer ${palette.ring}`}
           >
-            {/* Colour top bar */}
+            {/* Thin colour top bar */}
             <div
-              className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80"
+              className="pointer-events-none absolute left-0 right-0 top-0 h-0.5 opacity-90"
               style={{ background: palette.bar }}
             />
 
-            <div className="p-5">
-              <div className="mb-3 mt-1 flex items-start justify-between gap-2">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
-                  <LayersIcon size={18} />
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onToggleFav(mod) }}
-                  aria-label={isFav ? "Unstar module" : "Star module"}
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${
-                    isFav ? "text-amber-400 hover:text-amber-500" : "text-muted-foreground/30 hover:text-amber-400"
-                  }`}
-                >
-                  <StarIcon size={16} className={isFav ? "fill-amber-400 drop-shadow-sm" : ""} />
-                </button>
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              {/* Circular icon — left */}
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${palette.icon}`}>
+                <LayersIcon size={16} />
               </div>
 
-              <h3 className="font-bold text-foreground leading-snug">{mod}</h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
-              </p>
+              {/* Text stack — center, grows */}
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-bold leading-tight text-foreground">{mod}</h3>
+                <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                  {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
+                  {pct > 0 && <> · <span style={{ color: palette.bar }}>{pct}%</span></>}
+                </p>
+              </div>
 
-              {pct > 0 && (
-                <>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, background: palette.bar }}
-                    />
-                  </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{pct}% attempted</p>
-                </>
-              )}
-
+              {/* Star — far right, stops propagation */}
               <button
                 type="button"
-                onClick={() => onOpen(mod)}
-                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all"
-                style={{ background: `${palette.bar}18`, color: palette.bar }}
+                onClick={(e) => { e.stopPropagation(); onToggleFav(mod) }}
+                aria-label={isFav ? "Unstar module" : "Star module"}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                  isFav ? "text-amber-400 hover:text-amber-500" : "text-muted-foreground/30 hover:text-amber-400"
+                }`}
               >
-                Open Module
-                <ArrowRightIcon size={13} className="transition-transform group-hover:translate-x-0.5" />
+                <StarIcon size={15} className={isFav ? "fill-amber-400 drop-shadow-sm" : ""} />
               </button>
             </div>
+
+            {/* Progress bar — only when there's progress, zero extra height cost */}
+            {pct > 0 && (
+              <div className="h-0.5 w-full overflow-hidden bg-muted">
+                <div
+                  className="h-full transition-all"
+                  style={{ width: `${pct}%`, background: palette.bar }}
+                />
+              </div>
+            )}
           </div>
         )
       })}
@@ -339,7 +357,7 @@ function ModuleGrid({
   )
 }
 
-// ── Discipline grid ───────────────────────────────────────────────────────────
+// ── Discipline list (high-density horizontal rows) ────────────────────────────
 
 function DisciplineGrid({
   disciplines,
@@ -351,7 +369,7 @@ function DisciplineGrid({
   onSelect:    (module: string, discipline: string) => void
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+    <div className="flex flex-col gap-1.5">
       {disciplines.map(({ discipline, module: mod, moduleIndex, total }) => {
         const palette = CARD_PALETTES[moduleIndex % CARD_PALETTES.length]
         const cov     = coverage[discipline]
@@ -362,42 +380,44 @@ function DisciplineGrid({
             key={`${mod}::${discipline}`}
             type="button"
             onClick={() => onSelect(mod, discipline)}
-            className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
+            className={`group relative w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] text-left ${palette.ring}`}
           >
-            {/* Colour top bar */}
+            {/* Thin colour top bar */}
             <div
-              className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80"
+              className="pointer-events-none absolute left-0 right-0 top-0 h-0.5 opacity-90"
               style={{ background: palette.bar }}
             />
 
-            <div className="mb-3 mt-1 flex items-start justify-between gap-2">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
-                <GraduationCapIcon size={18} />
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              {/* Circular icon — left */}
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${palette.icon}`}>
+                <GraduationCapIcon size={16} />
               </div>
+
+              {/* Text stack — center, grows */}
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-bold leading-tight text-foreground">{discipline}</h3>
+                <p className="truncate text-[11px] leading-tight">
+                  <span className="font-semibold uppercase tracking-wide" style={{ color: palette.bar }}>{mod}</span>
+                  <span className="text-muted-foreground"> · {total}Q{pct > 0 && ` · ${pct}%`}</span>
+                </p>
+              </div>
+
+              {/* Arrow — far right */}
               <ArrowRightIcon
-                size={16}
-                className="mt-1 shrink-0 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-                style={{ color: palette.bar }}
+                size={14}
+                className="shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-foreground"
               />
             </div>
 
-            <h3 className="font-bold text-foreground leading-snug">{discipline}</h3>
-            {/* Parent module shown as a muted subtitle */}
-            <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: palette.bar }}>
-              {mod}
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">{total}Q</p>
-
+            {/* Progress bar */}
             {pct > 0 && (
-              <>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, background: palette.bar }}
-                  />
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">{pct}% attempted</p>
-              </>
+              <div className="h-0.5 w-full overflow-hidden bg-muted">
+                <div
+                  className="h-full transition-all"
+                  style={{ width: `${pct}%`, background: palette.bar }}
+                />
+              </div>
             )}
           </button>
         )
