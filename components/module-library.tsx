@@ -153,7 +153,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     <div className="mx-auto max-w-6xl space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-4 w-full mb-6 md:flex-row md:flex-wrap md:items-center md:gap-3 md:mb-0">
+      <div className="flex flex-col gap-4 w-full md:flex-row md:flex-wrap md:items-center md:gap-3 md:mb-0 mt-[0px] mb-[15px]">
 
         {/* Title */}
         <div className="flex items-center gap-2">
