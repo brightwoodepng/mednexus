@@ -153,59 +153,54 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     <div className="mx-auto max-w-6xl space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col md:flex-row md:flex-wrap md:items-center md:gap-3">
+      <div className="flex flex-col gap-4 w-full mb-6 md:flex-row md:flex-wrap md:items-center md:gap-3 md:mb-0 md:w-auto">
 
-        {/* Title + Toggle row (mobile: side-by-side; desktop: unwrapped via contents) */}
-        <div className="flex flex-row items-center justify-between w-full md:contents">
-
-          {/* Title */}
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <LayersIcon size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">Module Library</h1>
-              <p className="text-xs text-muted-foreground">
-                {view === "module"
-                  ? `${modules.length} module${modules.length !== 1 ? "s" : ""}`
-                  : `${allDisciplines.length} discipline${allDisciplines.length !== 1 ? "s" : ""} across ${modules.length} module${modules.length !== 1 ? "s" : ""}`}
-              </p>
-            </div>
+        {/* Title */}
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <LayersIcon size={18} />
           </div>
-
-          {/* View toggle — pill style */}
-          <div className="flex items-center justify-center rounded-xl border border-border bg-muted p-0.5 md:w-auto md:justify-start">
-            <button
-              type="button"
-              onClick={() => switchView("module")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                view === "module"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <LayersIcon size={13} />
-              By Module
-            </button>
-            <button
-              type="button"
-              onClick={() => switchView("discipline")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                view === "discipline"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <GraduationCapIcon size={13} />
-              By Discipline
-            </button>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Module Library</h1>
+            <p className="text-xs text-muted-foreground">
+              {view === "module"
+                ? `${modules.length} module${modules.length !== 1 ? "s" : ""}`
+                : `${allDisciplines.length} discipline${allDisciplines.length !== 1 ? "s" : ""} across ${modules.length} module${modules.length !== 1 ? "s" : ""}`}
+            </p>
           </div>
-
         </div>
 
-        {/* Search + sort row (mobile: full-width row below; desktop: pushed to end via ml-auto) */}
-        <div className="flex flex-row items-center gap-2 w-full mt-4 mb-6 md:ml-auto md:mt-0 md:mb-0 md:w-auto md:flex-wrap md:gap-2">
-          <div className="relative flex-1 md:flex-none">
+        {/* Row 1 — View toggle (full-width on mobile, auto on desktop) */}
+        <div className="flex w-full p-1 rounded-xl border border-border bg-muted md:w-auto md:justify-start">
+          <button
+            type="button"
+            onClick={() => switchView("module")}
+            className={`flex flex-1 items-center justify-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              view === "module"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <LayersIcon size={13} />
+            By Module
+          </button>
+          <button
+            type="button"
+            onClick={() => switchView("discipline")}
+            className={`flex flex-1 items-center justify-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              view === "discipline"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <GraduationCapIcon size={13} />
+            By Discipline
+          </button>
+        </div>
+
+        {/* Row 2 — Search + sort (full-width row on mobile, pushed to end on desktop) */}
+        <div className="flex flex-row items-center gap-2 w-full md:ml-auto md:mt-0 md:mb-0 md:w-auto md:flex-wrap md:gap-2">
+          <div className="relative flex-1 w-full md:flex-none">
             <SearchIcon
               size={13}
               className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
