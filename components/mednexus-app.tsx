@@ -104,12 +104,12 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
               <path d="M7 17L17 7M17 7H7M17 7v10" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </a>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/40 dark:bg-amber-900/20">
+          <div className="rounded-2xl border border-amber-200 p-4 dark:border-amber-800/40 dark:bg-amber-900/20 bg-[color:var(--color-emerald-500)]">
             <div className="flex items-start gap-2.5">
               <HeartIcon size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
               <div>
-                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Support the Project</p>
-                <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                <p className="text-sm font-semibold dark:text-amber-200 text-[#ffffff]">Support the Project</p>
+                <p className="mt-1 text-xs leading-relaxed dark:text-amber-300 text-[#ffffff]">
                   Contributions help keep MedNexus growing. Reach out on WhatsApp to donate or collaborate.
                 </p>
               </div>
@@ -577,6 +577,15 @@ export function MedNexusApp() {
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {/* Study mode toggle — all screen sizes */}
             <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
+            {/* Theme / Appearance toggle — mobile only */}
+            <button
+              type="button"
+              onClick={() => setThemeOpen(true)}
+              className="md:hidden rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              aria-label="Appearance"
+            >
+              <PaletteIcon size={20} />
+            </button>
             <NotificationBell />
           </div>
         </header>
