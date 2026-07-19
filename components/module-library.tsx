@@ -153,7 +153,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     <div className="mx-auto max-w-6xl space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-4 w-full md:flex-row md:flex-wrap md:items-center md:gap-3 md:mb-0 mt-[0px] mb-[15px]">
+      <div className="flex flex-col gap-4 w-full mb-6 md:flex-row md:flex-wrap md:items-center md:gap-3 md:mb-0">
 
         {/* Title */}
         <div className="flex items-center gap-2">
@@ -267,7 +267,7 @@ function ModuleGrid({
   onToggleFav:(mod: string) => void
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 mt-[0px] mb-[0px] pt-[10px] pb-[10px]">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
       {modules.map((mod) => {
         const palette    = CARD_PALETTES[allModules.indexOf(mod) % CARD_PALETTES.length]
         const total      = getModuleQuestionCount(mod)
