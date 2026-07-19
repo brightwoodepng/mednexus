@@ -153,7 +153,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     <div className="mx-auto max-w-6xl space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
 
         {/* Title */}
         <div className="flex items-center gap-2">
@@ -171,7 +171,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         </div>
 
         {/* View toggle — pill style */}
-        <div className="flex items-center rounded-xl border border-border bg-muted p-0.5">
+        <div className="flex w-full items-center justify-center rounded-xl border border-border bg-muted p-0.5 md:w-auto md:justify-start">
           <button
             type="button"
             onClick={() => switchView("module")}
@@ -199,7 +199,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         </div>
 
         {/* Search + sort */}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-3 md:ml-auto md:flex-row md:flex-wrap md:items-center md:gap-2">
           <div className="relative">
             <SearchIcon
               size={13}
