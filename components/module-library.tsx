@@ -153,7 +153,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     <div className="mx-auto max-w-6xl space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-4 w-full mb-6 md:flex-row md:flex-wrap md:items-center">
+      <div className="flex flex-col gap-4 w-full mb-6 md:flex-row md:flex-wrap md:items-center md:gap-3 md:mb-0">
 
         {/* Title */}
         <div className="flex items-center gap-2">
@@ -171,11 +171,11 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         </div>
 
         {/* View toggle — pill style */}
-        <div className="flex w-full rounded-xl border border-border bg-muted p-1 md:w-auto md:justify-start">
+        <div className="flex w-full rounded-xl border border-border bg-muted p-1 md:w-auto md:items-center md:p-0.5">
           <button
             type="button"
             onClick={() => switchView("module")}
-            className={`flex-1 flex justify-center items-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex-1 flex justify-center items-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all md:flex-none md:justify-start md:text-left ${
               view === "module"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -187,7 +187,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
           <button
             type="button"
             onClick={() => switchView("discipline")}
-            className={`flex-1 flex justify-center items-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex-1 flex justify-center items-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all md:flex-none md:justify-start md:text-left ${
               view === "discipline"
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -199,8 +199,8 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         </div>
 
         {/* Search + sort */}
-        <div className="flex flex-row items-center gap-2 w-full md:ml-auto md:flex-wrap md:gap-2">
-          <div className="relative flex-1 w-full">
+        <div className="flex flex-row items-center gap-2 w-full md:w-auto md:ml-auto md:flex-wrap md:gap-2">
+          <div className="relative flex-1 w-full md:flex-none md:w-auto">
             <SearchIcon
               size={13}
               className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -210,7 +210,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={view === "module" ? "Search modules…" : "Search disciplines…"}
-              className="h-8 w-full rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              className="h-8 w-full md:w-36 rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
             />
           </div>
 
