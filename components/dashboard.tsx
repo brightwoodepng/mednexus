@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { FrameAnimationOverlay, type FrameAnimId } from "@/components/frame-animation-overlay"
+import { FrameAnimationOverlay, type FrameAnimId, playFireAudio, playLightningAudio, playDiamondAudio } from "@/components/frame-animation-overlay"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -137,6 +137,15 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
     const frameId = equippedCosmetics.frame
     console.log("Triggered:", frameId)
     if (frameId && ANIM_FRAMES.has(frameId) && !activeFrameAnim) {
+      // ── Audio MUST be called synchronously here, before any async state
+      // setter, so it executes within the browser's user-gesture window.
+      // Calling it inside useEffect / after setState puts it outside that
+      // window and triggers autoplay blocking on Chrome/Safari.
+      if (frameId === "frame_fire") playFireAudio();
+      else if (frameId === "frame_lightning") playLightningAudio();
+      else if (frameId === "frame_legendary_diamond") playDiamondAudio();
+
+      // State setter comes AFTER the synchronous audio call
       setActiveFrameAnim(frameId as FrameAnimId)
     }
   }, [equippedCosmetics.frame, activeFrameAnim])
