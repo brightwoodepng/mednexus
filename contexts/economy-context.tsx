@@ -27,6 +27,7 @@ export interface EconomyContextValue {
   purchase: (itemId: string) => Promise<{ ok: boolean; error?: string }>
   useItem: (itemId: string) => Promise<boolean>
   equipCosmetic: (type: "title" | "frame" | "highlight" | "avatar", itemId: string | null) => Promise<{ ok: boolean; error?: string }>
+  grantDevNP: () => Promise<void>
   submitGameResult: (payload: {
     mode: string
     score: number
@@ -165,6 +166,20 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid])
 
+  const grantDevNP = useCallback(async () => {
+    const uid = user?.uid
+    if (!uid) return
+    const target = 999_999
+    try {
+      await fetch("/api/economy/wallet", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, balance: target }),
+      })
+    } catch { /* silent — state still updates */ }
+    setBalance(target)
+  }, [user?.uid])
+
   const submitGameResult = useCallback(async (payload: {
     mode: string; score: number; correct: number; total: number
     bestStreak: number; isNewHigh: boolean; survivedCount?: number
@@ -197,7 +212,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   return (
     <EconomyContext.Provider value={{
       balance, bounties, inventory, equippedCosmetics, loading,
-      refresh, claimBounty, purchase, useItem, equipCosmetic, submitGameResult,
+      refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP, submitGameResult,
     }}>
       {children}
     </EconomyContext.Provider>
