@@ -109,6 +109,7 @@ export const FRAME_RING_CLASSES: Record<string, string> = {
   frame_legendary_diamond:  "ring-4 ring-white animate-pulse shadow-[0_0_20px_rgba(255,255,255,1)]",
   frame_legendary_biohazard:"ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.9)]",
   frame_mythic_nebula:      "ring-4 ring-fuchsia-500 animate-pulse shadow-[0_0_25px_rgba(217,70,239,0.9)]",
+  frame_mythic_heartbeat:   "ring-4 ring-red-600 animate-ping shadow-[0_0_25px_rgba(220,38,38,1)]",
   frame_lightning:          "animate-[lightning-strike_4s_linear_infinite]",
   frame_toxic_drip:         "animate-[ooze-drip_3s_linear_infinite]",
 }
@@ -410,6 +411,17 @@ export const STORE_ITEMS: StoreItem[] = [
     category: "cosmetic",
     maxQuantity: 1,
     gradient: "from-fuchsia-500 via-purple-600 to-indigo-700",
+    cosmeticType: "frame",
+  },
+  {
+    id: "frame_mythic_heartbeat",
+    name: "Mythic Heartbeat",
+    desc: "Intense, deep crimson pulsing ring.",
+    icon: "❤️‍🔥",
+    price: 4000,
+    category: "cosmetic",
+    maxQuantity: 1,
+    gradient: "from-red-600 via-rose-500 to-red-800",
     cosmeticType: "frame",
   },
   {
