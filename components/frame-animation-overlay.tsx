@@ -2,6 +2,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+// Re-exported so callers can invoke audio synchronously inside onClick,
+// before any async state setter — keeping within the browser's gesture window.
+export { playFireAudio, playLightningAudio, playDiamondAudio };
+
 export type FrameAnimId =
   | "frame_fire"
   | "frame_lightning"
@@ -18,6 +22,8 @@ interface Props {
 function playFireAudio() {
   try {
     const ac = new AudioContext();
+    // resume() returns a Promise — catch async block separately
+    ac.resume().catch((e) => console.error("Audio blocked:", e));
     const dur = 3.5;
     const bufLen = Math.floor(ac.sampleRate * dur);
     const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
@@ -45,12 +51,13 @@ function playFireAudio() {
     osc.connect(og); og.connect(ac.destination);
     osc.start(); osc.stop(ac.currentTime + dur);
     setTimeout(() => ac.close().catch(() => {}), (dur + 0.3) * 1000);
-  } catch { /* audio blocked */ }
+  } catch (e) { console.error("Audio blocked:", e); }
 }
 
 function playLightningAudio() {
   try {
     const ac = new AudioContext();
+    ac.resume().catch((e) => console.error("Audio blocked:", e));
     const dur = 3.5;
     const crackAt = [0.5, 1.2, 2.0];
     crackAt.forEach((t) => {
@@ -79,12 +86,13 @@ function playLightningAudio() {
       boom.stop(ac.currentTime + t + 0.8);
     });
     setTimeout(() => ac.close().catch(() => {}), (dur + 0.3) * 1000);
-  } catch { /* audio blocked */ }
+  } catch (e) { console.error("Audio blocked:", e); }
 }
 
 function playDiamondAudio() {
   try {
     const ac = new AudioContext();
+    ac.resume().catch((e) => console.error("Audio blocked:", e));
     const dur = 3.5;
     const freqs = [1046, 1568, 2093, 3136, 6272];
     freqs.forEach((f, i) => {
@@ -111,7 +119,7 @@ function playDiamondAudio() {
     src.connect(hpf); hpf.connect(sg); sg.connect(ac.destination);
     src.start();
     setTimeout(() => ac.close().catch(() => {}), (dur + 0.3) * 1000);
-  } catch { /* audio blocked */ }
+  } catch (e) { console.error("Audio blocked:", e); }
 }
 
 // ─── CSS keyframes injected once ─────────────────────────────────────────────
@@ -291,12 +299,10 @@ export function FrameAnimationOverlay({ frameId, onDone }: Props) {
   useEffect(() => {
     ensureCSS();
     setMounted(true);
-
-    // Fire audio immediately (still within gesture context from tap)
-    if (frameId === "frame_fire") playFireAudio();
-    else if (frameId === "frame_lightning") playLightningAudio();
-    else if (frameId === "frame_legendary_diamond") playDiamondAudio();
-
+    // Audio is intentionally NOT called here — it must be invoked synchronously
+    // inside the onClick handler (before setActiveFrameAnim) to stay within the
+    // browser's user-gesture window. Calling it from useEffect puts it outside
+    // that window and causes autoplay blocking.
     const timer = window.setTimeout(onDone, 3500);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -311,7 +317,8 @@ export function FrameAnimationOverlay({ frameId, onDone }: Props) {
         inset: 0,
         width: "100vw",
         height: "100vh",
-        zIndex: 9999,
+        // Inline zIndex beats any Tailwind JIT class that may be stripped
+        zIndex: 99999,
         pointerEvents: "none",
         overflow: "hidden",
       }}
