@@ -279,9 +279,6 @@ function ModuleGrid({
         const disciplines = getDisciplinesForModule(mod)
         const isFav      = favorites.includes(mod)
 
-        const attempted = disciplines.reduce((sum, d) => sum + (coverage[d]?.attempted ?? 0), 0)
-        const pct       = total > 0 ? Math.round((attempted / total) * 100) : 0
-
         return (
           <div
             key={mod}
@@ -315,22 +312,10 @@ function ModuleGrid({
                 {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
               </p>
 
-              {pct > 0 && (
-                <>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, background: palette.bar }}
-                    />
-                  </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{pct}% attempted</p>
-                </>
-              )}
-
               <button
                 type="button"
                 onClick={() => onOpen(mod)}
-                className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all"
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all"
                 style={{ background: `${palette.bar}18`, color: palette.bar }}
               >
                 Open Module
@@ -360,7 +345,6 @@ function DisciplineGrid({
       {disciplines.map(({ discipline, module: mod, moduleIndex, total }) => {
         const palette = CARD_PALETTES[moduleIndex % CARD_PALETTES.length]
         const cov     = coverage[discipline]
-        const pct     = cov && cov.total > 0 ? Math.round((cov.attempted / cov.total) * 100) : 0
 
         return (
           <button
@@ -392,18 +376,6 @@ function DisciplineGrid({
               {mod}
             </p>
             <p className="mt-0.5 text-sm text-muted-foreground">{total}Q</p>
-
-            {pct > 0 && (
-              <>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, background: palette.bar }}
-                  />
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">{pct}% attempted</p>
-              </>
-            )}
           </button>
         )
       })}
@@ -507,7 +479,6 @@ function ModuleDrillDown({
         {disciplines.map((disc, i) => {
           const dPalette = CARD_PALETTES[i % CARD_PALETTES.length]
           const cov      = coverage[disc]
-          const pct      = cov && cov.total > 0 ? Math.round((cov.attempted / cov.total) * 100) : 0
 
           return (
             <button
@@ -534,17 +505,6 @@ function ModuleDrillDown({
               <p className="mt-0.5 text-sm text-muted-foreground">
                 {cov ? `${cov.total} questions` : "no questions yet"}
               </p>
-              {pct > 0 && (
-                <>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, background: dPalette.bar }}
-                    />
-                  </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{pct}% attempted</p>
-                </>
-              )}
             </button>
           )
         })}
