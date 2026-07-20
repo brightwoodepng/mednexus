@@ -276,35 +276,38 @@ function ProfileHeader() {
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:p-6">
 
-        {/* Avatar with frame wrapper and hover-edit overlay */}
-        <div
-          className="shrink-0 cursor-pointer group"
-          onClick={startEdit}
-          title="Edit display name"
-        >
-          {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
-          <div className={`rounded-full ${frameClasses ? `${frameClasses} ring-offset-2 ring-offset-card` : ""}`}>
-            {/* Avatar circle */}
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm text-2xl font-bold select-none overflow-hidden">
-              {avatarImagePath ? (
-                <img
-                  src={avatarImagePath}
-                  alt={equippedAvatarItem?.name ?? "Avatar"}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                (user?.name ?? "C")[0].toUpperCase()
-              )}
-              {/* Hover edit overlay — clipped to the circle by parent overflow-hidden */}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <PencilIcon size={16} className="text-white" />
+        {/* Avatar + Identity: flex-row on all screen sizes */}
+        <div className="flex flex-row items-center gap-4 min-w-0 flex-1 sm:gap-4">
+
+          {/* Avatar with frame wrapper and hover-edit overlay */}
+          <div
+            className="shrink-0 cursor-pointer group"
+            onClick={startEdit}
+            title="Edit display name"
+          >
+            {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
+            <div className={`rounded-full ${frameClasses ? `${frameClasses} ring-offset-2 ring-offset-card` : ""}`}>
+              {/* Avatar circle */}
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm text-2xl font-bold select-none overflow-hidden">
+                {avatarImagePath ? (
+                  <img
+                    src={avatarImagePath}
+                    alt={equippedAvatarItem?.name ?? "Avatar"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  (user?.name ?? "C")[0].toUpperCase()
+                )}
+                {/* Hover edit overlay — clipped to the circle by parent overflow-hidden */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <PencilIcon size={16} className="text-white" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Identity column */}
-        <div className="min-w-0 flex-1">
+          {/* Identity column */}
+          <div className="min-w-0 flex-1">
           {editing ? (
             <form onSubmit={saveName} className="flex items-center gap-2 mb-1">
               <input
@@ -375,13 +378,16 @@ function ProfileHeader() {
               {cloudEnabled ? "☁ Synced to cloud" : "Saving locally…"}
             </span>
           </div>
+          </div>
+          {/* end Identity column */}
         </div>
+        {/* end Avatar + Identity wrapper */}
 
-        {/* Sign out */}
+        {/* Sign out — full-width below on mobile, auto-width inline on desktop */}
         <button
           type="button"
           onClick={() => { logoutAdmin(); signOutUser() }}
-          className="shrink-0 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="w-full sm:w-auto shrink-0 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           Sign out
         </button>
