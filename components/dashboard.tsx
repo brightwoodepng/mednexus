@@ -212,8 +212,9 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/[0.03]" />
 
           {/* Avatar — absolutely centered vertically on the right */}
+          {/* z-10 keeps this above the relative text div that follows it in DOM order */}
           <div
-            className={`absolute right-4 top-1/2 -translate-y-1/2 sm:right-7 ${ANIM_FRAMES.has(equippedCosmetics.frame ?? "") ? "cursor-pointer" : ""}`}
+            className={`absolute right-4 top-1/2 z-10 -translate-y-1/2 sm:right-7 ${ANIM_FRAMES.has(equippedCosmetics.frame ?? "") ? "cursor-pointer" : ""}`}
             onClick={handleAvatarTap}
           >
             <div className={`rounded-full ${bannerFrameClasses ?? ""}`}>
