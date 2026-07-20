@@ -1,0 +1,15 @@
+"Implement full-screen, high-impact interactive animations and synchronized audio for the Legendary and Mythic profile frames when tapped on the Dashboard.
+Core Timing & Scope: The entire animation sequence and audio playback must last exactly 3.5 seconds. The animation must overlay the entire viewport (fixed inset-0 z-50 pointer-events-none) so it is visible across the whole page, then completely unmount and reset its state after 3.5 seconds.
+Full-Page 'Live Hellfire' Animation:
+When the Live Hellfire frame is tapped, trigger a full-screen canvas or CSS particle overlay.
+Visual Mechanics: Intense, realistic flames must ignite from the absolute bottom of the screen (bottom-0) and surge rapidly upwards across the whole page, simulating the screen catching fire before dissolving into floating embers at the top.
+Audio Sync: Play a deep, high-quality roaring fire whoosh and crackle effect that swells as the flames rise and fades out at the 3.5-second mark.
+Full-Page 'High-Voltage Lightning' Animation:
+When the High-Voltage Lightning frame is tapped, trigger a full-screen atmospheric overlay.
+Visual Mechanics: The entire page background must suddenly dim and become dark and cloudy (using a shifting, moody dark gradient overlay with varying opacity). Across this cloudy screen, trigger three violent, bright cyan-white lightning strikes that flash across the whole viewport before the sky clears back to normal.
+Audio Sync: Synchronize three realistic, crisp electrical crackles or heavy thunderclaps to fire at the exact millisecond each lightning strike flashes on screen.
+Full-Page 'Legendary Diamond' Animation:
+When the Legendary Diamond frame is tapped, trigger a high-performance particle explosion overlay.
+Visual Mechanics: Instantly shower/throw hundreds of shimmering, ice-white crystalline diamond particles across the screen. They should explode outward from the center or fall in a dazzling cascade down the page, catching light and glinting dynamically before fading away.
+Audio Sync: Play a clean, premium 'crystalline chime' or shimmering glass-shatter sound effect that tracks the velocity of the diamond shower.
+State & Cleanup: Ensure that all animations use hardware acceleration (transform-gpu) to avoid lagging the dashboard, and guarantee that all audio contexts and overlay nodes are strictly cleaned up and removed from the DOM exactly 3.5 seconds after activation."

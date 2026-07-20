@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { FrameAnimationOverlay, type FrameAnimId } from "@/components/frame-animation-overlay"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -129,6 +130,16 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
     : null
   const motivation = MOTIVATIONS[new Date().getDate() % MOTIVATIONS.length]
 
+  // Frame tap animation
+  const ANIM_FRAMES = new Set<string>(["frame_fire", "frame_lightning", "frame_legendary_diamond"])
+  const [activeFrameAnim, setActiveFrameAnim] = useState<FrameAnimId | null>(null)
+  const handleAvatarTap = useCallback(() => {
+    const frameId = equippedCosmetics.frame
+    if (frameId && ANIM_FRAMES.has(frameId) && !activeFrameAnim) {
+      setActiveFrameAnim(frameId as FrameAnimId)
+    }
+  }, [equippedCosmetics.frame, activeFrameAnim])
+
   // Trial-only stats (from history entries with mode="trial")
   const trialHistory = progress.history.filter((e) => e.mode === "trial")
   const trialAnswered = trialHistory.filter((e) => e.selectedOption !== null).length
@@ -191,7 +202,10 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/[0.03]" />
 
           {/* Avatar — absolutely centered vertically on the right */}
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 sm:right-7">
+          <div
+            className={`absolute right-4 top-1/2 -translate-y-1/2 sm:right-7 ${ANIM_FRAMES.has(equippedCosmetics.frame ?? "") ? "cursor-pointer" : ""}`}
+            onClick={handleAvatarTap}
+          >
             <div className={`rounded-full ${bannerFrameClasses ?? ""}`}>
               <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-white shadow-lg text-3xl font-bold select-none overflow-hidden sm:h-24 sm:w-24 sm:text-4xl">
                 {bannerAvatarImagePath ? (
@@ -653,6 +667,14 @@ function ExamDashboard({
           })}
         </div>
       </section>
+
+      {/* Full-screen frame tap animation overlay */}
+      {activeFrameAnim && (
+        <FrameAnimationOverlay
+          frameId={activeFrameAnim}
+          onDone={() => setActiveFrameAnim(null)}
+        />
+      )}
     </div>
   )
 }
