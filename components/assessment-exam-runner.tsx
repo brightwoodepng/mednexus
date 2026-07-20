@@ -26,6 +26,7 @@ interface Props {
     passed: boolean
     answers: Record<string, string | null>
     questions: Question[]
+    timeTaken: number
   }) => void
   onExit?: () => void
 }
@@ -357,6 +358,8 @@ export function AssessmentExamRunner({
     submittedRef.current = true
     setSubmitting(true)
 
+    const timeTaken = Math.floor((Date.now() - startedAtRef.current) / 1000)
+
     let score = 0
     for (const q of questions) {
       if (finalAnswers[q.id] === q.correctAnswer) score++
@@ -370,13 +373,13 @@ export function AssessmentExamRunner({
       await fetch(`/api/assessments/${assessmentId}/attempt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, userName, isGuest, answers: finalAnswers }),
+        body: JSON.stringify({ userId, userName, isGuest, answers: finalAnswers, score, total }),
       })
     } catch { /* swallow — result shown locally */ }
 
     setSubmitted(true)
     setSubmitting(false)
-    onComplete({ score, total, percentage, passed: percentage >= passMark, answers: finalAnswers, questions })
+    onComplete({ score, total, percentage, passed: percentage >= passMark, answers: finalAnswers, questions, timeTaken })
   }, [assessmentId, questions, userId, userName, isGuest, passMark, onComplete, sessionKey])
 
   // ── NO visibilitychange / beforeunload auto-submit ────────────────────────

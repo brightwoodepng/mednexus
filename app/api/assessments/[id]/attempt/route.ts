@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
 
     const body = await req.json()
-    const { userId, userName, isGuest = false, answers = {} } = body
+    const { userId, userName, isGuest = false, answers = {}, score: clientScore, total: clientTotal } = body
 
     if (!userId || !userName) {
       return NextResponse.json({ error: "userId and userName are required" }, { status: 400 })
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // Compute score using stored question_ids
+    // Compute score server-side using stored question_ids (authoritative)
     const qRes = await pool.query("SELECT data FROM mednexus_questions WHERE id = 1")
     const allQuestions: Array<{ id: string; correctAnswer: string }> = qRes.rows[0]?.data ?? []
     const qMap = new Map(allQuestions.map((q) => [q.id, q]))
@@ -94,16 +94,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
     const total = (asmt.question_ids as string[]).length
 
-    const attemptId = `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-
-    await pool.query(
-      `INSERT INTO mednexus_assessment_attempts
-         (id, assessment_id, user_id, user_name, is_guest, answers, score, total, submitted_at)
-       VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,NOW())`,
-      [attemptId, id, userId, userName, isGuest, JSON.stringify(answers), score, total]
+    // Only persist if this is strictly better than the user's previous high score
+    const bestRes = await pool.query(
+      "SELECT MAX(score) as best_score FROM mednexus_assessment_attempts WHERE assessment_id = $1 AND user_id = $2 AND submitted_at IS NOT NULL",
+      [id, userId]
     )
+    const previousBest = bestRes.rows[0]?.best_score != null ? Number(bestRes.rows[0].best_score) : null
+    const isNewHighScore = previousBest === null || score > previousBest
 
-    return NextResponse.json({ success: true, attemptId, score, total })
+    if (isNewHighScore) {
+      const attemptId = `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      await pool.query(
+        `INSERT INTO mednexus_assessment_attempts
+           (id, assessment_id, user_id, user_name, is_guest, answers, score, total, submitted_at)
+         VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,NOW())`,
+        [attemptId, id, userId, userName, isGuest, JSON.stringify(answers), score, total]
+      )
+      return NextResponse.json({ success: true, attemptId, score, total, isNewHighScore: true })
+    }
+
+    return NextResponse.json({ success: true, score, total, isNewHighScore: false })
   } catch (err) {
     console.error("[attempt POST]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
