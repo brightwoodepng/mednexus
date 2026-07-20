@@ -387,18 +387,10 @@ function ModuleCard({
   isFav: boolean
   onOpen: () => void
 }) {
-  const { toggleFavoriteModule, progress } = useApp()
-  const coverage = getDisciplineCoverage(progress.history)
+  const { toggleFavoriteModule } = useApp()
   const palette = CARD_PALETTES[paletteIndex]
   const total = getModuleQuestionCount(mod)
   const disciplines = getDisciplinesForModule(mod)
-
-  // compute attempted count for this module
-  const attempted = disciplines.reduce((sum, d) => {
-    const cov = coverage[d]
-    return sum + (cov ? cov.attempted : 0)
-  }, 0)
-  const pct = total > 0 ? Math.round((attempted / total) * 100) : 0
 
   return (
     <div className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
@@ -433,22 +425,11 @@ function ModuleCard({
           {disciplines.length} discipline{disciplines.length !== 1 ? "s" : ""} · {total}Q
         </p>
 
-        {/* Progress bar — always visible */}
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${pct}%`, background: palette.bar }}
-          />
-        </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          {pct > 0 ? `${pct}% Completed` : "Not started"}
-        </p>
-
         {/* Open button */}
         <button
           type="button"
           onClick={onOpen}
-          className="mt-4 flex min-h-14 w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all sm:min-h-0"
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all"
           style={{
             background: `${palette.bar}18`,
             color: palette.bar,
