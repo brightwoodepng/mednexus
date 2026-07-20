@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool, { ensureSchema } from "@/lib/db"
 
-// Dev-only: directly set a wallet balance (used by the cheat button)
+// Admin-only: forcefully overwrite a wallet balance — skips ensureSchema to
+// avoid the "tuple concurrently updated" error that fires under concurrent requests.
+// The wallet table is guaranteed to exist once any page has loaded.
 export async function PATCH(req: NextRequest) {
   try {
-    await ensureSchema()
     const { uid, balance } = await req.json()
     if (!uid || typeof balance !== "number") {
       return NextResponse.json({ error: "uid and balance required" }, { status: 400 })
     }
     await pool.query(
-      `INSERT INTO mednexus_wallet (uid, balance)
-       VALUES ($1, $2)
-       ON CONFLICT (uid) DO UPDATE SET balance = $2`,
+      `INSERT INTO mednexus_wallet (uid, balance, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (uid) DO UPDATE
+         SET balance    = EXCLUDED.balance,
+             updated_at = NOW()`,
       [uid, balance]
     )
     return NextResponse.json({ ok: true, balance })
