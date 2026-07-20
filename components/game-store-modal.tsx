@@ -654,6 +654,70 @@ export function NexusStoreSupplyPage({ onBack }: { onBack: () => void }) {
   )
 }
 
+// ── Vault — vertical grid card ────────────────────────────────────────────────
+
+function VaultGridCard({
+  item, unlocked, buying, didBuy, canAfford, onBuy,
+}: {
+  item: StoreItem; unlocked: boolean; buying: boolean; didBuy: boolean; canAfford: boolean; onBuy: () => void
+}) {
+  const meta = VAULT_META[item.id]
+
+  return (
+    <div className={`relative overflow-hidden flex flex-col p-6 h-full rounded-2xl border transition-all hover:shadow-md ${
+      unlocked
+        ? "border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/20 dark:to-teal-950/10"
+        : "border-border bg-card hover:border-primary/30"
+    }`}>
+      {/* Colour bar */}
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.gradient} ${unlocked ? "opacity-50" : ""}`} />
+
+      {/* Icon + title + meta row */}
+      <div className="flex items-start gap-4 mb-4">
+        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} text-3xl shadow-md ${!unlocked ? "opacity-70" : ""}`}>
+          {unlocked ? item.icon : "🔒"}
+        </div>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <h3 className="text-base font-extrabold text-foreground leading-snug">{item.name}</h3>
+          {meta && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              <DifficultyBadge difficulty={meta.difficulty} />
+              <span className="text-[11px] text-muted-foreground">{meta.discipline}</span>
+              <span className="text-[11px] text-muted-foreground">· {meta.steps} steps</span>
+            </div>
+          )}
+        </div>
+        {!unlocked && <PriceTag price={item.price} />}
+      </div>
+
+      {/* Description — no dialogue quote */}
+      <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+
+      {/* CTA — anchored bottom-right */}
+      {unlocked ? (
+        <div className="mt-auto pt-5 self-end">
+          <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+            ✓ Unlocked — Available in your profile
+          </span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={buying || !canAfford}
+          onClick={onBuy}
+          className={`mt-auto self-end rounded-full px-5 py-2 text-xs font-bold transition-all ${
+            didBuy    ? "bg-emerald-500 text-white" :
+            canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
+                        "bg-muted text-muted-foreground cursor-not-allowed"
+          }`}
+        >
+          {buying ? "…" : didBuy ? "Unlocked!" : canAfford ? "🔓 Unlock" : "Need more NP"}
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── NexusStoreVaultPage ───────────────────────────────────────────────────────
 
 export function NexusStoreVaultPage({ onBack }: { onBack: () => void }) {
@@ -686,17 +750,17 @@ export function NexusStoreVaultPage({ onBack }: { onBack: () => void }) {
           {error}
         </div>
       )}
-      <div className="grid gap-3">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Complex multi-step clinical simulations. Unlock permanently with Nexus Points — available in your profile forever.
-          </p>
-          <span className="ml-3 shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground">
-            {ownedVaultCount}/{vaultItems.length}
-          </span>
-        </div>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Complex multi-step clinical simulations. Unlock permanently with Nexus Points — available in your profile forever.
+        </p>
+        <span className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-sm font-bold text-muted-foreground">
+          {ownedVaultCount}/{vaultItems.length}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
         {vaultItems.map(item => (
-          <VaultCard
+          <VaultGridCard
             key={item.id}
             item={item}
             unlocked={(inventory[item.id] ?? 0) >= 1}
