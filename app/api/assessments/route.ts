@@ -78,8 +78,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No questions found for this module" }, { status: 400 })
     }
 
+    // Deduplicate by id before shuffling so the stored question_ids array is always unique
+    const seen = new Set<string>()
+    const uniqueModuleQs = moduleQs.filter((q) => {
+      if (seen.has(q.id)) return false
+      seen.add(q.id)
+      return true
+    })
+
     // Randomly select up to qCount questions
-    const shuffled = [...moduleQs].sort(() => Math.random() - 0.5)
+    const shuffled = [...uniqueModuleQs].sort(() => Math.random() - 0.5)
     const selected = shuffled.slice(0, Math.min(qCount, shuffled.length))
     const questionIds = selected.map((q) => q.id)
 
