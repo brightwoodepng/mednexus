@@ -127,7 +127,7 @@ function AnalyticsModal({
 }: { assessment: LiveAssessment; onClose: () => void }) {
   const { adminToken } = useAdmin()
   const [loading, setLoading] = useState(true)
-  const [analytics, setAnalytics] = useState<AssessmentAnalytics & { uniqueParticipants: number; passMark: number; triesAllowed: number } | null>(null)
+  const [analytics, setAnalytics] = useState<AssessmentAnalytics & { uniqueParticipants: number; passMark: number; triesAllowed: number; failCount: number; highestScore: number; lowestScore: number; medianScore: number } | null>(null)
   const [recentAttempts, setRecentAttempts] = useState<Array<{ userName: string; isGuest: boolean; score: number; total: number; percentage: number; submittedAt: string }>>([])
 
   useEffect(() => {
@@ -147,24 +147,75 @@ function AnalyticsModal({
 
   function exportToPDF() {
     if (!analytics) return
+
     const passMark = analytics.passMark ?? 50
-    const passRate = analytics.totalSubmitted
-      ? Math.round((analytics.passCount / analytics.totalSubmitted) * 100)
-      : 0
     const generatedAt = new Date().toLocaleString()
 
-    const attemptsRows = recentAttempts.map((a) => {
-      const passed = a.percentage >= passMark
-      return `<tr>
-        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">${a.userName}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">
+    // ── Sort all submissions high → low by raw score integer ─────────────────
+    const sorted = [...recentAttempts].sort((a, b) => b.score - a.score)
+
+    // ── Calculate statistics from the full submission set ────────────────────
+    const totalSubmissions = sorted.length
+    const passed = sorted.filter((a) => a.percentage >= passMark)
+    const failed = sorted.filter((a) => a.percentage < passMark)
+    const passCount = passed.length
+    const failCount = failed.length
+    const passRate = totalSubmissions ? Math.round((passCount / totalSubmissions) * 100) : 0
+    const failRate = 100 - passRate
+
+    const percentages = sorted.map((a) => a.percentage)
+    const avgScore = percentages.length
+      ? Math.round(percentages.reduce((s, v) => s + v, 0) / percentages.length)
+      : 0
+    const highestScore = percentages.length ? Math.max(...percentages) : 0
+    const lowestScore = percentages.length ? Math.min(...percentages) : 0
+
+    const pctSorted = [...percentages].sort((a, b) => a - b)
+    const mid = Math.floor(pctSorted.length / 2)
+    const medianScore = pctSorted.length === 0 ? 0
+      : pctSorted.length % 2 === 0 ? Math.round((pctSorted[mid - 1] + pctSorted[mid]) / 2)
+      : pctSorted[mid]
+
+    // Score distribution buckets (0-49, 50-69, 70-84, 85-100)
+    const buckets = [
+      { label: "0–49%",   count: percentages.filter((p) => p < 50).length, color: "#dc2626" },
+      { label: "50–69%",  count: percentages.filter((p) => p >= 50 && p < 70).length, color: "#d97706" },
+      { label: "70–84%",  count: percentages.filter((p) => p >= 70 && p < 85).length, color: "#2563eb" },
+      { label: "85–100%", count: percentages.filter((p) => p >= 85).length, color: "#059669" },
+    ]
+    const bucketBars = buckets.map((b) => {
+      const width = totalSubmissions ? Math.round((b.count / totalSubmissions) * 100) : 0
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span style="width:52px;font-size:10px;color:#6b7280;text-align:right;flex-shrink:0;">${b.label}</span>
+        <div style="flex:1;background:#f3f4f6;border-radius:4px;height:14px;overflow:hidden;">
+          <div style="height:100%;background:${b.color};border-radius:4px;width:${width}%;"></div>
+        </div>
+        <span style="width:28px;font-size:10px;font-weight:600;color:${b.color};flex-shrink:0;">${b.count}</span>
+      </div>`
+    }).join("")
+
+    // ── Rank column — same rank for tied raw scores ──────────────────────────
+    let rank = 0
+    let lastScore = -1
+    const attemptsRows = sorted.map((a, idx) => {
+      if (a.score !== lastScore) { rank = idx + 1; lastScore = a.score }
+      const pct = a.percentage
+      const pass = pct >= passMark
+      const rowBg = idx % 2 === 0 ? "#fff" : "#f9fafb"
+      return `<tr style="background:${rowBg};">
+        <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#6b7280;text-align:center;">${rank}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;">${a.userName}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;">
           <span style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 7px;border-radius:9999px;background:${a.isGuest ? "#fef9c3" : "#eff6ff"};color:${a.isGuest ? "#a16207" : "#1d4ed8"};">
             ${a.isGuest ? "Guest" : "Registered"}
           </span>
         </td>
-        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;">${a.score}/${a.total}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid #f3f4f6;font-weight:700;color:${passed ? "#059669" : "#dc2626"};">
-          ${a.percentage}% ${passed ? "✓" : "✗"}
+        <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;">${a.score}/${a.total}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;font-weight:700;color:${pass ? "#059669" : "#dc2626"};">
+          ${pct}%
+        </td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;font-weight:700;color:${pass ? "#059669" : "#dc2626"};">
+          ${pass ? "✓ Pass" : "✗ Fail"}
         </td>
       </tr>`
     }).join("")
@@ -177,67 +228,114 @@ function AnalyticsModal({
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #111827; padding: 48px; background: #fff; font-size: 13px; }
-    .header { margin-bottom: 32px; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; }
+    .header { margin-bottom: 28px; border-bottom: 2px solid #e5e7eb; padding-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-end; }
     .header h1 { font-size: 22px; font-weight: 700; color: #111827; margin-bottom: 4px; }
-    .header p { color: #6b7280; font-size: 12px; }
-    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 32px; }
-    .stat { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
-    .stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 6px; }
-    .stat-value { font-size: 26px; font-weight: 700; color: #111827; margin-bottom: 2px; }
-    .stat-sub { font-size: 11px; color: #9ca3af; }
-    .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 10px; }
+    .header p { color: #6b7280; font-size: 11px; }
+    .header .badge { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 10px; border-radius: 9999px; background: #f3f4f6; color: #374151; white-space: nowrap; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .stats-grid-2 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .stat { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
+    .stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 6px; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #111827; line-height: 1; margin-bottom: 3px; }
+    .stat-sub { font-size: 10px; color: #9ca3af; }
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #f3f4f6; }
+    .distribution { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; margin-bottom: 24px; }
     table { width: 100%; border-collapse: collapse; }
     thead tr { background: #f9fafb; }
-    th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
-    td { font-size: 13px; color: #111827; vertical-align: middle; }
-    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 11px; text-align: center; }
-    @media print { body { padding: 24px; } }
+    th { text-align: left; padding: 8px 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; border-bottom: 2px solid #e5e7eb; }
+    th.center { text-align: center; }
+    td { font-size: 12px; color: #111827; vertical-align: middle; }
+    .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 10px; text-align: center; }
+    @media print { body { padding: 24px; } .stats-grid { grid-template-columns: repeat(4, 1fr); } }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>${assessment.title}</h1>
-    <p>Analytics Report &middot; Generated ${generatedAt} &middot; MedNexus</p>
+    <div>
+      <h1>${assessment.title}</h1>
+      <p>Analytics Report &middot; Generated ${generatedAt} &middot; MedNexus</p>
+    </div>
+    <div class="badge">Pass mark: ${passMark}%</div>
   </div>
 
-  <div class="stats">
+  <!-- Row 1: Volume & outcome stats -->
+  <div class="stats-grid">
     <div class="stat">
-      <div class="stat-label">Total Submitted</div>
-      <div class="stat-value">${analytics.totalSubmitted}</div>
+      <div class="stat-label">Total Submissions</div>
+      <div class="stat-value">${totalSubmissions}</div>
       <div class="stat-sub">${analytics.uniqueParticipants} unique participant${analytics.uniqueParticipants === 1 ? "" : "s"}</div>
     </div>
     <div class="stat">
-      <div class="stat-label">Average Score</div>
-      <div class="stat-value">${analytics.averageScore}%</div>
-      <div class="stat-sub">Pass mark: ${passMark}%</div>
-    </div>
-    <div class="stat">
       <div class="stat-label">Passed</div>
-      <div class="stat-value" style="color:#059669;">${analytics.passCount}</div>
+      <div class="stat-value" style="color:#059669;">${passCount}</div>
       <div class="stat-sub">${passRate}% pass rate</div>
     </div>
     <div class="stat">
-      <div class="stat-label">Breakdown</div>
-      <div class="stat-value" style="font-size:18px;">${analytics.registeredCount} reg · ${analytics.guestCount} guest</div>
-      <div class="stat-sub">registered vs external guests</div>
+      <div class="stat-label">Failed</div>
+      <div class="stat-value" style="color:#dc2626;">${failCount}</div>
+      <div class="stat-sub">${failRate}% fail rate</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Participants</div>
+      <div class="stat-value" style="font-size:16px;padding-top:4px;">${analytics.registeredCount} reg<br/>${analytics.guestCount} guest</div>
+      <div class="stat-sub">registered vs guest</div>
     </div>
   </div>
 
-  ${recentAttempts.length > 0 ? `
-  <div class="section-title">Submissions (last ${recentAttempts.length})</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Score</th>
-        <th>Result</th>
-      </tr>
-    </thead>
-    <tbody>${attemptsRows}</tbody>
-  </table>` : "<p style=\"color:#9ca3af;text-align:center;padding:24px 0;\">No submissions recorded.</p>"}
+  <!-- Row 2: Score stats -->
+  <div class="stats-grid-2">
+    <div class="stat">
+      <div class="stat-label">Average Score</div>
+      <div class="stat-value">${avgScore}%</div>
+      <div class="stat-sub">across all submissions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Median Score</div>
+      <div class="stat-value">${medianScore}%</div>
+      <div class="stat-sub">50th percentile</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Highest Score</div>
+      <div class="stat-value" style="color:#059669;">${highestScore}%</div>
+      <div class="stat-sub">top result</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Lowest Score</div>
+      <div class="stat-value" style="color:#dc2626;">${lowestScore}%</div>
+      <div class="stat-sub">bottom result</div>
+    </div>
+  </div>
 
-  <div class="footer">MedNexus &mdash; Confidential &mdash; ${assessment.title}</div>
+  <!-- Score distribution -->
+  ${totalSubmissions > 0 ? `
+  <div class="section">
+    <div class="section-title">Score Distribution</div>
+    <div class="distribution">
+      ${bucketBars}
+    </div>
+  </div>` : ""}
+
+  <!-- All submissions sorted high → low -->
+  <div class="section">
+    <div class="section-title">All Submissions — sorted highest to lowest score (${totalSubmissions} total)</div>
+    ${sorted.length > 0 ? `
+    <table>
+      <thead>
+        <tr>
+          <th class="center" style="width:40px;">Rank</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Score</th>
+          <th>%</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody>${attemptsRows}</tbody>
+    </table>` : "<p style=\"color:#9ca3af;text-align:center;padding:24px 0;\">No submissions recorded.</p>"}
+  </div>
+
+  <div class="footer">MedNexus &mdash; Confidential &mdash; ${assessment.title} &mdash; ${totalSubmissions} submission${totalSubmissions === 1 ? "" : "s"}</div>
 </body>
 </html>`
 
@@ -296,29 +394,35 @@ function AnalyticsModal({
                 ))}
               </div>
 
-              {/* Recent attempts */}
+              {/* All submissions sorted high → low */}
               {recentAttempts.length > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Recent Submissions</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    All Submissions — highest to lowest
+                  </p>
                   <div className="rounded-xl border border-border overflow-hidden">
-                    {recentAttempts.map((att, i) => (
-                      <div key={i} className={`flex items-center gap-3 px-3 py-2.5 text-sm ${i < recentAttempts.length - 1 ? "border-b border-border/60" : ""}`}>
-                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${att.percentage >= (analytics?.passMark ?? 50) ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
-                          {att.percentage >= (analytics?.passMark ?? 50) ? "✓" : "✗"}
+                    {[...recentAttempts].sort((a, b) => b.score - a.score).map((att, i, arr) => {
+                      const pass = att.percentage >= (analytics?.passMark ?? 50)
+                      return (
+                        <div key={i} className={`flex items-center gap-3 px-3 py-2.5 text-sm ${i < arr.length - 1 ? "border-b border-border/60" : ""}`}>
+                          <span className="w-5 shrink-0 text-center text-[10px] font-bold text-muted-foreground tabular-nums">{i + 1}</span>
+                          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${pass ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+                            {pass ? "✓" : "✗"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground truncate">{att.userName}
+                              {att.isGuest && <span className="ml-1.5 text-[9px] font-bold uppercase bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">Guest</span>}
+                            </p>
+                          </div>
+                          <span className={`text-sm font-bold tabular-nums ${pass ? "text-emerald-600" : "text-destructive"}`}>
+                            {att.percentage}%
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {att.score}/{att.total}
+                          </span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">{att.userName}
-                            {att.isGuest && <span className="ml-1.5 text-[9px] font-bold uppercase bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">Guest</span>}
-                          </p>
-                        </div>
-                        <span className={`text-sm font-bold tabular-nums ${att.percentage >= (analytics?.passMark ?? 50) ? "text-emerald-600" : "text-destructive"}`}>
-                          {att.percentage}%
-                        </span>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {att.score}/{att.total}
-                        </span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
