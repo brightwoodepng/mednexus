@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 export type FrameAnimId =
@@ -12,512 +12,314 @@ interface Props {
   onDone: () => void;
 }
 
-const DURATION_MS = 3500;
+// ─── Audio (AudioContext synthesis, called on mount — still within the
+//     gesture propagation window from the tap) ───────────────────────────────
 
-// ─── Audio ────────────────────────────────────────────────────────────────────
-
-function playFireAudio(ac: AudioContext) {
-  const dur = DURATION_MS / 1000;
-
-  // White-noise roar
-  const bufLen = Math.floor(ac.sampleRate * dur);
-  const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-
-  const src = ac.createBufferSource();
-  src.buffer = buf;
-
-  const lpf = ac.createBiquadFilter();
-  lpf.type = "lowpass";
-  lpf.frequency.setValueAtTime(250, ac.currentTime);
-  lpf.frequency.linearRampToValueAtTime(900, ac.currentTime + 1.2);
-  lpf.frequency.linearRampToValueAtTime(400, ac.currentTime + dur);
-
-  const gain = ac.createGain();
-  gain.gain.setValueAtTime(0, ac.currentTime);
-  gain.gain.linearRampToValueAtTime(0.55, ac.currentTime + 0.7);
-  gain.gain.linearRampToValueAtTime(0.65, ac.currentTime + 1.5);
-  gain.gain.linearRampToValueAtTime(0, ac.currentTime + dur);
-
-  src.connect(lpf);
-  lpf.connect(gain);
-  gain.connect(ac.destination);
-  src.start();
-
-  // Deep sub-rumble
-  const osc = ac.createOscillator();
-  osc.frequency.setValueAtTime(38, ac.currentTime);
-  osc.frequency.linearRampToValueAtTime(55, ac.currentTime + 1.5);
-  const oscGain = ac.createGain();
-  oscGain.gain.setValueAtTime(0, ac.currentTime);
-  oscGain.gain.linearRampToValueAtTime(0.22, ac.currentTime + 0.4);
-  oscGain.gain.linearRampToValueAtTime(0, ac.currentTime + dur);
-  osc.connect(oscGain);
-  oscGain.connect(ac.destination);
-  osc.start();
-  osc.stop(ac.currentTime + dur);
-}
-
-function playLightningAudio(ac: AudioContext) {
-  const boltTimings = [0.3, 1.2, 2.1]; // seconds from now
-
-  boltTimings.forEach((t) => {
-    // Sharp electrical crackle
-    const crackleLen = Math.floor(ac.sampleRate * 0.55);
-    const cbuf = ac.createBuffer(1, crackleLen, ac.sampleRate);
-    const cd = cbuf.getChannelData(0);
-    for (let i = 0; i < crackleLen; i++) {
-      const env =
-        i < 800
-          ? i / 800
-          : Math.exp(-((i - 800) / (crackleLen * 0.18)));
-      cd[i] = (Math.random() * 2 - 1) * env;
-    }
-    const csrc = ac.createBufferSource();
-    csrc.buffer = cbuf;
-    const hpf = ac.createBiquadFilter();
-    hpf.type = "highpass";
-    hpf.frequency.value = 1200;
-    const cgain = ac.createGain();
-    cgain.gain.value = 1.3;
-    csrc.connect(hpf);
-    hpf.connect(cgain);
-    cgain.connect(ac.destination);
-    csrc.start(ac.currentTime + t);
-
-    // Thunder boom
-    const boom = ac.createOscillator();
-    boom.frequency.setValueAtTime(90, ac.currentTime + t);
-    boom.frequency.exponentialRampToValueAtTime(18, ac.currentTime + t + 0.9);
-    const bgain = ac.createGain();
-    bgain.gain.setValueAtTime(0.9, ac.currentTime + t);
-    bgain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + t + 0.9);
-    boom.connect(bgain);
-    bgain.connect(ac.destination);
-    boom.start(ac.currentTime + t);
-    boom.stop(ac.currentTime + t + 0.9);
-  });
-}
-
-function playDiamondAudio(ac: AudioContext) {
-  // Crystalline chime with decaying harmonics
-  const freqs = [1046, 2093, 3136, 4186, 6272];
-  freqs.forEach((freq, i) => {
-    const osc = ac.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = freq;
+function playFireAudio() {
+  try {
+    const ac = new AudioContext();
+    const dur = 3.5;
+    const bufLen = Math.floor(ac.sampleRate * dur);
+    const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const lpf = ac.createBiquadFilter();
+    lpf.type = "lowpass";
+    lpf.frequency.setValueAtTime(200, ac.currentTime);
+    lpf.frequency.linearRampToValueAtTime(850, ac.currentTime + 1.2);
+    lpf.frequency.linearRampToValueAtTime(380, ac.currentTime + dur);
     const gain = ac.createGain();
-    const delay = i * 0.05;
-    const decay = 2.8 - i * 0.4;
-    gain.gain.setValueAtTime(0, ac.currentTime + delay);
-    gain.gain.linearRampToValueAtTime(0.28 / (i + 1), ac.currentTime + delay + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + delay + decay);
-    osc.connect(gain);
-    gain.connect(ac.destination);
-    osc.start(ac.currentTime + delay);
-    osc.stop(ac.currentTime + delay + decay);
-  });
-
-  // Glass-shimmer noise burst
-  const slen = Math.floor(ac.sampleRate * 0.25);
-  const sbuf = ac.createBuffer(1, slen, ac.sampleRate);
-  const sd = sbuf.getChannelData(0);
-  for (let i = 0; i < slen; i++) {
-    sd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (slen * 0.25)) * 0.35;
-  }
-  const ssrc = ac.createBufferSource();
-  ssrc.buffer = sbuf;
-  const shpf = ac.createBiquadFilter();
-  shpf.type = "highpass";
-  shpf.frequency.value = 5000;
-  ssrc.connect(shpf);
-  shpf.connect(ac.destination);
-  ssrc.start();
+    gain.gain.setValueAtTime(0, ac.currentTime);
+    gain.gain.linearRampToValueAtTime(0.65, ac.currentTime + 0.5);
+    gain.gain.linearRampToValueAtTime(0.75, ac.currentTime + 1.5);
+    gain.gain.linearRampToValueAtTime(0, ac.currentTime + dur);
+    src.connect(lpf); lpf.connect(gain); gain.connect(ac.destination);
+    src.start();
+    const osc = ac.createOscillator();
+    osc.frequency.value = 40;
+    const og = ac.createGain();
+    og.gain.setValueAtTime(0.35, ac.currentTime);
+    og.gain.linearRampToValueAtTime(0, ac.currentTime + dur);
+    osc.connect(og); og.connect(ac.destination);
+    osc.start(); osc.stop(ac.currentTime + dur);
+    setTimeout(() => ac.close().catch(() => {}), (dur + 0.3) * 1000);
+  } catch { /* audio blocked */ }
 }
 
-// ─── Bolt geometry ────────────────────────────────────────────────────────────
-
-function buildBolt(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  roughness: number,
-  depth: number
-): [number, number][] {
-  if (depth === 0) return [[x1, y1], [x2, y2]];
-  const mx = (x1 + x2) / 2 + (Math.random() - 0.5) * roughness;
-  const my = (y1 + y2) / 2 + (Math.random() - 0.5) * roughness * 0.25;
-  return [
-    ...buildBolt(x1, y1, mx, my, roughness / 2, depth - 1),
-    ...buildBolt(mx, my, x2, y2, roughness / 2, depth - 1).slice(1),
-  ];
-}
-
-// ─── Fire animation ───────────────────────────────────────────────────────────
-
-interface FP {
-  x: number; y: number;
-  vx: number; vy: number;
-  size: number;
-  born: number; life: number; // life: 0→1
-}
-
-function runFireAnimation(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  start: number,
-  setRaf: (id: number) => void
-) {
-  const particles: FP[] = [];
-  let last = start;
-
-  function spawn(now: number): FP {
-    return {
-      x: Math.random() * W,
-      y: H + Math.random() * 60,
-      vx: (Math.random() - 0.5) * 2.5,
-      vy: -(3.5 + Math.random() * 6),
-      size: 22 + Math.random() * 44,
-      born: now,
-      life: 0,
-    };
-  }
-
-  function color(life: number): string {
-    // life: 0 = newborn (bright), 1 = dying (dark red)
-    if (life < 0.25) {
-      // white → yellow
-      const t = life / 0.25;
-      return `rgba(255,${Math.round(255 - t * 55)},${Math.round(200 * (1 - t))},${0.9 - t * 0.1})`;
-    } else if (life < 0.6) {
-      // yellow → orange
-      const t = (life - 0.25) / 0.35;
-      return `rgba(255,${Math.round(200 - t * 120)},0,${0.8 - t * 0.15})`;
-    } else {
-      // orange → dark red → transparent
-      const t = (life - 0.6) / 0.4;
-      return `rgba(${Math.round(255 - t * 150)},${Math.round(80 - t * 80)},0,${0.65 * (1 - t)})`;
-    }
-  }
-
-  function frame(now: number) {
-    const elapsed = now - start;
-    if (elapsed >= DURATION_MS) { ctx.clearRect(0, 0, W, H); return; }
-    const dt = Math.min(now - last, 50);
-    last = now;
-
-    // Ramp spawn intensity: quick rise, hold, taper
-    const intensity =
-      elapsed < 400 ? elapsed / 400
-      : elapsed > 2600 ? Math.max(0, 1 - (elapsed - 2600) / 900)
-      : 1;
-
-    const toSpawn = Math.floor(intensity * 10 * (dt / 16));
-    for (let i = 0; i < toSpawn && particles.length < 700; i++) {
-      particles.push(spawn(now));
-    }
-
-    ctx.clearRect(0, 0, W, H);
-
-    // Bottom glow
-    const glow = ctx.createLinearGradient(0, H, 0, H * 0.35);
-    glow.addColorStop(0, `rgba(200,30,0,${intensity * 0.55})`);
-    glow.addColorStop(0.5, `rgba(140,15,0,${intensity * 0.25})`);
-    glow.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, W, H);
-
-    // Particles
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      const maxLife = 1400 + p.size * 22;
-      p.life = (now - p.born) / maxLife;
-      if (p.life >= 1) { particles.splice(i, 1); continue; }
-
-      p.x += p.vx * dt / 16;
-      p.y += p.vy * dt / 16;
-      p.vx += (Math.random() - 0.5) * 0.35;
-      p.vy += 0.03 * dt / 16; // slight deceleration
-
-      const r = p.size * (1 - p.life * 0.45);
-      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-      grad.addColorStop(0, color(p.life));
-      grad.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
-    }
-
-    setRaf(requestAnimationFrame(frame));
-  }
-
-  setRaf(requestAnimationFrame(frame));
-}
-
-// ─── Lightning animation ──────────────────────────────────────────────────────
-
-function runLightningAnimation(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  start: number,
-  setRaf: (id: number) => void
-) {
-  // Pre-generate three bolts
-  const bolts = [300, 1200, 2100].map((ms) => ({
-    ms,
-    pts: buildBolt(
-      W * (0.25 + Math.random() * 0.5), 0,
-      W * (0.15 + Math.random() * 0.7), H * (0.55 + Math.random() * 0.35),
-      220, 8
-    ),
-  }));
-
-  function frame(now: number) {
-    const elapsed = now - start;
-    if (elapsed >= DURATION_MS) { ctx.clearRect(0, 0, W, H); return; }
-
-    ctx.clearRect(0, 0, W, H);
-
-    // Storm darkness envelope
-    const stormAlpha =
-      elapsed < 250 ? (elapsed / 250) * 0.75
-      : elapsed > 2900 ? Math.max(0, 0.75 * (1 - (elapsed - 2900) / 600))
-      : 0.75;
-
-    // Cloudy gradient overlay
-    const storm = ctx.createRadialGradient(W * 0.5, H * 0.25, 0, W * 0.5, H * 0.5, W * 0.85);
-    storm.addColorStop(0, `rgba(12,18,35,${stormAlpha * 0.75})`);
-    storm.addColorStop(0.55, `rgba(6,10,22,${stormAlpha})`);
-    storm.addColorStop(1, `rgba(3,5,14,${stormAlpha * 0.9})`);
-    ctx.fillStyle = storm;
-    ctx.fillRect(0, 0, W, H);
-
-    bolts.forEach(({ ms, pts }) => {
-      const age = elapsed - ms;
-      if (age < 0 || age > 450) return;
-
-      // Flash envelope: instant on, quick decay
-      const flash =
-        age < 25 ? age / 25
-        : age < 90 ? 1
-        : Math.max(0, 1 - (age - 90) / 360);
-      if (flash <= 0) return;
-
-      // White flash
-      ctx.fillStyle = `rgba(210,235,255,${flash * 0.28})`;
-      ctx.fillRect(0, 0, W, H);
-
-      // Draw bolt — outer glow → mid → core
-      const layers: [number, string][] = [
-        [16, `rgba(100,200,255,${flash * 0.3})`],
-        [8, `rgba(180,235,255,${flash * 0.6})`],
-        [3, `rgba(240,250,255,${flash * 0.85})`],
-        [1.5, `rgba(255,255,255,${flash})`],
-      ];
-
-      layers.forEach(([lw, style]) => {
-        ctx.beginPath();
-        ctx.moveTo(pts[0][0], pts[0][1]);
-        pts.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
-        ctx.strokeStyle = style;
-        ctx.lineWidth = lw;
-        ctx.stroke();
-      });
+function playLightningAudio() {
+  try {
+    const ac = new AudioContext();
+    const dur = 3.5;
+    const crackAt = [0.5, 1.2, 2.0];
+    crackAt.forEach((t) => {
+      const bufLen = Math.floor(ac.sampleRate * 0.25);
+      const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      const hpf = ac.createBiquadFilter();
+      hpf.type = "highpass"; hpf.frequency.value = 4000;
+      const gain = ac.createGain();
+      gain.gain.setValueAtTime(0.8, ac.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + t + 0.25);
+      src.connect(hpf); hpf.connect(gain); gain.connect(ac.destination);
+      src.start(ac.currentTime + t);
+      // Thunder boom
+      const boom = ac.createOscillator();
+      boom.frequency.setValueAtTime(80, ac.currentTime + t + 0.05);
+      boom.frequency.linearRampToValueAtTime(30, ac.currentTime + t + 0.8);
+      const bg = ac.createGain();
+      bg.gain.setValueAtTime(0.5, ac.currentTime + t + 0.05);
+      bg.gain.linearRampToValueAtTime(0, ac.currentTime + t + 0.8);
+      boom.connect(bg); bg.connect(ac.destination);
+      boom.start(ac.currentTime + t + 0.05);
+      boom.stop(ac.currentTime + t + 0.8);
     });
+    setTimeout(() => ac.close().catch(() => {}), (dur + 0.3) * 1000);
+  } catch { /* audio blocked */ }
+}
 
-    setRaf(requestAnimationFrame(frame));
+function playDiamondAudio() {
+  try {
+    const ac = new AudioContext();
+    const dur = 3.5;
+    const freqs = [1046, 1568, 2093, 3136, 6272];
+    freqs.forEach((f, i) => {
+      const osc = ac.createOscillator();
+      osc.type = "sine"; osc.frequency.value = f;
+      const gain = ac.createGain();
+      const t0 = ac.currentTime + i * 0.07;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.25 - i * 0.04, t0 + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 1.2);
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.start(t0); osc.stop(t0 + 1.3);
+    });
+    // shimmer noise
+    const bufLen = Math.floor(ac.sampleRate * 0.5);
+    const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const hpf = ac.createBiquadFilter(); hpf.type = "highpass"; hpf.frequency.value = 6000;
+    const sg = ac.createGain();
+    sg.gain.setValueAtTime(0.3, ac.currentTime);
+    sg.gain.linearRampToValueAtTime(0, ac.currentTime + 0.5);
+    src.connect(hpf); hpf.connect(sg); sg.connect(ac.destination);
+    src.start();
+    setTimeout(() => ac.close().catch(() => {}), (dur + 0.3) * 1000);
+  } catch { /* audio blocked */ }
+}
+
+// ─── CSS keyframes injected once ─────────────────────────────────────────────
+
+const CSS = `
+@keyframes mn-fire-rise {
+  0%   { transform: scaleX(1)   scaleY(0.05) translateY(0);    opacity: 0; }
+  8%   { opacity: 1; }
+  40%  { transform: scaleX(1.25) scaleY(1)   translateY(-5%);  opacity: 0.95; }
+  75%  { transform: scaleX(1.5)  scaleY(1.3) translateY(-15%); opacity: 0.85; }
+  100% { transform: scaleX(1.7)  scaleY(1.5) translateY(-25%); opacity: 0; }
+}
+@keyframes mn-fire-glow {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 0.85; }
+}
+@keyframes mn-lightning-bg {
+  0%      { background-color: rgba(0,0,0,0.75); }
+  /* bolt 1 at 500ms / 3500ms ≈ 14.3% */
+  13%     { background-color: rgba(0,0,0,0.75); }
+  14.3%   { background-color: rgba(200,240,255,0.92); }
+  16%     { background-color: rgba(0,0,0,0.75); }
+  /* bolt 2 at 1200ms / 3500ms ≈ 34.3% */
+  33%     { background-color: rgba(0,0,0,0.75); }
+  34.3%   { background-color: rgba(200,240,255,0.92); }
+  36%     { background-color: rgba(0,0,0,0.75); }
+  /* bolt 3 at 2000ms / 3500ms ≈ 57.1% */
+  56%     { background-color: rgba(0,0,0,0.75); }
+  57.1%   { background-color: rgba(200,240,255,0.92); }
+  59%     { background-color: rgba(0,0,0,0.75); }
+  100%    { background-color: rgba(0,0,0,0); }
+}
+@keyframes mn-diamond-burst {
+  0%   { transform: translate(-50%,-50%) rotate(45deg) scale(0);   opacity: 1; }
+  25%  { opacity: 1; }
+  60%  { opacity: 0.7; }
+  100% { transform: translate(
+           calc(-50% + var(--dx)),
+           calc(-50% + var(--dy))
+         ) rotate(45deg) scale(var(--sc));
+         opacity: 0;
   }
+}
+`;
 
-  setRaf(requestAnimationFrame(frame));
+let cssInjected = false;
+function ensureCSS() {
+  if (cssInjected || typeof document === "undefined") return;
+  const el = document.createElement("style");
+  el.textContent = CSS;
+  document.head.appendChild(el);
+  cssInjected = true;
 }
 
-// ─── Diamond animation ────────────────────────────────────────────────────────
+// ─── Diamond data ─────────────────────────────────────────────────────────────
 
-interface DP {
-  x: number; y: number;
-  vx: number; vy: number;
-  size: number;
-  rot: number; rotV: number;
-  color: string;
-  born: number; dur: number;
-  glint: number;
+interface DiamondDatum {
+  id: number;
+  dx: string; dy: string; sc: number;
+  size: number; delay: number; dur: number;
+  top: string; left: string;
 }
 
-const DIAMOND_COLORS = [
-  "255,255,255", "210,245,255", "170,225,255",
-  "230,248,255", "195,235,250", "220,240,255",
-];
-
-function runDiamondAnimation(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  start: number,
-  setRaf: (id: number) => void
-) {
-  const cx = W / 2, cy = H / 2;
-
-  const particles: DP[] = Array.from({ length: 450 }, () => {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 1.5 + Math.random() * 10;
+function makeDiamonds(): DiamondDatum[] {
+  return Array.from({ length: 50 }, (_, i) => {
+    const angle = (i / 50) * 2 * Math.PI + (Math.random() - 0.5) * 0.4;
+    const dist = 180 + Math.random() * 280;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist + 120; // bias downward (gravity feel)
     return {
-      x: cx, y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 1.5,
-      size: 2 + Math.random() * 7,
-      rot: Math.random() * Math.PI,
-      rotV: (Math.random() - 0.5) * 0.18,
-      color: DIAMOND_COLORS[Math.floor(Math.random() * DIAMOND_COLORS.length)],
-      born: start + Math.random() * 180,
-      dur: 1600 + Math.random() * 1900,
-      glint: Math.random() * Math.PI * 2,
+      id: i,
+      dx: `${dx.toFixed(1)}px`,
+      dy: `${dy.toFixed(1)}px`,
+      sc: 0.3 + Math.random() * 0.9,
+      size: 10 + Math.floor(Math.random() * 14),
+      delay: Math.random() * 0.3,
+      dur: 1.8 + Math.random() * 1.0,
+      top: "50%",
+      left: "50%",
     };
   });
+}
 
-  let last = start;
+// ─── Sub-animations ───────────────────────────────────────────────────────────
 
-  function frame(now: number) {
-    const elapsed = now - start;
-    if (elapsed >= DURATION_MS) { ctx.clearRect(0, 0, W, H); return; }
-    const dt = Math.min(now - last, 50);
-    last = now;
+function FireAnim() {
+  return (
+    <>
+      {/* red/amber ground glow */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0, left: 0, right: 0,
+          height: "60%",
+          background:
+            "radial-gradient(ellipse at bottom, rgba(220,38,38,0.55) 0%, rgba(249,115,22,0.3) 40%, transparent 75%)",
+          animation: "mn-fire-glow 0.6s ease-in-out infinite",
+        }}
+      />
+      {/* main fire pillar */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0, left: "-20%", right: "-20%",
+          height: "90%",
+          transformOrigin: "bottom center",
+          background:
+            "radial-gradient(ellipse at bottom, #dc2626 0%, #f97316 30%, #fbbf24 55%, transparent 80%)",
+          animation: `mn-fire-rise 3.5s ease-out forwards`,
+        }}
+      />
+      {/* second, offset pillar for volume */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0, left: "-30%", right: "-30%",
+          height: "70%",
+          transformOrigin: "bottom center",
+          background:
+            "radial-gradient(ellipse at bottom, rgba(185,28,28,0.8) 0%, rgba(234,88,12,0.5) 40%, transparent 75%)",
+          animation: `mn-fire-rise 3.5s ease-out 0.15s forwards`,
+          opacity: 0,
+        }}
+      />
+    </>
+  );
+}
 
-    ctx.clearRect(0, 0, W, H);
+function LightningAnim() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        animation: `mn-lightning-bg 3.5s linear forwards`,
+      }}
+    />
+  );
+}
 
-    // Radial shimmer at center
-    const shimmerAlpha =
-      elapsed < 300 ? (elapsed / 300) * 0.18
-      : Math.max(0, 0.18 * (1 - (elapsed - 2000) / 1500));
-    if (shimmerAlpha > 0) {
-      const sg = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.55);
-      sg.addColorStop(0, `rgba(225,248,255,${shimmerAlpha})`);
-      sg.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = sg;
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    for (const p of particles) {
-      if (now < p.born) continue;
-      const age = now - p.born;
-      const life = age / p.dur;
-      if (life >= 1) continue;
-
-      p.x += p.vx * dt / 16;
-      p.y += p.vy * dt / 16;
-      p.vy += 0.09 * dt / 16; // gravity
-      p.rot += p.rotV;
-
-      const glint = 0.45 + 0.55 * Math.sin(p.glint + now * 0.009);
-      const alpha = (1 - life) * (0.35 + glint * 0.65);
-
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot + Math.PI / 4);
-
-      // Soft glow halo
-      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size * 2.5);
-      halo.addColorStop(0, `rgba(${p.color},${alpha * 0.6})`);
-      halo.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = halo;
-      ctx.beginPath();
-      ctx.rect(-p.size * 2.5, -p.size * 2.5, p.size * 5, p.size * 5);
-      ctx.fill();
-
-      // Sharp diamond core
-      ctx.fillStyle = `rgba(${p.color},${alpha})`;
-      ctx.beginPath();
-      ctx.rect(-p.size * 0.5, -p.size * 0.5, p.size, p.size);
-      ctx.fill();
-
-      ctx.restore();
-    }
-
-    setRaf(requestAnimationFrame(frame));
-  }
-
-  setRaf(requestAnimationFrame(frame));
+function DiamondAnim({ diamonds }: { diamonds: DiamondDatum[] }) {
+  return (
+    <>
+      {diamonds.map((d) => (
+        <div
+          key={d.id}
+          style={{
+            position: "absolute",
+            top: d.top,
+            left: d.left,
+            width: d.size,
+            height: d.size,
+            background: "white",
+            boxShadow: "0 0 15px rgba(255,255,255,0.8), 0 0 30px rgba(180,220,255,0.6)",
+            animationName: "mn-diamond-burst",
+            animationDuration: `${d.dur}s`,
+            animationDelay: `${d.delay}s`,
+            animationTimingFunction: "cubic-bezier(0.2,0.8,0.4,1)",
+            animationFillMode: "forwards",
+            // CSS custom properties for per-diamond burst direction
+            ["--dx" as string]: d.dx,
+            ["--dy" as string]: d.dy,
+            ["--sc" as string]: String(d.sc),
+          }}
+        />
+      ))}
+    </>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function FrameAnimationOverlay({ frameId, onDone }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const onDoneRef = useRef(onDone);
-  onDoneRef.current = onDone;
-
-  // Track whether we're mounted on the client (portal needs document.body)
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const diamonds = useMemo(() => makeDiamonds(), []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    ensureCSS();
+    setMounted(true);
 
-    const W = window.innerWidth;
-    const H = window.innerHeight;
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext("2d")!;
+    // Fire audio immediately (still within gesture context from tap)
+    if (frameId === "frame_fire") playFireAudio();
+    else if (frameId === "frame_lightning") playLightningAudio();
+    else if (frameId === "frame_legendary_diamond") playDiamondAudio();
 
-    let rafId = 0;
-    let audioCtx: AudioContext | null = null;
-
-    try {
-      audioCtx = new AudioContext();
-    } catch {
-      /* audio blocked — visuals-only fallback */
-    }
-
-    const start = performance.now();
-    const setRaf = (id: number) => { rafId = id; };
-
-    if (frameId === "frame_fire") {
-      if (audioCtx) playFireAudio(audioCtx);
-      runFireAnimation(ctx, W, H, start, setRaf);
-    } else if (frameId === "frame_lightning") {
-      if (audioCtx) playLightningAudio(audioCtx);
-      runLightningAnimation(ctx, W, H, start, setRaf);
-    } else if (frameId === "frame_legendary_diamond") {
-      if (audioCtx) playDiamondAudio(audioCtx);
-      runDiamondAnimation(ctx, W, H, start, setRaf);
-    }
-
-    const timer = window.setTimeout(() => {
-      cancelAnimationFrame(rafId);
-      ctx.clearRect(0, 0, W, H);
-      audioCtx?.close().catch(() => {});
-      onDoneRef.current();
-    }, DURATION_MS);
-
-    return () => {
-      window.clearTimeout(timer);
-      cancelAnimationFrame(rafId);
-      ctx.clearRect(0, 0, W, H);
-      audioCtx?.close().catch(() => {});
-    };
-  }, [frameId, mounted]);
+    const timer = window.setTimeout(onDone, 3500);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!mounted) return null;
 
-  // Portal into document.body so `position:fixed` is always viewport-relative,
-  // escaping any ancestor transform / overflow / stacking-context traps.
   return createPortal(
-    <canvas
-      ref={canvasRef}
+    <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 99999,
-        pointerEvents: "none",
         width: "100vw",
         height: "100vh",
+        zIndex: 9999,
+        pointerEvents: "none",
+        overflow: "hidden",
       }}
-    />,
+    >
+      {frameId === "frame_fire" && <FireAnim />}
+      {frameId === "frame_lightning" && <LightningAnim />}
+      {frameId === "frame_legendary_diamond" && <DiamondAnim diamonds={diamonds} />}
+    </div>,
     document.body
   );
 }
