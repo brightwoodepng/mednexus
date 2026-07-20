@@ -173,39 +173,39 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         {/* Toggle + Sort — DOM pos 2; order-2 on mobile (row 2), md:order-none (DOM position on desktop) */}
         <div className="order-2 md:order-none flex flex-row items-center gap-2 w-full md:w-auto">
 
-          {/* View toggle — pill style; stretches on mobile, compact on desktop */}
-          <div className="flex flex-1 md:w-auto rounded-xl border border-border bg-muted p-1">
+          {/* View toggle — pill style; stretches to fill available space on mobile */}
+          <div className="flex flex-grow w-full md:w-auto rounded-xl border border-border bg-muted p-1">
             <button
               type="button"
               onClick={() => switchView("module")}
-              className={`flex-1 md:flex-none flex justify-center items-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`flex-1 md:flex-none flex justify-center items-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
                 view === "module"
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <LayersIcon size={13} />
-              By Module
+              <span className="whitespace-nowrap text-xs sm:text-sm md:text-base">By Module</span>
             </button>
             <button
               type="button"
               onClick={() => switchView("discipline")}
-              className={`flex-1 md:flex-none flex justify-center items-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`flex-1 md:flex-none flex justify-center items-center text-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
                 view === "discipline"
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <GraduationCapIcon size={13} />
-              By Discipline
+              <span className="whitespace-nowrap text-xs sm:text-sm md:text-base">By Discipline</span>
             </button>
           </div>
 
-          {/* Sort select — compact, never stretches */}
+          {/* Sort select — compact on mobile (icon-only padding), wider on desktop */}
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="h-8 shrink-0 rounded-lg border border-border bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+            className="shrink-0 p-2 md:px-4 md:py-2 rounded-lg border border-border bg-card text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
           >
             {view === "module" && <option value="starred">Starred First</option>}
             <option value="az">A → Z</option>
