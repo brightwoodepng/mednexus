@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useTheme } from "@/contexts/theme-context"
+import { useEconomy } from "@/contexts/economy-context"
+import { STORE_ITEMS, FRAME_RING_CLASSES } from "@/lib/economy"
 import {
   getLiveModules,
   getDisciplinesForModule,
@@ -111,10 +113,20 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const { user, progress } = useApp()
   const { globalMode } = useStudyMode()
   const { isGlassEnabled } = useTheme()
+  const { equippedCosmetics } = useEconomy()
   const greeting = useGreeting()
   const liveExams = useLiveAssessments()
 
   const firstName = user?.name?.split(" ").pop() ?? "Clinician"
+
+  // Avatar + frame for the banner graphic
+  const equippedAvatarItem = equippedCosmetics.avatar
+    ? STORE_ITEMS.find((i) => i.id === equippedCosmetics.avatar)
+    : null
+  const bannerAvatarImagePath = equippedAvatarItem?.imagePath ?? null
+  const bannerFrameClasses = equippedCosmetics.frame
+    ? (FRAME_RING_CLASSES[equippedCosmetics.frame] ?? null)
+    : null
   const motivation = MOTIVATIONS[new Date().getDate() % MOTIVATIONS.length]
 
   // Trial-only stats (from history entries with mode="trial")
@@ -171,25 +183,45 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
       )}
 
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl bg-primary px-5 py-5 text-primary-foreground shadow-lg sm:rounded-3xl sm:px-8 sm:py-8">
-        <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/[0.07]" />
-        <div className="pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/[0.04]" />
-        <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/[0.03]" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-medium opacity-80">{greeting},</p>
-            <h1 className="mt-0.5 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
-            <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
-          </div>
-          {progress.streak > 0 && (
-            <div className="flex w-fit items-center gap-2 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur-sm sm:flex-col sm:items-center sm:text-center">
-              <span className="text-2xl leading-none">🔥</span>
-              <div>
-                <p className="text-xl font-bold leading-tight">{progress.streak}</p>
-                <p className="text-xs opacity-80">day streak</p>
-              </div>
+      <div className="relative">
+        {/* Avatar graphic — pops slightly above and to the left of the banner */}
+        <div className="absolute -top-4 left-4 z-10 sm:-top-5 sm:left-5">
+          <div className={`rounded-full ${bannerFrameClasses ?? ""}`}>
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-white shadow-lg text-3xl font-bold select-none overflow-hidden sm:h-24 sm:w-24 sm:text-4xl">
+              {bannerAvatarImagePath ? (
+                <img
+                  src={bannerAvatarImagePath}
+                  alt="Avatar"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                (user?.name ?? "C")[0].toUpperCase()
+              )}
             </div>
-          )}
+          </div>
+        </div>
+
+        {/* Banner card */}
+        <div className="relative overflow-hidden rounded-2xl bg-primary px-5 py-5 text-primary-foreground shadow-lg sm:rounded-3xl sm:px-8 sm:py-8">
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/[0.07]" />
+          <div className="pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/[0.04]" />
+          <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/[0.03]" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="pl-20 sm:pl-24">
+              <p className="text-sm font-medium opacity-80">{greeting},</p>
+              <h1 className="mt-0.5 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
+              <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
+            </div>
+            {progress.streak > 0 && (
+              <div className="flex w-fit items-center gap-2 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur-sm sm:flex-col sm:items-center sm:text-center">
+                <span className="text-2xl leading-none">🔥</span>
+                <div>
+                  <p className="text-xl font-bold leading-tight">{progress.streak}</p>
+                  <p className="text-xs opacity-80">day streak</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
