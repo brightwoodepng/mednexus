@@ -178,6 +178,56 @@ export async function ensureSchema() {
       updated_at        TIMESTAMPTZ DEFAULT NOW()
     );
 
+    -- ── Per-user question progress (anti-farming 3-repeat cap) ──────────────
+    -- Tracks how many times a user has answered a specific question correctly.
+    -- correct_count >= 3 → that question earns 0 NP on future correct answers.
+    CREATE TABLE IF NOT EXISTS mednexus_user_question_progress (
+      user_id       TEXT    NOT NULL,
+      question_id   TEXT    NOT NULL,
+      correct_count INTEGER NOT NULL DEFAULT 0,
+      discipline    TEXT    NOT NULL DEFAULT '',
+      PRIMARY KEY (user_id, question_id)
+    );
+
+    -- ── Per-discipline NP log (anti-farming discipline fatigue) ──────────────
+    -- Accumulates NP earned per user per discipline per calendar day.
+    -- discipline_fatigue: if 7-day sum >= 1000 NP → further questions in that
+    -- discipline earn 0 NP until the rolling window resets.
+    CREATE TABLE IF NOT EXISTS mednexus_discipline_np_log (
+      user_id     TEXT    NOT NULL,
+      discipline  TEXT    NOT NULL,
+      earned_date TEXT    NOT NULL,   -- YYYY-MM-DD
+      np_earned   INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (user_id, discipline, earned_date)
+    );
+
+    -- ── Exam sessions (abandonment penalty) ──────────────────────────────────
+    -- Created when a user starts an exam-mode session, closed on proper submit.
+    -- Sessions still 'active' after the time limit + grace period are marked
+    -- 'abandoned'; all unanswered questions are recorded as incorrect.
+    CREATE TABLE IF NOT EXISTS mednexus_exam_sessions (
+      id           TEXT    PRIMARY KEY,
+      user_id      TEXT    NOT NULL,
+      mode         TEXT    NOT NULL,
+      question_ids JSONB   NOT NULL DEFAULT '[]',
+      answered_ids JSONB   NOT NULL DEFAULT '[]',
+      status       TEXT    NOT NULL DEFAULT 'active',  -- active | completed | abandoned
+      started_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      submitted_at TIMESTAMPTZ
+    );
+
+    -- ── Per-user notification inbox ───────────────────────────────────────────
+    -- Individual notifications for a specific user (or global when user_id IS NULL).
+    -- Distinct from mednexus_notifications which is the admin broadcast table.
+    CREATE TABLE IF NOT EXISTS mednexus_user_notifications (
+      id         TEXT    PRIMARY KEY,
+      user_id    TEXT,                             -- NULL = global
+      type       TEXT    NOT NULL DEFAULT 'economy', -- streak | leaderboard | economy | store
+      message    TEXT    NOT NULL,
+      is_read    BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     -- ── Guest analytics ──────────────────────────────────────────────────────
     -- Stores a single score submission per guest attempt.
     -- Intentionally has NO foreign-key relationship to any user profile table.
@@ -248,6 +298,18 @@ export async function ensureSchema() {
     -- multiplayer match, used for the First Win of the Day (+250 NP) bonus.
     ALTER TABLE mednexus_wallet
       ADD COLUMN IF NOT EXISTS last_multiplayer_win_at TIMESTAMPTZ;
+
+    -- is_private: user opts out of leaderboard visibility.
+    ALTER TABLE mednexus_registered_users
+      ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT FALSE;
+
+    -- last_login_date: updated on every successful login; used for streak logic.
+    ALTER TABLE mednexus_registered_users
+      ADD COLUMN IF NOT EXISTS last_login_date TIMESTAMPTZ;
+
+    -- longest_streak: all-time best consecutive-day login streak.
+    ALTER TABLE mednexus_registered_users
+      ADD COLUMN IF NOT EXISTS longest_streak INTEGER NOT NULL DEFAULT 0;
 
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();
