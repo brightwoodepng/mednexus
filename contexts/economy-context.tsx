@@ -27,7 +27,7 @@ export interface EconomyContextValue {
   purchase: (itemId: string) => Promise<{ ok: boolean; error?: string }>
   useItem: (itemId: string) => Promise<boolean>
   equipCosmetic: (type: "title" | "frame" | "highlight" | "avatar", itemId: string | null) => Promise<{ ok: boolean; error?: string }>
-  grantDevNP: () => Promise<void>
+  grantDevNP: () => Promise<{ ok: boolean; error?: string }>
   submitGameResult: (payload: {
     mode: string
     score: number
@@ -166,18 +166,24 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid])
 
-  const grantDevNP = useCallback(async () => {
+  const grantDevNP = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
     const uid = user?.uid
-    if (!uid) return
+    if (!uid) return { ok: false, error: "No uid" }
     const target = 999_999
     try {
-      await fetch("/api/economy/wallet", {
+      const res = await fetch("/api/economy/wallet", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid, balance: target }),
       })
-    } catch { /* silent — state still updates */ }
-    setBalance(target)
+      const data = await res.json()
+      if (!res.ok) return { ok: false, error: data.error ?? "Server error" }
+      // Only sync state after DB confirms the write
+      setBalance(data.balance ?? target)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: String(e) }
+    }
   }, [user?.uid])
 
   const submitGameResult = useCallback(async (payload: {
