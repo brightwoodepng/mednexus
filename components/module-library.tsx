@@ -174,7 +174,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         <div className="order-2 md:order-none flex flex-row items-center gap-2 w-full md:w-auto md:flex-1 md:justify-center">
 
           {/* View toggle — pill style; stretches to fill available space on mobile */}
-          <div className="flex flex-grow w-full md:w-auto rounded-xl border border-border bg-muted p-1">
+          <div className="flex flex-grow w-full md:grow-0 md:w-fit rounded-xl border border-border bg-muted p-1">
             <button
               type="button"
               onClick={() => switchView("module")}
