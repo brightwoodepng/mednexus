@@ -308,25 +308,25 @@ function SubPageShell({
 }) {
   return (
     <div className="flex min-h-full flex-col">
-      <div className="mx-auto w-full max-w-2xl flex flex-col flex-1">
+      <div className="mx-auto w-full max-w-6xl flex flex-col flex-1">
 
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
             >
               <ChevronLeftIcon size={15} />
-              Back
+              Back to Store
             </button>
-            <div className="flex items-center gap-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
               <span className="text-2xl">{emoji}</span>
-              <h1 className="text-xl font-extrabold tracking-tight text-foreground">{title}</h1>
+              <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground">{title}</h1>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-2">
+          <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-2">
             <span className="text-base">🪙</span>
             <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
               {balance.toLocaleString()}
@@ -339,6 +339,165 @@ function SubPageShell({
           {children}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Supply Closet — vertical grid card ────────────────────────────────────────
+
+function SupplyGridCard({
+  item, owned, buying, didBuy, canAfford, onBuy,
+}: {
+  item: StoreItem; owned: number; buying: boolean; didBuy: boolean; canAfford: boolean; onBuy: () => void
+}) {
+  return (
+    <div className="flex flex-col items-center text-center p-6 h-full rounded-2xl border border-border bg-card transition-all hover:shadow-md">
+
+      {/* Icon */}
+      <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} text-3xl shadow-md mb-4`}>
+        {item.icon}
+      </div>
+
+      {/* Price badge */}
+      <div className="flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 mb-3">
+        <span className="text-[10px]">🪙</span>
+        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">{item.price.toLocaleString()}</span>
+      </div>
+
+      {/* Name */}
+      <h3 className="text-sm font-bold text-foreground leading-snug">{item.name}</h3>
+
+      {/* Description — single short sentence */}
+      <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.desc}</p>
+
+      {/* Owned count */}
+      {owned > 0 && (
+        <span className="mt-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+          You have: {owned}×
+        </span>
+      )}
+
+      {/* Buy button — anchored to bottom */}
+      <button
+        type="button"
+        disabled={buying || !canAfford}
+        onClick={onBuy}
+        className={`mt-auto w-full rounded-full py-2.5 text-xs font-bold transition-all ${
+          didBuy        ? "bg-emerald-500 text-white" :
+          canAfford     ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
+                          "bg-muted text-muted-foreground cursor-not-allowed"
+        }`}
+      >
+        {buying ? "…" : didBuy ? "Purchased!" : canAfford ? "Buy" : "Need NP"}
+      </button>
+    </div>
+  )
+}
+
+// ── Cosmetics — vertical grid card ───────────────────────────────────────────
+
+function CosmeticGridCard({
+  item, owned, equipped, buying, equipping, didBuy, canAfford, onBuy, onEquip,
+}: {
+  item: StoreItem; owned: boolean; equipped: boolean
+  buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
+  onBuy: () => void; onEquip: () => void
+}) {
+  const frameClass   = item.cosmeticType === "frame"     ? (FRAME_RING_CLASSES[item.id]    ?? "") : ""
+  const highlightCls = item.cosmeticType === "highlight" ? (HIGHLIGHT_ROW_CLASSES[item.id] ?? "") : ""
+  const tier = tierBadge(item.price)
+
+  return (
+    <div className={`flex flex-col items-center text-center p-6 h-full rounded-2xl border transition-all hover:shadow-md ${
+      equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
+    }`}>
+
+      {/* Equipped badge */}
+      {equipped && (
+        <span className="mb-3 self-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
+          ● Equipped
+        </span>
+      )}
+
+      {/* Visual preview */}
+      <div className="mb-4 flex items-center justify-center">
+        {item.cosmeticType === "avatar" ? (
+          <div className={`relative h-16 w-16 overflow-hidden rounded-2xl bg-gradient-to-br ${item.gradient} shadow-md`}>
+            {item.imagePath ? (
+              <img
+                src={item.imagePath} alt={item.name}
+                className="h-full w-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
+              />
+            ) : (
+              <span className="absolute inset-0 flex items-center justify-center text-3xl">{item.icon}</span>
+            )}
+          </div>
+        ) : item.cosmeticType === "frame" ? (
+          <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} text-3xl shadow-md ${frameClass}`}>
+            {item.icon}
+          </div>
+        ) : item.cosmeticType === "highlight" ? (
+          <div className={`w-full rounded-xl px-3 py-2.5 text-sm font-bold ${highlightCls}`}>
+            Your Name
+          </div>
+        ) : (
+          /* title */
+          <div className={`rounded-full bg-gradient-to-r ${item.gradient} px-4 py-2 text-sm font-bold text-white shadow-md`}>
+            {TITLE_LABELS[item.id] ?? item.name}
+          </div>
+        )}
+      </div>
+
+      {/* Tier badge */}
+      {tier && (
+        <span className={`mb-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
+          {tier.label}
+        </span>
+      )}
+
+      {/* Name */}
+      <h3 className="text-sm font-bold text-foreground leading-snug">{item.name}</h3>
+
+      {/* Description — single short sentence */}
+      <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.desc}</p>
+
+      {/* Price — only when not owned */}
+      {!owned && (
+        <div className="mt-3 flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1">
+          <span className="text-[10px]">🪙</span>
+          <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">{item.price.toLocaleString()}</span>
+        </div>
+      )}
+
+      {/* CTA button — anchored to bottom */}
+      {owned ? (
+        <button
+          type="button"
+          disabled={equipping}
+          onClick={onEquip}
+          className={`mt-auto w-full rounded-full py-2.5 text-xs font-bold transition-all ${
+            equipped
+              ? "bg-muted text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400"
+              : `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90`
+          }`}
+        >
+          {equipping ? "…" : equipped ? "Unequip" : "Equip"}
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={buying || !canAfford}
+          onClick={onBuy}
+          className={`mt-auto w-full rounded-full py-2.5 text-xs font-bold transition-all ${
+            didBuy    ? "bg-emerald-500 text-white" :
+            canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
+                        "bg-muted text-muted-foreground cursor-not-allowed"
+          }`}
+        >
+          {buying ? "…" : didBuy ? "Bought!" : canAfford ? "Buy" : "Need NP"}
+        </button>
+      )}
     </div>
   )
 }
@@ -475,12 +634,12 @@ export function NexusStoreSupplyPage({ onBack }: { onBack: () => void }) {
           {error}
         </div>
       )}
-      <div className="grid gap-3">
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Consumable lifelines you can activate during a quiz. Stacks up in your inventory — use them when you need an edge.
-        </p>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Consumable lifelines you can activate during a quiz. Stacks up in your inventory — use them when you need an edge.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
         {supplyItems.map(item => (
-          <ConsumableCard
+          <SupplyGridCard
             key={item.id}
             item={item}
             owned={inventory[item.id] ?? 0}
@@ -594,7 +753,7 @@ export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
       )}
 
       {/* Sub-section pill tabs */}
-      <div className="mb-4 flex gap-1 rounded-2xl bg-muted p-1 overflow-x-auto no-scrollbar">
+      <div className="mb-6 flex gap-1 rounded-2xl bg-muted p-1 overflow-x-auto no-scrollbar">
         {(["title", "frame", "highlight", "avatar"] as CosmeticSection[]).map(s => (
           <button
             key={s} type="button" onClick={() => setCosSection(s)}
@@ -609,35 +768,19 @@ export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
         ))}
       </div>
 
-      <div className="grid gap-3">
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          {cosSection === "title"     && "Displayed as a badge next to your name during multiplayer leaderboard reveals."}
-          {cosSection === "frame"     && "Animated ring shown around your player avatar badge during multiplayer pauses."}
-          {cosSection === "highlight" && "Your row glows on the leaderboard when scores are revealed to everyone."}
-          {cosSection === "avatar"    && "Your personal avatar displayed in multiplayer lobbies and leaderboards."}
-        </p>
+      <p className="mb-6 text-sm text-muted-foreground">
+        {cosSection === "title"     && "Displayed as a badge next to your name during multiplayer leaderboard reveals."}
+        {cosSection === "frame"     && "Animated ring shown around your player avatar badge during multiplayer pauses."}
+        {cosSection === "highlight" && "Your row glows on the leaderboard when scores are revealed to everyone."}
+        {cosSection === "avatar"    && "Your personal avatar displayed in multiplayer lobbies and leaderboards."}
+      </p>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
         {cosItems.map(item => {
           const owned    = (inventory[item.id] ?? 0) >= 1
           const equipped = equippedCosmetics[cosSection] === item.id
-          if (item.cosmeticType === "avatar") {
-            return (
-              <AvatarCard
-                key={item.id}
-                item={item}
-                owned={owned}
-                equipped={equipped}
-                buying={buying === item.id}
-                equipping={equipping === item.id}
-                didBuy={flash === item.id}
-                canAfford={balance >= item.price}
-                onBuy={() => handleBuy(item.id)}
-                onEquip={() => handleEquip("avatar", item.id)}
-              />
-            )
-          }
           return (
-            <CosmeticCard
+            <CosmeticGridCard
               key={item.id}
               item={item}
               owned={owned}
