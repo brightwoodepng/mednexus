@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export type FrameAnimId =
   | "frame_fire"
@@ -449,6 +450,10 @@ export function FrameAnimationOverlay({ frameId, onDone }: Props) {
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
+  // Track whether we're mounted on the client (portal needs document.body)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -495,13 +500,24 @@ export function FrameAnimationOverlay({ frameId, onDone }: Props) {
       ctx.clearRect(0, 0, W, H);
       audioCtx?.close().catch(() => {});
     };
-  }, [frameId]);
+  }, [frameId, mounted]);
 
-  return (
+  if (!mounted) return null;
+
+  // Portal into document.body so `position:fixed` is always viewport-relative,
+  // escaping any ancestor transform / overflow / stacking-context traps.
+  return createPortal(
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-50 pointer-events-none"
-      style={{ willChange: "transform", transform: "translateZ(0)" }}
-    />
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 99999,
+        pointerEvents: "none",
+        width: "100vw",
+        height: "100vh",
+      }}
+    />,
+    document.body
   );
 }
