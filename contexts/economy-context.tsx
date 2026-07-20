@@ -170,6 +170,8 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     const uid = user?.uid
     if (!uid) return { ok: false, error: "No uid" }
     const target = 999_999
+    // Optimistic: update UI instantly so the header reflects 999,999 immediately
+    setBalance(target)
     try {
       const res = await fetch("/api/economy/wallet", {
         method: "PATCH",
@@ -177,11 +179,20 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ uid, balance: target }),
       })
       const data = await res.json()
-      if (!res.ok) return { ok: false, error: data.error ?? "Server error" }
-      // Only sync state after DB confirms the write
+      if (!res.ok) {
+        // DB write failed — revert to whatever the server says the real balance is
+        setBalance(data.balance ?? 0)
+        return { ok: false, error: data.error ?? "Server error" }
+      }
+      // Confirm with the value the DB echoed back
       setBalance(data.balance ?? target)
       return { ok: true }
     } catch (e) {
+      // Network failure — revert by re-fetching the real balance
+      fetch(`/api/economy/wallet?uid=${encodeURIComponent(uid)}`)
+        .then(r => r.json())
+        .then(d => { if (typeof d.balance === "number") setBalance(d.balance) })
+        .catch(() => {/* silent */})
       return { ok: false, error: String(e) }
     }
   }, [user?.uid])
