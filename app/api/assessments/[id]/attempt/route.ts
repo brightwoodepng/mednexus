@@ -70,16 +70,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!asmt) return NextResponse.json({ error: "Assessment not found" }, { status: 404 })
     if (asmt.status !== "live") return NextResponse.json({ error: "Assessment is not live" }, { status: 403 })
 
-    // Check tries limit for non-guests
-    if (!isGuest) {
-      const triesRes = await pool.query(
-        "SELECT COUNT(*) FROM mednexus_assessment_attempts WHERE assessment_id = $1 AND user_id = $2 AND submitted_at IS NOT NULL",
-        [id, userId]
-      )
-      const tries = Number(triesRes.rows[0]?.count ?? 0)
-      if (tries >= asmt.tries_allowed) {
-        return NextResponse.json({ error: "No tries remaining" }, { status: 403 })
-      }
+    // Guests are fully browser-managed — no DB reads or writes for their attempts.
+    // Their score submission goes through /guest-analytics instead.
+    if (isGuest) {
+      return NextResponse.json({ error: "Guests must use the guest-analytics endpoint" }, { status: 403 })
+    }
+
+    // Check tries limit for registered users
+    const triesRes = await pool.query(
+      "SELECT COUNT(*) FROM mednexus_assessment_attempts WHERE assessment_id = $1 AND user_id = $2 AND submitted_at IS NOT NULL",
+      [id, userId]
+    )
+    const tries = Number(triesRes.rows[0]?.count ?? 0)
+    if (tries >= asmt.tries_allowed) {
+      return NextResponse.json({ error: "No tries remaining" }, { status: 403 })
     }
 
     // Compute score server-side using stored question_ids (authoritative)
@@ -108,7 +112,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         `INSERT INTO mednexus_assessment_attempts
            (id, assessment_id, user_id, user_name, is_guest, answers, score, total, submitted_at)
          VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,NOW())`,
-        [attemptId, id, userId, userName, isGuest, JSON.stringify(answers), score, total]
+        [attemptId, id, userId, userName, false, JSON.stringify(answers), score, total]
       )
       return NextResponse.json({ success: true, attemptId, score, total, isNewHighScore: true })
     }

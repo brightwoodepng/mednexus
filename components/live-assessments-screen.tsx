@@ -35,6 +35,8 @@ interface StoredResult {
   questions: Question[]
 }
 
+// ── localStorage helpers ──────────────────────────────────────────────────────
+
 function userStorageKey(assessmentId: string) {
   return `mednexus-user-exam-${assessmentId}`
 }
@@ -52,8 +54,32 @@ function loadUserResult(assessmentId: string): StoredResult | null {
   } catch { return null }
 }
 
+// Guest attempt count — stored locally since guests have no cloud profile.
+function guestAttemptsKey(assessmentId: string) {
+  return `mednexus-guest-attempts-${assessmentId}`
+}
+
+function readGuestAttempts(assessmentId: string): number {
+  try {
+    const raw = localStorage.getItem(guestAttemptsKey(assessmentId))
+    return raw ? (JSON.parse(raw)?.count ?? 0) : 0
+  } catch { return 0 }
+}
+
+function incrementGuestAttempts(assessmentId: string) {
+  try {
+    const count = readGuestAttempts(assessmentId) + 1
+    localStorage.setItem(guestAttemptsKey(assessmentId), JSON.stringify({ count }))
+    return count
+  } catch { return 1 }
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export function LiveAssessmentsScreen() {
   const { user } = useApp()
+  const isGuest = user?.role === "guest"
+
   const [assessments, setAssessments] = useState<AssessmentWithMeta[]>([])
   const [loading, setLoading] = useState(true)
   const [phase, setPhase] = useState<Phase>("list")
@@ -74,6 +100,13 @@ export function LiveAssessmentsScreen() {
 
       const withMeta: AssessmentWithMeta[] = await Promise.all(
         list.map(async (asmt) => {
+          if (isGuest) {
+            // ── Guest: read attempt count strictly from localStorage ────────
+            const count = readGuestAttempts(asmt.id)
+            return { ...asmt, attemptsUsed: count }
+          }
+
+          // ── Registered: read attempt count from the database ───────────
           try {
             const attRes = await fetch(`/api/assessments/${asmt.id}/attempt?userId=${user.uid}`)
             const attData = await attRes.json()
@@ -98,7 +131,7 @@ export function LiveAssessmentsScreen() {
       )
       setAssessments(withMeta)
 
-      // Check localStorage for stored results for assessments with prior attempts
+      // Check localStorage for stored review results
       const ids = new Set<string>()
       for (const asmt of withMeta) {
         if (asmt.attemptsUsed > 0 && loadUserResult(asmt.id)) {
@@ -111,7 +144,7 @@ export function LiveAssessmentsScreen() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, isGuest])
 
   useEffect(() => { fetchAssessments() }, [fetchAssessments])
 
@@ -131,8 +164,8 @@ export function LiveAssessmentsScreen() {
   }
 
   function handleComplete(res: Result) {
-    // Persist result so the "Review" button works after navigating away
     if (activeAssessment) {
+      // Both guests and registered users get a local copy for the Review button.
       saveUserResult(activeAssessment.id, {
         score: res.score,
         total: res.total,
@@ -142,10 +175,23 @@ export function LiveAssessmentsScreen() {
         questions: res.questions,
       })
       setStoredResultIds((prev) => new Set([...prev, activeAssessment.id]))
+
+      if (isGuest) {
+        // Guest: increment local attempt counter, then rebuild the list locally
+        // without hitting the database.
+        const newCount = incrementGuestAttempts(activeAssessment.id)
+        setAssessments((prev) =>
+          prev.map((a) =>
+            a.id === activeAssessment.id ? { ...a, attemptsUsed: newCount } : a
+          )
+        )
+      } else {
+        // Registered: re-fetch to get the updated DB-backed attempt count.
+        fetchAssessments()
+      }
     }
     setResult(res)
     setPhase("results")
-    fetchAssessments()
   }
 
   function reviewFromList(asmt: AssessmentWithMeta) {
@@ -168,7 +214,7 @@ export function LiveAssessmentsScreen() {
         questions={activeQuestions}
         userName={user.name}
         userId={user.uid}
-        isGuest={false}
+        isGuest={isGuest}
         onComplete={handleComplete}
         onExit={() => setPhase("list")}
       />
@@ -319,7 +365,7 @@ export function LiveAssessmentsScreen() {
                         )}
                       </button>
 
-                      {/* Review button — shown while session is live and result exists */}
+                      {/* Review button — shown when a local result exists */}
                       {hasStoredResult && (
                         <button
                           type="button"
@@ -332,8 +378,8 @@ export function LiveAssessmentsScreen() {
                     </div>
                   </div>
 
-                  {/* Last attempt summary */}
-                  {asmt.lastAttempt && (
+                  {/* Last attempt summary — registered users only (guests have no server-side record) */}
+                  {!isGuest && asmt.lastAttempt && (
                     <div className={`mt-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs ${asmt.lastAttempt.percentage >= asmt.passMark ? "bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/40" : "bg-muted border border-border"}`}>
                       {asmt.lastAttempt.percentage >= asmt.passMark
                         ? <CheckIcon size={11} className="text-emerald-600 shrink-0" />
@@ -343,6 +389,16 @@ export function LiveAssessmentsScreen() {
                         Last attempt: <span className="font-semibold text-foreground">{asmt.lastAttempt.percentage}%</span>
                         {" "}({asmt.lastAttempt.score}/{asmt.lastAttempt.total} correct)
                         {" "}· {asmt.attemptsUsed}/{asmt.triesAllowed} tries used
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Guest attempt summary from localStorage */}
+                  {isGuest && hasAttempted && (
+                    <div className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs bg-muted border border-border">
+                      <AlertTriangleIcon size={11} className="text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground">
+                        {asmt.attemptsUsed}/{asmt.triesAllowed} tries used · scores saved locally only
                       </span>
                     </div>
                   )}
