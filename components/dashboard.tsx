@@ -184,8 +184,8 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
 
       {/* Hero */}
       <div className="relative">
-        {/* Avatar graphic — pops slightly above and to the left of the banner */}
-        <div className="absolute -top-4 left-4 z-10 sm:-top-5 sm:left-5">
+        {/* Avatar graphic — pops slightly above and to the right of the banner */}
+        <div className="absolute -top-4 right-2 z-10 md:-top-6 md:right-8">
           <div className={`rounded-full ${bannerFrameClasses ?? ""}`}>
             <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-white shadow-lg text-3xl font-bold select-none overflow-hidden sm:h-24 sm:w-24 sm:text-4xl">
               {bannerAvatarImagePath ? (
@@ -207,7 +207,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           <div className="pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/[0.04]" />
           <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/[0.03]" />
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="pl-20 sm:pl-24">
+            <div className="pr-28 md:pr-36">
               <p className="text-sm font-medium opacity-80">{greeting},</p>
               <h1 className="mt-0.5 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
               <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
