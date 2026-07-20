@@ -5,10 +5,6 @@ import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useQuestions } from "@/contexts/questions-context"
 import {
-  UserIcon,
-  ListChecksIcon,
-  TargetIcon,
-  FlameIcon,
   CheckIcon,
   XIcon,
   EyeOffIcon,
@@ -24,6 +20,9 @@ import {
   getModuleQuestionCount,
 } from "@/lib/modules"
 import type { HistoryEntry, ExamScore, Question } from "@/lib/types"
+import { useEconomy } from "@/contexts/economy-context"
+import { STORE_ITEMS, TITLE_LABELS } from "@/lib/economy"
+import type { StoreItem } from "@/lib/economy"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
 
 // ── Module + Discipline Coverage ─────────────────────────────────────────────
@@ -239,15 +238,12 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 // ── Profile Header ───────────────────────────────────────────────────────────
 
 function ProfileHeader() {
-  const { user, cloudEnabled, progress, updateName, signOutUser } = useApp()
+  const { user, cloudEnabled, updateName, signOutUser } = useApp()
   const { logoutAdmin } = useAdmin()
+  const { balance, equippedCosmetics } = useEconomy()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
-
-  const accuracy = progress.totalAnswered
-    ? Math.round((progress.totalCorrect / progress.totalAnswered) * 100)
-    : 0
 
   function startEdit() {
     setDraft(user?.name ?? "")
@@ -263,15 +259,28 @@ function ProfileHeader() {
     setEditing(false)
   }
 
+  const equippedTitleLabel = equippedCosmetics.title
+    ? (TITLE_LABELS[equippedCosmetics.title] ?? equippedCosmetics.title)
+    : null
+
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm text-2xl font-bold select-none">
-          {(user?.name ?? "C")[0].toUpperCase()}
+      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:p-6">
+
+        {/* Avatar with hover-edit overlay */}
+        <div className="relative group shrink-0 cursor-pointer" onClick={startEdit} title="Edit display name">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm text-2xl font-bold select-none">
+            {(user?.name ?? "C")[0].toUpperCase()}
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <PencilIcon size={16} className="text-white" />
+          </div>
         </div>
+
+        {/* Identity column */}
         <div className="min-w-0 flex-1">
           {editing ? (
-            <form onSubmit={saveName} className="flex items-center gap-2">
+            <form onSubmit={saveName} className="flex items-center gap-2 mb-1">
               <input
                 autoFocus
                 value={draft}
@@ -295,19 +304,30 @@ function ProfileHeader() {
               </button>
             </form>
           ) : (
-            <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={startEdit}
+              className="group/name flex items-center gap-1.5 mb-0.5 text-left"
+              aria-label="Edit name"
+            >
               <h1 className="text-xl font-semibold tracking-tight">{user?.name ?? "Clinician"}</h1>
-              <button
-                type="button"
-                onClick={startEdit}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                aria-label="Edit name"
-              >
-                <PencilIcon size={13} />
-              </button>
-            </div>
+              <PencilIcon size={12} className="text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity" />
+            </button>
           )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+
+          {/* Equipped title */}
+          {equippedTitleLabel
+            ? <p className="text-sm text-purple-400 italic">{equippedTitleLabel}</p>
+            : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
+          }
+
+          {/* NP balance */}
+          <p className="mt-1 text-sm font-bold text-amber-500 tabular-nums">
+            ⚡ {balance.toLocaleString()} NP
+          </p>
+
+          {/* Sync state */}
+          <div className="mt-2">
             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
               cloudEnabled
                 ? "bg-primary/10 text-primary"
@@ -317,6 +337,8 @@ function ProfileHeader() {
             </span>
           </div>
         </div>
+
+        {/* Sign out */}
         <button
           type="button"
           onClick={() => { logoutAdmin(); signOutUser() }}
@@ -324,14 +346,6 @@ function ProfileHeader() {
         >
           Sign out
         </button>
-      </div>
-
-      {/* Stats bar */}
-      <div className="grid grid-cols-4 gap-px border-t border-border bg-border">
-        <MiniStat icon={<ListChecksIcon size={15} />} label="Answered" value={progress.totalAnswered} />
-        <MiniStat icon={<TargetIcon size={15} />} label="Accuracy" value={`${accuracy}%`} />
-        <MiniStat icon={<FlameIcon size={15} />} label="Streak" value={`${progress.streak}d`} />
-        <MiniStat icon={<UserIcon size={15} />} label="Flagged" value={progress.flaggedQuestionIds.length} />
       </div>
     </div>
   )
@@ -497,6 +511,7 @@ export function ProfileHistory() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <ProfileHeader />
+      <CosmeticLoadout />
       <ModuleCoverage />
       <ModuleReviewSection />
       <ExamScores scores={examScores} />
@@ -586,12 +601,76 @@ function AnswerPill({ label, value, tone }: { label: string; value: string; tone
   )
 }
 
-function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
+// ── Cosmetic Loadout ──────────────────────────────────────────────────────────
+
+function LoadoutRow({
+  label, emoji, items, equipped, saving, onEquip,
+}: {
+  label: string; emoji: string; items: StoreItem[]
+  equipped: string | null; saving: boolean; onEquip: (id: string | null) => void
+}) {
   return (
-    <div className="flex flex-col items-center bg-card px-3 py-4 text-center">
-      <span className="text-muted-foreground">{icon}</span>
-      <span className="mt-1 text-lg font-semibold tabular-nums">{value}</span>
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+    <div className="flex items-center gap-3 px-5 py-3.5">
+      <span className="text-xl shrink-0 leading-none">{emoji}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{label}</p>
+        <select
+          value={equipped ?? ""}
+          onChange={(e) => onEquip(e.target.value || null)}
+          disabled={saving || items.length === 0}
+          className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <option value="">{items.length === 0 ? "None owned — visit the Game Store" : "— None —"}</option>
+          {items.map((i) => (
+            <option key={i.id} value={i.id}>{i.icon} {i.name}</option>
+          ))}
+        </select>
+      </div>
+      {saving && <span className="text-xs text-muted-foreground shrink-0 animate-pulse">Saving…</span>}
+    </div>
+  )
+}
+
+function CosmeticLoadout() {
+  const { inventory, equippedCosmetics, equipCosmetic } = useEconomy()
+  const [savingType, setSavingType] = useState<string | null>(null)
+
+  const ownedAvatars = STORE_ITEMS.filter((i) => i.cosmeticType === "avatar" && (inventory[i.id] ?? 0) >= 1)
+  const ownedTitles  = STORE_ITEMS.filter((i) => i.cosmeticType === "title"  && (inventory[i.id] ?? 0) >= 1)
+  const ownedFrames  = STORE_ITEMS.filter((i) => i.cosmeticType === "frame"  && (inventory[i.id] ?? 0) >= 1)
+
+  async function handleEquip(type: "avatar" | "title" | "frame", id: string | null) {
+    setSavingType(type)
+    await equipCosmetic(type, id)
+    setSavingType(null)
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex items-center gap-2">
+          <span className="text-base leading-none">✨</span>
+          <h2 className="font-semibold text-foreground">Cosmetic Loadout</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">Equip items you&apos;ve unlocked from the Game Store</p>
+      </div>
+      <div className="divide-y divide-border">
+        <LoadoutRow
+          label="Active Avatar" emoji="🧑‍⚕️"
+          items={ownedAvatars} equipped={equippedCosmetics.avatar}
+          saving={savingType === "avatar"} onEquip={(id) => handleEquip("avatar", id)}
+        />
+        <LoadoutRow
+          label="Active Title" emoji="🏷️"
+          items={ownedTitles} equipped={equippedCosmetics.title}
+          saving={savingType === "title"} onEquip={(id) => handleEquip("title", id)}
+        />
+        <LoadoutRow
+          label="Active Frame" emoji="🖼️"
+          items={ownedFrames} equipped={equippedCosmetics.frame}
+          saving={savingType === "frame"} onEquip={(id) => handleEquip("frame", id)}
+        />
+      </div>
     </div>
   )
 }
