@@ -271,6 +271,14 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
       ) : (
         <ExamDashboard onReadyForQuiz={onReadyForQuiz} onOpenModules={onOpenModules} />
       )}
+
+      {/* Full-screen frame tap animation overlay */}
+      {activeFrameAnim && (
+        <FrameAnimationOverlay
+          frameId={activeFrameAnim}
+          onDone={() => setActiveFrameAnim(null)}
+        />
+      )}
     </div>
   )
 }
@@ -669,13 +677,6 @@ function ExamDashboard({
         </div>
       </section>
 
-      {/* Full-screen frame tap animation overlay */}
-      {activeFrameAnim && (
-        <FrameAnimationOverlay
-          frameId={activeFrameAnim}
-          onDone={() => setActiveFrameAnim(null)}
-        />
-      )}
     </div>
   )
 }
