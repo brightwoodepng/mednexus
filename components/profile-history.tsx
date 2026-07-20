@@ -239,7 +239,7 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 
 function ProfileHeader() {
   const { user, cloudEnabled, updateName, signOutUser } = useApp()
-  const { logoutAdmin } = useAdmin()
+  const { logoutAdmin, isAdmin } = useAdmin()
   const { balance, equippedCosmetics, grantDevNP } = useEconomy()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
@@ -321,20 +321,22 @@ function ProfileHeader() {
             : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
           }
 
-          {/* NP balance + dev cheat */}
+          {/* NP balance + admin cheat */}
           <div className="mt-1 flex items-center gap-1.5">
             <p className="text-sm font-bold text-amber-500 tabular-nums">
               ⚡ {balance.toLocaleString()} NP
             </p>
-            <button
-              type="button"
-              onClick={grantDevNP}
-              title="[DEV] Grant 999,999 NP"
-              className="flex h-4 w-4 items-center justify-center rounded text-muted-foreground/30 hover:text-amber-400/70 transition-colors text-[10px] font-bold leading-none select-none"
-              aria-label="Dev: grant infinite NP"
-            >
-              +
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={grantDevNP}
+                title="[Admin] Set balance to 999,999 NP"
+                className="flex h-4 w-4 items-center justify-center rounded text-muted-foreground/25 hover:text-amber-400/60 transition-colors text-[10px] font-bold leading-none select-none"
+                aria-label="Admin: grant 999,999 NP"
+              >
+                +
+              </button>
+            )}
           </div>
 
           {/* Sync state */}
