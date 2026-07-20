@@ -8,7 +8,7 @@ import { StethoscopeIcon, ClockIcon, AlertTriangleIcon, CheckIcon, TrophyIcon, R
 import { ThemeProvider } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
 
-type Phase = "loading" | "unavailable" | "name-entry" | "exam" | "results"
+type Phase = "loading" | "unavailable" | "name-entry" | "exam" | "blind-review" | "results"
 
 interface Result {
   score: number
@@ -17,6 +17,14 @@ interface Result {
   passed: boolean
   answers: Record<string, string | null>
   questions: Question[]
+  timeTaken?: number
+}
+
+interface HighScore {
+  score: number
+  total: number
+  percentage: number
+  passed: boolean
 }
 
 // Stored after a completed attempt — latestResult/questions optional for in-progress state
@@ -31,7 +39,9 @@ interface StoredAttempt {
     percentage: number
     passed: boolean
     answers: Record<string, string | null>
+    timeTaken?: number
   }
+  highScore?: HighScore
   questions?: Question[]
 }
 
@@ -50,6 +60,13 @@ function loadAttempt(token: string): StoredAttempt | null {
   } catch { return null }
 }
 
+function formatTimeTaken(secs: number): string {
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  if (m === 0) return `${s}s`
+  return `${m}m ${s}s`
+}
+
 function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
 
@@ -60,6 +77,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
   const [guestId, setGuestId] = useState("")
   const [nameError, setNameError] = useState("")
   const [result, setResult] = useState<Result | null>(null)
+  const [bestScore, setBestScore] = useState<HighScore | null>(null)
   const [showReview, setShowReview] = useState(false)
   const [triesUsed, setTriesUsed] = useState(0)
   const [themeOpen, setThemeOpen] = useState(false)
@@ -80,17 +98,29 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         const stored = loadAttempt(token)
         const triesAllowed = asmt.triesAllowed ?? 1
 
-        // 1. Tries exhausted with a completed result → show review
+        // 1. Tries exhausted with a completed result → show full review
         if (stored && stored.latestResult && stored.attemptCount >= triesAllowed) {
           setGuestName(stored.guestName)
           setGuestId(stored.guestId)
           setTriesUsed(stored.attemptCount)
           setResult({ ...stored.latestResult, questions: stored.questions ?? qs })
+          if (stored.highScore) setBestScore(stored.highScore)
           setPhase("results")
           return
         }
 
-        // 2. In-progress session (reloaded / came back) → resume exam
+        // 2. Attempt completed but tries remain → show blind review
+        if (stored && stored.latestResult && stored.attemptCount > 0 && stored.attemptCount < triesAllowed) {
+          setGuestName(stored.guestName)
+          setGuestId(stored.guestId)
+          setTriesUsed(stored.attemptCount)
+          setResult({ ...stored.latestResult, questions: stored.questions ?? qs })
+          if (stored.highScore) setBestScore(stored.highScore)
+          setPhase("blind-review")
+          return
+        }
+
+        // 3. In-progress session (reloaded / came back) → resume exam
         if (stored?.guestId) {
           try {
             const sk = sessionKey(asmt.id, stored.guestId)
@@ -99,20 +129,14 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
               const session = JSON.parse(sessionRaw)
               const elapsed = Math.floor((Date.now() - session.startedAt) / 1000)
               const remaining = Math.max(0, asmt.timeLimitMins * 60 - elapsed)
-              if (remaining > 0) {
-                // Restore identity and jump straight to exam — runner picks up from session
+              if (remaining >= 0) {
                 setGuestName(stored.guestName)
                 setGuestId(stored.guestId)
                 setTriesUsed(stored.attemptCount ?? 0)
+                if (stored.highScore) setBestScore(stored.highScore)
                 setPhase("exam")
                 return
               }
-              // remaining === 0: runner will auto-submit on mount
-              setGuestName(stored.guestName)
-              setGuestId(stored.guestId)
-              setTriesUsed(stored.attemptCount ?? 0)
-              setPhase("exam")
-              return
             }
           } catch { /* fall through to name-entry */ }
         }
@@ -139,6 +163,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
       attemptCount: existing?.attemptCount ?? triesUsed,
       triesAllowed: assessment?.triesAllowed ?? 1,
       latestResult: existing?.latestResult,
+      highScore: existing?.highScore,
       questions: existing?.questions,
     })
 
@@ -149,7 +174,15 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
     const newAttemptCount = triesUsed + 1
     setTriesUsed(newAttemptCount)
 
-    // Save completed attempt (session already cleared by runner)
+    const existing = loadAttempt(token)
+    const previousBestPct = existing?.highScore?.percentage ?? -1
+    const isNewHigh = res.percentage > previousBestPct
+
+    const newHighScore: HighScore = isNewHigh
+      ? { score: res.score, total: res.total, percentage: res.percentage, passed: res.passed }
+      : (existing?.highScore ?? { score: res.score, total: res.total, percentage: res.percentage, passed: res.passed })
+
+    // Save completed attempt — highScore only updates when strictly better
     saveAttempt(token, {
       guestName: guestName.trim(),
       guestId,
@@ -161,18 +194,28 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         percentage: res.percentage,
         passed: res.passed,
         answers: res.answers,
+        timeTaken: res.timeTaken,
       },
+      highScore: newHighScore,
       questions: res.questions,
     })
 
     setResult(res)
-    setPhase("results")
+    setBestScore(newHighScore)
+
+    const triesAllowed = assessment?.triesAllowed ?? 1
+    // If more attempts remain, go to blind review — full review gated until exhausted
+    if (newAttemptCount < triesAllowed) {
+      setPhase("blind-review")
+    } else {
+      setPhase("results")
+    }
   }
 
   function handleRetake() {
     setResult(null)
     setShowReview(false)
-    setGuestName("")
+    // Preserve guestName so name-entry field is pre-filled
     setGuestId("")
     setNameError("")
     setPhase("name-entry")
@@ -254,8 +297,85 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
     )
   }
 
-  // ── Results ──────────────────────────────────────────────────────────────
+  // ── Blind Review ─────────────────────────────────────────────────────────
+  // Shown after each attempt when tries remain — score and time only, no vignettes
+  if (phase === "blind-review" && result && assessment) {
+    return (
+      <>
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm space-y-5">
+
+          {/* Score badge */}
+          <div className="text-center">
+            <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-4xl font-bold ${result.passed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+              {result.percentage}%
+            </div>
+            <h1 className="text-xl font-bold text-foreground">Attempt {triesUsed} Complete</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {result.score} of {result.total} correct
+            </p>
+            <p className={`mt-1.5 text-sm font-semibold ${result.passed ? "text-emerald-600" : "text-destructive"}`}>
+              {result.passed ? "✓ Passed" : "✗ Did not pass"}
+            </p>
+          </div>
+
+          {/* Stats */}
+          <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Candidate</span>
+              <span className="font-medium text-foreground">{guestName.trim()}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Score</span>
+              <span className="font-bold text-foreground">{result.percentage}%</span>
+            </div>
+            {result.timeTaken != null && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Time taken</span>
+                <span className="font-medium text-foreground flex items-center gap-1">
+                  <ClockIcon size={12} />
+                  {formatTimeTaken(result.timeTaken)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Attempts used</span>
+              <span className="font-medium text-foreground">{triesUsed} / {triesAllowed}</span>
+            </div>
+          </div>
+
+          {/* Blind warning — the key UX message */}
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-300/60 bg-amber-50 p-3.5 dark:border-amber-800/40 dark:bg-amber-900/20">
+            <AlertTriangleIcon size={15} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+              Answers and detailed vignettes will remain hidden until all{" "}
+              <strong>{triesAllowed} attempts</strong> are exhausted. You have{" "}
+              <strong>{triesRemaining} attempt{triesRemaining === 1 ? "" : "s"}</strong> remaining.
+            </p>
+          </div>
+
+          {/* Retake */}
+          <button
+            type="button"
+            onClick={handleRetake}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+          >
+            <RefreshCwIcon size={14} />
+            Retake Exam
+            <span className="text-xs opacity-75">({triesRemaining} attempt{triesRemaining === 1 ? "" : "s"} left)</span>
+          </button>
+
+          <p className="text-center text-xs text-muted-foreground">Powered by MedNexus</p>
+        </div>
+      </div>
+      {themeOverlay}
+      </>
+    )
+  }
+
+  // ── Results (tries exhausted — full review unlocked) ─────────────────────
   if (phase === "results" && result && assessment) {
+    // Show full AssessmentReview with vignettes
     if (showReview) {
       return (
         <>
@@ -280,20 +400,32 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
       )
     }
 
+    // Determine which score to highlight — best score may differ from last attempt
+    const displayScore = bestScore ?? { score: result.score, total: result.total, percentage: result.percentage, passed: result.passed }
+    const showBestScoreBadge = bestScore && bestScore.percentage !== result.percentage
+
     return (
       <>
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm space-y-5">
           <div className="text-center">
-            <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-4xl font-bold ${result.passed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
-              {result.percentage}%
+            <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-4xl font-bold ${displayScore.passed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+              {displayScore.percentage}%
             </div>
-            <h1 className="text-xl font-bold text-foreground">{result.passed ? "Congratulations!" : "Exam Complete"}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {result.score} of {result.total} correct · Pass mark {assessment.passMark}%
-            </p>
-            <p className={`mt-2 text-sm font-semibold ${result.passed ? "text-emerald-600" : "text-destructive"}`}>
-              {result.passed ? "✓ Passed" : "✗ Did not pass"}
+            <h1 className="text-xl font-bold text-foreground">
+              {displayScore.passed ? "Congratulations!" : "All Attempts Used"}
+            </h1>
+            {showBestScoreBadge ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Best: {displayScore.score}/{displayScore.total} · Last attempt: {result.percentage}%
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {displayScore.score} of {displayScore.total} correct · Pass mark {assessment.passMark}%
+              </p>
+            )}
+            <p className={`mt-2 text-sm font-semibold ${displayScore.passed ? "text-emerald-600" : "text-destructive"}`}>
+              {displayScore.passed ? "✓ Passed" : "✗ Did not pass"}
             </p>
           </div>
 
@@ -307,44 +439,38 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
               <span className="font-medium text-foreground truncate max-w-40">{assessment.title}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Score</span>
-              <span className="font-bold text-foreground">{result.percentage}%</span>
+              <span className="text-muted-foreground">Best score</span>
+              <span className="font-bold text-foreground">{displayScore.percentage}%</span>
             </div>
             {triesAllowed > 1 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Attempts used</span>
-                <span className={`font-medium ${triesExhausted ? "text-destructive" : "text-foreground"}`}>
+                <span className="font-medium text-destructive">
                   {triesUsed} / {triesAllowed}
+                </span>
+              </div>
+            )}
+            {result.timeTaken != null && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Last attempt time</span>
+                <span className="font-medium text-foreground flex items-center gap-1">
+                  <ClockIcon size={12} />
+                  {formatTimeTaken(result.timeTaken)}
                 </span>
               </div>
             )}
           </div>
 
-          {triesExhausted && triesAllowed > 1 && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-amber-300/60 bg-amber-50 p-3 dark:border-amber-800/40 dark:bg-amber-900/20">
-              <AlertTriangleIcon size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
-              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                You have used all {triesAllowed} allowed attempts. You can still review your answers below.
-              </p>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <button type="button" onClick={() => setShowReview(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
-              <TrophyIcon size={15} /> Review Exam
+          {/* Review vignettes — strictly gated until all tries are exhausted */}
+          {triesExhausted && (
+            <button
+              type="button"
+              onClick={() => setShowReview(true)}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              <TrophyIcon size={15} /> Review Answers & Vignettes
             </button>
-            {!triesExhausted && (
-              <button type="button" onClick={handleRetake}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors">
-                <RefreshCwIcon size={14} />
-                Retake Exam
-                {triesAllowed > 1 && (
-                  <span className="text-xs text-muted-foreground">({triesRemaining} attempt{triesRemaining === 1 ? "" : "s"} left)</span>
-                )}
-              </button>
-            )}
-          </div>
+          )}
 
           <p className="text-center text-xs text-muted-foreground">Powered by MedNexus</p>
         </div>
@@ -388,6 +514,12 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
               <span className="font-semibold text-foreground">{triesAllowed}</span>
             </div>
           )}
+          {triesUsed > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Attempts used</span>
+              <span className="font-semibold text-foreground">{triesUsed} / {triesAllowed}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-start gap-2.5 rounded-xl border border-amber-300/60 bg-amber-50 p-3 dark:border-amber-800/40 dark:bg-amber-900/20">
@@ -415,7 +547,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
           </div>
           <button type="button" onClick={handleStartExam}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
-            <CheckIcon size={15} /> Begin Exam
+            <CheckIcon size={15} /> {triesUsed > 0 ? `Begin Attempt ${triesUsed + 1}` : "Begin Exam"}
           </button>
         </div>
       </div>
