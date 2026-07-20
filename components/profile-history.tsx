@@ -21,7 +21,7 @@ import {
 } from "@/lib/modules"
 import type { HistoryEntry, ExamScore, Question } from "@/lib/types"
 import { useEconomy } from "@/contexts/economy-context"
-import { STORE_ITEMS, TITLE_LABELS } from "@/lib/economy"
+import { STORE_ITEMS, TITLE_LABELS, FRAME_RING_CLASSES } from "@/lib/economy"
 import type { StoreItem } from "@/lib/economy"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
 
@@ -263,17 +263,43 @@ function ProfileHeader() {
     ? (TITLE_LABELS[equippedCosmetics.title] ?? equippedCosmetics.title)
     : null
 
+  const equippedAvatarItem = equippedCosmetics.avatar
+    ? STORE_ITEMS.find((i) => i.id === equippedCosmetics.avatar)
+    : null
+  const avatarImagePath = equippedAvatarItem?.imagePath ?? null
+
+  const frameClasses = equippedCosmetics.frame
+    ? (FRAME_RING_CLASSES[equippedCosmetics.frame] ?? null)
+    : null
+
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:p-6">
 
-        {/* Avatar with hover-edit overlay */}
-        <div className="relative group shrink-0 cursor-pointer" onClick={startEdit} title="Edit display name">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm text-2xl font-bold select-none">
-            {(user?.name ?? "C")[0].toUpperCase()}
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            <PencilIcon size={16} className="text-white" />
+        {/* Avatar with frame wrapper and hover-edit overlay */}
+        <div
+          className="shrink-0 cursor-pointer group"
+          onClick={startEdit}
+          title="Edit display name"
+        >
+          {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
+          <div className={`rounded-full ${frameClasses ? `${frameClasses} ring-offset-2 ring-offset-card` : ""}`}>
+            {/* Avatar circle */}
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm text-2xl font-bold select-none overflow-hidden">
+              {avatarImagePath ? (
+                <img
+                  src={avatarImagePath}
+                  alt={equippedAvatarItem?.name ?? "Avatar"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                (user?.name ?? "C")[0].toUpperCase()
+              )}
+              {/* Hover edit overlay — clipped to the circle by parent overflow-hidden */}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <PencilIcon size={16} className="text-white" />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -317,7 +343,7 @@ function ProfileHeader() {
 
           {/* Equipped title */}
           {equippedTitleLabel
-            ? <p className="text-sm text-purple-400 italic">{equippedTitleLabel}</p>
+            ? <p className="text-sm text-purple-400 italic font-semibold">{equippedTitleLabel}</p>
             : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
           }
 
