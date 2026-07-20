@@ -10,12 +10,19 @@ import {
   TODAY_DATE,
   type GameResult,
 } from "@/lib/economy"
+import { calculateSessionNP, type QuestionResult } from "@/lib/anti-farming"
 
 export async function POST(req: NextRequest) {
   try {
     await ensureSchema()
     const body = await req.json()
-    const { uid, mode, score, correct, total, bestStreak, isNewHigh, survivedCount, lifelineUsed } = body
+    const {
+      uid, mode, score, correct, total, bestStreak, isNewHigh, survivedCount, lifelineUsed,
+      // Optional per-question data for anti-farming.  When provided, the gross NP
+      // from calculatePayout is re-evaluated through calculateSessionNP so that
+      // the 3-repeat cap and discipline fatigue rules are applied.
+      sessionData,
+    } = body
 
     if (!uid || !mode) return NextResponse.json({ error: "Missing fields" }, { status: 400 })
 
@@ -25,7 +32,7 @@ export async function POST(req: NextRequest) {
       lifelineUsed: !!lifelineUsed,
     }
 
-    const { total: earned, breakdown } = calculatePayout(result)
+    const { total: grossEarned, breakdown: grossBreakdown } = calculatePayout(result)
 
     const todayBounties = getTodaysBounties()
     const today = TODAY_DATE()
@@ -33,6 +40,50 @@ export async function POST(req: NextRequest) {
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
+
+      // ── Anti-farming check (when per-question data is supplied) ───────────
+      // sessionData: QuestionResult[] — { questionId, discipline, isCorrect, baseNP }
+      // Guests are identified by uid starting with "guest-"; they bypass anti-farming.
+      let earned        = grossEarned
+      let breakdown     = grossBreakdown
+      let antiFarming: Awaited<ReturnType<typeof calculateSessionNP>> | null = null
+
+      const isGuest = uid.startsWith("guest-")
+
+      if (!isGuest && Array.isArray(sessionData) && sessionData.length > 0) {
+        antiFarming = await calculateSessionNP(
+          uid,
+          mode,
+          sessionData as QuestionResult[],
+          client,
+        )
+
+        // Replace gross NP with the anti-farming-approved amount.
+        // The base breakdown is kept for display but we append suppression notes.
+        earned = antiFarming.totalNP
+
+        const suppressedCount = antiFarming.breakdown.filter(
+          (b) => b.suppressedReason !== null,
+        ).length
+
+        if (suppressedCount > 0) {
+          const repeatCapped   = antiFarming.breakdown.filter((b) => b.suppressedReason === "repeat_cap").length
+          const fatiguedCapped = antiFarming.breakdown.filter((b) => b.suppressedReason === "discipline_fatigue").length
+
+          if (repeatCapped > 0) {
+            breakdown = [
+              ...breakdown,
+              { label: `🚫 Repeat Cap (${repeatCapped}q already mastered)`, amount: 0 },
+            ]
+          }
+          if (fatiguedCapped > 0) {
+            breakdown = [
+              ...breakdown,
+              { label: `⚡ Discipline Fatigue (${fatiguedCapped}q over daily limit)`, amount: 0 },
+            ]
+          }
+        }
+      }
 
       // ── Credit base NP to wallet ───────────────────────────────────────────
       const { rows: walletRows } = await client.query(
