@@ -135,6 +135,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const [activeFrameAnim, setActiveFrameAnim] = useState<FrameAnimId | null>(null)
   const handleAvatarTap = useCallback(() => {
     const frameId = equippedCosmetics.frame
+    console.log("Triggered:", frameId)
     if (frameId && ANIM_FRAMES.has(frameId) && !activeFrameAnim) {
       setActiveFrameAnim(frameId as FrameAnimId)
     }
