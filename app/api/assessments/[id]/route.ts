@@ -65,7 +65,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const qRes = await pool.query("SELECT data FROM mednexus_questions WHERE id = 1")
     const allQuestions: Array<{ id: string }> = qRes.rows[0]?.data ?? []
     const questionIdSet = new Set(assessment.questionIds as string[])
-    const questions = allQuestions.filter((q) => questionIdSet.has(q.id))
+    // Deduplicate: filter then keep only the first occurrence of each id
+    const seenIds = new Set<string>()
+    const questions = allQuestions.filter((q) => {
+      if (!questionIdSet.has(q.id) || seenIds.has(q.id)) return false
+      seenIds.add(q.id)
+      return true
+    })
 
     return NextResponse.json({ assessment, questions })
   } catch (err) {
