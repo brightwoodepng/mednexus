@@ -184,30 +184,32 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
 
       {/* Hero */}
       <div className="relative">
-        {/* Avatar graphic — pops slightly above and to the right of the banner */}
-        <div className="absolute -top-4 right-2 z-10 md:-top-6 md:right-8">
-          <div className={`rounded-full ${bannerFrameClasses ?? ""}`}>
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-white shadow-lg text-3xl font-bold select-none overflow-hidden sm:h-24 sm:w-24 sm:text-4xl">
-              {bannerAvatarImagePath ? (
-                <img
-                  src={bannerAvatarImagePath}
-                  alt="Avatar"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                (user?.name ?? "C")[0].toUpperCase()
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Banner card */}
-        <div className="relative overflow-hidden rounded-2xl bg-primary px-5 py-5 text-primary-foreground shadow-lg sm:rounded-3xl sm:px-8 sm:py-8">
+        <div className="relative rounded-2xl bg-primary px-5 py-5 text-primary-foreground shadow-lg sm:rounded-3xl sm:px-8 sm:py-8 overflow-hidden">
           <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/[0.07]" />
           <div className="pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/[0.04]" />
           <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/[0.03]" />
+
+          {/* Avatar — absolutely centered vertically on the right */}
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 sm:right-7">
+            <div className={`rounded-full ${bannerFrameClasses ?? ""}`}>
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-white shadow-lg text-3xl font-bold select-none overflow-hidden sm:h-24 sm:w-24 sm:text-4xl">
+                {bannerAvatarImagePath ? (
+                  <img
+                    src={bannerAvatarImagePath}
+                    alt="Avatar"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  (user?.name ?? "C")[0].toUpperCase()
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Text — right-padded so it never slides under the avatar */}
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="pr-28 md:pr-36">
+            <div className="pr-28 sm:pr-36">
               <p className="text-sm font-medium opacity-80">{greeting},</p>
               <h1 className="mt-0.5 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
               <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
