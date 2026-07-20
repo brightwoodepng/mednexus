@@ -153,28 +153,28 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     <div className="mx-auto max-w-6xl space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col md:flex-row md:items-center gap-4 w-full mb-6">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center w-full gap-4 mb-6">
 
-        {/* Title — DOM pos 1, always first on both mobile and desktop */}
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <LayersIcon size={18} />
+        {/* Left group: Title + View toggle */}
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+
+          {/* Title */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <LayersIcon size={18} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">Module Library</h1>
+              <p className="text-xs text-muted-foreground">
+                {view === "module"
+                  ? `${modules.length} module${modules.length !== 1 ? "s" : ""}`
+                  : `${allDisciplines.length} discipline${allDisciplines.length !== 1 ? "s" : ""} across ${modules.length} module${modules.length !== 1 ? "s" : ""}`}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Module Library</h1>
-            <p className="text-xs text-muted-foreground">
-              {view === "module"
-                ? `${modules.length} module${modules.length !== 1 ? "s" : ""}`
-                : `${allDisciplines.length} discipline${allDisciplines.length !== 1 ? "s" : ""} across ${modules.length} module${modules.length !== 1 ? "s" : ""}`}
-            </p>
-          </div>
-        </div>
 
-        {/* Toggle + Sort — DOM pos 2; order-2 on mobile (row 2), md:order-none (DOM position on desktop) */}
-        <div className="order-2 md:order-none flex flex-row items-center gap-2 w-full md:w-auto md:flex-1 md:justify-center">
-
-          {/* View toggle — pill style; stretches to fill available space on mobile */}
-          <div className="flex flex-grow w-full md:grow-0 md:w-fit rounded-xl border border-border bg-muted p-1">
+          {/* View toggle — pill; full-width on mobile, content-width on desktop */}
+          <div className="flex w-full md:w-fit rounded-xl border border-border bg-muted p-1">
             <button
               type="button"
               onClick={() => switchView("module")}
@@ -185,7 +185,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
               }`}
             >
               <LayersIcon size={13} />
-              <span className="whitespace-nowrap text-xs sm:text-sm md:text-base">By Module</span>
+              <span className="whitespace-nowrap text-xs">By Module</span>
             </button>
             <button
               type="button"
@@ -197,25 +197,16 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
               }`}
             >
               <GraduationCapIcon size={13} />
-              <span className="whitespace-nowrap text-xs sm:text-sm md:text-base">By Discipline</span>
+              <span className="whitespace-nowrap text-xs">By Discipline</span>
             </button>
           </div>
-
-          {/* Sort select — compact on mobile (icon-only padding), wider on desktop */}
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="shrink-0 p-2 md:px-4 md:py-2 rounded-lg border border-border bg-card text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-          >
-            {view === "module" && <option value="starred">Starred First</option>}
-            <option value="az">A → Z</option>
-            <option value="most">Most Questions</option>
-          </select>
         </div>
 
-        {/* Search — DOM pos 3; order-1 on mobile (row 1, below title), md:order-none + ml-auto pushes right on desktop */}
-        <div className="order-1 md:order-none w-full md:w-64 lg:w-auto lg:max-w-md">
-          <div className="relative">
+        {/* Right group: Search bar (left) + Sort dropdown (right) */}
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+
+          {/* Search */}
+          <div className="relative w-full md:w-64 lg:w-auto lg:max-w-md">
             <SearchIcon
               size={13}
               className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -228,6 +219,17 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
               className="h-8 w-full rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
             />
           </div>
+
+          {/* Sort dropdown */}
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="shrink-0 w-full md:w-auto p-2 md:px-4 md:py-2 rounded-lg border border-border bg-card text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          >
+            {view === "module" && <option value="starred">Starred First</option>}
+            <option value="az">A → Z</option>
+            <option value="most">Most Questions</option>
+          </select>
         </div>
       </div>
 
