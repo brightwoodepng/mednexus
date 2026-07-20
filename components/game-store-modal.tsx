@@ -7,8 +7,9 @@ import {
   FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES,
   type StoreItem, type VaultMeta,
 } from "@/lib/economy"
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons"
+import type { Screen } from "@/lib/view"
 
-type StoreTab = "supply" | "vault" | "cosmetic"
 type CosmeticSection = "title" | "frame" | "highlight" | "avatar"
 
 // ── Small shared atoms ────────────────────────────────────────────────────────
@@ -167,7 +168,6 @@ function CosmeticCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          {/* Row 1: name + tier badge */}
           <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
             <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
             {tier && (
@@ -178,7 +178,6 @@ function CosmeticCard({
           </div>
           <p className="text-[11px] text-muted-foreground leading-tight mb-2">{item.desc}</p>
 
-          {/* Row 2: price OR equipped badge + action button */}
           <div className="flex items-center justify-between gap-2">
             <div className="shrink-0">
               {equipped && (
@@ -232,7 +231,6 @@ function AvatarCard({
       equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
     }`}>
       <div className="flex items-center gap-3">
-        {/* Avatar image preview — fixed 44×44, never grows */}
         <div className={`relative h-11 w-11 shrink-0 rounded-xl overflow-hidden bg-gradient-to-br ${item.gradient} shadow-sm`}>
           {item.imagePath && (
             <img
@@ -248,7 +246,6 @@ function AvatarCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          {/* Row 1: name + tier badge */}
           <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
             <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
             {tier && (
@@ -259,7 +256,6 @@ function AvatarCard({
           </div>
           <p className="text-[11px] text-muted-foreground leading-tight mb-2">{item.desc}</p>
 
-          {/* Row 2: price OR equipped badge + action button */}
           <div className="flex items-center justify-between gap-2">
             <div className="shrink-0">
               {equipped && (
@@ -299,15 +295,274 @@ function AvatarCard({
   )
 }
 
-// ── NexusStorePage — full-page standalone view ────────────────────────────────
-export function NexusStorePage() {
+// ── Shared sub-page shell ─────────────────────────────────────────────────────
+
+function SubPageShell({
+  title, emoji, onBack, balance, children,
+}: {
+  title: string
+  emoji: string
+  onBack: () => void
+  balance: number
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex min-h-full flex-col">
+      <div className="mx-auto w-full max-w-2xl flex flex-col flex-1">
+
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+            >
+              <ChevronLeftIcon size={15} />
+              Back
+            </button>
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl">{emoji}</span>
+              <h1 className="text-xl font-extrabold tracking-tight text-foreground">{title}</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-2">
+            <span className="text-base">🪙</span>
+            <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
+              {balance.toLocaleString()}
+            </span>
+            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP</span>
+          </div>
+        </div>
+
+        <div className="flex-1">
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── NexusStoreHub — main store landing page ───────────────────────────────────
+
+export function NexusStoreHub({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
+  const { balance } = useEconomy()
+
+  const vaultItems      = STORE_ITEMS.filter(i => i.category === "vault")
+  const supplyItems     = STORE_ITEMS.filter(i => i.category === "lifeline")
+  const cosmeticItems   = STORE_ITEMS.filter(i => i.category === "cosmetic")
+
+  const BANNERS = [
+    {
+      screen:      "store-supply" as Screen,
+      emoji:       "⚗️",
+      title:       "Supply Closet",
+      description: "Consumable lifelines you can activate during a quiz. Stock up and use them when you need an edge.",
+      gradient:    "from-cyan-500 to-teal-600",
+      bg:          "bg-cyan-50/60 dark:bg-cyan-950/20 border-cyan-200/60 dark:border-cyan-800/40",
+      chevronColor:"text-cyan-600 dark:text-cyan-400",
+      count:       `${supplyItems.length} items`,
+    },
+    {
+      screen:      "store-cosmetics" as Screen,
+      emoji:       "✨",
+      title:       "Cosmetics",
+      description: "Titles, frames, highlights, and avatars. Customize how you appear in multiplayer games.",
+      gradient:    "from-violet-500 to-fuchsia-600",
+      bg:          "bg-violet-50/60 dark:bg-violet-950/20 border-violet-200/60 dark:border-violet-800/40",
+      chevronColor:"text-violet-600 dark:text-violet-400",
+      count:       `${cosmeticItems.length} items`,
+    },
+    {
+      screen:      "store-vault" as Screen,
+      emoji:       "🔐",
+      title:       "The Vault",
+      description: "Premium clinical simulations — complex multi-step cases you unlock permanently with Nexus Points.",
+      gradient:    "from-amber-500 to-orange-600",
+      bg:          "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40",
+      chevronColor:"text-amber-600 dark:text-amber-400",
+      count:       `${vaultItems.length} cases`,
+    },
+  ]
+
+  return (
+    <div className="flex min-h-full flex-col">
+      <div className="mx-auto w-full max-w-2xl flex flex-col flex-1">
+
+        {/* Page header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-2xl shadow-sm">
+              🏪
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight text-foreground">Nexus Store</h1>
+              <p className="text-sm text-muted-foreground">Spend your Nexus Points</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-2">
+            <span className="text-base">🪙</span>
+            <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
+              {balance.toLocaleString()}
+            </span>
+            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP</span>
+          </div>
+        </div>
+
+        {/* Banner cards */}
+        <div className="flex flex-col gap-4">
+          {BANNERS.map((banner) => (
+            <button
+              key={banner.screen}
+              type="button"
+              onClick={() => onNavigate(banner.screen)}
+              className={`flex flex-row items-center justify-between p-6 rounded-2xl border cursor-pointer transition-all hover:shadow-md active:scale-[0.99] text-left w-full ${banner.bg}`}
+            >
+              {/* Left: icon + text stack */}
+              <div className="flex items-center gap-5 min-w-0">
+                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${banner.gradient} text-3xl shadow-sm`}>
+                  {banner.emoji}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-base font-extrabold text-foreground">{banner.title}</p>
+                    <span className="rounded-full bg-foreground/8 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {banner.count}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-snug">{banner.description}</p>
+                </div>
+              </div>
+
+              {/* Right: chevron */}
+              <ChevronRightIcon size={20} className={`shrink-0 ml-4 ${banner.chevronColor}`} />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── NexusStoreSupplyPage ──────────────────────────────────────────────────────
+
+export function NexusStoreSupplyPage({ onBack }: { onBack: () => void }) {
+  const { balance, inventory, purchase } = useEconomy()
+  const [buying, setBuying] = useState<string | null>(null)
+  const [flash,  setFlash]  = useState<string | null>(null)
+  const [error,  setError]  = useState<string | null>(null)
+
+  const supplyItems = STORE_ITEMS.filter(i => i.category === "lifeline")
+
+  async function handleBuy(itemId: string) {
+    setError(null)
+    setBuying(itemId)
+    const result = await purchase(itemId)
+    setBuying(null)
+    if (result.ok) {
+      setFlash(itemId)
+      setTimeout(() => setFlash(null), 2500)
+    } else {
+      setError(result.error ?? "Purchase failed")
+      setTimeout(() => setError(null), 4000)
+    }
+  }
+
+  return (
+    <SubPageShell title="Supply Closet" emoji="⚗️" onBack={onBack} balance={balance}>
+      {error && (
+        <div className="mb-4 rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400">
+          {error}
+        </div>
+      )}
+      <div className="grid gap-3">
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Consumable lifelines you can activate during a quiz. Stacks up in your inventory — use them when you need an edge.
+        </p>
+        {supplyItems.map(item => (
+          <ConsumableCard
+            key={item.id}
+            item={item}
+            owned={inventory[item.id] ?? 0}
+            buying={buying === item.id}
+            didBuy={flash === item.id}
+            canAfford={balance >= item.price}
+            onBuy={() => handleBuy(item.id)}
+          />
+        ))}
+      </div>
+    </SubPageShell>
+  )
+}
+
+// ── NexusStoreVaultPage ───────────────────────────────────────────────────────
+
+export function NexusStoreVaultPage({ onBack }: { onBack: () => void }) {
+  const { balance, inventory, purchase } = useEconomy()
+  const [buying, setBuying] = useState<string | null>(null)
+  const [flash,  setFlash]  = useState<string | null>(null)
+  const [error,  setError]  = useState<string | null>(null)
+
+  const vaultItems      = STORE_ITEMS.filter(i => i.category === "vault")
+  const ownedVaultCount = vaultItems.filter(i => (inventory[i.id] ?? 0) >= 1).length
+
+  async function handleBuy(itemId: string) {
+    setError(null)
+    setBuying(itemId)
+    const result = await purchase(itemId)
+    setBuying(null)
+    if (result.ok) {
+      setFlash(itemId)
+      setTimeout(() => setFlash(null), 2500)
+    } else {
+      setError(result.error ?? "Purchase failed")
+      setTimeout(() => setError(null), 4000)
+    }
+  }
+
+  return (
+    <SubPageShell title="The Vault" emoji="🔐" onBack={onBack} balance={balance}>
+      {error && (
+        <div className="mb-4 rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400">
+          {error}
+        </div>
+      )}
+      <div className="grid gap-3">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Complex multi-step clinical simulations. Unlock permanently with Nexus Points — available in your profile forever.
+          </p>
+          <span className="ml-3 shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground">
+            {ownedVaultCount}/{vaultItems.length}
+          </span>
+        </div>
+        {vaultItems.map(item => (
+          <VaultCard
+            key={item.id}
+            item={item}
+            unlocked={(inventory[item.id] ?? 0) >= 1}
+            buying={buying === item.id}
+            didBuy={flash === item.id}
+            canAfford={balance >= item.price}
+            onBuy={() => handleBuy(item.id)}
+          />
+        ))}
+      </div>
+    </SubPageShell>
+  )
+}
+
+// ── NexusStoreCosmeticsPage ───────────────────────────────────────────────────
+
+export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
   const { balance, inventory, purchase, equippedCosmetics, equipCosmetic } = useEconomy()
-  const [tab, setTab]               = useState<StoreTab>("supply")
   const [cosSection, setCosSection] = useState<CosmeticSection>("title")
-  const [buying, setBuying]         = useState<string | null>(null)
-  const [equipping, setEquipping]   = useState<string | null>(null)
-  const [flash, setFlash]           = useState<string | null>(null)
-  const [error, setError]           = useState<string | null>(null)
+  const [buying,     setBuying]     = useState<string | null>(null)
+  const [equipping,  setEquipping]  = useState<string | null>(null)
+  const [flash,      setFlash]      = useState<string | null>(null)
+  const [error,      setError]      = useState<string | null>(null)
+
+  const cosItems = STORE_ITEMS.filter(i => i.category === "cosmetic" && i.cosmeticType === cosSection)
 
   async function handleBuy(itemId: string) {
     setError(null)
@@ -330,181 +585,73 @@ export function NexusStorePage() {
     setEquipping(null)
   }
 
-  const supplyItems = STORE_ITEMS.filter(i => i.category === "lifeline")
-  const vaultItems  = STORE_ITEMS.filter(i => i.category === "vault")
-  const cosItems    = STORE_ITEMS.filter(i => i.category === "cosmetic" && i.cosmeticType === cosSection)
-
-  const ownedVaultCount = vaultItems.filter(i => (inventory[i.id] ?? 0) >= 1).length
-
-  const TABS: { id: StoreTab; label: string; badge?: string }[] = [
-    { id: "supply",   label: "⚗️ Supply Closet" },
-    { id: "cosmetic", label: "✨ Cosmetics" },
-    { id: "vault",    label: "🔐 The Vault", badge: `${ownedVaultCount}/${vaultItems.length}` },
-  ]
-
   return (
-    <div className="flex min-h-full flex-col">
-      <div className="mx-auto w-full max-w-2xl flex flex-col flex-1">
-
-        {/* ── Page header ── */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-2xl shadow-sm">
-              🏪
-            </div>
-            <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-foreground">Nexus Store</h1>
-              <p className="text-sm text-muted-foreground">Spend your Nexus Points</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-2">
-            <span className="text-base">🪙</span>
-            <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
-              {balance.toLocaleString()}
-            </span>
-            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP</span>
-          </div>
+    <SubPageShell title="Cosmetics" emoji="✨" onBack={onBack} balance={balance}>
+      {error && (
+        <div className="mb-4 rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400">
+          {error}
         </div>
+      )}
 
-        {/* ── Tab bar ── */}
-        <div className="flex border-b border-border overflow-x-auto no-scrollbar">
-          {TABS.map(t => (
-            <button
-              key={t.id} type="button" onClick={() => setTab(t.id)}
-              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap pb-2.5 px-3 text-sm font-semibold border-b-2 transition-all -mb-px ${
-                tab === t.id
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-              {t.badge && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                  tab === t.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                }`}>
-                  {t.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Error banner ── */}
-        {error && (
-          <div className="mt-4 rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400">
-            {error}
-          </div>
-        )}
-
-        {/* ── Tab content ── */}
-        <div className="py-5 flex-1">
-
-          {/* Supply Closet */}
-          {tab === "supply" && (
-            <div className="grid gap-3">
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Consumable lifelines you can activate during a quiz. Stacks up in your inventory — use them when you need an edge.
-              </p>
-              {supplyItems.map(item => (
-                <ConsumableCard
-                  key={item.id}
-                  item={item}
-                  owned={inventory[item.id] ?? 0}
-                  buying={buying === item.id}
-                  didBuy={flash === item.id}
-                  canAfford={balance >= item.price}
-                  onBuy={() => handleBuy(item.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* The Vault */}
-          {tab === "vault" && (
-            <div className="grid gap-3">
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Complex multi-step clinical simulations. Unlock permanently with Nexus Points — available in your profile forever.
-              </p>
-              {vaultItems.map(item => (
-                <VaultCard
-                  key={item.id}
-                  item={item}
-                  unlocked={(inventory[item.id] ?? 0) >= 1}
-                  buying={buying === item.id}
-                  didBuy={flash === item.id}
-                  canAfford={balance >= item.price}
-                  onBuy={() => handleBuy(item.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Cosmetics */}
-          {tab === "cosmetic" && (
-            <div>
-              {/* Sub-section pill tabs */}
-              <div className="mb-4 flex gap-1 rounded-2xl bg-muted p-1 overflow-x-auto no-scrollbar">
-                {(["title", "frame", "highlight", "avatar"] as CosmeticSection[]).map(s => (
-                  <button
-                    key={s} type="button" onClick={() => setCosSection(s)}
-                    className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-all whitespace-nowrap ${
-                      cosSection === s
-                        ? "bg-card text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {s === "title" ? "🏷️ Titles" : s === "frame" ? "🖼️ Frames" : s === "highlight" ? "🌟 Highlights" : "🧑‍⚕️ Avatars"}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid gap-3">
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  {cosSection === "title"     && "Displayed as a badge next to your name during multiplayer leaderboard reveals."}
-                  {cosSection === "frame"     && "Animated ring shown around your player avatar badge during multiplayer pauses."}
-                  {cosSection === "highlight" && "Your row glows on the leaderboard when scores are revealed to everyone."}
-                  {cosSection === "avatar"    && "Your personal avatar displayed in multiplayer lobbies and leaderboards."}
-                </p>
-
-                {cosItems.map(item => {
-                  const owned    = (inventory[item.id] ?? 0) >= 1
-                  const equipped = equippedCosmetics[cosSection] === item.id
-                  if (item.cosmeticType === "avatar") {
-                    return (
-                      <AvatarCard
-                        key={item.id}
-                        item={item}
-                        owned={owned}
-                        equipped={equipped}
-                        buying={buying === item.id}
-                        equipping={equipping === item.id}
-                        didBuy={flash === item.id}
-                        canAfford={balance >= item.price}
-                        onBuy={() => handleBuy(item.id)}
-                        onEquip={() => handleEquip("avatar", item.id)}
-                      />
-                    )
-                  }
-                  return (
-                    <CosmeticCard
-                      key={item.id}
-                      item={item}
-                      owned={owned}
-                      equipped={equipped}
-                      buying={buying === item.id}
-                      equipping={equipping === item.id}
-                      didBuy={flash === item.id}
-                      canAfford={balance >= item.price}
-                      onBuy={() => handleBuy(item.id)}
-                      onEquip={() => item.cosmeticType && handleEquip(item.cosmeticType as CosmeticSection, item.id)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Sub-section pill tabs */}
+      <div className="mb-4 flex gap-1 rounded-2xl bg-muted p-1 overflow-x-auto no-scrollbar">
+        {(["title", "frame", "highlight", "avatar"] as CosmeticSection[]).map(s => (
+          <button
+            key={s} type="button" onClick={() => setCosSection(s)}
+            className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-all whitespace-nowrap ${
+              cosSection === s
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {s === "title" ? "🏷️ Titles" : s === "frame" ? "🖼️ Frames" : s === "highlight" ? "🌟 Highlights" : "🧑‍⚕️ Avatars"}
+          </button>
+        ))}
       </div>
-    </div>
+
+      <div className="grid gap-3">
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          {cosSection === "title"     && "Displayed as a badge next to your name during multiplayer leaderboard reveals."}
+          {cosSection === "frame"     && "Animated ring shown around your player avatar badge during multiplayer pauses."}
+          {cosSection === "highlight" && "Your row glows on the leaderboard when scores are revealed to everyone."}
+          {cosSection === "avatar"    && "Your personal avatar displayed in multiplayer lobbies and leaderboards."}
+        </p>
+
+        {cosItems.map(item => {
+          const owned    = (inventory[item.id] ?? 0) >= 1
+          const equipped = equippedCosmetics[cosSection] === item.id
+          if (item.cosmeticType === "avatar") {
+            return (
+              <AvatarCard
+                key={item.id}
+                item={item}
+                owned={owned}
+                equipped={equipped}
+                buying={buying === item.id}
+                equipping={equipping === item.id}
+                didBuy={flash === item.id}
+                canAfford={balance >= item.price}
+                onBuy={() => handleBuy(item.id)}
+                onEquip={() => handleEquip("avatar", item.id)}
+              />
+            )
+          }
+          return (
+            <CosmeticCard
+              key={item.id}
+              item={item}
+              owned={owned}
+              equipped={equipped}
+              buying={buying === item.id}
+              equipping={equipping === item.id}
+              didBuy={flash === item.id}
+              canAfford={balance >= item.price}
+              onBuy={() => handleBuy(item.id)}
+              onEquip={() => item.cosmeticType && handleEquip(item.cosmeticType as CosmeticSection, item.id)}
+            />
+          )
+        })}
+      </div>
+    </SubPageShell>
   )
 }
