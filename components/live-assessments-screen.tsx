@@ -223,6 +223,9 @@ export function LiveAssessmentsScreen() {
 
   // Results + review
   if (phase === "results" && result && activeAssessment) {
+    // Review is only unlocked once all tries are exhausted
+    const triesExhaustedAfterResult = activeAssessment.attemptsUsed + 1 >= activeAssessment.triesAllowed
+
     if (showReview) {
       return (
         <div className="mx-auto max-w-3xl py-4">
@@ -257,13 +260,15 @@ export function LiveAssessmentsScreen() {
           </p>
         </div>
         <div className="flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={() => setShowReview(true)}
-            className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-          >
-            Review Exam
-          </button>
+          {triesExhaustedAfterResult && (
+            <button
+              type="button"
+              onClick={() => setShowReview(true)}
+              className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              Review Exam
+            </button>
+          )}
           <button
             type="button"
             onClick={() => { setPhase("list"); setResult(null); setShowReview(false); setActiveAssessment(null) }}
@@ -365,8 +370,8 @@ export function LiveAssessmentsScreen() {
                         )}
                       </button>
 
-                      {/* Review button — shown when a local result exists */}
-                      {hasStoredResult && (
+                      {/* Review button — only shown when all tries are used up */}
+                      {hasStoredResult && exhausted && (
                         <button
                           type="button"
                           onClick={() => reviewFromList(asmt)}
