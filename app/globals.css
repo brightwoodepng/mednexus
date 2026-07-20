@@ -1030,3 +1030,52 @@
   animation: grand-finale-in 0.45s cubic-bezier(0.22, 1.4, 0.36, 1) both;
   will-change: transform, opacity;
 }
+
+/* ── Avatar Frame: Live Hellfire ─────────────────────────────────────────────
+ * Rapidly cycles multi-layered box-shadow through intense reds, oranges, and
+ * yellows at varying blur radii / spread to simulate flickering living flames.
+ * Run at 0.4 s so each "flicker" is perceptibly different.
+ * ─────────────────────────────────────────────────────────────────────────── */
+@keyframes live-fire {
+  0%   { box-shadow: 0 0 8px 3px #ff3200cc, 0 0 20px 7px #ff7800aa, 0 0 36px 12px #ffc80066; }
+  12%  { box-shadow: 0 0 14px 5px #ff1400ff, 0 0 28px 10px #ff5000cc, 0 0 48px 16px #ffaa0077; }
+  25%  { box-shadow: 0 0 6px 2px #ff4800bb, 0 0 16px 5px #ff8c00aa, 0 0 30px 9px #ffe00055; }
+  40%  { box-shadow: 0 0 18px 6px #ff0a00ff, 0 0 34px 12px #ff6000dd, 0 0 56px 18px #ffcc0066; }
+  55%  { box-shadow: 0 0 10px 4px #ff3c00cc, 0 0 24px 8px #ff7200bb, 0 0 42px 14px #ffb40055; }
+  68%  { box-shadow: 0 0 16px 5px #ff0800ff, 0 0 30px 10px #ff5800cc, 0 0 52px 17px #ffc40066; }
+  80%  { box-shadow: 0 0 7px 2px #ff5000aa, 0 0 18px 6px #ff9400aa, 0 0 32px 10px #ffd80044; }
+  92%  { box-shadow: 0 0 20px 7px #ff1200ff, 0 0 36px 12px #ff6800ee, 0 0 60px 20px #ffbe0077; }
+  100% { box-shadow: 0 0 8px 3px #ff3200cc, 0 0 20px 7px #ff7800aa, 0 0 36px 12px #ffc80066; }
+}
+
+/* ── Avatar Frame: High-Voltage Lightning ────────────────────────────────────
+ * Stays dark/invisible for most of the cycle, then erupts in rapid-fire triple
+ * arcs of cyan/white at 88 – 98 % to simulate erratic electrical discharge.
+ * ─────────────────────────────────────────────────────────────────────────── */
+@keyframes lightning-strike {
+  0%   { box-shadow: 0 0 2px 1px rgba(100,210,255,0.08); }
+  80%  { box-shadow: 0 0 2px 1px rgba(100,210,255,0.08); }
+  88%  { box-shadow: 0 0 4px 1px rgba(100,210,255,0.20); }
+  90%  { box-shadow: 0 0 30px 10px #00d4ffff, 0 0 60px 22px #ffffffee, 0 0 90px 32px #0090ffbb; }
+  91%  { box-shadow: 0 0 2px 1px rgba(100,210,255,0.10); }
+  93%  { box-shadow: 0 0 3px 1px rgba(100,210,255,0.15); }
+  94%  { box-shadow: 0 0 26px 8px #00d4ffff, 0 0 52px 18px #ffffffdd, 0 0 78px 28px #0090ffaa; }
+  95%  { box-shadow: 0 0 2px 1px rgba(100,210,255,0.10); }
+  97%  { box-shadow: 0 0 3px 1px rgba(100,210,255,0.18); }
+  98%  { box-shadow: 0 0 22px 7px #00d4ffee, 0 0 44px 14px #ffffffcc, 0 0 66px 22px #0090ff99; }
+  100% { box-shadow: 0 0 2px 1px rgba(100,210,255,0.08); }
+}
+
+/* ── Avatar Frame: Toxic Drip ────────────────────────────────────────────────
+ * Neon-green glow with an asymmetric vertical shift in the shadow's Y offset
+ * that amplifies downward to mimic viscous ooze slowly dripping south.
+ * ─────────────────────────────────────────────────────────────────────────── */
+@keyframes ooze-drip {
+  0%   { box-shadow: 0 0 10px 3px #39ff1499, 0  2px 14px 5px #39ff1466, 0 -2px 8px  2px #39ff1433; }
+  20%  { box-shadow: 0 0 12px 4px #39ff14bb, 0  6px 20px 7px #39ff1477, 0 -1px 7px  2px #39ff1422; }
+  40%  { box-shadow: 0 0 8px  2px #39ff1488, 0 12px 26px 9px #39ff1499, 0  0px 5px  1px #39ff1411; }
+  55%  { box-shadow: 0 0 14px 5px #39ff14cc, 0 16px 30px 11px #39ff14aa, 0  1px 6px 1px #39ff1422; }
+  70%  { box-shadow: 0 0 10px 3px #39ff14aa, 0 10px 22px 8px #39ff1488, 0 -1px 7px  2px #39ff1433; }
+  85%  { box-shadow: 0 0 12px 4px #39ff14bb, 0  5px 18px 6px #39ff1466, 0 -2px 9px  3px #39ff1444; }
+  100% { box-shadow: 0 0 10px 3px #39ff1499, 0  2px 14px 5px #39ff1466, 0 -2px 8px  2px #39ff1433; }
+}
