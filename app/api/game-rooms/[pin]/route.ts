@@ -16,6 +16,7 @@ interface RoomPlayer {
   equippedTitle?:     string | null
   equippedFrame?:     string | null
   equippedHighlight?: string | null
+  equippedAvatar?:    string | null
 }
 
 interface SlimQuestion {
@@ -234,6 +235,7 @@ export async function PATCH(
       equippedTitle?: string | null
       equippedFrame?: string | null
       equippedHighlight?: string | null
+      equippedAvatar?: string | null
     }
 
     await client.query("BEGIN")
@@ -293,6 +295,7 @@ export async function PATCH(
           equippedTitle:     (body.equippedTitle     as string | null) ?? null,
           equippedFrame:     (body.equippedFrame     as string | null) ?? null,
           equippedHighlight: (body.equippedHighlight as string | null) ?? null,
+          equippedAvatar:    (body.equippedAvatar    as string | null) ?? null,
         }
         players.push(newPlayer)
 

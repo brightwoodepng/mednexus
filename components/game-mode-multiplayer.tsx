@@ -7,7 +7,7 @@ import { RichText } from "@/components/rich-text"
 import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
-import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES } from "@/lib/economy"
+import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS } from "@/lib/economy"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MultiMode = "clash" | "cohort" | "wager" | "djmulti"
@@ -28,6 +28,7 @@ interface RoomPlayer {
   equippedTitle?:     string | null
   equippedFrame?:     string | null
   equippedHighlight?: string | null
+  equippedAvatar?:    string | null
 }
 
 interface SlimQuestion {
@@ -105,7 +106,7 @@ async function apiCreateRoom(
   hostId: string,
   hostName: string,
   pool: Question[],
-  cosmetics?: { equippedTitle?: string | null; equippedFrame?: string | null; equippedHighlight?: string | null }
+  cosmetics?: { equippedTitle?: string | null; equippedFrame?: string | null; equippedHighlight?: string | null; equippedAvatar?: string | null }
 ): Promise<string> {
   const res = await fetch("/api/game-rooms", {
     method: "POST",
@@ -160,23 +161,47 @@ function CopyPinCard({ pin }: { pin: string }) {
   )
 }
 
+// ── Player avatar bubble ──────────────────────────────────────────────────────
+// Renders a small circular avatar with the player's equipped image (if any) and
+// frame ring. Falls back to the supplied `fallback` node (rank number / emoji).
+function PlayerAvatarBubble({
+  player, sizeCls = "h-7 w-7", fallback, fallbackBgCls,
+}: {
+  player: RoomPlayer
+  sizeCls?: string
+  fallback: React.ReactNode
+  fallbackBgCls: string
+}) {
+  const avatarItem = player.equippedAvatar
+    ? STORE_ITEMS.find(i => i.id === player.equippedAvatar)
+    : null
+  const frameClass = player.equippedFrame ? (FRAME_RING_CLASSES[player.equippedFrame] ?? "") : ""
+  return (
+    <span className={`flex ${sizeCls} shrink-0 items-center justify-center rounded-full overflow-hidden text-xs font-extrabold ${frameClass} ${avatarItem?.imagePath ? "" : fallbackBgCls}`}>
+      {avatarItem?.imagePath
+        ? <img src={avatarItem.imagePath} alt="" className="h-full w-full object-cover" />
+        : fallback}
+    </span>
+  )
+}
+
 function PlayerRow({ player, rank, showScore }: { player: RoomPlayer; rank?: number; showScore?: boolean }) {
-  const frameClass  = player.equippedFrame     ? (FRAME_RING_CLASSES[player.equippedFrame]         ?? "") : ""
-  const rowClass    = player.equippedHighlight ? (HIGHLIGHT_ROW_CLASSES[player.equippedHighlight]  ?? "") : ""
-  const titleLabel  = player.equippedTitle     ? (TITLE_LABELS[player.equippedTitle]               ?? null) : null
+  const rowClass   = player.equippedHighlight ? (HIGHLIGHT_ROW_CLASSES[player.equippedHighlight] ?? "") : ""
+  const titleLabel = player.equippedTitle     ? (TITLE_LABELS[player.equippedTitle]              ?? null) : null
   return (
     <div className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-all ${rowClass || "border-border bg-card"}`}>
       {rank !== undefined && (
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${frameClass}
-          ${rank === 1 ? "bg-amber-400 text-white" : rank === 2 ? "bg-slate-400 text-white" : rank === 3 ? "bg-amber-700 text-white" : "bg-muted text-muted-foreground"}`}>
-          {rank}
-        </span>
+        <PlayerAvatarBubble
+          player={player}
+          fallback={rank}
+          fallbackBgCls={rank === 1 ? "bg-amber-400 text-white" : rank === 2 ? "bg-slate-400 text-white" : rank === 3 ? "bg-amber-700 text-white" : "bg-muted text-muted-foreground"}
+        />
       )}
       {!rank && player.isHost && (
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs ${frameClass}`}>👑</span>
+        <PlayerAvatarBubble player={player} fallback="👑" fallbackBgCls="bg-primary/10" />
       )}
       {!rank && !player.isHost && (
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs ${frameClass}`}>👤</span>
+        <PlayerAvatarBubble player={player} fallback="👤" fallbackBgCls="bg-muted" />
       )}
       <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{player.name}</span>
       {titleLabel && (
@@ -266,7 +291,6 @@ function Leaderboard({ players, highlight, knockoutWinnerId }: {
         const isMe       = p.id === highlight
         const isBankrupt = !!p.isSpectator && p.score === 0
         const isWinner   = knockoutWinnerId && p.id === knockoutWinnerId
-        const frameClass = p.equippedFrame     ? (FRAME_RING_CLASSES[p.equippedFrame]         ?? "") : ""
         const rowClass   = p.equippedHighlight ? (HIGHLIGHT_ROW_CLASSES[p.equippedHighlight]  ?? "") : ""
         const titleLabel = p.equippedTitle     ? (TITLE_LABELS[p.equippedTitle]               ?? null) : null
         // Priority: knockout winner > "You" > bankrupt > cosmetic
@@ -280,10 +304,12 @@ function Leaderboard({ players, highlight, knockoutWinnerId }: {
         return (
           <div key={p.id} className={`rounded-2xl border p-3 transition-all ${rowStyle}`}>
             <div className="mb-1.5 flex items-center gap-2">
-              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${frameClass}
-                ${i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-slate-400 text-white" : i === 2 ? "bg-amber-700 text-white" : "bg-muted text-muted-foreground"}`}>
-                {i + 1}
-              </span>
+              <PlayerAvatarBubble
+                player={p}
+                sizeCls="h-6 w-6"
+                fallback={i + 1}
+                fallbackBgCls={i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-slate-400 text-white" : i === 2 ? "bg-amber-700 text-white" : "bg-muted text-muted-foreground"}
+              />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{p.name}{isMe ? " (You)" : ""}</span>
               {isWinner && knockoutWinnerId && (
                 <span className="shrink-0 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-extrabold text-white">
@@ -1007,6 +1033,7 @@ function JoinScreen({ onJoined, onBack }: {
         equippedTitle:     equippedCosmetics.title,
         equippedFrame:     equippedCosmetics.frame,
         equippedHighlight: equippedCosmetics.highlight,
+        equippedAvatar:    equippedCosmetics.avatar,
       })
       if (!res) { setError("Room not found or already started."); setLoading(false); return }
       onJoined(pin.trim(), pid)
@@ -1078,6 +1105,7 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
         equippedTitle:     equippedCosmetics.title,
         equippedFrame:     equippedCosmetics.frame,
         equippedHighlight: equippedCosmetics.highlight,
+        equippedAvatar:    equippedCosmetics.avatar,
       })
       onCreated(pin, hostId)
     } catch {
