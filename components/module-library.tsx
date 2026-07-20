@@ -153,7 +153,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     <div className="mx-auto max-w-6xl space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col md:flex-row md:flex-wrap items-center gap-4 w-full mb-6">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 w-full mb-6">
 
         {/* Title — DOM pos 1, always first on both mobile and desktop */}
         <div className="flex items-center gap-2 w-full md:w-auto">
@@ -171,7 +171,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         </div>
 
         {/* Toggle + Sort — DOM pos 2; order-2 on mobile (row 2), md:order-none (DOM position on desktop) */}
-        <div className="order-2 md:order-none flex flex-row items-center gap-2 w-full md:w-auto">
+        <div className="order-2 md:order-none flex flex-row items-center gap-2 w-full md:w-auto md:flex-1 md:justify-center">
 
           {/* View toggle — pill style; stretches to fill available space on mobile */}
           <div className="flex flex-grow w-full md:w-auto rounded-xl border border-border bg-muted p-1">
@@ -214,7 +214,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         </div>
 
         {/* Search — DOM pos 3; order-1 on mobile (row 1, below title), md:order-none + ml-auto pushes right on desktop */}
-        <div className="order-1 md:order-none md:ml-auto w-full md:w-64">
+        <div className="order-1 md:order-none w-full md:w-64 lg:w-auto lg:max-w-md">
           <div className="relative">
             <SearchIcon
               size={13}
@@ -272,7 +272,7 @@ function ModuleGrid({
   onToggleFav:(mod: string) => void
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
       {modules.map((mod) => {
         const palette    = CARD_PALETTES[allModules.indexOf(mod) % CARD_PALETTES.length]
         const total      = getModuleQuestionCount(mod)
@@ -341,7 +341,7 @@ function DisciplineGrid({
   onSelect:    (module: string, discipline: string) => void
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
       {disciplines.map(({ discipline, module: mod, moduleIndex, total }) => {
         const palette = CARD_PALETTES[moduleIndex % CARD_PALETTES.length]
         const cov     = coverage[discipline]
@@ -455,7 +455,7 @@ function ModuleDrillDown({
       </div>
 
       {/* Discipline grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
 
         {/* "All Disciplines" card */}
         <button
