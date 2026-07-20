@@ -25,39 +25,52 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!asmtRes.rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 })
     const { pass_mark, tries_allowed } = asmtRes.rows[0]
 
-    // Fetch all submitted attempts (all columns needed for deduplication)
+    // ── Registered user attempts ──────────────────────────────────────────────
+    // Fetch all submitted attempts from the registered-user table.
     const attRes = await pool.query(
-      `SELECT user_id, user_name, is_guest, score, total, submitted_at
+      `SELECT user_id, user_name, false AS is_guest, score, total, submitted_at
        FROM mednexus_assessment_attempts
        WHERE assessment_id = $1 AND submitted_at IS NOT NULL`,
       [id]
     )
 
-    // ── Deduplicate: one entry per user, keeping their personal best score ────
-    // Uses a Map keyed on user_id so the reduce is O(n) and stable.
-    type Row = typeof attRes.rows[0]
-    const bestByUser = attRes.rows.reduce<Map<string, Row>>((acc, row) => {
+    // Deduplicate registered users: keep personal best only.
+    type RegRow = { user_id: string; user_name: string; is_guest: boolean; score: number; total: number; submitted_at: string }
+    const bestByUser = attRes.rows.reduce<Map<string, RegRow>>((acc, row) => {
       const existing = acc.get(row.user_id)
-      if (!existing || row.score > existing.score) {
-        acc.set(row.user_id, row)
-      }
+      if (!existing || row.score > existing.score) acc.set(row.user_id, row)
       return acc
     }, new Map())
+    const registeredRows = Array.from(bestByUser.values())
 
-    const dedupedRows = Array.from(bestByUser.values())
+    // ── Guest analytics ───────────────────────────────────────────────────────
+    // Each row is already one attempt — no deduplication needed (guests have no
+    // persistent identity so every row is a separate anonymous participant).
+    const guestRes = await pool.query(
+      `SELECT guest_name AS user_name, true AS is_guest, score, total, submitted_at
+       FROM mednexus_guest_analytics
+       WHERE assessment_id = $1`,
+      [id]
+    )
+    const guestRows: { user_name: string; is_guest: boolean; score: number; total: number; submitted_at: string }[] = guestRes.rows
 
-    // ── All stats computed from the deduplicated set ──────────────────────────
-    const totalSubmitted = dedupedRows.length           // one entry per unique user
-    const guestCount = dedupedRows.filter((r) => r.is_guest).length
-    const registeredCount = dedupedRows.filter((r) => !r.is_guest).length
-    const uniqueUsers = totalSubmitted                  // by definition after dedup
+    // ── Merge for aggregated stats ────────────────────────────────────────────
+    const allRows = [
+      ...registeredRows.map((r) => ({ userName: r.user_name, isGuest: false, score: r.score, total: r.total, submittedAt: r.submitted_at })),
+      ...guestRows.map((r) => ({ userName: r.user_name, isGuest: true, score: r.score, total: r.total, submittedAt: r.submitted_at })),
+    ]
 
-    const scores = dedupedRows.map((r) => (r.total > 0 ? Math.round((r.score / r.total) * 100) : 0))
-    const averageScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-    const passCount = scores.filter((s) => s >= pass_mark).length
-    const failCount = scores.filter((s) => s < pass_mark).length
-    const highestScore = scores.length > 0 ? Math.max(...scores) : 0
-    const lowestScore = scores.length > 0 ? Math.min(...scores) : 0
+    const totalSubmitted  = allRows.length
+    const guestCount      = guestRows.length
+    const registeredCount = registeredRows.length
+    const uniqueUsers     = registeredRows.length + guestRows.length  // guests each count as unique
+
+    const scores = allRows.map((r) => (r.total > 0 ? Math.round((r.score / r.total) * 100) : 0))
+    const averageScore  = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
+    const passCount     = scores.filter((s) => s >= pass_mark).length
+    const failCount     = scores.filter((s) => s < pass_mark).length
+    const highestScore  = scores.length > 0 ? Math.max(...scores) : 0
+    const lowestScore   = scores.length > 0 ? Math.min(...scores) : 0
 
     // Median
     const pctSorted = [...scores].sort((a, b) => a - b)
@@ -66,16 +79,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       : pctSorted.length % 2 === 0 ? Math.round((pctSorted[mid - 1] + pctSorted[mid]) / 2)
       : pctSorted[mid]
 
-    // ── Return deduplicated attempts sorted high → low (no second DB query) ──
-    const allAttempts = dedupedRows
+    // Sort high → low for the leaderboard view
+    const recentAttempts = allRows
       .sort((a, b) => b.score - a.score)
       .map((r) => ({
-        userName: r.user_name,
-        isGuest: r.is_guest,
+        userName: r.userName,
+        isGuest: r.isGuest,
         score: r.score,
         total: r.total,
         percentage: r.total > 0 ? Math.round((r.score / r.total) * 100) : 0,
-        submittedAt: r.submitted_at,
+        submittedAt: r.submittedAt,
       }))
 
     return NextResponse.json({
@@ -93,7 +106,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         passMark: pass_mark,
         triesAllowed: tries_allowed,
       },
-      recentAttempts: allAttempts,
+      recentAttempts,
     })
   } catch (err) {
     console.error("[analytics GET]", err)

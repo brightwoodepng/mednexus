@@ -366,20 +366,32 @@ export function AssessmentExamRunner({
     }
     const total = questions.length
     const percentage = total ? Math.round((score / total) * 100) : 0
+    const passed = percentage >= passMark
 
     clearSession(sessionKey)
 
-    try {
-      await fetch(`/api/assessments/${assessmentId}/attempt`, {
+    if (isGuest) {
+      // Guest flow: send an isolated analytics payload with no user-profile link.
+      // Fire-and-forget — a network failure must never block the results screen.
+      fetch(`/api/assessments/${assessmentId}/guest-analytics`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, userName, isGuest, answers: finalAnswers, score, total }),
-      })
-    } catch { /* swallow — result shown locally */ }
+        body: JSON.stringify({ guestName: userName, score, total, percentage, passed, timeTakenSecs: timeTaken }),
+      }).catch(() => { /* swallow */ })
+    } else {
+      // Registered-user flow: server validates tries and persists to the attempts table.
+      try {
+        await fetch(`/api/assessments/${assessmentId}/attempt`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, userName, isGuest: false, answers: finalAnswers, score, total }),
+        })
+      } catch { /* swallow — result shown locally */ }
+    }
 
     setSubmitted(true)
     setSubmitting(false)
-    onComplete({ score, total, percentage, passed: percentage >= passMark, answers: finalAnswers, questions, timeTaken })
+    onComplete({ score, total, percentage, passed, answers: finalAnswers, questions, timeTaken })
   }, [assessmentId, questions, userId, userName, isGuest, passMark, onComplete, sessionKey])
 
   // ── NO visibilitychange / beforeunload auto-submit ────────────────────────

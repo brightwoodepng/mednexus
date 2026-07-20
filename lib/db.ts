@@ -177,6 +177,24 @@ export async function ensureSchema() {
       equipped_avatar   TEXT,
       updated_at        TIMESTAMPTZ DEFAULT NOW()
     );
+
+    -- ── Guest analytics ──────────────────────────────────────────────────────
+    -- Stores a single score submission per guest attempt.
+    -- Intentionally has NO foreign-key relationship to any user profile table.
+    -- type is always 'guest'. Used only for admin reporting.
+    CREATE TABLE IF NOT EXISTS mednexus_guest_analytics (
+      id               TEXT        PRIMARY KEY,
+      assessment_id    TEXT        NOT NULL,
+      assessment_title TEXT        NOT NULL DEFAULT '',
+      guest_name       TEXT        NOT NULL,
+      type             TEXT        NOT NULL DEFAULT 'guest',
+      score            INTEGER     NOT NULL DEFAULT 0,
+      total            INTEGER     NOT NULL DEFAULT 0,
+      percentage       INTEGER     NOT NULL DEFAULT 0,
+      passed           BOOLEAN     NOT NULL DEFAULT false,
+      time_taken_secs  INTEGER,
+      submitted_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `)
 
   // ── Step 3: Idempotent migrations for existing databases ───────────────────
