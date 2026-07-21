@@ -2,14 +2,27 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useAdmin } from "@/contexts/admin-context"
-import type { AppNotification } from "@/lib/types"
+
+// ─── Unified item type ────────────────────────────────────────────────────────
+// Both admin broadcasts and personal notifications are normalised into this
+// shape before rendering.  `source` is used to route PATCH/DELETE calls to
+// the correct endpoint.
+interface OverlayItem {
+  id: string
+  title: string
+  body: string
+  /** Visual category — personal types fall back to info styling */
+  type: "info" | "update" | "alert" | "module_complete" | "discipline_mastery" | "qbank_milestone" | "streak" | "economy" | "store"
+  createdAt: string
+  isRead: boolean
+  source: "broadcast" | "personal"
+}
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 function BellIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
   )
 }
@@ -39,8 +52,7 @@ function RefreshIcon({ size = 16, className = "" }: { size?: number; className?:
 function TrashIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" />
-      <path d="M9 6V4h6v2" />
+      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
     </svg>
   )
 }
@@ -58,26 +70,69 @@ function CheckIcon({ size = 14, className = "" }: { size?: number; className?: s
     </svg>
   )
 }
+function TrophyIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+      <path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+    </svg>
+  )
+}
+function CheckCircleIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  )
+}
+function TrendingUpIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
+    </svg>
+  )
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-type NType = "info" | "update" | "alert"
+type ItemType = OverlayItem["type"]
 
-function typeIcon(type: NType, size = 16) {
-  if (type === "alert") return <AlertIcon size={size} className="text-amber-500" />
-  if (type === "update") return <RefreshIcon size={size} className="text-primary" />
+function typeIcon(type: ItemType, size = 16) {
+  if (type === "alert")             return <AlertIcon size={size} className="text-amber-500" />
+  if (type === "update")            return <RefreshIcon size={size} className="text-primary" />
+  if (type === "module_complete")   return <CheckCircleIcon size={size} className="text-emerald-600" />
+  if (type === "discipline_mastery")return <TrophyIcon size={size} className="text-violet-600" />
+  if (type === "qbank_milestone")   return <TrendingUpIcon size={size} className="text-sky-600" />
   return <InfoIcon size={size} className="text-sky-500" />
 }
 
-function typeBadgeClass(type: NType) {
-  if (type === "alert") return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-  if (type === "update") return "bg-primary/10 text-primary"
+function typeBadgeClass(type: ItemType) {
+  if (type === "alert")             return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+  if (type === "update")            return "bg-primary/10 text-primary"
+  if (type === "module_complete")   return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+  if (type === "discipline_mastery")return "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+  if (type === "qbank_milestone")   return "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
   return "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
 }
 
-function typeIconBg(type: NType) {
-  if (type === "alert") return "bg-amber-100 dark:bg-amber-900/30"
-  if (type === "update") return "bg-primary/10"
+function typeIconBg(type: ItemType) {
+  if (type === "alert")             return "bg-amber-100 dark:bg-amber-900/30"
+  if (type === "update")            return "bg-primary/10"
+  if (type === "module_complete")   return "bg-emerald-100 dark:bg-emerald-900/30"
+  if (type === "discipline_mastery")return "bg-violet-100 dark:bg-violet-900/30"
+  if (type === "qbank_milestone")   return "bg-sky-100 dark:bg-sky-900/30"
   return "bg-sky-100 dark:bg-sky-900/30"
+}
+
+function typeBadgeLabel(type: ItemType) {
+  if (type === "module_complete")    return "module"
+  if (type === "discipline_mastery") return "mastery"
+  if (type === "qbank_milestone")    return "milestone"
+  if (type === "streak")             return "streak"
+  if (type === "economy")            return "economy"
+  if (type === "store")              return "store"
+  return type
 }
 
 function fmtTime(iso: string) {
@@ -93,29 +148,46 @@ function fmtTime(iso: string) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
 }
 
+/** Read the stored auth token from localStorage (same keys as app-context). */
+function getStoredAuthHeader(): { key: string; value: string } | null {
+  if (typeof window === "undefined") return null
+  try {
+    const guestToken = localStorage.getItem("mednexus-guest-token")
+    if (guestToken) return { key: "x-guest-token", value: guestToken }
+    const userToken = localStorage.getItem("mednexus-user-token")
+    if (userToken) return { key: "x-session-token", value: userToken }
+  } catch { /* ignore */ }
+  return null
+}
+
 // ─── Notification Row ─────────────────────────────────────────────────────────
 function NotificationRow({
-  n,
+  item,
   onMarkRead,
   onDelete,
 }: {
-  n: AppNotification
-  onMarkRead: (id: string) => void
-  onDelete: (id: string) => void
+  item: OverlayItem
+  onMarkRead: (id: string, source: OverlayItem["source"]) => void
+  onDelete: (id: string, source: OverlayItem["source"]) => void
 }) {
   const [deleting, setDeleting] = useState(false)
   const [marking, setMarking] = useState(false)
 
   async function handleMarkRead() {
-    if (n.isRead || marking) return
+    if (item.isRead || marking) return
     setMarking(true)
+    const endpoint = item.source === "personal" ? "/api/user-notifications" : "/api/notifications"
+    const authHeader = item.source === "personal" ? getStoredAuthHeader() : null
     try {
-      await fetch("/api/notifications", {
+      await fetch(endpoint, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: n.id }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+        },
+        body: JSON.stringify({ id: item.id }),
       })
-      onMarkRead(n.id)
+      onMarkRead(item.id, item.source)
     } finally {
       setMarking(false)
     }
@@ -125,13 +197,18 @@ function NotificationRow({
     e.stopPropagation()
     if (deleting) return
     setDeleting(true)
+    const endpoint = item.source === "personal" ? "/api/user-notifications" : "/api/notifications"
+    const authHeader = item.source === "personal" ? getStoredAuthHeader() : null
     try {
-      await fetch("/api/notifications", {
+      await fetch(endpoint, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: n.id }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+        },
+        body: JSON.stringify({ id: item.id }),
       })
-      onDelete(n.id)
+      onDelete(item.id, item.source)
     } catch {
       setDeleting(false)
     }
@@ -141,36 +218,38 @@ function NotificationRow({
     <div
       onClick={handleMarkRead}
       className={`group relative flex items-start gap-4 rounded-2xl px-4 py-4 transition-all duration-200 ${
-        n.isRead
+        item.isRead
           ? "bg-transparent hover:bg-muted/40 cursor-default"
           : "bg-blue-50/70 dark:bg-blue-950/30 ring-1 ring-blue-200/60 dark:ring-blue-800/40 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/50"
       } ${deleting ? "opacity-0 scale-95 pointer-events-none" : ""}`}
       style={{ transition: deleting ? "opacity 200ms, transform 200ms" : undefined }}
     >
       {/* Unread dot */}
-      {!n.isRead && (
+      {!item.isRead && (
         <span className="absolute left-1.5 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-blue-500 shrink-0" />
       )}
 
       {/* Type icon */}
-      <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${typeIconBg(n.type as NType)} ${!n.isRead ? "ml-1" : ""}`}>
-        {typeIcon(n.type as NType, 16)}
+      <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${typeIconBg(item.type)} ${!item.isRead ? "ml-1" : ""}`}>
+        {typeIcon(item.type, 16)}
       </div>
 
       {/* Content */}
       <div className="min-w-0 flex-1">
-        <p className={`text-sm leading-snug ${n.isRead ? "font-medium text-foreground/70" : "font-bold text-foreground"}`}>
-          {n.title}
+        <p className={`text-sm leading-snug ${item.isRead ? "font-medium text-foreground/70" : "font-bold text-foreground"}`}>
+          {item.title}
         </p>
-        <p className={`mt-1 text-xs leading-relaxed ${n.isRead ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
-          {n.body}
-        </p>
+        {item.body && item.body !== item.title && (
+          <p className={`mt-1 text-xs leading-relaxed ${item.isRead ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
+            {item.body}
+          </p>
+        )}
         <div className="mt-2 flex items-center gap-2 flex-wrap">
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${typeBadgeClass(n.type as NType)}`}>
-            {n.type}
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${typeBadgeClass(item.type)}`}>
+            {typeBadgeLabel(item.type)}
           </span>
-          <span className="text-[10px] text-muted-foreground">{fmtTime(n.createdAt)}</span>
-          {n.isRead && (
+          <span className="text-[10px] text-muted-foreground">{fmtTime(item.createdAt)}</span>
+          {item.isRead && (
             <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
               <CheckIcon size={9} />
               Read
@@ -181,7 +260,7 @@ function NotificationRow({
 
       {/* Actions */}
       <div className="flex shrink-0 items-center gap-1 self-start pt-0.5">
-        {!n.isRead && (
+        {!item.isRead && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); handleMarkRead() }}
@@ -206,38 +285,60 @@ function NotificationRow({
   )
 }
 
-// ─── Overlay ─────────────────────────────────────────────────────────────────
+// ─── Normalise raw API responses into OverlayItem ─────────────────────────────
+
+function normaliseBroadcast(r: {
+  id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string
+}): OverlayItem {
+  return {
+    id: r.id,
+    title: r.title,
+    body: r.body,
+    type: r.type as OverlayItem["type"],
+    createdAt: r.createdAt,
+    isRead: r.isRead,
+    source: "broadcast",
+  }
+}
+
+const PERSONAL_TYPE_LABELS: Record<string, string> = {
+  module_complete:    "Module Complete",
+  discipline_mastery: "Discipline Mastered",
+  qbank_milestone:    "Q-Bank Milestone",
+  streak:             "Streak Reward",
+  economy:            "Nexus Points",
+  store:              "Store Update",
+}
+
+function normalisePersonal(r: {
+  id: string; type: string; message: string; isRead: boolean; createdAt: string
+}): OverlayItem {
+  const title = PERSONAL_TYPE_LABELS[r.type] ?? "Notification"
+  return {
+    id: r.id,
+    title,
+    body: r.message,
+    type: r.type as OverlayItem["type"],
+    createdAt: r.createdAt,
+    isRead: r.isRead,
+    source: "personal",
+  }
+}
+
+// ─── Overlay ──────────────────────────────────────────────────────────────────
 interface NotificationOverlayProps {
   open: boolean
   onClose: () => void
-  /** Called after the overlay fetches fresh data, so the bell badge can sync. */
   onUnreadCountChange?: (count: number) => void
 }
 
 export function NotificationOverlay({ open, onClose, onUnreadCountChange }: NotificationOverlayProps) {
   const { adminToken } = useAdmin()
-  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [items, setItems] = useState<OverlayItem[]>([])
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all")
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const headers: Record<string, string> = {}
-      if (adminToken) headers["x-admin-token"] = adminToken
-      const res = await fetch("/api/notifications", { cache: "no-store", headers })
-      if (res.ok) {
-        const data = await res.json()
-        const list: AppNotification[] = data.notifications ?? []
-        setNotifications(list)
-        onUnreadCountChange?.(list.filter((n) => !n.isRead).length)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [adminToken, onUnreadCountChange])
-
-  // Fetch fresh data and mark all unread as read each time the overlay opens
+  // Fetch both feeds and merge, newest first
   useEffect(() => {
     if (!open) return
     setFilter("all")
@@ -246,32 +347,62 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
     ;(async () => {
       setLoading(true)
       try {
-        const headers: Record<string, string> = {}
-        if (adminToken) headers["x-admin-token"] = adminToken
-        const res = await fetch("/api/notifications", { cache: "no-store", headers })
-        if (!res.ok || cancelled) return
-        const data = await res.json()
-        const list: AppNotification[] = data.notifications ?? []
+        const broadcastHeaders: Record<string, string> = {}
+        if (adminToken) broadcastHeaders["x-admin-token"] = adminToken
+
+        const authHeader = getStoredAuthHeader()
+        const personalHeaders: Record<string, string> = {}
+        if (authHeader) personalHeaders[authHeader.key] = authHeader.value
+
+        const [broadcastRes, personalRes] = await Promise.all([
+          fetch("/api/notifications", { cache: "no-store", headers: broadcastHeaders }),
+          fetch("/api/user-notifications", { cache: "no-store", headers: personalHeaders }),
+        ])
+
         if (cancelled) return
-        setNotifications(list)
+
+        const broadcastData = broadcastRes.ok ? await broadcastRes.json() : { notifications: [] }
+        const personalData  = personalRes.ok  ? await personalRes.json()  : { notifications: [] }
+
+        const broadcasts: OverlayItem[] = (broadcastData.notifications ?? []).map(normaliseBroadcast)
+        const personal: OverlayItem[]   = (personalData.notifications ?? []).map(normalisePersonal)
+
+        // Merge and sort newest first
+        const merged = [...broadcasts, ...personal].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+
+        if (cancelled) return
+        setItems(merged)
 
         // Mark all unread as read on the server
-        const unread = list.filter((n) => !n.isRead)
-        if (unread.length > 0) {
-          await Promise.all(
-            unread.map((n) =>
-              fetch("/api/notifications", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: n.id }),
-              })
-            )
-          )
-          if (!cancelled) {
-            setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
-            onUnreadCountChange?.(0)
-          }
-        } else {
+        const unreadBroadcasts = broadcasts.filter((n) => !n.isRead)
+        const unreadPersonal   = personal.filter((n) => !n.isRead)
+
+        const markPromises: Promise<unknown>[] = [
+          ...unreadBroadcasts.map((n) =>
+            fetch("/api/notifications", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: n.id }),
+            }),
+          ),
+          ...unreadPersonal.map((n) =>
+            fetch("/api/user-notifications", {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+              },
+              body: JSON.stringify({ id: n.id }),
+            }),
+          ),
+        ]
+
+        await Promise.all(markPromises)
+
+        if (!cancelled) {
+          setItems((prev) => prev.map((n) => ({ ...n, isRead: true })))
           onUnreadCountChange?.(0)
         }
       } finally {
@@ -282,32 +413,28 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
     return () => { cancelled = true }
   }, [open, adminToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Close on Escape
+  // Escape key closes
   useEffect(() => {
     if (!open) return
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose()
-    }
+    function handleKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
     window.addEventListener("keydown", handleKey)
     return () => window.removeEventListener("keydown", handleKey)
   }, [open, onClose])
 
   function handleMarkRead(id: string) {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)))
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)))
   }
 
   function handleDelete(id: string) {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    setItems((prev) => prev.filter((n) => n.id !== id))
   }
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length
+  const unreadCount = items.filter((n) => !n.isRead).length
 
   const displayed =
-    filter === "unread"
-      ? notifications.filter((n) => !n.isRead)
-      : filter === "read"
-      ? notifications.filter((n) => n.isRead)
-      : notifications
+    filter === "unread" ? items.filter((n) => !n.isRead)
+    : filter === "read"  ? items.filter((n) =>  n.isRead)
+    : items
 
   if (!open) return null
 
@@ -321,7 +448,7 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
       />
 
-      {/* Drawer panel — slides in from the right */}
+      {/* Drawer panel */}
       <div className="relative ml-auto flex h-full w-full max-w-sm flex-col bg-background shadow-2xl sm:max-w-md">
 
         {/* Header */}
@@ -336,7 +463,6 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
                 {loading ? "Loading…" : unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
               </p>
             </div>
-
             <button
               type="button"
               onClick={onClose}
@@ -353,20 +479,16 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
           <div className="flex gap-1 rounded-xl bg-muted/50 p-1">
             {(["all", "unread", "read"] as const).map((f) => {
               const count =
-                f === "all"
-                  ? notifications.length
-                  : f === "unread"
-                  ? notifications.filter((n) => !n.isRead).length
-                  : notifications.filter((n) => n.isRead).length
+                f === "all"    ? items.length
+                : f === "unread" ? items.filter((n) => !n.isRead).length
+                : items.filter((n) => n.isRead).length
               return (
                 <button
                   key={f}
                   type="button"
                   onClick={() => setFilter(f)}
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors capitalize ${
-                    filter === f
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                    filter === f ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {f}
@@ -395,19 +517,17 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
                 <BellIcon size={32} className="text-muted-foreground/40" />
               </div>
               <p className="text-sm font-medium text-muted-foreground">
-                {filter === "unread"
-                  ? "No unread notifications."
-                  : filter === "read"
-                  ? "No read notifications yet."
+                {filter === "unread" ? "No unread notifications."
+                  : filter === "read" ? "No read notifications yet."
                   : "No notifications yet."}
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
-              {displayed.map((n) => (
+              {displayed.map((item) => (
                 <NotificationRow
-                  key={n.id}
-                  n={n}
+                  key={item.id}
+                  item={item}
                   onMarkRead={handleMarkRead}
                   onDelete={handleDelete}
                 />

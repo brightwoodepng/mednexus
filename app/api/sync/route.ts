@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifySessionToken } from "@/lib/session-auth"
 import { verifyGuestToken } from "@/lib/guest-auth"
+import { triggerProgressionNotifications } from "@/lib/progression-notifications"
 
 async function getPgPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -107,6 +108,8 @@ export async function POST(req: NextRequest) {
            ON CONFLICT (uid) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
           [uid, JSON.stringify(progress)],
         )
+        // Fire progression notifications — awaited but internally catches all errors
+        await triggerProgressionNotifications(uid, progress, pool)
       }
       return NextResponse.json({ success: true })
     }
