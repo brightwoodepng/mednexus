@@ -265,7 +265,7 @@ function NavPanel({ questions, answers, flagged, currentIdx, answered, unanswere
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function AssessmentExamRunner({
   assessmentId, title, timeLimitMins, passMark, questions,
-  userName, userId, isGuest = false, onComplete,
+  userName, userId, isGuest = false, onComplete, onExit,
 }: Props) {
   const totalSecs = timeLimitMins * 60
   const sessionKey = makeSessionKey(assessmentId, userId)
