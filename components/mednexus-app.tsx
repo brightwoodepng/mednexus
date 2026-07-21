@@ -19,6 +19,7 @@ import { AppearanceModal } from "@/components/appearance-modal"
 import { QuestionEditor } from "@/components/question-editor"
 import { BroadcastScreen } from "@/components/broadcast-screen"
 import { LiveAssessmentsScreen } from "@/components/live-assessments-screen"
+import { LeaderboardScreen } from "@/components/leaderboard-screen"
 import { LiveAssessmentsAdmin } from "@/components/live-assessments-admin"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import { AdminUserManagement } from "@/components/admin-user-management"
@@ -607,6 +608,7 @@ export function MedNexusApp() {
             />
           )}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
+          {safeScreen === "leaderboard" && <LeaderboardScreen />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen />}
           {safeScreen === "live-assessments-admin" && isAdmin && <LiveAssessmentsAdmin />}
           {safeScreen === "user-management" && isAdmin && <AdminUserManagement />}
