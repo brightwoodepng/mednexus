@@ -263,7 +263,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
     return (
       <>
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
-          <div className="w-full max-w-sm text-center space-y-4">
+          <div className="w-full max-w-sm sm:max-w-md text-center space-y-4">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
               <AlertTriangleIcon size={28} />
             </div>
@@ -303,7 +303,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
     return (
       <>
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm space-y-5">
+        <div className="w-full max-w-sm sm:max-w-md space-y-5">
 
           {/* Score badge */}
           <div className="text-center">
@@ -407,7 +407,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
     return (
       <>
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm space-y-5">
+        <div className="w-full max-w-sm sm:max-w-md space-y-5">
           <div className="text-center">
             <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl text-4xl font-bold ${displayScore.passed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
               {displayScore.percentage}%
@@ -484,7 +484,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
   return (
     <>
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm space-y-6">
+      <div className="w-full max-w-sm sm:max-w-md space-y-6">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
             <StethoscopeIcon size={26} />

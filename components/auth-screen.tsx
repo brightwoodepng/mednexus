@@ -747,7 +747,7 @@ export function AuthScreen() {
         Theme
       </button>
 
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm sm:max-w-md">
         <Brand />
         {view === "role-select" && <RoleSelect onSelect={setView} glass={isGlassEnabled} />}
         {view === "guest" && <GuestForm onBack={() => setView("role-select")} />}

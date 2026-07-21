@@ -407,7 +407,7 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
       )}
 
       <div className="flex min-h-full flex-col items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md sm:max-w-lg">
           <div className="mb-6 text-center">
             <div className="mb-3 text-6xl">{emoji}</div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">{headline}</h1>
@@ -621,7 +621,7 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-8">
-      <div className="mx-auto w-full max-w-md">
+      <div className="mx-auto w-full max-w-md sm:max-w-lg">
         <div className="mb-6 text-center">
           <div className={`mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br ${mode.gradient} shadow-xl ${mode.shadow} text-4xl`}>
             {mode.icon}
@@ -777,7 +777,7 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6">
-      <div className="mx-auto w-full max-w-md">
+      <div className="mx-auto w-full max-w-md sm:max-w-2xl">
         <div className="mb-6 flex items-center justify-between gap-2">
           <div>
             <h1 className="text-lg font-extrabold tracking-tight text-foreground md:text-xl">Game Mode</h1>
