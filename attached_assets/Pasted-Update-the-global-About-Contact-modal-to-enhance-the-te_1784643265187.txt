@@ -1,0 +1,17 @@
+Update the global "About/Contact" modal to enhance the text content, add new informational features, fix color contrast issues, and implement specific WhatsApp routing links. Apply the following specific changes:
+
+Header Section: Left-align the layout. Use a teal background. Place the circular MedNexus logo on the left, with the white "MedNexus" title and light teal "Medical Study Platform" subtitle stacked directly beside it.
+
+Creator Card: Create a structured, outlined card. Include a teal circular avatar containing the letter "B", the bold title "Britechinc", and update the subtitle text to say "Built by a medical student, for medical students".
+
+Contact Section: Add a small, uppercase text label that says "CONTACT" directly above the contact cards.
+
+General WhatsApp Card: Use a very light mint green background, thin green border, and dark green text. Make this card a clickable link routing to [https://wa.me/233543982307](https://wa.me/233543982307).
+
+Support & Donations Card (Update): Use a light peach/orange background, thin orange border. The title must be bold and black. The body text must be dark gray. Absolutely do not use yellow text. Make this entire card a clickable link that routes to the following exact URL to pre-fill a support message: [https://wa.me/233543982307?text=Hi%20Britechinc,%20I%20want%20to%20support%20MedNexus](https://wa.me/233543982307?text=Hi%20Britechinc,%20I%20want%20to%20support%20MedNexus)
+
+Action Button: Change the text of the main button to "Continue Studying 📚".
+
+New Metadata & Legal Footer: Add a new, very small, centered gray text element directly below the "Continue Studying" button that says "Version 1.0.0 • Privacy Policy • Report an Issue".
+
+WhatsApp Bug Routing: Make the "Report an Issue" portion of the footer text a clickable link. It must route to the following exact URL to pre-fill a bug report message: [https://wa.me/233543982307?text=Hi%20Britechinc,%20I%20found%20a%20bug%20or%20I%20am%20experiencing%20some%20difficulty%20using%20MedNexus:%20](https://wa.me/233543982307?text=Hi%20Britechinc,%20I%20found%20a%20bug%20or%20I%20am%20experiencing%20some%20difficulty%20using%20MedNexus:%20)
