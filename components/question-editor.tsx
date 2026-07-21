@@ -10,7 +10,7 @@ import {
   TrashIcon, PencilIcon, PlusIcon, XIcon, CheckIcon, DatabaseIcon,
   RefreshCwIcon, AlertTriangleIcon, CheckSquareIcon, DownloadIcon,
   SearchIcon, ChevronDownIcon, ChevronRightIcon, LayersIcon, BookOpenIcon,
-  ArrowUpDownIcon, ImageIcon,
+  ArrowUpDownIcon, ImageIcon, ClipboardListIcon,
 } from "@/components/icons"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -985,9 +985,10 @@ interface QuestionEditorProps {
   pendingImport?: Question[] | null
   onPendingImportConsumed?: () => void
   onOpenImporter?: () => void
+  onOpenAssessments?: () => void
 }
 
-export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenImporter }: QuestionEditorProps = {}) {
+export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenImporter, onOpenAssessments }: QuestionEditorProps = {}) {
   const { questions, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb, appendQuestions, suppressNextAutoSave } = useQuestions()
   const { adminToken } = useAdmin()
 
@@ -1401,6 +1402,13 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
                 className="flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:text-emerald-400"
               >
                 <CheckIcon size={13} /> Make All Live ({totalDrafts})
+              </button>
+            )}
+            {onOpenAssessments && (
+              <button type="button" onClick={onOpenAssessments}
+                className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <ClipboardListIcon size={13} /> Assessments
               </button>
             )}
             <button type="button" onClick={onOpenImporter}

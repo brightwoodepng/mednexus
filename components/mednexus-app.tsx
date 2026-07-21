@@ -580,11 +580,11 @@ export function MedNexusApp() {
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {/* Study mode toggle — all screen sizes */}
             <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
-            {/* Theme / Appearance toggle — mobile only */}
+            {/* Theme / Appearance toggle */}
             <button
               type="button"
               onClick={() => setThemeOpen(true)}
-              className="md:hidden rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
               aria-label="Appearance"
             >
               <PaletteIcon size={20} />
@@ -605,6 +605,7 @@ export function MedNexusApp() {
               pendingImport={pendingEditorImport}
               onPendingImportConsumed={() => setPendingEditorImport(null)}
               onOpenImporter={() => setImporterOpen(true)}
+              onOpenAssessments={() => setScreen("live-assessments-admin")}
             />
           )}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
