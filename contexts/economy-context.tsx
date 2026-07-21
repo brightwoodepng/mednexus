@@ -37,6 +37,8 @@ export interface EconomyContextValue {
     isNewHigh: boolean
     survivedCount?: number
     lifelineUsed?: boolean
+    sessionData?: { questionId: string; discipline: string; isCorrect: boolean; currentStreak?: number }[]
+    examMeta?: { accuracy: number; correct: number; total: number; primaryDiscipline?: string }
   }) => Promise<{ earned: number; breakdown: { label: string; amount: number }[]; bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[] } | null>
 }
 
@@ -201,6 +203,10 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     mode: string; score: number; correct: number; total: number
     bestStreak: number; isNewHigh: boolean; survivedCount?: number
     lifelineUsed?: boolean
+    /** Per-question anti-farming data */
+    sessionData?: { questionId: string; discipline: string; isCorrect: boolean; currentStreak?: number }[]
+    /** Exam-mode bounty metadata */
+    examMeta?: { accuracy: number; correct: number; total: number; primaryDiscipline?: string }
   }) => {
     const uid = user?.uid
     if (!uid) return null

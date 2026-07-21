@@ -241,6 +241,8 @@ export interface BlockResult {
   percentage: number
   rank: ProficiencyRank
   timeTakenMs?: number
+  /** NP credited this session (set after payout resolves; undefined until then) */
+  earnedNP?: number
 }
 
 export type ProficiencyRank = "Expert" | "Proficient" | "Competent" | "Novice"

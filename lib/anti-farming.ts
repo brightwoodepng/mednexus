@@ -18,27 +18,35 @@ import pool from "@/lib/db"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface QuestionResult {
+/** Per-question input supplied by the quiz / game session */
+export interface SessionQuestionInput {
   questionId: string
   discipline:  string
   isCorrect:   boolean
-  /** Gross NP this question would earn before anti-farming checks */
-  baseNP:      number
+  /** Trial mode: consecutive correct answers INCLUDING this one (0 if not tracked) */
+  currentStreak?: number
+}
+
+/** Exam-mode completion metadata for the bounty calculator */
+export interface ExamMeta {
+  accuracy:           number   // 0-100 percentage
+  correct:            number
+  total:              number
+  /** Discipline used for the 7-day fatigue cap check */
+  primaryDiscipline?: string
 }
 
 export interface SessionNPResult {
-  /** NP approved for crediting after all anti-farming rules applied */
   totalNP: number
-  breakdown: {
-    questionId:   string
-    discipline:   string
-    baseNP:       number
-    awardedNP:    number
-    /** Reason NP was suppressed, or null if paid in full */
+  /** Ready-to-append payout-style breakdown entries */
+  breakdown: { label: string; amount: number }[]
+  fatiguedDisciplines: string[]
+  /** Per-question detail (trial mode only) */
+  perQuestion: {
+    questionId:       string
+    awardedNP:        number
     suppressedReason: "repeat_cap" | "discipline_fatigue" | null
   }[]
-  /** Disciplines that hit the fatigue ceiling during this session */
-  fatiguedDisciplines: string[]
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -83,35 +91,36 @@ function last7DaysStrings(): string[] {
 export async function calculateSessionNP(
   userId:      string,
   mode:        string,
-  sessionData: QuestionResult[],
+  sessionData: SessionQuestionInput[],
   client:      PoolClient,
+  examMeta?:   ExamMeta,
 ): Promise<SessionNPResult> {
-  const today    = todayStr()
-  const window7  = last7DaysStrings()
+  const today   = todayStr()
+  const window7 = last7DaysStrings()
 
-  // ── Load current correct-counts for all questions in this session ──────────
   const questionIds = sessionData.map((q) => q.questionId)
+  const disciplines = [...new Set(sessionData.map((q) => q.discipline))]
 
+  // ── Load correct-counts for all questions in this session ─────────────────
   const { rows: progressRows } = await client.query<{
-    question_id: string
-    correct_count: number
+    question_id: string; correct_count: number
   }>(
     `SELECT question_id, correct_count
        FROM mednexus_user_question_progress
       WHERE user_id = $1 AND question_id = ANY($2::text[])`,
     [userId, questionIds],
   )
-
   const correctCountMap = new Map<string, number>(
     progressRows.map((r) => [r.question_id, r.correct_count]),
   )
 
   // ── Load 7-day discipline NP totals ───────────────────────────────────────
-  const disciplines = [...new Set(sessionData.map((q) => q.discipline))]
+  const fatigueDiscs = mode === "exam" && examMeta?.primaryDiscipline
+    ? [examMeta.primaryDiscipline]
+    : disciplines
 
   const { rows: fatigueRows } = await client.query<{
-    discipline: string
-    total: string
+    discipline: string; total: string
   }>(
     `SELECT discipline, COALESCE(SUM(np_earned), 0)::text AS total
        FROM mednexus_discipline_np_log
@@ -119,90 +128,107 @@ export async function calculateSessionNP(
         AND discipline = ANY($2::text[])
         AND earned_date = ANY($3::text[])
       GROUP BY discipline`,
-    [userId, disciplines, window7],
+    [userId, fatigueDiscs, window7],
   )
-
-  // Running totals start from existing 7-day values; we'll add session amounts
   const disciplineRunningNP = new Map<string, number>(
     fatigueRows.map((r) => [r.discipline, parseInt(r.total, 10)]),
   )
 
-  // ── Evaluate each question ────────────────────────────────────────────────
-  const breakdown: SessionNPResult["breakdown"] = []
-  let totalNP = 0
-
-  // Track which question_ids need progress upserts and by how much
-  const correctIncrements = new Map<string, { discipline: string; delta: number }>()
-  // Track NP accumulated per discipline this session (for the log upsert)
+  // Always track correct-count increments (both modes, no NP implied)
+  const correctIncrements       = new Map<string, { discipline: string; delta: number }>()
   const disciplineNPThisSession = new Map<string, number>()
 
   for (const q of sessionData) {
-    if (!q.isCorrect || q.baseNP <= 0) {
-      breakdown.push({
-        questionId: q.questionId,
-        discipline: q.discipline,
-        baseNP: q.baseNP,
-        awardedNP: 0,
-        suppressedReason: null,
-      })
-      continue
-    }
-
-    // ── Rule 1: 3-Repeat Cap ──────────────────────────────────────────────
-    const correctCount = correctCountMap.get(q.questionId) ?? 0
-    if (correctCount >= REPEAT_CAP) {
-      breakdown.push({
-        questionId: q.questionId,
-        discipline: q.discipline,
-        baseNP: q.baseNP,
-        awardedNP: 0,
-        suppressedReason: "repeat_cap",
-      })
-      continue
-    }
-
-    // ── Rule 2: Discipline Fatigue ────────────────────────────────────────
-    const runningNP = disciplineRunningNP.get(q.discipline) ?? 0
-    if (runningNP >= DISCIPLINE_NP_LIMIT) {
-      breakdown.push({
-        questionId: q.questionId,
-        discipline: q.discipline,
-        baseNP: q.baseNP,
-        awardedNP: 0,
-        suppressedReason: "discipline_fatigue",
-      })
-      continue
-    }
-
-    // ── Approved — award NP ───────────────────────────────────────────────
-    totalNP += q.baseNP
-
-    // Update running maps so later questions in the same session see the
-    // accumulated state (prevents farming a discipline within one session)
-    correctCountMap.set(q.questionId, correctCount + 1)
-    disciplineRunningNP.set(q.discipline, runningNP + q.baseNP)
-
-    // Stage DB writes
+    if (!q.isCorrect) continue
     const prev = correctIncrements.get(q.questionId) ?? { discipline: q.discipline, delta: 0 }
     correctIncrements.set(q.questionId, { discipline: q.discipline, delta: prev.delta + 1 })
-
-    disciplineNPThisSession.set(
-      q.discipline,
-      (disciplineNPThisSession.get(q.discipline) ?? 0) + q.baseNP,
-    )
-
-    breakdown.push({
-      questionId: q.questionId,
-      discipline: q.discipline,
-      baseNP: q.baseNP,
-      awardedNP: q.baseNP,
-      suppressedReason: null,
-    })
   }
 
-  // ── Flush DB side-effects (still inside the caller's transaction) ─────────
+  // ── Mode-specific NP calculation ──────────────────────────────────────────
+  const perQuestion: SessionNPResult["perQuestion"] = []
+  const breakdown:   SessionNPResult["breakdown"]   = []
+  const fatiguedDisciplines: string[]               = []
+  let totalNP = 0
 
-  // Upsert correct-count increments
+  if (mode === "exam") {
+    // ── Exam: single completion bounty ────────────────────────────────────
+    if (examMeta) {
+      const { accuracy, correct, total, primaryDiscipline } = examMeta
+      const accuracyBonus =
+        accuracy > 90 ? 500 :
+        accuracy > 75 ? 250 :
+        accuracy > 50 ? 100 : 0
+      const bounty = 50 + accuracyBonus
+
+      const disc     = primaryDiscipline ?? disciplines[0] ?? ""
+      const runningNP = disciplineRunningNP.get(disc) ?? 0
+
+      if (disc && runningNP >= DISCIPLINE_NP_LIMIT) {
+        fatiguedDisciplines.push(disc)
+        breakdown.push({ label: "⚡ Discipline Fatigue — exam bounty suppressed", amount: 0 })
+      } else {
+        totalNP = bounty
+        breakdown.push({ label: `📋 Exam Completion (${correct}/${total} correct)`, amount: 50 })
+        if (accuracyBonus > 0) {
+          breakdown.push({ label: `🎯 Accuracy Bonus (${Math.round(accuracy)}%)`, amount: accuracyBonus })
+        }
+        if (disc) disciplineNPThisSession.set(disc, bounty)
+      }
+    }
+  } else {
+    // ── Trial: per-question NP with streak bonus ──────────────────────────
+    let repeatCappedCount = 0
+    let fatiguedCount     = 0
+
+    for (const q of sessionData) {
+      if (!q.isCorrect) {
+        perQuestion.push({ questionId: q.questionId, awardedNP: 0, suppressedReason: null })
+        continue
+      }
+
+      const streak      = q.currentStreak ?? 0
+      const streakBonus = streak > 10 ? 10 : streak > 3 ? 5 : 0
+      const baseNP      = 10 + streakBonus
+
+      // Rule 1: 3-repeat cap
+      const correctCount = correctCountMap.get(q.questionId) ?? 0
+      if (correctCount >= REPEAT_CAP) {
+        repeatCappedCount++
+        perQuestion.push({ questionId: q.questionId, awardedNP: 0, suppressedReason: "repeat_cap" })
+        continue
+      }
+
+      // Rule 2: Discipline fatigue
+      const runningNP = disciplineRunningNP.get(q.discipline) ?? 0
+      if (runningNP >= DISCIPLINE_NP_LIMIT) {
+        fatiguedCount++
+        if (!fatiguedDisciplines.includes(q.discipline)) fatiguedDisciplines.push(q.discipline)
+        perQuestion.push({ questionId: q.questionId, awardedNP: 0, suppressedReason: "discipline_fatigue" })
+        continue
+      }
+
+      // Approved
+      totalNP += baseNP
+      correctCountMap.set(q.questionId, correctCount + 1)
+      disciplineRunningNP.set(q.discipline, runningNP + baseNP)
+      disciplineNPThisSession.set(q.discipline, (disciplineNPThisSession.get(q.discipline) ?? 0) + baseNP)
+
+      perQuestion.push({ questionId: q.questionId, awardedNP: baseNP, suppressedReason: null })
+    }
+
+    const awardedCount = perQuestion.filter((p) => p.awardedNP > 0).length
+    if (totalNP > 0) {
+      breakdown.push({ label: `📚 Trial Session (${awardedCount} answered)`, amount: totalNP })
+    }
+    if (repeatCappedCount > 0) {
+      breakdown.push({ label: `🚫 Repeat Cap (${repeatCappedCount}q already mastered)`, amount: 0 })
+    }
+    if (fatiguedCount > 0) {
+      breakdown.push({ label: `⚡ Discipline Fatigue (${fatiguedCount}q over daily limit)`, amount: 0 })
+    }
+  }
+
+  // ── Flush correct-count increments ────────────────────────────────────────
   for (const [qId, { discipline, delta }] of correctIncrements) {
     await client.query(
       `INSERT INTO mednexus_user_question_progress
@@ -214,23 +240,19 @@ export async function calculateSessionNP(
     )
   }
 
-  // Upsert discipline NP log for today
+  // ── Flush discipline NP log for today ─────────────────────────────────────
   for (const [discipline, np] of disciplineNPThisSession) {
     await client.query(
       `INSERT INTO mednexus_discipline_np_log
          (user_id, discipline, earned_date, np_earned)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (user_id, discipline, earned_date) DO UPDATE
-         SET np_earned = mednexus_discipline_np_log.np_earned + $4`,
+         SET np_earned = mednexus_discipline_np_log.np_earned + EXCLUDED.np_earned`,
       [userId, discipline, today, np],
     )
   }
 
-  const fatiguedDisciplines = [...disciplineRunningNP.entries()]
-    .filter(([, total]) => total >= DISCIPLINE_NP_LIMIT)
-    .map(([d]) => d)
-
-  return { totalNP, breakdown, fatiguedDisciplines }
+  return { totalNP, breakdown, fatiguedDisciplines, perQuestion }
 }
 
 // ── Exam Session Lifecycle ─────────────────────────────────────────────────────

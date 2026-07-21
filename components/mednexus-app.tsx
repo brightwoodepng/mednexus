@@ -7,7 +7,7 @@ import { useStudyMode } from "@/contexts/study-mode-context"
 import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
 import { sortByUrgency } from "@/lib/srs"
 import type { Screen } from "@/lib/view"
-import type { QuizMode, BlockResult, Question, ExamScore } from "@/lib/types"
+import type { QuizMode, BlockResult, HistoryEntry, Question, ExamScore } from "@/lib/types"
 import { AuthScreen } from "@/components/auth-screen"
 import { Sidebar } from "@/components/sidebar"
 import { Dashboard } from "@/components/dashboard"
@@ -388,6 +388,7 @@ export function MedNexusApp() {
     mode: QuizMode
     questions: Question[]
     answers: Record<string, string | string[] | null>
+    earnedNP?: number
   } | null>(null)
 
   useEffect(() => {
@@ -486,7 +487,7 @@ export function MedNexusApp() {
     setScreen("quiz")
   }
 
-  function handleQuizComplete(result: BlockResult, history: HistoryEntry[]) {
+  function handleQuizComplete(result: BlockResult, history: HistoryEntry[], earnedNP?: number) {
     if (!activeQuiz) return
     if (activeQuiz.mode === "exam" && result.timeTakenMs !== undefined) {
       const score: ExamScore = {
@@ -514,6 +515,7 @@ export function MedNexusApp() {
       mode: activeQuiz.mode,
       questions: activeQuiz.questions,
       answers,
+      earnedNP,
     })
     setActiveQuiz(null)
     setScreen("results")
@@ -614,7 +616,7 @@ export function MedNexusApp() {
           {safeScreen === "store-cosmetics" && <NexusStoreCosmeticsPage onBack={() => setScreen("store")} />}
           {safeScreen === "store-vault" && <NexusStoreVaultPage onBack={() => setScreen("store")} />}
           {safeScreen === "results" && lastResult && (
-            <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />
+            <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />
           )}
         </main>
       </div>
