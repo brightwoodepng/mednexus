@@ -48,7 +48,7 @@ function UserIcon({ size = 22 }: { size?: number }) {
 const TABS = [
   { id: "dashboard",   label: "Home",        icon: HomeIcon,    screen: "dashboard"   as Screen },
   { id: "game",        label: "Game",        icon: GamepadIcon, screen: "game"        as Screen },
-  { id: "leaderboard", label: "Leaderboard", icon: TrophyIcon,  screen: "leaderboard" as Screen },
+  { id: "leaderboard", label: "Rank",        icon: TrophyIcon,  screen: "leaderboard" as Screen },
   { id: "profile",     label: "Profile",     icon: UserIcon,    screen: "profile"     as Screen },
 ] as const
 
@@ -113,7 +113,7 @@ export function BottomNav({ screen, onNavigate, hidden }: BottomNavProps) {
               >
                 {/* Icon */}
                 <span
-                  className={`flex h-[22px] w-[22px] items-center justify-center transition-colors duration-200 ${
+                  className={`flex h-5 w-5 items-center justify-center transition-colors duration-200 ${
                     isActive ? "text-primary" : "text-muted-foreground"
                   }`}
                 >
@@ -121,10 +121,10 @@ export function BottomNav({ screen, onNavigate, hidden }: BottomNavProps) {
                 </span>
                 {/* Label */}
                 <span
-                  className={`text-[10px] leading-none transition-colors duration-200 ${
+                  className={`text-[10px] font-semibold leading-none transition-colors duration-200 ${
                     isActive
                       ? "font-bold text-primary"
-                      : "font-semibold text-muted-foreground"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {tab.label}
