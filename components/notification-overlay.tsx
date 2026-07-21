@@ -12,7 +12,7 @@ interface OverlayItem {
   title: string
   body: string
   /** Visual category — personal types fall back to info styling */
-  type: "info" | "update" | "alert" | "module_complete" | "discipline_mastery" | "qbank_milestone" | "streak" | "economy" | "store"
+  type: "info" | "update" | "alert" | "module_complete" | "discipline_mastery" | "qbank_milestone" | "streak" | "economy" | "store" | "leaderboard"
   createdAt: string
   isRead: boolean
   source: "broadcast" | "personal"
@@ -94,6 +94,29 @@ function TrendingUpIcon({ size = 16, className = "" }: { size?: number; classNam
     </svg>
   )
 }
+function FireIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+    </svg>
+  )
+}
+function ShoppingCartIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+    </svg>
+  )
+}
+function CoinsIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="8" cy="8" r="6" /><path d="M18.09 10.37A6 6 0 1 1 10.34 18" />
+      <path d="M7 6h1v4" /><path d="m16.71 13.88.7.71-2.82 2.82" />
+    </svg>
+  )
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 type ItemType = OverlayItem["type"]
@@ -104,6 +127,10 @@ function typeIcon(type: ItemType, size = 16) {
   if (type === "module_complete")   return <CheckCircleIcon size={size} className="text-emerald-600" />
   if (type === "discipline_mastery")return <TrophyIcon size={size} className="text-violet-600" />
   if (type === "qbank_milestone")   return <TrendingUpIcon size={size} className="text-sky-600" />
+  if (type === "streak")            return <FireIcon size={size} className="text-orange-500" />
+  if (type === "leaderboard")       return <TrophyIcon size={size} className="text-yellow-500" />
+  if (type === "economy")           return <CoinsIcon size={size} className="text-green-600" />
+  if (type === "store")             return <ShoppingCartIcon size={size} className="text-purple-600" />
   return <InfoIcon size={size} className="text-sky-500" />
 }
 
@@ -113,6 +140,10 @@ function typeBadgeClass(type: ItemType) {
   if (type === "module_complete")   return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
   if (type === "discipline_mastery")return "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
   if (type === "qbank_milestone")   return "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+  if (type === "streak")            return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+  if (type === "leaderboard")       return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500"
+  if (type === "economy")           return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+  if (type === "store")             return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
   return "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
 }
 
@@ -122,6 +153,10 @@ function typeIconBg(type: ItemType) {
   if (type === "module_complete")   return "bg-emerald-100 dark:bg-emerald-900/30"
   if (type === "discipline_mastery")return "bg-violet-100 dark:bg-violet-900/30"
   if (type === "qbank_milestone")   return "bg-sky-100 dark:bg-sky-900/30"
+  if (type === "streak")            return "bg-orange-100 dark:bg-orange-900/30"
+  if (type === "leaderboard")       return "bg-yellow-100 dark:bg-yellow-900/30"
+  if (type === "economy")           return "bg-green-100 dark:bg-green-900/30"
+  if (type === "store")             return "bg-purple-100 dark:bg-purple-900/30"
   return "bg-sky-100 dark:bg-sky-900/30"
 }
 
@@ -130,7 +165,8 @@ function typeBadgeLabel(type: ItemType) {
   if (type === "discipline_mastery") return "mastery"
   if (type === "qbank_milestone")    return "milestone"
   if (type === "streak")             return "streak"
-  if (type === "economy")            return "economy"
+  if (type === "leaderboard")        return "leaderboard"
+  if (type === "economy")            return "nexus points"
   if (type === "store")              return "store"
   return type
 }
@@ -306,6 +342,7 @@ const PERSONAL_TYPE_LABELS: Record<string, string> = {
   discipline_mastery: "Discipline Mastered",
   qbank_milestone:    "Q-Bank Milestone",
   streak:             "Streak Reward",
+  leaderboard:        "Leaderboard",
   economy:            "Nexus Points",
   store:              "Store Update",
 }

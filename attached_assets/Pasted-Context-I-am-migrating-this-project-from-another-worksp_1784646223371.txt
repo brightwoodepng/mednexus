@@ -1,0 +1,36 @@
+Context: I am migrating this project from another workspace. The previous AI agent hit a rate limit while implementing a dual-feed notification system (Admin Broadcasts + Personal User Notifications) for this application.
+
+Step 1: Codebase Catch-Up & Verification
+Please review the following files to understand exactly where the previous agent left off. It was in the middle of wiring these up:
+
+lib/progression-notifications.ts (Core utility for academic progression)
+
+app/api/user-notifications/route.ts (API for fetching personal notifications)
+
+app/api/sync/route.ts (Where the progression utility is called on session sync)
+
+components/notification-overlay.tsx (Merging admin and personal feeds)
+
+components/notification-bell.tsx (Counting unread notifications for the badge)
+
+Check if notification-bell.tsx successfully counts both personal user notifications and admin broadcasts for its red badge, and that notification-overlay.tsx correctly merges them. If that logic is incomplete or broken, finish it now before proceeding.
+
+Step 2: Gamification & Economy Triggers
+Once the foundational dual-feed system is verified and working, utilize the backend utility (e.g., lib/progression-notifications.ts) to add automated alerts for the gamification economy, leaderboards, and store updates.
+
+Wire the utility to fire during these specific events:
+
+1. Economy & Streaks:
+
+Discipline Fatigue: When a user hits 1,000 NP in a single discipline for the week, insert: Type: 'economy' | Message: "⚠️ You've mastered [Discipline] for the week! Switch topics to keep earning NP."
+
+Streak Multipliers: When a user's currentStreak hits 3, 7, or 14 days, insert: Type: 'streak' | Message: "🔥 You are on a [X]-day streak! Keep it up to earn NP multipliers."
+
+NP Thresholds: When passing major NP milestones (e.g., 5,000 NP), insert: Type: 'economy' | Message: "💰 You just crossed [X] Nexus Points! Head to the store to see what you can unlock."
+
+2. Leaderboards:
+Run a check upon session completion. If a user enters the Top 3 of the Weekly Leaderboard, insert:
+Type: 'leaderboard' | Message: "🏆 You just broke into the Top 3 Weekly Scholars! Defend your rank!"
+
+3. UI Icon Mapping:
+Update notification-overlay.tsx to map these new specific type strings to distinct icons (e.g., a fire icon for 'streak', a trophy for 'leaderboard', a shopping cart for 'store_update', and a checkmark for 'module_complete').

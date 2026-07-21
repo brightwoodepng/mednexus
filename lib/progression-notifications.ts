@@ -1,7 +1,8 @@
 // ── Progression Notifications ──────────────────────────────────────────────────
 // Computes academic progress from a user's history and inserts one-shot
-// notification records for module completion, discipline mastery, and Q-Bank
-// milestones.  Every notification uses a deterministic ID, so
+// notification records for module completion, discipline mastery, Q-Bank
+// milestones, streak rewards, NP thresholds, discipline fatigue, and
+// leaderboard rank changes.  Every notification uses a deterministic ID, so
 // ON CONFLICT DO NOTHING makes each event fire exactly once.
 
 import type { Pool } from "pg"
@@ -15,6 +16,27 @@ interface QuestionSummary {
 
 // Milestones in percentage of total Q-Bank answered (at least once)
 const QBANK_MILESTONES = [25, 50, 75, 100]
+
+// Streak day milestones that earn a notification
+const STREAK_MILESTONES = [3, 7, 14]
+
+// Total NP thresholds (lifetime wallet balance)
+const NP_MILESTONES = [5_000, 10_000, 25_000, 50_000, 100_000]
+
+// Minimum weekly NP in a single discipline before fatigue notification fires
+const DISCIPLINE_FATIGUE_THRESHOLD = 1_000
+
+/** Returns an ISO week key "YYYY-Www" to scope weekly notifications. */
+function isoWeekKey(date: Date): string {
+  const tmp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  // ISO week: Thursday of the current week determines the year
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7))
+  const year = tmp.getUTCFullYear()
+  const week = Math.ceil(
+    ((tmp.getTime() - Date.UTC(year, 0, 1)) / 86_400_000 + 1) / 7,
+  )
+  return `${year}-W${String(week).padStart(2, "0")}`
+}
 
 function slugify(str: string): string {
   return str
@@ -130,6 +152,82 @@ export async function triggerProgressionNotifications(
           })
         }
       }
+    }
+
+    // ── 4. Streak Milestones ───────────────────────────────────────────────
+    const currentStreak = (progress as { streak?: number }).streak ?? 0
+    for (const milestone of STREAK_MILESTONES) {
+      if (currentStreak >= milestone) {
+        toInsert.push({
+          id: `streak-milestone-${uid}-${milestone}`,
+          type: "streak",
+          message: `🔥 You are on a ${milestone}-day streak! Keep it up to earn NP multipliers.`,
+        })
+      }
+    }
+
+    // ── 5. NP Thresholds (wallet balance) ─────────────────────────────────
+    try {
+      const walletRes = await pool.query(
+        "SELECT balance FROM mednexus_wallet WHERE user_id = $1",
+        [uid],
+      )
+      const balance: number = Number(walletRes.rows[0]?.balance ?? 0)
+      for (const threshold of NP_MILESTONES) {
+        if (balance >= threshold) {
+          toInsert.push({
+            id: `np-threshold-${uid}-${threshold}`,
+            type: "economy",
+            message: `💰 You just crossed ${threshold.toLocaleString()} Nexus Points! Head to the store to see what you can unlock.`,
+          })
+        }
+      }
+    } catch {
+      // wallet table may not exist yet — skip silently
+    }
+
+    // ── 6. Discipline Fatigue ─────────────────────────────────────────────
+    // Fire once per ISO week per discipline to avoid repeat spam
+    const weekKey = isoWeekKey(new Date())
+    try {
+      const fatigueRes = await pool.query(
+        `SELECT discipline, SUM(np_earned) AS total_np
+         FROM mednexus_discipline_np_log
+         WHERE user_id = $1
+           AND earned_date >= NOW() - INTERVAL '7 days'
+         GROUP BY discipline
+         HAVING SUM(np_earned) >= $2`,
+        [uid, DISCIPLINE_FATIGUE_THRESHOLD],
+      )
+      for (const row of fatigueRes.rows) {
+        const disc = String(row.discipline)
+        toInsert.push({
+          id: `discipline-fatigue-${uid}-${slugify(disc)}-${weekKey}`,
+          type: "economy",
+          message: `⚠️ You've mastered ${disc} for the week! Switch topics to keep earning NP.`,
+        })
+      }
+    } catch {
+      // table may not exist yet — skip silently
+    }
+
+    // ── 7. Weekly Leaderboard Top 3 ───────────────────────────────────────
+    try {
+      const lbRes = await pool.query(
+        `SELECT user_id FROM mednexus_wallet ORDER BY balance DESC LIMIT 3`,
+      )
+      const isTop3 = lbRes.rows.some(
+        (r: { user_id: string }) => r.user_id === uid,
+      )
+      if (isTop3) {
+        toInsert.push({
+          id: `leaderboard-top3-${uid}-${weekKey}`,
+          type: "leaderboard",
+          message: `🏆 You just broke into the Top 3 Weekly Scholars! Defend your rank!`,
+        })
+      }
+    } catch {
+      // wallet table may not exist yet — skip silently
     }
 
     if (toInsert.length === 0) return
