@@ -12,15 +12,6 @@ function HomeIcon({ size = 22 }: { size?: number }) {
     </svg>
   )
 }
-function LayersIcon({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 2 7 12 12 22 7 12 2" />
-      <polyline points="2 17 12 22 22 17" />
-      <polyline points="2 12 12 17 22 12" />
-    </svg>
-  )
-}
 function TrophyIcon({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -56,7 +47,6 @@ function UserIcon({ size = 22 }: { size?: number }) {
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 const TABS = [
   { id: "dashboard",   label: "Home",        icon: HomeIcon,    screen: "dashboard"   as Screen },
-  { id: "modules",     label: "Modules",     icon: LayersIcon,  screen: "modules"     as Screen },
   { id: "game",        label: "Game",        icon: GamepadIcon, screen: "game"        as Screen },
   { id: "leaderboard", label: "Leaderboard", icon: TrophyIcon,  screen: "leaderboard" as Screen },
   { id: "profile",     label: "Profile",     icon: UserIcon,    screen: "profile"     as Screen },
@@ -67,7 +57,6 @@ type TabId = typeof TABS[number]["id"]
 /** Derive the canonical bottom-tab id from the current app screen. */
 function screenToTab(s: Screen): TabId | null {
   if (s === "dashboard")   return "dashboard"
-  if (s === "modules")     return "modules"
   if (s === "leaderboard") return "leaderboard"
   if (s === "game")        return "game"
   if (s === "profile")     return "profile"

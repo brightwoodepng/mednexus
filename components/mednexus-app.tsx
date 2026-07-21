@@ -665,6 +665,44 @@ export function MedNexusApp() {
               {/* Section: Quick Access */}
               <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Quick Access</p>
 
+              {/* Modules */}
+              <button
+                type="button"
+                onClick={() => { setScreen("modules"); setMobileDrawerOpen(false) }}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
+                    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                    <polyline points="2 17 12 22 22 17" />
+                    <polyline points="2 12 12 17 22 12" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground leading-tight">Modules</p>
+                  <p className="text-[11px] text-muted-foreground">Browse question bank</p>
+                </div>
+              </button>
+
+              {/* Weak Areas */}
+              <button
+                type="button"
+                onClick={() => { setScreen("weak-areas"); setMobileDrawerOpen(false) }}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground leading-tight">Weak Areas</p>
+                  <p className="text-[11px] text-muted-foreground">Focus on gaps</p>
+                </div>
+              </button>
+
               {/* Nexus Store */}
               <button
                 type="button"
@@ -719,12 +757,6 @@ export function MedNexusApp() {
                       <MegaphoneIcon size={16} />
                     </span>
                     <p className="text-sm font-semibold text-foreground">Broadcast</p>
-                  </button>
-                  <button type="button" onClick={() => { setScreen("live-assessments-admin"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                      <ClipboardListIcon size={16} />
-                    </span>
-                    <p className="text-sm font-semibold text-foreground">Assessments</p>
                   </button>
                 </>
               ) : (
