@@ -215,10 +215,27 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
   function handleRetake() {
     setResult(null)
     setShowReview(false)
-    // Preserve guestName so name-entry field is pre-filled
-    setGuestId("")
     setNameError("")
-    setPhase("name-entry")
+
+    if (guestName.trim()) {
+      // Name already known — skip the name-entry screen and go straight to the exam
+      const id = `guest-${guestName.trim().toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`
+      setGuestId(id)
+      const existing = loadAttempt(token)
+      saveAttempt(token, {
+        guestName: guestName.trim(),
+        guestId: id,
+        attemptCount: existing?.attemptCount ?? triesUsed,
+        triesAllowed: assessment?.triesAllowed ?? 1,
+        latestResult: existing?.latestResult,
+        highScore: existing?.highScore,
+        questions: existing?.questions,
+      })
+      setPhase("exam")
+    } else {
+      setGuestId("")
+      setPhase("name-entry")
+    }
   }
 
   const triesAllowed = assessment?.triesAllowed ?? 1

@@ -44,15 +44,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const registeredRows = Array.from(bestByUser.values())
 
     // ── Guest analytics ───────────────────────────────────────────────────────
-    // Each row is already one attempt — no deduplication needed (guests have no
-    // persistent identity so every row is a separate anonymous participant).
+    // Deduplicate guests by name — keep only their personal best score.
+    // Guests who take multiple tries would otherwise appear once per attempt.
     const guestRes = await pool.query(
       `SELECT guest_name AS user_name, true AS is_guest, score, total, submitted_at
        FROM mednexus_guest_analytics
        WHERE assessment_id = $1`,
       [id]
     )
-    const guestRows: { user_name: string; is_guest: boolean; score: number; total: number; submitted_at: string }[] = guestRes.rows
+    type GuestRow = { user_name: string; is_guest: boolean; score: number; total: number; submitted_at: string }
+    const bestByGuestName = guestRes.rows.reduce<Map<string, GuestRow>>((acc, row) => {
+      const existing = acc.get(row.user_name)
+      if (!existing || row.score > existing.score) acc.set(row.user_name, row)
+      return acc
+    }, new Map())
+    const guestRows: GuestRow[] = Array.from(bestByGuestName.values())
 
     // ── Merge for aggregated stats ────────────────────────────────────────────
     const allRows = [
