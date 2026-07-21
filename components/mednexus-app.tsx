@@ -614,7 +614,7 @@ export function MedNexusApp() {
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
           {safeScreen === "leaderboard" && <LeaderboardScreen />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen onExamActiveChange={setIsExamActive} />}
-          {safeScreen === "live-assessments-admin" && isAdmin && <LiveAssessmentsAdmin />}
+          {safeScreen === "live-assessments-admin" && isAdmin && <LiveAssessmentsAdmin onBack={() => setScreen("question-editor")} />}
           {safeScreen === "user-management" && isAdmin && <AdminUserManagement />}
           {safeScreen === "game" && <GameMode onExit={() => setScreen("dashboard")} onOpenStore={() => setScreen("store")} />}
           {safeScreen === "store" && <NexusStoreHub onNavigate={setScreen} />}

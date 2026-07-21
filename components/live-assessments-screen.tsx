@@ -168,12 +168,21 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
     setLoadingExam(asmt.id)
     try {
       const res = await fetch(`/api/assessments/${asmt.id}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      setActiveQuestions(data.questions ?? [])
+      const questions: Question[] = data.questions ?? []
+      if (questions.length === 0) {
+        alert("This assessment has no questions available yet. Please contact your instructor.")
+        return
+      }
+      setActiveQuestions(questions)
       setActiveAssessment(asmt)
       setPhase("exam")
-    } catch {
-      alert("Failed to load assessment. Please try again.")
+    } catch (err) {
+      const msg = err instanceof Error && err.message.startsWith("HTTP")
+        ? "Failed to load assessment (server error). Please try again."
+        : "Failed to load assessment. Please check your connection and try again."
+      alert(msg)
     } finally {
       setLoadingExam(null)
     }
