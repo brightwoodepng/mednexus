@@ -440,6 +440,16 @@ export function AssessmentExamRunner({
     <div className="fixed inset-0 z-50 flex flex-col bg-background overflow-hidden">
       {/* ── Header ── */}
       <div className="shrink-0 flex items-center gap-2 border-b border-border bg-card px-3 py-2.5">
+        {onExit && (
+          <button
+            type="button"
+            onClick={onExit}
+            title="Back to editor"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <ChevronLeftIcon size={16} />
+          </button>
+        )}
         <div className="flex-1 min-w-0">
           <p className="text-xs text-muted-foreground truncate">{userName} · {title}</p>
           <p className="text-sm font-semibold text-foreground">Q{currentIdx + 1}/{questions.length}</p>
