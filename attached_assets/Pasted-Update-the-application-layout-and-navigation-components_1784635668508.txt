@@ -1,0 +1,15 @@
+Update the application layout and navigation components with the following specific changes.
+
+CRITICAL ISOLATION REQUIREMENT: These updates must strictly apply ONLY to the mobile layout (e.g., using standard mobile breakpoints or updating mobile-only components). You must completely isolate these changes so they do not alter, break, or affect the desktop or main version of the application in any way.
+
+Module Library Search & Sort Consolidation: In the mobile Module Library view, optimize the vertical spacing by combining the search and sort elements. Transform the current "Starred First" (or similar sort) dropdown into a simple, obvious sort icon button. Reduce the width of the search input bar to allow this new sort icon to sit directly adjacent to it on the same horizontal row.
+
+Bottom Navigation Update: Replace the "Practice" tab with "Leaderboards" in the bottom navigation bar. Use a standard trophy or leaderboard icon, ensuring the active/inactive state styling perfectly matches the existing icons (Home, Modules, Game, Profile).
+
+Mobile Sidebar (Hamburger Menu) Overhaul: Redesign the mobile slide-out menu to look polished rather than raw. Add appropriate icons, balanced spacing, and refined typography for the "Nexus Store", "Live Assessments", and "Admin Login" items.
+
+Theme Toggle Placement: Place the Theme toggle directly inside this mobile slide-out sidebar menu. You must NOT place the Theme toggle in the top title bar.
+
+Active Quiz Screen Routing: Conditionally hide the mobile bottom navigation bar when a user is on the active quiz screen within "Live Assessments". The bottom nav must disappear to maximize screen real estate during a quiz and seamlessly reappear when the user finishes or exits the assessment.
+
+Strict Layout Preservation: While executing all of the above UI and navigation changes, you must strictly maintain the existing vertical layout structure and the exact module card heights on the main dashboard and library views. Do not alter the dimensions of the study module cards under any circumstances.

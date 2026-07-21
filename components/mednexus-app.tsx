@@ -42,6 +42,8 @@ import {
   DatabaseIcon,
   MegaphoneIcon,
   ClipboardListIcon,
+  RadioIcon,
+  TrophyIcon,
 } from "@/components/icons"
 import { BottomNav } from "@/components/bottom-nav"
 
@@ -372,6 +374,7 @@ export function MedNexusApp() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
+  const [isExamActive, setIsExamActive] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [adminLoginOpen, setAdminLoginOpen] = useState(false)
   const [importerOpen, setImporterOpen] = useState(false)
@@ -576,15 +579,15 @@ export function MedNexusApp() {
               <span className="truncate text-sm font-bold tracking-tight">MedNexus</span>
             </button>
           </div>
-          {/* Right: study mode toggle (desktop only) + theme toggle (mobile only) + bell */}
+          {/* Right: study mode toggle + theme toggle (desktop only) + bell */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {/* Study mode toggle — all screen sizes */}
             <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
-            {/* Theme / Appearance toggle */}
+            {/* Theme / Appearance toggle — desktop only; lives in mobile drawer */}
             <button
               type="button"
               onClick={() => setThemeOpen(true)}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              className="hidden md:flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
               aria-label="Appearance"
             >
               <PaletteIcon size={20} />
@@ -610,7 +613,7 @@ export function MedNexusApp() {
           )}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
           {safeScreen === "leaderboard" && <LeaderboardScreen />}
-          {safeScreen === "live-assessments" && <LiveAssessmentsScreen />}
+          {safeScreen === "live-assessments" && <LiveAssessmentsScreen onExamActiveChange={setIsExamActive} />}
           {safeScreen === "live-assessments-admin" && isAdmin && <LiveAssessmentsAdmin />}
           {safeScreen === "user-management" && isAdmin && <AdminUserManagement />}
           {safeScreen === "game" && <GameMode onExit={() => setScreen("dashboard")} onOpenStore={() => setScreen("store")} />}
@@ -624,21 +627,24 @@ export function MedNexusApp() {
         </main>
       </div>
 
-      {/* Mobile bottom navigation — hidden on md+ (sidebar takes over) */}
-      <BottomNav screen={safeScreen} onNavigate={setScreen} />
+      {/* Mobile bottom navigation — hidden on md+; also hidden during active assessment exam */}
+      <BottomNav screen={safeScreen} onNavigate={setScreen} hidden={isExamActive} />
 
       {/* Mobile slide-out drawer — md:hidden (opened by header hamburger) */}
       {mobileDrawerOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
+          {/* Scrim */}
           <button
             type="button"
             aria-label="Close menu"
             onClick={() => setMobileDrawerOpen(false)}
             className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
           />
-          <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] border-r border-border bg-card shadow-2xl animate-in slide-in-from-left duration-200 flex flex-col">
-            {/* Drawer header */}
-            <div className="flex items-center justify-between border-b border-border px-4 py-3 shrink-0">
+
+          <div className="absolute left-0 top-0 h-full w-72 max-w-[82%] bg-card shadow-2xl animate-in slide-in-from-left duration-200 flex flex-col">
+
+            {/* ── Header ── */}
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-border shrink-0">
               <div className="flex items-center gap-2">
                 <StethoscopeIcon size={16} className="text-primary" />
                 <span className="text-sm font-bold tracking-tight">MedNexus</span>
@@ -646,69 +652,114 @@ export function MedNexusApp() {
               <button
                 type="button"
                 onClick={() => setMobileDrawerOpen(false)}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
                 aria-label="Close"
               >
-                <XIcon size={18} />
+                <XIcon size={16} />
               </button>
             </div>
-            {/* Drawer links */}
-            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-0.5">
+
+            {/* ── Scrollable body ── */}
+            <div className="flex-1 overflow-y-auto py-3 px-3 flex flex-col gap-0.5">
+
+              {/* Section: Quick Access */}
+              <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Quick Access</p>
+
               {/* Nexus Store */}
               <button
                 type="button"
                 onClick={() => { setScreen("store"); setMobileDrawerOpen(false) }}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
               >
-                <StoreIcon size={18} />
-                Nexus Store
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <StoreIcon size={16} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground leading-tight">Nexus Store</p>
+                  <p className="text-[11px] text-muted-foreground">Items &amp; cosmetics</p>
+                </div>
               </button>
 
-              {/* Live Assessments — visible to all users */}
+              {/* Live Assessments */}
               <button
                 type="button"
                 onClick={() => { setScreen("live-assessments"); setMobileDrawerOpen(false) }}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}>
-                  <circle cx="12" cy="12" r="2" /><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" />
-                </svg>
-                Live Assessments
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <RadioIcon size={16} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground leading-tight">Live Assessments</p>
+                  <p className="text-[11px] text-muted-foreground">Join active exams</p>
+                </div>
               </button>
 
-              <div className="my-1.5 h-px bg-border mx-1" />
+              <div className="my-2 h-px bg-border mx-1" />
+
+              {/* Section: Admin */}
+              <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Admin</p>
 
               {isAdmin ? (
                 <>
-                  <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Admin</p>
-                  <button type="button" onClick={() => { setScreen("user-management"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    User Management
+                  <button type="button" onClick={() => { setScreen("user-management"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </span>
+                    <p className="text-sm font-semibold text-foreground">User Management</p>
                   </button>
-                  <button type="button" onClick={() => { setScreen("question-editor"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors">
-                    <DatabaseIcon size={18} />
-                    Question Editor
+                  <button type="button" onClick={() => { setScreen("question-editor"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                      <DatabaseIcon size={16} />
+                    </span>
+                    <p className="text-sm font-semibold text-foreground">Question Editor</p>
                   </button>
-                  <button type="button" onClick={() => { setScreen("broadcast"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors">
-                    <MegaphoneIcon size={18} />
-                    Broadcast
+                  <button type="button" onClick={() => { setScreen("broadcast"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                      <MegaphoneIcon size={16} />
+                    </span>
+                    <p className="text-sm font-semibold text-foreground">Broadcast</p>
                   </button>
-                  <button type="button" onClick={() => { setScreen("live-assessments-admin"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors">
-                    <ClipboardListIcon size={18} />
-                    Assessments
+                  <button type="button" onClick={() => { setScreen("live-assessments-admin"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      <ClipboardListIcon size={16} />
+                    </span>
+                    <p className="text-sm font-semibold text-foreground">Assessments</p>
                   </button>
                 </>
               ) : (
                 <button
                   type="button"
                   onClick={() => { setAdminLoginOpen(true); setMobileDrawerOpen(false) }}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
                 >
-                  <DatabaseIcon size={18} />
-                  Admin Login
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground leading-tight">Admin Login</p>
+                    <p className="text-[11px] text-muted-foreground">Access admin panel</p>
+                  </div>
                 </button>
               )}
             </div>
+
+            {/* ── Footer: Theme toggle ── */}
+            <div className="shrink-0 border-t border-border p-3">
+              <button
+                type="button"
+                onClick={() => { setThemeOpen(true); setMobileDrawerOpen(false) }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <PaletteIcon size={16} />
+                </span>
+                <p className="text-sm font-semibold text-foreground">Appearance</p>
+              </button>
+            </div>
+
           </div>
         </div>
       )}

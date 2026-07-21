@@ -76,7 +76,11 @@ function incrementGuestAttempts(assessmentId: string) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function LiveAssessmentsScreen() {
+interface LiveAssessmentsScreenProps {
+  onExamActiveChange?: (active: boolean) => void
+}
+
+export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScreenProps = {}) {
   const { user } = useApp()
   const isGuest = user?.role === "guest"
 
@@ -89,6 +93,18 @@ export function LiveAssessmentsScreen() {
   const [showReview, setShowReview] = useState(false)
   const [loadingExam, setLoadingExam] = useState<string | null>(null)
   const [storedResultIds, setStoredResultIds] = useState<Set<string>>(new Set())
+
+  // Notify parent when entering/leaving the full-screen exam so it can hide
+  // the mobile bottom nav bar during active quiz sessions.
+  useEffect(() => {
+    onExamActiveChange?.(phase === "exam")
+  }, [phase, onExamActiveChange])
+
+  // Always reset on unmount (e.g. user navigates away mid-exam)
+  useEffect(() => {
+    return () => { onExamActiveChange?.(false) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const fetchAssessments = useCallback(async () => {
     if (!user) return
