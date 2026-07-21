@@ -119,6 +119,10 @@ export async function ensureSchema() {
       status               TEXT    NOT NULL DEFAULT 'pending',
       must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
       otp_hash             TEXT,
+      is_private           BOOLEAN NOT NULL DEFAULT FALSE,
+      last_login_date      TIMESTAMPTZ,
+      longest_streak       INTEGER NOT NULL DEFAULT 0,
+      login_streak         INTEGER NOT NULL DEFAULT 0,
       created_at           TIMESTAMPTZ DEFAULT NOW()
     );
 
@@ -310,6 +314,10 @@ export async function ensureSchema() {
     -- longest_streak: all-time best consecutive-day login streak.
     ALTER TABLE mednexus_registered_users
       ADD COLUMN IF NOT EXISTS longest_streak INTEGER NOT NULL DEFAULT 0;
+
+    -- login_streak: current consecutive-day login streak (resets on miss).
+    ALTER TABLE mednexus_registered_users
+      ADD COLUMN IF NOT EXISTS login_streak INTEGER NOT NULL DEFAULT 0;
 
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();

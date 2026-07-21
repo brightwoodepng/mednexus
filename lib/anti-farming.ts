@@ -255,6 +255,162 @@ export async function calculateSessionNP(
   return { totalNP, breakdown, fatiguedDisciplines, perQuestion }
 }
 
+// ── Daily Login Reward ────────────────────────────────────────────────────────
+
+/**
+ * NP milestones awarded as a lump-sum bonus on top of the 25 NP base payout.
+ * Day 30+ resets to a 30-day cycle (30, 60, 90 …) to prevent infinite scaling.
+ */
+const LOGIN_MILESTONES: { day: number; bonus: number; label: string }[] = [
+  { day:  3, bonus:    50, label: "3-Day Streak"  },
+  { day:  7, bonus:   150, label: "7-Day Streak"  },
+  { day: 14, bonus:   300, label: "14-Day Streak" },
+  { day: 30, bonus: 1_000, label: "30-Day Streak" }, // repeats every 30 days
+]
+
+export interface DailyLoginResult {
+  /** True when the user already got their reward today — caller should no-op */
+  alreadyDone:   boolean
+  earned:        number
+  newStreak:     number
+  longestStreak: number
+  /** e.g. "7-Day Streak" when a milestone was hit, otherwise null */
+  milestoneName: string | null
+  breakdown:     { label: string; amount: number }[]
+}
+
+/**
+ * Awards daily login NP to a registered user.  Safe to call on every app open —
+ * it is idempotent within the same calendar day (UTC).
+ *
+ * Streak rules:
+ *   - Same calendar day  → no-op (alreadyDone: true)
+ *   - Previous calendar day → streak + 1
+ *   - 2+ calendar days ago  → streak resets to 1
+ *
+ * NP payout:
+ *   - Base: 25 NP always
+ *   - Milestone bonuses: Day 3 (+50), Day 7 (+150), Day 14 (+300), Day 30n (+1000)
+ */
+export async function processDailyLogin(userId: string): Promise<DailyLoginResult> {
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+
+    // ── Lock the user row to guard against concurrent calls ───────────────────
+    const { rows } = await client.query<{
+      login_streak:    number
+      longest_streak:  number
+      last_login_date: Date | null
+    }>(
+      `SELECT login_streak, longest_streak, last_login_date
+         FROM mednexus_registered_users
+        WHERE uid = $1
+        FOR UPDATE`,
+      [userId],
+    )
+
+    if (rows.length === 0) {
+      await client.query("ROLLBACK")
+      return { alreadyDone: true, earned: 0, newStreak: 0, longestStreak: 0, milestoneName: null, breakdown: [] }
+    }
+
+    const row       = rows[0]
+    const todayDate = new Date().toISOString().slice(0, 10) // YYYY-MM-DD UTC
+
+    // last_login_date stored as TIMESTAMPTZ; convert to date string for day comparison
+    const lastDate  = row.last_login_date
+      ? new Date(row.last_login_date).toISOString().slice(0, 10)
+      : null
+
+    // ── Same day → already rewarded ──────────────────────────────────────────
+    if (lastDate === todayDate) {
+      await client.query("ROLLBACK")
+      return {
+        alreadyDone: true, earned: 0,
+        newStreak: row.login_streak, longestStreak: row.longest_streak,
+        milestoneName: null, breakdown: [],
+      }
+    }
+
+    // ── Compute yesterday's date string (UTC) ─────────────────────────────────
+    const yest = new Date()
+    yest.setUTCDate(yest.getUTCDate() - 1)
+    const yesterdayDate = yest.toISOString().slice(0, 10)
+
+    const newStreak    = lastDate === yesterdayDate ? row.login_streak + 1 : 1
+    const newLongest   = Math.max(row.longest_streak, newStreak)
+
+    // ── NP calculation ────────────────────────────────────────────────────────
+    const breakdown: DailyLoginResult["breakdown"] = [
+      { label: "📅 Daily Login", amount: 25 },
+    ]
+    let earned        = 25
+    let milestoneName = null as string | null
+
+    // Check all milestones; for 30+ day cycle use modulo
+    for (const m of LOGIN_MILESTONES) {
+      const hit = m.day < 30
+        ? newStreak === m.day
+        : newStreak >= 30 && newStreak % 30 === 0 && (newStreak / 30) * 30 === newStreak
+
+      // For exact milestones below 30, just check equality
+      const exactHit = m.day < 30 ? newStreak === m.day : (newStreak >= 30 && newStreak % 30 === 0)
+
+      if (exactHit) {
+        const label = m.day >= 30 ? `${newStreak}-Day Streak` : m.label
+        breakdown.push({ label: `🔥 ${label} Milestone!`, amount: m.bonus })
+        earned        += m.bonus
+        milestoneName  = label
+        break // only one milestone per login
+      }
+    }
+
+    // ── Write: user streak counters ────────────────────────────────────────────
+    await client.query(
+      `UPDATE mednexus_registered_users
+          SET login_streak    = $1,
+              longest_streak  = $2,
+              last_login_date = NOW()
+        WHERE uid = $3`,
+      [newStreak, newLongest, userId],
+    )
+
+    // ── Write: credit wallet ───────────────────────────────────────────────────
+    await client.query(
+      `INSERT INTO mednexus_wallet (uid, balance, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (uid) DO UPDATE
+         SET balance    = mednexus_wallet.balance + $2,
+             updated_at = NOW()`,
+      [userId, earned],
+    )
+
+    // ── Write: user notification (deterministic ID = idempotent) ─────────────
+    const notifId     = `login-${userId}-${todayDate}`
+    const streakLabel = newStreak === 1 ? "Welcome back" : `Day ${newStreak} streak`
+    const message     = milestoneName
+      ? `${streakLabel} — ${milestoneName} milestone reached! +${earned} NP`
+      : `${streakLabel} — +${earned} NP for logging in today`
+
+    await client.query(
+      `INSERT INTO mednexus_user_notifications (id, user_id, type, message, is_read)
+       VALUES ($1, $2, 'streak', $3, FALSE)
+       ON CONFLICT (id) DO NOTHING`,
+      [notifId, userId, message],
+    )
+
+    await client.query("COMMIT")
+
+    return { alreadyDone: false, earned, newStreak, longestStreak: newLongest, milestoneName, breakdown }
+  } catch (err) {
+    await client.query("ROLLBACK")
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
 // ── Exam Session Lifecycle ─────────────────────────────────────────────────────
 
 /**
