@@ -10,7 +10,7 @@ import {
   TODAY_DATE,
   type GameResult,
 } from "@/lib/economy"
-import { calculateSessionNP, type QuestionResult } from "@/lib/anti-farming"
+import { calculateSessionNP } from "@/lib/anti-farming"
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
       // from calculatePayout is re-evaluated through calculateSessionNP so that
       // the 3-repeat cap and discipline fatigue rules are applied.
       sessionData,
+      // Exam-mode completion metadata for the bounty calculator
+      examMeta: bodyExamMeta,
     } = body
 
     if (!uid || !mode) return NextResponse.json({ error: "Missing fields" }, { status: 400 })
@@ -51,37 +53,25 @@ export async function POST(req: NextRequest) {
       const isGuest = uid.startsWith("guest-")
 
       if (!isGuest && Array.isArray(sessionData) && sessionData.length > 0) {
-        antiFarming = await calculateSessionNP(
-          uid,
-          mode,
-          sessionData as QuestionResult[],
-          client,
-        )
+        // Build exam-mode metadata from body fields (accuracy = score % for quiz mode)
+        const examMeta = mode === "exam" ? {
+          accuracy:          bodyExamMeta?.accuracy          ?? score,
+          correct:           bodyExamMeta?.correct           ?? correct,
+          total:             bodyExamMeta?.total             ?? total,
+          primaryDiscipline: bodyExamMeta?.primaryDiscipline ?? sessionData[0]?.discipline,
+        } : undefined
+
+        antiFarming = await calculateSessionNP(uid, mode, sessionData, client, examMeta)
 
         // Replace gross NP with the anti-farming-approved amount.
-        // The base breakdown is kept for display but we append suppression notes.
         earned = antiFarming.totalNP
 
-        const suppressedCount = antiFarming.breakdown.filter(
-          (b) => b.suppressedReason !== null,
-        ).length
-
-        if (suppressedCount > 0) {
-          const repeatCapped   = antiFarming.breakdown.filter((b) => b.suppressedReason === "repeat_cap").length
-          const fatiguedCapped = antiFarming.breakdown.filter((b) => b.suppressedReason === "discipline_fatigue").length
-
-          if (repeatCapped > 0) {
-            breakdown = [
-              ...breakdown,
-              { label: `🚫 Repeat Cap (${repeatCapped}q already mastered)`, amount: 0 },
-            ]
-          }
-          if (fatiguedCapped > 0) {
-            breakdown = [
-              ...breakdown,
-              { label: `⚡ Discipline Fatigue (${fatiguedCapped}q over daily limit)`, amount: 0 },
-            ]
-          }
+        // For exam mode the anti-farming breakdown IS the full breakdown; for
+        // trial mode we append the anti-farming notes to the game-mode breakdown.
+        if (mode === "exam") {
+          breakdown = antiFarming.breakdown
+        } else {
+          breakdown = [...breakdown, ...antiFarming.breakdown]
         }
       }
 

@@ -7,6 +7,7 @@
 - [User Auth Architecture](user-auth.md) — mednexus_registered_users table, index number auto-format/auto-approve, OTP reset via must_change_password flag, 3-role landing page
 - [Game Mode Architecture](game-mode-arch.md) — 7 modes: 5 solo (game-mode.tsx) + 2 multiplayer (game-mode-multiplayer.tsx); DB table mednexus_game_rooms; polling-based realtime at 1.5s intervals
 - [Virtual Economy Architecture](economy-arch.md) — Nexus Points wallet; DB tables mednexus_wallet/bounty_progress/user_inventory/user_cosmetics; payout server-side; EconomyProvider wraps app in page.tsx
+- [Quiz Mode NP Payouts](quiz-np-payouts.md) — Trial: 10 NP+streak bonus per correct via sessionDataRef in quiz-simulator; Exam: 50+accuracy bounty via await submitGameResult in submitBlock; earnedNP flows onComplete→lastResult→ResultsScreen
 - [Game Store Modal](game-store-modal.md) — GameStoreModal (components/game-store-modal.tsx) replaces StoreModal in game-mode.tsx; 3 tabs: Supply Closet/Vault/Cosmetics; cosmetics equip via /api/economy/cosmetics; equipped state stored in mednexus_user_cosmetics; cosmetics embedded in RoomPlayer at join/create time and rendered in PlayerRow + Leaderboard
 - [Wager Wars Architecture](wager-economy.md) — WagerHUD handles wager/question/reveal phases; balance clamp edge case when balance<10; score=balance in wager mode
 - [Double Jeopardy Multiplayer](djmulti-architecture.md) — mode id "djmulti" (not "double"); 500 bank; % presets; per-mode timers clash=45s/cohort=30s; review drawer in FinalResults

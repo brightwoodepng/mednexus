@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { BlockResult, ProficiencyRank, Question, QuizMode } from "@/lib/types"
 import { CheckIcon, XIcon, EyeOffIcon, TrophyIcon, RotateCcwIcon, LayoutDashboardIcon } from "@/components/icons"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
@@ -11,8 +11,28 @@ interface ResultsScreenProps {
   mode?: QuizMode
   questions?: Question[]
   answers?: Record<string, string | string[] | null>
+  earnedNP?: number
   onReturn: () => void
   onRetry: () => void
+}
+
+// ── Bounty counting animation (exam mode) ─────────────────────────────────────
+function BountyCountup({ target }: { target: number }) {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    if (target === 0) return
+    const steps    = 50
+    const duration = 1800
+    const interval = duration / steps
+    let step = 0
+    const t = setInterval(() => {
+      step++
+      setCount(Math.round((step / steps) * target))
+      if (step >= steps) clearInterval(t)
+    }, interval)
+    return () => clearInterval(t)
+  }, [target])
+  return <span className="tabular-nums">{count.toLocaleString()}</span>
 }
 
 const RANK_STYLES: Record<ProficiencyRank, { text: string; ring: string; blurb: string }> = {
@@ -22,7 +42,7 @@ const RANK_STYLES: Record<ProficiencyRank, { text: string; ring: string; blurb: 
   Novice: { text: "text-destructive", ring: "text-destructive", blurb: "Review the explanations and try again." },
 }
 
-export function ResultsScreen({ result, moduleName, mode, questions, answers, onReturn, onRetry }: ResultsScreenProps) {
+export function ResultsScreen({ result, moduleName, mode, questions, answers, earnedNP, onReturn, onRetry }: ResultsScreenProps) {
   const [showReview, setShowReview] = useState(false)
   const rankStyle = RANK_STYLES[result.rank]
   // SVG circle geometry for the score ring.
@@ -74,6 +94,18 @@ export function ResultsScreen({ result, moduleName, mode, questions, answers, on
         </div>
 
         <p className="mb-8 text-center text-sm text-muted-foreground text-pretty">{rankStyle.blurb}</p>
+
+        {/* Exam Bounty — counting animation */}
+        {mode === "exam" && earnedNP !== undefined && earnedNP > 0 && (
+          <div className="mb-6 w-full rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-900/20 p-5 text-center">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+              🏆 Bounty Earned
+            </p>
+            <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
+              +<BountyCountup target={earnedNP} /> NP
+            </p>
+          </div>
+        )}
 
         {/* Raw numbers */}
         <div className="mb-8 grid w-full grid-cols-3 gap-4">

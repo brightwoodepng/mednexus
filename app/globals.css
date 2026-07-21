@@ -1079,3 +1079,14 @@
   85%  { box-shadow: 0 0 12px 4px #39ff14bb, 0  5px 18px 6px #39ff1466, 0 -2px 9px  3px #39ff1444; }
   100% { box-shadow: 0 0 10px 3px #39ff1499, 0  2px 14px 5px #39ff1466, 0 -2px 8px  2px #39ff1433; }
 }
+
+/* ── NP float toast animation ───────────────────────────────────────────────── */
+@keyframes np-float {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0)     scale(1);    }
+  20%  { opacity: 1; transform: translateX(-50%) translateY(-14px) scale(1.12); }
+  80%  { opacity: 1; transform: translateX(-50%) translateY(-58px) scale(0.96); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-78px) scale(0.9);  }
+}
+.np-float-toast {
+  animation: np-float 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}

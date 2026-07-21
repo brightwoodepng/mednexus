@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { computeResult } from "@/lib/modules"
 import type { QuizMode, HistoryEntry, BlockResult, Question } from "@/lib/types"
@@ -25,6 +25,7 @@ import {
   PaletteIcon,
 } from "@/components/icons"
 import { AppearanceModal } from "@/components/appearance-modal"
+import { useEconomy } from "@/contexts/economy-context"
 
 interface QuizSimulatorProps {
   questions: Question[]   // pre-selected and shuffled by the caller
@@ -33,13 +34,43 @@ interface QuizSimulatorProps {
   /** Whether the user opted into gamification for this Trial Mode session */
   gamificationEnabled?: boolean
   onExit: () => void
-  onComplete: (result: BlockResult, history: HistoryEntry[]) => void
+  onComplete: (result: BlockResult, history: HistoryEntry[], earnedNP?: number) => void
 }
 
 const SECONDS_PER_QUESTION = 90
 
+// ── NP Float Toast ─────────────────────────────────────────────────────────────
+function NPFloatToast({
+  toast,
+  onDone,
+}: {
+  toast: { id: number; amount: number; capped: boolean }
+  onDone: () => void
+}) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 900)
+    return () => clearTimeout(t)
+  }, [toast.id, onDone])
+
+  return (
+    <div
+      className={`
+        fixed top-24 left-1/2 pointer-events-none z-[150]
+        np-float-toast
+        px-4 py-1.5 rounded-full text-sm font-bold shadow-lg select-none
+        ${toast.capped
+          ? "bg-muted text-muted-foreground border border-border"
+          : "bg-emerald-500 text-white"}
+      `}
+    >
+      {toast.capped ? "+0 NP · Cap Reached" : `+${toast.amount} NP`}
+    </div>
+  )
+}
+
 export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled = false, onExit, onComplete }: QuizSimulatorProps) {
-  const { progress, toggleFlag, recordHistory } = useApp()
+  const { user, progress, toggleFlag, recordHistory } = useApp()
+  const { submitGameResult } = useEconomy()
   const { triggerError, isShaking, isFlashing } = useErrorFeedback()
   // Dynamic Streak Engine — strictly Trial Mode + gamification opt-in. Dormant otherwise.
   const streakEngine = useStreakEngine(questions.length, mode === "trial" && gamificationEnabled)
@@ -55,6 +86,16 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const [focusNavOpen, setFocusNavOpen] = useState(false)
   const [showGrandFinale, setShowGrandFinale] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
+  const [npToast, setNpToast] = useState<{ id: number; amount: number; capped: boolean } | null>(null)
+
+  // Per-question session data for anti-farming payout
+  const sessionDataRef   = useRef<{questionId:string;discipline:string;isCorrect:boolean;currentStreak:number}[]>([])
+  // Guard: ensure payout is called at most once per session
+  const payoutCalledRef  = useRef(false)
+  // Local streak tracking (for NP bonus calc; separate from streak engine state)
+  const currentStreakRef = useRef(0)
+  // Synced copy of streakEngine.bestStreak for use inside callbacks
+  const bestStreakRef    = useRef(0)
 
   const startedAt = useRef(Date.now())
   const finaleTriggeredRef = useRef(false)
@@ -77,6 +118,18 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const struckSet = current ? struck[current.id] ?? new Set<string>() : new Set<string>()
   const revealed = mode === "trial" && (isSATA ? isLocked : selected !== null)
 
+  // Repeat-cap estimate for NP toast (uses persisted history as proxy)
+  const repeatCapMap = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const entry of progress.history) {
+      if (entry.isCorrect) counts.set(entry.questionId, (counts.get(entry.questionId) ?? 0) + 1)
+    }
+    return counts
+  }, [progress.history])
+
+  // Keep bestStreakRef current so the Grand Finale payout sees the final value
+  useEffect(() => { bestStreakRef.current = streakEngine.bestStreak }, [streakEngine.bestStreak])
+
   function isAnswerCorrect(
     ans: string | string[] | null,
     correct: string | string[] | null,
@@ -90,7 +143,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     return ans === correct
   }
 
-  const submitBlock = useCallback(() => {
+  const submitBlock = useCallback(async () => {
     const timeTakenMs = Date.now() - startedAt.current
     const result: BlockResult = computeResult(questions, answers, timeTakenMs)
     const now = Date.now()
@@ -113,9 +166,56 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       recordHistory(history)
       historyRecordedRef.current = true
     }
-    onComplete(result, history)
+
+    // ── NP payout ──────────────────────────────────────────────────────────
+    let earnedNP: number | undefined
+    if (!payoutCalledRef.current && user?.uid && !user.uid.startsWith("guest-")) {
+      payoutCalledRef.current = true
+
+      if (mode === "exam") {
+        // Build session data from final submitted answers for anti-farming check
+        const examSessionData = questions.map((q) => ({
+          questionId: q.id,
+          discipline: q.subject,
+          isCorrect: isAnswerCorrect(answers[q.id] ?? null, q.correctAnswer ?? null),
+          currentStreak: 0,
+        }))
+        const primaryDiscipline = examSessionData[0]?.discipline ?? ""
+        try {
+          const data = await submitGameResult({
+            mode: "exam",
+            score: result.percentage,
+            correct: result.correct,
+            total: result.total,
+            bestStreak: 0,
+            isNewHigh: false,
+            sessionData: examSessionData,
+            examMeta: {
+              accuracy: result.percentage,
+              correct: result.correct,
+              total: result.total,
+              primaryDiscipline,
+            },
+          })
+          earnedNP = data?.earned ?? 0
+        } catch { /* ignore — balance refreshes on next load */ }
+      } else if (mode === "trial" && !gamificationEnabled) {
+        // Non-gamification trial: Grand Finale won't fire, so pay out here
+        submitGameResult({
+          mode: "trial",
+          score: result.percentage,
+          correct: result.correct,
+          total: result.total,
+          bestStreak: bestStreakRef.current,
+          isNewHigh: false,
+          sessionData: sessionDataRef.current,
+        }).catch(() => {/* ignore */})
+      }
+    }
+
+    onComplete(result, history, earnedNP)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questions, answers, mode, recordHistory, onComplete])
+  }, [questions, answers, mode, gamificationEnabled, recordHistory, onComplete, submitGameResult, user])
 
   // Exam timer
   useEffect(() => {
@@ -160,6 +260,32 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         historyRecordedRef.current = true
       }
       setShowGrandFinale(true)
+
+      // Fire-and-forget payout for trial+gamification path
+      if (!payoutCalledRef.current && user?.uid && !user.uid.startsWith("guest-")) {
+        payoutCalledRef.current = true
+        let correctCount = 0
+        for (const q of questions) {
+          const isSataQ = Array.isArray(q.correctAnswer) && (q.correctAnswer as string[]).length > 1
+          if (isSataQ) {
+            const sel = [...(sataSelections[q.id] ?? [])].sort()
+            const cor = [...(q.correctAnswer as string[])].sort()
+            if (sataLocked.has(q.id) && sel.length === cor.length && sel.every((v, i) => v === cor[i])) correctCount++
+          } else {
+            if (answers[q.id] === (q.correctAnswer as string)) correctCount++
+          }
+        }
+        const acc = Math.round((correctCount / questions.length) * 100)
+        submitGameResult({
+          mode: "trial",
+          score: acc,
+          correct: correctCount,
+          total: questions.length,
+          bestStreak: bestStreakRef.current,
+          isNewHigh: false,
+          sessionData: sessionDataRef.current,
+        }).catch(() => {/* ignore */})
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [answers, sataLocked])
@@ -187,11 +313,31 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     if (struckSet.has(optionId)) return
     if (mode === "trial" && selected !== null) return
     setAnswers(prev => ({ ...prev, [current.id]: optionId }))
-    // Error feedback + Streak Engine: explicitly gated on Trial mode + gamification opt-in
-    if (mode === "trial" && gamificationEnabled) {
+
+    // ── Trial mode: session tracking + gamification feedback ─────────────────
+    if (mode === "trial") {
       const isCorrect = optionId === (current.correctAnswer as string)
-      if (!isCorrect) triggerError()
-      streakEngine.recordAnswer(isCorrect)
+      const newStreak = isCorrect ? currentStreakRef.current + 1 : 0
+      currentStreakRef.current = newStreak
+
+      // Accumulate per-question data for anti-farming payout (all trial sessions)
+      if (!sessionDataRef.current.some((d) => d.questionId === current.id)) {
+        sessionDataRef.current.push({
+          questionId: current.id, discipline: current.subject, isCorrect, currentStreak: newStreak,
+        })
+      }
+
+      if (gamificationEnabled) {
+        if (!isCorrect) triggerError()
+        streakEngine.recordAnswer(isCorrect)
+        // NP toast on correct answer
+        if (isCorrect) {
+          const capCount = repeatCapMap.get(current.id) ?? 0
+          const isCapped = capCount >= 3
+          const bonus    = !isCapped && newStreak > 10 ? 10 : !isCapped && newStreak > 3 ? 5 : 0
+          setNpToast({ id: Date.now(), amount: isCapped ? 0 : 10 + bonus, capped: isCapped })
+        }
+      }
     }
   }
 
@@ -199,13 +345,31 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     if (!isSATA || isLocked || sataSelected.length === 0) return
     setAnswers(prev => ({ ...prev, [current.id]: sataSelected }))
     setSataLocked(prev => { const n = new Set(prev); n.add(current.id); return n })
-    // Error feedback + Streak Engine for SATA: explicitly gated on Trial mode + gamification opt-in
-    if (mode === "trial" && gamificationEnabled) {
+
+    // ── Trial mode: session tracking + gamification feedback (SATA) ──────────
+    if (mode === "trial") {
       const ca = [...sataCorrectAnswers].sort()
       const sa = [...sataSelected].sort()
-      const correct = ca.length === sa.length && ca.every((c, i) => c === sa[i])
-      if (!correct) triggerError()
-      streakEngine.recordAnswer(correct)
+      const correct   = ca.length === sa.length && ca.every((c, i) => c === sa[i])
+      const newStreak = correct ? currentStreakRef.current + 1 : 0
+      currentStreakRef.current = newStreak
+
+      if (!sessionDataRef.current.some((d) => d.questionId === current.id)) {
+        sessionDataRef.current.push({
+          questionId: current.id, discipline: current.subject, isCorrect: correct, currentStreak: newStreak,
+        })
+      }
+
+      if (gamificationEnabled) {
+        if (!correct) triggerError()
+        streakEngine.recordAnswer(correct)
+        if (correct) {
+          const capCount = repeatCapMap.get(current.id) ?? 0
+          const isCapped = capCount >= 3
+          const bonus    = !isCapped && newStreak > 10 ? 10 : !isCapped && newStreak > 3 ? 5 : 0
+          setNpToast({ id: Date.now(), amount: isCapped ? 0 : 10 + bonus, capped: isCapped })
+        }
+      }
     }
   }
 
@@ -266,8 +430,11 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   // Resets all quiz state so the user can replay the same question pool.
   function handleRetry() {
     setShowGrandFinale(false)
-    finaleTriggeredRef.current = false
-    historyRecordedRef.current = false
+    finaleTriggeredRef.current  = false
+    historyRecordedRef.current  = false
+    payoutCalledRef.current     = false
+    sessionDataRef.current      = []
+    currentStreakRef.current    = 0
     setIndex(0)
     setAnswers({})
     setStruck({})
@@ -282,6 +449,11 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     <div className="fixed inset-0 z-[60] flex flex-col bg-background md:relative md:inset-auto md:z-auto md:h-full">
       {/* Dynamic Streak Engine cheer — Trial Mode + gamification only, dormant otherwise */}
       <StreakCheer event={streakEngine.cheerEvent} onDone={streakEngine.clearCheer} />
+
+      {/* NP float toast — Trial Mode + gamification only */}
+      {npToast && gamificationEnabled && (
+        <NPFloatToast key={npToast.id} toast={npToast} onDone={() => setNpToast(null)} />
+      )}
 
       {/* Grand Finale — intercepts session end, Trial Mode + gamification only */}
       {showGrandFinale && (
@@ -358,7 +530,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             {mode === "trial" ? "Tutor" : "Exam"}
           </span>
           {milestoneTier > 0 && (
-            <MilestoneTag key={milestoneTier} tier={milestoneTier} />
+            <MilestoneTag key={milestoneTier} tier={milestoneTier as 1 | 2 | 3} />
           )}
         </div>
       </header>
@@ -383,7 +555,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             {mode === "trial" ? "Tutor" : "Exam"}
           </span>
           {milestoneTier > 0 && (
-            <MilestoneTag key={milestoneTier} tier={milestoneTier} />
+            <MilestoneTag key={milestoneTier} tier={milestoneTier as 1 | 2 | 3} />
           )}
         </div>
 
