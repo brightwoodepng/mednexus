@@ -14,3 +14,4 @@
 - [Docx Import Pipeline](docx-import.md) — chunking orchestrator in word-import-modal; anti-hallucination: discipline="" unless explicit DISCIPLINE: tag; module from tag>fallbackModule>Uncategorized; regex fallback must track active tags statefully across blocks
 - [Universal Importer/Exporter](universal-importer.md) — Admin sidebar modal; 4 import flows (JSON/DOCX/PDF/text); preview staging before editor; mediaBase64 field on Question type propagated through both API routes
 - [Visual Layer Architecture](visual-layers.md) — 3-layer stack: ThematicCanvas (z:-10 fixed), GlassCard (gc-glass/gc-solid CSS), children (always opaque); light-dark() CSS for dark/light aware styles
+- [Daily Login Reward System](daily-login-arch.md) — processDailyLogin in anti-farming.ts; POST /api/economy/daily-login; EconomyProvider fires once on uid mount; dailyLoginReward banner in Dashboard

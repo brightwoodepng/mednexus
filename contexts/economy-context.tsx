@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react"
 import type { BountyDef, StoreItem } from "@/lib/economy"
+import type { DailyLoginResult } from "@/lib/anti-farming"
 import { useApp } from "@/contexts/app-context"
 
 export interface BountyWithProgress extends BountyDef {
@@ -22,6 +23,9 @@ export interface EconomyContextValue {
   inventory: Record<string, number>
   equippedCosmetics: EquippedCosmetics
   loading: boolean
+  /** Non-null (and alreadyDone === false) on the first app open of a new calendar day */
+  dailyLoginReward: DailyLoginResult | null
+  clearDailyLoginReward: () => void
   refresh: () => Promise<void>
   claimBounty: (bountyId: string) => Promise<{ ok: boolean; earned?: number; error?: string }>
   purchase: (itemId: string) => Promise<{ ok: boolean; error?: string }>
@@ -53,7 +57,10 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const [inventory, setInventory]                   = useState<Record<string, number>>({})
   const [equippedCosmetics, setEquippedCosmetics]   = useState<EquippedCosmetics>(DEFAULT_COSMETICS)
   const [loading, setLoading]                       = useState(false)
+  const [dailyLoginReward, setDailyLoginReward]     = useState<DailyLoginResult | null>(null)
   const initialized = useRef(false)
+
+  const clearDailyLoginReward = useCallback(() => setDailyLoginReward(null), [])
 
   const refresh = useCallback(async () => {
     const uid = user?.uid
@@ -81,6 +88,26 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     if (user?.uid && !initialized.current) {
       initialized.current = true
       refresh()
+
+      // Fire daily login for registered users (not guests).
+      // Idempotent — the server returns alreadyDone:true when called again today.
+      const isRegistered = !user.uid.startsWith("guest")
+      if (isRegistered) {
+        fetch("/api/economy/daily-login", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ uid: user.uid }),
+        })
+          .then((r) => r.json())
+          .then((data: DailyLoginResult) => {
+            if (!data.alreadyDone && data.earned > 0) {
+              // Update balance optimistically so the header reflects the award immediately
+              setBalance((prev) => prev + data.earned)
+              setDailyLoginReward(data)
+            }
+          })
+          .catch(() => { /* silent — non-critical */ })
+      }
     }
   }, [user?.uid, refresh])
 
@@ -235,6 +262,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   return (
     <EconomyContext.Provider value={{
       balance, bounties, inventory, equippedCosmetics, loading,
+      dailyLoginReward, clearDailyLoginReward,
       refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP, submitGameResult,
     }}>
       {children}

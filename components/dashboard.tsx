@@ -114,7 +114,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const { user, progress } = useApp()
   const { globalMode } = useStudyMode()
   const { isGlassEnabled } = useTheme()
-  const { equippedCosmetics } = useEconomy()
+  const { equippedCosmetics, dailyLoginReward, clearDailyLoginReward } = useEconomy()
   const greeting = useGreeting()
   const liveExams = useLiveAssessments()
 
@@ -166,6 +166,44 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
+
+      {/* Daily Login Reward Banner — shown once per new calendar day */}
+      {dailyLoginReward && !dailyLoginReward.alreadyDone && dailyLoginReward.earned > 0 && (
+        <div className="relative overflow-hidden rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-4 shadow-lg sm:rounded-3xl sm:px-6 sm:py-5">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/[0.08]" />
+          <div className="pointer-events-none absolute -bottom-8 right-28 h-20 w-20 rounded-full bg-white/[0.05]" />
+          <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-xl">
+                {dailyLoginReward.newStreak >= 30 ? "🏆" : dailyLoginReward.newStreak >= 14 ? "🔥" : dailyLoginReward.newStreak >= 7 ? "⚡" : dailyLoginReward.newStreak >= 3 ? "🔥" : "📅"}
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">
+                  {dailyLoginReward.milestoneName ? "Streak Milestone!" : "Daily Login"}
+                </p>
+                <p className="text-base font-bold text-white leading-snug">
+                  {dailyLoginReward.milestoneName
+                    ? `${dailyLoginReward.milestoneName} — you're on fire!`
+                    : dailyLoginReward.newStreak === 1
+                      ? "Welcome back!"
+                      : `Day ${dailyLoginReward.newStreak} streak!`}
+                </p>
+                <p className="mt-0.5 text-xs text-white/75">
+                  +{dailyLoginReward.earned} NP awarded
+                  {dailyLoginReward.longestStreak > 1 && ` · All-time best: ${dailyLoginReward.longestStreak} days`}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={clearDailyLoginReward}
+              className="shrink-0 self-start rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/30 transition-colors sm:self-auto"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Live Assessment Banner */}
       {liveExams.length > 0 && (
