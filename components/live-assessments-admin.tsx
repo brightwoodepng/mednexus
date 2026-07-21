@@ -7,7 +7,7 @@ import type { LiveAssessment, AssessmentAnalytics } from "@/lib/types"
 import {
   ClipboardListIcon, PlusIcon, TrashIcon, ClockIcon, UsersIcon,
   BarChart2Icon, LinkIcon, CheckIcon, XIcon, AlertTriangleIcon,
-  RadioIcon, CopyIcon, RefreshCwIcon, ChevronDownIcon, TrophyIcon,
+  RadioIcon, CopyIcon, RefreshCwIcon, ChevronDownIcon, TrophyIcon, ChevronLeftIcon,
 } from "@/components/icons"
 
 // ── Create Assessment Modal ────────────────────────────────────────────────────
@@ -444,7 +444,7 @@ function AnalyticsModal({
 }
 
 // ── Main Admin Component ───────────────────────────────────────────────────────
-export function LiveAssessmentsAdmin() {
+export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
   const { adminToken } = useAdmin()
   const [assessments, setAssessments] = useState<LiveAssessment[]>([])
   const [loading, setLoading] = useState(true)
@@ -499,13 +499,25 @@ export function LiveAssessmentsAdmin() {
     <div className="mx-auto max-w-3xl space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <ClipboardListIcon size={20} className="text-amber-600" />
-            Assessments
-            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Admin</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Create and manage live exams for your students</p>
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors"
+              title="Back to editor"
+            >
+              <ChevronLeftIcon size={16} />
+            </button>
+          )}
+          <div>
+            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+              <ClipboardListIcon size={20} className="text-amber-600" />
+              Assessments
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Admin</span>
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Create and manage live exams for your students</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={fetchAssessments} className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors">
