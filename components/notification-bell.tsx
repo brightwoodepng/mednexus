@@ -4,51 +4,71 @@ import { useState, useEffect, useCallback } from "react"
 import { useAdmin } from "@/contexts/admin-context"
 import { BellIcon } from "@/components/icons"
 import { NotificationOverlay } from "@/components/notification-overlay"
-import type { AppNotification } from "@/lib/types"
 
 const POLL_INTERVAL = 60_000
 
-async function fetchNotifications(adminToken?: string | null): Promise<AppNotification[]> {
+/** Read the stored auth token from localStorage (same keys as app-context). */
+function getStoredAuthHeader(): { key: string; value: string } | null {
+  if (typeof window === "undefined") return null
   try {
-    const headers: Record<string, string> = {}
-    if (adminToken) headers["x-admin-token"] = adminToken
-    const res = await fetch("/api/notifications", { cache: "no-store", headers })
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.notifications ?? []
+    const guestToken = localStorage.getItem("mednexus-guest-token")
+    if (guestToken) return { key: "x-guest-token", value: guestToken }
+    const userToken = localStorage.getItem("mednexus-user-token")
+    if (userToken) return { key: "x-session-token", value: userToken }
+  } catch { /* ignore */ }
+  return null
+}
+
+async function fetchUnreadCount(adminToken?: string | null): Promise<number> {
+  try {
+    const broadcastHeaders: Record<string, string> = {}
+    if (adminToken) broadcastHeaders["x-admin-token"] = adminToken
+
+    const authHeader = getStoredAuthHeader()
+    const personalHeaders: Record<string, string> = {}
+    if (authHeader) personalHeaders[authHeader.key] = authHeader.value
+
+    const [broadcastRes, personalRes] = await Promise.all([
+      fetch("/api/notifications", { cache: "no-store", headers: broadcastHeaders }),
+      fetch("/api/user-notifications", { cache: "no-store", headers: personalHeaders }),
+    ])
+
+    const broadcastData = broadcastRes.ok ? await broadcastRes.json() : { notifications: [] }
+    const personalData  = personalRes.ok  ? await personalRes.json()  : { notifications: [] }
+
+    const broadcastUnread: number = (broadcastData.notifications ?? []).filter((n: { isRead: boolean }) => !n.isRead).length
+    const personalUnread: number  = (personalData.notifications ?? []).filter((n: { isRead: boolean }) => !n.isRead).length
+
+    return broadcastUnread + personalUnread
   } catch {
-    return []
+    return 0
   }
 }
 
 export function NotificationBell() {
   const { adminToken } = useAdmin()
-  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
 
-  const load = useCallback(async () => {
-    const data = await fetchNotifications(adminToken)
-    setNotifications(data)
+  const refresh = useCallback(async () => {
+    const count = await fetchUnreadCount(adminToken)
+    setUnreadCount(count)
   }, [adminToken])
 
   useEffect(() => {
-    load()
-    const timer = setInterval(load, POLL_INTERVAL)
+    refresh()
+    const timer = setInterval(refresh, POLL_INTERVAL)
     return () => clearInterval(timer)
-  }, [load])
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length
+  }, [refresh])
 
   function handleOpen() {
-    // Optimistically zero out badge — overlay will mark all read on the server
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+    setUnreadCount(0) // optimistic — overlay marks all read server-side
     setIsOpen(true)
   }
 
   function handleClose() {
     setIsOpen(false)
-    // Re-fetch so the badge reflects the actual server state after the overlay ran its PATCH calls
-    load()
+    refresh() // reconcile badge with actual server state
   }
 
   return (
@@ -70,11 +90,7 @@ export function NotificationBell() {
       <NotificationOverlay
         open={isOpen}
         onClose={handleClose}
-        onUnreadCountChange={(count) =>
-          setNotifications((prev) =>
-            count === 0 ? prev.map((n) => ({ ...n, isRead: true })) : prev
-          )
-        }
+        onUnreadCountChange={(count) => setUnreadCount(count)}
       />
     </>
   )
