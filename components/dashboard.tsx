@@ -1,12 +1,10 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { FrameAnimationOverlay, type FrameAnimId, playFireAudio, playLightningAudio, playDiamondAudio } from "@/components/frame-animation-overlay"
+import { useState, useEffect, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useTheme } from "@/contexts/theme-context"
 import { useEconomy } from "@/contexts/economy-context"
-import { STORE_ITEMS, FRAME_RING_CLASSES } from "@/lib/economy"
 import {
   getLiveModules,
   getDisciplinesForModule,
@@ -119,36 +117,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const liveExams = useLiveAssessments()
 
   const firstName = user?.name?.split(" ").pop() ?? "Clinician"
-
-  // Avatar + frame for the banner graphic
-  const equippedAvatarItem = equippedCosmetics.avatar
-    ? STORE_ITEMS.find((i) => i.id === equippedCosmetics.avatar)
-    : null
-  const bannerAvatarImagePath = equippedAvatarItem?.imagePath ?? null
-  const bannerFrameClasses = equippedCosmetics.frame
-    ? (FRAME_RING_CLASSES[equippedCosmetics.frame] ?? null)
-    : null
   const motivation = MOTIVATIONS[new Date().getDate() % MOTIVATIONS.length]
-
-  // Frame tap animation
-  const ANIM_FRAMES = new Set<string>(["frame_fire", "frame_lightning", "frame_legendary_diamond"])
-  const [activeFrameAnim, setActiveFrameAnim] = useState<FrameAnimId | null>(null)
-  const handleAvatarTap = useCallback(() => {
-    const frameId = equippedCosmetics.frame
-    console.log("Triggered:", frameId)
-    if (frameId && ANIM_FRAMES.has(frameId) && !activeFrameAnim) {
-      // ── Audio MUST be called synchronously here, before any async state
-      // setter, so it executes within the browser's user-gesture window.
-      // Calling it inside useEffect / after setState puts it outside that
-      // window and triggers autoplay blocking on Chrome/Safari.
-      if (frameId === "frame_fire") playFireAudio();
-      else if (frameId === "frame_lightning") playLightningAudio();
-      else if (frameId === "frame_legendary_diamond") playDiamondAudio();
-
-      // State setter comes AFTER the synchronous audio call
-      setActiveFrameAnim(frameId as FrameAnimId)
-    }
-  }, [equippedCosmetics.frame, activeFrameAnim])
 
   // Trial-only stats (from history entries with mode="trial")
   const trialHistory = progress.history.filter((e) => e.mode === "trial")
@@ -249,30 +218,9 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           <div className="pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/[0.04]" />
           <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/[0.03]" />
 
-          {/* Avatar — absolutely centered vertically on the right */}
-          {/* z-10 keeps this above the relative text div that follows it in DOM order */}
-          <div
-            className={`absolute right-4 top-1/2 z-10 -translate-y-1/2 sm:right-7 ${ANIM_FRAMES.has(equippedCosmetics.frame ?? "") ? "cursor-pointer" : ""}`}
-            onClick={handleAvatarTap}
-          >
-            <div className={`rounded-full ${bannerFrameClasses ?? ""}`}>
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-white shadow-lg text-3xl font-bold select-none overflow-hidden sm:h-24 sm:w-24 sm:text-4xl">
-                {bannerAvatarImagePath ? (
-                  <img
-                    src={bannerAvatarImagePath}
-                    alt="Avatar"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  (user?.name ?? "C")[0].toUpperCase()
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Text — right-padded so it never slides under the avatar */}
+          {/* Text */}
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="pr-28 sm:pr-36">
+            <div>
               <p className="text-sm font-medium opacity-80">{greeting},</p>
               <h1 className="mt-0.5 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
               <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
@@ -320,13 +268,6 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
         <ExamDashboard onReadyForQuiz={onReadyForQuiz} onOpenModules={onOpenModules} />
       )}
 
-      {/* Full-screen frame tap animation overlay */}
-      {activeFrameAnim && (
-        <FrameAnimationOverlay
-          frameId={activeFrameAnim}
-          onDone={() => setActiveFrameAnim(null)}
-        />
-      )}
     </div>
   )
 }
