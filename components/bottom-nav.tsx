@@ -21,10 +21,15 @@ function LayersIcon({ size = 22 }: { size?: number }) {
     </svg>
   )
 }
-function ZapIcon({ size = 22 }: { size?: number }) {
+function TrophyIcon({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+      <path d="M4 22h16" />
+      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2z" />
     </svg>
   )
 }
@@ -50,22 +55,22 @@ function UserIcon({ size = 22 }: { size?: number }) {
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 const TABS = [
-  { id: "dashboard", label: "Home",      icon: HomeIcon,    screen: "dashboard"  as Screen },
-  { id: "modules",   label: "Modules",   icon: LayersIcon,  screen: "modules"    as Screen },
-  { id: "game",      label: "Game",      icon: GamepadIcon, screen: "game"       as Screen },
-  { id: "practice",  label: "Practice",  icon: ZapIcon,     screen: "weak-areas" as Screen },
-  { id: "profile",   label: "Profile",   icon: UserIcon,    screen: "profile"    as Screen },
+  { id: "dashboard",   label: "Home",        icon: HomeIcon,    screen: "dashboard"   as Screen },
+  { id: "modules",     label: "Modules",     icon: LayersIcon,  screen: "modules"     as Screen },
+  { id: "game",        label: "Game",        icon: GamepadIcon, screen: "game"        as Screen },
+  { id: "leaderboard", label: "Leaderboard", icon: TrophyIcon,  screen: "leaderboard" as Screen },
+  { id: "profile",     label: "Profile",     icon: UserIcon,    screen: "profile"     as Screen },
 ] as const
 
 type TabId = typeof TABS[number]["id"]
 
 /** Derive the canonical bottom-tab id from the current app screen. */
 function screenToTab(s: Screen): TabId | null {
-  if (s === "dashboard")  return "dashboard"
-  if (s === "modules")    return "modules"
-  if (s === "weak-areas") return "practice"
-  if (s === "game")       return "game"
-  if (s === "profile")    return "profile"
+  if (s === "dashboard")   return "dashboard"
+  if (s === "modules")     return "modules"
+  if (s === "leaderboard") return "leaderboard"
+  if (s === "game")        return "game"
+  if (s === "profile")     return "profile"
   return null   // quiz, results, store, etc. — keep whatever tab is already active
 }
 
@@ -73,9 +78,11 @@ function screenToTab(s: Screen): TabId | null {
 interface BottomNavProps {
   screen: Screen
   onNavigate: (s: Screen) => void
+  hidden?: boolean
 }
 
-export function BottomNav({ screen, onNavigate }: BottomNavProps) {
+export function BottomNav({ screen, onNavigate, hidden }: BottomNavProps) {
+  if (hidden) return null
   const [active, setActive] = useState<TabId>(() => screenToTab(screen) ?? "dashboard")
 
   // Sync when the screen changes from external navigation (sidebar on desktop, etc.)

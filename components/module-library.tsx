@@ -18,6 +18,7 @@ import {
   StarIcon,
   SearchIcon,
   DownloadIcon,
+  ArrowUpDownIcon,
 } from "@/components/icons"
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -202,11 +203,11 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
           </div>
         </div>
 
-        {/* Right group: Search bar (left) + Sort dropdown (right) */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
+        {/* Right group: Search bar + Sort */}
+        <div className="flex flex-row items-center gap-2 md:gap-4">
 
-          {/* Search */}
-          <div className="relative w-full md:w-64 lg:w-auto lg:max-w-md">
+          {/* Search — flex-1 on mobile so the sort button fits beside it */}
+          <div className="relative flex-1 md:w-64 lg:w-auto lg:max-w-md">
             <SearchIcon
               size={13}
               className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -220,11 +221,27 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
             />
           </div>
 
-          {/* Sort dropdown */}
+          {/* Mobile: icon button that cycles through sort options */}
+          <button
+            type="button"
+            onClick={() => {
+              if (view === "module") {
+                setSort(sort === "starred" ? "az" : sort === "az" ? "most" : "starred")
+              } else {
+                setSort(sort === "az" ? "most" : "az")
+              }
+            }}
+            title={sort === "starred" ? "Starred First" : sort === "az" ? "A → Z" : "Most Questions"}
+            className="md:hidden shrink-0 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <ArrowUpDownIcon size={14} />
+          </button>
+
+          {/* Desktop: full dropdown */}
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="shrink-0 w-full md:w-auto p-2 md:px-4 md:py-2 rounded-lg border border-border bg-card text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+            className="hidden md:block shrink-0 w-auto px-4 py-2 rounded-lg border border-border bg-card text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
           >
             {view === "module" && <option value="starred">Starred First</option>}
             <option value="az">A → Z</option>
