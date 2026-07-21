@@ -490,7 +490,7 @@ function RoomLobby({ room, myId, isHost, onStart, onExit }: {
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6">
-      <div className="mx-auto w-full max-w-md">
+      <div className="mx-auto w-full max-w-md sm:max-w-lg">
         <div className="mb-5 text-center">
           <div className="mb-3 text-4xl">{modeIcon}</div>
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">{modeLabel}</h1>
@@ -765,7 +765,7 @@ function CohortPlayerHUD({ room, myId, onAnswer, onLeave, timeLeftMs, isPressure
   const revealed = room.phase === "reveal"
 
   return (
-    <div className="flex min-h-full flex-col gap-4 p-4 max-w-sm mx-auto">
+    <div className="flex min-h-full flex-col gap-4 p-4 max-w-sm sm:max-w-md mx-auto">
       {/* Personal stats */}
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
         <div className="flex-1">
@@ -949,7 +949,7 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
       )}
 
       <div className="flex min-h-full flex-col p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-md">
+        <div className="mx-auto w-full max-w-md sm:max-w-lg">
 
           {/* ── Knockout banner ── */}
           {isKnockout && (
@@ -1046,7 +1046,7 @@ function JoinScreen({ onJoined, onBack }: {
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-8">
-      <div className="mx-auto w-full max-w-sm">
+      <div className="mx-auto w-full max-w-sm sm:max-w-md">
         <div className="mb-6 text-center">
           <div className="mb-3 text-4xl">🎮</div>
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">Join a Room</h1>
@@ -1117,7 +1117,7 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
 
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6">
-      <div className="mx-auto w-full max-w-md">
+      <div className="mx-auto w-full max-w-md sm:max-w-lg">
         <div className="mb-5 text-center">
           <div className="mb-3 text-4xl">{modeIcon}</div>
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">{modeLabel}</h1>
@@ -1939,7 +1939,7 @@ export function MultiplayerClash({ onExit }: { onExit: () => void }) {
   if (view === "select") {
     return (
       <div className="flex min-h-full flex-col items-center justify-center p-6 gap-4">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-sm sm:max-w-md">
           <div className="mb-6 text-center">
             <div className="text-4xl mb-3">⚔️</div>
             <h1 className="text-xl font-extrabold tracking-tight text-foreground">Multiplayer Clash</h1>
@@ -1993,7 +1993,7 @@ export function CohortReview({ onExit }: { onExit: () => void }) {
   if (view === "select") {
     return (
       <div className="flex min-h-full flex-col items-center justify-center p-6 gap-4">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-sm sm:max-w-md">
           <div className="mb-6 text-center">
             <div className="text-4xl mb-3">🎓</div>
             <h1 className="text-xl font-extrabold tracking-tight text-foreground">Cohort Review</h1>
@@ -2048,7 +2048,7 @@ export function DoubleJeopardyMulti({ onExit }: { onExit: () => void }) {
   if (view === "select") {
     return (
       <div className="flex min-h-full flex-col items-center justify-center p-6 gap-4">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-sm sm:max-w-md">
           <div className="mb-6 text-center">
             <div className="text-4xl mb-3">🎲</div>
             <h1 className="text-xl font-extrabold tracking-tight text-foreground">Double Jeopardy</h1>
@@ -2103,7 +2103,7 @@ export function WagerWars({ onExit }: { onExit: () => void }) {
   if (view === "select") {
     return (
       <div className="flex min-h-full flex-col items-center justify-center p-6 gap-4">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-sm sm:max-w-md">
           <div className="mb-6 text-center">
             <div className="text-4xl mb-3">🎰</div>
             <h1 className="text-xl font-extrabold tracking-tight text-foreground">Wager Wars</h1>

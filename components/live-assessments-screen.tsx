@@ -246,7 +246,7 @@ export function LiveAssessmentsScreen() {
     }
 
     return (
-      <div className="mx-auto max-w-md py-10 space-y-6 text-center">
+      <div className="mx-auto max-w-md sm:max-w-lg py-10 space-y-6 text-center">
         <div className={`mx-auto flex h-24 w-24 items-center justify-center rounded-3xl text-4xl font-bold ${result.passed ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
           {result.percentage}%
         </div>

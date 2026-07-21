@@ -162,7 +162,7 @@ function ForcePasswordUpdate() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm sm:max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={32} height={32}>
@@ -249,7 +249,7 @@ function PendingApprovalScreen() {
   const { signOutUser, user } = useApp()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
-      <div className="w-full max-w-sm text-center">
+      <div className="w-full max-w-sm sm:max-w-md text-center">
         <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-500/15 text-amber-600">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={38} height={38}>
             <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
@@ -276,7 +276,7 @@ function RejectedScreen() {
   const { signOutUser, user } = useApp()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
-      <div className="w-full max-w-sm text-center">
+      <div className="w-full max-w-sm sm:max-w-md text-center">
         <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-destructive/10 text-destructive">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={38} height={38}>
             <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
