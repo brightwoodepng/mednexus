@@ -232,6 +232,18 @@ export async function ensureSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    -- ── Daily activity log (leaderboard + weekly stats) ──────────────────────
+    -- One row per user per calendar day. Accumulates questions answered and
+    -- correct answers from every payout call so the leaderboard can compute
+    -- weekly accuracy and question volume without scanning the JSONB history.
+    CREATE TABLE IF NOT EXISTS mednexus_daily_activity (
+      user_id           TEXT    NOT NULL,
+      activity_date     TEXT    NOT NULL,   -- YYYY-MM-DD
+      questions_answered INTEGER NOT NULL DEFAULT 0,
+      correct_answers   INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (user_id, activity_date)
+    );
+
     -- ── Guest analytics ──────────────────────────────────────────────────────
     -- Stores a single score submission per guest attempt.
     -- Intentionally has NO foreign-key relationship to any user profile table.

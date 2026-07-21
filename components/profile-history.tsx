@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useQuestions } from "@/contexts/questions-context"
@@ -549,6 +549,76 @@ function ModuleReviewSection() {
 
 // ── Main export ──────────────────────────────────────────────────────────────
 
+// ── Privacy Settings ─────────────────────────────────────────────────────────
+
+function PrivacySettings() {
+  const { user } = useApp()
+  const [isPrivate, setIsPrivate] = useState<boolean | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  // Only available to registered users (not guests)
+  if (!user || user.role !== "user") return null
+
+  // Load current privacy state
+  useEffect(() => {
+    fetch(`/api/user/privacy?uid=${encodeURIComponent(user.uid)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setIsPrivate(d.isPrivate ?? false) })
+      .catch(() => setIsPrivate(false))
+  }, [user.uid])
+
+  async function toggle() {
+    if (isPrivate === null || saving) return
+    setSaving(true)
+    const next = !isPrivate
+    try {
+      const res = await fetch("/api/user/privacy", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: user.uid, isPrivate: next }),
+      })
+      if (res.ok) setIsPrivate(next)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex items-center gap-2">
+          <span className="text-base leading-none">🔒</span>
+          <h2 className="font-semibold text-foreground">Privacy</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">Control your visibility on the leaderboard</p>
+      </div>
+      <div className="flex items-center justify-between gap-4 px-5 py-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">Hide me from leaderboards</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isPrivate
+              ? "Your profile is hidden. You won't appear in any rankings."
+              : "Your profile is visible to all users on the leaderboard."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={isPrivate === null || saving}
+          aria-pressed={isPrivate ?? false}
+          className={`relative shrink-0 h-6 w-11 rounded-full transition-colors duration-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+            isPrivate ? "bg-primary" : "bg-muted-foreground/30"
+          }`}
+        >
+          <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            isPrivate ? "translate-x-5" : "translate-x-0"
+          }`} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function ProfileHistory() {
   const { progress } = useApp()
   const examScores = progress.examScores ?? []
@@ -557,6 +627,7 @@ export function ProfileHistory() {
     <div className="mx-auto max-w-3xl space-y-6">
       <ProfileHeader />
       <CosmeticLoadout />
+      <PrivacySettings />
       <ModuleCoverage />
       <ModuleReviewSection />
       <ExamScores scores={examScores} />

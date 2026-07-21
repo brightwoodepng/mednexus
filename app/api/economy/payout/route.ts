@@ -149,6 +149,23 @@ export async function POST(req: NextRequest) {
         })
       }
 
+      // ── Daily activity log (leaderboard weekly stats) ──────────────────────
+      // Track questions answered + correct per calendar day for every registered
+      // user (guests are filtered out above).  Fire-and-forget inside the same
+      // transaction so a tracking failure doesn't silently drop NP.
+      if (!isGuest && typeof total === "number" && total > 0) {
+        const today = TODAY_DATE()
+        await client.query(
+          `INSERT INTO mednexus_daily_activity (user_id, activity_date, questions_answered, correct_answers)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (user_id, activity_date)
+           DO UPDATE SET
+             questions_answered = mednexus_daily_activity.questions_answered + EXCLUDED.questions_answered,
+             correct_answers    = mednexus_daily_activity.correct_answers    + EXCLUDED.correct_answers`,
+          [uid, today, total, typeof correct === "number" ? correct : 0]
+        )
+      }
+
       await client.query("COMMIT")
 
       return NextResponse.json({
