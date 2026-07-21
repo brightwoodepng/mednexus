@@ -65,3 +65,9 @@ id = "iwqF00QxWhVRJDF8l77mK"
 uri = "file://mednexus-source.tar.gz"
 type = "unspecified"
 title = "MedNexus — Full Source Code"
+
+[[outputs]]
+id = "QIlUmochOId50_yTghZ6m"
+uri = "file://MedNexus-App-Brief.md"
+type = "text"
+title = "MedNexus — Complete Application Brief"
