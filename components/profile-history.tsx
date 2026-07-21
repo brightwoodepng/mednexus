@@ -568,7 +568,7 @@ function PrivacySettings() {
   }, [user.uid])
 
   async function toggle() {
-    if (isPrivate === null || saving) return
+    if (!user || isPrivate === null || saving) return
     setSaving(true)
     const next = !isPrivate
     try {
