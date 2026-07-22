@@ -1,0 +1,26 @@
+Act as an expert Next.js 16 and Tailwind CSS developer. We are adjusting the UI for the Profile page in MedNexus before moving to the final admin phase. 
+
+Architectural Rules:
+1. The "Study Environment" selector MUST ONLY exist on the Profile page.
+2. Remove any previous popover/dropdown implementations of the Study Mode selector from the sidebar.
+
+Please implement these exact UI changes:
+
+Task 1: Clean Up the Profile Component
+- Locate the main Profile page component (e.g., `components/profile-screen.tsx` or `app/profile/page.tsx`).
+- Completely delete the "Coverage" section.
+- Completely delete the "Answer History" section.
+
+Task 2: Build the "Study Environment" Selector
+- Directly below the main User Identity card (the one with the avatar, NP balance, and Sign Out button), create a new `GlassCard` section.
+- Add a subtle header to this section: "STUDY ENVIRONMENT" (uppercase, muted text, small font).
+- Inside, create a responsive 3-column grid (or horizontal scrolling flex row on mobile) containing three large, rounded rectangular buttons.
+- Button 1 ("MCQ Q-Bank"): Icon = BookOpen. If `currentStudyMode === 'MCQ'`, apply a bright teal border/glow, teal text, and a small pill-shaped "✓ Active" badge at the bottom.
+- Button 2 ("Theory Vault"): Icon = Flask or Notebook. Clicking this calls `setStudyMode("THEORY")` and routes the user to the Theory dashboard.
+- Button 3 ("OSCE Sim"): Icon = Stethoscope. Reduce opacity to 50% to look disabled. Add a prominent "🔒 Soon" badge inside the button. Make it unclickable.
+
+Task 3: Optimize the Cosmetic Loadout
+- Redesign the "Cosmetic Loadout" card so it takes up significantly less vertical space.
+- Instead of three large, vertically stacked dropdowns (Active Avatar, Active Title, Active Frame), refactor this into a compact 3-column grid on desktop (or a tighter flex-column on mobile).
+- Reduce the padding on the select inputs and make the typography sleeker (e.g., text-sm) so the loadout configuration feels like a quick, premium settings panel rather than a bulky form. 
+- Ensure there are no TypeScript errors and the app compiles successfully.

@@ -10,192 +10,99 @@ import {
   EyeOffIcon,
   PencilIcon,
   BookOpenIcon,
-  ChevronDownIcon,
-  LayersIcon,
   ClipboardListIcon,
+  FlaskIcon,
+  StethoscopeIcon,
 } from "@/components/icons"
-import {
-  getLiveModules,
-  getDisciplinesForModule,
-  getModuleQuestionCount,
-} from "@/lib/modules"
+import { useCurrentStudyMode } from "@/contexts/current-study-mode-context"
+import { useRouter } from "next/navigation"
 import type { HistoryEntry, ExamScore, Question } from "@/lib/types"
 import { useEconomy } from "@/contexts/economy-context"
 import { STORE_ITEMS, TITLE_LABELS, FRAME_RING_CLASSES } from "@/lib/economy"
-import type { StoreItem } from "@/lib/economy"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
 
-// ── Module + Discipline Coverage ─────────────────────────────────────────────
+// ── Study Environment Selector ────────────────────────────────────────────────
 
-function ModuleCoverage() {
-  const { progress } = useApp()
-  const { questions } = useQuestions()
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
+function StudyEnvironmentSelector() {
+  const { currentStudyMode, setCurrentStudyMode } = useCurrentStudyMode()
+  const router = useRouter()
 
-  const modules = getLiveModules()
-
-  // Build per-subject totals from question bank
-  const totalBySubject = useMemo(() => {
-    const map: Record<string, number> = {}
-    for (const q of questions) {
-      map[q.subject] = (map[q.subject] ?? 0) + 1
-    }
-    return map
-  }, [questions])
-
-  // Build per-subject stats from history
-  const subjectStats = useMemo(() => {
-    const attemptedIds: Record<string, Set<string>> = {}
-    const correctBySubject: Record<string, number> = {}
-    for (const entry of progress.history) {
-      if (!attemptedIds[entry.subject]) attemptedIds[entry.subject] = new Set()
-      attemptedIds[entry.subject].add(entry.questionId)
-      if (entry.isCorrect) {
-        correctBySubject[entry.subject] = (correctBySubject[entry.subject] ?? 0) + 1
-      }
-    }
-    return { attemptedIds, correctBySubject }
-  }, [progress.history])
-
-  // Build module-level stats
-  const moduleRows = useMemo(() => {
-    return modules.map((mod) => {
-      const disciplines = getDisciplinesForModule(mod)
-      const totalQ = getModuleQuestionCount(mod)
-      let attempted = 0
-      let correct = 0
-      for (const disc of disciplines) {
-        const ids = subjectStats.attemptedIds[disc]
-        if (ids) attempted += ids.size
-        correct += subjectStats.correctBySubject[disc] ?? 0
-      }
-      const coverage = totalQ > 0 ? Math.round((attempted / totalQ) * 100) : 0
-      const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : null
-      return { mod, disciplines, totalQ, attempted, correct, coverage, accuracy }
-    })
-  }, [modules, subjectStats])
-
-  function toggleModule(mod: string) {
-    setExpandedModules((prev) => {
-      const next = new Set(prev)
-      if (next.has(mod)) next.delete(mod)
-      else next.add(mod)
-      return next
-    })
+  function switchToMCQ() {
+    setCurrentStudyMode("MCQ")
   }
 
-  const totalAttempted = moduleRows.filter((r) => r.attempted > 0).length
+  function switchToTheory() {
+    setCurrentStudyMode("THEORY")
+    router.push("/theory")
+  }
+
+  const cardBase =
+    "relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all"
 
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-      <div className="border-b border-border px-5 py-4">
-        <div className="flex items-center gap-2">
-          <LayersIcon size={16} className="text-primary shrink-0" />
-          <h2 className="font-semibold text-foreground">Coverage</h2>
-        </div>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {totalAttempted} of {modules.length} modules started · tap a module to see discipline breakdown
+      <div className="border-b border-border px-5 py-3.5">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Study Environment
         </p>
       </div>
+      <div className="grid grid-cols-3 gap-3 p-4">
 
-      {moduleRows.length === 0 ? (
-        <div className="p-10 text-center">
-          <BookOpenIcon size={28} className="mx-auto mb-2 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">No modules found.</p>
+        {/* MCQ Q-Bank */}
+        <button
+          type="button"
+          onClick={switchToMCQ}
+          className={`${cardBase} ${
+            currentStudyMode === "MCQ"
+              ? "border-primary/60 bg-primary/5 text-primary shadow-sm"
+              : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:bg-muted/70 hover:text-foreground"
+          }`}
+        >
+          <BookOpenIcon size={24} />
+          <span className="text-xs font-semibold leading-tight">MCQ Q-Bank</span>
+          {currentStudyMode === "MCQ" ? (
+            <span className="flex items-center gap-0.5 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+              <CheckIcon size={9} /> Active
+            </span>
+          ) : (
+            <span className="invisible text-[10px]">·</span>
+          )}
+        </button>
+
+        {/* Theory Vault */}
+        <button
+          type="button"
+          onClick={switchToTheory}
+          className={`${cardBase} ${
+            currentStudyMode === "THEORY"
+              ? "border-teal-500/60 bg-teal-500/5 text-teal-600 dark:text-teal-400 shadow-sm"
+              : "border-border bg-muted/40 text-muted-foreground hover:border-teal-500/30 hover:bg-muted/70 hover:text-foreground"
+          }`}
+        >
+          <FlaskIcon size={24} />
+          <span className="text-xs font-semibold leading-tight">Theory Vault</span>
+          {currentStudyMode === "THEORY" ? (
+            <span className="flex items-center gap-0.5 rounded-full bg-teal-500/15 px-2 py-0.5 text-[10px] font-bold text-teal-600 dark:text-teal-400">
+              <CheckIcon size={9} /> Active
+            </span>
+          ) : (
+            <span className="invisible text-[10px]">·</span>
+          )}
+        </button>
+
+        {/* OSCE Sim — coming soon */}
+        <div
+          className={`${cardBase} opacity-50 cursor-not-allowed border-border bg-muted/20 text-muted-foreground`}
+          aria-disabled="true"
+        >
+          <StethoscopeIcon size={24} />
+          <span className="text-xs font-semibold leading-tight">OSCE Sim</span>
+          <span className="rounded-full border border-amber-300/40 bg-amber-50/60 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:border-amber-700/30 dark:bg-amber-900/20 dark:text-amber-400">
+            🔒 Soon
+          </span>
         </div>
-      ) : (
-        <ul className="divide-y divide-border">
-          {moduleRows.map((row) => {
-            const isExpanded = expandedModules.has(row.mod)
-            const barColor = row.coverage >= 70 ? "#10b981" : row.coverage >= 40 ? "#0ea5e9" : "#8b5cf6"
 
-            return (
-              <li key={row.mod}>
-                {/* Module row — always visible */}
-                <button
-                  type="button"
-                  onClick={() => toggleModule(row.mod)}
-                  className="w-full px-5 py-3.5 text-left hover:bg-muted/40 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <ChevronDownIcon
-                        size={13}
-                        className={`shrink-0 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
-                      />
-                      <span className="text-sm font-semibold text-foreground truncate">{row.mod}</span>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {row.accuracy !== null && (
-                        <span className={`text-xs font-semibold tabular-nums ${
-                          row.accuracy >= 70 ? "text-primary" : row.accuracy >= 50 ? "text-amber-600" : "text-destructive"
-                        }`}>
-                          {row.accuracy}% acc
-                        </span>
-                      )}
-                      <span className="text-xs font-bold tabular-nums" style={{ color: barColor }}>
-                        {row.coverage}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${Math.max(row.coverage, row.attempted > 0 ? 2 : 0)}%`, background: barColor }}
-                    />
-                  </div>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    {row.attempted} of {row.totalQ} questions attempted
-                  </p>
-                </button>
-
-                {/* Discipline breakdown — collapsible */}
-                {isExpanded && (
-                  <ul className="border-t border-border bg-muted/20 divide-y divide-border/50">
-                    {row.disciplines.map((disc) => {
-                      const total = totalBySubject[disc] ?? 0
-                      const attemptedIds = subjectStats.attemptedIds[disc]
-                      const attempted = attemptedIds?.size ?? 0
-                      const correct = subjectStats.correctBySubject[disc] ?? 0
-                      const cov = total > 0 ? Math.round((attempted / total) * 100) : 0
-                      const acc = attempted > 0 ? Math.round((correct / attempted) * 100) : null
-                      const dColor = cov >= 70 ? "#10b981" : cov >= 40 ? "#0ea5e9" : "#f59e0b"
-                      return (
-                        <li key={disc} className="px-8 py-3">
-                          <div className="flex items-center justify-between gap-3 mb-1.5">
-                            <span className="text-xs font-medium text-foreground truncate">{disc}</span>
-                            <div className="flex items-center gap-3 shrink-0">
-                              {acc !== null && (
-                                <span className={`text-[11px] tabular-nums ${
-                                  acc >= 70 ? "text-primary" : acc >= 50 ? "text-amber-600" : "text-destructive"
-                                }`}>
-                                  {acc}% acc
-                                </span>
-                              )}
-                              <span className="text-[11px] font-semibold tabular-nums" style={{ color: dColor }}>
-                                {cov}%
-                              </span>
-                            </div>
-                          </div>
-                          <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{ width: `${Math.max(cov, attempted > 0 ? 2 : 0)}%`, background: dColor }}
-                            />
-                          </div>
-                          <p className="mt-0.5 text-[10px] text-muted-foreground">
-                            {attempted}/{total} Qs
-                          </p>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      )}
+      </div>
     </div>
   )
 }
@@ -626,33 +533,11 @@ export function ProfileHistory() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <ProfileHeader />
+      <StudyEnvironmentSelector />
       <CosmeticLoadout />
       <PrivacySettings />
-      <ModuleCoverage />
       <ModuleReviewSection />
       <ExamScores scores={examScores} />
-
-      {/* Per-question history */}
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-semibold text-foreground">Answer History</h2>
-          <span className="text-sm text-muted-foreground">{progress.history.length} entries</span>
-        </div>
-
-        {progress.history.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              No history yet. Complete a study block and your answers will appear here.
-            </p>
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {progress.history.map((entry) => (
-              <HistoryRow key={entry.id} entry={entry} />
-            ))}
-          </ul>
-        )}
-      </div>
     </div>
   )
 }
@@ -719,34 +604,6 @@ function AnswerPill({ label, value, tone }: { label: string; value: string; tone
 
 // ── Cosmetic Loadout ──────────────────────────────────────────────────────────
 
-function LoadoutRow({
-  label, emoji, items, equipped, saving, onEquip,
-}: {
-  label: string; emoji: string; items: StoreItem[]
-  equipped: string | null; saving: boolean; onEquip: (id: string | null) => void
-}) {
-  return (
-    <div className="flex items-center gap-3 px-5 py-3.5">
-      <span className="text-xl shrink-0 leading-none">{emoji}</span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{label}</p>
-        <select
-          value={equipped ?? ""}
-          onChange={(e) => onEquip(e.target.value || null)}
-          disabled={saving || items.length === 0}
-          className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <option value="">{items.length === 0 ? "None owned — visit the Game Store" : "— None —"}</option>
-          {items.map((i) => (
-            <option key={i.id} value={i.id}>{i.icon} {i.name}</option>
-          ))}
-        </select>
-      </div>
-      {saving && <span className="text-xs text-muted-foreground shrink-0 animate-pulse">Saving…</span>}
-    </div>
-  )
-}
-
 function CosmeticLoadout() {
   const { inventory, equippedCosmetics, equipCosmetic } = useEconomy()
   const [savingType, setSavingType] = useState<string | null>(null)
@@ -761,31 +618,43 @@ function CosmeticLoadout() {
     setSavingType(null)
   }
 
+  const slots = [
+    { type: "avatar" as const, label: "Avatar",  emoji: "🧑‍⚕️", items: ownedAvatars, equipped: equippedCosmetics.avatar },
+    { type: "title"  as const, label: "Title",   emoji: "🏷️",   items: ownedTitles,  equipped: equippedCosmetics.title  },
+    { type: "frame"  as const, label: "Frame",   emoji: "🖼️",   items: ownedFrames,  equipped: equippedCosmetics.frame  },
+  ]
+
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-      <div className="border-b border-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-base leading-none">✨</span>
-          <h2 className="font-semibold text-foreground">Cosmetic Loadout</h2>
+          <span className="text-sm leading-none">✨</span>
+          <h2 className="text-sm font-semibold text-foreground">Cosmetic Loadout</h2>
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">Equip items you&apos;ve unlocked from the Game Store</p>
+        <p className="text-xs text-muted-foreground">Equip unlocked items</p>
       </div>
-      <div className="divide-y divide-border">
-        <LoadoutRow
-          label="Active Avatar" emoji="🧑‍⚕️"
-          items={ownedAvatars} equipped={equippedCosmetics.avatar}
-          saving={savingType === "avatar"} onEquip={(id) => handleEquip("avatar", id)}
-        />
-        <LoadoutRow
-          label="Active Title" emoji="🏷️"
-          items={ownedTitles} equipped={equippedCosmetics.title}
-          saving={savingType === "title"} onEquip={(id) => handleEquip("title", id)}
-        />
-        <LoadoutRow
-          label="Active Frame" emoji="🖼️"
-          items={ownedFrames} equipped={equippedCosmetics.frame}
-          saving={savingType === "frame"} onEquip={(id) => handleEquip("frame", id)}
-        />
+      <div className="grid grid-cols-3 gap-px bg-border">
+        {slots.map(({ type, label, emoji, items, equipped }) => (
+          <div key={type} className="flex flex-col gap-1.5 bg-card px-3 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {emoji} {label}
+            </p>
+            <select
+              value={equipped ?? ""}
+              onChange={(e) => handleEquip(type, e.target.value || null)}
+              disabled={savingType === type || items.length === 0}
+              className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">{items.length === 0 ? "None owned" : "— None —"}</option>
+              {items.map((i) => (
+                <option key={i.id} value={i.id}>{i.icon} {i.name}</option>
+              ))}
+            </select>
+            {savingType === type && (
+              <span className="text-[10px] text-muted-foreground animate-pulse">Saving…</span>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
