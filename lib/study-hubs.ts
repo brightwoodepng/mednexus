@@ -29,7 +29,7 @@ export const STUDY_HUBS = [
   },
   {
     id: "theory", mode: "THEORY", title: "Theory Vault", subtitle: "Long-form questions, model answers, and revision.", icon: "flask", landingRoute: "/theory", availability: "available",
-    learnerNavigation: [{ id: "dashboard", label: "Dashboard", route: "/theory" }, { id: "browse", label: "Browse Questions", route: "/theory/browse" }, { id: "bookmarks", label: "Bookmarks", route: "/theory/bookmarks" }, { id: "notes", label: "My Notes", route: "/theory/notes" }, { id: "revision", label: "Revision Queue", route: "/theory/revision-queue" }, { id: "progress", label: "Progress", route: "/theory/progress" }],
+    learnerNavigation: [{ id: "dashboard", label: "Dashboard", route: "/theory" }, { id: "browse", label: "Browse Questions", route: "/theory/browse" }, { id: "bookmarks", label: "Bookmarks", route: "/theory/bookmarks" }, { id: "notes", label: "My Notes", route: "/theory/notes" }, { id: "revision", label: "Revision Queue", route: "/theory/revision-queue" }, { id: "progress", label: "Progress", route: "/theory/progress" }, { id: "search", label: "Search", route: "/theory/search" }],
     capabilities: ["model-answers", "bookmarks", "notes", "spaced-revision"],
     profileMetrics: [{ id: "reviewed", label: "Questions reviewed", source: "theory.progress" }, { id: "revision", label: "Due for revision", source: "theory.revisionQueue" }],
     adminEditorRoute: "/?screen=question-editor&hub=theory",
