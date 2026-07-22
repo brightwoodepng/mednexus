@@ -32,6 +32,7 @@ export interface EconomyContextValue {
   useItem: (itemId: string) => Promise<boolean>
   equipCosmetic: (type: "title" | "frame" | "highlight" | "avatar", itemId: string | null) => Promise<{ ok: boolean; error?: string }>
   grantDevNP: () => Promise<{ ok: boolean; error?: string }>
+  startScoredActivity: (mode: string, questionIds: string[]) => Promise<string | null>
   submitGameResult: (payload: {
     mode: string
     score: number
@@ -43,12 +44,21 @@ export interface EconomyContextValue {
     lifelineUsed?: boolean
     sessionData?: { questionId: string; discipline: string; isCorrect: boolean; currentStreak?: number }[]
     examMeta?: { accuracy: number; correct: number; total: number; primaryDiscipline?: string }
+    sessionId?: string
+    answers?: Record<string, string | string[] | null>
   }) => Promise<{ earned: number; breakdown: { label: string; amount: number }[]; bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[] } | null>
 }
 
 const EconomyContext = createContext<EconomyContextValue | undefined>(undefined)
 
 const DEFAULT_COSMETICS: EquippedCosmetics = { title: null, frame: null, highlight: null, avatar: null }
+
+function economyHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {}
+  const guest = localStorage.getItem("mednexus-guest-token")
+  const session = localStorage.getItem("mednexus-user-token")
+  return guest ? { "x-guest-token": guest } : session ? { "x-session-token": session } : {}
+}
 
 export function EconomyProvider({ children }: { children: ReactNode }) {
   const { user } = useApp()
@@ -68,10 +78,10 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     try {
       const [walletRes, bountiesRes, storeRes, cosmeticsRes] = await Promise.all([
-        fetch(`/api/economy/wallet?uid=${encodeURIComponent(uid)}`).then(r => r.json()),
-        fetch(`/api/economy/bounties?uid=${encodeURIComponent(uid)}`).then(r => r.json()),
-        fetch(`/api/economy/store?uid=${encodeURIComponent(uid)}`).then(r => r.json()),
-        fetch(`/api/economy/cosmetics?uid=${encodeURIComponent(uid)}`).then(r => r.json()),
+        fetch(`/api/economy/wallet`, { headers: economyHeaders() }).then(r => r.json()),
+        fetch(`/api/economy/bounties`, { headers: economyHeaders() }).then(r => r.json()),
+        fetch(`/api/economy/store`, { headers: economyHeaders() }).then(r => r.json()),
+        fetch(`/api/economy/cosmetics`, { headers: economyHeaders() }).then(r => r.json()),
       ])
       setBalance(walletRes.balance ?? 0)
       setBounties(bountiesRes.bounties ?? [])
@@ -95,7 +105,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       if (isRegistered) {
         fetch("/api/economy/daily-login", {
           method:  "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...economyHeaders() },
           body:    JSON.stringify({ uid: user.uid }),
         })
           .then((r) => r.json())
@@ -117,7 +127,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch("/api/economy/bounties", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...economyHeaders() },
         body: JSON.stringify({ uid, bountyId }),
       })
       const data = await res.json()
@@ -136,7 +146,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch("/api/economy/store", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...economyHeaders() },
         body: JSON.stringify({ uid, itemId }),
       })
       const data = await res.json()
@@ -155,7 +165,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch("/api/economy/inventory", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...economyHeaders() },
         body: JSON.stringify({ uid, itemId }),
       })
       if (!res.ok) return false
@@ -183,7 +193,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch("/api/economy/cosmetics", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...economyHeaders() },
         body: JSON.stringify({ uid, type, itemId }),
       })
       const data = await res.json()
@@ -204,7 +214,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch("/api/economy/wallet", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...economyHeaders() },
         body: JSON.stringify({ uid, balance: target }),
       })
       const data = await res.json()
@@ -226,6 +236,14 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid])
 
+  const startScoredActivity = useCallback(async (mode: string, questionIds: string[]) => {
+    if (!user?.uid) return null
+    try {
+      const res = await fetch("/api/economy/session", { method: "POST", headers: { "Content-Type": "application/json", ...economyHeaders() }, body: JSON.stringify({ uid: user.uid, mode, questionIds }) })
+      return res.ok ? (await res.json()).sessionId ?? null : null
+    } catch { return null }
+  }, [user?.uid])
+
   const submitGameResult = useCallback(async (payload: {
     mode: string; score: number; correct: number; total: number
     bestStreak: number; isNewHigh: boolean; survivedCount?: number
@@ -234,14 +252,21 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     sessionData?: { questionId: string; discipline: string; isCorrect: boolean; currentStreak?: number }[]
     /** Exam-mode bounty metadata */
     examMeta?: { accuracy: number; correct: number; total: number; primaryDiscipline?: string }
+    sessionId?: string
+    answers?: Record<string, string | string[] | null>
   }) => {
     const uid = user?.uid
     if (!uid) return null
     try {
+      if (!payload.sessionId || !payload.answers) return null
+      const completion = await fetch("/api/economy/session", {
+        method: "PATCH", headers: { "Content-Type": "application/json", ...economyHeaders() },
+        body: JSON.stringify({ sessionId: payload.sessionId, uid, answers: payload.answers }),
+      })
+      if (!completion.ok) return null
       const res = await fetch("/api/economy/payout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid, ...payload }),
+        method: "POST", headers: { "Content-Type": "application/json", ...economyHeaders() },
+        body: JSON.stringify({ sessionId: payload.sessionId, uid }),
       })
       if (!res.ok) return null
       const data = await res.json()
@@ -263,7 +288,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     <EconomyContext.Provider value={{
       balance, bounties, inventory, equippedCosmetics, loading,
       dailyLoginReward, clearDailyLoginReward,
-      refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP, submitGameResult,
+      refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP, startScoredActivity, submitGameResult,
     }}>
       {children}
     </EconomyContext.Provider>

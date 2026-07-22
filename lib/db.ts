@@ -216,6 +216,9 @@ export async function ensureSchema() {
       mode         TEXT    NOT NULL,
       question_ids JSONB   NOT NULL DEFAULT '[]',
       answered_ids JSONB   NOT NULL DEFAULT '[]',
+      answer_key JSONB NOT NULL DEFAULT '[]',
+      accepted_answers JSONB NOT NULL DEFAULT '{}',
+      payout JSONB,
       status       TEXT    NOT NULL DEFAULT 'active',  -- active | completed | abandoned
       started_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       submitted_at TIMESTAMPTZ
@@ -308,11 +311,19 @@ export async function ensureSchema() {
 
     -- rank_points: cumulative Clinical Ladder progression points. Grows with
     -- every NP payout; tier-up bonuses are awarded when crossing thresholds.
+    ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS answer_key JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS accepted_answers JSONB NOT NULL DEFAULT '{}';
+    ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS payout JSONB;
+
     ALTER TABLE mednexus_wallet
       ADD COLUMN IF NOT EXISTS rank_points INTEGER NOT NULL DEFAULT 0;
 
     -- last_multiplayer_win_at: tracks when the user last achieved rank-1 in a
     -- multiplayer match, used for the First Win of the Day (+250 NP) bonus.
+    ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS answer_key JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS accepted_answers JSONB NOT NULL DEFAULT '{}';
+    ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS payout JSONB;
+
     ALTER TABLE mednexus_wallet
       ADD COLUMN IF NOT EXISTS last_multiplayer_win_at TIMESTAMPTZ;
 
