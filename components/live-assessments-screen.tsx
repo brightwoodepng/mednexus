@@ -54,24 +54,13 @@ function loadUserResult(assessmentId: string): StoredResult | null {
   } catch { return null }
 }
 
-// Guest attempt count — stored locally since guests have no cloud profile.
-function guestAttemptsKey(assessmentId: string) {
-  return `mednexus-guest-attempts-${assessmentId}`
-}
-
-function readGuestAttempts(assessmentId: string): number {
+function getStoredAuthHeader(): { key: "x-session-token" | "x-guest-token"; value: string } | null {
   try {
-    const raw = localStorage.getItem(guestAttemptsKey(assessmentId))
-    return raw ? (JSON.parse(raw)?.count ?? 0) : 0
-  } catch { return 0 }
-}
-
-function incrementGuestAttempts(assessmentId: string) {
-  try {
-    const count = readGuestAttempts(assessmentId) + 1
-    localStorage.setItem(guestAttemptsKey(assessmentId), JSON.stringify({ count }))
-    return count
-  } catch { return 1 }
+    const guestToken = localStorage.getItem("mednexus-guest-token")
+    if (guestToken) return { key: "x-guest-token", value: guestToken }
+    const sessionToken = localStorage.getItem("mednexus-user-token")
+    return sessionToken ? { key: "x-session-token", value: sessionToken } : null
+  } catch { return null }
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -116,15 +105,11 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
 
       const withMeta: AssessmentWithMeta[] = await Promise.all(
         list.map(async (asmt) => {
-          if (isGuest) {
-            // ── Guest: read attempt count strictly from localStorage ────────
-            const count = readGuestAttempts(asmt.id)
-            return { ...asmt, attemptsUsed: count }
-          }
-
-          // ── Registered: read attempt count from the database ───────────
           try {
-            const attRes = await fetch(`/api/assessments/${asmt.id}/attempt?userId=${user.uid}`)
+            const authHeader = getStoredAuthHeader()
+            if (!authHeader) return { ...asmt, attemptsUsed: 0 }
+            const attRes = await fetch(`/api/assessments/${asmt.id}/attempt`, { headers: { [authHeader.key]: authHeader.value } })
+            if (!attRes.ok) return { ...asmt, attemptsUsed: 0 }
             const attData = await attRes.json()
             const attempts: Array<{ score: number; total: number; submittedAt: string }> = attData.attempts ?? []
             const lastAttempt = attempts[0]
@@ -160,7 +145,7 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
     } finally {
       setLoading(false)
     }
-  }, [user, isGuest])
+  }, [user])
 
   useEffect(() => { fetchAssessments() }, [fetchAssessments])
 
@@ -201,19 +186,8 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
       })
       setStoredResultIds((prev) => new Set([...prev, activeAssessment.id]))
 
-      if (isGuest) {
-        // Guest: increment local attempt counter, then rebuild the list locally
-        // without hitting the database.
-        const newCount = incrementGuestAttempts(activeAssessment.id)
-        setAssessments((prev) =>
-          prev.map((a) =>
-            a.id === activeAssessment.id ? { ...a, attemptsUsed: newCount } : a
-          )
-        )
-      } else {
-        // Registered: re-fetch to get the updated DB-backed attempt count.
-        fetchAssessments()
-      }
+      // Attempt ownership and counts are server-backed for both account types.
+      fetchAssessments()
     }
     setResult(res)
     setPhase("results")
@@ -230,6 +204,8 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
 
   // Full-screen exam
   if (phase === "exam" && activeAssessment && user) {
+    const authHeader = getStoredAuthHeader()
+    if (!authHeader) return null
     return (
       <AssessmentExamRunner
         assessmentId={activeAssessment.id}
@@ -239,7 +215,7 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
         questions={activeQuestions}
         userName={user.name}
         userId={user.uid}
-        isGuest={isGuest}
+        authHeader={authHeader}
         onComplete={handleComplete}
         onExit={() => setPhase("list")}
       />
