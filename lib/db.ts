@@ -160,11 +160,14 @@ export async function ensureSchema() {
     CREATE INDEX IF NOT EXISTS mednexus_theory_recent_activity_user_idx ON mednexus_theory_recent_activity (user_id, occurred_at DESC);
 
     -- ── OSCE Hub (reserved for future delivery) ────────────────────────────
+    -- OSCE content is intentionally isolated from MCQ and Theory authoring.
+    -- Tables define the future station and assessment boundary only; no OSCE
+    -- route or workspace is registered until the hub is ready to ship.
     CREATE TABLE IF NOT EXISTS mednexus_osce_stations (
       id TEXT PRIMARY KEY, title TEXT NOT NULL, candidate_instructions TEXT NOT NULL DEFAULT '',
-      examiner_instructions TEXT NOT NULL DEFAULT '', preparation_seconds INTEGER NOT NULL DEFAULT 0 CHECK (preparation_seconds >= 0),
-      performance_seconds INTEGER NOT NULL DEFAULT 0 CHECK (performance_seconds >= 0), checklist JSONB NOT NULL DEFAULT '[]',
-      scoring_rubric JSONB NOT NULL DEFAULT '{}', feedback JSONB NOT NULL DEFAULT '{}', specialty TEXT NOT NULL DEFAULT '',
+      examiner_instructions TEXT NOT NULL DEFAULT '', timing_phases JSONB NOT NULL DEFAULT '[]',
+      checklist JSONB NOT NULL DEFAULT '[]', scoring_rubric JSONB NOT NULL DEFAULT '[]',
+      media JSONB NOT NULL DEFAULT '[]', specialty TEXT NOT NULL DEFAULT '', tags JSONB NOT NULL DEFAULT '[]',
       status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'review', 'published', 'archived')),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -172,11 +175,22 @@ export async function ensureSchema() {
       station_id TEXT NOT NULL REFERENCES mednexus_osce_stations(id) ON DELETE CASCADE,
       competency TEXT NOT NULL, PRIMARY KEY (station_id, competency)
     );
+    CREATE TABLE IF NOT EXISTS mednexus_osce_station_attempts (
+      id TEXT PRIMARY KEY, station_id TEXT NOT NULL REFERENCES mednexus_osce_stations(id) ON DELETE RESTRICT,
+      user_id TEXT NOT NULL, checklist_responses JSONB NOT NULL DEFAULT '{}', rubric_scores JSONB NOT NULL DEFAULT '{}',
+      self_assessment TEXT NOT NULL DEFAULT '', examiner_feedback TEXT NOT NULL DEFAULT '', total_score NUMERIC,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), completed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_osce_station_attempts_user_idx
+      ON mednexus_osce_station_attempts (user_id, started_at DESC);
     CREATE TABLE IF NOT EXISTS mednexus_osce_learner_competency_history (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, station_id TEXT REFERENCES mednexus_osce_stations(id) ON DELETE SET NULL,
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
+      attempt_id TEXT REFERENCES mednexus_osce_station_attempts(id) ON DELETE SET NULL,
+      station_id TEXT REFERENCES mednexus_osce_stations(id) ON DELETE SET NULL,
       competency TEXT NOT NULL, score NUMERIC, feedback TEXT NOT NULL DEFAULT '', assessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    CREATE INDEX IF NOT EXISTS mednexus_osce_competency_history_user_idx ON mednexus_osce_learner_competency_history (user_id, competency, assessed_at DESC);
+    CREATE INDEX IF NOT EXISTS mednexus_osce_competency_history_user_idx
+      ON mednexus_osce_learner_competency_history (user_id, competency, assessed_at DESC);
 
     CREATE TABLE IF NOT EXISTS mednexus_notifications (
       id         TEXT    PRIMARY KEY,
@@ -471,6 +485,18 @@ export async function ensureSchema() {
     -- login_streak: current consecutive-day login streak (resets on miss).
     ALTER TABLE mednexus_registered_users
       ADD COLUMN IF NOT EXISTS login_streak INTEGER NOT NULL DEFAULT 0;
+
+    -- OSCE contract evolution for databases created before the station model.
+    ALTER TABLE mednexus_osce_stations
+      ADD COLUMN IF NOT EXISTS timing_phases JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE mednexus_osce_stations
+      ADD COLUMN IF NOT EXISTS media JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE mednexus_osce_stations
+      ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE mednexus_osce_stations
+      ALTER COLUMN scoring_rubric SET DEFAULT '[]';
+    ALTER TABLE mednexus_osce_learner_competency_history
+      ADD COLUMN IF NOT EXISTS attempt_id TEXT REFERENCES mednexus_osce_station_attempts(id) ON DELETE SET NULL;
 
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();
