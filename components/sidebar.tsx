@@ -132,6 +132,15 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto min-h-0">
         <StudyHubSwitcher activeHub={activeStudyHub} onSelect={setActiveStudyHub} className="mb-3" />
         <nav className="flex flex-col gap-0.5">
+          {activeStudyHub === "theory-vault" ? <>
+            <NavButton glass={isGlassEnabled} active={screen === "theory-dashboard"} onClick={() => nav("theory-dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
+            <NavButton glass={isGlassEnabled} active={screen === "theory-browse"} onClick={() => nav("theory-browse")} icon={<LayersIcon size={18} />} label="Browse Questions" />
+            <NavButton glass={isGlassEnabled} active={screen === "theory-bookmarks"} onClick={() => nav("theory-bookmarks")} icon={<TrophyIcon size={18} />} label="Bookmarks" />
+            <NavButton glass={isGlassEnabled} active={screen === "theory-notes"} onClick={() => nav("theory-notes")} icon={<DatabaseIcon size={18} />} label="My Notes" />
+            <NavButton glass={isGlassEnabled} active={screen === "theory-revision"} onClick={() => nav("theory-revision")} icon={<ActivityIcon size={18} />} label="Revision Queue" />
+            <NavButton glass={isGlassEnabled} active={screen === "theory-progress"} onClick={() => nav("theory-progress")} icon={<TrophyIcon size={18} />} label="Progress" />
+            <NavButton glass={isGlassEnabled} active={screen === "theory-search"} onClick={() => nav("theory-search")} icon={<DatabaseIcon size={18} />} label="Search" />
+          </> : <>
           <NavButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
 
           <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
@@ -143,6 +152,7 @@ export function Sidebar({
           <NavButton glass={isGlassEnabled} active={screen === "store"} onClick={() => nav("store")} icon={<StoreIcon size={18} />} label="Nexus Store" />
           <NavButton glass={isGlassEnabled} active={screen === "leaderboard"} onClick={() => nav("leaderboard")} icon={<TrophyIcon size={18} />} label="Leaderboard" />
 
+          </>}
           {isAdmin && (
             <>
               <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />

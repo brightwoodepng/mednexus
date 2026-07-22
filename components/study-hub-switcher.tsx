@@ -11,7 +11,7 @@ export const STUDY_HUBS: ReadonlyArray<{
   available: boolean
 }> = [
   { id: "mcq-qbank", name: "MCQ Q-Bank", description: "Questions, practice and exams", available: true },
-  { id: "theory-vault", name: "Theory Vault", description: "Core notes and revision guides", available: false },
+  { id: "theory-vault", name: "Theory Vault", description: "Core notes and revision guides", available: true },
   { id: "osce-hub", name: "OSCE Hub", description: "Clinical stations and feedback", available: false },
 ]
 
@@ -38,16 +38,13 @@ export function StudyHubSwitcher({
   if (compact) {
     return (
       <div className={`flex items-center rounded-xl border border-border bg-muted/40 p-1 ${className}`} aria-label="Study hub">
-        <button
-          type="button"
-          onClick={() => onSelect("mcq-qbank")}
-          aria-current={activeHub === "mcq-qbank" ? "page" : undefined}
-          className="flex min-h-9 items-center gap-1.5 rounded-lg bg-card px-2.5 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <BookOpenIcon size={14} aria-hidden="true" />
-          <span>MCQ Q-Bank</span>
-        </button>
-        <span className="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">More soon</span>
+        {STUDY_HUBS.filter((hub) => hub.available).map((hub) => {
+          const active = hub.id === activeHub
+          return <button key={hub.id} type="button" onClick={() => onSelect(hub.id)} aria-current={active ? "page" : undefined} className={`flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-background"}`}>
+            <HubIcon hub={hub.id} size={14} />
+            <span>{hub.name}</span>
+          </button>
+        })}
       </div>
     )
   }
