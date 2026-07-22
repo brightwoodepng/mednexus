@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import type { Screen } from "@/lib/view"
+import { getStudyHubByMode } from "@/lib/study-hubs"
 
 // ─── Icons (self-contained, no external deps) ─────────────────────────────────
 function HomeIcon({ size = 22 }: { size?: number }) {
@@ -45,6 +46,8 @@ function UserIcon({ size = 22 }: { size?: number }) {
 }
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
+// MCQ bottom navigation belongs to the available MCQ hub registry entry.
+const MCQ_HUB = getStudyHubByMode("MCQ")
 const TABS = [
   { id: "dashboard",   label: "Home",        icon: HomeIcon,    screen: "dashboard"   as Screen },
   { id: "game",        label: "Game",        icon: GamepadIcon, screen: "game"        as Screen },
@@ -99,7 +102,7 @@ export function BottomNav({ screen, onNavigate, hidden }: BottomNavProps) {
               key={tab.id}
               type="button"
               onClick={() => tap(tab)}
-              aria-label={tab.label}
+              aria-label={`${MCQ_HUB.title}: ${tab.label}`}
               /* Full-height button = 64px touch target, well above the 48px minimum */
               className="flex flex-1 flex-col items-center justify-center px-0.5"
             >

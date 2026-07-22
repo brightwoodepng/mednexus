@@ -12,6 +12,7 @@
 
 import { useRef, useEffect, useState, Fragment } from "react"
 import { useRouter } from "next/navigation"
+import { STUDY_HUBS } from "@/lib/study-hubs"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -181,8 +182,6 @@ function StudyEnvPopover({
   function handleSelect(mode: "MCQ" | "THEORY") {
     setCurrentStudyMode(mode)
     onClose()
-    if (mode === "MCQ") router.push("/")
-    // THEORY: already here, no navigation needed
   }
 
   const cardBase =
@@ -251,6 +250,11 @@ function StudyEnvPopover({
           )}
         </button>
       </div>
+      {STUDY_HUBS.find((hub) => hub.id === "osce") && (
+        <div className="mx-3 mb-3 flex items-center justify-between rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+          <span>OSCE Practice</span><span className="font-semibold">Coming soon</span>
+        </div>
+      )}
 
       {/* Footer: sign out */}
       <div className="border-t border-border px-3 pb-3 pt-2">

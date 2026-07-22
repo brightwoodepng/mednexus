@@ -22,6 +22,10 @@ import { useRouter } from "next/navigation"
 import { TheorySidebar, type TheoryScreen } from "./TheorySidebar"
 import { TheoryDashboard } from "./TheoryDashboard"
 import { TheoryBrowse } from "./TheoryBrowse"
+import { BookmarksView } from "./BookmarksView"
+import { NotesView } from "./NotesView"
+import { RevisionQueueView } from "./RevisionQueueView"
+import { ProgressView } from "./ProgressView"
 import { NotificationBell } from "@/components/notification-bell"
 import { StethoscopeIcon, MenuIcon, PaletteIcon } from "@/components/icons"
 
@@ -112,6 +116,14 @@ export function TheoryVaultShell({ initialSection = "dashboard" }: TheoryVaultSh
         <TheoryBrowse />
       </Suspense>
     )
+  } else if (activeSection === "bookmarks") {
+    mainContent = <BookmarksView />
+  } else if (activeSection === "notes") {
+    mainContent = <NotesView />
+  } else if (activeSection === "revision") {
+    mainContent = <RevisionQueueView />
+  } else if (activeSection === "progress") {
+    mainContent = <ProgressView />
   } else {
     const meta = PLACEHOLDER_META[activeSection]
     mainContent = meta

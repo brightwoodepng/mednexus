@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
+import { WorkspaceProviders } from '@/components/workspace-providers'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({
@@ -56,7 +57,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="overflow-x-hidden font-sans antialiased text-foreground">
-        {children}
+        <WorkspaceProviders>{children}</WorkspaceProviders>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
