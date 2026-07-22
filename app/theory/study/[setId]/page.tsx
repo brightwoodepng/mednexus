@@ -1,120 +1,221 @@
 /**
  * /theory/study/[setId] — Theory Vault study session.
  *
- * Placeholder shell — ready to be replaced by the full study interface
- * in Prompt 4.  Displays the decoded set title so navigation is verifiable.
+ * Server Component: decodes the setId, fetches questions directly from the DB,
+ * and passes them to the interactive <TheoryStudyInterface> client component.
+ *
+ * setId format: "{categorySlug}--{moduleSlug}--set{num}"
+ *   e.g. "module--internal-medicine--set1"
  */
 
 import Link from "next/link"
+import { TheoryStudyInterface } from "@/components/theory/TheoryStudyInterface"
+import type { TheoryQuestion } from "@/lib/types"
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const SET_SIZE = 20
+
+const CATEGORY_LABELS: Record<string, string> = {
+  module: "End of Module",
+  year:   "End of Year",
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function slugify(str: string): string {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+}
+
+interface ParsedSetId {
+  categorySlug: string
+  moduleSlug:   string
+  setIndex:     number
+}
+
+function parseSetId(raw: string): ParsedSetId {
+  const decoded = decodeURIComponent(raw)
+  const parts   = decoded.split("--")
+
+  if (parts.length < 3) {
+    return { categorySlug: decoded, moduleSlug: "", setIndex: 1 }
+  }
+
+  const categorySlug = parts[0]
+  const setMarker    = parts[parts.length - 1]           // "set1", "set2", …
+  const moduleSlug   = parts.slice(1, -1).join("--")     // handles multi-segment slugs
+  const setIndex     = parseInt(setMarker.replace(/^set/i, ""), 10) || 1
+
+  return { categorySlug, moduleSlug, setIndex }
+}
+
+// ── DB fetch (server-side, no auth token required) ────────────────────────────
+
+interface SetData {
+  questions:           TheoryQuestion[]
+  setTitle:            string
+  moduleDisplayName:   string
+  categoryDisplayName: string
+}
+
+async function fetchSetData(
+  categorySlug: string,
+  moduleSlug:   string,
+  setIndex:     number,
+): Promise<SetData | null> {
+  if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
+
+  try {
+    const { default: pool, ensureSchema } = await import("@/lib/db")
+    await ensureSchema()
+
+    // Fetch all questions for the given category ordered consistently
+    const result = await pool.query<{
+      id:         string
+      category:   string
+      module:     string
+      set_number: number
+      data:       Record<string, unknown>
+    }>(
+      `SELECT id, category, module, set_number, data
+         FROM mednexus_theory_questions
+        WHERE LOWER(category) = LOWER($1)
+        ORDER BY module, set_number ASC, created_at ASC`,
+      [categorySlug],
+    )
+
+    // Map rows → TheoryQuestion
+    const allQuestions: TheoryQuestion[] = result.rows.map((row) => ({
+      id:            row.id,
+      category:      row.category,
+      module:        row.module,
+      setNumber:     row.set_number,
+      prompt:        (row.data?.prompt        as string)   ?? "",
+      modelAnswer:   (row.data?.modelAnswer   as string)   ?? "",
+      criticalFlags: (row.data?.criticalFlags as string[]) ?? [],
+      pastPapers:    (row.data?.pastPapers    as string[]) ?? [],
+      tags:          (row.data?.tags          as string[]) ?? [],
+    }))
+
+    // Group by slugified module name
+    const moduleMap = new Map<string, TheoryQuestion[]>()
+    for (const q of allQuestions) {
+      const key = slugify(q.module)
+      if (!moduleMap.has(key)) moduleMap.set(key, [])
+      moduleMap.get(key)!.push(q)
+    }
+
+    const moduleQuestions = moduleMap.get(moduleSlug) ?? []
+
+    // Slice to the correct set of 20
+    const start        = (setIndex - 1) * SET_SIZE
+    const setQuestions = moduleQuestions.slice(start, start + SET_SIZE)
+
+    const moduleDisplayName   = moduleQuestions[0]?.module
+      ?? moduleSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    const categoryDisplayName = CATEGORY_LABELS[categorySlug]
+      ?? categorySlug.replace(/\b\w/g, (c) => c.toUpperCase())
+
+    return {
+      questions:           setQuestions,
+      setTitle:            `Set ${setIndex}`,
+      moduleDisplayName,
+      categoryDisplayName,
+    }
+  } catch (err) {
+    console.error("[theory/study fetch]", err)
+    return null
+  }
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 interface StudyPageProps {
   params: Promise<{ setId: string }>
 }
 
-// Decode setId into human-readable parts.
-// Format: "{categorySlug}--{moduleSlug}--set{num}"
-function parseSetId(setId: string): { category: string; module: string; set: string } {
-  const decoded = decodeURIComponent(setId)
-  const parts   = decoded.split("--")
-  if (parts.length < 3) return { category: decoded, module: "", set: "" }
+export default async function StudyPage({ params }: StudyPageProps) {
+  const { setId }                                = await params
+  const { categorySlug, moduleSlug, setIndex }   = parseSetId(setId)
 
-  const category = parts[0].replace(/-/g, " ")
-  const module   = parts.slice(1, -1).join(" ").replace(/-/g, " ")
-  const set      = parts[parts.length - 1].replace("set", "Set ")
+  const browseUrl = `/theory/browse?category=${encodeURIComponent(categorySlug)}`
+  const data      = await fetchSetData(categorySlug, moduleSlug, setIndex)
 
-  return {
-    category: category.charAt(0).toUpperCase() + category.slice(1),
-    module:   module.charAt(0).toUpperCase() + module.slice(1),
-    set:      set.charAt(0).toUpperCase() + set.slice(1),
+  // ── No DB ────────────────────────────────────────────────────────────────
+  if (!data) {
+    return (
+      <EmptyState
+        browseUrl={browseUrl}
+        title="Questions unavailable"
+        body="No database is connected, or an error occurred while loading this set."
+      />
+    )
   }
+
+  // ── Empty set ────────────────────────────────────────────────────────────
+  if (data.questions.length === 0) {
+    return (
+      <EmptyState
+        browseUrl={browseUrl}
+        title="No questions in this set"
+        body="This set hasn't been uploaded yet. Check back after the next content import."
+      />
+    )
+  }
+
+  // ── Happy path ───────────────────────────────────────────────────────────
+  return (
+    <TheoryStudyInterface
+      questions={data.questions}
+      setTitle={data.setTitle}
+      moduleDisplayName={data.moduleDisplayName}
+      categoryDisplayName={data.categoryDisplayName}
+      browseUrl={browseUrl}
+    />
+  )
 }
 
-export default async function StudyPage({ params }: StudyPageProps) {
-  const { setId } = await params
-  const { category, module, set } = parseSetId(setId)
+// ── Empty / error shell ────────────────────────────────────────────────────────
 
+function EmptyState({
+  browseUrl,
+  title,
+  body,
+}: {
+  browseUrl: string
+  title:     string
+  body:      string
+}) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background p-8 text-center">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link href="/theory" className="hover:text-foreground transition-colors">
-          Theory Vault
-        </Link>
-        <span>/</span>
-        <Link
-          href={`/theory/browse?category=${encodeURIComponent(category.toLowerCase())}`}
-          className="hover:text-foreground transition-colors capitalize"
-        >
-          {category}
-        </Link>
-        {module && (
-          <>
-            <span>/</span>
-            <span className="capitalize">{module}</span>
-          </>
-        )}
-        {set && (
-          <>
-            <span>/</span>
-            <span className="capitalize">{set}</span>
-          </>
-        )}
-      </nav>
-
-      {/* Main card */}
-      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-amber-200/60 bg-gradient-to-br from-amber-50 to-orange-50 p-10 shadow-lg dark:border-amber-800/30 dark:from-amber-950/30 dark:to-orange-950/20">
-        {/* Decorative blob */}
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-amber-200/30 blur-3xl dark:bg-amber-700/20" />
-
-        <div className="relative flex flex-col items-center gap-5">
-          {/* Icon */}
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/40">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              width={32}
-              height={32}
-              className="text-amber-600 dark:text-amber-400"
-            >
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-            </svg>
-          </div>
-
-          {/* Set info */}
-          <div>
-            {module && (
-              <p className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                {category} · {module}
-              </p>
-            )}
-            <h1 className="mt-1 text-2xl font-extrabold text-foreground capitalize">
-              {set || setId}
-            </h1>
-          </div>
-
-          {/* Placeholder banner */}
-          <div className="w-full rounded-2xl border border-amber-300/60 bg-white/60 px-6 py-5 dark:border-amber-700/30 dark:bg-amber-900/20">
-            <p className="text-sm font-semibold text-foreground">
-              Study Interface Loading Point
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Ready for Prompt 4 — the full long-form study session will render here.
-            </p>
-          </div>
-
-          {/* Back link */}
-          <Link
-            href="/theory/browse"
-            className="mt-2 flex items-center gap-1.5 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8 text-center">
+      <div className="w-full max-w-sm space-y-4">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/30">
+          {/* Book icon */}
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            width={28}
+            height={28}
+            className="text-amber-600 dark:text-amber-400"
           >
-            ← Back to Browse
-          </Link>
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+          </svg>
         </div>
+        <div>
+          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+        </div>
+        <Link
+          href={browseUrl}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+        >
+          ← Back to Browse
+        </Link>
       </div>
     </div>
   )
