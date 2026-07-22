@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
       : ""
 
     const result = await pool.query(
-      `SELECT id, category, module, set_number, data
+      `SELECT id, category, module, set_number, data, collection_id, discipline_id, set_id, prompt, model_answer, marking_points, tags, source_metadata, past_paper_metadata, difficulty, estimated_study_minutes, sort_order, publication_status, is_archived
          FROM mednexus_theory_questions
          ${whereClause}
          ORDER BY set_number ASC, created_at ASC`,
@@ -101,11 +101,22 @@ export async function GET(req: NextRequest) {
       category:      row.category,
       module:        row.module,
       setNumber:     row.set_number,
-      prompt:        row.data?.prompt        ?? "",
-      modelAnswer:   row.data?.modelAnswer   ?? "",
+      prompt:        row.prompt ?? row.data?.prompt ?? "",
+      modelAnswer:   row.model_answer ?? row.data?.modelAnswer ?? "",
       criticalFlags: row.data?.criticalFlags ?? [],
       pastPapers:    row.data?.pastPapers    ?? [],
-      tags:          row.data?.tags          ?? [],
+      tags:          row.tags ?? row.data?.tags ?? [],
+      collectionId:  (row.collection_id as "end_of_rotation" | "end_of_year") ?? "end_of_rotation",
+      disciplineId:  (row.discipline_id as string) ?? "",
+      setId:         (row.set_id as string | null) ?? null,
+      markingPoints: (row.marking_points as string[]) ?? (row.data?.markingPoints as string[]) ?? (row.data?.criticalFlags as string[]) ?? [],
+      sourceMetadata: (row.source_metadata as Record<string, unknown>) ?? {},
+      pastPaperMetadata: (row.past_paper_metadata as Record<string, unknown>[]) ?? [],
+      difficulty: (row.difficulty as "easy" | "medium" | "hard" | "expert") ?? "medium",
+      estimatedStudyMinutes: (row.estimated_study_minutes as number) ?? 0,
+      sortOrder: (row.sort_order as number) ?? 0,
+      publicationStatus: (row.publication_status as "draft" | "published" | "unpublished") ?? "published",
+      isArchived: (row.is_archived as boolean) ?? false,
     }))
 
     return NextResponse.json({ questions })
