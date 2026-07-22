@@ -1,0 +1,37 @@
+Act as an expert Next.js 16 and React developer. We are continuing the implementation of the "Theory Vault" feature in MedNexus. 
+
+Architectural Rules:
+1. NEVER modify existing MCQ components. Create parallel components under `components/theory/`.
+2. Use Server Components by default. Only use Client Components (`"use client"`) for state (Context), drawers, or popovers.
+
+Please implement Prompt 2 cleanly across these steps:
+
+Task 1: Global Study Mode Context
+- Create `components/theory/current-study-mode-context.tsx` as a Client Component provider.
+- Manage `currentStudyMode` state with values `"MCQ" | "THEORY" | "OSCE"`, defaulting to `"MCQ"`.
+- Expose `setStudyMode(mode: StudyMode)` and wrap the app in this provider inside `app/page.tsx` or the root layout.
+
+Task 2: Profile Card Popover & Mode Switcher
+- In `components/sidebar.tsx`, locate the persistent Profile Card at the bottom left (displaying user details like "Bright Kwesi Woode").
+- Wire a popover/dropdown menu that opens when clicking the Profile Card.
+- Inside the popover, add a "Study Environment" selector with options:
+  - 🟦 **MCQ Q-Bank** (sets mode to `"MCQ"`, routes to `/`)
+  - 🟩 **Theory Vault** (sets mode to `"THEORY"`, routes to `/theory`)
+  - 🟨 **OSCE Simulator** (disabled with a "🔒 Coming Soon" badge)
+
+Task 3: Theory Sidebar (`components/theory/TheorySidebar.tsx`)
+- Create `components/theory/TheorySidebar.tsx`.
+- When `currentStudyMode === "THEORY"`, completely hide the MCQ sidebar navigation and render `TheorySidebar`.
+- Include the following sidebar navigation links:
+  - 🏠 Dashboard (`/theory`)
+  - 📚 Browse Questions (`/theory/browse`)
+  - ⭐ Bookmarks (`/theory/bookmarks`)
+  - 📝 My Notes (`/theory/notes`)
+  - 🔁 Revision Queue (`/theory/revision-queue`)
+  - 📊 Progress (`/theory/progress`)
+  - 🔍 Search (`/theory/search`)
+
+Task 4: Conditional Header Logic & Theory Landing Route
+- Create the route shell `app/theory/page.tsx` for the Theory Vault landing page.
+- In `components/mednexus-app.tsx` or the main header area, conditionally hide the existing `[ ⚡ Trial ]` and `[ ⏱️ Exam ]` buttons whenever `currentStudyMode === "THEORY"` or when the route is `/admin`.
+- Ensure app compiles with zero TypeScript errors.

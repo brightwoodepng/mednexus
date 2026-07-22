@@ -624,8 +624,10 @@ export function MedNexusApp() {
           </div>
           {/* Right: study mode toggle + theme toggle (desktop only) + bell */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            {/* Study mode toggle — all screen sizes */}
-            <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
+            {/* Study mode toggle — hidden in Theory Vault and on /admin route */}
+            {currentStudyMode !== "THEORY" && !pathname?.startsWith("/admin") && (
+              <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
+            )}
             {/* Theme / Appearance toggle — desktop only; lives in mobile drawer */}
             <button
               type="button"
