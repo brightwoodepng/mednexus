@@ -91,7 +91,7 @@ export function TheoryVaultShell({ initialSection = "dashboard" }: TheoryVaultSh
     else if (section === "bookmarks") router.push("/theory/bookmarks")
     else if (section === "notes")     router.push("/theory/notes")
     else if (section === "progress")  router.push("/theory/progress")
-    // "search" stays in-shell (placeholder)
+    else if (section === "search") router.push("/theory/search")
   }
 
   // ── Main content ────────────────────────────────────────────────────────────
