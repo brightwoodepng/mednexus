@@ -26,6 +26,7 @@ import { BookmarksView } from "./BookmarksView"
 import { NotesView } from "./NotesView"
 import { RevisionQueueView } from "./RevisionQueueView"
 import { ProgressView } from "./ProgressView"
+import { SearchView } from "./SearchView"
 import { NotificationBell } from "@/components/notification-bell"
 import { StethoscopeIcon, MenuIcon, PaletteIcon } from "@/components/icons"
 
@@ -124,12 +125,9 @@ export function TheoryVaultShell({ initialSection = "dashboard" }: TheoryVaultSh
     mainContent = <RevisionQueueView />
   } else if (activeSection === "progress") {
     mainContent = <ProgressView />
-  } else {
-    const meta = PLACEHOLDER_META[activeSection]
-    mainContent = meta
-      ? <PlaceholderScreen title={meta.title} description={meta.description} />
-      : null
-  }
+  } else if (activeSection === "search") {
+    mainContent = <SearchView />
+  } else mainContent = null
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
