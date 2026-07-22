@@ -257,6 +257,26 @@ export function TheorySidebar({
   const router = useRouter()
   const [studyEnvOpen, setStudyEnvOpen] = useState(false)
   const studyEnvRef = useRef<HTMLDivElement>(null)
+  const [profile, setProfile] = useState({ revisionsDue: 0, completedQuestions: 0, bookmarks: 0 })
+
+  // The sidebar is deliberately backed by the Theory aggregate, rather than
+  // the MCQ progress object. This keeps its identity and counters mode-specific.
+  useEffect(() => {
+    const guestToken = typeof window === "undefined" ? null : localStorage.getItem("mednexus-guest-token")
+    const userToken = typeof window === "undefined" ? null : localStorage.getItem("mednexus-user-token")
+    const headers: Record<string, string> = guestToken ? { "x-guest-token": guestToken } : userToken ? { "x-session-token": userToken } : {}
+    fetch("/api/theory/profile-summary", { headers })
+      .then(async response => {
+        if (!response.ok) throw new Error("Profile summary unavailable")
+        return response.json()
+      })
+      .then(summary => setProfile({
+        revisionsDue: Number(summary.metrics?.revisionsDue) || 0,
+        completedQuestions: Number(summary.metrics?.completedQuestions) || 0,
+        bookmarks: Number(summary.metrics?.bookmarks) || 0,
+      }))
+      .catch(() => undefined)
+  }, [user?.uid])
 
   const nav = (s: TheoryScreen) => {
     onNavigate(s)
@@ -417,12 +437,9 @@ export function TheorySidebar({
           </button>
         </div>
 
-        {/* Profile card — navigates to MCQ profile screen */}
-        <button
-          type="button"
-          onClick={() => handleGoToScreen("profile")}
-          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${cardCls} ${isGlassEnabled ? "hover:glass-pill-active" : "hover:bg-sidebar-accent"}`}
-        >
+        {/* Theory-specific learner identity and live study counters. */}
+        <div className={`w-full rounded-xl px-3 py-2.5 text-left ${cardCls}`}>
+          <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-600/90 text-white shadow-sm">
             <UserIcon size={18} />
           </div>
@@ -432,7 +449,13 @@ export function TheorySidebar({
             </p>
             <p className="text-[11px] text-sidebar-foreground/55">Theory Vault</p>
           </div>
-        </button>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[10px]">
+            <div><p className="font-bold text-amber-600 dark:text-amber-400">{profile.revisionsDue}</p><p className="text-sidebar-foreground/55">due</p></div>
+            <div><p className="font-bold text-teal-600 dark:text-teal-400">{profile.completedQuestions}</p><p className="text-sidebar-foreground/55">completed</p></div>
+            <div><p className="font-bold text-sidebar-foreground">{profile.bookmarks}</p><p className="text-sidebar-foreground/55">saved</p></div>
+          </div>
+        </div>
 
         {/* Sign Out */}
         <button
