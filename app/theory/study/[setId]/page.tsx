@@ -76,8 +76,22 @@ async function fetchSetData(
       module:     string
       set_number: number
       data:       Record<string, unknown>
+      collection_id?: "end_of_rotation" | "end_of_year"
+      prompt?: string
+      model_answer?: string
+      discipline_id?: string
+      set_id?: string | null
+      marking_points?: string[]
+      tags?: string[]
+      source_metadata?: Record<string, unknown>
+      past_paper_metadata?: Record<string, unknown>[]
+      difficulty?: "easy" | "medium" | "hard" | "expert"
+      estimated_study_minutes?: number
+      sort_order?: number
+      publication_status?: "draft" | "published" | "unpublished"
+      is_archived?: boolean
     }>(
-      `SELECT id, category, module, set_number, data
+      `SELECT id, category, module, set_number, data, collection_id, discipline_id, set_id, prompt, model_answer, marking_points, tags, source_metadata, past_paper_metadata, difficulty, estimated_study_minutes, sort_order, publication_status, is_archived
          FROM mednexus_theory_questions
         WHERE LOWER(category) = LOWER($1)
         ORDER BY module, set_number ASC, created_at ASC`,
@@ -90,11 +104,22 @@ async function fetchSetData(
       category:      row.category,
       module:        row.module,
       setNumber:     row.set_number,
-      prompt:        (row.data?.prompt        as string)   ?? "",
-      modelAnswer:   (row.data?.modelAnswer   as string)   ?? "",
+      prompt:        (row.prompt as string) ?? (row.data?.prompt as string) ?? "",
+      modelAnswer:   (row.model_answer as string) ?? (row.data?.modelAnswer as string) ?? "",
       criticalFlags: (row.data?.criticalFlags as string[]) ?? [],
       pastPapers:    (row.data?.pastPapers    as string[]) ?? [],
-      tags:          (row.data?.tags          as string[]) ?? [],
+      tags:          (row.tags as string[]) ?? (row.data?.tags as string[]) ?? [],
+      collectionId:  row.collection_id ?? "end_of_rotation",
+      disciplineId:  row.discipline_id ?? "",
+      setId:         row.set_id ?? null,
+      markingPoints: row.marking_points ?? (row.data?.markingPoints as string[]) ?? (row.data?.criticalFlags as string[]) ?? [],
+      sourceMetadata: row.source_metadata ?? {},
+      pastPaperMetadata: row.past_paper_metadata ?? [],
+      difficulty: row.difficulty ?? "medium",
+      estimatedStudyMinutes: row.estimated_study_minutes ?? 0,
+      sortOrder: row.sort_order ?? 0,
+      publicationStatus: row.publication_status ?? "published",
+      isArchived: row.is_archived ?? false,
     }))
 
     // Group by slugified module name

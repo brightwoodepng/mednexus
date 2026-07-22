@@ -178,18 +178,17 @@ export interface Question {
 }
 
 // ─── Theory Vault ─────────────────────────────────────────────────────────────
-// Completely separate schema from the MCQ Question type.
-// Stored in normalized mednexus_theory_* tables; never mixed with mednexus_questions.
+// This hierarchy is independent of MCQ content and maps one-to-one to the
+// normalized mednexus_theory_* persistence model.
 
-/** The two curricula that may contain Theory material. */
 export type TheoryCollectionId = "end_of_rotation" | "end_of_year"
-
-export type TheoryPublicationStatus = "draft" | "published" | "unpublished"
+export type TheoryQuestionStatus = "draft" | "published" | "unpublished"
+export type TheoryDifficulty = "easy" | "medium" | "hard" | "expert"
 
 export interface TheoryCollection {
   id: TheoryCollectionId
   title: string
-  description?: string
+  description: string
   sortOrder: number
 }
 
@@ -197,72 +196,74 @@ export interface TheoryDiscipline {
   id: string
   collectionId: TheoryCollectionId
   title: string
-  description?: string
+  description: string
   sortOrder: number
   isPublished: boolean
 }
 
+/** A set is optional: questions may instead belong directly to a discipline. */
 export interface TheorySet {
   id: string
   collectionId: TheoryCollectionId
   disciplineId: string
   title: string
-  description?: string
+  description: string
   sortOrder: number
   isPublished: boolean
 }
 
-/**
- * A single Theory Vault entry: a long-form prompt with a model answer,
- * critical examination flags, past-paper citations, and freeform tags.
- *
- * set_number groups questions into numbered revision sets within a module
- * (e.g. set 1 = "Core Concepts", set 2 = "Clinical Applications").
- */
 export interface TheoryQuestion {
-  /** UUID primary key — matches the `id` column in mednexus_theory_questions. */
   id: string
-  /** Broad category grouping (e.g. "Pharmacology", "Anatomy"). */
-  category: string
-  /** Parent module name (e.g. "Level 400 Clinicals"). */
-  module: string
-  /** Ordered set number within the module (1-based). */
-  setNumber: number
-  /** The question / prompt shown to the student. */
+  collectionId: TheoryCollectionId
+  disciplineId: string
+  setId: string | null
   prompt: string
-  /** The authoritative model answer for marking. */
   modelAnswer: string
-  /** Short strings flagging examinable high-yield points (e.g. "★ Favourite OSCEs"). */
-  criticalFlags: string[]
-  /** Past-paper references where this question or topic appeared. */
-  pastPapers: string[]
-  /** Freeform tags for search and filtering. */
+  markingPoints: string[]
   tags: string[]
-  /** Normalized collection. Legacy records default to end_of_rotation. */
-  collectionId?: TheoryCollectionId
-  /** Normalized discipline id. */
-  disciplineId?: string
-  /** Optional normalized set id; absent means directly under the discipline. */
-  setId?: string | null
-  /** Markable points expected in a complete answer. */
-  markingPoints?: string[]
-  /** Structured source information, such as a textbook or lecture reference. */
-  sourceMetadata?: Record<string, unknown>
-  /** Structured past-paper references; `pastPapers` remains for legacy clients. */
-  pastPaperMetadata?: Record<string, unknown>[]
-  difficulty?: "easy" | "medium" | "hard" | "expert"
-  estimatedStudyMinutes?: number
-  sortOrder?: number
-  publicationStatus?: TheoryPublicationStatus
-  isArchived?: boolean
+  sourceMetadata: Record<string, unknown>
+  pastPaperMetadata: Record<string, unknown>[]
+  difficulty: TheoryDifficulty
+  estimatedStudyMinutes: number
+  sortOrder: number
+  publicationStatus: TheoryQuestionStatus
+  isArchived: boolean
+  /** @deprecated Presentation fields maintained while legacy Theory routes migrate. */
+  category: string
+  /** @deprecated Presentation fields maintained while legacy Theory routes migrate. */
+  module: string
+  /** @deprecated Use setId and sortOrder for normalized ordering. */
+  setNumber: number
+  /** @deprecated Use markingPoints for newly-authored questions. */
+  criticalFlags: string[]
+  /** @deprecated Use pastPaperMetadata for newly-authored questions. */
+  pastPapers: string[]
 }
 
-/** Shared foreign-key context carried by every learner-owned Theory record. */
+/** The hierarchy context persisted on every learner-owned Theory record. */
 export interface TheoryLearnerContext {
   collectionId: TheoryCollectionId
   disciplineId: string
   setId: string | null
   questionId: string
+}
+
+export interface TheoryReadingProgress extends TheoryLearnerContext {
+  firstReadAt: string
+  lastReadAt: string
+  readSeconds: number
+}
+
+export interface TheoryCompletionProgress extends TheoryLearnerContext {
+  completedAt: string
+}
+
+export interface TheoryRevisionEntry extends TheoryLearnerContext {
+  id: string
+  dueAt: string
+  completedAt: string | null
+  intervalDays: number
+  easeFactor: number | null
 }
 
 /** Quiz delivery modes. */

@@ -71,117 +71,75 @@ export async function ensureSchema() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
 
-    -- ── Theory Vault (normalized hierarchy) ─────────────────────────────────
-    -- A question belongs to a discipline and optionally a set.  Collection,
-    -- discipline and set ids are also carried on questions and learner records
-    -- so reporting never needs to infer a parent from JSONB data.
+    -- ── Theory Vault: normalized content hierarchy ─────────────────────────
     CREATE TABLE IF NOT EXISTS mednexus_theory_collections (
-      id          TEXT PRIMARY KEY CHECK (id IN ('end_of_rotation', 'end_of_year')),
-      title       TEXT NOT NULL,
-      description TEXT NOT NULL DEFAULT '',
-      sort_order  INTEGER NOT NULL DEFAULT 0,
-      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      id TEXT PRIMARY KEY CHECK (id IN ('end_of_rotation', 'end_of_year')),
+      title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS mednexus_theory_disciplines (
-      id            TEXT PRIMARY KEY,
-      collection_id TEXT NOT NULL REFERENCES mednexus_theory_collections(id) ON DELETE CASCADE,
-      title         TEXT NOT NULL,
-      description   TEXT NOT NULL DEFAULT '',
-      sort_order    INTEGER NOT NULL DEFAULT 0,
-      is_published  BOOLEAN NOT NULL DEFAULT TRUE,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      id TEXT PRIMARY KEY, collection_id TEXT NOT NULL REFERENCES mednexus_theory_collections(id) ON DELETE CASCADE,
+      title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 0,
+      is_published BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (id, collection_id)
     );
     CREATE TABLE IF NOT EXISTS mednexus_theory_sets (
-      id            TEXT PRIMARY KEY,
-      collection_id TEXT NOT NULL,
-      discipline_id TEXT NOT NULL,
-      title         TEXT NOT NULL,
-      description   TEXT NOT NULL DEFAULT '',
-      sort_order    INTEGER NOT NULL DEFAULT 0,
-      is_published  BOOLEAN NOT NULL DEFAULT TRUE,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      id TEXT PRIMARY KEY, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL,
+      title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 0,
+      is_published BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (id, collection_id, discipline_id),
-      FOREIGN KEY (discipline_id, collection_id)
-        REFERENCES mednexus_theory_disciplines(id, collection_id) ON DELETE CASCADE
+      FOREIGN KEY (discipline_id, collection_id) REFERENCES mednexus_theory_disciplines(id, collection_id) ON DELETE CASCADE
     );
-    -- category, module, set_number, and data are retained temporarily
-    -- for API compatibility and for the explicit legacy backfill below.
+    -- Legacy category/module/data columns stay only during the migration so
+    -- existing API consumers and imported data are not dropped.
     CREATE TABLE IF NOT EXISTS mednexus_theory_questions (
-      id                      TEXT PRIMARY KEY,
-      collection_id           TEXT NOT NULL DEFAULT 'end_of_rotation',
-      discipline_id           TEXT NOT NULL DEFAULT 'legacy-general',
-      set_id                  TEXT,
-      category                TEXT NOT NULL DEFAULT '',
-      module                  TEXT NOT NULL DEFAULT '',
-      set_number              INTEGER NOT NULL DEFAULT 1,
-      prompt                  TEXT NOT NULL DEFAULT '',
-      model_answer            TEXT NOT NULL DEFAULT '',
-      marking_points          JSONB NOT NULL DEFAULT '[]',
-      tags                    TEXT[] NOT NULL DEFAULT '{}',
-      source_metadata         JSONB NOT NULL DEFAULT '{}',
-      past_paper_metadata     JSONB NOT NULL DEFAULT '[]',
-      difficulty              TEXT NOT NULL DEFAULT 'medium' CHECK (difficulty IN ('easy', 'medium', 'hard', 'expert')),
-      estimated_study_minutes INTEGER NOT NULL DEFAULT 0 CHECK (estimated_study_minutes >= 0),
-      sort_order              INTEGER NOT NULL DEFAULT 0,
-      publication_status      TEXT NOT NULL DEFAULT 'draft' CHECK (publication_status IN ('draft', 'published', 'unpublished')),
-      is_archived             BOOLEAN NOT NULL DEFAULT FALSE,
-      data                    JSONB NOT NULL DEFAULT '{}',
-      created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      id TEXT PRIMARY KEY, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL, set_id TEXT,
+      category TEXT NOT NULL DEFAULT '', module TEXT NOT NULL DEFAULT '', set_number INTEGER NOT NULL DEFAULT 1, data JSONB NOT NULL DEFAULT '{}',
+      prompt TEXT NOT NULL, model_answer TEXT NOT NULL, marking_points JSONB NOT NULL DEFAULT '[]', tags TEXT[] NOT NULL DEFAULT '{}',
+      source_metadata JSONB NOT NULL DEFAULT '{}', past_paper_metadata JSONB NOT NULL DEFAULT '[]',
+      difficulty TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard', 'expert')),
+      estimated_study_minutes INTEGER NOT NULL CHECK (estimated_study_minutes >= 0), sort_order INTEGER NOT NULL DEFAULT 0,
+      publication_status TEXT NOT NULL CHECK (publication_status IN ('draft', 'published', 'unpublished')),
+      is_archived BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (id, collection_id, discipline_id),
       FOREIGN KEY (collection_id) REFERENCES mednexus_theory_collections(id),
-      FOREIGN KEY (discipline_id, collection_id)
-        REFERENCES mednexus_theory_disciplines(id, collection_id),
-      FOREIGN KEY (set_id, collection_id, discipline_id)
-        REFERENCES mednexus_theory_sets(id, collection_id, discipline_id)
+      FOREIGN KEY (discipline_id, collection_id) REFERENCES mednexus_theory_disciplines(id, collection_id),
+      FOREIGN KEY (set_id, collection_id, discipline_id) REFERENCES mednexus_theory_sets(id, collection_id, discipline_id)
     );
-
-    -- User ids deliberately are not foreign keys: both registered and guest
-    -- identities can own learning data. All rows retain the full hierarchy.
     CREATE TABLE IF NOT EXISTS mednexus_theory_reading_progress (
-      user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL,
-      set_id TEXT, question_id TEXT NOT NULL, first_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), read_seconds INTEGER NOT NULL DEFAULT 0,
+      user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL, set_id TEXT, question_id TEXT NOT NULL,
+      first_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), read_seconds INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (user_id, question_id),
       FOREIGN KEY (question_id) REFERENCES mednexus_theory_questions(id)
     );
     CREATE TABLE IF NOT EXISTS mednexus_theory_completion_progress (
-      user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL,
-      set_id TEXT, question_id TEXT NOT NULL, completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (user_id, question_id),
+      user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL, set_id TEXT, question_id TEXT NOT NULL,
+      completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (user_id, question_id),
       FOREIGN KEY (question_id) REFERENCES mednexus_theory_questions(id)
     );
     CREATE TABLE IF NOT EXISTS mednexus_theory_bookmarks (
-      user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL,
-      set_id TEXT, question_id TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (user_id, question_id),
-      FOREIGN KEY (question_id) REFERENCES mednexus_theory_questions(id)
+      user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL, set_id TEXT, question_id TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, question_id), FOREIGN KEY (question_id) REFERENCES mednexus_theory_questions(id)
     );
     CREATE TABLE IF NOT EXISTS mednexus_theory_notes (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL,
-      set_id TEXT, question_id TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (user_id, question_id),
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL, set_id TEXT, question_id TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (user_id, question_id),
       FOREIGN KEY (question_id) REFERENCES mednexus_theory_questions(id)
     );
     CREATE TABLE IF NOT EXISTS mednexus_theory_revision_entries (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL,
-      set_id TEXT, question_id TEXT NOT NULL, due_at TIMESTAMPTZ NOT NULL, completed_at TIMESTAMPTZ,
-      interval_days INTEGER NOT NULL DEFAULT 0, ease_factor NUMERIC(4,2), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL, set_id TEXT, question_id TEXT NOT NULL,
+      due_at TIMESTAMPTZ NOT NULL, completed_at TIMESTAMPTZ, interval_days INTEGER NOT NULL DEFAULT 0, ease_factor NUMERIC(4,2), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       FOREIGN KEY (question_id) REFERENCES mednexus_theory_questions(id)
     );
     CREATE TABLE IF NOT EXISTS mednexus_theory_recent_activity (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL,
-      set_id TEXT, question_id TEXT NOT NULL, activity_type TEXT NOT NULL, occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), metadata JSONB NOT NULL DEFAULT '{}',
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL, set_id TEXT, question_id TEXT NOT NULL,
+      activity_type TEXT NOT NULL, metadata JSONB NOT NULL DEFAULT '{}', occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       FOREIGN KEY (question_id) REFERENCES mednexus_theory_questions(id)
     );
     CREATE TABLE IF NOT EXISTS mednexus_theory_import_batches (
-      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, collection_id TEXT, discipline_id TEXT, set_id TEXT, question_id TEXT,
-      source_name TEXT NOT NULL DEFAULT '', source_metadata JSONB NOT NULL DEFAULT '{}', imported_count INTEGER NOT NULL DEFAULT 0,
-      failed_count INTEGER NOT NULL DEFAULT 0, audit_log JSONB NOT NULL DEFAULT '[]', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), completed_at TIMESTAMPTZ,
-      FOREIGN KEY (collection_id) REFERENCES mednexus_theory_collections(id),
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, collection_id TEXT NOT NULL, discipline_id TEXT NOT NULL, set_id TEXT, question_id TEXT,
+      source_name TEXT NOT NULL DEFAULT '', source_metadata JSONB NOT NULL DEFAULT '{}', imported_count INTEGER NOT NULL DEFAULT 0, failed_count INTEGER NOT NULL DEFAULT 0,
+      audit_log JSONB NOT NULL DEFAULT '[]', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), completed_at TIMESTAMPTZ,
       FOREIGN KEY (discipline_id, collection_id) REFERENCES mednexus_theory_disciplines(id, collection_id),
       FOREIGN KEY (set_id, collection_id, discipline_id) REFERENCES mednexus_theory_sets(id, collection_id, discipline_id),
       FOREIGN KEY (question_id) REFERENCES mednexus_theory_questions(id)
@@ -460,8 +418,9 @@ export async function ensureSchema() {
     ALTER TABLE mednexus_registered_users
       ADD COLUMN IF NOT EXISTS login_streak INTEGER NOT NULL DEFAULT 0;
 
-    -- Theory Vault v2: add normalized columns to installations that previously
-    -- stored only category/module/set_number plus a JSONB document.
+    -- Theory v2 migration: retain existing question ids and JSONB payloads while
+    -- making hierarchy and authoring fields queryable. Deterministic legacy ids
+    -- make the backfill safe to run repeatedly.
     ALTER TABLE mednexus_theory_questions ADD COLUMN IF NOT EXISTS collection_id TEXT;
     ALTER TABLE mednexus_theory_questions ADD COLUMN IF NOT EXISTS discipline_id TEXT;
     ALTER TABLE mednexus_theory_questions ADD COLUMN IF NOT EXISTS set_id TEXT;
@@ -481,60 +440,38 @@ export async function ensureSchema() {
       ('end_of_rotation', 'End of Rotation', 1), ('end_of_year', 'End of Year', 2)
     ON CONFLICT (id) DO NOTHING;
     INSERT INTO mednexus_theory_disciplines (id, collection_id, title, sort_order)
-      VALUES ('legacy-general', 'end_of_rotation', 'General', 0)
-    ON CONFLICT (id) DO NOTHING;
-    -- Preserve existing rows by creating deterministic legacy parents from their
-    -- former category/module/set fields, then copy JSONB values into columns.
-    INSERT INTO mednexus_theory_disciplines (id, collection_id, title, sort_order)
-    SELECT 'legacy-discipline-' || md5(COALESCE(category, '') || '|' || COALESCE(module, '')),
-           'end_of_rotation', COALESCE(NULLIF(category, ''), NULLIF(module, ''), 'General'), 0
+    SELECT 'legacy-discipline-' || md5(category || '|' || module), 'end_of_rotation', COALESCE(NULLIF(category, ''), NULLIF(module, ''), 'General'), 0
     FROM mednexus_theory_questions GROUP BY category, module
     ON CONFLICT (id) DO NOTHING;
     INSERT INTO mednexus_theory_sets (id, collection_id, discipline_id, title, sort_order)
-    SELECT 'legacy-set-' || md5(COALESCE(category, '') || '|' || COALESCE(module, '') || '|' || set_number::text),
-           'end_of_rotation', 'legacy-discipline-' || md5(COALESCE(category, '') || '|' || COALESCE(module, '')),
-           'Set ' || set_number, set_number
+    SELECT 'legacy-set-' || md5(category || '|' || module || '|' || set_number::text), 'end_of_rotation',
+           'legacy-discipline-' || md5(category || '|' || module), 'Set ' || set_number, set_number
     FROM mednexus_theory_questions GROUP BY category, module, set_number
     ON CONFLICT (id) DO NOTHING;
-    UPDATE mednexus_theory_questions
-       SET collection_id = COALESCE(collection_id, 'end_of_rotation'),
-           discipline_id = COALESCE(discipline_id, 'legacy-discipline-' || md5(COALESCE(category, '') || '|' || COALESCE(module, ''))),
-           set_id = COALESCE(set_id, 'legacy-set-' || md5(COALESCE(category, '') || '|' || COALESCE(module, '') || '|' || set_number::text)),
-           prompt = CASE WHEN prompt = '' THEN COALESCE(data->>'prompt', '') ELSE prompt END,
-           model_answer = CASE WHEN model_answer = '' THEN COALESCE(data->>'modelAnswer', '') ELSE model_answer END,
-           marking_points = CASE WHEN marking_points = '[]'::jsonb THEN COALESCE(data->'markingPoints', data->'criticalFlags', '[]'::jsonb) ELSE marking_points END,
-           tags = CASE WHEN cardinality(tags) = 0 THEN ARRAY(SELECT jsonb_array_elements_text(COALESCE(data->'tags', '[]'::jsonb))) ELSE tags END,
-           past_paper_metadata = CASE WHEN past_paper_metadata = '[]'::jsonb THEN COALESCE(data->'pastPaperMetadata', data->'pastPapers', '[]'::jsonb) ELSE past_paper_metadata END,
-           publication_status = CASE WHEN publication_status = 'draft' THEN COALESCE(data->>'publicationStatus', 'published') ELSE publication_status END,
-           is_archived = is_archived OR COALESCE((data->>'isArchived')::boolean, FALSE);
+    UPDATE mednexus_theory_questions SET
+      collection_id = COALESCE(collection_id, 'end_of_rotation'),
+      discipline_id = COALESCE(discipline_id, 'legacy-discipline-' || md5(category || '|' || module)),
+      set_id = COALESCE(set_id, 'legacy-set-' || md5(category || '|' || module || '|' || set_number::text)),
+      prompt = COALESCE(NULLIF(prompt, ''), data->>'prompt', ''),
+      model_answer = COALESCE(NULLIF(model_answer, ''), data->>'modelAnswer', ''),
+      marking_points = CASE WHEN marking_points = '[]'::jsonb THEN COALESCE(data->'markingPoints', data->'criticalFlags', '[]'::jsonb) ELSE marking_points END,
+      tags = CASE WHEN cardinality(tags) = 0 THEN ARRAY(SELECT jsonb_array_elements_text(COALESCE(data->'tags', '[]'::jsonb))) ELSE tags END,
+      past_paper_metadata = CASE WHEN past_paper_metadata = '[]'::jsonb THEN COALESCE(data->'pastPaperMetadata', '[]'::jsonb) ELSE past_paper_metadata END,
+      publication_status = CASE WHEN publication_status = 'draft' THEN COALESCE(data->>'publicationStatus', 'published') ELSE publication_status END,
+      is_archived = is_archived OR COALESCE((data->>'isArchived')::boolean, FALSE);
     ALTER TABLE mednexus_theory_questions ALTER COLUMN collection_id SET NOT NULL;
     ALTER TABLE mednexus_theory_questions ALTER COLUMN discipline_id SET NOT NULL;
-    DO $$ BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'theory_questions_collection_fk') THEN
-        ALTER TABLE mednexus_theory_questions ADD CONSTRAINT theory_questions_collection_fk
-          FOREIGN KEY (collection_id) REFERENCES mednexus_theory_collections(id);
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'theory_questions_discipline_fk') THEN
-        ALTER TABLE mednexus_theory_questions ADD CONSTRAINT theory_questions_discipline_fk
-          FOREIGN KEY (discipline_id, collection_id) REFERENCES mednexus_theory_disciplines(id, collection_id);
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'theory_questions_set_fk') THEN
-        ALTER TABLE mednexus_theory_questions ADD CONSTRAINT theory_questions_set_fk
-          FOREIGN KEY (set_id, collection_id, discipline_id) REFERENCES mednexus_theory_sets(id, collection_id, discipline_id);
-      END IF;
-    END $$;
-
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_theory_questions_id_context ON mednexus_theory_questions (id, collection_id, discipline_id);
-    CREATE INDEX IF NOT EXISTS idx_theory_browse_published ON mednexus_theory_questions (collection_id, discipline_id, set_id, sort_order) WHERE publication_status = 'published' AND NOT is_archived;
-    CREATE INDEX IF NOT EXISTS idx_theory_disciplines_order ON mednexus_theory_disciplines (collection_id, sort_order);
-    CREATE INDEX IF NOT EXISTS idx_theory_sets_order ON mednexus_theory_sets (collection_id, discipline_id, sort_order);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_theory_questions_context ON mednexus_theory_questions (id, collection_id, discipline_id);
+    CREATE INDEX IF NOT EXISTS idx_theory_published_browse ON mednexus_theory_questions (collection_id, discipline_id, set_id, sort_order) WHERE publication_status = 'published' AND NOT is_archived;
+    CREATE INDEX IF NOT EXISTS idx_theory_discipline_order ON mednexus_theory_disciplines (collection_id, sort_order);
+    CREATE INDEX IF NOT EXISTS idx_theory_set_order ON mednexus_theory_sets (collection_id, discipline_id, sort_order);
     CREATE INDEX IF NOT EXISTS idx_theory_question_lookup ON mednexus_theory_questions (collection_id, discipline_id, set_id, id);
-    CREATE INDEX IF NOT EXISTS idx_theory_reading_user ON mednexus_theory_reading_progress (user_id, last_read_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_theory_completion_user ON mednexus_theory_completion_progress (user_id, completed_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_theory_revision_due ON mednexus_theory_revision_entries (user_id, due_at) WHERE completed_at IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_theory_reading_progress_user ON mednexus_theory_reading_progress (user_id, last_read_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_theory_completion_progress_user ON mednexus_theory_completion_progress (user_id, completed_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_theory_due_revisions ON mednexus_theory_revision_entries (user_id, due_at) WHERE completed_at IS NULL;
     CREATE INDEX IF NOT EXISTS idx_theory_bookmarks_user ON mednexus_theory_bookmarks (user_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_theory_notes_user ON mednexus_theory_notes (user_id, updated_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_theory_search ON mednexus_theory_questions USING GIN (to_tsvector('simple', coalesce(prompt, '') || ' ' || coalesce(model_answer, '') || ' ' || array_to_string(tags, ' ')));
+    CREATE INDEX IF NOT EXISTS idx_theory_question_search ON mednexus_theory_questions USING GIN (to_tsvector('simple', prompt || ' ' || model_answer || ' ' || array_to_string(tags, ' ')));
 
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();
