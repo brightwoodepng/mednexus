@@ -13,6 +13,7 @@
 import { useRef, useEffect, useState, Fragment } from "react"
 import { useRouter } from "next/navigation"
 import { STUDY_HUBS } from "@/lib/study-hubs"
+import type { StudyMode } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -179,7 +180,7 @@ function StudyEnvPopover({
   const { user, signOutUser } = useApp()
   const router = useRouter()
 
-  function handleSelect(mode: "MCQ" | "THEORY") {
+  function handleSelect(mode: StudyMode) {
     setCurrentStudyMode(mode)
     onClose()
   }
@@ -206,55 +207,22 @@ function StudyEnvPopover({
         </button>
       </div>
 
-      {/* Mode cards */}
+      {/* Mode cards are registry-driven so availability and routes stay shared. */}
       <div className="flex gap-2 p-3">
-        {/* MCQ Q-Bank */}
-        <button
-          type="button"
-          onClick={() => handleSelect("MCQ")}
-          className={`${cardBase} ${
-            currentStudyMode === "MCQ"
-              ? "border-primary/60 bg-primary/8 text-primary"
-              : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:bg-muted/80 hover:text-foreground"
-          }`}
-        >
-          <BookOpenIcon size={20} />
-          <span className="text-[11px] font-semibold leading-tight">
-            MCQ Q-Bank
-          </span>
-          {currentStudyMode === "MCQ" && (
-            <span className="flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">
-              <CheckIcon size={8} /> Active
-            </span>
-          )}
-        </button>
-
-        {/* Theory Vault */}
-        <button
-          type="button"
-          onClick={() => handleSelect("THEORY")}
-          className={`${cardBase} ${
-            currentStudyMode === "THEORY"
-              ? "border-teal-500/60 bg-teal-500/8 text-teal-600 dark:text-teal-400"
-              : "border-border bg-muted/40 text-muted-foreground hover:border-teal-500/30 hover:bg-muted/80 hover:text-foreground"
-          }`}
-        >
-          <FlaskIcon size={20} />
-          <span className="text-[11px] font-semibold leading-tight">
-            Theory Vault
-          </span>
-          {currentStudyMode === "THEORY" && (
-            <span className="flex items-center gap-0.5 rounded-full bg-teal-500/15 px-1.5 py-0.5 text-[9px] font-bold text-teal-600 dark:text-teal-400">
-              <CheckIcon size={8} /> Active
-            </span>
-          )}
-        </button>
+        {STUDY_HUBS.filter(hub => hub.availability === "available").map(hub => {
+          const active = currentStudyMode === hub.mode
+          const Icon = hub.id === "mcq" ? BookOpenIcon : FlaskIcon
+          return <button key={hub.id} type="button" onClick={() => handleSelect(hub.mode)} className={`${cardBase} ${active ? "border-teal-500/60 bg-teal-500/8 text-teal-600 dark:text-teal-400" : "border-border bg-muted/40 text-muted-foreground hover:border-teal-500/30 hover:bg-muted/80 hover:text-foreground"}`}>
+            <Icon size={20}/><span className="text-[11px] font-semibold leading-tight">{hub.title}</span>
+            {active && <span className="flex items-center gap-0.5 rounded-full bg-teal-500/15 px-1.5 py-0.5 text-[9px] font-bold text-teal-600 dark:text-teal-400"><CheckIcon size={8}/>Active</span>}
+          </button>
+        })}
       </div>
-      {STUDY_HUBS.find((hub) => hub.id === "osce") && (
-        <div className="mx-3 mb-3 flex items-center justify-between rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-          <span>OSCE Practice</span><span className="font-semibold">Coming soon</span>
+      {STUDY_HUBS.filter((hub) => hub.availability === "coming-soon").map(hub => (
+        <div key={hub.id} className="mx-3 mb-3 flex items-center justify-between rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+          <span>{hub.title}</span><span className="font-semibold">Coming soon</span>
         </div>
-      )}
+      ))}
 
       {/* Footer: sign out */}
       <div className="border-t border-border px-3 pb-3 pt-2">
