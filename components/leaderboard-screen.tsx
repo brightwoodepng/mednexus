@@ -177,8 +177,12 @@ export function LeaderboardScreen() {
     setLoading(true)
     setError(null)
     try {
-      const uid  = user?.role === "user" ? user.uid : ""
-      const res  = await fetch(`/api/leaderboard?tab=${t}${uid ? `&uid=${encodeURIComponent(uid)}` : ""}`)
+      const sessionToken = localStorage.getItem("mednexus-user-token")
+      const guestToken = localStorage.getItem("mednexus-guest-token")
+      const headers: Record<string, string> = {}
+      if (sessionToken) headers["x-session-token"] = sessionToken
+      else if (guestToken) headers["x-guest-token"] = guestToken
+      const res = await fetch(`/api/leaderboard?tab=${t}`, { headers })
       if (!res.ok) throw new Error("Failed to load")
       const data = await res.json()
       setEntries(data.entries ?? [])

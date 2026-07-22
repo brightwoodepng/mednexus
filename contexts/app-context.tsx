@@ -99,11 +99,11 @@ function loadLocal(uid: string): UserProgress {
 
 type AuthHeader = { key: string; value: string } | null
 
-async function apiGet(uid: string, auth: AuthHeader): Promise<{ name: string; progress: UserProgress } | null> {
+async function apiGet(auth: AuthHeader): Promise<{ name: string; progress: UserProgress } | null> {
   try {
     const headers: Record<string, string> = {}
     if (auth) headers[auth.key] = auth.value
-    const res = await fetch(`/api/sync?uid=${encodeURIComponent(uid)}`, {
+    const res = await fetch("/api/sync", {
       headers,
       signal: AbortSignal.timeout(6000),
     })
@@ -115,14 +115,14 @@ async function apiGet(uid: string, auth: AuthHeader): Promise<{ name: string; pr
   }
 }
 
-async function apiPost(uid: string, name: string, progress: UserProgress, auth: AuthHeader): Promise<boolean> {
+async function apiPost(name: string, progress: UserProgress, auth: AuthHeader): Promise<boolean> {
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" }
     if (auth) headers[auth.key] = auth.value
     const res = await fetch("/api/sync", {
       method: "POST",
       headers,
-      body: JSON.stringify({ uid, name, progress }),
+      body: JSON.stringify({ name, progress }),
       signal: AbortSignal.timeout(6000),
     })
     return res.ok
@@ -147,10 +147,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Updated on login, enterApp, and signOut.
   const tokenRef = useRef<AuthHeader>(null)
 
-  const scheduleSync = useCallback((uid: string, name: string, next: UserProgress) => {
+  const scheduleSync = useCallback((name: string, next: UserProgress) => {
     if (syncTimer.current) clearTimeout(syncTimer.current)
     syncTimer.current = setTimeout(() => {
-      apiPost(uid, name, next, tokenRef.current).then((ok) => {
+      apiPost(name, next, tokenRef.current).then((ok) => {
         if (ok) setCloudEnabled(true)
       })
     }, 1500)
@@ -182,7 +182,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRequiresPasswordUpdate(needsPwUpdate)
         setAuthReady(true)
 
-        const remote = await apiGet(uid, tokenRef.current)
+        const remote = await apiGet(tokenRef.current)
         if (remote) {
           setCloudEnabled(true)
           setProgress(remote.progress)
@@ -237,7 +237,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setProgress(EMPTY_PROGRESS)
     setRequiresPasswordUpdate(false)
 
-    const ok = await apiPost(uid, trimmed, EMPTY_PROGRESS, tokenRef.current)
+    const ok = await apiPost(trimmed, EMPTY_PROGRESS, tokenRef.current)
     if (ok) setCloudEnabled(true)
   }, [])
 
@@ -271,7 +271,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setRequiresPasswordUpdate(!!needsPw)
       setCloudEnabled(false)
 
-      const remote = await apiGet(uid, tokenRef.current)
+      const remote = await apiGet(tokenRef.current)
       if (remote) {
         setCloudEnabled(true)
         setProgress(remote.progress)
@@ -352,7 +352,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(LS_NAME, trimmed) } catch {}
     const updated = { ...u, name: trimmed }
     setUser(updated)
-    await apiPost(u.uid, trimmed, progressRef.current, tokenRef.current)
+    await apiPost(trimmed, progressRef.current, tokenRef.current)
   }, [])
 
   const toggleFlag = useCallback(
@@ -364,7 +364,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : [...prev.flaggedQuestionIds, questionId]
         const next = { ...prev, flaggedQuestionIds }
         const u = userRef.current
-        if (u) { saveLocal(u.uid, next); scheduleSync(u.uid, u.name, next) }
+        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
         return next
       })
     },
@@ -393,7 +393,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         )
         const next: UserProgress = { ...prev, history }
         const u = userRef.current
-        if (u) { saveLocal(u.uid, next); scheduleSync(u.uid, u.name, next) }
+        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
         return next
       })
     },
@@ -416,7 +416,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           srsData: updateSrsFromHistory(prev.srsData ?? {}, entries),
         }
         const u = userRef.current
-        if (u) { saveLocal(u.uid, next); scheduleSync(u.uid, u.name, next) }
+        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
         return next
       })
     },
@@ -431,7 +431,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           examScores: [score, ...(prev.examScores ?? [])].slice(0, 100),
         }
         const u = userRef.current
-        if (u) { saveLocal(u.uid, next); scheduleSync(u.uid, u.name, next) }
+        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
         return next
       })
     },
@@ -443,7 +443,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const now = Date.now()
       const next: UserProgress = { ...prev, notificationsLastRead: now }
       const u = userRef.current
-      if (u) { saveLocal(u.uid, next); scheduleSync(u.uid, u.name, next) }
+      if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
       return next
     })
   }, [scheduleSync])
@@ -456,7 +456,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         mutedNotificationTypes: muted.includes(type) ? muted.filter((t) => t !== type) : [...muted, type],
       }
       const u = userRef.current
-      if (u) { saveLocal(u.uid, next); scheduleSync(u.uid, u.name, next) }
+      if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
       return next
     })
   }, [scheduleSync])
@@ -469,7 +469,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         favoriteModules: favs.includes(module) ? favs.filter((m) => m !== module) : [...favs, module],
       }
       const u = userRef.current
-      if (u) { saveLocal(u.uid, next); scheduleSync(u.uid, u.name, next) }
+      if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
       return next
     })
   }, [scheduleSync])

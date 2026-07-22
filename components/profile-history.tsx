@@ -376,9 +376,16 @@ function PrivacySettings() {
   // Only available to registered users (not guests)
   if (!user || user.role !== "user") return null
 
+  const authHeaders = (): Record<string, string> => {
+    const sessionToken = localStorage.getItem("mednexus-user-token")
+    if (sessionToken) return { "x-session-token": sessionToken }
+    const guestToken = localStorage.getItem("mednexus-guest-token")
+    return guestToken ? { "x-guest-token": guestToken } : {}
+  }
+
   // Load current privacy state
   useEffect(() => {
-    fetch(`/api/user/privacy?uid=${encodeURIComponent(user.uid)}`)
+    fetch("/api/user/privacy", { headers: authHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setIsPrivate(d.isPrivate ?? false) })
       .catch(() => setIsPrivate(false))
@@ -391,8 +398,8 @@ function PrivacySettings() {
     try {
       const res = await fetch("/api/user/privacy", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: user.uid, isPrivate: next }),
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ isPrivate: next }),
       })
       if (res.ok) setIsPrivate(next)
     } finally {
