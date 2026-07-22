@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
 import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
 import { verifyAdminToken } from "@/lib/admin-auth"
 
-// Admin-only: forcefully overwrite a wallet balance — skips ensureSchema to
-// avoid the "tuple concurrently updated" error that fires under concurrent requests.
-// The wallet table is guaranteed to exist once any page has loaded.
+// Admin-only: forcefully overwrite a wallet balance. Database provisioning is performed by db:migrate.
 export async function PATCH(req: NextRequest) {
   try {
     if (!verifyAdminToken(req.headers.get("x-admin-token") ?? "")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -32,7 +30,6 @@ export async function GET(req: NextRequest) {
   try {
     const auth = authenticateRequest(req.headers)
     if (!auth) return authError()
-    await ensureSchema()
     const requestedUid = req.nextUrl.searchParams.get("uid")
     if (requestedUid && identityMismatch(requestedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     const uid = auth.uid

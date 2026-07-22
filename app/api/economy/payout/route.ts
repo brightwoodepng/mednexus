@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
 import { calculatePayout, getTodaysBounties, computeBountyProgress, computeRankUpBonus, RANK_UP_BONUS_NP, TODAY_DATE, type GameResult } from "@/lib/economy"
 import { calculateSessionNP, type SessionQuestionInput } from "@/lib/anti-farming"
 import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
@@ -12,7 +12,6 @@ const correct = (answer: unknown, expected: Key["correctAnswer"]) => Array.isArr
 export async function POST(req: NextRequest) {
  try {
   const auth = authenticateRequest(req.headers); if (!auth) return authError()
-  await ensureSchema()
   const { sessionId, uid } = await req.json()
   if (identityMismatch(uid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   if (!sessionId) return NextResponse.json({ error: "sessionId is required" }, { status: 400 })

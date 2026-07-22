@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
+import { authenticateRequest, authError } from "@/lib/request-auth"
 
 type RoomPhase = "lobby" | "wager" | "question" | "reveal" | "done"
 
@@ -190,9 +191,12 @@ export async function GET(
   { params }: { params: Promise<{ pin: string }> }
 ) {
   try {
-    await ensureSchema()
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
     const { pin } = await params
     const myId = new URL(req.url).searchParams.get("playerId") ?? undefined
+
+    if (myId && myId !== auth.uid) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     // Every poll is a pacing "tick" — self-drives reveal/next-question
     // transitions without any host click, using elapsed phase_started_at time
@@ -201,8 +205,9 @@ export async function GET(
 
     const res = await pool.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1", [pin])
     if (res.rows.length === 0) return NextResponse.json({ error: "Room not found" }, { status: 404 })
+    if (!(res.rows[0] as RawRoom).players.some((player) => player.id === auth.uid)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    return NextResponse.json(buildResponse(res.rows[0] as RawRoom, myId))
+    return NextResponse.json(buildResponse(res.rows[0] as RawRoom, auth.uid))
   } catch (err) {
     console.error("[game-rooms GET]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
@@ -214,9 +219,10 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ pin: string }> }
 ) {
+  const auth = authenticateRequest(req.headers)
+  if (!auth) return authError()
   const client = await pool.connect()
   try {
-    await ensureSchema()
     const { pin } = await params
     const body = await req.json() as {
       action: "join" | "start" | "answer" | "advance" | "finish" | "place_wager" | "disconnect"
@@ -238,6 +244,7 @@ export async function PATCH(
       equippedAvatar?: string | null
     }
 
+    if ((body.playerId && body.playerId !== auth.uid) || (body.requesterId && body.requesterId !== auth.uid)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     await client.query("BEGIN")
     const res = await client.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE", [pin])
     if (res.rows.length === 0) {
@@ -628,11 +635,13 @@ export async function DELETE(
   { params }: { params: Promise<{ pin: string }> }
 ) {
   try {
-    await ensureSchema()
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
     const { pin } = await params
     const requesterId = new URL(req.url).searchParams.get("requesterId")
 
     if (!requesterId) return NextResponse.json({ error: "Missing requesterId" }, { status: 400 })
+    if (requesterId !== auth.uid) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     const check = await pool.query("SELECT host_id FROM mednexus_game_rooms WHERE pin = $1", [pin])
     if (check.rows.length === 0) return NextResponse.json({ ok: true }) // already gone

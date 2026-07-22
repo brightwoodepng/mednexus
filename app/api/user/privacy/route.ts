@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
 import { authenticateRequest, authError } from "@/lib/request-auth"
 
 // PATCH /api/user/privacy
@@ -7,7 +7,6 @@ import { authenticateRequest, authError } from "@/lib/request-auth"
 // Toggles the is_private flag on the registered user's profile.
 export async function PATCH(req: NextRequest) {
   try {
-    await ensureSchema()
     const auth = authenticateRequest(req.headers)
     if (!auth) return authError()
     const { isPrivate } = await req.json()
@@ -35,7 +34,6 @@ export async function PATCH(req: NextRequest) {
 // GET /api/user/privacy
 export async function GET(req: NextRequest) {
   try {
-    await ensureSchema()
     const auth = authenticateRequest(req.headers)
     if (!auth) return authError()
 
