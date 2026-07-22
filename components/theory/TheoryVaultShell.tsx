@@ -1,22 +1,32 @@
 "use client"
 
 /**
- * TheoryVaultShell — the top-level client shell rendered on /theory.
+ * TheoryVaultShell — the top-level client shell for Theory Vault routes.
  *
  * Owns:
  *  - The persistent TheorySidebar (left)
  *  - A header (no Trial/Exam buttons — Theory mode)
- *  - The main content area (placeholder until theory screens are built)
+ *  - The main content area — renders real components for dashboard and browse;
+ *    falls back to PlaceholderScreen for sections not yet implemented
  *  - Sidebar collapsed / mobile-open state
- *  - Active theory section state
+ *  - Active theory section state (synced with initialSection prop)
+ *
+ * Navigation:
+ *  - "dashboard" → router.push("/theory")
+ *  - "browse"    → router.push("/theory/browse")
+ *  - others      → in-shell state only (placeholder rendered)
  */
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
+import { useRouter } from "next/navigation"
 import { TheorySidebar, type TheoryScreen } from "./TheorySidebar"
+import { TheoryDashboard } from "./TheoryDashboard"
+import { TheoryBrowse } from "./TheoryBrowse"
 import { NotificationBell } from "@/components/notification-bell"
 import { StethoscopeIcon, MenuIcon, PaletteIcon } from "@/components/icons"
 
-// Placeholder screens — replaced by real components in a later task
+// ── Placeholder (non-implemented sections) ─────────────────────────────────────
+
 function PlaceholderScreen({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
@@ -47,33 +57,70 @@ function PlaceholderScreen({ title, description }: { title: string; description:
   )
 }
 
-const SECTION_META: Record<
-  TheoryScreen,
-  { title: string; description: string }
-> = {
-  dashboard:  { title: "Theory Dashboard",   description: "Your revision overview, recent activity, and recommended questions." },
-  browse:     { title: "Browse Questions",    description: "Explore the full theory question bank by module, category, and set." },
-  bookmarks:  { title: "Bookmarks",           description: "All the theory questions you've saved for later." },
-  notes:      { title: "My Notes",            description: "Personal notes you've written on individual theory questions." },
-  revision:   { title: "Revision Queue",      description: "Questions queued for your next revision session." },
-  progress:   { title: "Progress",            description: "Track your theory study history and performance over time." },
-  search:     { title: "Search",              description: "Full-text search across all theory questions, tags, and notes." },
+const PLACEHOLDER_META: Partial<Record<TheoryScreen, { title: string; description: string }>> = {
+  bookmarks: { title: "Bookmarks",      description: "All the theory questions you've saved for later." },
+  notes:     { title: "My Notes",       description: "Personal notes you've written on individual theory questions." },
+  revision:  { title: "Revision Queue", description: "Questions queued for your next revision session." },
+  progress:  { title: "Progress",       description: "Track your theory study history and performance over time." },
+  search:    { title: "Search",         description: "Full-text search across all theory questions, tags, and notes." },
 }
 
-export function TheoryVaultShell() {
-  const [activeSection, setActiveSection] = useState<TheoryScreen>("dashboard")
+// ── Shell ─────────────────────────────────────────────────────────────────────
+
+interface TheoryVaultShellProps {
+  /** Which section to show on first render. Defaults to "dashboard". */
+  initialSection?: TheoryScreen
+}
+
+export function TheoryVaultShell({ initialSection = "dashboard" }: TheoryVaultShellProps) {
+  const router = useRouter()
+  const [activeSection, setActiveSection] = useState<TheoryScreen>(initialSection)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [themeOpen, setThemeOpen] = useState(false)
 
-  const meta = SECTION_META[activeSection]
+  // Sidebar navigation — also pushes Next.js routes for routed sections
+  function handleNavigate(section: TheoryScreen) {
+    setActiveSection(section)
+    if (section === "dashboard") router.push("/theory")
+    else if (section === "browse") router.push("/theory/browse")
+    // other sections stay in-shell (placeholder)
+  }
+
+  // ── Main content ────────────────────────────────────────────────────────────
+  let mainContent: React.ReactNode
+
+  if (activeSection === "dashboard") {
+    mainContent = <TheoryDashboard />
+  } else if (activeSection === "browse") {
+    mainContent = (
+      <Suspense
+        fallback={
+          <div className="mx-auto max-w-4xl space-y-6">
+            <div className="h-12 w-64 animate-pulse rounded-xl bg-muted/50" />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-44 animate-pulse rounded-2xl bg-muted/50" />
+              ))}
+            </div>
+          </div>
+        }
+      >
+        <TheoryBrowse />
+      </Suspense>
+    )
+  } else {
+    const meta = PLACEHOLDER_META[activeSection]
+    mainContent = meta
+      ? <PlaceholderScreen title={meta.title} description={meta.description} />
+      : null
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       {/* Sidebar */}
       <TheorySidebar
         activeSection={activeSection}
-        onNavigate={setActiveSection}
+        onNavigate={handleNavigate}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
         collapsed={sidebarCollapsed}
@@ -107,7 +154,6 @@ export function TheoryVaultShell() {
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <button
               type="button"
-              onClick={() => setThemeOpen(true)}
               className="hidden md:flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
               aria-label="Appearance"
             >
@@ -119,7 +165,7 @@ export function TheoryVaultShell() {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto p-3 pb-24 md:p-5 lg:p-8">
-          <PlaceholderScreen title={meta.title} description={meta.description} />
+          {mainContent}
         </main>
       </div>
     </div>
