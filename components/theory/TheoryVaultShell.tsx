@@ -26,7 +26,6 @@ import { BookmarksView } from "./BookmarksView"
 import { NotesView } from "./NotesView"
 import { RevisionQueueView } from "./RevisionQueueView"
 import { ProgressView } from "./ProgressView"
-import { TheoryProfile } from "./TheoryProfile"
 import { NotificationBell } from "@/components/notification-bell"
 import { StethoscopeIcon, MenuIcon, PaletteIcon } from "@/components/icons"
 
@@ -93,7 +92,6 @@ export function TheoryVaultShell({ initialSection = "dashboard" }: TheoryVaultSh
     else if (section === "notes")     router.push("/theory/notes")
     else if (section === "progress")  router.push("/theory/progress")
     else if (section === "search") router.push("/theory/search")
-    else if (section === "profile") router.push("/theory/profile")
   }
 
   // ── Main content ────────────────────────────────────────────────────────────
@@ -126,8 +124,6 @@ export function TheoryVaultShell({ initialSection = "dashboard" }: TheoryVaultSh
     mainContent = <RevisionQueueView />
   } else if (activeSection === "progress") {
     mainContent = <ProgressView />
-  } else if (activeSection === "profile") {
-    mainContent = <TheoryProfile />
   } else {
     const meta = PLACEHOLDER_META[activeSection]
     mainContent = meta

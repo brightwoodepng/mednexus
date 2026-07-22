@@ -22,7 +22,6 @@ export interface AppUser {
   indexNumber?: string
   level?: string
   classLevel?: string
-  createdAt?: string
 }
 
 interface AppContextValue {
@@ -73,7 +72,6 @@ const LS_STATUS = "mednexus-status"
 const LS_PROGRESS = "mednexus-progress"
 const LS_REQUIRES_PW_UPDATE = "mednexus-requires-pw-update"
 const LS_CLASS_LEVEL = "mednexus-class-level"
-const LS_CREATED_AT = "mednexus-created-at"
 const LS_GUEST_TOKEN = "mednexus-guest-token"
 const LS_USER_TOKEN = "mednexus-user-token"
 
@@ -170,7 +168,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const status = typeof window !== "undefined" ? localStorage.getItem(LS_STATUS) ?? undefined : undefined
       const needsPwUpdate = typeof window !== "undefined" ? localStorage.getItem(LS_REQUIRES_PW_UPDATE) === "true" : false
       const classLevel = typeof window !== "undefined" ? localStorage.getItem(LS_CLASS_LEVEL) ?? undefined : undefined
-      const createdAt = typeof window !== "undefined" ? localStorage.getItem(LS_CREATED_AT) ?? undefined : undefined
 
       if (uid) {
         // Restore auth header from localStorage
@@ -183,7 +180,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
 
         const local = loadLocal(uid)
-        const appUser: AppUser = { uid, name, role: role ?? "guest", status: status ?? undefined, classLevel, createdAt }
+        const appUser: AppUser = { uid, name, role: role ?? "guest", status: status ?? undefined, classLevel }
         setUser(appUser)
         setProgress(local)
         setRequiresPasswordUpdate(needsPwUpdate)
@@ -193,7 +190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (remote) {
           setCloudEnabled(true)
           setProgress(remote.progress)
-          setUser({ uid, name: remote.name, role: role ?? "guest", classLevel, createdAt })
+          setUser({ uid, name: remote.name, role: role ?? "guest", classLevel })
         }
       } else {
         setAuthReady(true)
@@ -208,7 +205,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     let uid: string
     let sessionToken: string | null = null
-    let createdAt: string | undefined
 
     try {
       const res = await fetch("/api/auth/guest", {
@@ -221,7 +217,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const data = await res.json()
         uid = data.uid
         sessionToken = data.sessionToken ?? null
-        createdAt = data.createdAt
       } else {
         uid = `guest_${crypto.randomUUID()}`
       }
@@ -237,12 +232,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(LS_REQUIRES_PW_UPDATE)
       localStorage.removeItem(LS_USER_TOKEN)
       if (sessionToken) localStorage.setItem(LS_GUEST_TOKEN, sessionToken)
-      if (createdAt) localStorage.setItem(LS_CREATED_AT, createdAt)
     } catch {}
 
     tokenRef.current = sessionToken ? { key: "x-guest-token", value: sessionToken } : null
 
-    const appUser: AppUser = { uid, name: trimmed, role: "guest", classLevel: trimmedLevel, createdAt }
+    const appUser: AppUser = { uid, name: trimmed, role: "guest", classLevel: trimmedLevel }
     setUser(appUser)
     setProgress(EMPTY_PROGRESS)
     setRequiresPasswordUpdate(false)
@@ -268,7 +262,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(LS_ROLE, "user")
         localStorage.setItem(LS_REQUIRES_PW_UPDATE, needsPw ? "true" : "false")
         if (data.status) localStorage.setItem(LS_STATUS, data.status)
-        if (data.createdAt) localStorage.setItem(LS_CREATED_AT, data.createdAt)
         localStorage.removeItem(LS_GUEST_TOKEN)
         if (userToken) localStorage.setItem(LS_USER_TOKEN, userToken)
       } catch {}
@@ -276,7 +269,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tokenRef.current = userToken ? { key: "x-session-token", value: userToken } : null
 
       const local = loadLocal(uid)
-      const appUser: AppUser = { uid, name, role: "user", status: data.status, indexNumber: data.indexNumber, level: data.level, classLevel: data.classLevel, createdAt: data.createdAt }
+      const appUser: AppUser = { uid, name, role: "user", status: data.status, indexNumber: data.indexNumber, level: data.level }
       setUser(appUser)
       setProgress(local)
       setRequiresPasswordUpdate(!!needsPw)
