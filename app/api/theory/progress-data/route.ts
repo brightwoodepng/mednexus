@@ -44,11 +44,22 @@ function rowToQuestion(row: Record<string, unknown>): TheoryQuestion {
     category:      row.category as string,
     module:        row.module as string,
     setNumber:     row.set_number as number,
-    prompt:        (data.prompt        as string)   ?? "",
-    modelAnswer:   (data.modelAnswer   as string)   ?? "",
+    prompt:        (row.prompt as string) ?? (data.prompt as string) ?? "",
+    modelAnswer:   (row.model_answer as string) ?? (data.modelAnswer as string) ?? "",
     criticalFlags: (data.criticalFlags as string[]) ?? [],
     pastPapers:    (data.pastPapers    as string[]) ?? [],
-    tags:          (data.tags          as string[]) ?? [],
+    tags:          (row.tags           as string[]) ?? (data.tags as string[]) ?? [],
+    collectionId:  (row.collection_id as "end_of_rotation" | "end_of_year") ?? "end_of_rotation",
+    disciplineId:  (row.discipline_id as string) ?? "",
+    setId:         (row.set_id as string | null) ?? null,
+    markingPoints: (row.marking_points as string[]) ?? (data.markingPoints as string[]) ?? (data.criticalFlags as string[]) ?? [],
+    sourceMetadata: (row.source_metadata as Record<string, unknown>) ?? {},
+    pastPaperMetadata: (row.past_paper_metadata as Record<string, unknown>[]) ?? [],
+    difficulty: (row.difficulty as "easy" | "medium" | "hard" | "expert") ?? "medium",
+    estimatedStudyMinutes: (row.estimated_study_minutes as number) ?? 0,
+    sortOrder: (row.sort_order as number) ?? 0,
+    publicationStatus: (row.publication_status as "draft" | "published" | "unpublished") ?? "published",
+    isArchived: (row.is_archived as boolean) ?? false,
   }
 }
 
@@ -90,7 +101,7 @@ export async function GET(req: NextRequest) {
     let questionMap = new Map<string, TheoryQuestion>()
     if (allIds.length > 0) {
       const qRes = await pool.query(
-        `SELECT id, category, module, set_number, data
+        `SELECT id, category, module, set_number, data, collection_id, discipline_id, set_id, prompt, model_answer, marking_points, tags, source_metadata, past_paper_metadata, difficulty, estimated_study_minutes, sort_order, publication_status, is_archived
            FROM mednexus_theory_questions
           WHERE id = ANY($1::text[])`,
         [allIds],
