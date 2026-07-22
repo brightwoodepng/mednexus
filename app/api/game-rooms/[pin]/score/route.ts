@@ -14,7 +14,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
+import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
 import {
   calculatePayout,
   getTodaysBounties,
@@ -41,7 +42,8 @@ export async function POST(
   { params }: { params: Promise<{ pin: string }> }
 ) {
   try {
-    await ensureSchema()
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
     const { pin } = await params
 
     const body = await req.json() as {
@@ -53,6 +55,7 @@ export async function POST(
     const { match_id, playerId, user_answers_array } = body
 
     // ── Basic validation ────────────────────────────────────────────────────
+    if (identityMismatch(playerId, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     if (!match_id || !playerId || !Array.isArray(user_answers_array)) {
       return NextResponse.json(
         { error: "Missing match_id, playerId, or user_answers_array" },

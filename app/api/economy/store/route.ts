@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
 import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
 import { STORE_ITEMS } from "@/lib/economy"
 
@@ -7,7 +7,6 @@ export async function GET(req: NextRequest) {
   try {
     const auth = authenticateRequest(req.headers)
     if (!auth) return authError()
-    await ensureSchema()
     const requestedUid = req.nextUrl.searchParams.get("uid")
     if (requestedUid && identityMismatch(requestedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     const uid = auth.uid
@@ -29,7 +28,6 @@ export async function POST(req: NextRequest) {
   try {
     const auth = authenticateRequest(req.headers)
     if (!auth) return authError()
-    await ensureSchema()
     const { uid: suppliedUid, itemId } = await req.json()
     if (identityMismatch(suppliedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     const uid = auth.uid

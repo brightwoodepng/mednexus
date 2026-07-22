@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
 import type { Question } from "@/lib/types"
+import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
 
 // Strip to only what's needed in-room to keep payload lean
 function slimQuestion(q: Question) {
@@ -22,7 +23,8 @@ function generatePin(): string {
 // POST /api/game-rooms — create a new room
 export async function POST(req: Request) {
   try {
-    await ensureSchema()
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
     const body = await req.json()
     const { mode, hostId, hostName, questionPool, equippedTitle, equippedFrame, equippedHighlight, equippedAvatar } = body as {
       mode: "clash" | "cohort" | "wager" | "djmulti"
@@ -35,6 +37,7 @@ export async function POST(req: Request) {
       equippedAvatar?: string | null
     }
 
+    if (identityMismatch(hostId, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     if (!mode || !hostId || !hostName || !Array.isArray(questionPool) || questionPool.length === 0) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
     }

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { verifyAdminToken } from "@/lib/admin-auth"
 
 async function getPool() {
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const { default: pool } = await import("@/lib/db")
   return pool
 }
 
