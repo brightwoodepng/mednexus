@@ -11,101 +11,11 @@ import {
   PencilIcon,
   BookOpenIcon,
   ClipboardListIcon,
-  FlaskIcon,
-  StethoscopeIcon,
 } from "@/components/icons"
-import { useCurrentStudyMode } from "@/contexts/current-study-mode-context"
-import { useRouter } from "next/navigation"
 import type { HistoryEntry, ExamScore, Question } from "@/lib/types"
 import { useEconomy } from "@/contexts/economy-context"
 import { STORE_ITEMS, TITLE_LABELS, FRAME_RING_CLASSES } from "@/lib/economy"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
-
-// ── Study Environment Selector ────────────────────────────────────────────────
-
-function StudyEnvironmentSelector() {
-  const { currentStudyMode, setCurrentStudyMode } = useCurrentStudyMode()
-  const router = useRouter()
-
-  function switchToMCQ() {
-    setCurrentStudyMode("MCQ")
-  }
-
-  function switchToTheory() {
-    setCurrentStudyMode("THEORY")
-    router.push("/theory")
-  }
-
-  const cardBase =
-    "relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all"
-
-  return (
-    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-      <div className="border-b border-border px-5 py-3.5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Study Environment
-        </p>
-      </div>
-      <div className="grid grid-cols-3 gap-3 p-4">
-
-        {/* MCQ Q-Bank */}
-        <button
-          type="button"
-          onClick={switchToMCQ}
-          className={`${cardBase} ${
-            currentStudyMode === "MCQ"
-              ? "border-primary/60 bg-primary/5 text-primary shadow-sm"
-              : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:bg-muted/70 hover:text-foreground"
-          }`}
-        >
-          <BookOpenIcon size={24} />
-          <span className="text-xs font-semibold leading-tight">MCQ Q-Bank</span>
-          {currentStudyMode === "MCQ" ? (
-            <span className="flex items-center gap-0.5 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
-              <CheckIcon size={9} /> Active
-            </span>
-          ) : (
-            <span className="invisible text-[10px]">·</span>
-          )}
-        </button>
-
-        {/* Theory Vault */}
-        <button
-          type="button"
-          onClick={switchToTheory}
-          className={`${cardBase} ${
-            currentStudyMode === "THEORY"
-              ? "border-teal-500/60 bg-teal-500/5 text-teal-600 dark:text-teal-400 shadow-sm"
-              : "border-border bg-muted/40 text-muted-foreground hover:border-teal-500/30 hover:bg-muted/70 hover:text-foreground"
-          }`}
-        >
-          <FlaskIcon size={24} />
-          <span className="text-xs font-semibold leading-tight">Theory Vault</span>
-          {currentStudyMode === "THEORY" ? (
-            <span className="flex items-center gap-0.5 rounded-full bg-teal-500/15 px-2 py-0.5 text-[10px] font-bold text-teal-600 dark:text-teal-400">
-              <CheckIcon size={9} /> Active
-            </span>
-          ) : (
-            <span className="invisible text-[10px]">·</span>
-          )}
-        </button>
-
-        {/* OSCE Sim — coming soon */}
-        <div
-          className={`${cardBase} opacity-50 cursor-not-allowed border-border bg-muted/20 text-muted-foreground`}
-          aria-disabled="true"
-        >
-          <StethoscopeIcon size={24} />
-          <span className="text-xs font-semibold leading-tight">OSCE Sim</span>
-          <span className="rounded-full border border-amber-300/40 bg-amber-50/60 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:border-amber-700/30 dark:bg-amber-900/20 dark:text-amber-400">
-            🔒 Soon
-          </span>
-        </div>
-
-      </div>
-    </div>
-  )
-}
 
 // ── Exam Scores ──────────────────────────────────────────────────────────────
 
@@ -533,7 +443,6 @@ export function ProfileHistory() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <ProfileHeader />
-      <StudyEnvironmentSelector />
       <CosmeticLoadout />
       <PrivacySettings />
       <ModuleReviewSection />
