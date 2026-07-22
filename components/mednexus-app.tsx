@@ -48,6 +48,7 @@ import {
 import { BottomNav } from "@/components/bottom-nav"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { StudyHubSwitcher } from "@/components/study-hub-switcher"
+import { TheoryVault } from "@/components/theory-vault"
 
 interface PendingQuiz {
   questions: Question[]
@@ -439,6 +440,11 @@ export function MedNexusApp() {
   } | null>(null)
 
   useEffect(() => {
+    if (activeStudyHub === "theory-vault" && !screen.startsWith("theory-")) setScreen("theory-dashboard")
+    if (activeStudyHub === "mcq-qbank" && screen.startsWith("theory-")) setScreen("dashboard")
+  }, [activeStudyHub, screen])
+
+  useEffect(() => {
     if (user?.role === "user" && user.status === "approved" && !requiresPasswordUpdate) {
       const key = `mednexus-welcome-seen-${user.uid}`
       if (!localStorage.getItem(key)) {
@@ -643,6 +649,7 @@ export function MedNexusApp() {
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
           )}
+          {safeScreen.startsWith("theory-") && <TheoryVault initialView={({ "theory-dashboard": "Dashboard", "theory-browse": "Browse Questions", "theory-bookmarks": "Bookmarks", "theory-notes": "My Notes", "theory-revision": "Revision Queue", "theory-progress": "Progress", "theory-search": "Search" } as const)[safeScreen as "theory-dashboard"] ?? "Dashboard"} />}
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory />}
