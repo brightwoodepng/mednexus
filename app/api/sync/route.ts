@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifySessionToken } from "@/lib/session-auth"
-import { verifyGuestToken } from "@/lib/guest-auth"
+import { authenticateRequest, authError } from "@/lib/request-auth"
 import { triggerProgressionNotifications } from "@/lib/progression-notifications"
 
 async function getPgPool() {
@@ -23,27 +22,11 @@ async function getFirestore() {
   }
 }
 
-/** Extract and verify the caller's uid from request headers.
- *  Accepts x-session-token (registered users) or x-guest-token (guests).
- *  Returns null when no valid token is present. */
-function getVerifiedUid(req: NextRequest): string | null {
-  const sessionToken = req.headers.get("x-session-token")
-  if (sessionToken) {
-    const payload = verifySessionToken(sessionToken)
-    return payload?.uid ?? null
-  }
-  const guestToken = req.headers.get("x-guest-token")
-  if (guestToken) {
-    const payload = verifyGuestToken(guestToken)
-    return payload?.uid ?? null
-  }
-  return null
-}
-
 export async function GET(req: NextRequest) {
   try {
-    const uid = getVerifiedUid(req)
-    if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
+    const { uid } = auth
 
     // Try PostgreSQL first
     const pool = await getPgPool()
@@ -86,8 +69,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const uid = getVerifiedUid(req)
-    if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
+    const { uid } = auth
 
     const body = await req.json()
     const { name, progress } = body

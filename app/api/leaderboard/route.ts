@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool, { ensureSchema } from "@/lib/db"
+import { authenticateRequest, authError } from "@/lib/request-auth"
 
 // GET /api/leaderboard?tab=alltime|weekly
-// Returns ranked list of non-private approved users.
+// Public entries contain only non-private approved users and may be viewed
+// anonymously. Sending a valid credential additionally returns the caller's
+// own rank entry, including it when their profile is private or off the list.
 // All-time: sorted by total NP (wallet.balance), tie-broken by overall accuracy.
 // Weekly:   sorted by NP earned in last 7 days, tie-broken by weekly accuracy
 //           (forced to 0% if < 50 questions answered that week).
@@ -11,7 +14,14 @@ export async function GET(req: NextRequest) {
     await ensureSchema()
 
     const tab = req.nextUrl.searchParams.get("tab") ?? "alltime"
-    const viewerUid = req.nextUrl.searchParams.get("uid") ?? null
+    const hasCredential = Boolean(
+      req.headers.get("x-session-token") || req.headers.get("x-guest-token"),
+    )
+    const auth = authenticateRequest(req.headers)
+    if (hasCredential && !auth) return authError()
+    // Never accept a client-provided viewer UID: private profile data is only
+    // queried for the identity established by a verified credential.
+    const viewerUid = auth?.uid ?? null
 
     if (tab === "weekly") {
       // ── Weekly leaderboard ─────────────────────────────────────────────────
@@ -86,7 +96,8 @@ export async function GET(req: NextRequest) {
         }
       })
 
-      // Include viewer's own row even if they're private / outside top 50
+      // Authenticated viewer-specific data: only the verified caller's row may
+      // be included when it is private or outside the public top 50.
       let viewerEntry = viewerUid ? entries.find(e => e.uid === viewerUid) ?? null : null
       if (viewerUid && !viewerEntry) {
         const vRes = await pool.query(`
@@ -186,7 +197,8 @@ export async function GET(req: NextRequest) {
       equippedAvatar: row.equipped_avatar ?? null,
     }))
 
-    // Include viewer's own row even if they're private / outside top 50
+    // Authenticated viewer-specific data: only the verified caller's row may
+    // be included when it is private or outside the public top 50.
     let viewerEntry = viewerUid ? entries.find(e => e.uid === viewerUid) ?? null : null
     if (viewerUid && !viewerEntry) {
       const vRes = await pool.query(`
