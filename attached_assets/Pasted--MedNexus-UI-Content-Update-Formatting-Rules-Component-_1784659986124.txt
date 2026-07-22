@@ -1,0 +1,173 @@
+# MedNexus UI & Content Update: Formatting Rules Component
+
+Please update the Formatting Rules UI component based on the provided reference `image_f3a45d.png` and the new document structure requirements. 
+
+## 1. UI Button Updates
+*   **Remove:** Delete the "Step 1 — Solve & Categorize" button completely.
+*   **Rename:** Rename the "Step 2 — Format for Import" button to "Copy Formatting Rules for AI". 
+
+## 2. Clipboard Logic Update
+*   When the user clicks the newly renamed "Copy Formatting Rules for AI" button, it must copy the **Entire Raw Formatting Prompt** (provided at the bottom of these instructions) directly to their clipboard so they can paste it into Claude or Gemini.
+
+## 3. Accordion / Content Updates
+Please populate the collapsible UI sections (as seen in `image_f3a45d.png`) by breaking down the formatting rules. Map the content exactly as follows:
+
+*   **Your Workflow (how to use this):** 
+    Add the introductory text: "Reformat the questions compilation to match the MedNexus formatting rules..." and include the "8. CRITICAL DON'TS" section here. Also, mention Rule 3 (Question Numbering - Continuous Throughout).
+*   **MODULE — extracted from your title:** 
+    Insert the content from "1. MODULE TAG (ONE PER DOCUMENT)".
+*   **DISCIPLINE — from your section headings:** 
+    Insert the content from "2. DISCIPLINE TAGS (ONE PER SECTION)".
+*   **Answer Options — lowercase -> uppercase:** 
+    Insert the content from "4. ANSWER OPTIONS (A – E)".
+*   **Answer line — only if present:** 
+    Insert the content from "5. CORRECT ANSWER LINE".
+*   **Explanation — only if present:** 
+    Insert the content from "6. EXPLANATION / RATIONALE".
+*   **Clinical Images (.docx only):** 
+    Insert the content from "7. CLINICAL IMAGES (.DOCX ONLY)".
+
+## 4. Entire Raw Formatting Prompt (Target for the Copy Button)
+Store the exact text below as a constant or in a dedicated file, and link it to the "Copy Formatting Rules for AI" button's `onClick` clipboard action:
+
+` ` `text
+Reformat the questions compilation to match the MedNexus formatting rules (single module tag, continuous numbering, discipline tags per section, A–E options, Answer: line, Explanation: line) and export as a clean .docx/.txt for import.
+
+MEDNEXUS DOCUMENT FORMATTING RULES
+Use these rules to pre-format raw MCQ compilations before importing.
+============================================================
+
+1. MODULE TAG (ONE PER DOCUMENT)
+----------------------------------
+  ✓  MODULE: <name>  —  appears ONCE, at the very top of the document
+  ✓  Applies to every question in the file, regardless of discipline
+  ✓  Separator after keyword: colon  :  period  .  or dash  -  (colon preferred)
+  ✓  Tag is case-insensitive
+
+  Example:
+    MODULE: UCC Entrance Examination
+
+2. DISCIPLINE TAGS (ONE PER SECTION)
+--------------------------------------
+  ✓  DISCIPLINE: <name>  —  own line, placed before the first question of that section
+  ✓  Also accepts  SUBJECT:  or  TOPIC:
+  ✓  Applies to every question that follows until the next DISCIPLINE tag
+  ✓  Use a new DISCIPLINE tag every time the subject changes (e.g. Mathematics → Chemistry → Physics → Biology → Aptitude/Reasoning)
+  ✗  Do NOT repeat the MODULE tag between sections — it is set once for the whole document
+
+  Example:
+    DISCIPLINE: Mathematics
+    ...(questions 1–25)...
+    DISCIPLINE: Chemistry
+    ...(questions 26–51)...
+
+3. QUESTION NUMBERING — CONTINUOUS THROUGHOUT
+-------------------------------------------------
+  ✓  Numbering runs continuously across the ENTIRE document, not restarting at each discipline
+  ✓  Number must start at the very beginning of the line — no leading spaces
+  ✓  Accepted:  1.   1)   1:   Q1.   Q.1.   Question 1.   (1)  — numbers 1–9999
+  ✓  Question text must begin on the SAME LINE as the number, immediately after the separator
+  ✗  Number on one line, vignette text on the next — parser reads a blank vignette
+  ✓  Multi-line vignettes are fine — continuation lines are appended automatically
+  ✗  Numbering must NOT reset to 1 when a new DISCIPLINE tag appears
+
+  Example:
+    24. A man invests GH₵1000 at 10% compound interest...
+    DISCIPLINE: Chemistry
+    25. pH of 10⁻⁵ M HCl is:
+
+4. ANSWER OPTIONS (A – E)
+--------------------------
+  ✓  Each option on its own dedicated line
+  ✓  Accepted formats:  A. text   A) text   A: text   A- text   (A) text
+  ✓  Letters A–E only (uppercase or lowercase — normalised to uppercase)
+  ✓  Minimum 2 options (A and B) required; option E is optional
+  ✗  Option label repeated inside the text, e.g.  A. (A) Aortic dissection
+  ✗  All options on a single line separated by commas or slashes
+
+  Example:
+    A. Aortic dissection
+    B. Pulmonary embolism
+    C. Myocardial infarction
+    D. Pericarditis
+
+5. CORRECT ANSWER LINE
+-----------------------
+  ✓  Accepted keywords (case-insensitive):  Answer   Correct Answer   Correct_Answer   Ans   Key
+  ✓  Separator after keyword: colon  :  period  .  space  —  or dash  -
+  ✓  Value: single letter A, B, C, D, or E  (uppercase or lowercase)
+  ✓  Must appear AFTER all options and BEFORE the Explanation
+  ✗  Answer line placed before the options
+  ✗  Answer written as a word, e.g.  Answer: Aortic dissection
+
+  Example:
+    Answer: A
+
+6. EXPLANATION / RATIONALE
+---------------------------
+  ✓  Trigger keywords (case-insensitive):  Explanation   Rationale   Discussion   Reason   Solution
+  ✓  Keyword must be followed by any separator: period  .  colon  :  dash  -  em-dash  —  or a space
+  ✓  Everything after the keyword on that line, plus every subsequent line until the next question number, is the explanation body
+  ✓  Multi-paragraph explanations work — lines are concatenated automatically
+  ✓  Maps to the 'Why the correct answer is right' field in the editor
+  ✗  No trigger keyword — unlabelled paragraph after the answer will be ignored
+
+  Example:
+    Explanation: Aortic dissection classically presents with sudden tearing chest pain radiating to the back, with a blood-pressure differential between arms and a widened mediastinum on CXR.
+
+7. CLINICAL IMAGES (.DOCX ONLY)
+--------------------------------
+  ✓  Embed the image directly in your Word document at the correct position within the question block (after the stem, before or between the options)
+  ✓  The system counts question boundaries to assign images — one image per question, first image wins
+  ✗  Image placed between two question numbers — it will be attached to the preceding question
+  ℹ  Do NOT type [IMAGE_1] or any placeholder manually — those are internal markers generated by the extractor. Embedding the image in Word at the right place is all that is needed.
+
+8. CRITICAL DON'TS
+-------------------
+  ✗  Blank line between the question number and the vignette text
+  ✗  A second MODULE tag anywhere in the document — only one, at the top
+  ✗  DISCIPLINE tag placed mid-question (between stem and options)
+  ✗  Answer: line placed before the options
+  ✗  Sub-numbering or bullet points inside options (A. 1. sub-item)
+  ✗  Question number duplicated at the start of the vignette text (1. 1. A patient…)
+  ✗  Question numbering restarting at 1 for each new discipline
+
+============================================================
+COMPLETE DOCUMENT STRUCTURE EXAMPLE
+--------------------------------------
+
+MODULE: UCC Entrance Examination
+
+DISCIPLINE: Mathematics
+
+1. A trader sells an item at a 20% profit. If he had bought it for 15%
+   less and sold it for GH₵30 less, he would have gained 25%. Find the
+   cost price.
+
+A. 218
+B. 250
+C. 300
+D. 350
+
+Answer: A
+
+Explanation: Let CP = x. SP₁ = 1.2x. New CP = 0.85x, New SP = 1.2x − 30.
+Since new profit is 25%: 1.25(0.85x) = 1.2x − 30 → x = GH₵218.
+
+2. If 2x + 3y = 5 and x² + y² = 10, find the maximum value of xy.
+...
+
+DISCIPLINE: Chemistry
+
+26. pH of 10⁻⁵ M HCl is:
+
+A. 5
+B. 7
+C. 9
+D. 10
+
+Answer: A
+
+Explanation: HCl is a strong acid that fully dissociates, so [H⁺] = 10⁻⁵ M,
+giving pH = 5.
+` ` `
