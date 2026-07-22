@@ -35,6 +35,8 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-hub-accent: var(--hub-accent);
+  --color-hub-accent-foreground: var(--hub-accent-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
@@ -120,6 +122,9 @@
   --sidebar-accent-foreground: oklch(0.3 0.05 220);
   --sidebar-border: oklch(0.9 0.01 220);
   --sidebar-ring: oklch(0.58 0.12 195);
+  /* Hub accents intentionally inherit the selected application theme. */
+  --hub-accent: var(--primary);
+  --hub-accent-foreground: var(--primary-foreground);
 }
 
 /* 2. Classic Dark — deep slate with teal accent */
