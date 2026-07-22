@@ -105,6 +105,9 @@ export async function ensureSchema() {
       started_at    TIMESTAMPTZ DEFAULT NOW(),
       submitted_at  TIMESTAMPTZ
     );
+    CREATE INDEX IF NOT EXISTS mednexus_assessment_attempts_owner_idx
+      ON mednexus_assessment_attempts (assessment_id, user_id)
+      WHERE submitted_at IS NOT NULL;
 
     -- ── Registered users ────────────────────────────────────────────────────
     -- Includes role + class_level so fresh databases are fully provisioned.
