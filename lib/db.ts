@@ -71,6 +71,113 @@ export async function ensureSchema() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
 
+    -- ── Theory Vault ───────────────────────────────────────────────────────
+    -- Theory has its own normalized content model. Do not add these fields to
+    -- mednexus_questions: that table is the MCQ-only bank used by the editor.
+    CREATE TABLE IF NOT EXISTS mednexus_theory_collections (
+      id         TEXT PRIMARY KEY,
+      slug       TEXT NOT NULL UNIQUE,
+      title      TEXT NOT NULL,
+      status     TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'review', 'published', 'archived')),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_theory_disciplines (
+      id            TEXT PRIMARY KEY,
+      collection_id TEXT NOT NULL REFERENCES mednexus_theory_collections(id) ON DELETE CASCADE,
+      name          TEXT NOT NULL,
+      sort_order    INTEGER NOT NULL DEFAULT 0,
+      UNIQUE (id, collection_id),
+      UNIQUE (collection_id, name)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_theory_sets (
+      id            TEXT PRIMARY KEY,
+      collection_id TEXT NOT NULL,
+      discipline_id TEXT NOT NULL,
+      name          TEXT NOT NULL,
+      sort_order    INTEGER NOT NULL DEFAULT 0,
+      UNIQUE (id, collection_id, discipline_id),
+      UNIQUE (discipline_id, name),
+      FOREIGN KEY (discipline_id, collection_id)
+        REFERENCES mednexus_theory_disciplines(id, collection_id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_theory_questions (
+      id                      TEXT PRIMARY KEY,
+      collection_id           TEXT NOT NULL,
+      discipline_id           TEXT NOT NULL,
+      set_id                  TEXT,
+      prompt                  TEXT NOT NULL,
+      model_answer            TEXT NOT NULL DEFAULT '',
+      key_marking_points      JSONB NOT NULL DEFAULT '[]',
+      tags                    JSONB NOT NULL DEFAULT '[]',
+      source_metadata         JSONB NOT NULL DEFAULT '{}',
+      difficulty              SMALLINT NOT NULL DEFAULT 3 CHECK (difficulty BETWEEN 1 AND 5),
+      estimated_study_minutes INTEGER NOT NULL DEFAULT 5 CHECK (estimated_study_minutes > 0),
+      status                  TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'review', 'published', 'archived')),
+      sort_order              INTEGER NOT NULL DEFAULT 0,
+      created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      FOREIGN KEY (discipline_id, collection_id)
+        REFERENCES mednexus_theory_disciplines(id, collection_id),
+      FOREIGN KEY (set_id, collection_id, discipline_id)
+        REFERENCES mednexus_theory_sets(id, collection_id, discipline_id),
+      CHECK ((set_id IS NULL) OR (set_id <> ''))
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_theory_questions_placement_idx
+      ON mednexus_theory_questions (collection_id, discipline_id, set_id, sort_order);
+
+    -- Learner state is deliberately per-user and separate from content records.
+    CREATE TABLE IF NOT EXISTS mednexus_theory_reading_progress (
+      user_id TEXT NOT NULL, question_id TEXT NOT NULL REFERENCES mednexus_theory_questions(id) ON DELETE CASCADE,
+      progress_percent SMALLINT NOT NULL DEFAULT 0 CHECK (progress_percent BETWEEN 0 AND 100),
+      completed_at TIMESTAMPTZ, last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, question_id)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_theory_model_answer_reviews (
+      user_id TEXT NOT NULL, question_id TEXT NOT NULL REFERENCES mednexus_theory_questions(id) ON DELETE CASCADE,
+      reviewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), review_count INTEGER NOT NULL DEFAULT 1,
+      PRIMARY KEY (user_id, question_id)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_theory_bookmarks (
+      user_id TEXT NOT NULL, question_id TEXT NOT NULL REFERENCES mednexus_theory_questions(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (user_id, question_id)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_theory_notes (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, question_id TEXT NOT NULL REFERENCES mednexus_theory_questions(id) ON DELETE CASCADE,
+      body TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, question_id)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_theory_revision_schedules (
+      user_id TEXT NOT NULL, question_id TEXT NOT NULL REFERENCES mednexus_theory_questions(id) ON DELETE CASCADE,
+      due_at TIMESTAMPTZ NOT NULL, interval_days INTEGER NOT NULL DEFAULT 1 CHECK (interval_days > 0),
+      repetitions INTEGER NOT NULL DEFAULT 0, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (user_id, question_id)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_theory_recent_activity (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, question_id TEXT REFERENCES mednexus_theory_questions(id) ON DELETE SET NULL,
+      activity_type TEXT NOT NULL, occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), metadata JSONB NOT NULL DEFAULT '{}'
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_theory_recent_activity_user_idx ON mednexus_theory_recent_activity (user_id, occurred_at DESC);
+
+    -- ── OSCE Hub (reserved for future delivery) ────────────────────────────
+    CREATE TABLE IF NOT EXISTS mednexus_osce_stations (
+      id TEXT PRIMARY KEY, title TEXT NOT NULL, candidate_instructions TEXT NOT NULL DEFAULT '',
+      examiner_instructions TEXT NOT NULL DEFAULT '', preparation_seconds INTEGER NOT NULL DEFAULT 0 CHECK (preparation_seconds >= 0),
+      performance_seconds INTEGER NOT NULL DEFAULT 0 CHECK (performance_seconds >= 0), checklist JSONB NOT NULL DEFAULT '[]',
+      scoring_rubric JSONB NOT NULL DEFAULT '{}', feedback JSONB NOT NULL DEFAULT '{}', specialty TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'review', 'published', 'archived')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_osce_station_competencies (
+      station_id TEXT NOT NULL REFERENCES mednexus_osce_stations(id) ON DELETE CASCADE,
+      competency TEXT NOT NULL, PRIMARY KEY (station_id, competency)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_osce_learner_competency_history (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, station_id TEXT REFERENCES mednexus_osce_stations(id) ON DELETE SET NULL,
+      competency TEXT NOT NULL, score NUMERIC, feedback TEXT NOT NULL DEFAULT '', assessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_osce_competency_history_user_idx ON mednexus_osce_learner_competency_history (user_id, competency, assessed_at DESC);
+
     CREATE TABLE IF NOT EXISTS mednexus_notifications (
       id         TEXT    PRIMARY KEY,
       title      TEXT    NOT NULL,
@@ -368,6 +475,17 @@ export async function ensureSchema() {
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();
     DELETE FROM mednexus_guest_users  WHERE expires_at < NOW();
+  `)
+
+  // Required Theory entry points are seed data rather than hard-coded UI
+  // labels, so all clients can query the same curriculum hierarchy.
+  await pool.query(`
+    INSERT INTO mednexus_theory_collections (id, slug, title, status, sort_order)
+    VALUES
+      ('theory-collection-end-of-rotation', 'end-of-rotation', 'End of Rotation', 'published', 10),
+      ('theory-collection-end-of-year', 'end-of-year', 'End of Year', 'published', 20)
+    ON CONFLICT (slug) DO UPDATE
+      SET title = EXCLUDED.title, sort_order = EXCLUDED.sort_order, updated_at = NOW()
   `)
 
   // ── Step 4: Host-migration trigger ────────────────────────────────────────

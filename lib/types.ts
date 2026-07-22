@@ -166,6 +166,76 @@ export interface Question {
   mediaBase64?: string | null
 }
 
+// ─── Theory Vault (kept separate from the MCQ Question bank) ────────────────
+
+/** Publication workflow shared by Theory content. */
+export type TheoryStatus = "draft" | "review" | "published" | "archived"
+
+/** A top-level Theory curriculum collection, such as End of Rotation. */
+export interface TheoryCollection {
+  id: string
+  slug: "end-of-rotation" | "end-of-year" | string
+  title: string
+  status: TheoryStatus
+  sortOrder: number
+}
+
+/** A discipline is scoped to a Theory collection, preserving the Theory hierarchy. */
+export interface TheoryDiscipline {
+  id: string
+  collectionId: string
+  name: string
+  sortOrder: number
+}
+
+/** An optional grouping below a Theory discipline. */
+export interface TheorySet {
+  id: string
+  collectionId: string
+  disciplineId: string
+  name: string
+  sortOrder: number
+}
+
+export interface TheorySourceMetadata {
+  sourceTitle?: string
+  sourceUrl?: string
+  pastPaper?: string
+  year?: number
+  reference?: string
+}
+
+/** A free-response Theory item. It intentionally has no MCQ options or answer key. */
+export interface TheoryQuestion {
+  id: string
+  collectionId: string
+  disciplineId: string
+  setId: string | null
+  prompt: string
+  modelAnswer: string
+  keyMarkingPoints: string[]
+  tags: string[]
+  sourceMetadata: TheorySourceMetadata
+  difficulty: number
+  estimatedStudyMinutes: number
+  status: TheoryStatus
+  sortOrder: number
+}
+
+/** Future-facing OSCE station definition, stored independently of Theory and MCQs. */
+export interface OsceStation {
+  id: string
+  title: string
+  candidateInstructions: string
+  examinerInstructions: string
+  preparationSeconds: number
+  performanceSeconds: number
+  checklist: unknown[]
+  scoringRubric: unknown
+  feedback: unknown
+  specialty: string
+}
+
 /** Quiz delivery modes. */
 export type QuizMode = "trial" | "exam"
 
