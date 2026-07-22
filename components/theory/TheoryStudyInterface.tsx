@@ -3,14 +3,18 @@
 /**
  * TheoryStudyInterface — interactive study session for a Theory Vault question set.
  *
- * Receives server-fetched questions and manages:
+ * Manages:
  *  – Review vs. Practice mode toggle
  *  – Textarea editor + Web Speech API dictation (Practice mode)
  *  – Reveal answer + self-grading engine
  *  – Prev / Next navigation (Next gated on a self-rating)
+ *  – Bookmark toggle (★) synced to /api/theory/sync
+ *  – Personal notes (📝) via TheoryNoteDrawer, synced to /api/theory/sync
+ *  – Revision queue: "Needs Revision" rating pushes question to revisionQueue
+ *  – theoryAnswered tracking: every rated question is recorded
  */
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import {
   BookOpenIcon,
@@ -24,24 +28,38 @@ import {
   MinusIcon,
   FrownIcon,
   CheckIcon,
+  StarIcon,
+  FileTextIcon,
 } from "lucide-react"
-import { TheoryAnswer } from "./TheoryAnswer"
+import { TheoryAnswer }      from "./TheoryAnswer"
+import { TheoryNoteDrawer }  from "./TheoryNoteDrawer"
 import type { TheoryQuestion } from "@/lib/types"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type StudyMode = "review" | "practice"
+type StudyMode  = "review" | "practice"
 type RatingValue = "good" | "partial" | "revision"
 
 interface Props {
-  questions: TheoryQuestion[]
-  setTitle: string
-  moduleDisplayName: string
+  questions:           TheoryQuestion[]
+  setTitle:            string
+  moduleDisplayName:   string
   categoryDisplayName: string
-  browseUrl: string
+  browseUrl:           string
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {}
+  try {
+    const guest = localStorage.getItem("mednexus-guest-token")
+    if (guest) return { "x-guest-token": guest }
+    const user  = localStorage.getItem("mednexus-user-token")
+    if (user)  return { "x-session-token": user }
+  } catch { /* ignore */ }
+  return {}
+}
 
 const RATING_CONFIG: Record<
   RatingValue,
@@ -49,27 +67,21 @@ const RATING_CONFIG: Record<
 > = {
   good: {
     label: "Nailed it",
-    icon: <SmileIcon size={16} />,
-    classes:
-      "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700/50 dark:text-emerald-400 dark:hover:bg-emerald-900/20",
-    activeClasses:
-      "border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-400/60 dark:border-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-400",
+    icon:  <SmileIcon size={16} />,
+    classes:      "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700/50 dark:text-emerald-400 dark:hover:bg-emerald-900/20",
+    activeClasses:"border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-400/60 dark:border-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-400",
   },
   partial: {
     label: "Partial",
-    icon: <MinusIcon size={16} />,
-    classes:
-      "border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700/50 dark:text-amber-400 dark:hover:bg-amber-900/20",
-    activeClasses:
-      "border-amber-500 bg-amber-50 text-amber-700 ring-1 ring-amber-400/60 dark:border-amber-500 dark:bg-amber-900/30 dark:text-amber-400",
+    icon:  <MinusIcon size={16} />,
+    classes:      "border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700/50 dark:text-amber-400 dark:hover:bg-amber-900/20",
+    activeClasses:"border-amber-500 bg-amber-50 text-amber-700 ring-1 ring-amber-400/60 dark:border-amber-500 dark:bg-amber-900/30 dark:text-amber-400",
   },
   revision: {
     label: "Needs Revision",
-    icon: <FrownIcon size={16} />,
-    classes:
-      "border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700/50 dark:text-red-400 dark:hover:bg-red-900/20",
-    activeClasses:
-      "border-red-500 bg-red-50 text-red-700 ring-1 ring-red-400/60 dark:border-red-500 dark:bg-red-900/30 dark:text-red-400",
+    icon:  <FrownIcon size={16} />,
+    classes:      "border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700/50 dark:text-red-400 dark:hover:bg-red-900/20",
+    activeClasses:"border-red-500 bg-red-50 text-red-700 ring-1 ring-red-400/60 dark:border-red-500 dark:bg-red-900/30 dark:text-red-400",
   },
 }
 
@@ -82,69 +94,75 @@ export function TheoryStudyInterface({
   categoryDisplayName,
   browseUrl,
 }: Props) {
-  // ── Per-session state ──────────────────────────────────────────────────────
-  const [mode, setMode] = useState<StudyMode>("review")
-  const [currentIdx, setCurrentIdx] = useState(0)
 
-  // Per-question state (reset on navigation)
+  // ── Study session state ──────────────────────────────────────────────────────
+  const [mode,       setMode]       = useState<StudyMode>("review")
+  const [currentIdx, setCurrentIdx] = useState(0)
   const [userAnswer, setUserAnswer] = useState("")
   const [isRevealed, setIsRevealed] = useState(false)
-  const [isListening, setIsListening] = useState(false)
+  const [isListening,setIsListening]= useState(false)
+  const [ratings,    setRatings]    = useState<Record<number, RatingValue>>({})
 
-  // Ratings persist across navigation so the user sees their previous choice
-  const [ratings, setRatings] = useState<Record<number, RatingValue>>({})
+  // ── Persisted progress state (loaded on mount) ───────────────────────────────
+  const [bookmarks,     setBookmarks]     = useState<Set<string>>(new Set())
+  const [revisionQueue, setRevisionQueue] = useState<Set<string>>(new Set())
+  const [notes,         setNotes]         = useState<Record<string, string>>({})
+  const [answered,      setAnswered]      = useState<Set<string>>(new Set())
+  const [progressLoaded,setProgressLoaded]= useState(false)
 
+  // ── Notes drawer state ───────────────────────────────────────────────────────
+  const [isNoteOpen,  setIsNoteOpen]  = useState(false)
+  const [isSavingNote,setIsSavingNote]= useState(false)
+
+  // ── Refs ─────────────────────────────────────────────────────────────────────
   const recognitionRef = useRef<any>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const textareaRef    = useRef<HTMLTextAreaElement>(null)
 
-  const q = questions[currentIdx]
-  const totalQ = questions.length
+  // ── Derived ──────────────────────────────────────────────────────────────────
+  const q             = questions[currentIdx]
+  const totalQ        = questions.length
   const currentRating = ratings[currentIdx]
+  const showAnswer    = mode === "review" || isRevealed
+  const canGoNext     = showAnswer && !!currentRating && currentIdx < totalQ - 1
+  const canGoPrev     = currentIdx > 0
+  const isBookmarked  = q ? bookmarks.has(q.id) : false
+  const currentNote   = q ? (notes[q.id] ?? "") : ""
 
-  // Answer is visible when in review mode, or when revealed in practice mode
-  const showAnswer = mode === "review" || isRevealed
+  // ── Load progress on mount ───────────────────────────────────────────────────
+  useEffect(() => {
+    const headers = getAuthHeaders()
+    if (!Object.keys(headers).length) { setProgressLoaded(true); return }
 
-  // Next is gated on selecting a rating once the answer is shown
-  const canGoNext = showAnswer && !!currentRating && currentIdx < totalQ - 1
-  const canGoPrev = currentIdx > 0
+    fetch("/api/sync", { headers })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data) => {
+        const p = data.progress ?? {}
+        setBookmarks(    new Set(Array.isArray(p.theoryBookmarks) ? p.theoryBookmarks : []))
+        setRevisionQueue(new Set(Array.isArray(p.revisionQueue)   ? p.revisionQueue   : []))
+        setNotes(        p.theoryNotes && typeof p.theoryNotes === "object" ? p.theoryNotes : {})
+        setAnswered(     new Set(Array.isArray(p.theoryAnswered)  ? p.theoryAnswered  : []))
+      })
+      .catch(() => {})
+      .finally(() => setProgressLoaded(true))
+  }, [])
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
-  const navigateTo = useCallback(
-    (idx: number) => {
-      stopDictation()
-      setCurrentIdx(idx)
-      setUserAnswer("")
-      setIsRevealed(false)
-      // ratings intentionally preserved
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  )
+  // Clean up speech recognition on unmount
+  useEffect(() => {
+    return () => { try { recognitionRef.current?.stop() } catch {} }
+  }, [])
 
-  const goNext = () => { if (canGoNext) navigateTo(currentIdx + 1) }
-  const goPrev = () => { if (canGoPrev) navigateTo(currentIdx - 1) }
-
-  // ── Mode toggle ────────────────────────────────────────────────────────────
-  const switchMode = (newMode: StudyMode) => {
-    if (newMode === mode) return
-    stopDictation()
-    setMode(newMode)
-    // When switching to review, reveal is implicit; in practice, start fresh
-    setIsRevealed(false)
-    setUserAnswer("")
+  // ── Sync helper ──────────────────────────────────────────────────────────────
+  const syncTheory = (update: Record<string, unknown>) => {
+    const headers = getAuthHeaders()
+    if (!Object.keys(headers).length) return
+    fetch("/api/theory/sync", {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(update),
+    }).catch(() => {})
   }
 
-  // ── Rating ─────────────────────────────────────────────────────────────────
-  const selectRating = (r: RatingValue) =>
-    setRatings((prev) => ({ ...prev, [currentIdx]: r }))
-
-  // ── Reveal ─────────────────────────────────────────────────────────────────
-  const revealAnswer = () => {
-    stopDictation()
-    setIsRevealed(true)
-  }
-
-  // ── Web Speech API dictation ───────────────────────────────────────────────
+  // ── Dictation ────────────────────────────────────────────────────────────────
   const stopDictation = () => {
     try { recognitionRef.current?.stop() } catch {}
     recognitionRef.current = null
@@ -153,26 +171,20 @@ export function TheoryStudyInterface({
 
   const toggleDictation = () => {
     if (isListening) { stopDictation(); return }
-
     const SRClass =
       (typeof window !== "undefined" &&
-        ((window as any).SpeechRecognition ||
-          (window as any).webkitSpeechRecognition)) as any
-
+        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) as any
     if (!SRClass) {
       alert("Speech recognition is not supported in this browser. Try Chrome or Edge.")
       return
     }
-
     const rec = new SRClass()
-    rec.continuous = true
-    rec.interimResults = false
-    rec.lang = "en-GB"
-
-    rec.onstart = () => setIsListening(true)
-    rec.onend = () => setIsListening(false)
-    rec.onerror = () => setIsListening(false)
-
+    rec.continuous      = true
+    rec.interimResults  = false
+    rec.lang            = "en-GB"
+    rec.onstart  = () => setIsListening(true)
+    rec.onend    = () => setIsListening(false)
+    rec.onerror  = () => setIsListening(false)
     rec.onresult = (e: any) => {
       let transcript = ""
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -180,7 +192,6 @@ export function TheoryStudyInterface({
       }
       if (transcript) {
         setUserAnswer((prev) => (prev ? prev.trimEnd() + " " + transcript : transcript))
-        // Auto-resize textarea
         setTimeout(() => {
           if (textareaRef.current) {
             textareaRef.current.style.height = "auto"
@@ -189,21 +200,83 @@ export function TheoryStudyInterface({
         }, 0)
       }
     }
+    try { rec.start(); recognitionRef.current = rec } catch { setIsListening(false) }
+  }
 
-    try {
-      rec.start()
-      recognitionRef.current = rec
-    } catch {
-      setIsListening(false)
+  // ── Navigation ───────────────────────────────────────────────────────────────
+  const navigateTo = (idx: number) => {
+    stopDictation()
+    setIsNoteOpen(false)
+    setCurrentIdx(idx)
+    setUserAnswer("")
+    setIsRevealed(false)
+  }
+
+  const goNext = () => { if (canGoNext) navigateTo(currentIdx + 1) }
+  const goPrev = () => { if (canGoPrev) navigateTo(currentIdx - 1) }
+
+  // ── Mode toggle ──────────────────────────────────────────────────────────────
+  const switchMode = (newMode: StudyMode) => {
+    if (newMode === mode) return
+    stopDictation()
+    setMode(newMode)
+    setIsRevealed(false)
+    setUserAnswer("")
+  }
+
+  // ── Rating (with sync) ───────────────────────────────────────────────────────
+  const selectRating = (r: RatingValue) => {
+    if (!q) return
+    setRatings((prev) => ({ ...prev, [currentIdx]: r }))
+
+    const newAnswered = new Set(answered)
+    newAnswered.add(q.id)
+    setAnswered(newAnswered)
+
+    if (r === "revision") {
+      const newRevision = new Set(revisionQueue)
+      newRevision.add(q.id)
+      setRevisionQueue(newRevision)
+      syncTheory({
+        revisionQueue:  [...newRevision],
+        theoryAnswered: [...newAnswered],
+      })
+    } else {
+      syncTheory({ theoryAnswered: [...newAnswered] })
     }
   }
 
-  // Clean up on unmount
-  useEffect(() => {
-    return () => { try { recognitionRef.current?.stop() } catch {} }
-  }, [])
+  // ── Bookmark toggle ──────────────────────────────────────────────────────────
+  const toggleBookmark = () => {
+    if (!q) return
+    const next = new Set(bookmarks)
+    if (next.has(q.id)) next.delete(q.id)
+    else next.add(q.id)
+    setBookmarks(next)
+    syncTheory({ theoryBookmarks: [...next] })
+  }
 
-  // Auto-resize textarea
+  // ── Note save ────────────────────────────────────────────────────────────────
+  const saveNote = async (text: string) => {
+    if (!q) return
+    setIsSavingNote(true)
+    const newNotes = { ...notes }
+    if (text.trim()) newNotes[q.id] = text.trim()
+    else delete newNotes[q.id]
+    setNotes(newNotes)
+    await fetch("/api/theory/sync", {
+      method: "POST",
+      headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ theoryNotes: newNotes }),
+    }).catch(() => {})
+    setIsSavingNote(false)
+    setIsNoteOpen(false)
+  }
+
+  // ── Reveal ───────────────────────────────────────────────────────────────────
+  const revealAnswer = () => { stopDictation(); setIsRevealed(true) }
+
+  // ── Textarea auto-resize ─────────────────────────────────────────────────────
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setUserAnswer(e.target.value)
     e.target.style.height = "auto"
@@ -217,7 +290,7 @@ export function TheoryStudyInterface({
 
       {/* ── Sticky header ──────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-4xl items-center gap-2 px-4 py-3">
 
           {/* Back */}
           <Link
@@ -236,9 +309,41 @@ export function TheoryStudyInterface({
             <p className="text-sm font-semibold text-foreground">
               {setTitle}
               <span className="ml-2 font-normal text-muted-foreground">
-                — Question {currentIdx + 1} of {totalQ}
+                — Q{currentIdx + 1}/{totalQ}
               </span>
             </p>
+          </div>
+
+          {/* Action buttons: Bookmark + Notes */}
+          <div className="flex shrink-0 items-center gap-1">
+            {/* Bookmark */}
+            <button
+              type="button"
+              onClick={toggleBookmark}
+              disabled={!progressLoaded}
+              title={isBookmarked ? "Remove bookmark" : "Bookmark this question"}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors disabled:opacity-40 ${
+                isBookmarked
+                  ? "border-amber-400/60 bg-amber-50 text-amber-600 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-400"
+                  : "border-border text-muted-foreground hover:border-amber-400/40 hover:text-amber-600 dark:hover:text-amber-400"
+              }`}
+            >
+              <StarIcon size={14} fill={isBookmarked ? "currentColor" : "none"} />
+            </button>
+
+            {/* Note */}
+            <button
+              type="button"
+              onClick={() => setIsNoteOpen(true)}
+              title={currentNote ? "Edit note" : "Add note"}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                currentNote
+                  ? "border-teal-400/60 bg-teal-50 text-teal-600 dark:border-teal-700/40 dark:bg-teal-900/20 dark:text-teal-400"
+                  : "border-border text-muted-foreground hover:border-teal-400/40 hover:text-teal-600 dark:hover:text-teal-400"
+              }`}
+            >
+              <FileTextIcon size={14} />
+            </button>
           </div>
 
           {/* Mode toggle */}
@@ -290,13 +395,16 @@ export function TheoryStudyInterface({
                 Q{currentIdx + 1}
               </span>
               {q.tags.slice(0, 2).map((tag, i) => (
-                <span
-                  key={i}
-                  className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                >
+                <span key={i} className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                   {tag}
                 </span>
               ))}
+              {/* Note indicator */}
+              {currentNote && (
+                <span className="ml-auto rounded-full border border-teal-200/60 bg-teal-50 px-2 py-0.5 text-[10px] font-medium text-teal-600 dark:border-teal-700/40 dark:bg-teal-900/20 dark:text-teal-400">
+                  📝 Note saved
+                </span>
+              )}
             </div>
             <p className="text-[15px] font-medium leading-relaxed text-foreground">
               {q.prompt}
@@ -316,8 +424,7 @@ export function TheoryStudyInterface({
           {/* ── Practice mode: textarea + reveal flow ────────────────────── */}
           {mode === "practice" && (
             <div className="space-y-4">
-              {/* Textarea editor */}
-              <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
                 <div className="flex items-center justify-between border-b border-border px-4 py-2">
                   <span className="text-xs font-medium text-muted-foreground">Your answer</span>
                   <button
@@ -333,9 +440,7 @@ export function TheoryStudyInterface({
                   >
                     {isListening ? <MicOffIcon size={12} /> : <MicIcon size={12} />}
                     {isListening ? "Stop" : "Dictate"}
-                    {isListening && (
-                      <span className="ml-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-                    )}
+                    {isListening && <span className="ml-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />}
                   </button>
                 </div>
                 <textarea
@@ -350,7 +455,6 @@ export function TheoryStudyInterface({
                 />
               </div>
 
-              {/* Reveal button */}
               {!isRevealed && (
                 <button
                   type="button"
@@ -362,14 +466,13 @@ export function TheoryStudyInterface({
                 </button>
               )}
 
-              {/* Answer revealed */}
               {isRevealed && (
                 <TheoryAnswer modelAnswer={q.modelAnswer} criticalFlags={q.criticalFlags} />
               )}
             </div>
           )}
 
-          {/* ── Self-grading panel (visible whenever answer is shown) ─────── */}
+          {/* ── Self-grading panel ────────────────────────────────────────── */}
           {showAnswer && (
             <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
               <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -377,24 +480,33 @@ export function TheoryStudyInterface({
               </p>
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {(["good", "partial", "revision"] as RatingValue[]).map((r) => {
-                  const cfg = RATING_CONFIG[r]
+                  const cfg      = RATING_CONFIG[r]
                   const isActive = currentRating === r
                   return (
                     <button
                       key={r}
                       type="button"
                       onClick={() => selectRating(r)}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-semibold transition-all ${
+                      className={`relative flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-semibold transition-all ${
                         isActive ? cfg.activeClasses : cfg.classes
                       }`}
                     >
                       <span className="text-base">{cfg.icon}</span>
-                      {isActive && <CheckIcon size={10} className="absolute" />}
-                      <span className="leading-tight text-center">{cfg.label}</span>
+                      <span className="text-center leading-tight">{cfg.label}</span>
+                      {isActive && r === "revision" && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                          ↻
+                        </span>
+                      )}
                     </button>
                   )
                 })}
               </div>
+              {currentRating === "revision" && (
+                <p className="mt-2 flex items-center justify-center gap-1 text-center text-[11px] text-red-600 dark:text-red-400">
+                  <span>↻</span> Added to your Revision Queue
+                </p>
+              )}
               {!currentRating && (
                 <p className="mt-2 text-center text-[11px] text-muted-foreground">
                   Select a rating to unlock the Next button
@@ -409,7 +521,6 @@ export function TheoryStudyInterface({
       <footer className="sticky bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
 
-          {/* Previous */}
           <button
             type="button"
             onClick={goPrev}
@@ -420,7 +531,7 @@ export function TheoryStudyInterface({
             Previous
           </button>
 
-          {/* Dot indicator */}
+          {/* Dot navigator */}
           <div className="flex items-center gap-1 overflow-hidden">
             {questions.map((_, i) => {
               const r = ratings[i]
@@ -433,31 +544,25 @@ export function TheoryStudyInterface({
                   className={`h-2 rounded-full transition-all ${
                     i === currentIdx
                       ? "w-5 bg-amber-500"
-                      : r === "good"
-                      ? "w-2 bg-emerald-400"
-                      : r === "partial"
-                      ? "w-2 bg-amber-400"
-                      : r === "revision"
-                      ? "w-2 bg-red-400"
-                      : "w-2 bg-muted-foreground/30"
+                      : r === "good"     ? "w-2 bg-emerald-400"
+                      : r === "partial"  ? "w-2 bg-amber-400"
+                      : r === "revision" ? "w-2 bg-red-400"
+                      :                    "w-2 bg-muted-foreground/30"
                   }`}
                 />
               )
             })}
           </div>
 
-          {/* Next / Finish */}
           {currentIdx < totalQ - 1 ? (
             <button
               type="button"
               onClick={goNext}
               disabled={!canGoNext}
               title={
-                !showAnswer
-                  ? "Reveal the answer first"
-                  : !currentRating
-                  ? "Rate this question first"
-                  : undefined
+                !showAnswer     ? "Reveal the answer first"
+                : !currentRating ? "Rate this question first"
+                : undefined
               }
               className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -479,6 +584,16 @@ export function TheoryStudyInterface({
           )}
         </div>
       </footer>
+
+      {/* ── Notes drawer ────────────────────────────────────────────────────── */}
+      <TheoryNoteDrawer
+        isOpen={isNoteOpen}
+        onClose={() => setIsNoteOpen(false)}
+        questionPrompt={q.prompt}
+        initialNote={currentNote}
+        onSave={saveNote}
+        isSaving={isSavingNote}
+      />
     </div>
   )
 }
