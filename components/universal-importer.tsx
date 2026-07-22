@@ -310,7 +310,6 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   // ── Format Tips accordion ─────────────────────────────────────────────────────
   const [openTip, setOpenTip] = useState<string | null>(null)
   const [rulesCopied, setRulesCopied] = useState(false)
-  const [solveCopied, setSolveCopied] = useState(false)
   function toggleTip(id: string) { setOpenTip((prev) => (prev === id ? null : id)) }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -917,11 +916,15 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                     iconBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
                     icon: <BookOpenIcon size={12} />,
                     rules: [
-                      { good: "Click 'Copy Prompt' above — this copies a ready-made instruction for Claude or Gemini" },
-                      { good: "Open Claude / Gemini, paste the prompt, then paste your full document right after it" },
-                      { good: "The AI will output a reformatted version — copy that output" },
-                      { good: "Come back here, paste it in the text box, and click 'Process Import'" },
-                      { note: "Your document already has MODULE (in the title) and Discipline headings — the prompt tells the AI exactly how to handle both" },
+                      { good: "Reformat the questions compilation to match the MedNexus formatting rules (single module tag, continuous numbering, discipline tags per section, A–E options, Answer: line, Explanation: line) and export as a clean .docx/.txt for import" },
+                      { note: "Rule 3 — Question Numbering: numbering runs continuously across the ENTIRE document, never restarting at each new DISCIPLINE tag" },
+                      { bad: "Blank line between the question number and the vignette text" },
+                      { bad: "A second MODULE tag anywhere in the document — only one, at the top" },
+                      { bad: "DISCIPLINE tag placed mid-question (between stem and options)" },
+                      { bad: "Answer: line placed before the options" },
+                      { bad: "Sub-numbering or bullet points inside options (A. 1. sub-item)" },
+                      { bad: "Question number duplicated at the start of the vignette text (1. 1. A patient…)" },
+                      { bad: "Question numbering restarting at 1 for each new discipline" },
                     ],
                   },
                   {
@@ -931,13 +934,12 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                     iconBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
                     icon: <HashIcon size={12} />,
                     rules: [
-                      { good: "The AI reads your document title and strips year / subtitle words to get the module name" },
-                      { good: "'Community Medicine Past Questions Compilation 2026'  →  MODULE: Community Medicine" },
-                      { good: "'Surgery MCQ Bank — 2025 Edition'  →  MODULE: Surgery" },
-                      { good: "ONE MODULE tag appears at the very top of the reformatted document" },
-                      { note: "You do not need to write MODULE: yourself — the AI extracts it from the title automatically" },
+                      { good: "MODULE: <name>  —  appears ONCE, at the very top of the document" },
+                      { good: "Applies to every question in the file, regardless of discipline" },
+                      { good: "Separator after keyword: colon  :  period  .  or dash  -  (colon preferred)" },
+                      { good: "Tag is case-insensitive" },
                     ],
-                    example: "MODULE: Community Medicine",
+                    example: "MODULE: UCC Entrance Examination",
                   },
                   {
                     id: "discipline",
@@ -946,13 +948,13 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                     iconBg: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
                     icon: <ListChecksIcon size={12} />,
                     rules: [
-                      { good: "Your headings like 'Discipline 1: Epidemiology, Biostatistics, and Study Designs' become DISCIPLINE: tags" },
-                      { good: "The numbering prefix ('Discipline 1:', 'Section A:') is stripped — only the name is kept" },
-                      { good: "Each DISCIPLINE: tag sits on its own line directly above the first question in that section" },
-                      { good: "All questions that follow belong to that discipline until the next heading" },
-                      { bad: "Discipline name invented or inferred — only what is written in your heading is used" },
+                      { good: "DISCIPLINE: <name>  —  own line, placed before the first question of that section" },
+                      { good: "Also accepts  SUBJECT:  or  TOPIC:" },
+                      { good: "Applies to every question that follows until the next DISCIPLINE tag" },
+                      { good: "Use a new DISCIPLINE tag every time the subject changes (e.g. Mathematics → Chemistry → Physics → Biology → Aptitude/Reasoning)" },
+                      { bad: "Do NOT repeat the MODULE tag between sections — it is set once for the whole document" },
                     ],
-                    example: "DISCIPLINE: Epidemiology, Biostatistics, and Study Designs\n\n1. Which of the following statements is True?…\n\nDISCIPLINE: Public Health Concepts and Ethics\n\n31. Public health aims to improve the health of:…",
+                    example: "DISCIPLINE: Mathematics\n...(questions 1–25)...\nDISCIPLINE: Chemistry\n...(questions 26–51)...",
                   },
                   {
                     id: "options",
@@ -961,13 +963,14 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                     iconBg: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400",
                     icon: <CheckIcon size={12} />,
                     rules: [
-                      { good: "Your options use lowercase (a. b. c. d.) — the AI converts them to uppercase (A. B. C. D.)" },
-                      { good: "Indentation is removed — each option starts flush at the left margin" },
-                      { good: "Accepted source formats:  a. text  a) text  (a) text  — all normalised to  A. text" },
-                      { good: "Minimum 2 options; up to E supported" },
-                      { bad: "Options left indented — the importer may misread them as continuation of the vignette" },
+                      { good: "Each option on its own dedicated line" },
+                      { good: "Accepted formats:  A. text   A) text   A: text   A- text   (A) text" },
+                      { good: "Letters A–E only (uppercase or lowercase — normalised to uppercase)" },
+                      { good: "Minimum 2 options (A and B) required; option E is optional" },
+                      { bad: "Option label repeated inside the text, e.g.  A. (A) Aortic dissection" },
+                      { bad: "All options on a single line separated by commas or slashes" },
                     ],
-                    example: "Source:          Output:\n    a. option one  →  A. option one\n    b. option two  →  B. option two\n    c. option three →  C. option three\n    d. option four  →  D. option four",
+                    example: "A. Aortic dissection\nB. Pulmonary embolism\nC. Myocardial infarction\nD. Pericarditis",
                   },
                   {
                     id: "answer",
@@ -976,10 +979,12 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                     iconBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
                     icon: <CheckIcon size={12} />,
                     rules: [
-                      { good: "If your document has an answer key, the AI outputs:  Answer: A  (single uppercase letter)" },
-                      { good: "If there is NO answer (unsolved past questions), the Answer line is simply omitted" },
-                      { note: "Questions with no Answer line import as 'Draft' — you can fill answers later in the editor" },
-                      { bad: "Answer written as full text, e.g.  Answer: Aortic dissection  — must be a letter only" },
+                      { good: "Accepted keywords (case-insensitive):  Answer   Correct Answer   Correct_Answer   Ans   Key" },
+                      { good: "Separator after keyword: colon  :  period  .  space  —  or dash  -" },
+                      { good: "Value: single letter A, B, C, D, or E  (uppercase or lowercase)" },
+                      { good: "Must appear AFTER all options and BEFORE the Explanation" },
+                      { bad: "Answer line placed before the options" },
+                      { bad: "Answer written as a word, e.g.  Answer: Aortic dissection" },
                     ],
                     example: "Answer: A",
                   },
@@ -990,11 +995,14 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                     iconBg: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400",
                     icon: <BookOpenIcon size={12} />,
                     rules: [
-                      { good: "If your document has explanations or rationale, the AI outputs:  Explanation: <text>" },
-                      { good: "Multi-line explanations are fine — lines are concatenated automatically" },
-                      { good: "If there is no explanation (common in unsolved past-question docs), it is omitted entirely" },
-                      { bad: "AI inventing an explanation — the prompt explicitly forbids this" },
+                      { good: "Trigger keywords (case-insensitive):  Explanation   Rationale   Discussion   Reason   Solution" },
+                      { good: "Keyword must be followed by any separator: period  .  colon  :  dash  -  em-dash  —  or a space" },
+                      { good: "Everything after the keyword on that line, plus every subsequent line until the next question number, is the explanation body" },
+                      { good: "Multi-paragraph explanations work — lines are concatenated automatically" },
+                      { good: "Maps to the 'Why the correct answer is right' field in the editor" },
+                      { bad: "No trigger keyword — unlabelled paragraph after the answer will be ignored" },
                     ],
+                    example: "Explanation: Aortic dissection classically presents with sudden tearing chest pain radiating to the back, with a blood-pressure differential between arms and a widened mediastinum on CXR.",
                   },
                   {
                     id: "images",
@@ -1003,248 +1011,154 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                     iconBg: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
                     icon: <ImageIcon size={12} />,
                     rules: [
-                      { good: "Embed the image directly in the Word document inside the question block it belongs to" },
-                      { good: "Position it after the stem and before or between the options" },
-                      { good: "The extractor counts question boundaries to assign each image to the right question" },
-                      { note: "PDF import does not support embedded images — use .docx if your questions have diagrams" },
-                      { bad: "Manually typing [IMAGE_1] placeholders — those are internal markers; just embed the image in Word" },
+                      { good: "Embed the image directly in your Word document at the correct position within the question block (after the stem, before or between the options)" },
+                      { good: "The system counts question boundaries to assign images — one image per question, first image wins" },
+                      { bad: "Image placed between two question numbers — it will be attached to the preceding question" },
+                      { note: "Do NOT type [IMAGE_1] or any placeholder manually — those are internal markers generated by the extractor. Embedding the image in Word at the right place is all that is needed." },
                     ],
                   },
                 ]
 
-                // Build the Solve & Categorize prompt (Step 1 — for raw, unsolved, ungrouped questions)
-                function buildSolvePrompt() {
-                  const lines: string[] = [
-                    "You are a senior medical educator and exam expert with deep knowledge across all clinical and basic-science disciplines.",
-                    "I will paste a set of raw MCQ questions below. They have NO answers, NO explanations, and NO discipline grouping.",
-                    "",
-                    "Your job is to:",
-                    "  1. Identify the correct answer for every question using evidence-based medicine.",
-                    "  2. Write a thorough explanation for each question.",
-                    "  3. Group questions by their medical discipline.",
-                    "  4. Assign a single MODULE name from the overall topic of the document.",
-                    "  5. Output everything in the exact structured format described below.",
-                    "",
-                    "Return ONLY the structured output. No preamble, no commentary, no closing note.",
-                    "",
-                    "=".repeat(64),
-                    "OUTPUT FORMAT",
-                    "=".repeat(64),
-                    "",
-                    "Line 1 — Module tag (ONE time, at the very top):",
-                    "  MODULE: <subject name>",
-                    "  Derive the module from the overall topic of the questions.",
-                    "  Example: if the questions are about public health topics → MODULE: Community Medicine",
-                    "  Example: if about heart/lung/GI mixed → MODULE: Internal Medicine",
-                    "",
-                    "Then, for each discipline group:",
-                    "  DISCIPLINE: <discipline name>",
-                    "  (blank line)",
-                    "  <question number>. <question stem>",
-                    "  A. <option>",
-                    "  B. <option>",
-                    "  C. <option>",
-                    "  D. <option>",
-                    "  (E. <option>  — only if a fifth option exists)",
-                    "  Answer: <single uppercase letter>",
-                    "  Explanation: <explanation — see rules below>",
-                    "  (blank line)",
-                    "",
-                    "=".repeat(64),
-                    "RULES",
-                    "=".repeat(64),
-                    "",
-                    "MODULE",
-                    "  • ONE module for the entire document, at the very top.",
-                    "  • Infer it from what the questions collectively cover.",
-                    "  • Keep it short — e.g. 'Surgery', 'Paediatrics', 'Community Medicine', 'Pharmacology'.",
-                    "",
-                    "DISCIPLINE grouping",
-                    "  • Group questions by their medical sub-specialty or topic area.",
-                    "  • Disciplines should be specific but not too narrow.",
-                    "    Good: 'Cardiology', 'Infectious Disease', 'Epidemiology and Biostatistics'",
-                    "    Too narrow: 'Atrial Fibrillation', 'Malaria only'",
-                    "    Too broad: 'Medicine' (use a sub-specialty instead)",
-                    "  • A discipline group must contain at least 2 questions.",
-                    "    If only 1 question fits a very narrow topic, fold it into the closest related discipline.",
-                    "  • Preserve the ORIGINAL question numbers — do not renumber.",
-                    "  • Questions may be reordered within the output to group by discipline,",
-                    "    but their original numbers must be kept.",
-                    "",
-                    "ANSWER",
-                    "  • Every question MUST have an Answer line: Answer: <single uppercase letter>.",
-                    "  • Choose the single best answer using standard medical knowledge (USMLE/licensing-exam level).",
-                    "  • If a question is ambiguous, choose the most defensible option and note it briefly in the explanation.",
-                    "",
-                    "EXPLANATION",
-                    "  • Write one continuous paragraph (no sub-headings, no bullet points inside).",
-                    "  • Structure it as follows (all in the same paragraph):",
-                    "      — Start with WHY the correct answer is right (the key mechanism/fact).",
-                    "      — Then explain why each WRONG option is incorrect (briefly, 1 sentence each).",
-                    "      — End with the key teaching point in 1 sentence.",
-                    "  • Length: 4–8 sentences. Enough to teach, not so long it becomes a textbook chapter.",
-                    "  • Use plain language. Avoid excessive jargon. Spell out acronyms on first use.",
-                    "  • Do NOT start with 'The correct answer is…' — jump straight to the clinical reasoning.",
-                    "",
-                    "ANSWER OPTIONS",
-                    "  • Use UPPERCASE letters: A. B. C. D. (E. if present).",
-                    "  • Each option on its own line, no indentation.",
-                    "  • Keep the original option text exactly — do not paraphrase.",
-                    "",
-                    "BLANK LINES",
-                    "  • One blank line between each question block.",
-                    "  • One blank line between the DISCIPLINE: tag and the first question under it.",
-                    "  • No blank lines between the question stem and its options.",
-                    "  • No blank lines between options.",
-                    "",
-                    "=".repeat(64),
-                    "EXAMPLE OUTPUT",
-                    "=".repeat(64),
-                    "",
-                    "MODULE: Community Medicine",
-                    "",
-                    "DISCIPLINE: Epidemiology and Biostatistics",
-                    "",
-                    "1. Which of the following best describes incidence?",
-                    "A. The number of existing cases of a disease in a population at a given time",
-                    "B. The number of new cases of a disease in a population over a defined period",
-                    "C. The proportion of exposed individuals who develop a disease",
-                    "D. The probability of dying from a disease given that you have it",
-                    "Answer: B",
-                    "Explanation: Incidence measures the rate of new cases arising in a population over a specified time period, making it the key metric for studying disease causation and risk factors. Option A describes prevalence, which counts existing (new + old) cases at a snapshot in time. Option C describes attack rate or risk, typically used in outbreak investigations. Option D describes the case fatality rate, a measure of disease severity rather than frequency. The key distinction to remember is incidence = new cases over time, prevalence = all existing cases at one moment.",
-                    "",
-                    "DISCIPLINE: Health Promotion and Disease Prevention",
-                    "",
-                    "7. Primary prevention refers to:",
-                    "A. Early detection of disease before symptoms appear",
-                    "B. Rehabilitation after a disease has caused disability",
-                    "C. Actions taken to prevent a disease from occurring in the first place",
-                    "D. Treatment of an established disease to prevent complications",
-                    "Answer: C",
-                    "Explanation: Primary prevention targets healthy individuals to stop disease from ever developing, through measures such as vaccination, health education, and environmental modification. Option A describes secondary prevention (screening for pre-symptomatic disease). Option B describes tertiary prevention or rehabilitation, aimed at minimising disability from established disease. Option D describes tertiary prevention in the form of complication control. Remembering the three prevention tiers — primary (stop it), secondary (catch it early), tertiary (limit damage) — is essential for public health questions.",
-                    "",
-                    "=".repeat(64),
-                    "NOW PROCESS THE QUESTIONS BELOW — output starts immediately, no preamble:",
-                    "=".repeat(64),
-                  ]
-                  return lines.join("\n")
-                }
+                // Raw formatting prompt — copied verbatim to clipboard when user clicks "Copy Formatting Rules for AI"
+                const RAW_FORMATTING_PROMPT = `Reformat the questions compilation to match the MedNexus formatting rules (single module tag, continuous numbering, discipline tags per section, A–E options, Answer: line, Explanation: line) and export as a clean .docx/.txt for import.
 
-                // Build the AI-ready reformatting prompt
-                function buildCopyText() {
-                  const lines: string[] = [
-                    "You are a medical document formatter.",
-                    "I will paste a raw MCQ document below. Reformat it so it can be imported into MedNexus.",
-                    "Follow every rule below EXACTLY. Do not change any question content — only reformat structure.",
-                    "Return ONLY the reformatted document. No commentary, no preamble, no closing note.",
-                    "",
-                    "=".repeat(64),
-                    "STEP-BY-STEP RULES",
-                    "=".repeat(64),
-                    "",
-                    "STEP 1 — MODULE TAG",
-                    "  • Read the document title (usually the first line or heading).",
-                    "  • Extract the subject name from it, stripping years, subtitles, and words like",
-                    "    'Past Questions', 'Compilation', 'MCQ', 'Unsolved', numbers, and dashes.",
-                    "  • Output it as the very first line:  MODULE: <subject name>",
-                    "  • Example: 'Community Medicine Past Questions Compilation 2026'  →  MODULE: Community Medicine",
-                    "  • Example: 'Surgery MCQ Bank — 2025 Edition'  →  MODULE: Surgery",
-                    "  • ONE MODULE tag at the very top only. Do not repeat it.",
-                    "",
-                    "STEP 2 — DISCIPLINE TAGS",
-                    "  • The document contains section headings that mark discipline/topic groups.",
-                    "    These may appear as:  'Discipline 1: Epidemiology, Biostatistics, and Study Designs'",
-                    "    or  'Section A: Cardiology'  or any similar heading format.",
-                    "  • For EACH such heading, output it as:  DISCIPLINE: <discipline name>",
-                    "    Strip the numbering prefix ('Discipline 1:', 'Section A:', etc.) — keep only the name.",
-                    "  • Example: 'Discipline 3: Environmental and Occupational Medicine'",
-                    "         →  DISCIPLINE: Environmental and Occupational Medicine",
-                    "  • Place the DISCIPLINE: tag on its own line, directly above the first question in that section.",
-                    "  • All questions that follow belong to that discipline until the next DISCIPLINE: tag.",
-                    "  • Do NOT invent disciplines that are not in the source document.",
-                    "",
-                    "STEP 3 — QUESTION NUMBERING",
-                    "  • Keep the original question numbers.",
-                    "  • Format: <number>. <question text — on the SAME line as the number>",
-                    "  • Multi-line vignettes are fine; continuation lines follow immediately below.",
-                    "  • Remove any indentation from question text.",
-                    "",
-                    "STEP 4 — ANSWER OPTIONS",
-                    "  • Each option on its own line, NO indentation.",
-                    "  • Use UPPERCASE letters:  A. B. C. D. E.",
-                    "  • If the source uses lowercase (a. b. c. d.), convert them to uppercase.",
-                    "  • Format: <LETTER>. <option text>",
-                    "  • Example source line:  '    a. measures the rate of new deaths'",
-                    "             output:  'A. measures the rate of new deaths'",
-                    "",
-                    "STEP 5 — CORRECT ANSWER LINE",
-                    "  • If the source document includes an answer key or answer line, output it as:",
-                    "    Answer: <single uppercase letter>",
-                    "  • If there is NO answer provided for a question (unsolved/past questions),",
-                    "    DO NOT invent or guess an answer. Simply omit the Answer line entirely.",
-                    "",
-                    "STEP 6 — EXPLANATION",
-                    "  • If the source includes an explanation or rationale, output it as:",
-                    "    Explanation: <text>",
-                    "  • If there is no explanation, omit the line. Never invent explanations.",
-                    "",
-                    "STEP 7 — BLANK LINES",
-                    "  • Separate each question block with ONE blank line.",
-                    "  • No blank lines between a question stem and its options.",
-                    "  • No blank lines between options.",
-                    "",
-                    "STEP 8 — REMOVE CLUTTER",
-                    "  • Remove page headers, page numbers, footers, subtitle lines, and the original",
-                    "    document title (you already used it for the MODULE tag).",
-                    "  • Remove any decorative lines, borders, or repeated headings.",
-                    "",
-                    "=".repeat(64),
-                    "EXAMPLE — INPUT vs OUTPUT",
-                    "=".repeat(64),
-                    "",
-                    "INPUT:",
-                    "  Community Medicine Past Questions Compilation 2026",
-                    "  MCQ Past Questions Compilation — 256 Questions",
-                    "",
-                    "  Discipline 1: Epidemiology, Biostatistics, and Study Designs",
-                    "  1. Which of the following statements is True? The case fatality rate:",
-                    "      a. measures the rate of new deaths in a community",
-                    "      b. None of the other options",
-                    "      c. measures the rate of all deaths in a community",
-                    "      d. is used to express the burden of a disease",
-                    "",
-                    "  Discipline 2: Public Health Concepts and Ethics",
-                    "  31. Public health aims to improve the health of:",
-                    "      a. Individuals with strategies that focus solely on individuals",
-                    "      b. Communities with strategies that do not focus solely on individuals",
-                    "      c. Individuals with strategies that do not focus solely on individuals",
-                    "      d. Communities with strategies that focus solely on individuals",
-                    "",
-                    "OUTPUT:",
-                    "  MODULE: Community Medicine",
-                    "",
-                    "  DISCIPLINE: Epidemiology, Biostatistics, and Study Designs",
-                    "",
-                    "  1. Which of the following statements is True? The case fatality rate:",
-                    "  A. measures the rate of new deaths in a community",
-                    "  B. None of the other options",
-                    "  C. measures the rate of all deaths in a community",
-                    "  D. is used to express the burden of a disease",
-                    "",
-                    "  DISCIPLINE: Public Health Concepts and Ethics",
-                    "",
-                    "  31. Public health aims to improve the health of:",
-                    "  A. Individuals with strategies that focus solely on individuals",
-                    "  B. Communities with strategies that do not focus solely on individuals",
-                    "  C. Individuals with strategies that do not focus solely on individuals",
-                    "  D. Communities with strategies that focus solely on individuals",
-                    "",
-                    "=".repeat(64),
-                    "NOW REFORMAT THE DOCUMENT BELOW — output starts immediately, no preamble:",
-                    "=".repeat(64),
-                  ]
-                  return lines.join("\n")
-                }
+MEDNEXUS DOCUMENT FORMATTING RULES
+Use these rules to pre-format raw MCQ compilations before importing.
+============================================================
+
+1. MODULE TAG (ONE PER DOCUMENT)
+----------------------------------
+  ✓  MODULE: <name>  —  appears ONCE, at the very top of the document
+  ✓  Applies to every question in the file, regardless of discipline
+  ✓  Separator after keyword: colon  :  period  .  or dash  -  (colon preferred)
+  ✓  Tag is case-insensitive
+
+  Example:
+    MODULE: UCC Entrance Examination
+
+2. DISCIPLINE TAGS (ONE PER SECTION)
+--------------------------------------
+  ✓  DISCIPLINE: <name>  —  own line, placed before the first question of that section
+  ✓  Also accepts  SUBJECT:  or  TOPIC:
+  ✓  Applies to every question that follows until the next DISCIPLINE tag
+  ✓  Use a new DISCIPLINE tag every time the subject changes (e.g. Mathematics → Chemistry → Physics → Biology → Aptitude/Reasoning)
+  ✗  Do NOT repeat the MODULE tag between sections — it is set once for the whole document
+
+  Example:
+    DISCIPLINE: Mathematics
+    ...(questions 1–25)...
+    DISCIPLINE: Chemistry
+    ...(questions 26–51)...
+
+3. QUESTION NUMBERING — CONTINUOUS THROUGHOUT
+-------------------------------------------------
+  ✓  Numbering runs continuously across the ENTIRE document, not restarting at each discipline
+  ✓  Number must start at the very beginning of the line — no leading spaces
+  ✓  Accepted:  1.   1)   1:   Q1.   Q.1.   Question 1.   (1)  — numbers 1–9999
+  ✓  Question text must begin on the SAME LINE as the number, immediately after the separator
+  ✗  Number on one line, vignette text on the next — parser reads a blank vignette
+  ✓  Multi-line vignettes are fine — continuation lines are appended automatically
+  ✗  Numbering must NOT reset to 1 when a new DISCIPLINE tag appears
+
+  Example:
+    24. A man invests GH₵1000 at 10% compound interest...
+    DISCIPLINE: Chemistry
+    25. pH of 10⁻⁵ M HCl is:
+
+4. ANSWER OPTIONS (A – E)
+--------------------------
+  ✓  Each option on its own dedicated line
+  ✓  Accepted formats:  A. text   A) text   A: text   A- text   (A) text
+  ✓  Letters A–E only (uppercase or lowercase — normalised to uppercase)
+  ✓  Minimum 2 options (A and B) required; option E is optional
+  ✗  Option label repeated inside the text, e.g.  A. (A) Aortic dissection
+  ✗  All options on a single line separated by commas or slashes
+
+  Example:
+    A. Aortic dissection
+    B. Pulmonary embolism
+    C. Myocardial infarction
+    D. Pericarditis
+
+5. CORRECT ANSWER LINE
+-----------------------
+  ✓  Accepted keywords (case-insensitive):  Answer   Correct Answer   Correct_Answer   Ans   Key
+  ✓  Separator after keyword: colon  :  period  .  space  —  or dash  -
+  ✓  Value: single letter A, B, C, D, or E  (uppercase or lowercase)
+  ✓  Must appear AFTER all options and BEFORE the Explanation
+  ✗  Answer line placed before the options
+  ✗  Answer written as a word, e.g.  Answer: Aortic dissection
+
+  Example:
+    Answer: A
+
+6. EXPLANATION / RATIONALE
+---------------------------
+  ✓  Trigger keywords (case-insensitive):  Explanation   Rationale   Discussion   Reason   Solution
+  ✓  Keyword must be followed by any separator: period  .  colon  :  dash  -  em-dash  —  or a space
+  ✓  Everything after the keyword on that line, plus every subsequent line until the next question number, is the explanation body
+  ✓  Multi-paragraph explanations work — lines are concatenated automatically
+  ✓  Maps to the 'Why the correct answer is right' field in the editor
+  ✗  No trigger keyword — unlabelled paragraph after the answer will be ignored
+
+  Example:
+    Explanation: Aortic dissection classically presents with sudden tearing chest pain radiating to the back, with a blood-pressure differential between arms and a widened mediastinum on CXR.
+
+7. CLINICAL IMAGES (.DOCX ONLY)
+--------------------------------
+  ✓  Embed the image directly in your Word document at the correct position within the question block (after the stem, before or between the options)
+  ✓  The system counts question boundaries to assign images — one image per question, first image wins
+  ✗  Image placed between two question numbers — it will be attached to the preceding question
+  ℹ  Do NOT type [IMAGE_1] or any placeholder manually — those are internal markers generated by the extractor. Embedding the image in Word at the right place is all that is needed.
+
+8. CRITICAL DON'TS
+-------------------
+  ✗  Blank line between the question number and the vignette text
+  ✗  A second MODULE tag anywhere in the document — only one, at the top
+  ✗  DISCIPLINE tag placed mid-question (between stem and options)
+  ✗  Answer: line placed before the options
+  ✗  Sub-numbering or bullet points inside options (A. 1. sub-item)
+  ✗  Question number duplicated at the start of the vignette text (1. 1. A patient…)
+  ✗  Question numbering restarting at 1 for each new discipline
+
+============================================================
+COMPLETE DOCUMENT STRUCTURE EXAMPLE
+--------------------------------------
+
+MODULE: UCC Entrance Examination
+
+DISCIPLINE: Mathematics
+
+1. A trader sells an item at a 20% profit. If he had bought it for 15%
+   less and sold it for GH₵30 less, he would have gained 25%. Find the
+   cost price.
+
+A. 218
+B. 250
+C. 300
+D. 350
+
+Answer: A
+
+Explanation: Let CP = x. SP₁ = 1.2x. New CP = 0.85x, New SP = 1.2x − 30.
+Since new profit is 25%: 1.25(0.85x) = 1.2x − 30 → x = GH₵218.
+
+2. If 2x + 3y = 5 and x² + y² = 10, find the maximum value of xy.
+...
+
+DISCIPLINE: Chemistry
+
+26. pH of 10⁻⁵ M HCl is:
+
+A. 5
+B. 7
+C. 9
+D. 10
+
+Answer: A
+
+Explanation: HCl is a strong acid that fully dissociates, so [H⁺] = 10⁻⁵ M,
+giving pH = 5.`
 
                 return (
                   <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
@@ -1256,30 +1170,11 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                         <p className="text-[10px] text-muted-foreground/60">Copy → paste into Claude or Gemini before your document</p>
                       </div>
                       <div className="ml-auto flex items-center gap-1.5">
-                        {/* Step 1 — Solve & Categorize (raw questions) */}
+                        {/* Copy Formatting Rules for AI */}
                         <button
                           type="button"
                           onClick={() => {
-                            navigator.clipboard.writeText(buildSolvePrompt()).then(() => {
-                              setSolveCopied(true)
-                              setTimeout(() => setSolveCopied(false), 2200)
-                            })
-                          }}
-                          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                            solveCopied
-                              ? "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                              : "border-violet-300/60 bg-violet-50/60 text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-900/20 dark:text-violet-400 dark:hover:bg-violet-900/40"
-                          }`}
-                          title="Use this first when your questions have no answers, no explanations, and no discipline grouping"
-                        >
-                          {solveCopied ? <CheckIcon size={10} /> : <ClipboardListIcon size={10} />}
-                          {solveCopied ? "Copied!" : "Step 1 — Solve & Categorize"}
-                        </button>
-                        {/* Step 2 — Reformat for import */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(buildCopyText()).then(() => {
+                            navigator.clipboard.writeText(RAW_FORMATTING_PROMPT).then(() => {
                               setRulesCopied(true)
                               setTimeout(() => setRulesCopied(false), 2200)
                             })
@@ -1289,10 +1184,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                               ? "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                               : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                           }`}
-                          title="Use this after Step 1 (or directly if your document already has discipline headings)"
+                          title="Copy the full formatting rules to paste into Claude or Gemini before your document"
                         >
                           {rulesCopied ? <CheckIcon size={10} /> : <ClipboardListIcon size={10} />}
-                          {rulesCopied ? "Copied!" : "Step 2 — Format for Import"}
+                          {rulesCopied ? "Copied!" : "Copy Formatting Rules for AI"}
                         </button>
                       </div>
                     </div>
