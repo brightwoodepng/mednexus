@@ -158,7 +158,9 @@ export function Sidebar({
               <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
               <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">Admin</p>
               <NavButton glass={isGlassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
-              <NavButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="Editor" adminBadge="Admin" />
+              <p className="px-3 pb-1 pt-1 text-[9px] font-bold uppercase tracking-widest text-sidebar-foreground/45">Content tools</p>
+              <NavButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="MCQ Q-Bank Editor" adminBadge="Admin" />
+              <NavButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} icon={<LayersIcon size={18} />} label="Theory Vault Editor" adminBadge="Admin" />
               <NavButton glass={isGlassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
             </>
           )}
@@ -253,6 +255,7 @@ export function Sidebar({
           <div className={`my-2 w-6 h-px ${dividerCls}`} />
           <IconButton glass={isGlassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} label="Users"><UsersIcon size={18} /></IconButton>
           <IconButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Editor"><DatabaseIcon size={18} /></IconButton>
+          <IconButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} label="Theory Vault Editor"><LayersIcon size={18} /></IconButton>
           <IconButton glass={isGlassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
         </>
       )}

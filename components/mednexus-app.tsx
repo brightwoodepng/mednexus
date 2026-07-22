@@ -42,6 +42,7 @@ import {
   DatabaseIcon,
   MegaphoneIcon,
   ClipboardListIcon,
+  LayersIcon,
   RadioIcon,
   TrophyIcon,
 } from "@/components/icons"
@@ -49,6 +50,7 @@ import { BottomNav } from "@/components/bottom-nav"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { StudyHubSwitcher } from "@/components/study-hub-switcher"
 import { TheoryVault } from "@/components/theory-vault"
+import { TheoryEditor } from "@/components/theory-editor"
 
 interface PendingQuiz {
   questions: Question[]
@@ -440,8 +442,8 @@ export function MedNexusApp() {
   } | null>(null)
 
   useEffect(() => {
-    if (activeStudyHub === "theory-vault" && !screen.startsWith("theory-")) setScreen("theory-dashboard")
-    if (activeStudyHub === "mcq-qbank" && screen.startsWith("theory-")) setScreen("dashboard")
+    if (activeStudyHub === "theory-vault" && !screen.startsWith("theory-") && screen !== "question-editor") setScreen("theory-dashboard")
+    if (activeStudyHub === "mcq-qbank" && screen.startsWith("theory-") && screen !== "theory-editor") setScreen("dashboard")
   }, [activeStudyHub, screen])
 
   useEffect(() => {
@@ -465,7 +467,7 @@ export function MedNexusApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const adminOnlyScreens: Screen[] = ["question-editor", "broadcast", "live-assessments-admin", "user-management"]
+  const adminOnlyScreens: Screen[] = ["question-editor", "theory-editor", "broadcast", "live-assessments-admin", "user-management"]
   const safeScreen = adminOnlyScreens.includes(screen) && !isAdmin ? "dashboard" : screen
 
   const handleReadyForQuiz = useCallback((config: { module: string; discipline: string | null }) => {
@@ -661,6 +663,7 @@ export function MedNexusApp() {
               onOpenAssessments={() => setScreen("live-assessments-admin")}
             />
           )}
+          {safeScreen === "theory-editor" && isAdmin && <TheoryEditor />}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
           {safeScreen === "leaderboard" && <LeaderboardScreen />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen onExamActiveChange={setIsExamActive} />}
@@ -801,7 +804,11 @@ export function MedNexusApp() {
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
                       <DatabaseIcon size={16} />
                     </span>
-                    <p className="text-sm font-semibold text-foreground">Question Editor</p>
+                    <p className="text-sm font-semibold text-foreground">MCQ Q-Bank Editor</p>
+                  </button>
+                  <button type="button" onClick={() => { setScreen("theory-editor"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"><LayersIcon size={16} /></span>
+                    <p className="text-sm font-semibold text-foreground">Theory Vault Editor</p>
                   </button>
                   <button type="button" onClick={() => { setScreen("broadcast"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400">
