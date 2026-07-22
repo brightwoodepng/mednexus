@@ -18,6 +18,7 @@ interface Result {
   answers: Record<string, string | null>
   questions: Question[]
   timeTaken?: number
+  attemptsUsed?: number
 }
 
 interface HighScore {
@@ -43,6 +44,7 @@ interface StoredAttempt {
   }
   highScore?: HighScore
   questions?: Question[]
+  guestToken?: string
 }
 
 function attemptKey(token: string) { return `mednexus-exam-${token}` }
@@ -60,6 +62,17 @@ function loadAttempt(token: string): StoredAttempt | null {
   } catch { return null }
 }
 
+async function createGuestSession(name: string) {
+  const response = await fetch("/api/auth/guest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, classLevel: "" }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || !data.sessionToken) throw new Error(data.error ?? "Unable to start guest session")
+  return data as { uid: string; name: string; sessionToken: string }
+}
+
 function formatTimeTaken(secs: number): string {
   const m = Math.floor(secs / 60)
   const s = secs % 60
@@ -75,6 +88,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
   const [questions, setQuestions] = useState<Question[]>([])
   const [guestName, setGuestName] = useState("")
   const [guestId, setGuestId] = useState("")
+  const [guestToken, setGuestToken] = useState("")
   const [nameError, setNameError] = useState("")
   const [result, setResult] = useState<Result | null>(null)
   const [bestScore, setBestScore] = useState<HighScore | null>(null)
@@ -97,12 +111,23 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
 
         const stored = loadAttempt(token)
         const triesAllowed = asmt.triesAllowed ?? 1
+        let serverAttemptCount = 0
+        if (stored?.guestToken) {
+          const attemptsResponse = await fetch(`/api/assessments/${asmt.id}/attempt`, {
+            headers: { "x-guest-token": stored.guestToken },
+          })
+          if (attemptsResponse.ok) {
+            const attempts = await attemptsResponse.json()
+            serverAttemptCount = Number(attempts.count ?? 0)
+            setGuestToken(stored.guestToken)
+          }
+        }
 
         // 1. Tries exhausted with a completed result → show full review
-        if (stored && stored.latestResult && stored.attemptCount >= triesAllowed) {
+        if (stored && stored.latestResult && serverAttemptCount >= triesAllowed) {
           setGuestName(stored.guestName)
           setGuestId(stored.guestId)
-          setTriesUsed(stored.attemptCount)
+          setTriesUsed(serverAttemptCount)
           setResult({ ...stored.latestResult, questions: stored.questions ?? qs })
           if (stored.highScore) setBestScore(stored.highScore)
           setPhase("results")
@@ -110,10 +135,10 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         }
 
         // 2. Attempt completed but tries remain → show blind review
-        if (stored && stored.latestResult && stored.attemptCount > 0 && stored.attemptCount < triesAllowed) {
+        if (stored && stored.latestResult && serverAttemptCount > 0 && serverAttemptCount < triesAllowed) {
           setGuestName(stored.guestName)
           setGuestId(stored.guestId)
-          setTriesUsed(stored.attemptCount)
+          setTriesUsed(serverAttemptCount)
           setResult({ ...stored.latestResult, questions: stored.questions ?? qs })
           if (stored.highScore) setBestScore(stored.highScore)
           setPhase("blind-review")
@@ -121,7 +146,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         }
 
         // 3. In-progress session (reloaded / came back) → resume exam
-        if (stored?.guestId) {
+        if (stored?.guestId && stored.guestToken) {
           try {
             const sk = sessionKey(asmt.id, stored.guestId)
             const sessionRaw = localStorage.getItem(sk)
@@ -132,7 +157,8 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
               if (remaining >= 0) {
                 setGuestName(stored.guestName)
                 setGuestId(stored.guestId)
-                setTriesUsed(stored.attemptCount ?? 0)
+                setGuestToken(stored.guestToken)
+                setTriesUsed(serverAttemptCount)
                 if (stored.highScore) setBestScore(stored.highScore)
                 setPhase("exam")
                 return
@@ -149,29 +175,26 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
     load()
   }, [token])
 
-  function handleStartExam() {
+  async function handleStartExam() {
     if (!guestName.trim()) { setNameError("Please enter your name to continue."); return }
     setNameError("")
-    const id = `guest-${guestName.trim().toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`
-    setGuestId(id)
+    try {
+      const guest = await createGuestSession(guestName.trim())
+      setGuestId(guest.uid)
+      setGuestName(guest.name)
+      setGuestToken(guest.sessionToken)
 
-    // Persist identity immediately so reload can resume without re-entering name
-    const existing = loadAttempt(token)
-    saveAttempt(token, {
-      guestName: guestName.trim(),
-      guestId: id,
-      attemptCount: existing?.attemptCount ?? triesUsed,
-      triesAllowed: assessment?.triesAllowed ?? 1,
-      latestResult: existing?.latestResult,
-      highScore: existing?.highScore,
-      questions: existing?.questions,
-    })
-
-    setPhase("exam")
+      // Keep only a resumable display session locally; the server owns attempts.
+      const existing = loadAttempt(token)
+      saveAttempt(token, { guestName: guest.name, guestId: guest.uid, guestToken: guest.sessionToken, attemptCount: triesUsed, triesAllowed: assessment?.triesAllowed ?? 1, latestResult: existing?.latestResult, highScore: existing?.highScore, questions: existing?.questions })
+      setPhase("exam")
+    } catch (error) {
+      setNameError(error instanceof Error ? error.message : "Unable to start guest session.")
+    }
   }
 
   function handleComplete(res: Result) {
-    const newAttemptCount = triesUsed + 1
+    const newAttemptCount = res.attemptsUsed ?? triesUsed + 1
     setTriesUsed(newAttemptCount)
 
     const existing = loadAttempt(token)
@@ -198,6 +221,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
       },
       highScore: newHighScore,
       questions: res.questions,
+      guestToken,
     })
 
     setResult(res)
@@ -212,25 +236,12 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
     }
   }
 
-  function handleRetake() {
+  async function handleRetake() {
     setResult(null)
     setShowReview(false)
     setNameError("")
 
-    if (guestName.trim()) {
-      // Name already known — skip the name-entry screen and go straight to the exam
-      const id = `guest-${guestName.trim().toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`
-      setGuestId(id)
-      const existing = loadAttempt(token)
-      saveAttempt(token, {
-        guestName: guestName.trim(),
-        guestId: id,
-        attemptCount: existing?.attemptCount ?? triesUsed,
-        triesAllowed: assessment?.triesAllowed ?? 1,
-        latestResult: existing?.latestResult,
-        highScore: existing?.highScore,
-        questions: existing?.questions,
-      })
+    if (guestName.trim() && guestToken) {
       setPhase("exam")
     } else {
       setGuestId("")
@@ -308,7 +319,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         questions={questions}
         userName={guestName.trim() || "Guest"}
         userId={guestId}
-        isGuest={true}
+        authHeader={{ key: "x-guest-token", value: guestToken }}
         onComplete={handleComplete}
       />
     )
