@@ -81,6 +81,17 @@ function typeIconBg(type: NType) {
   return "bg-sky-100 dark:bg-sky-900/30"
 }
 
+function getStoredAuthHeader(): { key: string; value: string } | null {
+  if (typeof window === "undefined") return null
+  try {
+    const guestToken = localStorage.getItem("mednexus-guest-token")
+    if (guestToken) return { key: "x-guest-token", value: guestToken }
+    const userToken = localStorage.getItem("mednexus-user-token")
+    if (userToken) return { key: "x-session-token", value: userToken }
+  } catch { /* localStorage may be unavailable */ }
+  return null
+}
+
 function fmtTime(iso: string) {
   const d = new Date(iso)
   const diffMs = Date.now() - d.getTime()
@@ -99,10 +110,12 @@ function NotificationRow({
   n,
   onMarkRead,
   onDelete,
+  adminToken,
 }: {
   n: AppNotification
   onMarkRead: (id: string) => void
   onDelete: (id: string) => void
+  adminToken: string | null
 }) {
   const [deleting, setDeleting] = useState(false)
   const [marking, setMarking] = useState(false)
@@ -111,10 +124,14 @@ function NotificationRow({
     if (n.isRead || marking) return
     setMarking(true)
     try {
+      const authHeader = getStoredAuthHeader()
       await fetch("/api/notifications", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: n.id }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+        },
+        body: JSON.stringify({ id: n.id, isRead: true }),
       })
       onMarkRead(n.id)
     } finally {
@@ -129,7 +146,7 @@ function NotificationRow({
     try {
       await fetch("/api/notifications", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-admin-token": adminToken ?? "" },
         body: JSON.stringify({ id: n.id }),
       })
       onDelete(n.id)
@@ -196,6 +213,7 @@ function NotificationRow({
         )}
 
         {/* Delete */}
+        {adminToken && (
         <button
           type="button"
           onClick={handleDelete}
@@ -205,6 +223,7 @@ function NotificationRow({
         >
           <TrashIcon size={15} />
         </button>
+        )}
       </div>
     </div>
   )
@@ -220,6 +239,8 @@ function NotificationsInner() {
 
   const load = useCallback(async () => {
     const headers: Record<string, string> = {}
+    const authHeader = getStoredAuthHeader()
+    if (authHeader) headers[authHeader.key] = authHeader.value
     if (adminToken) headers["x-admin-token"] = adminToken
     try {
       const res = await fetch("/api/notifications", { cache: "no-store", headers })
@@ -245,13 +266,17 @@ function NotificationsInner() {
   }
 
   async function markAllRead() {
+    const authHeader = getStoredAuthHeader()
     const unread = notifications.filter((n) => !n.isRead)
     await Promise.all(
       unread.map((n) =>
         fetch("/api/notifications", {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: n.id }),
+          headers: {
+            "Content-Type": "application/json",
+            ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+          },
+          body: JSON.stringify({ id: n.id, isRead: true }),
         })
       )
     )
@@ -367,6 +392,7 @@ function NotificationsInner() {
                 n={n}
                 onMarkRead={handleMarkRead}
                 onDelete={handleDelete}
+                adminToken={adminToken}
               />
             ))}
           </div>

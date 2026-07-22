@@ -77,9 +77,20 @@ export async function ensureSchema() {
       body       TEXT    NOT NULL,
       type       TEXT    NOT NULL DEFAULT 'info',
       admin_only BOOLEAN NOT NULL DEFAULT FALSE,
-      is_read    BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    -- Read state for broadcasts belongs to the recipient, never the broadcast.
+    -- A single broadcast can therefore be read by one learner while remaining
+    -- unread for every other learner.
+    CREATE TABLE IF NOT EXISTS mednexus_notification_states (
+      notification_id TEXT    NOT NULL REFERENCES mednexus_notifications(id) ON DELETE CASCADE,
+      user_id         TEXT    NOT NULL,
+      is_read         BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (notification_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_notification_states_user_idx
+      ON mednexus_notification_states (user_id, notification_id);
     CREATE TABLE IF NOT EXISTS mednexus_assessments (
       id              TEXT    PRIMARY KEY,
       title           TEXT    NOT NULL,
@@ -277,6 +288,8 @@ export async function ensureSchema() {
     -- Backfill new columns for databases that existed before this migration.
     ALTER TABLE mednexus_notifications
       ADD COLUMN IF NOT EXISTS admin_only BOOLEAN NOT NULL DEFAULT FALSE;
+    -- Kept for compatibility with pre-state-table deployments. New code must
+    -- never read from or write to this broadcast-level column.
     ALTER TABLE mednexus_notifications
       ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE;
 
