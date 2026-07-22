@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateWithFallback } from "@/lib/gemini"
+import { boundedJson, guardImportRequest, IMPORT_LIMITS } from "@/lib/import-guard"
 
 export const maxDuration = 45
 
@@ -350,6 +351,7 @@ async function parseWithAI(text: string, fallbackModule: string): Promise<Parsed
   if (!process.env.GEMINI_API_KEY) return null
 
   const chunks = chunkText(text)
+  if (chunks.length > IMPORT_LIMITS.chunksPerImport) throw new Error("Import contains too many chunks")
   console.log(`[parse-pdf] ${chunks.length} chunk(s) to process sequentially`)
 
   const master: ParsedQuestion[] = []
@@ -365,24 +367,29 @@ async function parseWithAI(text: string, fallbackModule: string): Promise<Parsed
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
+    const guarded = await guardImportRequest(req, "parse-pdf")
+    if ("response" in guarded) return guarded.response
     const body = await req.json()
     if (!body.text || typeof body.text !== "string") {
       return NextResponse.json({ error: "text is required" }, { status: 400 })
     }
     const text: string = body.text
+    if (text.length > IMPORT_LIMITS.textChars) return NextResponse.json({ error: "Text exceeds the allowed import size.", code: "PAYLOAD_TOO_LARGE" }, { status: 413 })
     // Accept fallbackModule (new) or moduleName (legacy) — null/empty → "Uncategorized"
     const fallbackModule: string =
       (body.fallbackModule ?? body.moduleName ?? "").trim() || "Uncategorized"
 
     const aiResult = await parseWithAI(text, fallbackModule)
     if (aiResult && aiResult.length > 0) {
-      return NextResponse.json({ questions: aiResult, source: "ai" })
+      return boundedJson({ questions: aiResult, source: "ai" })
     }
 
     const questions = parseQuestions(text, fallbackModule)
-    return NextResponse.json({ questions, source: "regex" })
+    return boundedJson({ questions, source: "regex" })
   } catch (err) {
     console.error("[parse-pdf]", err)
-    return NextResponse.json({ error: "Parse failed" }, { status: 500 })
+    const message = err instanceof Error && err.message === "Import contains too many chunks"
+      ? "Import contains too many chunks." : "The AI provider failed to process this document."
+    return NextResponse.json({ error: message, code: err instanceof Error && err.message === "Import contains too many chunks" ? "PAYLOAD_TOO_LARGE" : "PROVIDER_FAILURE" }, { status: err instanceof Error && err.message === "Import contains too many chunks" ? 413 : 502 })
   }
 }

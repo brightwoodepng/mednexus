@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateWithFallback } from "@/lib/gemini"
+import { boundedJson, guardImportRequest, IMPORT_LIMITS, validateImages } from "@/lib/import-guard"
 
 // Each chunk call is a single focused Gemini request — keep duration generous
 // but bounded so a stuck call doesn't block the client's progress loop.
@@ -120,6 +121,8 @@ interface ImageEntry {
 
 export async function POST(req: NextRequest) {
   try {
+    const guarded = await guardImportRequest(req, "extract-single-chunk")
+    if ("response" in guarded) return guarded.response
     const body = await req.json() as {
       textChunk?: string
       fallbackModule?: string | null
@@ -128,8 +131,11 @@ export async function POST(req: NextRequest) {
     }
 
     const textChunk = (body.textChunk ?? "").trim()
+    if (textChunk.length > IMPORT_LIMITS.chunkChars) return NextResponse.json({ error: "Text chunk exceeds the allowed size.", code: "PAYLOAD_TOO_LARGE" }, { status: 413 })
+    const imageError = validateImages(body.images)
+    if (imageError) return NextResponse.json({ error: imageError, code: "UNSUPPORTED_MEDIA" }, { status: 415 })
     if (!textChunk) {
-      return NextResponse.json({ questions: [] })
+      return boundedJson({ questions: [] })
     }
 
     const fallbackModule     = (body.fallbackModule     ?? "").trim() || null
@@ -148,7 +154,7 @@ export async function POST(req: NextRequest) {
 
     if (!raw) {
       console.warn("[extract-single-chunk] Gemini returned nothing — returning []")
-      return NextResponse.json({ questions: [] })
+      return NextResponse.json({ error: "The AI provider did not return a usable response.", code: "PROVIDER_FAILURE" }, { status: 502 })
     }
 
     let questions: ChunkQuestion[]
@@ -157,7 +163,7 @@ export async function POST(req: NextRequest) {
       questions = Array.isArray(parsed) ? parsed : (parsed?.questions ?? [])
     } catch {
       console.warn("[extract-single-chunk] JSON parse failed — returning []")
-      return NextResponse.json({ questions: [] })
+      return NextResponse.json({ error: "The AI provider returned malformed data.", code: "PROVIDER_FAILURE" }, { status: 502 })
     }
 
     const VALID_ANSWER_IDS = new Set(["A", "B", "C", "D", "E"])
@@ -268,9 +274,9 @@ export async function POST(req: NextRequest) {
       })
       .filter(Boolean) as ChunkQuestion[]
 
-    return NextResponse.json({ questions: valid })
+    return boundedJson({ questions: valid })
   } catch (err) {
     console.error("[extract-single-chunk]", err)
-    return NextResponse.json({ error: "Failed to process chunk" }, { status: 500 })
+    return NextResponse.json({ error: "The AI provider failed to process this chunk.", code: "PROVIDER_FAILURE" }, { status: 502 })
   }
 }
