@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import mammoth from "mammoth"
+import { boundedJson, guardImportRequest, IMPORT_LIMITS, isDocx, validateImages } from "@/lib/import-guard"
 
 // Extracts raw text AND embedded images from a .docx file.
 // Images are returned as base64 data URIs; their positions in the text are
@@ -7,28 +8,29 @@ import mammoth from "mammoth"
 // associate each image with the question it belongs to.
 export const maxDuration = 30
 
-const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
-
 export async function POST(req: NextRequest) {
   try {
+    const guarded = await guardImportRequest(req, "parse-docx")
+    if ("response" in guarded) return guarded.response
     const formData = await req.formData()
     const file = formData.get("file")
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "file is required (multipart/form-data)" }, { status: 400 })
     }
-    if (!file.name.toLowerCase().endsWith(".docx")) {
-      return NextResponse.json({ error: "Only .docx files are supported" }, { status: 415 })
+    if (file.type && file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      return NextResponse.json({ error: "Unsupported DOCX MIME type.", code: "UNSUPPORTED_MEDIA" }, { status: 415 })
     }
-    if (file.size > MAX_FILE_BYTES) {
+    if (file.size > IMPORT_LIMITS.fileBytes) {
       return NextResponse.json(
-        { error: `File too large — max ${MAX_FILE_BYTES / 1024 / 1024} MB` },
+        { error: `File too large — max ${IMPORT_LIMITS.fileBytes / 1024 / 1024} MB`, code: "PAYLOAD_TOO_LARGE" },
         { status: 413 },
       )
     }
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
+    if (!isDocx(buffer)) return NextResponse.json({ error: "Unsupported or malformed DOCX file.", code: "UNSUPPORTED_MEDIA" }, { status: 415 })
 
     // Collect images as they are encountered during conversion
     const images: { id: string; dataUri: string }[] = []
@@ -81,7 +83,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "The document appears to be empty" }, { status: 422 })
     }
 
-    return NextResponse.json({ text, images })
+    const imageError = validateImages(images)
+    if (text.length > IMPORT_LIMITS.textChars || images.length > IMPORT_LIMITS.imageCount || imageError) return NextResponse.json({ error: imageError ?? "Document exceeds import limits.", code: "PAYLOAD_TOO_LARGE" }, { status: 413 })
+    return boundedJson({ text, images })
   } catch (err) {
     console.error("[parse-docx]", err)
     return NextResponse.json({ error: "Failed to process document" }, { status: 500 })
