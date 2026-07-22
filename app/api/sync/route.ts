@@ -102,14 +102,39 @@ export async function POST(req: NextRequest) {
         [uid, name ?? "Clinician"],
       )
       if (progress !== undefined) {
+        // Sanitise the three new Theory Vault fields so they are always the
+        // correct JSON types before hitting the DB, even if an old client
+        // omits them entirely.  Unknown keys pass through untouched.
+        const safeProgress = {
+          ...progress,
+          theoryBookmarks: Array.isArray(progress.theoryBookmarks)
+            ? progress.theoryBookmarks
+            : [],
+          revisionQueue: Array.isArray(progress.revisionQueue)
+            ? progress.revisionQueue
+            : [],
+          theoryNotes:
+            progress.theoryNotes !== null &&
+            typeof progress.theoryNotes === "object" &&
+            !Array.isArray(progress.theoryNotes)
+              ? progress.theoryNotes
+              : {},
+        }
+
+        // Use JSONB merge (existing || incoming) on conflict so that a
+        // partial sync — e.g. a theory-only update that omits MCQ fields —
+        // never overwrites keys the client didn't include.  Incoming values
+        // always win for keys present in both (right-hand side of || wins).
         await pool.query(
           `INSERT INTO mednexus_progress (uid, data, updated_at)
            VALUES ($1, $2::jsonb, NOW())
-           ON CONFLICT (uid) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
-          [uid, JSON.stringify(progress)],
+           ON CONFLICT (uid) DO UPDATE
+             SET data       = mednexus_progress.data || EXCLUDED.data,
+                 updated_at = NOW()`,
+          [uid, JSON.stringify(safeProgress)],
         )
         // Fire progression notifications — awaited but internally catches all errors
-        await triggerProgressionNotifications(uid, progress, pool)
+        await triggerProgressionNotifications(uid, safeProgress, pool)
       }
       return NextResponse.json({ success: true })
     }
