@@ -201,10 +201,14 @@ function NotificationRow({
   item,
   onMarkRead,
   onDelete,
+  canManageBroadcasts,
+  adminToken,
 }: {
   item: OverlayItem
   onMarkRead: (id: string, source: OverlayItem["source"]) => void
   onDelete: (id: string, source: OverlayItem["source"]) => void
+  canManageBroadcasts: boolean
+  adminToken: string | null
 }) {
   const [deleting, setDeleting] = useState(false)
   const [marking, setMarking] = useState(false)
@@ -213,15 +217,16 @@ function NotificationRow({
     if (item.isRead || marking) return
     setMarking(true)
     const endpoint = item.source === "personal" ? "/api/user-notifications" : "/api/notifications"
-    const authHeader = item.source === "personal" ? getStoredAuthHeader() : null
+    const authHeader = getStoredAuthHeader()
     try {
       await fetch(endpoint, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+          ...(item.source === "broadcast" && adminToken ? { "x-admin-token": adminToken } : {}),
         },
-        body: JSON.stringify({ id: item.id }),
+        body: JSON.stringify({ id: item.id, isRead: true }),
       })
       onMarkRead(item.id, item.source)
     } finally {
@@ -234,13 +239,14 @@ function NotificationRow({
     if (deleting) return
     setDeleting(true)
     const endpoint = item.source === "personal" ? "/api/user-notifications" : "/api/notifications"
-    const authHeader = item.source === "personal" ? getStoredAuthHeader() : null
+    const authHeader = getStoredAuthHeader()
     try {
       await fetch(endpoint, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
           ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+          ...(item.source === "broadcast" && adminToken ? { "x-admin-token": adminToken } : {}),
         },
         body: JSON.stringify({ id: item.id }),
       })
@@ -307,6 +313,7 @@ function NotificationRow({
             <CheckIcon size={13} />
           </button>
         )}
+        {(item.source === "personal" || canManageBroadcasts) && (
         <button
           type="button"
           onClick={handleDelete}
@@ -316,6 +323,7 @@ function NotificationRow({
         >
           <TrashIcon size={14} />
         </button>
+        )}
       </div>
     </div>
   )
@@ -385,9 +393,11 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
       setLoading(true)
       try {
         const broadcastHeaders: Record<string, string> = {}
+        const authHeader = getStoredAuthHeader()
+        if (authHeader) broadcastHeaders[authHeader.key] = authHeader.value
         if (adminToken) broadcastHeaders["x-admin-token"] = adminToken
 
-        const authHeader = getStoredAuthHeader()
+
         const personalHeaders: Record<string, string> = {}
         if (authHeader) personalHeaders[authHeader.key] = authHeader.value
 
@@ -420,8 +430,11 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
           ...unreadBroadcasts.map((n) =>
             fetch("/api/notifications", {
               method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: n.id }),
+              headers: {
+                "Content-Type": "application/json",
+                ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+              },
+              body: JSON.stringify({ id: n.id, isRead: true }),
             }),
           ),
           ...unreadPersonal.map((n) =>
@@ -567,6 +580,8 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
                   item={item}
                   onMarkRead={handleMarkRead}
                   onDelete={handleDelete}
+                  canManageBroadcasts={Boolean(adminToken)}
+                  adminToken={adminToken}
                 />
               ))}
             </div>
