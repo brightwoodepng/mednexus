@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool, { ensureSchema } from "@/lib/db"
+import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
 import { STORE_ITEMS } from "@/lib/economy"
 
 // GET /api/economy/cosmetics?uid=xxx
 // Returns the currently equipped title, frame, and highlight for a user.
 export async function GET(req: NextRequest) {
   try {
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
     await ensureSchema()
-    const uid = req.nextUrl.searchParams.get("uid")
+    const requestedUid = req.nextUrl.searchParams.get("uid")
+    if (requestedUid && identityMismatch(requestedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const uid = auth.uid
     if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 })
 
     const { rows } = await pool.query(
@@ -35,10 +40,14 @@ export async function GET(req: NextRequest) {
 // - itemId set  → verify ownership, then equip
 export async function PATCH(req: NextRequest) {
   try {
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
     await ensureSchema()
-    const { uid, type, itemId } = await req.json()
+    const { uid: suppliedUid, type, itemId } = await req.json()
+    if (identityMismatch(suppliedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const uid = auth.uid
 
-    if (!uid || !type) {
+    if (!type) {
       return NextResponse.json({ error: "Missing uid or type" }, { status: 400 })
     }
     if (!["title", "frame", "highlight", "avatar"].includes(type)) {

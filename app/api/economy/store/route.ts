@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool, { ensureSchema } from "@/lib/db"
+import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
 import { STORE_ITEMS } from "@/lib/economy"
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
     await ensureSchema()
-    const uid = req.nextUrl.searchParams.get("uid")
+    const requestedUid = req.nextUrl.searchParams.get("uid")
+    if (requestedUid && identityMismatch(requestedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const uid = auth.uid
     if (!uid) return NextResponse.json({ items: STORE_ITEMS, inventory: {} })
 
     const { rows } = await pool.query(
@@ -22,9 +27,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
     await ensureSchema()
-    const { uid, itemId } = await req.json()
-    if (!uid || !itemId) return NextResponse.json({ error: "Missing fields" }, { status: 400 })
+    const { uid: suppliedUid, itemId } = await req.json()
+    if (identityMismatch(suppliedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const uid = auth.uid
+    if (!itemId) return NextResponse.json({ error: "Missing fields" }, { status: 400 })
 
     const item = STORE_ITEMS.find(i => i.id === itemId)
     if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 })
