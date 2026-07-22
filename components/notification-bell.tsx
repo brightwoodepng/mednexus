@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useEffect, useCallback } from "react"
 import { useAdmin } from "@/contexts/admin-context"
 import { BellIcon } from "@/components/icons"
 import { NotificationOverlay } from "@/components/notification-overlay"
+import { useApplicationShell } from "@/components/authenticated-application-shell"
 
 const POLL_INTERVAL = 60_000
 
@@ -47,8 +48,7 @@ async function fetchUnreadCount(adminToken?: string | null): Promise<number> {
 
 export function NotificationBell() {
   const { adminToken } = useAdmin()
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [isOpen, setIsOpen] = useState(false)
+  const { notificationOpen: isOpen, setNotificationOpen: setIsOpen, notificationUnreadCount: unreadCount, setNotificationUnreadCount: setUnreadCount } = useApplicationShell()
 
   const refresh = useCallback(async () => {
     const count = await fetchUnreadCount(adminToken)

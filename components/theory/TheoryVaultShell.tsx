@@ -26,8 +26,10 @@ import { BookmarksView } from "./BookmarksView"
 import { NotesView } from "./NotesView"
 import { RevisionQueueView } from "./RevisionQueueView"
 import { ProgressView } from "./ProgressView"
+import { SearchView } from "./SearchView"
 import { NotificationBell } from "@/components/notification-bell"
 import { StethoscopeIcon, MenuIcon, PaletteIcon } from "@/components/icons"
+import { useApplicationShell } from "@/components/authenticated-application-shell"
 
 // ── Placeholder (non-implemented sections) ─────────────────────────────────────
 
@@ -79,8 +81,7 @@ interface TheoryVaultShellProps {
 export function TheoryVaultShell({ initialSection = "dashboard" }: TheoryVaultShellProps) {
   const router = useRouter()
   const [activeSection, setActiveSection] = useState<TheoryScreen>(initialSection)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const { sidebarCollapsed, setSidebarCollapsed, mobileNavigationOpen: mobileOpen, setMobileNavigationOpen: setMobileOpen } = useApplicationShell()
 
   // Sidebar navigation — pushes Next.js routes for all implemented sections
   function handleNavigate(section: TheoryScreen) {
@@ -124,12 +125,9 @@ export function TheoryVaultShell({ initialSection = "dashboard" }: TheoryVaultSh
     mainContent = <RevisionQueueView />
   } else if (activeSection === "progress") {
     mainContent = <ProgressView />
-  } else {
-    const meta = PLACEHOLDER_META[activeSection]
-    mainContent = meta
-      ? <PlaceholderScreen title={meta.title} description={meta.description} />
-      : null
-  }
+  } else if (activeSection === "search") {
+    mainContent = <SearchView />
+  } else mainContent = null
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
