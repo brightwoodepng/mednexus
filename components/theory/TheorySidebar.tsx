@@ -36,6 +36,7 @@ import {
   DatabaseIcon,
   MegaphoneIcon,
 } from "@/components/icons"
+import { SidebarFrame } from "@/components/navigation/sidebar-primitives"
 
 function UsersIcon({ size = 18 }: { size?: number }) {
   return (
@@ -74,8 +75,8 @@ interface TheorySidebarProps {
 function LiveDot() {
   return (
     <span className="relative flex h-2 w-2 shrink-0">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75" />
-      <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-500" />
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+      <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
     </span>
   )
 }
@@ -124,8 +125,7 @@ function NavButton({
       )}
       {adminBadge && (
         <span
-          className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"
-          style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.22)" }}
+          className="ml-auto rounded-full border border-warning/30 bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning"
         >
           {adminBadge}
         </span>
@@ -212,9 +212,9 @@ function StudyEnvPopover({
         {STUDY_HUBS.filter(hub => hub.availability === "available").map(hub => {
           const active = currentStudyMode === hub.mode
           const Icon = hub.id === "mcq" ? BookOpenIcon : FlaskIcon
-          return <button key={hub.id} type="button" onClick={() => handleSelect(hub.mode)} className={`${cardBase} ${active ? "border-teal-500/60 bg-teal-500/8 text-teal-600 dark:text-teal-400" : "border-border bg-muted/40 text-muted-foreground hover:border-teal-500/30 hover:bg-muted/80 hover:text-foreground"}`}>
+          return <button key={hub.id} type="button" onClick={() => handleSelect(hub.mode)} className={`${cardBase} ${active ? "border-primary/60 bg-primary/10 text-primary" : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:bg-muted/80 hover:text-foreground"}`}>
             <Icon size={20}/><span className="text-[11px] font-semibold leading-tight">{hub.title}</span>
-            {active && <span className="flex items-center gap-0.5 rounded-full bg-teal-500/15 px-1.5 py-0.5 text-[9px] font-bold text-teal-600 dark:text-teal-400"><CheckIcon size={8}/>Active</span>}
+            {active && <span className="flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary"><CheckIcon size={8}/>Active</span>}
           </button>
         })}
       </div>
@@ -346,7 +346,7 @@ export function TheorySidebar({
       {/* Collapse / close controls */}
       <div className="mb-1 flex items-center justify-between px-1 pt-1 shrink-0">
         {/* Theory Vault label */}
-        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">
+        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[color:var(--hub-accent)]">
           <FlaskIcon size={12} />
           Theory Vault
         </span>
@@ -432,7 +432,7 @@ export function TheorySidebar({
             onClick={() => setStudyEnvOpen((v) => !v)}
             className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors ${cardCls}`}
           >
-            <FlaskIcon size={13} className="text-teal-500" />
+            <FlaskIcon size={13} className="text-[color:var(--hub-accent)]" />
             Switch Environment
           </button>
         </div>
@@ -440,7 +440,7 @@ export function TheorySidebar({
         {/* Theory-specific learner identity and live study counters. */}
         <div className={`w-full rounded-xl px-3 py-2.5 text-left ${cardCls}`}>
           <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-600/90 text-white shadow-sm">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:var(--hub-accent)] text-[color:var(--hub-accent-foreground)] shadow-sm">
             <UserIcon size={18} />
           </div>
           <div className="min-w-0 flex-1">
@@ -452,7 +452,7 @@ export function TheorySidebar({
           </div>
           <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[10px]">
             <div><p className="font-bold text-amber-600 dark:text-amber-400">{profile.revisionsDue}</p><p className="text-sidebar-foreground/55">due</p></div>
-            <div><p className="font-bold text-teal-600 dark:text-teal-400">{profile.completedQuestions}</p><p className="text-sidebar-foreground/55">completed</p></div>
+            <div><p className="font-bold text-[color:var(--hub-accent)]">{profile.completedQuestions}</p><p className="text-sidebar-foreground/55">completed</p></div>
             <div><p className="font-bold text-sidebar-foreground">{profile.bookmarks}</p><p className="text-sidebar-foreground/55">saved</p></div>
           </div>
         </div>
@@ -526,28 +526,8 @@ export function TheorySidebar({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <>
-      <aside
-        className={`hidden shrink-0 md:block transition-all duration-200 ${panelCls} ${collapsed ? "w-14" : "w-64"}`}
-      >
-        {collapsed ? collapsedContent : fullContent}
-      </aside>
-
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={onCloseMobile}
-            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
-          />
-          <div
-            className={`absolute left-0 top-0 h-full w-72 max-w-[80%] shadow-2xl animate-in slide-in-from-left duration-200 ${panelCls}`}
-          >
-            {fullContent}
-          </div>
-        </div>
-      )}
-    </>
+    <SidebarFrame collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={onCloseMobile} collapsedChildren={collapsedContent} glass={isGlassEnabled}>
+      {fullContent}
+    </SidebarFrame>
   )
 }
