@@ -2,17 +2,6 @@
 // MedNexus - Shared Type Definitions
 // ============================================================================
 
-// ─── Study Modes ─────────────────────────────────────────────────────────────
-
-/**
- * Top-level study mode discriminator used to route between completely separate
- * question schemas. Each mode owns its own DB table and API namespace:
- *   MCQ    – mednexus_questions    (multiple-choice Q&A)
- *   THEORY – mednexus_theory_questions  (long-form prompt / model-answer pairs)
- *   OSCE   – mednexus_osce_stations     (objective structured clinical stations)
- */
-export type StudyMode = "MCQ" | "THEORY" | "OSCE"
-
 // ─── User Roles ──────────────────────────────────────────────────────────────
 
 /**
@@ -177,95 +166,6 @@ export interface Question {
   mediaBase64?: string | null
 }
 
-// ─── Theory Vault ─────────────────────────────────────────────────────────────
-// This hierarchy is independent of MCQ content and maps one-to-one to the
-// normalized mednexus_theory_* persistence model.
-
-export type TheoryCollectionId = "end_of_rotation" | "end_of_year"
-export type TheoryQuestionStatus = "draft" | "published" | "unpublished"
-export type TheoryDifficulty = "easy" | "medium" | "hard" | "expert"
-
-export interface TheoryCollection {
-  id: TheoryCollectionId
-  title: string
-  description: string
-  sortOrder: number
-}
-
-export interface TheoryDiscipline {
-  id: string
-  collectionId: TheoryCollectionId
-  title: string
-  description: string
-  sortOrder: number
-  isPublished: boolean
-}
-
-/** A set is optional: questions may instead belong directly to a discipline. */
-export interface TheorySet {
-  id: string
-  collectionId: TheoryCollectionId
-  disciplineId: string
-  title: string
-  description: string
-  sortOrder: number
-  isPublished: boolean
-}
-
-export interface TheoryQuestion {
-  id: string
-  collectionId: TheoryCollectionId
-  disciplineId: string
-  setId: string | null
-  prompt: string
-  modelAnswer: string
-  markingPoints: string[]
-  tags: string[]
-  sourceMetadata: Record<string, unknown>
-  pastPaperMetadata: Record<string, unknown>[]
-  difficulty: TheoryDifficulty
-  estimatedStudyMinutes: number
-  sortOrder: number
-  publicationStatus: TheoryQuestionStatus
-  isArchived: boolean
-  /** @deprecated Presentation fields maintained while legacy Theory routes migrate. */
-  category: string
-  /** @deprecated Presentation fields maintained while legacy Theory routes migrate. */
-  module: string
-  /** @deprecated Use setId and sortOrder for normalized ordering. */
-  setNumber: number
-  /** @deprecated Use markingPoints for newly-authored questions. */
-  criticalFlags: string[]
-  /** @deprecated Use pastPaperMetadata for newly-authored questions. */
-  pastPapers: string[]
-}
-
-/** The hierarchy context persisted on every learner-owned Theory record. */
-export interface TheoryLearnerContext {
-  collectionId: TheoryCollectionId
-  disciplineId: string
-  setId: string | null
-  questionId: string
-}
-
-export interface TheoryReadingProgress extends TheoryLearnerContext {
-  firstReadAt: string
-  lastReadAt: string
-  readSeconds: number
-}
-
-export interface TheoryCompletionProgress extends TheoryLearnerContext {
-  completedAt: string
-}
-
-export interface TheoryRevisionEntry extends TheoryLearnerContext {
-  id: string
-  dueAt: string
-  completedAt: string | null
-  intervalDays: number
-  easeFactor: number | null
-}
-
 /** Quiz delivery modes. */
 export type QuizMode = "trial" | "exam"
 
@@ -317,13 +217,7 @@ export interface UserProgress {
   favoriteModules: string[] // starred module names
   srsData: Record<string, SrsEntry> // questionId → SRS schedule
 
-  // ── Theory Vault fields ───────────────────────────────────────────────────
-  /** IDs of TheoryQuestion items the user has bookmarked. */
-  theoryBookmarks: string[]
-  /** IDs of TheoryQuestion items queued for next revision session. */
-  revisionQueue: string[]
-  /** Free-text notes keyed by TheoryQuestion id. */
-  theoryNotes: Record<string, string>
+
 }
 
 /** In-session state for a single quiz block. */

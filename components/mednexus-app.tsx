@@ -1,11 +1,9 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { usePathname } from "next/navigation"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
-import { useCurrentStudyMode } from "@/contexts/current-study-mode-context"
 import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
 import { sortByUrgency } from "@/lib/srs"
 import type { Screen } from "@/lib/view"
@@ -411,19 +409,10 @@ export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
   const { isAdmin, adminReady } = useAdmin()
   const { globalMode, setGlobalMode } = useStudyMode()
-  const { currentStudyMode } = useCurrentStudyMode()
-  const pathname = usePathname()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
 
-  // Pick up a target screen passed via sessionStorage from Theory Vault navigation
-  useEffect(() => {
-    const goto = sessionStorage.getItem("mednexus_initial_screen")
-    if (goto) {
-      sessionStorage.removeItem("mednexus_initial_screen")
-      setScreen(goto as Screen)
-    }
-  }, [])
+
 
   const { sidebarCollapsed, setSidebarCollapsed, mobileNavigationOpen: mobileDrawerOpen, setMobileNavigationOpen: setMobileDrawerOpen } = useApplicationShell()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -634,10 +623,7 @@ export function MedNexusApp() {
           </div>
           {/* Right: study mode toggle + theme toggle (desktop only) + bell */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            {/* Study mode toggle — hidden in Theory Vault and on /admin route */}
-            {currentStudyMode !== "THEORY" && !pathname?.startsWith("/admin") && (
-              <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
-            )}
+            <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
             {/* Theme / Appearance toggle — desktop only; lives in mobile drawer */}
             <button
               type="button"
