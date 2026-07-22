@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const pool = await getPool()
 
     const result = await pool.query(
-      `SELECT uid, name, level, class_level, role, index_number, created_at,
+      `SELECT uid, name, level, class_level, role, index_number,
               password_hash, status, must_change_password, otp_hash
        FROM mednexus_registered_users WHERE index_number = $1`,
       [formatted]
@@ -70,7 +70,6 @@ export async function POST(req: NextRequest) {
         indexNumber: user.index_number,
         requiresPasswordUpdate: user.must_change_password,
         sessionToken,
-        createdAt: user.created_at,
       })
     }
 
@@ -92,7 +91,6 @@ export async function POST(req: NextRequest) {
           indexNumber: user.index_number,
           requiresPasswordUpdate: true,
           sessionToken,
-          createdAt: user.created_at,
         })
       }
     }
