@@ -24,6 +24,7 @@ import {
   BookOpenIcon,
   FlaskIcon,
   CheckIcon,
+  StethoscopeIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 
@@ -33,6 +34,101 @@ function UsersIcon({ size = 18 }: { size?: number }) {
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </svg>
+  )
+}
+
+// ── Study Environment Popover ──────────────────────────────────────────────────
+// Opens above the profile card; lets the user switch between MCQ Q-Bank,
+// Theory Vault, and (future) OSCE Simulator.
+
+function StudyEnvPopover({
+  glass,
+  onClose,
+  onSwitchMCQ,
+  onSwitchTheory,
+}: {
+  glass: boolean
+  onClose: () => void
+  onSwitchMCQ: () => void
+  onSwitchTheory: () => void
+}) {
+  const { currentStudyMode } = useCurrentStudyMode()
+
+  const cardBase =
+    "flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-all cursor-pointer"
+
+  return (
+    <div
+      className={`absolute bottom-full left-0 right-0 mb-2 rounded-2xl border border-border bg-card shadow-2xl overflow-hidden z-50 ${glass ? "glass-card" : ""}`}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          Study Environment
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          aria-label="Close"
+        >
+          <XIcon size={13} />
+        </button>
+      </div>
+
+      {/* Mode cards */}
+      <div className="flex gap-2 p-3">
+        {/* MCQ Q-Bank */}
+        <button
+          type="button"
+          onClick={onSwitchMCQ}
+          className={`${cardBase} ${
+            currentStudyMode === "MCQ"
+              ? "border-primary/60 bg-primary/8 text-primary"
+              : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:bg-muted/80 hover:text-foreground"
+          }`}
+        >
+          <BookOpenIcon size={20} />
+          <span className="text-[11px] font-semibold leading-tight">MCQ Q-Bank</span>
+          {currentStudyMode === "MCQ" && (
+            <span className="flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+              <CheckIcon size={8} /> Active
+            </span>
+          )}
+        </button>
+
+        {/* Theory Vault */}
+        <button
+          type="button"
+          onClick={onSwitchTheory}
+          className={`${cardBase} ${
+            currentStudyMode === "THEORY"
+              ? "border-teal-500/60 bg-teal-500/8 text-teal-600 dark:text-teal-400"
+              : "border-border bg-muted/40 text-muted-foreground hover:border-teal-500/30 hover:bg-muted/80 hover:text-foreground"
+          }`}
+        >
+          <FlaskIcon size={20} />
+          <span className="text-[11px] font-semibold leading-tight">Theory Vault</span>
+          {currentStudyMode === "THEORY" && (
+            <span className="flex items-center gap-0.5 rounded-full bg-teal-500/15 px-1.5 py-0.5 text-[9px] font-bold text-teal-600 dark:text-teal-400">
+              <CheckIcon size={8} /> Active
+            </span>
+          )}
+        </button>
+
+        {/* OSCE Simulator — coming soon */}
+        <div
+          className={`${cardBase} opacity-50 cursor-not-allowed border-border bg-muted/20 text-muted-foreground`}
+          aria-disabled="true"
+        >
+          <StethoscopeIcon size={20} />
+          <span className="text-[11px] font-semibold leading-tight">OSCE Sim</span>
+          <span className="rounded-full border border-amber-300/40 bg-amber-50/60 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:border-amber-700/30 dark:bg-amber-900/20 dark:text-amber-400">
+            🔒 Soon
+          </span>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -210,27 +306,37 @@ export function Sidebar({
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={() => nav("profile")}
-          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${cardCls} ${isGlassEnabled ? "hover:glass-pill-active" : "hover:bg-sidebar-accent"}`}
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary/90 text-sidebar-primary-foreground shadow-sm">
-            <UserIcon size={18} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              {isAdmin && !user ? "Britechinc" : user?.name ?? "Clinician"}
-            </p>
-            <p className="text-[11px] text-sidebar-foreground/55">
-              {isAdmin && !user
-                ? "Administrator"
-                : user?.role === "guest"
-                  ? `Guest · ${cloudEnabled ? "☁ Synced" : "Local only"}`
-                  : cloudEnabled ? "☁ Synced" : "Saving locally…"}
-            </p>
-          </div>
-        </button>
+        <div ref={popoverRef} className="relative">
+          {popoverOpen && (
+            <StudyEnvPopover
+              glass={isGlassEnabled}
+              onClose={() => setPopoverOpen(false)}
+              onSwitchMCQ={switchToMCQ}
+              onSwitchTheory={switchToTheory}
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => setPopoverOpen((v) => !v)}
+            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${cardCls} ${isGlassEnabled ? "hover:glass-pill-active" : "hover:bg-sidebar-accent"}`}
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary/90 text-sidebar-primary-foreground shadow-sm">
+              <UserIcon size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-sidebar-foreground">
+                {isAdmin && !user ? "Britechinc" : user?.name ?? "Clinician"}
+              </p>
+              <p className="text-[11px] text-sidebar-foreground/55">
+                {isAdmin && !user
+                  ? "Administrator"
+                  : user?.role === "guest"
+                    ? `Guest · ${cloudEnabled ? "☁ Synced" : "Local only"}`
+                    : cloudEnabled ? "☁ Synced" : "Saving locally…"}
+              </p>
+            </div>
+          </button>
+        </div>
 
         <button
           type="button"
