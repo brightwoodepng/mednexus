@@ -53,6 +53,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
     >
       <body className="overflow-x-hidden font-sans antialiased text-foreground">
         {children}
