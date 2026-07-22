@@ -1,0 +1,28 @@
+Act as an expert Next.js 16 and React developer. We are continuing the implementation of "Theory Vault" in MedNexus. Prompt 3 (User Flow & Dashboard) is complete and working. Now we are implementing Prompt 4: The Core Study Interface.
+
+Architectural Rules:
+1. All new UI components must go under `components/theory/` (e.g., `TheoryStudyInterface.tsx`, `TheoryAnswer.tsx`). Do not alter existing MCQ components.
+2. The page route `app/theory/study/[setId]/page.tsx` must be a Server Component that fetches the set data. Pass the questions down to client sub-components for interactive state.
+3. Use Client Components explicitly and strictly for: the text area editor, dictation, self-grading buttons, and the review/practice mode toggle.
+
+Please implement Prompt 4 step-by-step:
+
+Task 1: Review vs. Practice Toggle & Workspace
+- In `app/theory/study/[setId]/page.tsx` and `components/theory/TheoryStudyInterface.tsx`:
+- Render a header bar showing Set Title, Question Number (e.g., "Question 3 of 20"), and a top-right Mode Toggle:
+  - 📖 **Review Mode**: Displays the prompt and immediately reveals the Model Answer below it.
+  - ✏️ **Practice Mode**: Displays the prompt followed by a blank `<textarea>` for the user to draft their answer. Include a `[ 🎙️ Dictate ]` button using the Web Speech API (`webkitSpeechRecognition` / `SpeechRecognition`) to transcribe spoken answers into the text area.
+- In Practice Mode, place a prominent `[ 👁️ Reveal Suggested Answer ]` button below the text area. Clicking it locks the text area and reveals the Model Answer and Self-Grading Engine.
+
+Task 2: Model Answer Display & Critical Flags (`components/theory/TheoryAnswer.tsx`)
+- Render `modelAnswer` with formatted Markdown typography (or styled lines).
+- Parse the `criticalFlags` array. If any exist, highlight them prominently in an elevated red box (e.g., "🚨 Critical Points / Must-Mention Rules").
+
+Task 3: Self-Grading Engine & Navigation
+- Render a self-grading panel below the answer with three interactive rating buttons:
+  - 🙂 **Nailed it** (Good recall)
+  - 😐 **Partial** (Hit some points)
+  - ☹️ **Needs Revision** (Missed key points)
+- Disable the `[ Next Question ➡ ]` button until the student selects one of the three self-rating buttons.
+- Wire `[ ⬅ Previous ]` and `[ Next Question ➡ ]` navigation to cycle through the questions in the active Set.
+- Ensure all states render smoothly and compile with zero TypeScript errors.
