@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react"
 import type { Question, QuestionOption } from "@/lib/types"
+import { importAuthHeaders, importError } from "@/lib/import-client"
 import {
   XIcon, CheckIcon, AlertTriangleIcon, PlusIcon, TrashIcon,
   ChevronDownIcon, ChevronRightIcon, RefreshCwIcon,
@@ -320,10 +321,9 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
       const formData = new FormData()
       formData.append("file", file)
 
-      const extractRes = await fetch("/api/parse-docx", { method: "POST", body: formData })
+      const extractRes = await fetch("/api/parse-docx", { method: "POST", body: formData, headers: importAuthHeaders() })
       if (!extractRes.ok) {
-        const body = await extractRes.json().catch(() => ({}))
-        throw new Error((body as any).error ?? `Server error ${extractRes.status}`)
+        throw new Error(await importError(extractRes))
       }
       const { text, images = [] } = await extractRes.json() as { text: string; images: { id: string; dataUri: string }[] }
 
@@ -336,6 +336,7 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
       if (chunks.length === 0) {
         throw new Error("No content found in the document.")
       }
+      if (chunks.length > 80) throw new Error("This document has too many chunks. Split it into smaller imports.")
 
       setProgressMessage(`Preparing ${chunks.length} batch${chunks.length !== 1 ? "es" : ""}…`)
 
@@ -358,7 +359,7 @@ export function WordImportModal({ defaultModule = "", onImport, onClose }: WordI
           try {
             const res = await fetch("/api/extract-single-chunk", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: importAuthHeaders(true),
               body: JSON.stringify({
                 textChunk:          chunks[i],
                 fallbackModule:     runningModule,

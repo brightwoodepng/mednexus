@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { extractTextFromPdf } from "@/lib/pdf-extract"
 import type { Question, QuestionOption } from "@/lib/types"
+import { importAuthHeaders, importError } from "@/lib/import-client"
 import {
   XIcon, CheckIcon, AlertTriangleIcon, PlusIcon, TrashIcon,
   ChevronDownIcon, ChevronRightIcon, RefreshCwIcon,
@@ -261,7 +262,7 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
       setParseStep("parsing-ai")
       const res = await fetch("/api/parse-pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: importAuthHeaders(true),
         body: JSON.stringify({ text, fallbackModule }),
       })
       if (res.ok) {
@@ -273,6 +274,10 @@ export function PdfImportModal({ defaultModule = "", onImport, onClose }: PdfImp
           setStep("review")
           return
         }
+      } else {
+        setError(await importError(res))
+        setParseStep("idle")
+        return
       }
     } catch {
       // server unavailable — continue to client fallback

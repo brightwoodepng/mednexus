@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question, QuestionOption } from "@/lib/types"
+import { importAuthHeaders, importError } from "@/lib/import-client"
 import {
   XIcon,
   CheckIcon,
@@ -365,10 +366,9 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     try {
       const formData = new FormData()
       formData.append("file", file)
-      const extractRes = await fetch("/api/parse-docx", { method: "POST", body: formData })
+      const extractRes = await fetch("/api/parse-docx", { method: "POST", body: formData, headers: importAuthHeaders() })
       if (!extractRes.ok) {
-        const body = await extractRes.json().catch(() => ({}))
-        throw new Error((body as { error?: string }).error ?? "Upload failed or timed out. Connection closed safely to protect bandwidth.")
+        throw new Error(await importError(extractRes))
       }
       const { text, images = [] } = await extractRes.json() as {
         text: string
@@ -386,6 +386,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       const finalBatches = usingQuestionBatches ? batches : chunkText(text, 2000)
 
       if (finalBatches.length === 0) throw new Error("No content found in the document.")
+      if (finalBatches.length > 80) throw new Error("This import has too many chunks. Split the document into smaller imports.")
 
       const batchLabel = usingQuestionBatches
         ? `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""} of up to 25 questions`
@@ -422,7 +423,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         try {
           const chunkRes = await fetch("/api/extract-single-chunk", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: importAuthHeaders(true),
             body: JSON.stringify({
               textChunk: batchText,
               fallbackModule: runningModule,
@@ -548,10 +549,9 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     try {
       const formData = new FormData()
       formData.append("file", file)
-      const extractRes = await fetch("/api/parse-pdf-file", { method: "POST", body: formData })
+      const extractRes = await fetch("/api/parse-pdf-file", { method: "POST", body: formData, headers: importAuthHeaders() })
       if (!extractRes.ok) {
-        const body = await extractRes.json().catch(() => ({}))
-        throw new Error((body as { error?: string }).error ?? "Upload failed or timed out. Connection closed safely to protect bandwidth.")
+        throw new Error(await importError(extractRes))
       }
       const { text, images = [] } = await extractRes.json() as {
         text: string
@@ -569,6 +569,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       const finalBatches = usingQuestionBatches ? batches : chunkText(text, 2000)
 
       if (finalBatches.length === 0) throw new Error("No content found in the document.")
+      if (finalBatches.length > 80) throw new Error("This import has too many chunks. Split the document into smaller imports.")
 
       const batchLabel = usingQuestionBatches
         ? `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""} of up to 25 questions`
@@ -603,7 +604,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         try {
           const chunkRes = await fetch("/api/extract-single-chunk", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: importAuthHeaders(true),
             body: JSON.stringify({
               textChunk: batchText,
               fallbackModule: runningModule,
@@ -708,10 +709,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     try {
       const res = await fetch("/api/extract-single-chunk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: importAuthHeaders(true),
         body: JSON.stringify({ textChunk: text, fallbackModule: null, fallbackDiscipline: null }),
       })
-      if (!res.ok) throw new Error("Upload failed or timed out. Connection closed safely to protect bandwidth.")
+      if (!res.ok) throw new Error(await importError(res))
       const data = await res.json() as { questions?: ChunkQuestion[] }
       const questions = data.questions ?? []
 
