@@ -2,6 +2,17 @@
 // MedNexus - Shared Type Definitions
 // ============================================================================
 
+// ─── Study Modes ─────────────────────────────────────────────────────────────
+
+/**
+ * Top-level study mode discriminator used to route between completely separate
+ * question schemas. Each mode owns its own DB table and API namespace:
+ *   MCQ    – mednexus_questions    (multiple-choice Q&A)
+ *   THEORY – mednexus_theory_questions  (long-form prompt / model-answer pairs)
+ *   OSCE   – mednexus_osce_stations     (objective structured clinical stations)
+ */
+export type StudyMode = "MCQ" | "THEORY" | "OSCE"
+
 // ─── User Roles ──────────────────────────────────────────────────────────────
 
 /**
@@ -166,6 +177,38 @@ export interface Question {
   mediaBase64?: string | null
 }
 
+// ─── Theory Vault ─────────────────────────────────────────────────────────────
+// Completely separate schema from the MCQ Question type.
+// Stored in mednexus_theory_questions; never mixed with mednexus_questions.
+
+/**
+ * A single Theory Vault entry: a long-form prompt with a model answer,
+ * critical examination flags, past-paper citations, and freeform tags.
+ *
+ * set_number groups questions into numbered revision sets within a module
+ * (e.g. set 1 = "Core Concepts", set 2 = "Clinical Applications").
+ */
+export interface TheoryQuestion {
+  /** UUID primary key — matches the `id` column in mednexus_theory_questions. */
+  id: string
+  /** Broad category grouping (e.g. "Pharmacology", "Anatomy"). */
+  category: string
+  /** Parent module name (e.g. "Level 400 Clinicals"). */
+  module: string
+  /** Ordered set number within the module (1-based). */
+  setNumber: number
+  /** The question / prompt shown to the student. */
+  prompt: string
+  /** The authoritative model answer for marking. */
+  modelAnswer: string
+  /** Short strings flagging examinable high-yield points (e.g. "★ Favourite OSCEs"). */
+  criticalFlags: string[]
+  /** Past-paper references where this question or topic appeared. */
+  pastPapers: string[]
+  /** Freeform tags for search and filtering. */
+  tags: string[]
+}
+
 /** Quiz delivery modes. */
 export type QuizMode = "trial" | "exam"
 
@@ -216,6 +259,14 @@ export interface UserProgress {
   mutedNotificationTypes: string[] // e.g. ["info", "update", "alert"]
   favoriteModules: string[] // starred module names
   srsData: Record<string, SrsEntry> // questionId → SRS schedule
+
+  // ── Theory Vault fields ───────────────────────────────────────────────────
+  /** IDs of TheoryQuestion items the user has bookmarked. */
+  theoryBookmarks: string[]
+  /** IDs of TheoryQuestion items queued for next revision session. */
+  revisionQueue: string[]
+  /** Free-text notes keyed by TheoryQuestion id. */
+  theoryNotes: Record<string, string>
 }
 
 /** In-session state for a single quiz block. */

@@ -59,6 +59,10 @@ const EMPTY_PROGRESS: UserProgress = {
   mutedNotificationTypes: [],
   favoriteModules: [],
   srsData: {},
+  // Theory Vault defaults
+  theoryBookmarks: [],
+  revisionQueue: [],
+  theoryNotes: {},
 }
 
 const LS_UID = "mednexus-uid"
