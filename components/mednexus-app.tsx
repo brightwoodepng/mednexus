@@ -414,6 +414,16 @@ export function MedNexusApp() {
   const pathname = usePathname()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
+
+  // Pick up a target screen passed via sessionStorage from Theory Vault navigation
+  useEffect(() => {
+    const goto = sessionStorage.getItem("mednexus_initial_screen")
+    if (goto) {
+      sessionStorage.removeItem("mednexus_initial_screen")
+      setScreen(goto as Screen)
+    }
+  }, [])
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
