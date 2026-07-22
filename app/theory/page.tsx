@@ -1,24 +1,31 @@
-import { MedNexusApp } from "@/components/mednexus-app"
+/**
+ * /theory — Theory Vault entry point.
+ *
+ * Uses the same provider stack as the root page so all contexts
+ * (auth, progress, economy, etc.) are available.  CurrentStudyModeProvider
+ * is set to "THEORY" on arrival via localStorage (written by the sidebar
+ * popover before router.push("/theory")).
+ *
+ * The TheoryVaultShell is a Client Component that owns the sidebar + layout.
+ */
+
 import { ThematicCanvas } from "@/components/thematic-canvas"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { AppProvider } from "@/contexts/app-context"
-import { QuestionsProvider } from "@/contexts/questions-context"
 import { AdminProvider } from "@/contexts/admin-context"
+import { QuestionsProvider } from "@/contexts/questions-context"
 import { StudyModeProvider } from "@/contexts/study-mode-context"
 import { EconomyProvider } from "@/contexts/economy-context"
 import { CurrentStudyModeProvider } from "@/contexts/current-study-mode-context"
+import { TheoryVaultShell } from "@/components/theory/TheoryVaultShell"
 
-/**
- * Provider order:
- *  1. ThemeProvider           — CSS variable theming
- *  2. AppProvider             — auth + progress (user-scoped)
- *  3. AdminProvider           — admin session (token-based)
- *  4. QuestionsProvider       — shared question bank (DB-backed, polls every 30s)
- *  5. StudyModeProvider       — global trial/exam toggle (persisted to localStorage)
- *  6. EconomyProvider         — Nexus Points wallet, bounties, inventory
- *  7. CurrentStudyModeProvider — top-level MCQ | THEORY | OSCE switcher
- */
-export default function Page() {
+export const metadata = {
+  title: "Theory Vault — MedNexus",
+  description:
+    "Long-form theory questions, model answers, and spaced-repetition revision for MedNexus students.",
+}
+
+export default function TheoryPage() {
   return (
     <ThemeProvider>
       <ThematicCanvas />
@@ -28,7 +35,7 @@ export default function Page() {
             <StudyModeProvider>
               <EconomyProvider>
                 <CurrentStudyModeProvider>
-                  <MedNexusApp />
+                  <TheoryVaultShell />
                 </CurrentStudyModeProvider>
               </EconomyProvider>
             </StudyModeProvider>
