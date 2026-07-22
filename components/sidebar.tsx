@@ -177,7 +177,11 @@ export function Sidebar({
           </button>
         )}
 
-        <div className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 ${cardCls}`}>
+        <button
+          type="button"
+          onClick={() => nav("profile")}
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${cardCls} ${isGlassEnabled ? "hover:glass-pill-active" : "hover:bg-sidebar-accent"}`}
+        >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary/90 text-sidebar-primary-foreground shadow-sm">
             <UserIcon size={18} />
           </div>
@@ -193,7 +197,7 @@ export function Sidebar({
                   : cloudEnabled ? "☁ Synced" : "Saving locally…"}
             </p>
           </div>
-        </div>
+        </button>
 
         <button
           type="button"
@@ -239,7 +243,7 @@ export function Sidebar({
       )}
 
       <div className="mt-auto">
-        <IconButton glass={isGlassEnabled} active={false} onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }} label="Sign Out"><LogOutIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "profile"} onClick={() => nav("profile")} label="Profile"><UserIcon size={18} /></IconButton>
       </div>
     </div>
   )
