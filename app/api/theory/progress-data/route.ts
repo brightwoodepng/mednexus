@@ -16,8 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { verifySessionToken } from "@/lib/session-auth"
-import { verifyGuestToken } from "@/lib/guest-auth"
+import { getTheoryCaller } from "@/lib/theory-auth"
 import type { TheoryQuestion } from "@/lib/types"
 
 async function getPool() {
@@ -30,11 +29,7 @@ async function getPool() {
 }
 
 function getVerifiedUid(req: NextRequest): string | null {
-  const st = req.headers.get("x-session-token")
-  if (st) return verifySessionToken(st)?.uid ?? null
-  const gt = req.headers.get("x-guest-token")
-  if (gt) return verifyGuestToken(gt)?.uid ?? null
-  return null
+  return getTheoryCaller(req)?.uid ?? null
 }
 
 function rowToQuestion(row: Record<string, unknown>): TheoryQuestion {
