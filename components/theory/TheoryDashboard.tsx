@@ -1,251 +1,39 @@
 "use client"
 
-/**
- * TheoryDashboard — landing view inside the Theory Vault shell.
- * Warm amber/rose accent aesthetic.
- * Category cards navigate to /theory/browse?category=module|year.
- */
+import Link from "next/link"
+import { useEffect, useState } from "react"
+import { ArrowRight, BookOpen, CalendarClock, FileText, Search, Star } from "lucide-react"
+import { LoadingState, ErrorState } from "./RevisionQueueView"
 
-import { useRouter } from "next/navigation"
-
-// ── Icons ──────────────────────────────────────────────────────────────────────
-
-function FolderIcon({ size = 32, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
-
-function BookIcon({ size = 32, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    </svg>
-  )
-}
-
-function PenLineIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-    </svg>
-  )
-}
-
-function StarIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  )
-}
-
-function BarChartIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" /><line x1="2" y1="20" x2="22" y2="20" />
-    </svg>
-  )
-}
-
-function ClipboardListIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-      <line x1="9" y1="12" x2="15" y2="12" /><line x1="9" y1="16" x2="13" y2="16" />
-    </svg>
-  )
-}
-
-function ChevronRightIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
-  )
-}
-
-// ── Stat Card ──────────────────────────────────────────────────────────────────
-
-interface StatCardProps {
-  label: string
-  value: string | number
-  icon: React.ReactNode
-  iconBg: string
-}
-
-function StatCard({ label, value, icon, iconBg }: StatCardProps) {
-  return (
-    <div className="flex items-center gap-4 rounded-2xl border border-amber-200/60 bg-white/70 px-5 py-4 shadow-sm dark:border-amber-800/30 dark:bg-amber-950/20">
-      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="mt-0.5 text-xs font-medium text-muted-foreground">{label}</p>
-      </div>
-    </div>
-  )
-}
-
-// ── Category Card ──────────────────────────────────────────────────────────────
-
-interface CategoryCardProps {
-  emoji: string
-  title: string
-  subtitle: string
-  description: string
-  gradient: string
-  borderColor: string
-  accentColor: string
-  badgeText: string
-  onClick: () => void
-}
-
-function CategoryCard({ emoji, title, subtitle, description, gradient, borderColor, accentColor, badgeText, onClick }: CategoryCardProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group relative w-full overflow-hidden rounded-3xl border ${borderColor} ${gradient} p-6 text-left shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400`}
-    >
-      {/* Decorative circle */}
-      <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
-      <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10" />
-
-      <div className="relative flex flex-col gap-4">
-        <div className="flex items-start justify-between">
-          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-white/25 text-2xl shadow-sm backdrop-blur-sm`}>
-            {emoji}
-          </div>
-          <span className={`rounded-full border border-white/30 bg-white/20 px-3 py-1 text-[11px] font-semibold ${accentColor} backdrop-blur-sm`}>
-            {badgeText}
-          </span>
-        </div>
-
-        <div>
-          <p className={`text-xs font-bold uppercase tracking-widest ${accentColor} opacity-80`}>{subtitle}</p>
-          <h3 className="mt-0.5 text-xl font-bold text-white">{title}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-white/75">{description}</p>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold text-white">Browse Sets</span>
-          <ChevronRightIcon size={16} className="text-white transition-transform group-hover:translate-x-1" />
-        </div>
-      </div>
-    </button>
-  )
-}
-
-// ── Main Dashboard ─────────────────────────────────────────────────────────────
+type Item = { id: string; prompt: string; collection_id: string; discipline_id: string; set_id: string | null; collection_title?: string; discipline_title?: string; set_title?: string; occurred_at?: string }
+type Level = { collection_id: string; collection_title: string; discipline_id: string; discipline_title: string; set_id: string | null; set_title: string | null; total: number; read: number; completed: number; model_answer_reviews: number; revision_completed: number; saved: number; notes: number; recent_activity: string | null }
+type Data = { summary: { total: number; read: number; completed: number; model_answer_reviews: number; saved: number; notes: number; due_today: number }; hierarchy: Level[]; recent: Item[]; continue: Item | null }
+const auth = (): Record<string, string> => typeof window === "undefined" ? {} : localStorage.getItem("mednexus-guest-token") ? { "x-guest-token": localStorage.getItem("mednexus-guest-token")! } : localStorage.getItem("mednexus-user-token") ? { "x-session-token": localStorage.getItem("mednexus-user-token")! } : {}
+const href = (x: Pick<Item, "collection_id" | "discipline_id" | "set_id">) => `/theory/reader?${new URLSearchParams({ collectionId: x.collection_id, disciplineId: x.discipline_id, ...(x.set_id ? { setId: x.set_id } : {}) })}`
+const crumbs = (x: Pick<Item, "collection_title" | "discipline_title" | "set_title">) => [x.collection_title, x.discipline_title, x.set_title].filter(Boolean).join(" · ")
 
 export function TheoryDashboard() {
-  const router = useRouter()
-
-  const stats: StatCardProps[] = [
-    {
-      label: "Attempted Prompts",
-      value: 0,
-      icon: <ClipboardListIcon size={20} className="text-amber-600 dark:text-amber-400" />,
-      iconBg: "bg-amber-100 dark:bg-amber-900/40",
-    },
-    {
-      label: "Rubric Avg",
-      value: "—",
-      icon: <BarChartIcon size={20} className="text-rose-600 dark:text-rose-400" />,
-      iconBg: "bg-rose-100 dark:bg-rose-900/40",
-    },
-    {
-      label: "Active Drafts",
-      value: 0,
-      icon: <PenLineIcon size={20} className="text-orange-600 dark:text-orange-400" />,
-      iconBg: "bg-orange-100 dark:bg-orange-900/40",
-    },
-    {
-      label: "Starred Answers",
-      value: 0,
-      icon: <StarIcon size={20} className="text-yellow-600 dark:text-yellow-400" />,
-      iconBg: "bg-yellow-100 dark:bg-yellow-900/40",
-    },
-  ]
-
-  return (
-    <div className="mx-auto max-w-4xl space-y-8">
-
-      {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-200/60 bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-8 shadow-sm dark:border-amber-800/30 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-rose-950/30">
-        {/* Decorative blobs */}
-        <div className="pointer-events-none absolute right-0 top-0 h-64 w-64 rounded-full bg-amber-200/30 blur-3xl dark:bg-amber-700/20" />
-        <div className="pointer-events-none absolute -bottom-8 left-20 h-40 w-40 rounded-full bg-rose-200/40 blur-2xl dark:bg-rose-700/20" />
-
-        <div className="relative">
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/60 bg-amber-100/80 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/40 dark:text-amber-400">
-            ⚗️ Theory Vault
-          </span>
-          <h1 className="mt-4 text-3xl font-extrabold leading-tight tracking-tight text-foreground sm:text-4xl">
-            Structure your thoughts.
-            <br />
-            <span className="bg-gradient-to-r from-amber-600 to-rose-600 bg-clip-text text-transparent dark:from-amber-400 dark:to-rose-400">
-              Master the clinical reasoning.
-            </span>
-          </h1>
-          <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">
-            Practice long-form clinical prompts using structured rubrics. Build the depth of knowledge that MCQs alone can&apos;t teach.
-          </p>
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div>
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Progress</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {stats.map((s) => (
-            <StatCard key={s.label} {...s} />
-          ))}
-        </div>
-      </div>
-
-      {/* Category Cards */}
-      <div>
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Choose a Category</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <CategoryCard
-            emoji="📁"
-            title="End of Module"
-            subtitle="Rotation-focused"
-            description="Discipline-specific long cases tested at the end of each clinical rotation — Surgery, Medicine, O&G, and more."
-            gradient="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600"
-            borderColor="border-amber-400/40"
-            accentColor="text-amber-100"
-            badgeText="Module Exams"
-            onClick={() => router.push("/theory/browse?category=module")}
-          />
-          <CategoryCard
-            emoji="📚"
-            title="End of Year"
-            subtitle="Comprehensive"
-            description="High-yield milestone questions spanning all disciplines — designed for final and comprehensive year-end examinations."
-            gradient="bg-gradient-to-br from-rose-500 via-pink-500 to-rose-600"
-            borderColor="border-rose-400/40"
-            accentColor="text-rose-100"
-            badgeText="Year Exams"
-            onClick={() => router.push("/theory/browse?category=year")}
-          />
-        </div>
-      </div>
-    </div>
-  )
+  const [data, setData] = useState<Data | null>(null); const [error, setError] = useState<string | null>(null)
+  useEffect(() => { fetch("/api/theory/dashboard", { headers: auth() }).then(async r => { const d = await r.json(); if (!r.ok) throw Error(d.error || "Failed to load dashboard."); setData(d) }).catch(e => setError(e.message)) }, [])
+  if (error) return <ErrorState message={error} />
+  if (!data) return <LoadingState />
+  const rotation = data.hierarchy.filter(x => x.collection_id === "end_of_rotation"), year = data.hierarchy.filter(x => x.collection_id === "end_of_year")
+  const statColor: Record<string, string> = { teal: "text-teal-700 dark:text-teal-300", violet: "text-violet-700 dark:text-violet-300", amber: "text-amber-700 dark:text-amber-300", rose: "text-rose-700 dark:text-rose-300" }
+  const progress = (items: Level[]) => { const total = items.reduce((n, x) => n + x.total, 0); const completed = items.reduce((n, x) => n + x.completed, 0); return total ? Math.round(completed / total * 100) : 0 }
+  return <div className="mx-auto max-w-6xl space-y-7">
+    <section className="rounded-3xl border border-teal-200/70 bg-gradient-to-br from-teal-50 via-white to-amber-50 p-6 shadow-sm dark:border-teal-800/40 dark:from-teal-950/25 dark:via-background dark:to-amber-950/20 sm:p-8">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700 dark:text-teal-300">Theory Vault</p><h1 className="mt-2 text-3xl font-extrabold tracking-tight">Return to the reasoning that matters.</h1>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Read, review model answers, and retain long-form clinical knowledge—without MCQ scores or exam-game statistics.</p>
+      <div className="mt-5 flex flex-wrap gap-3"><Link href="/theory/browse" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-bold text-white transition-colors hover:bg-teal-800"><BookOpen size={17}/>Browse questions</Link><Link href="/theory/search" className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-bold hover:bg-muted"><Search size={17}/>Search vault</Link></div>
+    </section>
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {[["Questions completed",data.summary.completed,"teal"],["Model answers reviewed",data.summary.model_answer_reviews,"violet"],["Due today",data.summary.due_today,"amber"],["Personal notes",data.summary.notes,"rose"]].map(([label,value,color]) => <div key={String(label)} className="rounded-2xl border bg-card p-4"><p className={`text-2xl font-extrabold ${statColor[String(color)]}`}>{value}</p><p className="mt-1 text-xs font-semibold text-muted-foreground">{label}</p></div>)}
+    </section>
+    <section className="grid gap-4 lg:grid-cols-2">
+      <div className="rounded-2xl border bg-card p-5"><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Continue studying</p>{data.continue ? <Link href={href(data.continue)} className="mt-3 block rounded-xl border border-teal-200 bg-teal-50/60 p-4 transition-colors hover:bg-teal-100/70 dark:border-teal-800 dark:bg-teal-950/20"><p className="text-[11px] font-bold text-teal-700 dark:text-teal-300">{crumbs(data.continue)}</p><p className="mt-1 line-clamp-2 text-sm font-semibold">{data.continue.prompt}</p><span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-teal-700 dark:text-teal-300">Continue <ArrowRight size={14}/></span></Link> : <p className="mt-3 text-sm text-muted-foreground">Start a set to create your study trail.</p>}</div>
+      <div className="rounded-2xl border bg-card p-5"><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Revision today</p><p className="mt-3 text-sm text-muted-foreground">{data.summary.due_today ? `${data.summary.due_today} saved revision ${data.summary.due_today === 1 ? "item is" : "items are"} ready for review.` : "Nothing due today—keep building a thoughtful revision queue."}</p><Link href="/theory/revision-queue" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-amber-700 dark:text-amber-300"><CalendarClock size={16}/>Open revision queue</Link></div>
+    </section>
+    <section className="grid gap-4 lg:grid-cols-2">{([ ["End of Rotation",rotation], ["End of Year",year] ] as [string, Level[]][]).map(([title, items]) => <div key={String(title)} className="rounded-2xl border bg-card p-5"><div className="flex items-baseline justify-between"><h2 className="font-bold">{title}</h2><span className="text-sm font-bold text-teal-700 dark:text-teal-300">{progress(items as Level[])}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-teal-600" style={{ width: `${progress(items as Level[])}%` }}/></div><p className="mt-3 text-xs text-muted-foreground">{(items as Level[]).reduce((n,x)=>n+x.completed,0)} completed · {(items as Level[]).reduce((n,x)=>n+x.total,0)} questions</p><Link href={`/theory/browse?collection=${String(title).includes("Rotation") ? "end_of_rotation" : "end_of_year"}`} className="mt-3 inline-flex text-xs font-bold text-teal-700 dark:text-teal-300">Browse collection</Link></div>)}</section>
+    <section className="rounded-2xl border bg-card p-5"><h2 className="font-bold">Recently studied disciplines & sets</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{data.hierarchy.filter(x=>x.recent_activity).slice(0,6).map(x => <Link key={`${x.discipline_id}-${x.set_id}`} href={href(x as unknown as Item)} className="rounded-xl border p-3 hover:bg-muted"><p className="text-xs font-bold text-teal-700 dark:text-teal-300">{x.collection_title} · {x.discipline_title}</p><p className="mt-1 text-sm font-medium">{x.set_title || "All questions"}</p><p className="mt-1 text-xs text-muted-foreground">{x.read}/{x.total} read · {x.completed} completed · {x.saved} saved · {x.notes} notes</p></Link>) || <p className="text-sm text-muted-foreground">Recent disciplines will appear after your first study action.</p>}</div></section>
+  </div>
 }
