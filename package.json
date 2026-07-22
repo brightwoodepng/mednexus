@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs"
+    "postinstall": "copy node_modules\\pdfjs-dist\\build\\pdf.worker.min.mjs public\\pdf.worker.min.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
