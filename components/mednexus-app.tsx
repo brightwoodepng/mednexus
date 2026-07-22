@@ -48,6 +48,7 @@ import {
   TrophyIcon,
 } from "@/components/icons"
 import { BottomNav } from "@/components/bottom-nav"
+import { useApplicationShell } from "@/components/authenticated-application-shell"
 
 interface PendingQuiz {
   questions: Question[]
@@ -424,9 +425,8 @@ export function MedNexusApp() {
     }
   }, [])
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const { sidebarCollapsed, setSidebarCollapsed, mobileNavigationOpen: mobileDrawerOpen, setMobileNavigationOpen: setMobileDrawerOpen } = useApplicationShell()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [isExamActive, setIsExamActive] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [adminLoginOpen, setAdminLoginOpen] = useState(false)
