@@ -23,9 +23,11 @@ function getStoredAuthHeader(): { key: string; value: string } | null {
 async function fetchUnreadCount(adminToken?: string | null): Promise<number> {
   try {
     const broadcastHeaders: Record<string, string> = {}
+    const authHeader = getStoredAuthHeader()
+    if (authHeader) broadcastHeaders[authHeader.key] = authHeader.value
     if (adminToken) broadcastHeaders["x-admin-token"] = adminToken
 
-    const authHeader = getStoredAuthHeader()
+
     const personalHeaders: Record<string, string> = {}
     if (authHeader) personalHeaders[authHeader.key] = authHeader.value
 
