@@ -22,6 +22,8 @@ import {
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
+import { StudyHubSwitcher } from "@/components/study-hub-switcher"
+import { useApplicationShell } from "@/components/authenticated-application-shell"
 
 function UsersIcon({ size = 18 }: { size?: number }) {
   return (
@@ -65,6 +67,7 @@ export function Sidebar({
   const { user, cloudEnabled, signOutUser, progress } = useApp()
   const { isAdmin, logoutAdmin } = useAdmin()
   const { isGlassEnabled } = useTheme()
+  const { activeStudyHub, setActiveStudyHub } = useApplicationShell()
 
   const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
 
@@ -127,6 +130,7 @@ export function Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
+        <StudyHubSwitcher activeHub={activeStudyHub} onSelect={setActiveStudyHub} className="mb-3" />
         <nav className="flex flex-col gap-0.5">
           <NavButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
 
