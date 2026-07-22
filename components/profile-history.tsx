@@ -20,6 +20,7 @@ import type { HistoryEntry, ExamScore, Question } from "@/lib/types"
 import { useEconomy } from "@/contexts/economy-context"
 import { STORE_ITEMS, TITLE_LABELS, FRAME_RING_CLASSES } from "@/lib/economy"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
+import { AppearanceModal } from "@/components/appearance-modal"
 
 // ── Study Environment Selector ────────────────────────────────────────────────
 
@@ -151,6 +152,17 @@ function ProfileHeader() {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
+  const [appearanceOpen, setAppearanceOpen] = useState(false)
+  const [notificationAccess, setNotificationAccess] = useState<NotificationPermission | "unsupported">("unsupported")
+
+  useEffect(() => {
+    if (typeof Notification !== "undefined") setNotificationAccess(Notification.permission)
+  }, [])
+
+  async function requestNotifications() {
+    if (typeof Notification === "undefined") return
+    setNotificationAccess(await Notification.requestPermission())
+  }
 
   function startEdit() {
     setDraft(user?.name ?? "")
@@ -285,6 +297,10 @@ function ProfileHeader() {
               {cloudEnabled ? "☁ Synced to cloud" : "Saving locally…"}
             </span>
           </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full bg-muted px-2.5 py-1">{user?.role === "user" ? "Registered learner" : "Guest learner"}</span>
+            <span className="rounded-full bg-muted px-2.5 py-1">Joined {user?.createdAt ? formatDate(user.createdAt) : "this session"}</span>
+          </div>
           </div>
           {/* end Identity column */}
         </div>
@@ -299,6 +315,11 @@ function ProfileHeader() {
           Sign out
         </button>
       </div>
+      <div className="flex flex-wrap gap-2 border-t border-border px-5 py-3 sm:px-6">
+        <button type="button" onClick={requestNotifications} className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">Notifications: {notificationAccess === "granted" ? "on" : notificationAccess === "unsupported" ? "unavailable" : "enable"}</button>
+        <button type="button" onClick={() => setAppearanceOpen(true)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted">Appearance preferences</button>
+      </div>
+      <AppearanceModal open={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
     </div>
   )
 }
