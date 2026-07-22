@@ -1,0 +1,14 @@
+"use client"
+
+import { useState } from "react"
+import Link from "next/link"
+import { Search } from "lucide-react"
+
+type Result = { id: string; prompt: string; collectionId: string; disciplineId: string; setId?: string | null; tags?: string[] }
+const auth = (): Record<string, string> => typeof window === "undefined" ? {} : localStorage.getItem("mednexus-guest-token") ? { "x-guest-token": localStorage.getItem("mednexus-guest-token")! } : localStorage.getItem("mednexus-user-token") ? { "x-session-token": localStorage.getItem("mednexus-user-token")! } : {}
+
+export function SearchView() {
+  const [query, setQuery] = useState(""); const [results, setResults] = useState<Result[]>([]); const [error, setError] = useState(""); const [loading, setLoading] = useState(false)
+  const search = async (e: React.FormEvent) => { e.preventDefault(); if (!query.trim()) return; setLoading(true); setError(""); try { const r = await fetch(`/api/theory/search?q=${encodeURIComponent(query)}`, { headers: auth() }); const d = await r.json(); if (!r.ok) throw Error(d.error || "Search failed"); setResults(d.results || []) } catch (x) { setError(x instanceof Error ? x.message : "Search failed") } finally { setLoading(false) } }
+  return <section className="mx-auto max-w-4xl space-y-6"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-teal-700 dark:text-teal-300">Theory Vault</p><h1 className="mt-2 text-2xl font-bold">Search questions</h1><p className="mt-1 text-sm text-muted-foreground">Search published prompts, model answers, and tags.</p></div><form onSubmit={search} className="flex gap-2"><input value={query} onChange={e => setQuery(e.target.value)} placeholder="e.g. tuberculosis, obstetrics…" className="min-h-11 flex-1 rounded-xl border bg-card px-4"/><button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-bold text-white"><Search size={16}/>{loading ? "Searching" : "Search"}</button></form>{error && <p className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}<div className="space-y-3">{results.map(result => <Link key={result.id} href={`/theory/read?${new URLSearchParams({ collectionId: result.collectionId, disciplineId: result.disciplineId, ...(result.setId ? { setId: result.setId } : {}), questionId: result.id })}`} className="block rounded-xl border bg-card p-4 hover:border-teal-500/50"><p className="font-semibold">{result.prompt}</p>{result.tags?.length ? <p className="mt-2 text-xs text-muted-foreground">{result.tags.join(" · ")}</p> : null}</Link>)}{!loading && query && !error && results.length === 0 ? <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No published Theory questions found.</p> : null}</div></section>
+}

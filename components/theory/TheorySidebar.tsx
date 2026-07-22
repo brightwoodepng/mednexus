@@ -297,6 +297,13 @@ export function TheorySidebar({
 
   /** Navigate to a screen in the MCQ app via sessionStorage handoff. */
   function handleGoToScreen(targetScreen: string) {
+    // Content management is mode-specific. Shared admin screens continue to
+    // live in the MCQ shell, but Theory authoring never falls back to MCQs.
+    if (targetScreen === "question-editor") {
+      onCloseMobile()
+      router.push("/admin/theory")
+      return
+    }
     sessionStorage.setItem("mednexus_initial_screen", targetScreen)
     setCurrentStudyMode("MCQ")
     router.push("/")
