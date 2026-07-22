@@ -230,8 +230,8 @@ export function Sidebar({
       <IconButton glass={isGlassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
       <IconButton glass={isGlassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
       <IconButton glass={isGlassEnabled} active={screen === "game"} onClick={() => nav("game")} label="Game Mode"><GamepadIcon size={18} /></IconButton>
-      <IconButton glass={isGlassEnabled} active={screen === "leaderboard"} onClick={() => nav("leaderboard")} label="Leaderboard"><TrophyIcon size={18} /></IconButton>
       <IconButton glass={isGlassEnabled} active={screen === "store"} onClick={() => nav("store")} label="Nexus Store"><StoreIcon size={18} /></IconButton>
+      <IconButton glass={isGlassEnabled} active={screen === "leaderboard"} onClick={() => nav("leaderboard")} label="Leaderboard"><TrophyIcon size={18} /></IconButton>
 
       {isAdmin && (
         <>
