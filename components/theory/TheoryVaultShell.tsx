@@ -78,12 +78,16 @@ export function TheoryVaultShell({ initialSection = "dashboard" }: TheoryVaultSh
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Sidebar navigation — also pushes Next.js routes for routed sections
+  // Sidebar navigation — pushes Next.js routes for all implemented sections
   function handleNavigate(section: TheoryScreen) {
     setActiveSection(section)
-    if (section === "dashboard") router.push("/theory")
-    else if (section === "browse") router.push("/theory/browse")
-    // other sections stay in-shell (placeholder)
+    if (section === "dashboard")  router.push("/theory")
+    else if (section === "browse")    router.push("/theory/browse")
+    else if (section === "revision")  router.push("/theory/revision-queue")
+    else if (section === "bookmarks") router.push("/theory/bookmarks")
+    else if (section === "notes")     router.push("/theory/notes")
+    else if (section === "progress")  router.push("/theory/progress")
+    // "search" stays in-shell (placeholder)
   }
 
   // ── Main content ────────────────────────────────────────────────────────────

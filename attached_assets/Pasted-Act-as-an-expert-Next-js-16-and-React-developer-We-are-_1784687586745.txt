@@ -1,0 +1,26 @@
+Act as an expert Next.js 16 and React developer. We are continuing the implementation of "Theory Vault" in MedNexus. Prompt 4 (Study Interface) is complete. Now we are implementing Prompt 5: Productivity Features (Revision Queue, Bookmarks, Notes, and Progress).
+
+Architectural Rules:
+1. Data-fetching pages (`app/theory/revision-queue/page.tsx`, `app/theory/bookmarks/page.tsx`, `app/theory/notes/page.tsx`) must be Server Components.
+2. Only use Client Components for interactive UI (e.g., the Notes text area, Bookmark toggle buttons).
+3. Do not modify existing MCQ components.
+
+Please implement Prompt 5 step-by-step:
+
+Task 1: Revision Queue & Bookmarks API Wiring
+- In `components/theory/TheoryStudyInterface.tsx` (or your grading component), update the "☹️ Needs Revision" button click handler. When clicked, it should fire an API call (e.g., to `/api/sync` or a dedicated endpoint) to append the current `question.id` to the user's `revisionQueue` array in the database.
+- Add a "⭐ Bookmark" toggle icon to the top header of the Study Interface. Clicking it adds/removes the `question.id` from the `theoryBookmarks` array via the API.
+
+Task 2: Revision Queue & Bookmarks Pages
+- Build `app/theory/revision-queue/page.tsx`: A Server Component that fetches the user's `revisionQueue` array and loads the corresponding `TheoryQuestion` objects. Display them as a list or a "Start Revision Session" set.
+- Build `app/theory/bookmarks/page.tsx`: A Server Component that does the same for the `theoryBookmarks` array.
+
+Task 3: Notes System
+- In the Study Interface, add a "📝 Add Note" button that opens a Client Component slide-out drawer or modal containing a text area.
+- Allow the user to type and save personal notes tied to the current `question.id`. Save this to the `theoryNotes` Record in the database.
+- Build `app/theory/notes/page.tsx`: A Server Component that displays a directory of all questions where the user has saved a note, allowing them to read their notes without entering a study session.
+
+Task 4: Progress Dashboard
+- Build `app/theory/progress/page.tsx`: A Server Component that fetches the user's theory stats.
+- Display simple metrics based on their progress (e.g., "Total Prompts Answered", "Questions Needing Revision", "Saved Notes").
+- Ensure all components compile cleanly with zero TypeScript errors.
