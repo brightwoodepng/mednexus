@@ -1,12 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState, type ReactNode } from "react"
-import { useRouter } from "next/navigation"
-import { STUDY_HUBS } from "@/lib/study-hubs"
-import type { StudyMode } from "@/lib/types"
-import { useApp } from "@/contexts/app-context"
-import { useCurrentStudyMode } from "@/contexts/current-study-mode-context"
-import { BookOpenIcon, CheckIcon, ChevronLeftIcon, FlaskIcon, LogOutIcon, XIcon } from "@/components/icons"
+import { type ReactNode } from "react"
+import { ChevronLeftIcon, XIcon } from "@/components/icons"
 
 export function SidebarFrame({ collapsed, mobileOpen, onCloseMobile, children, collapsedChildren, glass = false }: { collapsed: boolean; mobileOpen: boolean; onCloseMobile: () => void; children: ReactNode; collapsedChildren: ReactNode; glass?: boolean }) {
   const panelClass = glass ? "glass-sidebar" : "bg-sidebar border-r border-sidebar-border"
@@ -46,10 +41,3 @@ export function SidebarGroup({ label, children }: { label?: string; children: Re
 export function SidebarCollapsedRail({ onExpand, children, footer }: { onExpand: () => void; children: ReactNode; footer?: ReactNode }) { return <div className="flex h-full flex-col items-center gap-0.5 px-1.5 py-4"><button type="button" onClick={onExpand} className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-sidebar-border text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring" aria-label="Expand sidebar"><ChevronLeftIcon size={18} className="rotate-180" /></button>{children}{footer && <div className="mt-auto flex flex-col items-center gap-1">{footer}</div>}</div> }
 
 export function SidebarProfileFooter({ children }: { children: ReactNode }) { return <div className="w-full rounded-xl border border-sidebar-border bg-sidebar-accent/50 px-3 py-2.5 text-left">{children}</div> }
-
-export function StudyHubModeSwitcher({ label = "Study hub" }: { label?: string }) {
-  const [open, setOpen] = useState(false); const ref = useRef<HTMLDivElement>(null); const router = useRouter(); const { signOutUser } = useApp(); const { currentStudyMode, setCurrentStudyMode } = useCurrentStudyMode()
-  useEffect(() => { if (!open) return; const close = (event: MouseEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false) }; document.addEventListener("mousedown", close); return () => document.removeEventListener("mousedown", close) }, [open])
-  function select(mode: StudyMode) { setCurrentStudyMode(mode); setOpen(false); if (mode === "MCQ") router.push("/"); else if (mode === "THEORY") router.push("/theory") }
-  return <div ref={ref} className="relative"><button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-haspopup="dialog" className="flex w-full items-center gap-2 rounded-xl border border-sidebar-border bg-sidebar-accent/50 px-3 py-2 text-xs font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"><FlaskIcon size={13} className="text-[color:var(--hub-accent)]" />{label}</button>{open && <div role="dialog" aria-label="Study hub switcher" className="absolute bottom-full left-0 right-0 z-50 mb-2 overflow-hidden rounded-2xl border border-border bg-popover shadow-2xl"><div className="flex items-center justify-between border-b border-border px-4 py-3"><p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Study hub</p><button type="button" onClick={() => setOpen(false)} aria-label="Close study hub switcher" className="rounded-lg p-1 text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><XIcon size={13} /></button></div><div className="flex gap-2 p-3">{STUDY_HUBS.filter(hub => hub.availability === "available").map(hub => { const active = currentStudyMode === hub.mode; const Icon = hub.id === "mcq" ? BookOpenIcon : FlaskIcon; return <button key={hub.id} type="button" onClick={() => select(hub.mode)} aria-pressed={active} className={`flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-3 text-center text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"}`}><Icon size={20}/>{hub.title}{active && <span className="flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary"><CheckIcon size={8}/>Active</span>}</button>})}</div><div className="border-t border-border px-3 pb-3 pt-2"><button type="button" onClick={() => { signOutUser(); setOpen(false) }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><LogOutIcon size={13}/>Sign out</button></div></div>}</div>
-}
