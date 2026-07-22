@@ -222,18 +222,80 @@ export interface TheoryQuestion {
   sortOrder: number
 }
 
-/** Future-facing OSCE station definition, stored independently of Theory and MCQs. */
+// ─── OSCE Hub (contract only; no learner or editor workspace is exposed) ────
+
+/** Publication workflow for OSCE stations; deliberately independent of Theory. */
+export type OsceStationStatus = "draft" | "review" | "published" | "archived"
+
+/** A timed phase presented to a candidate during a station attempt. */
+export interface OsceTimingPhase {
+  id: string
+  kind: "preparation" | "performance"
+  durationSeconds: number
+  instructions: string
+}
+
+export interface OsceChecklistItem {
+  id: string
+  text: string
+  domain?: string
+  required: boolean
+}
+
+export interface OsceRubricCriterion {
+  id: string
+  title: string
+  description: string
+  maxScore: number
+  anchors: Array<{ score: number; description: string }>
+}
+
+export interface OsceMediaAsset {
+  id: string
+  kind: "image" | "audio" | "video" | "document"
+  url: string
+  altText: string
+  placement: "candidate" | "examiner" | "both"
+}
+
+/** Authorable station content. It never shares a table or editor with MCQs or Theory. */
 export interface OsceStation {
   id: string
   title: string
+  specialty: string
+  tags: string[]
+  competencies: string[]
   candidateInstructions: string
   examinerInstructions: string
-  preparationSeconds: number
-  performanceSeconds: number
-  checklist: unknown[]
-  scoringRubric: unknown
-  feedback: unknown
-  specialty: string
+  timingPhases: OsceTimingPhase[]
+  checklist: OsceChecklistItem[]
+  scoringRubric: OsceRubricCriterion[]
+  media: OsceMediaAsset[]
+  status: OsceStationStatus
+  createdAt: string
+  updatedAt: string
+}
+
+/** Learner-owned evidence captured after a station has been made available. */
+export interface OsceStationAttempt {
+  id: string
+  stationId: string
+  userId: string
+  checklistResponses: Record<string, boolean>
+  rubricScores: Record<string, number>
+  selfAssessment: string
+  examinerFeedback: string
+  totalScore: number | null
+  startedAt: string
+  completedAt: string | null
+}
+
+export interface OsceCompetencyProgress {
+  competency: string
+  attemptCount: number
+  latestScore: number | null
+  averageScore: number | null
+  lastAssessedAt: string | null
 }
 
 /** Quiz delivery modes. */
