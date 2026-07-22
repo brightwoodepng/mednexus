@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server"
 import pool, { ensureSchema } from "@/lib/db"
+import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
 
 // PATCH /api/economy/inventory — use (consume) one item from inventory
 export async function PATCH(req: Request) {
   const client = await pool.connect()
   try {
+    const auth = authenticateRequest(req.headers)
+    if (!auth) return authError()
     await ensureSchema()
-    const { uid, itemId } = await req.json() as { uid: string; itemId: string }
-    if (!uid || !itemId) return NextResponse.json({ error: "Missing uid or itemId" }, { status: 400 })
+    const { uid: suppliedUid, itemId } = await req.json() as { uid?: string; itemId: string }
+    if (identityMismatch(suppliedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const uid = auth.uid
+    if (!itemId) return NextResponse.json({ error: "Missing uid or itemId" }, { status: 400 })
 
     await client.query("BEGIN")
     const res = await client.query(

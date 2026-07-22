@@ -99,7 +99,7 @@ export function ResultsScreen({ result, moduleName, mode, questions, answers, ea
         {mode === "exam" && earnedNP !== undefined && earnedNP > 0 && (
           <div className="mb-6 w-full rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-900/20 p-5 text-center">
             <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-              🏆 Bounty Earned
+              🏆 Verified Bounty Earned
             </p>
             <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
               +<BountyCountup target={earnedNP} /> NP

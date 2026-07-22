@@ -70,7 +70,7 @@ function NPFloatToast({
 
 export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled = false, onExit, onComplete }: QuizSimulatorProps) {
   const { user, progress, toggleFlag, recordHistory } = useApp()
-  const { submitGameResult } = useEconomy()
+  const { submitGameResult, startScoredActivity } = useEconomy()
   const { triggerError, isShaking, isFlashing } = useErrorFeedback()
   // Dynamic Streak Engine — strictly Trial Mode + gamification opt-in. Dormant otherwise.
   const streakEngine = useStreakEngine(questions.length, mode === "trial" && gamificationEnabled)
@@ -92,6 +92,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const sessionDataRef   = useRef<{questionId:string;discipline:string;isCorrect:boolean;currentStreak:number}[]>([])
   // Guard: ensure payout is called at most once per session
   const payoutCalledRef  = useRef(false)
+  const scoredSessionIdRef = useRef<string | null>(null)
   // Local streak tracking (for NP bonus calc; separate from streak engine state)
   const currentStreakRef = useRef(0)
   // Synced copy of streakEngine.bestStreak for use inside callbacks
@@ -143,6 +144,11 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     return ans === correct
   }
 
+  useEffect(() => {
+    if (!user?.uid || user.uid.startsWith("guest")) return
+    startScoredActivity(mode, questions.map(q => q.id)).then(id => { scoredSessionIdRef.current = id })
+  }, [mode, questions, startScoredActivity, user?.uid])
+
   const submitBlock = useCallback(async () => {
     const timeTakenMs = Date.now() - startedAt.current
     const result: BlockResult = computeResult(questions, answers, timeTakenMs)
@@ -190,6 +196,8 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             bestStreak: 0,
             isNewHigh: false,
             sessionData: examSessionData,
+            sessionId: scoredSessionIdRef.current ?? undefined,
+            answers,
             examMeta: {
               accuracy: result.percentage,
               correct: result.correct,
@@ -209,6 +217,8 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           bestStreak: bestStreakRef.current,
           isNewHigh: false,
           sessionData: sessionDataRef.current,
+          sessionId: scoredSessionIdRef.current ?? undefined,
+          answers,
         }).catch(() => {/* ignore */})
       }
     }
@@ -284,6 +294,8 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           bestStreak: bestStreakRef.current,
           isNewHigh: false,
           sessionData: sessionDataRef.current,
+          sessionId: scoredSessionIdRef.current ?? undefined,
+          answers,
         }).catch(() => {/* ignore */})
       }
     }
