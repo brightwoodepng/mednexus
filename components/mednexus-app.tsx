@@ -1,9 +1,11 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import { usePathname } from "next/navigation"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
+import { useCurrentStudyMode } from "@/contexts/current-study-mode-context"
 import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
 import { sortByUrgency } from "@/lib/srs"
 import type { Screen } from "@/lib/view"
@@ -408,6 +410,8 @@ export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
   const { isAdmin, adminReady } = useAdmin()
   const { globalMode, setGlobalMode } = useStudyMode()
+  const { currentStudyMode } = useCurrentStudyMode()
+  const pathname = usePathname()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)

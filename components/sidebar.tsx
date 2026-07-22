@@ -1,9 +1,11 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useTheme } from "@/contexts/theme-context"
+import { useCurrentStudyMode } from "@/contexts/current-study-mode-context"
 import { getLiveModules, getWeakAreaQuestions } from "@/lib/modules"
 import {
   LayoutDashboardIcon,
@@ -19,6 +21,9 @@ import {
   GamepadIcon,
   StoreIcon,
   TrophyIcon,
+  BookOpenIcon,
+  FlaskIcon,
+  CheckIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 
@@ -63,6 +68,35 @@ export function Sidebar({
   const { user, cloudEnabled, signOutUser, progress } = useApp()
   const { isAdmin, logoutAdmin } = useAdmin()
   const { isGlassEnabled } = useTheme()
+  const { currentStudyMode, setCurrentStudyMode } = useCurrentStudyMode()
+  const router = useRouter()
+
+  // ── Study Environment popover state ───────────────────────────────────────
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!popoverOpen) return
+    function handleOutside(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setPopoverOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleOutside)
+    return () => document.removeEventListener("mousedown", handleOutside)
+  }, [popoverOpen])
+
+  function switchToMCQ() {
+    setCurrentStudyMode("MCQ")
+    setPopoverOpen(false)
+    // already on /, no navigation needed
+  }
+
+  function switchToTheory() {
+    setCurrentStudyMode("THEORY")
+    setPopoverOpen(false)
+    router.push("/theory")
+  }
 
   const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
 
