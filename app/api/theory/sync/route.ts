@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { getTheoryCaller } from "@/lib/theory-auth"
+import crypto from "crypto"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -72,6 +73,26 @@ export async function POST(req: NextRequest) {
              updated_at = NOW()`,
       [uid, JSON.stringify(update)],
     )
+
+    // Keep the legacy study interface and the normalized Theory views in sync.
+    // These statements are all constrained by uid and derive hierarchy values
+    // from the question row, never from client-provided identifiers.
+    if (Array.isArray(body.theoryBookmarks)) {
+      await pool.query("DELETE FROM mednexus_theory_bookmarks WHERE user_id=$1 AND NOT (question_id = ANY($2::text[]))", [uid, body.theoryBookmarks])
+      for (const questionId of body.theoryBookmarks) await pool.query("INSERT INTO mednexus_theory_bookmarks(user_id,collection_id,discipline_id,set_id,question_id) SELECT $1,collection_id,discipline_id,set_id,id FROM mednexus_theory_questions WHERE id=$2 ON CONFLICT(user_id,question_id) DO NOTHING", [uid, questionId])
+    }
+    if (Array.isArray(body.revisionQueue)) {
+      await pool.query("DELETE FROM mednexus_theory_revision_entries WHERE user_id=$1 AND completed_at IS NULL AND NOT (question_id = ANY($2::text[]))", [uid, body.revisionQueue])
+      for (const questionId of body.revisionQueue) await pool.query("INSERT INTO mednexus_theory_revision_entries(id,user_id,collection_id,discipline_id,set_id,question_id,due_at) SELECT $1,$2,collection_id,discipline_id,set_id,id,NOW() FROM mednexus_theory_questions WHERE id=$3 AND NOT EXISTS (SELECT 1 FROM mednexus_theory_revision_entries WHERE user_id=$2 AND question_id=$3 AND completed_at IS NULL)", [crypto.randomUUID(), uid, questionId])
+    }
+    if (Array.isArray(body.theoryAnswered)) for (const questionId of body.theoryAnswered) {
+      await pool.query("INSERT INTO mednexus_theory_completion_progress(user_id,collection_id,discipline_id,set_id,question_id) SELECT $1,collection_id,discipline_id,set_id,id FROM mednexus_theory_questions WHERE id=$2 ON CONFLICT(user_id,question_id) DO UPDATE SET completed_at=NOW()", [uid, questionId])
+      await pool.query("INSERT INTO mednexus_theory_recent_activity(id,user_id,collection_id,discipline_id,set_id,question_id,activity_type) SELECT $1,$2,collection_id,discipline_id,set_id,id,'completed' FROM mednexus_theory_questions WHERE id=$3", [crypto.randomUUID(), uid, questionId])
+    }
+    if (body.theoryNotes && typeof body.theoryNotes === "object" && !Array.isArray(body.theoryNotes)) for (const [questionId, note] of Object.entries(body.theoryNotes)) {
+      if (typeof note !== "string" || !note.trim()) continue
+      await pool.query("INSERT INTO mednexus_theory_notes(id,user_id,collection_id,discipline_id,set_id,question_id,body) SELECT $1,$2,collection_id,discipline_id,set_id,id,$3 FROM mednexus_theory_questions WHERE id=$4 ON CONFLICT(user_id,question_id) DO UPDATE SET body=EXCLUDED.body,updated_at=NOW()", [crypto.randomUUID(), uid, note.trim(), questionId])
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {
