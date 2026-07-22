@@ -18,7 +18,7 @@ interface Props {
   questions: Question[]
   userName: string
   userId: string
-  isGuest?: boolean
+  authHeader: { key: "x-session-token" | "x-guest-token"; value: string }
   onComplete: (result: {
     score: number
     total: number
@@ -27,6 +27,7 @@ interface Props {
     answers: Record<string, string | null>
     questions: Question[]
     timeTaken: number
+    attemptsUsed: number
   }) => void
   onExit?: () => void
 }
@@ -265,7 +266,7 @@ function NavPanel({ questions, answers, flagged, currentIdx, answered, unanswere
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function AssessmentExamRunner({
   assessmentId, title, timeLimitMins, passMark, questions,
-  userName, userId, isGuest = false, onComplete, onExit,
+  userName, userId, authHeader, onComplete, onExit,
 }: Props) {
   const totalSecs = timeLimitMins * 60
   const sessionKey = makeSessionKey(assessmentId, userId)
@@ -364,35 +365,39 @@ export function AssessmentExamRunner({
     for (const q of questions) {
       if (finalAnswers[q.id] === q.correctAnswer) score++
     }
-    const total = questions.length
-    const percentage = total ? Math.round((score / total) * 100) : 0
-    const passed = percentage >= passMark
+    let total = questions.length
+    let percentage = total ? Math.round((score / total) * 100) : 0
+    let passed = percentage >= passMark
+    let attemptsUsed = 0
 
-    clearSession(sessionKey)
-
-    if (isGuest) {
-      // Guest flow: send an isolated analytics payload with no user-profile link.
-      // Fire-and-forget — a network failure must never block the results screen.
-      fetch(`/api/assessments/${assessmentId}/guest-analytics`, {
+    try {
+      // The attempt API derives identity and scoring from the authenticated
+      // account. The browser supplies answers only.
+      const response = await fetch(`/api/assessments/${assessmentId}/attempt`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guestName: userName, score, total, percentage, passed, timeTakenSecs: timeTaken }),
-      }).catch(() => { /* swallow */ })
-    } else {
-      // Registered-user flow: server validates tries and persists to the attempts table.
-      try {
-        await fetch(`/api/assessments/${assessmentId}/attempt`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, userName, isGuest: false, answers: finalAnswers, score, total }),
-        })
-      } catch { /* swallow — result shown locally */ }
+        headers: { "Content-Type": "application/json", [authHeader.key]: authHeader.value },
+        body: JSON.stringify({ answers: finalAnswers }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error ?? "Unable to submit assessment")
+
+      score = Number(payload.score ?? score)
+      total = Number(payload.total ?? total)
+      percentage = total ? Math.round((score / total) * 100) : 0
+      passed = percentage >= passMark
+      attemptsUsed = Number(payload.attemptsUsed ?? 0)
+    } catch (error) {
+      submittedRef.current = false
+      setSubmitting(false)
+      alert(error instanceof Error ? error.message : "Unable to submit assessment")
+      return
     }
 
+    clearSession(sessionKey)
     setSubmitted(true)
     setSubmitting(false)
-    onComplete({ score, total, percentage, passed, answers: finalAnswers, questions, timeTaken })
-  }, [assessmentId, questions, userId, userName, isGuest, passMark, onComplete, sessionKey])
+    onComplete({ score, total, percentage, passed, answers: finalAnswers, questions, timeTaken, attemptsUsed })
+  }, [assessmentId, questions, passMark, onComplete, sessionKey, authHeader])
 
   // ── NO visibilitychange / beforeunload auto-submit ────────────────────────
   // Timer is wall-clock based so leaving and returning correctly deducts time.
