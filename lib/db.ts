@@ -262,6 +262,12 @@ export async function ensureSchema() {
       PRIMARY KEY (user_id, activity_date)
     );
 
+    -- Durable import quotas. Created by deployment migration, never lazily in a request.
+    CREATE TABLE IF NOT EXISTS mednexus_import_rate_limits (
+      user_id TEXT NOT NULL, endpoint TEXT NOT NULL, window_start TIMESTAMPTZ NOT NULL,
+      request_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (user_id, endpoint)
+    );
+
     -- ── Guest analytics ──────────────────────────────────────────────────────
     -- Stores a single score submission per guest attempt.
     -- Intentionally has NO foreign-key relationship to any user profile table.

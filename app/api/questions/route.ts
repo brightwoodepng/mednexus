@@ -7,8 +7,7 @@ export const maxDuration = 120
 async function getPgPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
   try {
-    const { default: pool, ensureSchema } = await import("@/lib/db")
-    await ensureSchema()
+    const { default: pool } = await import("@/lib/db")
     return pool
   } catch {
     return null

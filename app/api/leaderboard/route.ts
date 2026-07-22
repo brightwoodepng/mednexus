@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
 import { authenticateRequest, authError } from "@/lib/request-auth"
 
 // GET /api/leaderboard?tab=alltime|weekly
@@ -11,7 +11,6 @@ import { authenticateRequest, authError } from "@/lib/request-auth"
 //           (forced to 0% if < 50 questions answered that week).
 export async function GET(req: NextRequest) {
   try {
-    await ensureSchema()
 
     const tab = req.nextUrl.searchParams.get("tab") ?? "alltime"
     const hasCredential = Boolean(

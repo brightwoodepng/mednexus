@@ -12,9 +12,6 @@ const allowedDevOrigins = [
 if (replitDevDomain) allowedDevOrigins.push(replitDevDomain)
 
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     unoptimized: true,
   },

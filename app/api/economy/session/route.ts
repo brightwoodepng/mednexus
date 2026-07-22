@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
 import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
 import { abandonStaleSessions } from "@/lib/anti-farming"
 import { questionsDatabase } from "@/lib/questions-database"
@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
   try {
     const auth = authenticateRequest(req.headers)
     if (!auth) return authError()
-    await ensureSchema()
     const { uid, mode, questionIds } = await req.json()
     if (identityMismatch(uid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     if (!mode || !Array.isArray(questionIds) || !questionIds.length) return NextResponse.json({ error: "mode and questionIds are required" }, { status: 400 })
@@ -37,7 +36,6 @@ export async function PATCH(req: NextRequest) {
   try {
     const auth = authenticateRequest(req.headers)
     if (!auth) return authError()
-    await ensureSchema()
     const { sessionId, uid, answers } = await req.json()
     if (identityMismatch(uid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     if (!sessionId || !answers || typeof answers !== "object" || Array.isArray(answers)) return NextResponse.json({ error: "sessionId and answers are required" }, { status: 400 })

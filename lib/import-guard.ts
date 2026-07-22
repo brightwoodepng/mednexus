@@ -3,6 +3,7 @@ import "server-only"
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { authenticateRequest, type RequestAuth } from "@/lib/request-auth"
+import { verifyAdminToken } from "@/lib/admin-auth"
 
 export const IMPORT_LIMITS = {
   // Multipart overhead needs room above the file ceiling; JSON endpoints have
@@ -33,15 +34,12 @@ function tooLarge(message: string) { return NextResponse.json({ error: message, 
 export async function guardImportRequest(req: NextRequest, endpoint: keyof typeof quotas): Promise<GuardResult> {
   const auth = authenticateRequest(req.headers)
   if (!auth) return { response: NextResponse.json({ error: "Authentication is required to import content.", code: "UNAUTHORIZED" }, { status: 401 }) }
+  if (auth.role !== "ADMIN" && !verifyAdminToken(req.headers.get("x-admin-token") ?? "")) return { response: NextResponse.json({ error: "Importer or administrator access is required.", code: "FORBIDDEN" }, { status: 403 }) }
   const length = Number(req.headers.get("content-length") ?? 0)
   if (Number.isFinite(length) && length > IMPORT_LIMITS.requestBytes) return { response: tooLarge("Request body exceeds the allowed size.") }
 
   const quota = quotas[endpoint]
   try {
-    await pool.query(`CREATE TABLE IF NOT EXISTS mednexus_import_rate_limits (
-      user_id TEXT NOT NULL, endpoint TEXT NOT NULL, window_start TIMESTAMPTZ NOT NULL,
-      request_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (user_id, endpoint)
-    )`)
     const result = await pool.query<{ request_count: number; window_start: string }>(`
       INSERT INTO mednexus_import_rate_limits (user_id, endpoint, window_start, request_count)
       VALUES ($1, $2, NOW(), 1)
