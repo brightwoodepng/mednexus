@@ -6,6 +6,7 @@
  * admin, notification, or workspace state.
  */
 import { createContext, useContext, useState, type ReactNode } from "react"
+import type { StudyHubId } from "@/components/study-hub-switcher"
 
 type ShellState = {
   sidebarCollapsed: boolean
@@ -16,6 +17,8 @@ type ShellState = {
   setNotificationOpen: (value: boolean) => void
   notificationUnreadCount: number
   setNotificationUnreadCount: (value: number) => void
+  activeStudyHub: StudyHubId
+  setActiveStudyHub: (hub: StudyHubId) => void
 }
 
 const ShellContext = createContext<ShellState | undefined>(undefined)
@@ -25,7 +28,9 @@ export function AuthenticatedApplicationShell({ children }: { children: ReactNod
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
-  return <ShellContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed, mobileNavigationOpen, setMobileNavigationOpen, notificationOpen, setNotificationOpen, notificationUnreadCount, setNotificationUnreadCount }}>{children}</ShellContext.Provider>
+  // This state is product navigation, not MCQ quiz mode.
+  const [activeStudyHub, setActiveStudyHub] = useState<StudyHubId>("mcq-qbank")
+  return <ShellContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed, mobileNavigationOpen, setMobileNavigationOpen, notificationOpen, setNotificationOpen, notificationUnreadCount, setNotificationUnreadCount, activeStudyHub, setActiveStudyHub }}>{children}</ShellContext.Provider>
 }
 
 /** Shared responsive navigation state, intentionally retained across hub routes. */
