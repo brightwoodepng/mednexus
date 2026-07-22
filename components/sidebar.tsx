@@ -23,6 +23,7 @@ import {
   TrophyIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
+import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
 
 function UsersIcon({ size = 18 }: { size?: number }) {
   return (
@@ -260,97 +261,8 @@ export function Sidebar({
   )
 
   return (
-    <>
-      <aside className={`hidden shrink-0 md:block transition-all duration-200 ${panelCls} ${collapsed ? "w-14" : "w-64"}`}>
-        {collapsed ? collapsedContent : fullContent}
-      </aside>
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={onCloseMobile}
-            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
-          />
-          <div className={`absolute left-0 top-0 h-full w-72 max-w-[80%] shadow-2xl animate-in slide-in-from-left duration-200 ${panelCls}`}>
-            {fullContent}
-          </div>
-        </div>
-      )}
-    </>
-  )
-}
-
-function LiveDot() {
-  return (
-    <span className="relative flex h-2 w-2 shrink-0">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-    </span>
-  )
-}
-
-function NavButton({ glass, active, onClick, icon, label, badge, adminBadge, liveDot }: {
-  glass: boolean; active: boolean; onClick: () => void; icon: React.ReactNode; label: string; badge?: string; adminBadge?: string; liveDot?: boolean
-}) {
-  const activeCls = glass
-    ? "glass-pill-active text-sidebar-accent-foreground"
-    : "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border"
-  const inactiveCls = glass
-    ? "text-sidebar-foreground/80 glass-pill-hover"
-    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${active ? activeCls : inactiveCls}`}
-    >
-      {icon}
-      <span className="flex-1 text-left">{label}</span>
-      {liveDot && <LiveDot />}
-      {badge && (
-        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-sidebar-foreground/70 tabular-nums ${glass ? "glass-card" : "bg-muted"}`}>
-          {badge}
-        </span>
-      )}
-      {adminBadge && (
-        <span
-          className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400"
-          style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.22)" }}
-        >
-          {adminBadge}
-        </span>
-      )}
-    </button>
-  )
-}
-
-function IconButton({ glass, active, onClick, label, children, liveDot }: {
-  glass: boolean; active: boolean; onClick: () => void; label: string; children: React.ReactNode; liveDot?: boolean
-}) {
-  const activeCls = glass
-    ? "glass-pill-active text-sidebar-accent-foreground"
-    : "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border"
-  const inactiveCls = glass
-    ? "text-sidebar-foreground/70 glass-pill-hover"
-    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${active ? activeCls : inactiveCls}`}
-    >
-      {children}
-      {liveDot && (
-        <span className="absolute top-1 right-1 flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-        </span>
-      )}
-    </button>
+    <SidebarFrame collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={onCloseMobile} collapsedChildren={collapsedContent} glass={isGlassEnabled}>
+      {fullContent}
+    </SidebarFrame>
   )
 }
