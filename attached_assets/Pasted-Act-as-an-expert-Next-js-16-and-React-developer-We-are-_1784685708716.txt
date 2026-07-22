@@ -1,0 +1,32 @@
+Act as an expert Next.js 16 and React developer. We are continuing the implementation of "Theory Vault" in MedNexus. Prompt 2 (Navigation & Sidebar) is complete and working. Now we are implementing Prompt 3: User Flow & Theory Dashboard.
+
+Architectural Rules:
+1. All UI components for Theory must be created under `components/theory/` (e.g., `TheoryDashboard.tsx`, `TheoryBrowse.tsx`). Do not alter existing MCQ components.
+2. Use Server Components by default for route pages (`app/theory/page.tsx`, `app/theory/browse/page.tsx`). Fetch data or manage layout at the server level, passing props down to child components.
+
+Please implement Prompt 3 step-by-step:
+
+Task 1: Theory Dashboard (/theory)
+- Build/update `app/theory/page.tsx` and `components/theory/TheoryDashboard.tsx` with a warm amber/rose accent aesthetic.
+- Add a Hero Banner: "Structure your thoughts. Master the clinical reasoning."
+- Add a Stats Row displaying 4 metric cards:
+  - "Attempted Prompts"
+  - "Rubric Avg"
+  - "Active Drafts"
+  - "Starred Answers"
+- Add two main Category Navigation Cards:
+  1. 📁 **End of Module** (rotations/discipline-focused)
+  2. 📚 **End of Year** (comprehensive/milestone-focused)
+- Clicking a category card navigates to `/theory/browse?category=module` or `/theory/browse?category=year`.
+
+Task 2: Browse Questions & Sets (/theory/browse)
+- Build `app/theory/browse/page.tsx` as a Server Component.
+- When a category is active, render a grid of available disciplines/modules (e.g., Dermatology, Internal Medicine, Surgery, Paediatrics, Obstetrics & Gynaecology, Community Medicine).
+- When a discipline is selected, fetch the corresponding questions via `GET /api/theory/questions`.
+- Automatically chunk returned questions into manageable "Sets" of 20 (e.g., "Set 1: Q1–Q20", "Set 2: Q21–Q40").
+- Render set cards displaying question count and completion status.
+- Clicking a Set routes the user to `/theory/study/[setId]`.
+
+Task 3: Study Session Placeholder Route
+- Create a placeholder route shell `app/theory/study/[setId]/page.tsx` showing the set title and a simple banner: "Study Interface Loading Point (Ready for Prompt 4)".
+- Ensure everything builds and compiles cleanly without errors.
