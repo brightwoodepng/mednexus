@@ -165,6 +165,108 @@ function IconButton({
   )
 }
 
+// ── Study Environment popover ─────────────────────────────────────────────────
+
+function StudyEnvPopover({
+  onClose,
+  glass,
+}: {
+  onClose: () => void
+  glass: boolean
+}) {
+  const { currentStudyMode, setCurrentStudyMode } = useCurrentStudyMode()
+  const { user, signOutUser } = useApp()
+  const router = useRouter()
+
+  function handleSelect(mode: "MCQ" | "THEORY") {
+    setCurrentStudyMode(mode)
+    onClose()
+    if (mode === "MCQ") router.push("/")
+    // THEORY: already here, no navigation needed
+  }
+
+  const cardBase =
+    "flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-all cursor-pointer"
+
+  return (
+    <div
+      className={`absolute bottom-full left-0 right-0 mb-2 rounded-2xl border border-border bg-card shadow-2xl overflow-hidden z-50 ${glass ? "glass-card" : ""}`}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          Study Environment
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          aria-label="Close"
+        >
+          <XIcon size={13} />
+        </button>
+      </div>
+
+      {/* Mode cards */}
+      <div className="flex gap-2 p-3">
+        {/* MCQ Q-Bank */}
+        <button
+          type="button"
+          onClick={() => handleSelect("MCQ")}
+          className={`${cardBase} ${
+            currentStudyMode === "MCQ"
+              ? "border-primary/60 bg-primary/8 text-primary"
+              : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:bg-muted/80 hover:text-foreground"
+          }`}
+        >
+          <BookOpenIcon size={20} />
+          <span className="text-[11px] font-semibold leading-tight">
+            MCQ Q-Bank
+          </span>
+          {currentStudyMode === "MCQ" && (
+            <span className="flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+              <CheckIcon size={8} /> Active
+            </span>
+          )}
+        </button>
+
+        {/* Theory Vault */}
+        <button
+          type="button"
+          onClick={() => handleSelect("THEORY")}
+          className={`${cardBase} ${
+            currentStudyMode === "THEORY"
+              ? "border-teal-500/60 bg-teal-500/8 text-teal-600 dark:text-teal-400"
+              : "border-border bg-muted/40 text-muted-foreground hover:border-teal-500/30 hover:bg-muted/80 hover:text-foreground"
+          }`}
+        >
+          <FlaskIcon size={20} />
+          <span className="text-[11px] font-semibold leading-tight">
+            Theory Vault
+          </span>
+          {currentStudyMode === "THEORY" && (
+            <span className="flex items-center gap-0.5 rounded-full bg-teal-500/15 px-1.5 py-0.5 text-[9px] font-bold text-teal-600 dark:text-teal-400">
+              <CheckIcon size={8} /> Active
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Footer: sign out */}
+      <div className="border-t border-border px-3 pb-3 pt-2">
+        <button
+          type="button"
+          onClick={() => { signOutUser(); onClose() }}
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+        >
+          <LogOutIcon size={13} />
+          Sign Out
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function TheorySidebar({
@@ -179,11 +281,10 @@ export function TheorySidebar({
   const { user, signOutUser } = useApp()
   const { isAdmin, logoutAdmin } = useAdmin()
   const { isGlassEnabled } = useTheme()
-  const { currentStudyMode, setCurrentStudyMode } = useCurrentStudyMode()
+  const { setCurrentStudyMode } = useCurrentStudyMode()
   const router = useRouter()
-  const [isOpen, setIsOpen] = useState(false)
-  const [activeEnvironment, setActiveEnvironment] = useState<"MCQ" | "THEORY">(currentStudyMode)
-  const environmentRef = useRef<HTMLDivElement>(null)
+  const [studyEnvOpen, setStudyEnvOpen] = useState(false)
+  const studyEnvRef = useRef<HTMLDivElement>(null)
 
   const nav = (s: TheoryScreen) => {
     onNavigate(s)
@@ -197,34 +298,20 @@ export function TheorySidebar({
     router.push("/")
   }
 
-  function handleEnvironmentSelect(environment: "MCQ" | "THEORY") {
-    setActiveEnvironment(environment)
-    setCurrentStudyMode(environment)
-    setIsOpen(false)
-    if (environment === "MCQ") router.push("/")
-  }
-
-  // Close the environment menu on outside click or Escape.
+  // Close study-env popover on outside click
   useEffect(() => {
-    if (!isOpen) return
+    if (!studyEnvOpen) return
     function handleOutside(e: MouseEvent) {
       if (
-        environmentRef.current &&
-        !environmentRef.current.contains(e.target as Node)
+        studyEnvRef.current &&
+        !studyEnvRef.current.contains(e.target as Node)
       ) {
-        setIsOpen(false)
+        setStudyEnvOpen(false)
       }
     }
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsOpen(false)
-    }
     document.addEventListener("mousedown", handleOutside)
-    document.addEventListener("keydown", handleEscape)
-    return () => {
-      document.removeEventListener("mousedown", handleOutside)
-      document.removeEventListener("keydown", handleEscape)
-    }
-  }, [isOpen])
+    return () => document.removeEventListener("mousedown", handleOutside)
+  }, [studyEnvOpen])
 
   // ── Style helpers ──────────────────────────────────────────────────────────
   const panelCls = isGlassEnabled
@@ -257,50 +344,13 @@ export function TheorySidebar({
   // ── Full sidebar ───────────────────────────────────────────────────────────
   const fullContent = (
     <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
-      <div className="mb-1 flex items-start justify-between pt-1 shrink-0">
-        <div ref={environmentRef} className="relative min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={() => setIsOpen((open) => !open)}
-            aria-expanded={isOpen}
-            aria-haspopup="menu"
-            className="flex min-h-9 max-w-full items-center gap-2 rounded-lg px-2 text-[11px] font-bold uppercase tracking-[0.14em] text-teal-500 outline-none transition-colors hover:bg-sidebar-accent hover:text-teal-400 focus-visible:ring-2 focus-visible:ring-teal-500/70"
-          >
-            {activeEnvironment === "THEORY" ? <FlaskIcon size={14} /> : <BookOpenIcon size={14} />}
-            <span className="truncate">
-              {activeEnvironment === "THEORY" ? "Theory Vault" : "MCQ Q-Bank"}
-            </span>
-            <span aria-hidden="true" className={`text-[9px] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
-              ▼
-            </span>
-          </button>
-
-          {isOpen && (
-            <div
-              role="menu"
-              aria-label="Choose study environment"
-              className="absolute left-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg bg-[#121a20] p-1.5 shadow-[0_14px_36px_rgba(0,0,0,0.42)] ring-1 ring-white/8"
-            >
-              {([
-                { id: "MCQ" as const, label: "MCQ Q-Bank", icon: <BookOpenIcon size={16} /> },
-                { id: "THEORY" as const, label: "Theory Vault", icon: <FlaskIcon size={16} /> },
-              ]).map((environment) => (
-                <button
-                  key={environment.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={activeEnvironment === environment.id}
-                  onClick={() => handleEnvironmentSelect(environment.id)}
-                  className="flex min-h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm text-slate-300 outline-none transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:bg-white/[0.08] focus-visible:text-white"
-                >
-                  <span className="text-teal-400">{environment.icon}</span>
-                  <span className="flex-1">{environment.label}</span>
-                  {activeEnvironment === environment.id && <CheckIcon size={14} className="text-teal-400" />}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Collapse / close controls */}
+      <div className="mb-1 flex items-center justify-between px-1 pt-1 shrink-0">
+        {/* Theory Vault label */}
+        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">
+          <FlaskIcon size={12} />
+          Theory Vault
+        </span>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -352,8 +402,42 @@ export function TheorySidebar({
         </nav>
       </div>
 
-      {/* Bottom: profile card and sign out only */}
+      {/* Bottom: admin mode · study env switcher · profile card · sign out */}
       <div className="shrink-0 flex flex-col gap-2 pt-2">
+        {isAdmin && (
+          <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${cardCls}`}>
+            <div className="flex items-center gap-2">
+              <DatabaseIcon size={13} className="text-amber-500" />
+              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Admin Mode</span>
+            </div>
+            <button
+              type="button"
+              onClick={logoutAdmin}
+              className={`rounded-lg px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400 transition-colors ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-amber-500/20"}`}
+            >
+              Exit
+            </button>
+          </div>
+        )}
+
+        {/* Study Environment switcher */}
+        <div ref={studyEnvRef} className="relative">
+          {studyEnvOpen && (
+            <StudyEnvPopover
+              glass={isGlassEnabled}
+              onClose={() => setStudyEnvOpen(false)}
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => setStudyEnvOpen((v) => !v)}
+            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors ${cardCls}`}
+          >
+            <FlaskIcon size={13} className="text-teal-500" />
+            Switch Environment
+          </button>
+        </div>
+
         {/* Profile card — navigates to MCQ profile screen */}
         <button
           type="button"
@@ -421,18 +505,18 @@ export function TheorySidebar({
         <IconButton
           glass={isGlassEnabled}
           active={false}
-          onClick={() => handleGoToScreen("profile")}
-          label="Profile"
+          onClick={() => setStudyEnvOpen((v) => !v)}
+          label="Switch Environment"
         >
-          <UserIcon size={18} />
+          <FlaskIcon size={18} />
         </IconButton>
         <IconButton
           glass={isGlassEnabled}
           active={false}
-          onClick={() => { signOutUser(); if (isAdmin) logoutAdmin() }}
-          label="Sign Out"
+          onClick={() => handleGoToScreen("profile")}
+          label="Profile"
         >
-          <LogOutIcon size={18} />
+          <UserIcon size={18} />
         </IconButton>
       </div>
     </div>
