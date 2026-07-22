@@ -2,11 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ThemeProvider } from "@/contexts/theme-context"
-import { AppProvider } from "@/contexts/app-context"
-import { AdminProvider } from "@/contexts/admin-context"
 import { useAdmin } from "@/contexts/admin-context"
-import { ThematicCanvas } from "@/components/thematic-canvas"
 import type { AppNotification } from "@/lib/types"
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -380,16 +376,7 @@ function NotificationsInner() {
   )
 }
 
-// ─── Page export (wraps providers) ────────────────────────────────────────────
+// ─── Page export ──────────────────────────────────────────────────────────────
 export default function NotificationsPage() {
-  return (
-    <ThemeProvider>
-      <ThematicCanvas />
-      <AppProvider>
-        <AdminProvider>
-          <NotificationsInner />
-        </AdminProvider>
-      </AppProvider>
-    </ThemeProvider>
-  )
+  return <NotificationsInner />
 }

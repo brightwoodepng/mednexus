@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useTheme } from "@/contexts/theme-context"
+import { useCurrentStudyMode } from "@/contexts/current-study-mode-context"
+import { STUDY_HUBS } from "@/lib/study-hubs"
 import { getLiveModules, getWeakAreaQuestions } from "@/lib/modules"
 import {
   LayoutDashboardIcon,
@@ -64,6 +66,7 @@ export function Sidebar({
   const { user, cloudEnabled, signOutUser, progress } = useApp()
   const { isAdmin, logoutAdmin } = useAdmin()
   const { isGlassEnabled } = useTheme()
+  const { currentStudyMode, setCurrentStudyMode } = useCurrentStudyMode()
 
   const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
 
@@ -152,6 +155,14 @@ export function Sidebar({
       </div>
 
       <div className="shrink-0 flex flex-col gap-2 pt-2">
+        <div className={`rounded-xl p-2 ${cardCls}`} aria-label="Study hub switcher">
+          <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/55">Study hub</p>
+          {STUDY_HUBS.map((hub) => (
+            <button key={hub.id} type="button" disabled={hub.availability !== "available"} onClick={() => setCurrentStudyMode(hub.mode)} className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${currentStudyMode === hub.mode ? "bg-primary/10 text-primary" : "text-sidebar-foreground/75 hover:bg-sidebar-accent"} disabled:cursor-not-allowed disabled:opacity-55`}>
+              <span>{hub.title}</span><span className="text-[9px] font-semibold">{hub.availability === "available" ? "" : "Coming soon"}</span>
+            </button>
+          ))}
+        </div>
         {isAdmin ? (
           <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${cardCls}`}>
             <div className="flex items-center gap-2">
