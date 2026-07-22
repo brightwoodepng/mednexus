@@ -179,7 +179,38 @@ export interface Question {
 
 // ─── Theory Vault ─────────────────────────────────────────────────────────────
 // Completely separate schema from the MCQ Question type.
-// Stored in mednexus_theory_questions; never mixed with mednexus_questions.
+// Stored in normalized mednexus_theory_* tables; never mixed with mednexus_questions.
+
+/** The two curricula that may contain Theory material. */
+export type TheoryCollectionId = "end_of_rotation" | "end_of_year"
+
+export type TheoryPublicationStatus = "draft" | "published" | "unpublished"
+
+export interface TheoryCollection {
+  id: TheoryCollectionId
+  title: string
+  description?: string
+  sortOrder: number
+}
+
+export interface TheoryDiscipline {
+  id: string
+  collectionId: TheoryCollectionId
+  title: string
+  description?: string
+  sortOrder: number
+  isPublished: boolean
+}
+
+export interface TheorySet {
+  id: string
+  collectionId: TheoryCollectionId
+  disciplineId: string
+  title: string
+  description?: string
+  sortOrder: number
+  isPublished: boolean
+}
 
 /**
  * A single Theory Vault entry: a long-form prompt with a model answer,
@@ -207,6 +238,31 @@ export interface TheoryQuestion {
   pastPapers: string[]
   /** Freeform tags for search and filtering. */
   tags: string[]
+  /** Normalized collection. Legacy records default to end_of_rotation. */
+  collectionId?: TheoryCollectionId
+  /** Normalized discipline id. */
+  disciplineId?: string
+  /** Optional normalized set id; absent means directly under the discipline. */
+  setId?: string | null
+  /** Markable points expected in a complete answer. */
+  markingPoints?: string[]
+  /** Structured source information, such as a textbook or lecture reference. */
+  sourceMetadata?: Record<string, unknown>
+  /** Structured past-paper references; `pastPapers` remains for legacy clients. */
+  pastPaperMetadata?: Record<string, unknown>[]
+  difficulty?: "easy" | "medium" | "hard" | "expert"
+  estimatedStudyMinutes?: number
+  sortOrder?: number
+  publicationStatus?: TheoryPublicationStatus
+  isArchived?: boolean
+}
+
+/** Shared foreign-key context carried by every learner-owned Theory record. */
+export interface TheoryLearnerContext {
+  collectionId: TheoryCollectionId
+  disciplineId: string
+  setId: string | null
+  questionId: string
 }
 
 /** Quiz delivery modes. */
