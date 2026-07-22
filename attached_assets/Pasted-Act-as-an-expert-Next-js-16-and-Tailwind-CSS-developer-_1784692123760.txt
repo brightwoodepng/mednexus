@@ -1,0 +1,23 @@
+Act as an expert Next.js 16 and Tailwind CSS developer. We need to synchronize the Sidebar behavior between the "MCQ Q-Bank" mode and the "Theory Vault" mode in MedNexus, handle its collapsed state beautifully, and ensure Admin tools are accessible globally.
+
+Please implement these exact changes step-by-step:
+
+Task 1: Unify Profile Card Click & Collapse Behavior
+- Locate the Sidebar component(s) used for both MCQ and Theory modes.
+- Find the Profile Card at the bottom of the sidebar (displaying the user's name, avatar, and synced status).
+- Remove any lingering `onClick` state logic in the MCQ sidebar that opens a popover or dropdown menu.
+- Wrap the Profile Card in a Next.js `<Link href="/profile">` (or use `router.push('/profile')`) so that clicking the profile card in *any* mode routes the user directly to the dedicated Profile page. 
+- Ensure the "Sign Out" button remains functional and separate from the Profile route click.
+- Implement smooth collapsing behavior: When the sidebar is toggled closed, the Profile Card should seamlessly shrink to display *only* the user's avatar. 
+- Ensure all navigation icons in both modes remain perfectly centered when the sidebar is collapsed, ideally displaying a tooltip with the route name on hover.
+
+Task 2: Add Admin Tools to the Theory Sidebar
+- Locate the navigation array or rendering logic for the Theory Vault sidebar (which currently ends at "Search").
+- Inject the exact same "ADMIN" section that exists in the MCQ sidebar below the standard Theory navigation items.
+- This section should include the "ADMIN" muted header, the links for "Users", "Editor", and "Broadcast" (with their respective Admin badges), and the "Admin Mode" toggle button.
+- Ensure this section is conditionally rendered only if the user has Admin privileges, matching the existing security logic from the MCQ sidebar.
+- When the sidebar collapses, the "ADMIN" text header should disappear, and the admin navigation icons should center-align with the rest of the navigation.
+
+Task 3: Clean Up
+- Verify there are no duplicate keys in the mapped sidebar arrays.
+- Ensure the application compiles without any TypeScript errors and the UI remains perfectly responsive across all viewports.
