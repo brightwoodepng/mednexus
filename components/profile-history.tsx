@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useApp } from "@/contexts/app-context"
-import { useAdmin } from "@/contexts/admin-context"
 import { useQuestions } from "@/contexts/questions-context"
 import {
   CheckIcon,
@@ -58,7 +57,6 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 
 function ProfileHeader() {
   const { user, cloudEnabled, updateName, signOutUser } = useApp()
-  const { logoutAdmin, isAdmin } = useAdmin()
   const { balance, equippedCosmetics, grantDevNP } = useEconomy()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
@@ -174,17 +172,6 @@ function ProfileHeader() {
             <p className="text-sm font-bold text-amber-500 tabular-nums">
               ⚡ {balance.toLocaleString()} NP
             </p>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={grantDevNP}
-                title="[Admin] Set balance to 999,999 NP"
-                className="flex h-4 w-4 items-center justify-center rounded text-muted-foreground/25 hover:text-amber-400/60 transition-colors text-[10px] font-bold leading-none select-none"
-                aria-label="Admin: grant 999,999 NP"
-              >
-                +
-              </button>
-            )}
           </div>
 
           {/* Sync state */}
@@ -205,7 +192,7 @@ function ProfileHeader() {
         {/* Sign out — full-width below on mobile, auto-width inline on desktop */}
         <button
           type="button"
-          onClick={() => { logoutAdmin(); signOutUser() }}
+          onClick={signOutUser}
           className="w-full sm:w-auto shrink-0 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           Sign out

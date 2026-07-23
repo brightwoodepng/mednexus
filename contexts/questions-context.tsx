@@ -29,8 +29,8 @@ interface QuestionsContextValue {
   deleteModule: (subject: string) => Promise<void>
   deleteAllQuestions: () => Promise<void>
   resetToDefault: () => Promise<void>
-  saveToDb: (qs: Question[], token: string) => Promise<boolean>
-  appendQuestions: (qs: Question[], token: string) => Promise<boolean>
+  saveToDb: (qs: Question[]) => Promise<boolean>
+  appendQuestions: (qs: Question[]) => Promise<boolean>
   /**
    * Ref flag consumers (e.g. the admin editor's own auto-save effect) can
    * check to know the most recent `questions` state change was already
@@ -54,11 +54,11 @@ async function fetchFromDb(): Promise<{ questions: Question[] | null; updatedAt:
   }
 }
 
-async function pushToDb(questions: Question[], token: string): Promise<boolean> {
+async function pushToDb(questions: Question[]): Promise<boolean> {
   try {
     const res = await fetch("/api/questions", {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ questions }),
     })
     return res.ok
@@ -74,11 +74,11 @@ async function pushToDb(questions: Question[], token: string): Promise<boolean> 
  * PDF/Word import) fast and avoids multi-minute PUT requests that can time
  * out through the browser/proxy as the bank grows.
  */
-async function appendToDb(questions: Question[], token: string): Promise<boolean> {
+async function appendToDb(questions: Question[]): Promise<boolean> {
   try {
     const res = await fetch("/api/questions/append", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ questions }),
     })
     return res.ok
@@ -138,8 +138,8 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const saveToDb = useCallback(async (qs: Question[], token: string) => {
-    const ok = await pushToDb(qs, token)
+  const saveToDb = useCallback(async (qs: Question[]) => {
+    const ok = await pushToDb(qs)
     if (ok) setLastUpdated(new Date())
     return ok
   }, [])
@@ -149,9 +149,9 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
    * imports). Also merges them into local state so the UI is consistent
    * without waiting on the next poll.
    */
-  const appendQuestions = useCallback(async (qs: Question[], token: string) => {
+  const appendQuestions = useCallback(async (qs: Question[]) => {
     if (qs.length === 0) return true
-    const ok = await appendToDb(qs, token)
+    const ok = await appendToDb(qs)
     if (ok) {
       persist([...questionsRef.current, ...qs], true)
       setLastUpdated(new Date())
@@ -159,7 +159,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     return ok
   }, [])
 
-  // ── Mutation helpers (update local state; caller must push to DB if admin) ──
+  // ── Mutation helpers (update local state; the editor persists through cookie-authenticated APIs) ──
 
   const addQuestion = useCallback(async (q: Question) => {
     persist([...questionsRef.current, q])

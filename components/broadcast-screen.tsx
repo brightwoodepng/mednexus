@@ -1,12 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useAdmin } from "@/contexts/admin-context"
 import { MegaphoneIcon, SendIcon, TrashIcon, XIcon } from "@/components/icons"
 import type { AppNotification } from "@/lib/types"
 
 export function BroadcastScreen() {
-  const { adminToken } = useAdmin()
 
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
@@ -32,12 +30,12 @@ export function BroadcastScreen() {
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !body.trim() || !adminToken) return
+    if (!title.trim() || !body.trim()) return
     setStatus("sending")
     try {
       const res = await fetch("/api/notifications", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: title.trim(), body: body.trim(), type }),
       })
       if (!res.ok) throw new Error()
@@ -54,10 +52,9 @@ export function BroadcastScreen() {
   }
 
   async function handleDelete(id: string) {
-    if (!adminToken) return
     await fetch("/api/notifications", {
       method: "DELETE",
-      headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     })
     setNotifications((prev) => prev.filter((n) => n.id !== id))

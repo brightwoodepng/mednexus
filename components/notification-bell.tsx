@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useCallback } from "react"
-import { useAdmin } from "@/contexts/admin-context"
 import { BellIcon } from "@/components/icons"
 import { NotificationOverlay } from "@/components/notification-overlay"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
@@ -20,12 +19,11 @@ function getStoredAuthHeader(): { key: string; value: string } | null {
   return null
 }
 
-async function fetchUnreadCount(adminToken?: string | null): Promise<number> {
+async function fetchUnreadCount(): Promise<number> {
   try {
     const broadcastHeaders: Record<string, string> = {}
     const authHeader = getStoredAuthHeader()
     if (authHeader) broadcastHeaders[authHeader.key] = authHeader.value
-    if (adminToken) broadcastHeaders["x-admin-token"] = adminToken
 
 
     const personalHeaders: Record<string, string> = {}
@@ -49,13 +47,12 @@ async function fetchUnreadCount(adminToken?: string | null): Promise<number> {
 }
 
 export function NotificationBell() {
-  const { adminToken } = useAdmin()
   const { notificationOpen: isOpen, setNotificationOpen: setIsOpen, notificationUnreadCount: unreadCount, setNotificationUnreadCount: setUnreadCount } = useApplicationShell()
 
   const refresh = useCallback(async () => {
-    const count = await fetchUnreadCount(adminToken)
+    const count = await fetchUnreadCount()
     setUnreadCount(count)
-  }, [adminToken])
+  }, [])
 
   useEffect(() => {
     refresh()
