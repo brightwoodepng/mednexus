@@ -5,7 +5,8 @@
  * `WorkspaceProviders`, so changing routes never recreates theme, account,
  * admin, notification, or workspace state.
  */
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react"
+import { studyHubFromUrl, withHubContext } from "@/lib/admin-hub-routing"
 import type { StudyHubId } from "@/components/study-hub-switcher"
 
 type ShellState = {
@@ -29,7 +30,12 @@ export function AuthenticatedApplicationShell({ children }: { children: ReactNod
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
   // This state is product navigation, not MCQ quiz mode.
-  const [activeStudyHub, setActiveStudyHub] = useState<StudyHubId>("mcq-qbank")
+  const [activeStudyHub, setActiveStudyHubState] = useState<StudyHubId>(() => studyHubFromUrl())
+  const setActiveStudyHub = useCallback((hub: StudyHubId) => {
+    setActiveStudyHubState(hub)
+    // Hub context is URL-backed so shared tools survive refreshes, deep links and new tabs.
+    window.history.replaceState(window.history.state, "", withHubContext(window.location.pathname, hub))
+  }, [])
   return <ShellContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed, mobileNavigationOpen, setMobileNavigationOpen, notificationOpen, setNotificationOpen, notificationUnreadCount, setNotificationUnreadCount, activeStudyHub, setActiveStudyHub }}>{children}</ShellContext.Provider>
 }
 
