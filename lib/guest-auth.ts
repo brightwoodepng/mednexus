@@ -3,7 +3,7 @@
 // ============================================================================
 // Stateless HMAC-SHA256 tokens for guest users.  The token encodes a small
 // JSON payload (uid + role + expiry) and appends an HMAC signature, following
-// the same pattern used by lib/admin-auth.ts for admin tokens.
+// the same signed-session approach used by registered-user authentication.
 //
 // Tokens are returned to the client at guest creation and sent back on each
 // request as a Bearer token or x-guest-token header.  The server verifies
