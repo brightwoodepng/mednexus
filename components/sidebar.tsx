@@ -27,6 +27,7 @@ import type { Screen } from "@/lib/view"
 import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
 import { StudyHubDropdown, StudyHubDropdownIcon } from "@/components/navigation/study-hub-dropdown"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
+import { getHubNavigation, PROFILE_NAVIGATION_ITEM } from "@/components/navigation/study-hub-navigation"
 
 function UsersIcon({ size = 18 }: { size?: number }) {
   return (
@@ -73,6 +74,7 @@ export function Sidebar({
   const { activeStudyHub, setActiveStudyHub } = useApplicationShell()
 
   const nav = (id: Screen) => { onNavigate(id); onCloseMobile() }
+  const hubNavigation = getHubNavigation(activeStudyHub)
 
   const weakCount = useMemo(
     () => getWeakAreaQuestions(progress.history).length,
@@ -134,27 +136,10 @@ export function Sidebar({
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <nav className="flex flex-col gap-0.5">
-          {activeStudyHub === "theory-vault" ? <>
-            <NavButton glass={isGlassEnabled} active={screen === "theory-dashboard"} onClick={() => nav("theory-dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
-            <NavButton glass={isGlassEnabled} active={screen === "theory-browse"} onClick={() => nav("theory-browse")} icon={<LayersIcon size={18} />} label="Browse Questions" />
-            <NavButton glass={isGlassEnabled} active={screen === "theory-bookmarks"} onClick={() => nav("theory-bookmarks")} icon={<TrophyIcon size={18} />} label="Bookmarks" />
-            <NavButton glass={isGlassEnabled} active={screen === "theory-notes"} onClick={() => nav("theory-notes")} icon={<DatabaseIcon size={18} />} label="My Notes" />
-            <NavButton glass={isGlassEnabled} active={screen === "theory-revision"} onClick={() => nav("theory-revision")} icon={<ActivityIcon size={18} />} label="Revision Queue" />
-            <NavButton glass={isGlassEnabled} active={screen === "theory-progress"} onClick={() => nav("theory-progress")} icon={<TrophyIcon size={18} />} label="Progress" />
-            <NavButton glass={isGlassEnabled} active={screen === "theory-search"} onClick={() => nav("theory-search")} icon={<DatabaseIcon size={18} />} label="Search" />
-          </> : <>
-          <NavButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
-
-          <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
-
-          <NavButton glass={isGlassEnabled} active={screen === "modules"} onClick={() => nav("modules")} icon={<LayersIcon size={18} />} label="Study Modules" badge={String(getLiveModules().length)} />
-          <NavButton glass={isGlassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} icon={<ActivityIcon size={18} />} label="Weak Areas" badge={weakCount > 0 ? String(weakCount) : undefined} />
-          <NavButton glass={isGlassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} icon={<RadioIcon size={18} />} label="Live Assessments" liveDot={hasLiveAssessment} />
-          <NavButton glass={isGlassEnabled} active={screen === "game"} onClick={() => nav("game")} icon={<GamepadIcon size={18} />} label="Game Mode" />
-          <NavButton glass={isGlassEnabled} active={screen === "store"} onClick={() => nav("store")} icon={<StoreIcon size={18} />} label="Nexus Store" />
-          <NavButton glass={isGlassEnabled} active={screen === "leaderboard"} onClick={() => nav("leaderboard")} icon={<TrophyIcon size={18} />} label="Leaderboard" />
-
-          </>}
+          {hubNavigation.map((item, index) => {
+            const Icon = item.icon
+            return <div key={item.id}>{index === 1 && activeStudyHub === "mcq-qbank" && <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />}<NavButton glass={isGlassEnabled} active={screen === item.screen} onClick={() => nav(item.screen)} icon={<Icon size={18} />} label={item.label} badge={item.screen === "modules" ? String(getLiveModules().length) : item.screen === "weak-areas" && weakCount > 0 ? String(weakCount) : undefined} liveDot={item.screen === "live-assessments" && hasLiveAssessment} /></div>
+          })}
           {isAdmin && (
             <>
               <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
@@ -244,25 +229,7 @@ export function Sidebar({
         <ChevronLeftIcon size={16} className="rotate-180" />
       </button>
 
-      {activeStudyHub === "theory-vault" ? <>
-        <IconButton glass={isGlassEnabled} active={screen === "theory-dashboard"} onClick={() => nav("theory-dashboard")} label="Theory dashboard"><LayoutDashboardIcon size={18} /></IconButton>
-        <div className={`my-2 w-6 h-px ${dividerCls}`} />
-        <IconButton glass={isGlassEnabled} active={screen === "theory-browse"} onClick={() => nav("theory-browse")} label="Browse Questions"><LayersIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "theory-bookmarks"} onClick={() => nav("theory-bookmarks")} label="Bookmarks"><TrophyIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "theory-notes"} onClick={() => nav("theory-notes")} label="My Notes"><PencilIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "theory-revision"} onClick={() => nav("theory-revision")} label="Revision Queue"><ActivityIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "theory-progress"} onClick={() => nav("theory-progress")} label="Progress"><TrophyIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "theory-search"} onClick={() => nav("theory-search")} label="Search"><SearchIcon size={18} /></IconButton>
-      </> : <>
-        <IconButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
-        <div className={`my-2 w-6 h-px ${dividerCls}`} />
-        <IconButton glass={isGlassEnabled} active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "game"} onClick={() => nav("game")} label="Game Mode"><GamepadIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "store"} onClick={() => nav("store")} label="Nexus Store"><StoreIcon size={18} /></IconButton>
-        <IconButton glass={isGlassEnabled} active={screen === "leaderboard"} onClick={() => nav("leaderboard")} label="Leaderboard"><TrophyIcon size={18} /></IconButton>
-      </>}
+      {hubNavigation.map((item, index) => { const Icon = item.icon; return <div key={item.id}>{index === 1 && activeStudyHub === "mcq-qbank" && <div className={`my-2 w-6 h-px ${dividerCls}`} />}<IconButton glass={isGlassEnabled} active={screen === item.screen} onClick={() => nav(item.screen)} label={item.label} liveDot={item.screen === "live-assessments" && hasLiveAssessment}><Icon size={18} /></IconButton></div> })}
 
       {isAdmin && (
         <>
@@ -275,7 +242,7 @@ export function Sidebar({
       )}
 
       <div className="mt-auto">
-        <IconButton glass={isGlassEnabled} active={screen === "profile"} onClick={() => nav("profile")} label="Profile"><UserIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === PROFILE_NAVIGATION_ITEM.screen} onClick={() => nav(PROFILE_NAVIGATION_ITEM.screen)} label={PROFILE_NAVIGATION_ITEM.label}><PROFILE_NAVIGATION_ITEM.icon size={18} /></IconButton>
       </div>
     </div>
   )

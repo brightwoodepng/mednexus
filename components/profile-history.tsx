@@ -16,6 +16,8 @@ import type { HistoryEntry, ExamScore, Question } from "@/lib/types"
 import { useEconomy } from "@/contexts/economy-context"
 import { STORE_ITEMS, TITLE_LABELS, FRAME_RING_CLASSES } from "@/lib/economy"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
+import type { StudyHubId } from "@/components/study-hub-switcher"
+import type { Screen } from "@/lib/view"
 
 // ── Exam Scores ──────────────────────────────────────────────────────────────
 
@@ -443,17 +445,46 @@ function PrivacySettings() {
   )
 }
 
-export function ProfileHistory() {
+type TheoryDashboardData = { totals: { total: number; completed: number }; collections: Array<{ id: string; title: string; disciplines: number; total: number; completed: number; lastStudiedDiscipline?: string }>; continueReading: { prompt: string; collection: string; discipline: string; lastReadAt?: string } | null; revisions: { due: number; overdue: number; upcoming: number; next?: { prompt?: string } | null }; counts: { bookmarks: number; notes: number }; recentSets: Array<{ collection: string; discipline: string; setTitle: string; lastReadAt?: string }> }
+
+function TheoryProfilePanel({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
+  const { user, progress } = useApp()
+  const [data, setData] = useState<TheoryDashboardData | null>(null)
+  useEffect(() => { const params = new URLSearchParams({ userId: user?.uid ?? "guest", name: user?.name ?? "Clinician" }); fetch(`/api/theory/dashboard?${params}`).then((r) => r.ok ? r.json() : null).then(setData).catch(() => setData(null)) }, [user?.uid, user?.name])
+  const totals = data?.totals ?? { total: 0, completed: 0 }
+  const collection = (name: string) => data?.collections.find((item) => item.title.toLowerCase() === name.toLowerCase())
+  const progressFor = (name: string) => { const item = collection(name); return item ? `${item.completed} / ${item.total}` : "0 / 0" }
+  const cards = [
+    ["End of Rotation", progressFor("End of Rotation")], ["End of Year", progressFor("End of Year")],
+    ["Questions read", String(totals.completed)], ["Questions remaining", String(Math.max(0, totals.total - totals.completed))],
+    ["Revision due", String(data?.revisions.due ?? 0)], ["Model answers reviewed", "Not yet tracked"],
+  ]
+  const recent = data?.continueReading ? `Recently opened: ${data.continueReading.prompt}` : data?.recentSets?.[0] ? `Recently studied: ${data.recentSets[0].discipline} · ${data.recentSets[0].setTitle}` : "No Theory reading activity yet"
+  return <section className="space-y-5" aria-labelledby="theory-learning-title">
+    <div className="overflow-hidden rounded-2xl border border-teal-500/20 bg-gradient-to-br from-teal-500/10 via-card to-card p-5 shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-[.18em] text-teal-700 dark:text-teal-300">Theory Vault</p><h2 id="theory-learning-title" className="mt-2 text-xl font-bold">Theory learning overview</h2><p className="mt-1 text-sm text-muted-foreground">Questions read, deliberate revision and clinical recall — separate from MCQ performance.</p>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">{cards.map(([label, value]) => <div key={label} className="rounded-xl border border-border/70 bg-background/65 p-3"><p className="text-lg font-bold tabular-nums text-foreground">{value}</p><p className="text-xs font-semibold text-muted-foreground">{label}</p></div>)}</div>
+      <p className="mt-4 rounded-xl bg-background/60 px-3 py-2 text-sm text-muted-foreground">{progress.streak > 0 ? `${progress.streak}-day study streak · ` : ""}{recent}</p>
+    </div>
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><h2 className="font-semibold">Study organisation</h2><div className="mt-3 grid gap-2 sm:grid-cols-3"><Stat label="Disciplines started" value={String(data?.collections.reduce((sum, item) => sum + item.disciplines, 0) ?? 0)} /><Stat label="Sets completed" value="Not yet tracked" /><Stat label="Bookmarks saved" value={String(data?.counts.bookmarks ?? 0)} /><Stat label="Notes created" value={String(data?.counts.notes ?? 0)} /><Stat label="Revisions due today" value={String(data?.revisions.due ?? 0)} /><Stat label="Revisions completed" value="Not yet tracked" /></div></div>
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><h2 className="font-semibold">Recent Theory activity</h2><p className="mt-2 text-sm text-muted-foreground">{recent}</p><p className="mt-1 text-sm text-muted-foreground">{data?.revisions.next?.prompt ? `Latest revision: ${data.revisions.next.prompt}` : "No completed revisions recorded yet."}</p></div>
+    <div className="flex flex-wrap gap-2">{[["Continue Reading", "theory-dashboard"], ["Browse End of Rotation", "theory-browse"], ["Browse End of Year", "theory-browse"], ["Open Bookmarks", "theory-bookmarks"], ["Open My Notes", "theory-notes"], ["Open Revision Queue", "theory-revision"]].map(([label, screen]) => <button key={label} type="button" onClick={() => onNavigate(screen as Screen)} className="min-h-11 rounded-xl border border-border px-3 text-sm font-semibold transition hover:border-primary/40 hover:bg-primary/5">{label}</button>)}</div>
+  </section>
+}
+
+function Stat({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-muted/55 px-3 py-2.5"><p className="text-sm font-bold">{value}</p><p className="text-[11px] font-medium text-muted-foreground">{label}</p></div> }
+
+export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} }: { activeHub?: StudyHubId; onNavigate?: (screen: Screen) => void }) {
   const { progress } = useApp()
   const examScores = progress.examScores ?? []
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <ProfileHeader />
-      <CosmeticLoadout />
+      {activeHub === "theory-vault" ? <TheoryProfilePanel onNavigate={onNavigate} /> : <><CosmeticLoadout />
       <PrivacySettings />
       <ModuleReviewSection />
-      <ExamScores scores={examScores} />
+      <ExamScores scores={examScores} /></>}
     </div>
   )
 }

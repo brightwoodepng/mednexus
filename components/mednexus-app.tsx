@@ -48,6 +48,7 @@ import {
   TrophyIcon,
 } from "@/components/icons"
 import { BottomNav } from "@/components/bottom-nav"
+import { getHubNavigation, PROFILE_NAVIGATION_ITEM } from "@/components/navigation/study-hub-navigation"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { StudyHubDropdown } from "@/components/navigation/study-hub-dropdown"
 import { TheoryVault } from "@/components/theory-vault"
@@ -445,7 +446,8 @@ export function MedNexusApp() {
   useEffect(() => {
     const restoreFromLocation = () => {
       setActiveStudyHub(studyHubFromUrl())
-      setScreen(adminScreenFromUrl() ?? (studyHubFromUrl() === "theory-vault" ? "theory-dashboard" : "dashboard"))
+      const pathname = window.location.pathname
+      setScreen(adminScreenFromUrl() ?? (pathname === "/profile" ? "profile" : studyHubFromUrl() === "theory-vault" ? "theory-dashboard" : "dashboard"))
     }
     restoreFromLocation()
     window.addEventListener("popstate", restoreFromLocation)
@@ -453,12 +455,14 @@ export function MedNexusApp() {
   }, [setActiveStudyHub])
 
   useEffect(() => {
-    if (activeStudyHub === "theory-vault" && !screen.startsWith("theory-") && !["user-management", "broadcast"].includes(screen)) setScreen("theory-dashboard")
+    if (activeStudyHub === "theory-vault" && !screen.startsWith("theory-") && !["profile", "user-management", "broadcast"].includes(screen)) setScreen("theory-dashboard")
     if (activeStudyHub === "mcq-qbank" && screen.startsWith("theory-")) setScreen("dashboard")
   }, [activeStudyHub, screen])
 
   const handleScreenNavigation = useCallback((nextScreen: Screen) => {
-    if (nextScreen === "user-management") {
+    if (nextScreen === "profile") {
+      window.history.pushState({}, "", withHubContext("/profile", activeStudyHub))
+    } else if (nextScreen === "user-management") {
       window.history.pushState({}, "", withHubContext("/admin/users", activeStudyHub))
     } else if (nextScreen === "broadcast") {
       window.history.pushState({}, "", withHubContext("/admin/broadcasts", activeStudyHub))
@@ -662,7 +666,7 @@ export function MedNexusApp() {
           {safeScreen.startsWith("theory-") && <TheoryVault initialView={({ "theory-dashboard": "Dashboard", "theory-browse": "Browse Questions", "theory-bookmarks": "Bookmarks", "theory-notes": "My Notes", "theory-revision": "Revision Queue", "theory-progress": "Progress", "theory-search": "Search" } as const)[safeScreen as "theory-dashboard"] ?? "Dashboard"} />}
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
-          {safeScreen === "profile" && <ProfileHistory />}
+          {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
           {safeScreen === "question-editor" && isAdmin && (
             <QuestionEditor
               pendingImport={pendingEditorImport}
@@ -690,7 +694,7 @@ export function MedNexusApp() {
       </div>
 
       {/* Mobile bottom navigation — hidden on md+; also hidden during active assessment exam */}
-      <BottomNav screen={safeScreen} onNavigate={setScreen} hidden={isExamActive} />
+      <BottomNav screen={safeScreen} activeHub={activeStudyHub} onNavigate={handleScreenNavigation} hidden={isExamActive} />
 
       {/* Mobile slide-out drawer — md:hidden (opened by header hamburger) */}
       {mobileDrawerOpen && (
@@ -725,75 +729,18 @@ export function MedNexusApp() {
             <div className="flex-1 overflow-y-auto py-3 px-3 flex flex-col gap-0.5">
               <StudyHubDropdown activeHub={activeStudyHub} onSelect={setActiveStudyHub} onAfterSelect={() => setMobileDrawerOpen(false)} />
 
-              {/* Section: Quick Access */}
-              <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Quick Access</p>
-
-              {/* Modules */}
-              <button
-                type="button"
-                onClick={() => { setScreen("modules"); setMobileDrawerOpen(false) }}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
-                    <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                    <polyline points="2 17 12 22 22 17" />
-                    <polyline points="2 12 12 17 22 12" />
-                  </svg>
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-foreground leading-tight">Modules</p>
-                  <p className="text-[11px] text-muted-foreground">Browse question bank</p>
-                </div>
-              </button>
-
-              {/* Weak Areas */}
-              <button
-                type="button"
-                onClick={() => { setScreen("weak-areas"); setMobileDrawerOpen(false) }}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" />
-                  </svg>
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-foreground leading-tight">Weak Areas</p>
-                  <p className="text-[11px] text-muted-foreground">Focus on gaps</p>
-                </div>
-              </button>
-
-              {/* Nexus Store */}
-              <button
-                type="button"
-                onClick={() => { setScreen("store"); setMobileDrawerOpen(false) }}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <StoreIcon size={16} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-foreground leading-tight">Nexus Store</p>
-                  <p className="text-[11px] text-muted-foreground">Items &amp; cosmetics</p>
-                </div>
-              </button>
-
-              {/* Live Assessments */}
-              <button
-                type="button"
-                onClick={() => { setScreen("live-assessments"); setMobileDrawerOpen(false) }}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <RadioIcon size={16} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-foreground leading-tight">Live Assessments</p>
-                  <p className="text-[11px] text-muted-foreground">Join active exams</p>
-                </div>
+              {/* Learner navigation is shared with the desktop sidebar and bottom bar. */}
+              <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Workspace</p>
+              {getHubNavigation(activeStudyHub).map((item) => {
+                const Icon = item.icon
+                return <button key={item.id} type="button" onClick={() => { handleScreenNavigation(item.screen); setMobileDrawerOpen(false) }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon size={16} /></span>
+                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                </button>
+              })}
+              <button type="button" onClick={() => { handleScreenNavigation(PROFILE_NAVIGATION_ITEM.screen); setMobileDrawerOpen(false) }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><PROFILE_NAVIGATION_ITEM.icon size={16} /></span>
+                <p className="text-sm font-semibold text-foreground">{PROFILE_NAVIGATION_ITEM.label}</p>
               </button>
 
               <div className="my-2 h-px bg-border mx-1" />
