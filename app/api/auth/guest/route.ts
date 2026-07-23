@@ -16,7 +16,8 @@ import { createGuestToken } from "@/lib/guest-auth"
 import { isValidLevel } from "@/lib/levels"
 
 async function getPool() {
-  const { default: pool } = await import("@/lib/db")
+  const { default: pool, ensureSchema } = await import("@/lib/db")
+  await ensureSchema()
   return pool
 }
 
