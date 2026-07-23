@@ -10,7 +10,10 @@
     "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
     "seed:theory-demo": "tsx scripts/seed-theory-demo.ts",
-    "bootstrap-admin": "tsx scripts/bootstrap-admin.ts"
+    "bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
+    "test": "vitest run",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -47,6 +50,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@next/eslint-plugin-next": "^16.2.11",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.3.1",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
@@ -58,9 +62,10 @@
     "globals": "^16.5.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.65.0",
-    "tsx": "^4.21.0"
+    "vitest": "^4.1.10"
   },
   "pnpm": {
     "overrides": {
