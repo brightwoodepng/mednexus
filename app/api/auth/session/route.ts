@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { verifySessionToken } from "@/lib/session-auth"
+import { getVerifiedAdmin } from "@/lib/admin-access"
 
 type ServerRole = "STUDENT" | "ADMIN" | "SUPER_ADMIN"
 
@@ -35,6 +36,9 @@ export async function GET() {
       status: account.status,
       classLevel: account.class_level || account.level || "",
       role: normalizeRole(account.role),
+      // This is display metadata only. The same database-backed check still
+      // runs on every protected page and API request.
+      canAccessAdmin: Boolean(await getVerifiedAdmin(token)),
     })
   } catch (error) {
     console.error("[auth/session]", error)

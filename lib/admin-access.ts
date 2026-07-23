@@ -48,8 +48,14 @@ export async function getVerifiedAdmin(token: string | null | undefined, permiss
   if (!payload) return null
   const access = await currentAccess(payload)
   if (!access) return null
-  const allowed = !permission || access.role === "SUPER_ADMIN"
-    || (access.permissions.get(permission) ?? (access.role === "ADMIN" && ADMIN_BASELINE.has(permission)))
+  // The console itself is a privileged surface too. An ADMIN account with all
+  // of its capabilities removed must not retain access to the dashboard just
+  // because its (now stale) session token once named an administrator.
+  const hasPermission = (candidate: AdminPermission) => access.role === "SUPER_ADMIN"
+    || (access.permissions.get(candidate) ?? (access.role === "ADMIN" && ADMIN_BASELINE.has(candidate)))
+  const allowed = permission
+    ? hasPermission(permission)
+    : ADMIN_PERMISSIONS.some(hasPermission)
   if (!allowed) return null
   return { uid: payload.uid, role: access.role }
 }
