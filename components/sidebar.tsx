@@ -238,10 +238,6 @@ export function Sidebar({
         <ChevronLeftIcon size={18} className="rotate-180" />
       </button>
 
-      <StudyHubDropdownIcon activeHub={activeStudyHub} onExpand={onExpand} />
-
-      <div className={`my-2 w-6 h-px ${dividerCls}`} />
-
       <IconButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
 
       <div className={`my-2 w-6 h-px ${dividerCls}`} />
