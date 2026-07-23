@@ -99,7 +99,38 @@ function loadLocal(uid: string): UserProgress {
   return EMPTY_PROGRESS
 }
 
+function clearLocalLearnerState(uid: string) {
+  try {
+    localStorage.removeItem(LS_UID)
+    localStorage.removeItem(LS_NAME)
+    localStorage.removeItem(LS_ROLE)
+    localStorage.removeItem(LS_STATUS)
+    localStorage.removeItem(LS_REQUIRES_PW_UPDATE)
+    localStorage.removeItem(LS_CLASS_LEVEL)
+    localStorage.removeItem(LS_USER_TOKEN)
+    localStorage.removeItem(LS_PROGRESS + "-" + uid)
+  } catch {}
+}
+
 type AuthHeader = { key: string; value: string } | null
+
+type SessionAccount = {
+  uid: string
+  name: string
+  status: string
+  classLevel: string
+  role: NonNullable<AppUser["serverRole"]>
+}
+
+async function getSessionAccount(): Promise<SessionAccount | null> {
+  try {
+    const res = await fetch("/api/auth/session", { signal: AbortSignal.timeout(6000) })
+    if (!res.ok) return null
+    return await res.json() as SessionAccount
+  } catch {
+    return null
+  }
+}
 
 async function apiGet(auth: AuthHeader): Promise<{ name: string; progress: UserProgress } | null> {
   try {
@@ -166,8 +197,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const status = typeof window !== "undefined" ? localStorage.getItem(LS_STATUS) ?? undefined : undefined
       const needsPwUpdate = typeof window !== "undefined" ? localStorage.getItem(LS_REQUIRES_PW_UPDATE) === "true" : false
       const classLevel = typeof window !== "undefined" ? localStorage.getItem(LS_CLASS_LEVEL) ?? undefined : undefined
-      const serverRole = undefined
-
       if (uid) {
         // Restore auth header from localStorage
         const guestToken = localStorage.getItem(LS_GUEST_TOKEN)
@@ -178,8 +207,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
           tokenRef.current = { key: "x-session-token", value: userToken }
         }
 
+        if (role === "user") {
+          // A registered account is restored only from the HttpOnly cookie.
+          // Locally persisted identity and role data are never authoritative.
+          const account = await getSessionAccount()
+          if (!account) {
+            clearLocalLearnerState(uid)
+            tokenRef.current = null
+            setUser(null)
+            setProgress(EMPTY_PROGRESS)
+            setRequiresPasswordUpdate(false)
+            setAuthReady(true)
+            return
+          }
+
+          const local = loadLocal(account.uid)
+          const appUser: AppUser = {
+            uid: account.uid,
+            name: account.name,
+            role: "user",
+            serverRole: account.role,
+            status: account.status,
+            classLevel: account.classLevel,
+            level: account.classLevel,
+          }
+          try {
+            localStorage.setItem(LS_UID, account.uid)
+            localStorage.setItem(LS_NAME, account.name)
+            localStorage.setItem(LS_STATUS, account.status)
+            localStorage.setItem(LS_CLASS_LEVEL, account.classLevel)
+          } catch {}
+          setUser(appUser)
+          setProgress(local)
+          setRequiresPasswordUpdate(needsPwUpdate)
+          setAuthReady(true)
+
+          const remote = await apiGet(tokenRef.current)
+          if (remote) {
+            setCloudEnabled(true)
+            setProgress(remote.progress)
+            setUser((current) => current ? { ...current, name: remote.name } : current)
+          }
+          return
+        }
+
         const local = loadLocal(uid)
-        const appUser: AppUser = { uid, name, role: role ?? "guest", status: status ?? undefined, classLevel, serverRole }
+        const appUser: AppUser = { uid, name, role: "guest", status: status ?? undefined, classLevel }
         setUser(appUser)
         setProgress(local)
         setRequiresPasswordUpdate(needsPwUpdate)
@@ -189,7 +262,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (remote) {
           setCloudEnabled(true)
           setProgress(remote.progress)
-          setUser({ uid, name: remote.name, role: role ?? "guest", classLevel })
+          setUser({ uid, name: remote.name, role: "guest", classLevel })
         }
       } else {
         setAuthReady(true)
@@ -267,8 +340,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       tokenRef.current = userToken ? { key: "x-session-token", value: userToken } : null
 
-      const local = loadLocal(uid)
-      const appUser: AppUser = { uid, name, role: "user", serverRole: data.role, status: data.status, indexNumber: data.indexNumber, level: data.level }
+      // Resolve UI metadata through the cookie-backed session endpoint rather
+      // than trusting a role returned to, or persisted by, the client.
+      const account = await getSessionAccount()
+      const accountUid = account?.uid ?? uid
+      const local = loadLocal(accountUid)
+      const appUser: AppUser = {
+        uid: accountUid,
+        name: account?.name ?? name,
+        role: "user",
+        serverRole: account?.role,
+        status: account?.status ?? data.status,
+        indexNumber: data.indexNumber,
+        classLevel: account?.classLevel,
+        level: account?.classLevel,
+      }
       setUser(appUser)
       setProgress(local)
       setRequiresPasswordUpdate(!!needsPw)
