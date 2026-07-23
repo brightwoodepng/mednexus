@@ -12,8 +12,9 @@ function HubIcon({ hub, size = 16 }: { hub: StudyHubId; size?: number }) {
 }
 
 /**
- * Compact sidebar dropdown for switching study hubs.
- * Driven entirely from the STUDY_HUBS registry — no options hard-coded here.
+ * Compact header-bar trigger + floating overlay dropdown for switching study hubs.
+ * The menu is position:absolute so it overlays sidebar content without pushing it down.
+ * Parent must have position:relative and must NOT have overflow:hidden.
  */
 export function StudyHubDropdown({
   activeHub,
@@ -22,7 +23,6 @@ export function StudyHubDropdown({
 }: {
   activeHub: StudyHubId
   onSelect: (hub: StudyHubId) => void
-  /** Called after a hub is selected (e.g. close mobile drawer) */
   onAfterSelect?: () => void
 }) {
   const [open, setOpen] = useState(false)
@@ -31,7 +31,6 @@ export function StudyHubDropdown({
 
   const activeHubDef = STUDY_HUBS.find((h) => h.id === activeHub)!
 
-  // Close on click outside
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
@@ -41,7 +40,6 @@ export function StudyHubDropdown({
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return
     function handler(e: KeyboardEvent) {
@@ -58,46 +56,44 @@ export function StudyHubDropdown({
   }
 
   const triggerCls = isGlassEnabled
-    ? "glass-card hover:glass-pill-active"
-    : "border border-sidebar-border bg-sidebar-accent/50 hover:bg-sidebar-accent"
+    ? "hover:glass-pill-active"
+    : "hover:bg-sidebar-accent"
 
   const menuCls = isGlassEnabled
     ? "glass-card"
-    : "border border-sidebar-border bg-card shadow-lg"
+    : "border border-sidebar-border bg-card shadow-xl"
 
   const rowHoverCls = isGlassEnabled ? "hover:glass-pill-active" : "hover:bg-sidebar-accent"
 
   return (
-    <div ref={ref} className="relative w-full">
-      {/* ── Trigger ─────────────────────────────────────────────── */}
+    <div ref={ref} className="relative min-w-0 flex-1">
+      {/* ── Trigger (compact, fits in header bar) ── */}
       <button
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${triggerCls}`}
+        className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${triggerCls}`}
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary/15 text-sidebar-primary">
-          <HubIcon hub={activeHub} size={15} />
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-sidebar-primary/15 text-sidebar-primary">
+          <HubIcon hub={activeHub} size={13} />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-xs font-semibold leading-tight text-sidebar-foreground">
-            {activeHubDef.name}
-          </span>
-          <span className="mt-0.5 block text-[10px] leading-tight text-sidebar-foreground/55">
-            Switch study workspace
-          </span>
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-sidebar-foreground">
+          {activeHubDef.name}
         </span>
         <ChevronDownIcon
-          size={14}
+          size={13}
           className={`shrink-0 text-sidebar-foreground/50 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           aria-hidden
         />
       </button>
 
-      {/* ── Dropdown menu ───────────────────────────────────────── */}
+      {/* ── Floating overlay menu ── */}
       {open && (
-        <div role="menu" className={`mt-1.5 w-full overflow-hidden rounded-xl ${menuCls}`}>
+        <div
+          role="menu"
+          className={`absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl ${menuCls}`}
+        >
           {STUDY_HUBS.map((hub) => {
             const active = hub.id === activeHub
             return (
@@ -126,11 +122,7 @@ export function StudyHubDropdown({
                         : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {hub.available ? (
-                    <HubIcon hub={hub.id} size={13} />
-                  ) : (
-                    <LockKeyholeIcon size={12} aria-hidden />
-                  )}
+                  {hub.available ? <HubIcon hub={hub.id} size={13} /> : <LockKeyholeIcon size={12} aria-hidden />}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs font-semibold leading-tight">{hub.name}</span>
