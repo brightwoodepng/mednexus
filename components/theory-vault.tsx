@@ -69,10 +69,10 @@ export function TheoryVault({ initialView = "Dashboard" }: { initialView?: View 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   if (view === "Dashboard") {
     const quickActions = [
-      { icon: <FileText size={20} />, label: "Browse Questions", sub: `${data.questions.length} total`, color: "bg-teal-50 text-teal-700 border-teal-200/80 dark:bg-teal-900/20 dark:text-teal-300 dark:border-teal-800/40", onClick: () => setView("Browse Questions") },
-      { icon: <Bookmark size={20} />, label: "Bookmarks", sub: `${bookmarks.length} saved`, color: "bg-sky-50 text-sky-700 border-sky-200/80 dark:bg-sky-900/20 dark:text-sky-300 dark:border-sky-800/40", onClick: () => setView("Bookmarks") },
-      { icon: <RotateCcw size={20} />, label: "Revision Queue", sub: `${revisions.length} due`, color: "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40", onClick: () => setView("Revision Queue") },
-      { icon: <NotebookPen size={20} />, label: "My Notes", sub: `${Object.values(notes).filter(Boolean).length} notes`, color: "bg-violet-50 text-violet-700 border-violet-200/80 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800/40", onClick: () => setView("My Notes") },
+      { icon: <FileText size={20} />, label: "Browse Questions", sub: `${data.questions.length} total`, onClick: () => setView("Browse Questions") },
+      { icon: <Bookmark size={20} />, label: "Bookmarks", sub: `${bookmarks.length} saved`, onClick: () => setView("Bookmarks") },
+      { icon: <RotateCcw size={20} />, label: "Revision Queue", sub: `${revisions.length} due`, onClick: () => setView("Revision Queue") },
+      { icon: <NotebookPen size={20} />, label: "My Notes", sub: `${Object.values(notes).filter(Boolean).length} notes`, onClick: () => setView("My Notes") },
     ]
 
     return (
@@ -103,11 +103,11 @@ export function TheoryVault({ initialView = "Dashboard" }: { initialView?: View 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {quickActions.map(a => (
             <button key={a.label} type="button" onClick={a.onClick}
-              className={`group flex flex-col gap-3 rounded-2xl border p-4 text-left shadow-sm transition-all hover:shadow-md hover:ring-2 active:scale-[0.99] ${a.color}`}>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 dark:bg-black/20">{a.icon}</div>
+              className="group flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.99]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{a.icon}</div>
               <div>
-                <p className="font-bold text-sm leading-snug">{a.label}</p>
-                <p className="text-xs opacity-70 mt-0.5">{a.sub}</p>
+                <p className="font-bold text-sm leading-snug text-foreground">{a.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{a.sub}</p>
               </div>
             </button>
           ))}
