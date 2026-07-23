@@ -232,14 +232,14 @@ export function Sidebar({
   )
 
   const collapsedContent = (
-    <div className="flex h-full flex-col items-center gap-0.5 py-4 px-2">
+    <div className="flex h-full flex-col items-center gap-0 py-3 px-1.5">
       <button
         type="button"
         onClick={onExpand}
-        className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors ${isGlassEnabled ? "glass-pill-hover" : "border border-sidebar-border hover:bg-sidebar-accent"}`}
+        className={`mb-2 flex h-8 w-8 items-center justify-center rounded-xl text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors ${isGlassEnabled ? "glass-pill-hover" : "border border-sidebar-border hover:bg-sidebar-accent"}`}
         aria-label="Expand sidebar"
       >
-        <ChevronLeftIcon size={18} className="rotate-180" />
+        <ChevronLeftIcon size={16} className="rotate-180" />
       </button>
 
       <IconButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
