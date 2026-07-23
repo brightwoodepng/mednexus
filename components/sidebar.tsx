@@ -232,7 +232,7 @@ export function Sidebar({
   )
 
   const collapsedContent = (
-    <div className="flex h-full flex-col items-center gap-1 py-3 px-1.5">
+    <div className="flex h-full flex-col items-center gap-1.5 py-3 px-1.5">
       <button
         type="button"
         onClick={onExpand}
