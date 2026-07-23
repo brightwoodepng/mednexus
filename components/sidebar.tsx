@@ -20,6 +20,7 @@ import {
   StoreIcon,
   TrophyIcon,
   StethoscopeIcon,
+  PencilIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
@@ -160,7 +161,7 @@ export function Sidebar({
                 <NavButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="MCQ Editor" adminBadge="Admin" />
               </>}
               {activeStudyHub === "theory-vault" && <>
-                <NavButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} icon={<LayersIcon size={18} />} label="Theory Editor" adminBadge="Admin" />
+                <NavButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} icon={<PencilIcon size={18} />} label="Theory Editor" adminBadge="Admin" />
               </>}
               {activeStudyHub === "osce-hub" && <div className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-sidebar-foreground/35" aria-disabled="true"><StethoscopeIcon size={18} /><span>OSCE Station Editor — Coming soon</span></div>}
               <NavButton glass={isGlassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
@@ -257,7 +258,7 @@ export function Sidebar({
         <>
           <div className={`my-2 w-6 h-px ${dividerCls}`} />
           {activeStudyHub === "mcq-qbank" && <><IconButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} label="MCQ Editor"><DatabaseIcon size={18} /></IconButton></>}
-          {activeStudyHub === "theory-vault" && <><IconButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} label="Theory Editor"><LayersIcon size={18} /></IconButton></>}
+          {activeStudyHub === "theory-vault" && <><IconButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} label="Theory Editor"><PencilIcon size={18} /></IconButton></>}
           <IconButton glass={isGlassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} label="Users"><UsersIcon size={18} /></IconButton>
           <IconButton glass={isGlassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
         </>
