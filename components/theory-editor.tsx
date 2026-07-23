@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react"
 import {
   AlertTriangle, ArrowDown, ArrowUp, BookMarked, CheckCircle2,
-  ChevronRight, ClipboardCheck, FolderTree, MoreHorizontal,
-  Plus, Search, ShieldCheck, X,
+  ChevronRight, ClipboardCheck, FileUp, FolderTree, History, MoreHorizontal,
+  Plus, Search, ShieldCheck, Sparkles, Upload, X,
 } from "lucide-react"
 
 type Status = "Draft" | "In review" | "Published" | "Archived"
@@ -23,236 +23,68 @@ const statusStyle: Record<Status, string> = {
   Archived: "bg-muted text-muted-foreground",
 }
 
-function StatusBadge({ status }: { status: Status }) {
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${statusStyle[status]}`}>{status}</span>
-}
+function StatusBadge({ status }: { status: Status }) { return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ${statusStyle[status]}`}>{status}</span> }
 
 function Dialog({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
-      <section role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-2xl rounded-3xl border border-border bg-card shadow-2xl">
-        <header className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="font-bold">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Close dialog" className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
-        </header>
-        {children}
-      </section>
-    </div>
-  )
+  return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-2xl rounded-3xl border border-border bg-card shadow-2xl"><header className="flex items-center justify-between border-b border-border px-6 py-4"><h2 className="font-bold">{title}</h2><button type="button" onClick={onClose} aria-label="Close dialog" className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18}/></button></header>{children}</section></div>
 }
 
-export function TheoryEditor() {
+export function TheoryEditor({ openImporter = false }: { openImporter?: boolean }) {
   const [questions, setQuestions] = useState(initialQuestions)
   const [collection, setCollection] = useState("All collections")
   const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<string[]>([])
-  const [dialog, setDialog] = useState<"delete" | "move" | "new" | null>(null)
+  const [dialog, setDialog] = useState<"import" | "delete" | "move" | "new" | null>(openImporter ? "import" : null)
   const [notice, setNotice] = useState("All changes are saved to the current editorial workspace.")
   const [newPrompt, setNewPrompt] = useState("")
 
   const filtered = useMemo(() => questions.filter(q => (collection === "All collections" || q.collection === collection) && `${q.prompt} ${q.discipline} ${q.set}`.toLowerCase().includes(query.toLowerCase())), [questions, collection, query])
   const hierarchy = useMemo(() => ["End of Rotation", "End of Year"].map(name => ({ name, disciplines: [...new Set(questions.filter(q => q.collection === name).map(q => q.discipline))], count: questions.filter(q => q.collection === name).length })), [questions])
-
   const toggle = (id: string) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
-  const updateStatus = (id: string, status: Status) => {
-    setQuestions(qs => qs.map(q => q.id === id ? { ...q, status } : q))
-    setNotice(`Question status changed to ${status.toLowerCase()}. An audit entry has been recorded.`)
-  }
+  const updateStatus = (id: string, status: Status) => { setQuestions(qs => qs.map(q => q.id === id ? { ...q, status } : q)); setNotice(`Question status changed to ${status.toLowerCase()}. An audit entry has been recorded.`) }
   const reorder = (id: string, direction: -1 | 1) => {
     const item = questions.find(q => q.id === id); if (!item) return
-    const siblings = questions.filter(q => q.collection === item.collection && q.discipline === item.discipline && q.set === item.set).sort((a, b) => a.order - b.order)
+    const siblings = questions.filter(q => q.collection === item.collection && q.discipline === item.discipline && q.set === item.set).sort((a,b) => a.order - b.order)
     const index = siblings.findIndex(q => q.id === id); const neighbour = siblings[index + direction]; if (!neighbour) return
-    setQuestions(qs => qs.map(q => q.id === item.id ? { ...q, order: neighbour.order } : q.id === neighbour.id ? { ...q, order: item.order } : q))
-    setNotice("Question order updated. Learner-facing order remains stable until publication.")
+    setQuestions(qs => qs.map(q => q.id === item.id ? { ...q, order: neighbour.order } : q.id === neighbour.id ? { ...q, order: item.order } : q)); setNotice("Question order updated. Learner-facing order remains stable until publication.")
   }
-  const createQuestion = () => {
-    if (!newPrompt.trim()) return
-    setQuestions(qs => [...qs, { id: `th-${Date.now()}`, order: qs.length + 1, prompt: newPrompt, modelAnswer: "Add a model answer before review.", markingPoints: 0, collection: "End of Rotation", discipline: "Unassigned discipline", set: "Unassigned set", status: "Draft" }])
-    setNewPrompt(""); setDialog(null)
-    setNotice("Draft question created. Complete its model answer and marking points before sending for review.")
-  }
+  const createQuestion = () => { if (!newPrompt.trim()) return; setQuestions(qs => [...qs, { id: `th-${Date.now()}`, order: qs.length + 1, prompt: newPrompt, modelAnswer: "Add a model answer before review.", markingPoints: 0, collection: "End of Rotation", discipline: "Unassigned discipline", set: "Unassigned set", status: "Draft" }]); setNewPrompt(""); setDialog(null); setNotice("Draft question created. Complete its model answer and marking points before sending for review.") }
   const removeSelected = () => {
     const deletable = questions.filter(q => selected.includes(q.id) && q.status === "Draft").length
     setQuestions(qs => qs.filter(q => !selected.includes(q.id) || q.status !== "Draft"))
     setNotice(`${deletable} draft question${deletable === 1 ? "" : "s"} deleted. Published and reviewed content is protected from direct deletion.`)
-    setSelected([]); setDialog(null)
+    setSelected([])
+    setDialog(null)
   }
-  const moveSelected = () => {
-    setQuestions(qs => qs.map(q => selected.includes(q.id) ? { ...q, collection: "End of Year", discipline: "Cardiovascular Medicine", set: "Imported set", status: q.status === "Published" ? "In review" : q.status } : q))
-    setNotice(`${selected.length} question${selected.length === 1 ? "" : "s"} reassigned and sent to review where needed.`)
-    setDialog(null); setSelected([])
-  }
+  const moveSelected = () => { setQuestions(qs => qs.map(q => selected.includes(q.id) ? { ...q, collection: "End of Year", discipline: "Cardiovascular Medicine", set: "Imported set", status: q.status === "Published" ? "In review" : q.status } : q)); setNotice(`${selected.length} question${selected.length === 1 ? "" : "s"} reassigned and sent to review where needed. An audit record is available.`); setDialog(null); setSelected([]) }
 
-  return (
-    <div className="mx-auto max-w-[1500px] space-y-5 pb-10">
-      {/* Header */}
-      <section className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-700 via-teal-700 to-emerald-700 px-5 py-6 text-white shadow-lg sm:px-7">
-        <div className="pointer-events-none absolute right-4 top-[-52px] h-48 w-48 rounded-full border-[24px] border-white/10" />
-        <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-          <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-100">
-              <BookMarked size={15} /> Theory Editor
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight">Shape the long-answer curriculum.</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-cyan-50">Editorial workspace for collections, prompts, model answers and marking points.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDialog("new")}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-teal-800 hover:bg-cyan-50 self-start lg:self-auto"
-          >
-            <Plus size={16} /> New question
-          </button>
-        </div>
+  return <div className="mx-auto max-w-[1500px] space-y-5 pb-10">
+    <section className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-700 via-teal-700 to-emerald-700 px-5 py-6 text-white shadow-lg sm:px-7">
+      <div className="pointer-events-none absolute right-4 top-[-52px] h-48 w-48 rounded-full border-[24px] border-white/10" />
+      <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-100"><BookMarked size={15}/> Theory Vault Editor</div><h1 className="text-3xl font-bold tracking-tight">Shape the long-answer curriculum.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-cyan-50">A separate editorial workspace for collections, prompts, model answers and marking points — never mixed with the MCQ Q-Bank.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setDialog("import")} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 text-sm font-bold hover:bg-white/20"><Upload size={16}/> Theory import</button><button type="button" onClick={() => setDialog("new")} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-teal-800 hover:bg-cyan-50"><Plus size={16}/> New theory question</button></div></div>
+    </section>
+
+    <div className="grid gap-5 xl:grid-cols-[255px_minmax(0,1fr)]">
+      <aside className="rounded-2xl border border-border bg-card p-3"><div className="mb-3 flex items-center justify-between px-2"><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Curriculum tree</p><button type="button" className="rounded-lg p-1.5 text-primary hover:bg-primary/10" aria-label="Add collection"><Plus size={16}/></button></div><button type="button" onClick={() => setCollection("All collections")} className={`mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-semibold ${collection === "All collections" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}><span>All collections</span><span>{questions.length}</span></button>{hierarchy.map(group => <div key={group.name} className="mb-1 rounded-xl border border-border/70"><button type="button" onClick={() => setCollection(group.name)} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold ${collection === group.name ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}><FolderTree size={16}/><span className="flex-1">{group.name}</span><span className="text-xs text-muted-foreground">{group.count}</span></button><div className="space-y-1 px-3 pb-3">{group.disciplines.map(d => <div key={d} className="flex items-center gap-2 py-1 text-xs text-muted-foreground"><ChevronRight size={13}/><span className="truncate">{d}</span></div>)}</div></div>)}<div className="mt-4 rounded-xl bg-muted/60 p-3 text-xs text-muted-foreground"><ShieldCheck size={16} className="mb-2 text-emerald-600"/><b className="block text-foreground">Safe deletion is on</b>Published questions must be archived or replaced; collections with content cannot be deleted.</div></aside>
+      <section className="min-w-0 space-y-4"><div className="rounded-2xl border border-border bg-card p-4"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h2 className="font-bold">Editorial queue</h2><p className="mt-1 text-sm text-muted-foreground">{filtered.length} questions · hierarchy-aware ordering</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => setDialog("move")} disabled={!selected.length} className="min-h-10 rounded-xl border border-border px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 hover:bg-muted">Move / reassign</button><button type="button" onClick={() => setDialog("delete")} disabled={!selected.length} className="min-h-10 rounded-xl border border-destructive/30 px-3 text-sm font-semibold text-destructive disabled:cursor-not-allowed disabled:opacity-40 hover:bg-destructive/10">Delete</button></div></div><label className="mt-4 flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 text-muted-foreground focus-within:ring-2 focus-within:ring-primary/30"><Search size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search prompts, disciplines or sets" className="w-full bg-transparent text-sm text-foreground outline-none"/></label></div>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card"><div className="hidden grid-cols-[34px_52px_minmax(260px,1fr)_150px_110px_150px] gap-3 border-b border-border bg-muted/50 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground lg:grid"><span/><span>Order</span><span>Prompt & hierarchy</span><span>Marking</span><span>Status</span><span>Actions</span></div><div className="divide-y divide-border">{filtered.map(q => <article key={q.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[34px_52px_minmax(260px,1fr)_150px_110px_150px] lg:items-center"><input type="checkbox" checked={selected.includes(q.id)} onChange={() => toggle(q.id)} aria-label={`Select ${q.prompt}`} className="h-4 w-4 accent-primary"/><div className="flex items-center gap-1"><span className="w-5 text-sm font-bold">{q.order}</span><span className="flex flex-col"><button type="button" onClick={() => reorder(q.id, -1)} aria-label="Move up" className="rounded p-0.5 text-muted-foreground hover:bg-muted"><ArrowUp size={14}/></button><button type="button" onClick={() => reorder(q.id, 1)} aria-label="Move down" className="rounded p-0.5 text-muted-foreground hover:bg-muted"><ArrowDown size={14}/></button></span></div><div><p className="font-semibold leading-5">{q.prompt}</p><p className="mt-1 text-xs text-muted-foreground">{q.collection} <span className="mx-1">/</span> {q.discipline} <span className="mx-1">/</span> {q.set}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">Model answer: {q.modelAnswer}</p></div><div className="flex items-center gap-2 text-sm"><ClipboardCheck size={16} className="text-primary"/><span><b>{q.markingPoints}</b> points</span></div><StatusBadge status={q.status}/><div className="flex items-center gap-1"><select value={q.status} onChange={e => updateStatus(q.id, e.target.value as Status)} aria-label="Change editorial status" className="h-9 rounded-lg border border-border bg-background px-2 text-xs font-semibold"><option>Draft</option><option>In review</option><option>Published</option><option>Archived</option></select><button type="button" aria-label="More question options" className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><MoreHorizontal size={17}/></button></div></article>)}</div></div>
+        <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100"><CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600"/><p>{notice}</p></div>
       </section>
-
-      {/* Main layout */}
-      <div className="grid gap-5 xl:grid-cols-[255px_minmax(0,1fr)]">
-        {/* Curriculum tree sidebar */}
-        <aside className="rounded-2xl border border-border bg-card p-3">
-          <div className="mb-3 flex items-center justify-between px-2">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Curriculum tree</p>
-            <button type="button" className="rounded-lg p-1.5 text-primary hover:bg-primary/10" aria-label="Add collection"><Plus size={16} /></button>
-          </div>
-          <button
-            type="button"
-            onClick={() => setCollection("All collections")}
-            className={`mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-semibold ${collection === "All collections" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-          >
-            <span>All collections</span><span>{questions.length}</span>
-          </button>
-          {hierarchy.map(group => (
-            <div key={group.name} className="mb-1 rounded-xl border border-border/70">
-              <button
-                type="button"
-                onClick={() => setCollection(group.name)}
-                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold ${collection === group.name ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}
-              >
-                <FolderTree size={16} /><span className="flex-1">{group.name}</span><span className="text-xs text-muted-foreground">{group.count}</span>
-              </button>
-              <div className="space-y-1 px-3 pb-3">
-                {group.disciplines.map(d => (
-                  <div key={d} className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
-                    <ChevronRight size={13} /><span className="truncate">{d}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          <div className="mt-4 rounded-xl bg-muted/60 p-3 text-xs text-muted-foreground">
-            <ShieldCheck size={16} className="mb-2 text-emerald-600" />
-            <b className="block text-foreground">Safe deletion is on</b>
-            Published questions must be archived or replaced; collections with content cannot be deleted.
-          </div>
-        </aside>
-
-        {/* Editorial queue */}
-        <section className="min-w-0 space-y-4">
-          <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-              <div>
-                <h2 className="font-bold">Editorial queue</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{filtered.length} questions · hierarchy-aware ordering</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setDialog("move")} disabled={!selected.length} className="min-h-10 rounded-xl border border-border px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 hover:bg-muted">Move / reassign</button>
-                <button type="button" onClick={() => setDialog("delete")} disabled={!selected.length} className="min-h-10 rounded-xl border border-destructive/30 px-3 text-sm font-semibold text-destructive disabled:cursor-not-allowed disabled:opacity-40 hover:bg-destructive/10">Delete</button>
-              </div>
-            </div>
-            <label className="mt-4 flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 text-muted-foreground focus-within:ring-2 focus-within:ring-primary/30">
-              <Search size={17} />
-              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search prompts, disciplines or sets" className="w-full bg-transparent text-sm text-foreground outline-none" />
-            </label>
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
-            <div className="hidden grid-cols-[34px_52px_minmax(260px,1fr)_150px_110px_150px] gap-3 border-b border-border bg-muted/50 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground lg:grid">
-              <span /><span>Order</span><span>Prompt & hierarchy</span><span>Marking</span><span>Status</span><span>Actions</span>
-            </div>
-            <div className="divide-y divide-border">
-              {filtered.map(q => (
-                <article key={q.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[34px_52px_minmax(260px,1fr)_150px_110px_150px] lg:items-center">
-                  <input type="checkbox" checked={selected.includes(q.id)} onChange={() => toggle(q.id)} aria-label={`Select ${q.prompt}`} className="h-4 w-4 accent-primary" />
-                  <div className="flex items-center gap-1">
-                    <span className="w-5 text-sm font-bold">{q.order}</span>
-                    <span className="flex flex-col">
-                      <button type="button" onClick={() => reorder(q.id, -1)} aria-label="Move up" className="rounded p-0.5 text-muted-foreground hover:bg-muted"><ArrowUp size={14} /></button>
-                      <button type="button" onClick={() => reorder(q.id, 1)} aria-label="Move down" className="rounded p-0.5 text-muted-foreground hover:bg-muted"><ArrowDown size={14} /></button>
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-semibold leading-5">{q.prompt}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{q.collection} <span className="mx-1">/</span> {q.discipline} <span className="mx-1">/</span> {q.set}</p>
-                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">Model answer: {q.modelAnswer}</p>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <ClipboardCheck size={16} className="text-primary" /><span><b>{q.markingPoints}</b> points</span>
-                  </div>
-                  <StatusBadge status={q.status} />
-                  <div className="flex items-center gap-1">
-                    <select value={q.status} onChange={e => updateStatus(q.id, e.target.value as Status)} aria-label="Change editorial status" className="h-9 rounded-lg border border-border bg-background px-2 text-xs font-semibold">
-                      <option>Draft</option><option>In review</option><option>Published</option><option>Archived</option>
-                    </select>
-                    <button type="button" aria-label="More question options" className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><MoreHorizontal size={17} /></button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100">
-            <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600" /><p>{notice}</p>
-          </div>
-        </section>
-      </div>
-
-      {/* Dialogs */}
-      {dialog === "new" && (
-        <Dialog title="Create theory question" onClose={() => setDialog(null)}>
-          <div className="space-y-4 p-6">
-            <label className="block text-sm font-semibold">Question prompt
-              <textarea value={newPrompt} onChange={e => setNewPrompt(e.target.value)} autoFocus rows={5} placeholder="Write the long-answer prompt…" className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-primary/30" />
-            </label>
-            <p className="text-xs text-muted-foreground">New questions begin as drafts in End of Rotation / Unassigned discipline. Add a model answer and marking points before review.</p>
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setDialog(null)} className="min-h-11 rounded-xl px-4 text-sm font-bold hover:bg-muted">Cancel</button>
-              <button type="button" onClick={createQuestion} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Create draft</button>
-            </div>
-          </div>
-        </Dialog>
-      )}
-      {dialog === "delete" && (
-        <Dialog title="Delete selected drafts" onClose={() => setDialog(null)}>
-          <div className="p-6">
-            <div className="flex gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-              <AlertTriangle className="shrink-0 text-amber-600" />
-              <p>Only draft questions can be deleted. Published questions must be archived or replaced to preserve learner history and auditability.</p>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setDialog(null)} className="min-h-11 rounded-xl px-4 text-sm font-bold hover:bg-muted">Cancel</button>
-              <button type="button" onClick={removeSelected} className="min-h-11 rounded-xl bg-destructive px-4 text-sm font-bold text-white">Delete eligible drafts</button>
-            </div>
-          </div>
-        </Dialog>
-      )}
-      {dialog === "move" && (
-        <Dialog title="Move or reassign questions" onClose={() => setDialog(null)}>
-          <div className="space-y-4 p-6">
-            <p className="text-sm text-muted-foreground">{selected.length} selected question{selected.length === 1 ? "" : "s"} will move to the destination below. Published questions are returned to review so the reassignment is checked before it is shown to learners.</p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {["End of Year", "Cardiovascular Medicine", "Imported set"].map((label, i) => (
-                <label key={label} className="text-xs font-bold text-muted-foreground">{["Collection", "Discipline", "Set"][i]}
-                  <input readOnly value={label} className="mt-1 w-full rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground" />
-                </label>
-              ))}
-            </div>
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setDialog(null)} className="min-h-11 rounded-xl px-4 text-sm font-bold hover:bg-muted">Cancel</button>
-              <button type="button" onClick={moveSelected} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Move and record</button>
-            </div>
-          </div>
-        </Dialog>
-      )}
     </div>
-  )
+
+    <section className="grid gap-4 md:grid-cols-3"><InfoCard icon={<History size={19}/>} title="Audit trail" text="Every import, move, publication and rollback is recorded."/><InfoCard icon={<ShieldCheck size={19}/>} title="Editorial safeguards" text="No direct deletion of published material or non-empty hierarchy nodes."/><InfoCard icon={<Sparkles size={19}/>} title="OSCE Station Editor" text="Unavailable until OSCE is built." muted/></section>
+
+    {dialog === "new" && <Dialog title="Create theory question" onClose={() => setDialog(null)}><div className="space-y-4 p-6"><label className="block text-sm font-semibold">Question prompt<textarea value={newPrompt} onChange={e => setNewPrompt(e.target.value)} autoFocus rows={5} placeholder="Write the long-answer prompt…" className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-primary/30"/></label><p className="text-xs text-muted-foreground">New questions begin as drafts in End of Rotation / Unassigned discipline. Add a model answer and marking points before review.</p><div className="flex justify-end gap-2"><button type="button" onClick={() => setDialog(null)} className="min-h-11 rounded-xl px-4 text-sm font-bold hover:bg-muted">Cancel</button><button type="button" onClick={createQuestion} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Create draft</button></div></div></Dialog>}
+    {dialog === "delete" && <Dialog title="Delete selected drafts" onClose={() => setDialog(null)}><div className="p-6"><div className="flex gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm"><AlertTriangle className="shrink-0 text-amber-600"/><p>Only draft questions can be deleted. Published questions must be archived or replaced to preserve learner history and auditability.</p></div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setDialog(null)} className="min-h-11 rounded-xl px-4 text-sm font-bold hover:bg-muted">Cancel</button><button type="button" onClick={removeSelected} className="min-h-11 rounded-xl bg-destructive px-4 text-sm font-bold text-white">Delete eligible drafts</button></div></div></Dialog>}
+    {dialog === "move" && <Dialog title="Move or reassign questions" onClose={() => setDialog(null)}><div className="space-y-4 p-6"><p className="text-sm text-muted-foreground">{selected.length} selected question{selected.length === 1 ? "" : "s"} will move to the destination below. Published questions are returned to review so the reassignment is checked before it is shown to learners.</p><div className="grid gap-3 sm:grid-cols-3">{["End of Year", "Cardiovascular Medicine", "Imported set"].map((label, i) => <label key={label} className="text-xs font-bold text-muted-foreground">{["Collection", "Discipline", "Set"][i]}<input readOnly value={label} className="mt-1 w-full rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground"/></label>)}</div><div className="flex justify-end gap-2"><button type="button" onClick={() => setDialog(null)} className="min-h-11 rounded-xl px-4 text-sm font-bold hover:bg-muted">Cancel</button><button type="button" onClick={moveSelected} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Move and record</button></div></div></Dialog>}
+    {dialog === "import" && <TheoryImportDialog onClose={() => setDialog(null)} onCommit={() => { setDialog(null); setNotice("Import job committed: 24 valid questions are queued for resumable processing. Audit record IMP-0249 created.") }}/>} 
+  </div>
 }
+
+function InfoCard({ icon, title, text, muted }: { icon: React.ReactNode; title: string; text: string; muted?: boolean }) { return <div className={`rounded-2xl border p-4 ${muted ? "border-dashed border-border bg-muted/30" : "border-border bg-card"}`}><div className={`mb-3 ${muted ? "text-muted-foreground" : "text-primary"}`}>{icon}</div><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">{text}</p></div> }
+
+function TheoryImportDialog({ onClose, onCommit }: { onClose: () => void; onCommit: () => void }) {
+  const [step, setStep] = useState<"upload" | "preview" | "committing">("upload")
+  return <Dialog title="Theory bulk import" onClose={onClose}><div className="p-6">{step === "upload" ? <><div className="rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 p-8 text-center"><FileUp className="mx-auto text-primary" size={30}/><h3 className="mt-3 font-bold">Upload a structured theory file</h3><p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">CSV or JSON with collection, discipline, optional set, order, prompt, model answer, marking points and status fields.</p><button type="button" onClick={() => setStep("preview")} className="mt-5 min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Validate import file</button></div><p className="mt-4 text-xs text-muted-foreground">Large jobs run in resumable chunks. Nothing is published or committed during validation.</p></> : step === "preview" ? <><div className="grid gap-3 sm:grid-cols-3"><Stat label="Rows read" value="28"/><Stat label="Ready to import" value="24" good/><Stat label="Needs attention" value="4" warn/></div><div className="mt-4 rounded-xl border border-border"><div className="border-b border-border px-4 py-3 text-sm font-bold">Validation preview</div><div className="space-y-2 p-4 text-sm"><p className="flex gap-2"><CheckCircle2 size={17} className="shrink-0 text-emerald-600"/>2 duplicate prompts detected and will be skipped.</p><p className="flex gap-2"><AlertTriangle size={17} className="shrink-0 text-amber-600"/>Rows 9 and 17: missing marking points.</p><p className="flex gap-2"><AlertTriangle size={17} className="shrink-0 text-amber-600"/>Rows 21 and 25: invalid status value.</p></div></div><p className="mt-4 text-xs text-muted-foreground">Commit only valid rows now, then resume or rollback this job from the import audit trail.</p><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setStep("upload")} className="min-h-11 rounded-xl px-4 text-sm font-bold hover:bg-muted">Back</button><button type="button" onClick={() => setStep("committing")} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Commit 24 valid rows</button></div></> : <div className="py-8 text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary/20 border-t-primary"/><h3 className="mt-4 font-bold">Creating resumable import job…</h3><p className="mt-2 text-sm text-muted-foreground">Valid rows will remain in draft until an editor publishes them.</p><button type="button" onClick={onCommit} className="mt-5 min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Finish commit</button></div>}</div></Dialog>
+}
+function Stat({ label, value, good, warn }: { label: string; value: string; good?: boolean; warn?: boolean }) { return <div className={`rounded-xl border p-3 ${good ? "border-emerald-500/30 bg-emerald-500/5" : warn ? "border-amber-500/30 bg-amber-500/5" : "border-border"}`}><p className="text-xs font-semibold text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold">{value}</p></div> }
