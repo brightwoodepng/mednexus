@@ -20,6 +20,7 @@ export interface AppUser {
   role: UserRole
   /** Display hint from a server-verified login; never used for authorization. */
   serverRole?: "STUDENT" | "ADMIN" | "SUPER_ADMIN"
+  canAccessAdmin?: boolean
   status?: string
   indexNumber?: string
   level?: string
@@ -120,6 +121,7 @@ type SessionAccount = {
   status: string
   classLevel: string
   role: NonNullable<AppUser["serverRole"]>
+  canAccessAdmin: boolean
 }
 
 async function getSessionAccount(): Promise<SessionAccount | null> {
@@ -227,6 +229,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             name: account.name,
             role: "user",
             serverRole: account.role,
+            canAccessAdmin: account.canAccessAdmin,
             status: account.status,
             classLevel: account.classLevel,
             level: account.classLevel,
@@ -350,6 +353,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         name: account?.name ?? name,
         role: "user",
         serverRole: account?.role,
+        canAccessAdmin: account?.canAccessAdmin,
         status: account?.status ?? data.status,
         indexNumber: data.indexNumber,
         classLevel: account?.classLevel,
