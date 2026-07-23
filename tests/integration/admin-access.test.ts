@@ -84,6 +84,20 @@ describe("admin access integration", () => {
     expect(await requireAdminRequest(request(adminToken), "manage_system")).toEqual({ uid: "learner-1", role: "SUPER_ADMIN" })
   })
 
+  it("revokes console access when every operational permission is removed", async () => {
+    const { getVerifiedAdmin } = await import("@/lib/admin-access")
+    const { createSessionToken } = await import("@/lib/session-auth")
+    database.role = "ADMIN"
+    database.permissions = [
+      { permission: "manage_mcq_content", granted: false },
+      { permission: "manage_theory_content", granted: false },
+      { permission: "manage_assessments", granted: false },
+      { permission: "manage_users", granted: false },
+      { permission: "manage_broadcasts", granted: false },
+    ]
+    expect(await getVerifiedAdmin(createSessionToken("learner-1", "ADMIN"))).toBeNull()
+  })
+
   it("protects the users route while allowing a verified administrator", async () => {
     const { GET } = await import("@/app/api/admin/users/route")
     const { createSessionToken } = await import("@/lib/session-auth")
