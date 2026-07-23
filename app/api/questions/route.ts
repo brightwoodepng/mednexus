@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyAdminToken } from "@/lib/admin-auth"
+import { requireAdminRequest } from "@/lib/admin-access"
 
 export const maxDuration = 120
 
@@ -64,8 +64,7 @@ export async function GET() {
 
 // PUT /api/questions — admin only, saves question bank
 export async function PUT(req: NextRequest) {
-  const token = req.headers.get("x-admin-token") ?? ""
-  if (!verifyAdminToken(token)) {
+  if (!await requireAdminRequest(req, "manage_mcq_content")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

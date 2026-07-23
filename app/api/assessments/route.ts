@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyAdminToken } from "@/lib/admin-auth"
+import { requireAdminRequest } from "@/lib/admin-access"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -27,14 +27,13 @@ function rowToAssessment(row: Record<string, unknown>) {
 
 // GET /api/assessments
 // Public: returns live assessments only
-// Admin (x-admin-token header): returns all assessments
+// Administrators receive the management view after a server-verified role check
 export async function GET(req: NextRequest) {
   try {
     const pool = await getPool()
     if (!pool) return NextResponse.json({ assessments: [] })
 
-    const token = req.headers.get("x-admin-token") ?? ""
-    const isAdmin = verifyAdminToken(token)
+    const isAdmin = Boolean(await requireAdminRequest(req, "manage_assessments"))
 
     const { rows } = isAdmin
       ? await pool.query("SELECT * FROM mednexus_assessments ORDER BY created_at DESC")
@@ -51,8 +50,7 @@ export async function GET(req: NextRequest) {
 // body: { title, moduleName, questionCount, timeLimitMins, triesAllowed, passMark }
 export async function POST(req: NextRequest) {
   try {
-    const token = req.headers.get("x-admin-token") ?? ""
-    if (!verifyAdminToken(token)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!await requireAdminRequest(req, "manage_assessments")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const pool = await getPool()
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })

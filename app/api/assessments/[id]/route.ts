@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyAdminToken } from "@/lib/admin-auth"
+import { requireAdminRequest } from "@/lib/admin-access"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -33,8 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const pool = await getPool()
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
 
-    const token = req.headers.get("x-admin-token") ?? ""
-    const isAdmin = verifyAdminToken(token)
+    const isAdmin = Boolean(await requireAdminRequest(req, "manage_assessments"))
     const shareToken = req.nextUrl.searchParams.get("token")
 
     let row: Record<string, unknown> | null = null
@@ -83,8 +82,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // body: { status?, title?, timeLimitMins?, triesAllowed?, passMark? }
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const token = req.headers.get("x-admin-token") ?? ""
-    if (!verifyAdminToken(token)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!await requireAdminRequest(req, "manage_assessments")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { id } = await params
     const pool = await getPool()
@@ -116,8 +114,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 // DELETE /api/assessments/[id] — admin only
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const token = req.headers.get("x-admin-token") ?? ""
-    if (!verifyAdminToken(token)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!await requireAdminRequest(req, "manage_assessments")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { id } = await params
     const pool = await getPool()
