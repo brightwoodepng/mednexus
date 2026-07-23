@@ -22,9 +22,20 @@ export async function POST(req: NextRequest) {
   try {
     // Accept both `classLevel` (new canonical name) and `level` (legacy) so
     // existing clients don't break while new clients migrate.
-    const { name, classLevel, level, indexNumber, password } = await req.json()
+    let body: unknown
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+    }
 
-    if (!name?.trim() || !indexNumber?.trim() || !password?.trim()) {
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      return NextResponse.json({ error: "Request body must be a JSON object" }, { status: 400 })
+    }
+
+    const { name, classLevel, level, indexNumber, password } = body as Record<string, unknown>
+
+    if (typeof name !== "string" || typeof indexNumber !== "string" || typeof password !== "string" || !name.trim() || !indexNumber.trim() || !password.trim()) {
       return NextResponse.json(
         { error: "Name, index number, and password are required" },
         { status: 400 },
@@ -38,7 +49,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Resolve classLevel: prefer new field, fall back to legacy field.
-    const resolvedLevel: string = (classLevel ?? level ?? "").trim()
+    const suppliedLevel = classLevel ?? level ?? ""
+    if (typeof suppliedLevel !== "string") {
+      return NextResponse.json({ error: "classLevel must be a string" }, { status: 400 })
+    }
+    const resolvedLevel = suppliedLevel.trim()
 
     // Validate against the master level list when a value is supplied.
     // We allow empty string for legacy clients that don't send a level.
@@ -138,7 +153,16 @@ export async function POST(req: NextRequest) {
       status,
       indexNumber: formatted,
     })
-  } catch (err) {
+  } catch (err: unknown) {
+    // The preflight duplicate check gives a friendly response in the common
+    // case. Keep the same response if a simultaneous registration wins the
+    // unique-index race before this request inserts its row.
+    if (typeof err === "object" && err !== null && "code" in err && err.code === "23505") {
+      return NextResponse.json(
+        { error: "An account with this index number already exists" },
+        { status: 409 },
+      )
+    }
     console.error("[auth/register]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
