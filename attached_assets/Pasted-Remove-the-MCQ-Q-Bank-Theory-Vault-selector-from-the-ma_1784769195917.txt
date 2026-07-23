@@ -1,0 +1,177 @@
+Remove the MCQ Q-Bank / Theory Vault selector from the main application header. The header should retain only:
+
+
+
+* MedNexus brand;
+
+* MCQ-only Trial / Exam control when the active hub is MCQ;
+
+* appearance/theme button;
+
+* notification button.
+
+
+
+Remove the large `STUDY HUBS` card panel from the sidebar that displays full MCQ, Theory, and OSCE cards.
+
+
+
+Use the currently unused top region of the sidebar, directly beneath the collapse/close control, for one compact study-hub dropdown.
+
+
+
+### Closed dropdown appearance
+
+
+
+Display the active hub as a full-width sidebar button:
+
+
+
+* current hub icon;
+
+* current hub title, for example `MCQ Q-Bank` or `Theory Vault`;
+
+* small subtitle such as `Switch study workspace`;
+
+* downward chevron;
+
+* selected-state styling that matches the active sidebar item;
+
+* no duplicate large hub cards or “Choose workspace” panel.
+
+
+
+The closed control should fit naturally in the sidebar’s top section and should not consume more vertical space than one or two normal navigation items.
+
+
+
+### Open dropdown behaviour
+
+
+
+When clicked, open a positioned dropdown/popover below the control containing:
+
+
+
+* `MCQ Q-Bank` with a short description;
+
+* `Theory Vault` with a short description;
+
+* `OSCE Hub` marked `Coming soon` and disabled.
+
+
+
+Each available option should show:
+
+
+
+* icon;
+
+* title;
+
+* concise subtitle;
+
+* active checkmark for the current hub.
+
+
+
+Selecting MCQ Q-Bank or Theory Vault must:
+
+
+
+* navigate client-side to that hub’s landing route;
+
+* close the dropdown;
+
+* close the mobile drawer if it is open;
+
+* retain account state, theme, notifications, and sidebar state;
+
+* update the selected/current hub label immediately.
+
+
+
+OSCE must remain visible but disabled, with no navigation action.
+
+
+
+### Responsive and accessible behaviour
+
+
+
+On desktop:
+
+
+
+* position the dropdown below the sidebar control;
+
+* keep it inside the sidebar stacking context;
+
+* close it when clicking outside or pressing Escape.
+
+
+
+On mobile:
+
+
+
+* render the same control in the mobile sidebar/drawer;
+
+* ensure the popup is not clipped by drawer scrolling;
+
+* close the drawer after selecting an available hub.
+
+
+
+Add accessible semantics:
+
+
+
+* button `aria-expanded`;
+
+* menu/menuitem or equivalent accessible popover pattern;
+
+* keyboard navigation;
+
+* visible focus states;
+
+* disabled OSCE explanation.
+
+
+
+### Component ownership
+
+
+
+Create a reusable component such as:\
+
+`components/navigation/study-hub-dropdown.tsx`
+
+
+
+Use it in the shared sidebar/mobile drawer rather than duplicating separate header and sidebar switchers.
+
+
+
+Drive all labels, icons, availability, descriptions, and landing routes from the central study-hub registry. Do not hard-code MCQ/Theory/OSCE options separately in the header, sidebar, and mobile drawer.
+
+
+
+### Visual acceptance criteria
+
+
+
+* The header no longer shows `MCQ Q-Bank` and `Theory Vault` hub-selection pills.
+
+* The large sidebar `STUDY HUBS` card block no longer exists.
+
+* The top of the sidebar contains one compact current-hub dropdown.
+
+* The sidebar has more vertical room for its actual navigation items.
+
+* Trial / Exam remains visible only for MCQ Q-Bank.
+
+* The same dropdown works in desktop sidebar and mobile drawer.
+
+* The app still uses the current MedNexus theme system without introducing a separate visual style.

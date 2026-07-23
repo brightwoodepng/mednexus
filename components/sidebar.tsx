@@ -22,7 +22,7 @@ import {
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
-import { StudyHubSwitcher } from "@/components/study-hub-switcher"
+import { StudyHubDropdown, StudyHubDropdownIcon } from "@/components/navigation/study-hub-dropdown"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 
 function UsersIcon({ size = 18 }: { size?: number }) {
@@ -130,7 +130,7 @@ export function Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <StudyHubSwitcher activeHub={activeStudyHub} onSelect={setActiveStudyHub} className="mb-3" />
+        <StudyHubDropdown activeHub={activeStudyHub} onSelect={setActiveStudyHub} onAfterSelect={onCloseMobile} />
         <nav className="flex flex-col gap-0.5">
           {activeStudyHub === "theory-vault" ? <>
             <NavButton glass={isGlassEnabled} active={screen === "theory-dashboard"} onClick={() => nav("theory-dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
@@ -238,6 +238,10 @@ export function Sidebar({
       >
         <ChevronLeftIcon size={18} className="rotate-180" />
       </button>
+
+      <StudyHubDropdownIcon activeHub={activeStudyHub} onExpand={onExpand} />
+
+      <div className={`my-2 w-6 h-px ${dividerCls}`} />
 
       <IconButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
 
