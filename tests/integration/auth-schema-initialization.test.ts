@@ -122,6 +122,34 @@ describe("account entry schema initialization", () => {
     expect(invalidLevel.status).toBe(422)
   })
 
+  it("returns readable validation and duplicate-account responses", async () => {
+    const { POST } = await import("@/app/api/auth/register/route")
+
+    const invalidJson = await POST(new Request("http://mednexus.test/api/auth/register", {
+      method: "POST", headers: { "content-type": "application/json" }, body: "{",
+    }) as never)
+    expect(invalidJson.status).toBe(400)
+    await expect(invalidJson.json()).resolves.toEqual({ error: "Invalid JSON body" })
+
+    const invalidFields = await POST(new Request("http://mednexus.test/api/auth/register", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Learner", classLevel: 400, indexNumber: "learner-0001", password: 123456 }),
+    }) as never)
+    expect(invalidFields.status).toBe(400)
+    await expect(invalidFields.json()).resolves.toEqual({ error: "Name, index number, and password are required" })
+
+    const first = await POST(post("/api/auth/register", {
+      name: "Learner", classLevel: "Level 400", indexNumber: "learner-0001", password: "secure-password",
+    }) as never)
+    expect(first.status).toBe(200)
+
+    const duplicate = await POST(post("/api/auth/register", {
+      name: "Learner Again", classLevel: "Level 400", indexNumber: "learner-0001", password: "secure-password",
+    }) as never)
+    expect(duplicate.status).toBe(409)
+    await expect(duplicate.json()).resolves.toEqual({ error: "An account with this index number already exists" })
+  })
+
   it("initializes the schema before login and guest entry", async () => {
     const { POST: register } = await import("@/app/api/auth/register/route")
     const registration = await register(post("/api/auth/register", {
