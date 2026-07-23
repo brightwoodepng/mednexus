@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { requireAdminRequest } from "@/lib/admin-access"
+import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 
 async function getPool() {
   const { default: pool } = await import("@/lib/db")
@@ -11,7 +11,7 @@ async function requireAdmin(req: NextRequest) { return Boolean(await requireAdmi
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
   if (!await requireAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return await adminAccessDenied(req)
   }
 
   const { uid } = await params
@@ -75,7 +75,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ui
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
   if (!await requireAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return await adminAccessDenied(req)
   }
 
   const { uid } = await params
