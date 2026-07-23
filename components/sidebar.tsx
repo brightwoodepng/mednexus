@@ -21,6 +21,7 @@ import {
   TrophyIcon,
   StethoscopeIcon,
   PencilIcon,
+  SearchIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
@@ -243,16 +244,25 @@ export function Sidebar({
         <ChevronLeftIcon size={16} className="rotate-180" />
       </button>
 
-      <IconButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
-
-      <div className={`my-2 w-6 h-px ${dividerCls}`} />
-
-      <IconButton glass={isGlassEnabled} active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
-      <IconButton glass={isGlassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
-      <IconButton glass={isGlassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
-      <IconButton glass={isGlassEnabled} active={screen === "game"} onClick={() => nav("game")} label="Game Mode"><GamepadIcon size={18} /></IconButton>
-      <IconButton glass={isGlassEnabled} active={screen === "store"} onClick={() => nav("store")} label="Nexus Store"><StoreIcon size={18} /></IconButton>
-      <IconButton glass={isGlassEnabled} active={screen === "leaderboard"} onClick={() => nav("leaderboard")} label="Leaderboard"><TrophyIcon size={18} /></IconButton>
+      {activeStudyHub === "theory-vault" ? <>
+        <IconButton glass={isGlassEnabled} active={screen === "theory-dashboard"} onClick={() => nav("theory-dashboard")} label="Theory dashboard"><LayoutDashboardIcon size={18} /></IconButton>
+        <div className={`my-2 w-6 h-px ${dividerCls}`} />
+        <IconButton glass={isGlassEnabled} active={screen === "theory-browse"} onClick={() => nav("theory-browse")} label="Browse Questions"><LayersIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "theory-bookmarks"} onClick={() => nav("theory-bookmarks")} label="Bookmarks"><TrophyIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "theory-notes"} onClick={() => nav("theory-notes")} label="My Notes"><PencilIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "theory-revision"} onClick={() => nav("theory-revision")} label="Revision Queue"><ActivityIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "theory-progress"} onClick={() => nav("theory-progress")} label="Progress"><TrophyIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "theory-search"} onClick={() => nav("theory-search")} label="Search"><SearchIcon size={18} /></IconButton>
+      </> : <>
+        <IconButton glass={isGlassEnabled} active={screen === "dashboard"} onClick={() => nav("dashboard")} label="Dashboard"><LayoutDashboardIcon size={18} /></IconButton>
+        <div className={`my-2 w-6 h-px ${dividerCls}`} />
+        <IconButton glass={isGlassEnabled} active={screen === "modules"} onClick={() => nav("modules")} label="Study Modules"><LayersIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "weak-areas"} onClick={() => nav("weak-areas")} label="Weak Areas"><ActivityIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "live-assessments"} onClick={() => nav("live-assessments")} label="Live Assessments" liveDot={hasLiveAssessment}><RadioIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "game"} onClick={() => nav("game")} label="Game Mode"><GamepadIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "store"} onClick={() => nav("store")} label="Nexus Store"><StoreIcon size={18} /></IconButton>
+        <IconButton glass={isGlassEnabled} active={screen === "leaderboard"} onClick={() => nav("leaderboard")} label="Leaderboard"><TrophyIcon size={18} /></IconButton>
+      </>}
 
       {isAdmin && (
         <>
