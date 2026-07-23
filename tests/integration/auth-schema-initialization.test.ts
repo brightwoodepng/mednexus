@@ -34,6 +34,10 @@ const query = vi.fn(async (sql: string, params: unknown[] = []) => {
     const user = registeredUsers.find(({ index_number }) => index_number === params[0])
     return { rows: user ? [user] : [], rowCount: user ? 1 : 0 }
   }
+  if (sql.includes("FROM mednexus_registered_users u")) {
+    const user = registeredUsers.find(({ uid }) => uid === params[0])
+    return { rows: user ? [{ role: user.role, status: user.status }] : [], rowCount: user ? 1 : 0 }
+  }
   if (sql.includes("INSERT INTO mednexus_registered_users")) {
     registeredUsers.push({
       uid: params[0] as string,
@@ -77,6 +81,8 @@ vi.mock("@/lib/db", () => ({
   default: { query, connect: async () => ({ query, release: vi.fn() }) },
   ensureSchema,
 }))
+vi.mock("server-only", () => ({}))
+vi.mock("next/headers", () => ({ cookies: vi.fn(async () => ({ get: vi.fn(() => undefined) })) }))
 
 function post(url: string, body: Record<string, string>) {
   return new Request(`http://mednexus.test${url}`, {
