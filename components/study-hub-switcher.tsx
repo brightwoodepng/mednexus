@@ -11,7 +11,7 @@ export const STUDY_HUBS: ReadonlyArray<{
   available: boolean
 }> = [
   { id: "mcq-qbank", name: "MCQ Q-Bank", description: "Questions, practice and exams", available: true },
-  { id: "theory-vault", name: "Theory Vault", description: "Core notes and revision guides", available: true },
+  { id: "theory-vault", name: "Theory Vault", description: "Core notes and revision guides", available: false },
   { id: "osce-hub", name: "OSCE Hub", description: "Clinical stations and feedback", available: false },
 ]
 
