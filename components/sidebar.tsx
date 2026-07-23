@@ -160,7 +160,7 @@ export function Sidebar({
               <NavButton glass={isGlassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
               <p className="px-3 pb-1 pt-1 text-[9px] font-bold uppercase tracking-widest text-sidebar-foreground/45">Content tools</p>
               <NavButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="MCQ Q-Bank Editor" adminBadge="Admin" />
-              <NavButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} icon={<LayersIcon size={18} />} label="Theory Vault Editor" adminBadge="Admin" />
+              <NavButton glass={isGlassEnabled} active={false} onClick={() => { window.location.href = "/admin/theory" }} icon={<LayersIcon size={18} />} label="Theory Administration" adminBadge="Admin" />
               <NavButton glass={isGlassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
             </>
           )}
