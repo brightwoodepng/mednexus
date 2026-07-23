@@ -503,17 +503,6 @@ export async function ensureSchema() {
     DELETE FROM mednexus_guest_users  WHERE expires_at < NOW();
   `)
 
-  // Required Theory entry points are seed data rather than hard-coded UI
-  // labels, so all clients can query the same curriculum hierarchy.
-  await pool.query(`
-    INSERT INTO mednexus_theory_collections (id, slug, title, status, sort_order)
-    VALUES
-      ('theory-collection-end-of-rotation', 'end-of-rotation', 'End of Rotation', 'published', 10),
-      ('theory-collection-end-of-year', 'end-of-year', 'End of Year', 'published', 20)
-    ON CONFLICT (slug) DO UPDATE
-      SET title = EXCLUDED.title, sort_order = EXCLUDED.sort_order, updated_at = NOW()
-  `)
-
   // ── Step 4: Host-migration trigger ────────────────────────────────────────
   // When a player whose id matches host_id has their status set to
   // 'disconnected', the trigger instantly promotes the oldest remaining active
