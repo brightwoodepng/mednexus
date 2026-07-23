@@ -608,9 +608,8 @@ export function MedNexusApp() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className={`items-center justify-between border-b border-border bg-card px-3 py-2 sm:px-4 sm:py-2.5 ${safeScreen === "game" ? "hidden md:flex" : "flex"}`}>
-          {/* Left: mobile hamburger + logo */}
-          <div className="flex items-center gap-0.5">
-            {/* Hamburger — mobile only (md:hidden); opens slide-out drawer */}
+          {/* Left: mobile hamburger */}
+          <div className="flex items-center">
             <button
               type="button"
               onClick={() => setMobileDrawerOpen(true)}
@@ -618,16 +617,6 @@ export function MedNexusApp() {
               aria-label="Open menu"
             >
               <MenuIcon size={20} />
-            </button>
-            {/* Logo — clickable to open Creator's Vision modal */}
-            <button
-              type="button"
-              onClick={() => setCreditsOpen(true)}
-              className="flex min-w-0 items-center gap-1.5 rounded-lg px-1 py-1 transition-colors hover:bg-muted"
-              aria-label="About MedNexus"
-            >
-              <StethoscopeIcon size={16} className="shrink-0 text-primary" />
-              <span className="truncate text-sm font-bold tracking-tight">MedNexus</span>
             </button>
           </div>
           {/* Right: study mode toggle + theme toggle (desktop only) + bell */}
