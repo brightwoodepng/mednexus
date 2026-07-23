@@ -29,7 +29,7 @@ The app works out of the box with no secrets configured. In this mode:
 - Student account registration and the Admin panel are unavailable
 - Use **"Continue as Guest"** on the landing screen
 
-To unlock full functionality (accounts, admin panel, cloud sync), see the secrets table below.
+To unlock full functionality (accounts, role-gated administration, cloud sync), see the secrets table below.
 
 ## Environment variables / Secrets
 
@@ -38,11 +38,9 @@ Set these in the **Replit Secrets tab** (not as plain env vars). See `.env.examp
 | Secret | Required | Description |
 |--------|----------|-------------|
 | `DATABASE_URL` | Auto | Injected automatically by Replit's built-in PostgreSQL — do not set manually |
-| `ADMIN_PASSWORD` | For admin | Password for the admin panel login screen |
-| `ADMIN_SECRET` | For admin | HMAC secret for signing admin tokens (generate: `openssl rand -hex 32`) |
 | `GEMINI_API_KEY` | For AI import | Powers AI question extraction from Word (.docx) and PDF imports. Free key at https://aistudio.google.com/app/apikey |
 
-> **No secrets needed to start.** Guest mode (localStorage) works immediately. Add `ADMIN_PASSWORD` + `ADMIN_SECRET` to unlock the admin panel; add `DATABASE_URL` for persistent cloud-synced accounts.
+> **No secrets needed to start.** Guest mode (localStorage) works immediately. Add `DATABASE_URL` for persistent cloud-synced accounts; approved accounts with assigned roles can access administration features.
 
 ## Database schema
 

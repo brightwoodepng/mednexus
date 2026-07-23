@@ -1,6 +1,7 @@
 import "server-only"
 
 import { cookies } from "next/headers"
+import { NextResponse } from "next/server"
 import { verifySessionToken, type SessionPayload } from "@/lib/session-auth"
 
 export type AdminRole = "STUDENT" | "ADMIN" | "SUPER_ADMIN"
@@ -33,8 +34,24 @@ export async function getVerifiedAdminFromCookie(permission?: AdminPermission) {
   return getVerifiedAdmin(token, permission)
 }
 
-export async function requireAdminRequest(req: Request, permission?: AdminPermission) {
+async function requestSessionToken(req: Request) {
   // Cookie is primary for browser routes; header keeps authenticated API clients working.
-  const token = (await cookies()).get("mednexus_session")?.value ?? req.headers.get("x-session-token")
-  return getVerifiedAdmin(token, permission)
+  return (await cookies()).get("mednexus_session")?.value ?? req.headers.get("x-session-token")
+}
+
+export async function requireAdminRequest(req: Request, permission?: AdminPermission) {
+  return getVerifiedAdmin(await requestSessionToken(req), permission)
+}
+
+/**
+ * Use after requireAdminRequest denies a privileged request. A valid session
+ * without the requested permission is forbidden; absent or invalid sessions
+ * must authenticate first.
+ */
+export async function adminAccessDenied(req: Request) {
+  const session = verifySessionToken((await requestSessionToken(req)) ?? "")
+  return NextResponse.json(
+    { error: session ? "Forbidden" : "Unauthorized" },
+    { status: session ? 403 : 401 },
+  )
 }

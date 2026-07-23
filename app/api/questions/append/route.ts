@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAdminRequest } from "@/lib/admin-access"
+import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 
 export const maxDuration = 120
 
@@ -29,7 +29,7 @@ async function getFirestore() {
 // into the existing JSONB array server-side via `data || $1::jsonb`.
 export async function POST(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_mcq_content")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return await adminAccessDenied(req)
   }
 
   try {
