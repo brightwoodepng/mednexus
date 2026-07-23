@@ -107,30 +107,29 @@ export function Sidebar({
 
   // ── Shared content ─────────────────────────────────────────────────────────
   const fullContent = (
-    <div className="flex h-full flex-col gap-2 p-4 overflow-hidden">
-      <div className="mb-1 flex items-center justify-end px-1 pt-1 shrink-0">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onCollapse}
-            className={`hidden rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:flex ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
-            aria-label="Collapse sidebar"
-          >
-            <ChevronLeftIcon size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={onCloseMobile}
-            className={`rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:hidden ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
-            aria-label="Close menu"
-          >
-            <XIcon size={20} />
-          </button>
-        </div>
+    <div className="relative flex h-full flex-col gap-2 p-4">
+      {/* ── Header bar: hub switcher + collapse/close ── */}
+      <div className="mb-1 flex items-center gap-1 pt-1 shrink-0">
+        <StudyHubDropdown activeHub={activeStudyHub} onSelect={setActiveStudyHub} onAfterSelect={onCloseMobile} />
+        <button
+          type="button"
+          onClick={onCollapse}
+          className={`hidden shrink-0 rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:flex ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
+          aria-label="Collapse sidebar"
+        >
+          <ChevronLeftIcon size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={onCloseMobile}
+          className={`shrink-0 rounded-xl p-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors lg:hidden ${isGlassEnabled ? "glass-pill-hover" : "hover:bg-sidebar-accent"}`}
+          aria-label="Close menu"
+        >
+          <XIcon size={20} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <StudyHubDropdown activeHub={activeStudyHub} onSelect={setActiveStudyHub} onAfterSelect={onCloseMobile} />
         <nav className="flex flex-col gap-0.5">
           {activeStudyHub === "theory-vault" ? <>
             <NavButton glass={isGlassEnabled} active={screen === "theory-dashboard"} onClick={() => nav("theory-dashboard")} icon={<LayoutDashboardIcon size={18} />} label="Dashboard" />
