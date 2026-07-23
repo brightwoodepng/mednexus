@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useApp } from "@/contexts/app-context"
-import { useAdmin } from "@/contexts/admin-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
 import { StethoscopeIcon, ArrowRightIcon } from "@/components/icons"
@@ -87,75 +86,8 @@ function Footer() {
   )
 }
 
-// ── Role Picker ──────────────────────────────────────────────────────────────
-function RoleSelect({ onSelect, glass }: { onSelect: (tab: "guest" | "student" | "admin") => void; glass: boolean }) {
-  return (
-    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glass ? "glass-auth-card" : ""}`}>
-      <h2 className="mb-1 text-xl font-semibold tracking-tight">Welcome</h2>
-      <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
-        Choose how you want to access MedNexus.
-      </p>
-      <div className="flex flex-col gap-3">
-
-        {/* Student Login / Register */}
-        <button
-          type="button"
-          onClick={() => onSelect("student")}
-          className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 text-left transition-all hover:bg-primary/10 hover:border-primary/50"
-        >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">Student Login / Register</p>
-            <p className="text-xs text-muted-foreground">Sign in or create an account to save progress</p>
-          </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14} className="shrink-0 text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
-
-        {/* Continue as Guest */}
-        <button
-          type="button"
-          onClick={() => onSelect("guest")}
-          className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3.5 text-left transition-all hover:bg-muted"
-        >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              <line x1="17" x2="22" y1="8" y2="8"/>
-            </svg>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">Continue as Guest</p>
-            <p className="text-xs text-muted-foreground">Progress saves locally on this device only</p>
-          </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14} className="shrink-0 text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
-
-        {/* Admin Access */}
-        <button
-          type="button"
-          onClick={() => onSelect("admin")}
-          className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3.5 text-left transition-all hover:bg-muted"
-        >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}>
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">Admin Access</p>
-            <p className="text-xs text-muted-foreground">Question editor and system management</p>
-          </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14} className="shrink-0 text-muted-foreground"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
-
-      </div>
-    </div>
-  )
-}
+// ── Entry choices ───────────────────────────────────────────────────────────
+function RoleSelect({ onSelect, glass }: { onSelect: (tab: "guest" | "student") => void; glass: boolean }) { return <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glass ? "glass-auth-card" : ""}`}><h2 className="mb-1 text-xl font-semibold">Welcome</h2><p className="mb-6 text-sm text-muted-foreground">Sign in, create an account, or continue as a guest.</p><div className="flex flex-col gap-3"><button onClick={()=>onSelect("student")} className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 text-left text-sm font-semibold">Sign in / Create account</button><button onClick={()=>onSelect("guest")} className="rounded-2xl border border-border px-4 py-3.5 text-left text-sm font-semibold">Continue as guest</button></div></div> }
 
 // ── Guest Form ────────────────────────────────────────────────────────────────
 function GuestForm({ onBack }: { onBack: () => void }) {
@@ -652,84 +584,9 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
   )
 }
 
-// ── Admin Access Form ─────────────────────────────────────────────────────────
-function AdminForm({ onBack }: { onBack: () => void }) {
-  const { loginAdmin } = useAdmin()
-  const { isGlassEnabled } = useTheme()
-  const [password, setPassword] = useState("")
-  const [showPw, setShowPw] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!password.trim()) return
-    setLoading(true)
-    setError("")
-    const result = await loginAdmin(password)
-    setLoading(false)
-    if (!result.ok) setError(result.error ?? "Login failed")
-  }
-
-  return (
-    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${isGlassEnabled ? "glass-auth-card" : ""}`}>
-      <BackButton onClick={onBack} />
-      <div className="mb-5 flex items-center gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={20} height={20}>
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Admin Access</h2>
-          <p className="text-xs text-muted-foreground">Question editor &amp; system management</p>
-        </div>
-      </div>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground" htmlFor="admin-pw">Admin Password</label>
-          <div className="relative">
-            <input
-              id="admin-pw"
-              type={showPw ? "text" : "password"}
-              autoFocus
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError("") }}
-              placeholder="Enter admin password"
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-            />
-            <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <EyeIcon open={showPw} />
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15} className="mt-0.5 shrink-0">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
-            </svg>
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading || !password.trim()}
-          className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
-        >
-          {loading ? "Verifying…" : "Enter Admin Mode"}
-          {!loading && <ArrowRightIcon size={16} />}
-        </button>
-      </form>
-    </div>
-  )
-}
-
 // ── Root ──────────────────────────────────────────────────────────────────────
 export function AuthScreen() {
-  const [view, setView] = useState<"role-select" | "guest" | "student" | "admin">("role-select")
+  const [view, setView] = useState<"role-select" | "guest" | "student">("role-select")
   const [themeOpen, setThemeOpen] = useState(false)
   const { isGlassEnabled } = useTheme()
 
@@ -752,7 +609,6 @@ export function AuthScreen() {
         {view === "role-select" && <RoleSelect onSelect={setView} glass={isGlassEnabled} />}
         {view === "guest" && <GuestForm onBack={() => setView("role-select")} />}
         {view === "student" && <StudentForm onBack={() => setView("role-select")} />}
-        {view === "admin" && <AdminForm onBack={() => setView("role-select")} />}
         <Footer />
       </div>
 

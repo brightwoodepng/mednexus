@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyAdminToken } from "@/lib/admin-auth"
+import { requireAdminRequest } from "@/lib/admin-access"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -12,8 +12,7 @@ async function getPool() {
 // GET /api/assessments/[id]/analytics — admin only
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const token = req.headers.get("x-admin-token") ?? ""
-    if (!verifyAdminToken(token)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!await requireAdminRequest(req, "manage_assessments")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { id } = await params
     const pool = await getPool()

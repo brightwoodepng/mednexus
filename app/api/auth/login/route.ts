@@ -52,46 +52,22 @@ export async function POST(req: NextRequest) {
     // Resolve classLevel: prefer the canonical class_level column; fall back to
     // the legacy level column for rows not yet migrated.
     const classLevel: string = user.class_level || user.level || ""
-    const role: string = user.role || "REGISTERED"
+    const role: string = user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? user.role : "STUDENT"
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
 
-    if (passwordMatch) {
+    const loginResponse = (requiresPasswordUpdate: boolean) => {
       const sessionToken = createSessionToken(user.uid, role)
-      return NextResponse.json({
-        uid: user.uid,
-        name: user.name,
-        classLevel,
-        role,
-        // Keep legacy "level" field so older clients don't break
-        level: classLevel,
-        status: user.status,
-        indexNumber: user.index_number,
-        requiresPasswordUpdate: user.must_change_password,
-        sessionToken,
-      })
+      const response = NextResponse.json({ uid: user.uid, name: user.name, classLevel, role, level: classLevel, status: user.status, indexNumber: user.index_number, requiresPasswordUpdate, sessionToken })
+      response.cookies.set("mednexus_session", sessionToken, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 })
+      return response
     }
 
-    if (user.otp_hash) {
-      const otpMatch = await bcrypt.compare(password, user.otp_hash)
-      if (otpMatch) {
-        await pool.query(
-          `UPDATE mednexus_registered_users SET otp_hash = NULL, must_change_password = TRUE WHERE uid = $1`,
-          [user.uid]
-        )
-        const sessionToken = createSessionToken(user.uid, role)
-        return NextResponse.json({
-          uid: user.uid,
-          name: user.name,
-          classLevel,
-          role,
-          level: classLevel,
-          status: user.status,
-          indexNumber: user.index_number,
-          requiresPasswordUpdate: true,
-          sessionToken,
-        })
-      }
+    if (passwordMatch) return loginResponse(Boolean(user.must_change_password))
+
+    if (user.otp_hash && await bcrypt.compare(password, user.otp_hash)) {
+      await pool.query(`UPDATE mednexus_registered_users SET otp_hash = NULL, must_change_password = TRUE WHERE uid = $1`, [user.uid])
+      return loginResponse(true)
     }
 
     return NextResponse.json({ error: "Invalid index number or password" }, { status: 401 })

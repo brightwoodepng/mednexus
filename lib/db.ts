@@ -262,6 +262,13 @@ export async function ensureSchema() {
       created_at           TIMESTAMPTZ DEFAULT NOW()
     );
 
+    -- Only a protected deployment migration may promote existing accounts. New accounts are always STUDENT.
+    CREATE TABLE IF NOT EXISTS mednexus_user_permissions (
+      user_id TEXT NOT NULL REFERENCES mednexus_registered_users(uid) ON DELETE CASCADE,
+      permission TEXT NOT NULL,
+      PRIMARY KEY (user_id, permission)
+    );
+
     -- ── Guest users ─────────────────────────────────────────────────────────
     -- Lightweight table for password-free temporary sessions (7-day TTL).
     -- Identified solely by a signed session token — no password stored.

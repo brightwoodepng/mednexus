@@ -18,6 +18,8 @@ export interface AppUser {
   uid: string
   name: string
   role: UserRole
+  /** Display hint from a server-verified login; never used for authorization. */
+  serverRole?: "STUDENT" | "ADMIN" | "SUPER_ADMIN"
   status?: string
   indexNumber?: string
   level?: string
@@ -164,6 +166,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const status = typeof window !== "undefined" ? localStorage.getItem(LS_STATUS) ?? undefined : undefined
       const needsPwUpdate = typeof window !== "undefined" ? localStorage.getItem(LS_REQUIRES_PW_UPDATE) === "true" : false
       const classLevel = typeof window !== "undefined" ? localStorage.getItem(LS_CLASS_LEVEL) ?? undefined : undefined
+      const serverRole = undefined
 
       if (uid) {
         // Restore auth header from localStorage
@@ -176,7 +179,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
 
         const local = loadLocal(uid)
-        const appUser: AppUser = { uid, name, role: role ?? "guest", status: status ?? undefined, classLevel }
+        const appUser: AppUser = { uid, name, role: role ?? "guest", status: status ?? undefined, classLevel, serverRole }
         setUser(appUser)
         setProgress(local)
         setRequiresPasswordUpdate(needsPwUpdate)
@@ -265,7 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tokenRef.current = userToken ? { key: "x-session-token", value: userToken } : null
 
       const local = loadLocal(uid)
-      const appUser: AppUser = { uid, name, role: "user", status: data.status, indexNumber: data.indexNumber, level: data.level }
+      const appUser: AppUser = { uid, name, role: "user", serverRole: data.role, status: data.status, indexNumber: data.indexNumber, level: data.level }
       setUser(appUser)
       setProgress(local)
       setRequiresPasswordUpdate(!!needsPw)
@@ -321,6 +324,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOutUser = useCallback(() => {
+    void fetch("/api/auth/logout", { method: "POST" })
     if (syncTimer.current) clearTimeout(syncTimer.current)
     tokenRef.current = null
     try {
@@ -332,8 +336,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(LS_CLASS_LEVEL)
       localStorage.removeItem(LS_GUEST_TOKEN)
       localStorage.removeItem(LS_USER_TOKEN)
-      // Also clear admin token so admin mode never survives a sign-out
-      localStorage.removeItem("mednexus-admin-token")
       // Clear all sessionStorage as a defensive sweep
       sessionStorage.clear()
     } catch {}
