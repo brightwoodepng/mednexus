@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { createSessionToken } from "@/lib/session-auth"
+import { getVerifiedAdmin } from "@/lib/admin-access"
 
 function formatIndexNumber(raw: string): string {
   const cleaned = raw.toLowerCase().replace(/[^a-z0-9]/g, "")
@@ -57,9 +58,12 @@ export async function POST(req: NextRequest) {
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
 
-    const loginResponse = (requiresPasswordUpdate: boolean) => {
+    const loginResponse = async (requiresPasswordUpdate: boolean) => {
       const sessionToken = createSessionToken(user.uid, role)
-      const response = NextResponse.json({ uid: user.uid, name: user.name, classLevel, role, level: classLevel, status: user.status, indexNumber: user.index_number, requiresPasswordUpdate, sessionToken })
+      // Navigation metadata comes from the same database-backed verifier as
+      // the console. It is never inferred from a client-stored role string.
+      const canAccessAdmin = Boolean(await getVerifiedAdmin(sessionToken))
+      const response = NextResponse.json({ uid: user.uid, name: user.name, classLevel, role, level: classLevel, status: user.status, indexNumber: user.index_number, requiresPasswordUpdate, sessionToken, canAccessAdmin })
       response.cookies.set("mednexus_session", sessionToken, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 })
       return response
     }

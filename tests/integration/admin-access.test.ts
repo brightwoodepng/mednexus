@@ -112,4 +112,26 @@ describe("admin access integration", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({ total: 1, users: [{ uid: "learner-1" }] })
   })
+
+  it("enforces each capability on its matching protected API without trusting local client state", async () => {
+    const { PUT } = await import("@/app/api/questions/route")
+    const { GET: getUsers } = await import("@/app/api/admin/users/route")
+    const { createSessionToken } = await import("@/lib/session-auth")
+    const token = createSessionToken("learner-1", "SUPER_ADMIN")
+    const questionRequest = new Request("http://mednexus.test/api/questions", {
+      method: "PUT", headers: { "x-session-token": token, "content-type": "application/json", "x-role": "SUPER_ADMIN" }, body: JSON.stringify({ questions: [] }),
+    })
+
+    database.role = "ADMIN"
+    database.permissions = [{ permission: "manage_mcq_content", granted: false }]
+    expect((await PUT(questionRequest as never)).status).toBe(403)
+
+    // A localStorage value or a role-like header is absent from authorization;
+    // only the role and overrides freshly read from the database can grant this.
+    database.permissions = [{ permission: "manage_users", granted: false }]
+    expect((await getUsers(request(token, { "x-role": "SUPER_ADMIN", "x-local-storage-role": "SUPER_ADMIN" }) as never)).status).toBe(403)
+
+    database.permissions = [{ permission: "manage_users", granted: true }]
+    expect((await getUsers(request(token) as never)).status).toBe(200)
+  })
 })
