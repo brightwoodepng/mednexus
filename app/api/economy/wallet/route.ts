@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
-import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
-import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
+import { forbidden, requireAdminPermission, requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 
 // Admin-only: forcefully overwrite a wallet balance. Database provisioning is performed by db:migrate.
 export async function PATCH(req: NextRequest) {
   try {
-    if (!await requireAdminRequest(req, "manage_system")) return await adminAccessDenied(req)
+    if (!await requireAdminPermission(req, "manage_system")) {
+      return await requireRegisteredUser(req) ? forbidden() : unauthorized()
+    }
     const { uid, balance } = await req.json()
     if (!uid || typeof balance !== "number") {
       return NextResponse.json({ error: "uid and balance required" }, { status: 400 })
@@ -28,10 +29,8 @@ export async function PATCH(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
-    const requestedUid = req.nextUrl.searchParams.get("uid")
-    if (requestedUid && identityMismatch(requestedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
     const uid = auth.uid
     if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 })
     const { rows } = await pool.query(

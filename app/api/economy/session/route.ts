@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
-import { authenticateRequest, authError } from "@/lib/request-auth"
+import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { abandonStaleSessions } from "@/lib/anti-farming"
 import { questionsDatabase } from "@/lib/questions-database"
 
@@ -14,8 +14,8 @@ const sameAnswer = (answer: Answer, correct: Answer) => Array.isArray(answer) &&
 /** Starts a scored activity and snapshots answer keys on the server. */
 export async function POST(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
     const { mode, questionIds } = await req.json()
     if (typeof mode !== "string" || !SCORABLE_MODES.has(mode) || !Array.isArray(questionIds) || !questionIds.length || questionIds.length > MAX_SESSION_QUESTIONS || questionIds.some((id) => typeof id !== "string")) {
       return NextResponse.json({ error: "A valid mode and a bounded list of question IDs are required" }, { status: 400 })
@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
 /** Records accepted answers. Completion remains idempotent and belongs only to its creator. */
 export async function PATCH(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
     const { sessionId, answers } = await req.json()
     if (!sessionId || !answers || typeof answers !== "object" || Array.isArray(answers)) return NextResponse.json({ error: "sessionId and answers are required" }, { status: 400 })
     const session = await pool.query("SELECT question_ids FROM mednexus_exam_sessions WHERE id = $1 AND user_id = $2", [sessionId, auth.uid])
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = authenticateRequest(req.headers); if (!auth) return authError()
+  const auth = await requireRegisteredUser(req); if (!auth) return unauthorized()
   const { staleMins } = await req.json()
   const boundedStaleMins = typeof staleMins === "number" && Number.isFinite(staleMins)
     ? Math.min(24 * 60, Math.max(1, Math.floor(staleMins)))

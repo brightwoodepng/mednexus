@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { forbidden, getRequestAuth, unauthorized } from "@/lib/request-auth"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -14,10 +15,12 @@ async function getPool() {
 // Body: { guestName, score, total, percentage, passed, timeTakenSecs }
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await getRequestAuth(req, { allowGuest: true })
+    if (!auth) return unauthorized()
+    if (!auth.isGuest) return forbidden()
     const { id } = await params
     const body = await req.json()
     const {
-      guestName,
       score,
       total,
       percentage,
@@ -25,8 +28,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       timeTakenSecs,
     } = body
 
-    if (!guestName || typeof score !== "number" || typeof total !== "number") {
-      return NextResponse.json({ error: "guestName, score and total are required" }, { status: 400 })
+    if (typeof score !== "number" || typeof total !== "number") {
+      return NextResponse.json({ error: "score and total are required" }, { status: 400 })
     }
 
     const pool = await getPool()
@@ -53,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         rowId,
         id,
         asmt.title,
-        guestName,
+        "Guest",
         score,
         total,
         percentage ?? (total > 0 ? Math.round((score / total) * 100) : 0),

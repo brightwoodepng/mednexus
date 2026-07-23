@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { randomUUID } from "crypto"
 import type { Pool, PoolClient } from "pg"
-import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
+import { getRequestAuth, unauthorized } from "@/lib/request-auth"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -15,7 +15,7 @@ type AuthenticatedAccount = { uid: string; name: string; role: string; isGuest: 
 
 /** Resolve display identity from the account record, never from a client payload. */
 async function getAuthenticatedAccount(pool: Pool, req: NextRequest): Promise<AuthenticatedAccount | null> {
-  const auth = authenticateRequest(req.headers)
+  const auth = await getRequestAuth(req, { allowGuest: true })
   if (!auth) return null
 
   if (auth.isGuest) {
@@ -37,14 +37,7 @@ async function getAuthenticatedAccount(pool: Pool, req: NextRequest): Promise<Au
 }
 
 function suppliedIdentityConflicts(body: Record<string, unknown>, account: AuthenticatedAccount) {
-  return identityMismatch(body.userId, account)
-    || identityMismatch(body.uid, account)
-    || identityMismatch(body.guestId, account)
-    || (typeof body.userName === "string" && body.userName !== account.name)
-    || (typeof body.guestName === "string" && body.guestName !== account.name)
-    || (typeof body.name === "string" && body.name !== account.name)
-    || (typeof body.isGuest === "boolean" && body.isGuest !== account.isGuest)
-    || (typeof body.role === "string" && body.role.toUpperCase() !== account.role.toUpperCase())
+  return false // Identity fields are ignored; the account is always resolved server-side.
 }
 
 // GET /api/assessments/[id]/attempt
@@ -55,7 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const pool = await getPool()
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
     const account = await getAuthenticatedAccount(pool, req)
-    if (!account) return authError()
+    if (!account) return unauthorized()
 
     const res = await pool.query(
       `SELECT * FROM mednexus_assessment_attempts
@@ -86,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params
     const body = await req.json() as Record<string, unknown>
     const account = await getAuthenticatedAccount(pool, req)
-    if (!account) return authError()
+    if (!account) return unauthorized()
     if (suppliedIdentityConflicts(body, account)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     const answers = body.answers && typeof body.answers === "object" && !Array.isArray(body.answers)
       ? body.answers as Record<string, string | null> : {}

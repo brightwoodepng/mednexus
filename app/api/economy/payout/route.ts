@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { calculatePayout, getTodaysBounties, computeBountyProgress, computeRankUpBonus, RANK_UP_BONUS_NP, TODAY_DATE, type GameResult } from "@/lib/economy"
 import { calculateSessionNP, type SessionQuestionInput } from "@/lib/anti-farming"
-import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
+import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 
 type Key = { id: string; discipline: string; correctAnswer: string | string[] | null }
 const correct = (answer: unknown, expected: Key["correctAnswer"]) => Array.isArray(answer) && Array.isArray(expected)
@@ -11,9 +11,8 @@ const correct = (answer: unknown, expected: Key["correctAnswer"]) => Array.isArr
 /** Credits a completed, server-recorded activity exactly once. Client scores are never accepted. */
 export async function POST(req: NextRequest) {
  try {
-  const auth = authenticateRequest(req.headers); if (!auth) return authError()
-  const { sessionId, uid } = await req.json()
-  if (identityMismatch(uid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const auth = await requireRegisteredUser(req); if (!auth) return unauthorized()
+  const { sessionId } = await req.json()
   if (!sessionId) return NextResponse.json({ error: "sessionId is required" }, { status: 400 })
   const client = await pool.connect()
   try {
