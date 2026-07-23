@@ -266,6 +266,7 @@ export async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS mednexus_user_permissions (
       user_id TEXT NOT NULL REFERENCES mednexus_registered_users(uid) ON DELETE CASCADE,
       permission TEXT NOT NULL,
+      granted BOOLEAN NOT NULL DEFAULT TRUE,
       PRIMARY KEY (user_id, permission)
     );
 
@@ -434,6 +435,11 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS class_level TEXT NOT NULL DEFAULT '';
     ALTER TABLE mednexus_registered_users
       ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'REGISTERED';
+
+    -- Permission rows are explicit overrides: TRUE grants and FALSE removes an
+    -- ADMIN baseline capability. Existing rows retain their original grant.
+    ALTER TABLE mednexus_user_permissions
+      ADD COLUMN IF NOT EXISTS granted BOOLEAN NOT NULL DEFAULT TRUE;
 
     -- Copy legacy level → class_level for rows that predate this migration.
     UPDATE mednexus_registered_users
