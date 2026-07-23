@@ -13,7 +13,8 @@ function formatIndexNumber(raw: string): { formatted: string; autoApprove: boole
 }
 
 async function getPool() {
-  const { default: pool } = await import("@/lib/db")
+  const { default: pool, ensureSchema } = await import("@/lib/db")
+  await ensureSchema()
   return pool
 }
 
