@@ -19,6 +19,7 @@ import {
   GamepadIcon,
   StoreIcon,
   TrophyIcon,
+  StethoscopeIcon,
 } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
@@ -155,12 +156,23 @@ export function Sidebar({
           {isAdmin && (
             <>
               <div className={`my-1.5 h-px mx-1 ${dividerCls}`} />
-              <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">Admin</p>
+              <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">Administration</p>
+              <p className="px-3 pb-1 pt-1 text-[9px] font-bold uppercase tracking-widest text-sidebar-foreground/45">Content Management</p>
+              {activeStudyHub === "mcq-qbank" && <>
+                <NavButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="MCQ Question Editor" adminBadge="Admin" />
+                <NavButton glass={isGlassEnabled} active={false} onClick={() => { onOpenImporter?.(); onCloseMobile() }} icon={<DatabaseIcon size={18} />} label="MCQ Importer" adminBadge="Admin" />
+                <NavButton glass={isGlassEnabled} active={screen === "live-assessments-admin"} onClick={() => nav("live-assessments-admin")} icon={<RadioIcon size={18} />} label="MCQ Assessments" adminBadge="Admin" />
+              </>}
+              {activeStudyHub === "theory-vault" && <>
+                <NavButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} icon={<LayersIcon size={18} />} label="Theory Vault Editor" adminBadge="Admin" />
+                <NavButton glass={isGlassEnabled} active={screen === "theory-importer"} onClick={() => nav("theory-importer")} icon={<DatabaseIcon size={18} />} label="Theory Importer" adminBadge="Admin" />
+              </>}
+              {activeStudyHub === "osce-hub" && <div className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-sidebar-foreground/35" aria-disabled="true"><StethoscopeIcon size={18} /><span>OSCE Station Editor — Coming soon</span></div>}
+              <p className="px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-widest text-sidebar-foreground/45">Platform Tools</p>
               <NavButton glass={isGlassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} icon={<UsersIcon size={18} />} label="Users" adminBadge="Admin" />
-              <p className="px-3 pb-1 pt-1 text-[9px] font-bold uppercase tracking-widest text-sidebar-foreground/45">Content tools</p>
-              <NavButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} icon={<DatabaseIcon size={18} />} label="MCQ Q-Bank Editor" adminBadge="Admin" />
-              <NavButton glass={isGlassEnabled} active={false} onClick={() => { window.location.href = "/admin/theory" }} icon={<LayersIcon size={18} />} label="Theory Administration" adminBadge="Admin" />
               <NavButton glass={isGlassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} icon={<MegaphoneIcon size={18} />} label="Broadcast" adminBadge="Admin" />
+              <button type="button" onClick={() => { window.location.href = `/notifications?hub=${activeStudyHub === "theory-vault" ? "theory" : "mcq"}` }} className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent"><ActivityIcon size={18} /><span className="flex-1 text-left">Notifications</span></button>
+              <div className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-sidebar-foreground/35" aria-disabled="true"><DatabaseIcon size={18} /><span>Settings — Coming soon</span></div>
             </>
           )}
 
@@ -252,9 +264,9 @@ export function Sidebar({
       {isAdmin && (
         <>
           <div className={`my-2 w-6 h-px ${dividerCls}`} />
+          {activeStudyHub === "mcq-qbank" && <><IconButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} label="MCQ Question Editor"><DatabaseIcon size={18} /></IconButton><IconButton glass={isGlassEnabled} active={false} onClick={() => { onOpenImporter?.(); onCloseMobile() }} label="MCQ Importer"><DatabaseIcon size={18} /></IconButton></>}
+          {activeStudyHub === "theory-vault" && <><IconButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} label="Theory Vault Editor"><LayersIcon size={18} /></IconButton><IconButton glass={isGlassEnabled} active={screen === "theory-importer"} onClick={() => nav("theory-importer")} label="Theory Importer"><DatabaseIcon size={18} /></IconButton></>}
           <IconButton glass={isGlassEnabled} active={screen === "user-management"} onClick={() => nav("user-management")} label="Users"><UsersIcon size={18} /></IconButton>
-          <IconButton glass={isGlassEnabled} active={screen === "question-editor"} onClick={() => nav("question-editor")} label="Editor"><DatabaseIcon size={18} /></IconButton>
-          <IconButton glass={isGlassEnabled} active={screen === "theory-editor"} onClick={() => nav("theory-editor")} label="Theory Vault Editor"><LayersIcon size={18} /></IconButton>
           <IconButton glass={isGlassEnabled} active={screen === "broadcast"} onClick={() => nav("broadcast")} label="Broadcast"><MegaphoneIcon size={18} /></IconButton>
         </>
       )}

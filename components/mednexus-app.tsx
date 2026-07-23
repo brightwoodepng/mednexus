@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import { adminScreenFromUrl, studyHubFromUrl, withHubContext } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
 import { useAdmin } from "@/contexts/admin-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
@@ -442,9 +443,28 @@ export function MedNexusApp() {
   } | null>(null)
 
   useEffect(() => {
-    if (activeStudyHub === "theory-vault" && !screen.startsWith("theory-") && screen !== "question-editor") setScreen("theory-dashboard")
-    if (activeStudyHub === "mcq-qbank" && screen.startsWith("theory-") && screen !== "theory-editor") setScreen("dashboard")
+    const restoreFromLocation = () => {
+      setActiveStudyHub(studyHubFromUrl())
+      setScreen(adminScreenFromUrl() ?? (studyHubFromUrl() === "theory-vault" ? "theory-dashboard" : "dashboard"))
+    }
+    restoreFromLocation()
+    window.addEventListener("popstate", restoreFromLocation)
+    return () => window.removeEventListener("popstate", restoreFromLocation)
+  }, [setActiveStudyHub])
+
+  useEffect(() => {
+    if (activeStudyHub === "theory-vault" && !screen.startsWith("theory-") && !["user-management", "broadcast"].includes(screen)) setScreen("theory-dashboard")
+    if (activeStudyHub === "mcq-qbank" && screen.startsWith("theory-")) setScreen("dashboard")
   }, [activeStudyHub, screen])
+
+  const handleScreenNavigation = useCallback((nextScreen: Screen) => {
+    if (nextScreen === "user-management") {
+      window.history.pushState({}, "", withHubContext("/admin/users", activeStudyHub))
+    } else if (nextScreen === "broadcast") {
+      window.history.pushState({}, "", withHubContext("/admin/broadcasts", activeStudyHub))
+    }
+    setScreen(nextScreen)
+  }, [activeStudyHub])
 
   useEffect(() => {
     if (user?.role === "user" && user.status === "approved" && !requiresPasswordUpdate) {
@@ -593,7 +613,7 @@ export function MedNexusApp() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         screen={safeScreen}
-        onNavigate={setScreen}
+        onNavigate={handleScreenNavigation}
         onOpenThemes={() => setThemeOpen(true)}
         onOpenAdminLogin={() => setAdminLoginOpen(true)}
         onOpenImporter={() => setImporterOpen(true)}
@@ -652,6 +672,7 @@ export function MedNexusApp() {
             />
           )}
           {safeScreen === "theory-editor" && isAdmin && <TheoryEditor />}
+          {safeScreen === "theory-importer" && isAdmin && <TheoryEditor openImporter />}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
           {safeScreen === "leaderboard" && <LeaderboardScreen />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen onExamActiveChange={setIsExamActive} />}
@@ -782,23 +803,20 @@ export function MedNexusApp() {
 
               {isAdmin ? (
                 <>
-                  <button type="button" onClick={() => { setScreen("user-management"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
+                  <button type="button" onClick={() => { handleScreenNavigation("user-management"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     </span>
                     <p className="text-sm font-semibold text-foreground">User Management</p>
                   </button>
-                  <button type="button" onClick={() => { setScreen("question-editor"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                      <DatabaseIcon size={16} />
-                    </span>
-                    <p className="text-sm font-semibold text-foreground">MCQ Q-Bank Editor</p>
-                  </button>
-                  <button type="button" onClick={() => { setScreen("theory-editor"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"><LayersIcon size={16} /></span>
-                    <p className="text-sm font-semibold text-foreground">Theory Vault Editor</p>
-                  </button>
-                  <button type="button" onClick={() => { setScreen("broadcast"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
+                  {activeStudyHub === "mcq-qbank" ? <>
+                    <button type="button" onClick={() => { setScreen("question-editor"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400"><DatabaseIcon size={16} /></span><p className="text-sm font-semibold text-foreground">MCQ Question Editor</p></button>
+                    <button type="button" onClick={() => { setImporterOpen(true); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400"><DatabaseIcon size={16} /></span><p className="text-sm font-semibold text-foreground">MCQ Importer</p></button>
+                  </> : <>
+                    <button type="button" onClick={() => { setScreen("theory-editor"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"><LayersIcon size={16} /></span><p className="text-sm font-semibold text-foreground">Theory Vault Editor</p></button>
+                    <button type="button" onClick={() => { setScreen("theory-importer"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"><DatabaseIcon size={16} /></span><p className="text-sm font-semibold text-foreground">Theory Importer</p></button>
+                  </>}
+                  <button type="button" onClick={() => { handleScreenNavigation("broadcast"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400">
                       <MegaphoneIcon size={16} />
                     </span>

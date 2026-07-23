@@ -29,12 +29,12 @@ function Dialog({ title, children, onClose }: { title: string; children: React.R
   return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-2xl rounded-3xl border border-border bg-card shadow-2xl"><header className="flex items-center justify-between border-b border-border px-6 py-4"><h2 className="font-bold">{title}</h2><button type="button" onClick={onClose} aria-label="Close dialog" className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18}/></button></header>{children}</section></div>
 }
 
-export function TheoryEditor() {
+export function TheoryEditor({ openImporter = false }: { openImporter?: boolean }) {
   const [questions, setQuestions] = useState(initialQuestions)
   const [collection, setCollection] = useState("All collections")
   const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<string[]>([])
-  const [dialog, setDialog] = useState<"import" | "delete" | "move" | "new" | null>(null)
+  const [dialog, setDialog] = useState<"import" | "delete" | "move" | "new" | null>(openImporter ? "import" : null)
   const [notice, setNotice] = useState("All changes are saved to the current editorial workspace.")
   const [newPrompt, setNewPrompt] = useState("")
 
