@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from "react"
 import { adminScreenFromUrl, studyHubFromUrl, withHubContext } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
-import { useAdmin } from "@/contexts/admin-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
 import { sortByUrgency } from "@/lib/srs"
@@ -22,8 +21,6 @@ import { BroadcastScreen } from "@/components/broadcast-screen"
 import { LiveAssessmentsScreen } from "@/components/live-assessments-screen"
 import { LeaderboardScreen } from "@/components/leaderboard-screen"
 import { LiveAssessmentsAdmin } from "@/components/live-assessments-admin"
-import { AdminLoginModal } from "@/components/admin-login-modal"
-import { AdminUserManagement } from "@/components/admin-user-management"
 import { NotificationBell } from "@/components/notification-bell"
 import { ProfileHistory } from "@/components/profile-history"
 import { WeakAreasScreen } from "@/components/weak-areas-screen"
@@ -413,7 +410,6 @@ function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
-  const { isAdmin, adminReady } = useAdmin()
   const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
@@ -424,7 +420,6 @@ export function MedNexusApp() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [isExamActive, setIsExamActive] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
-  const [adminLoginOpen, setAdminLoginOpen] = useState(false)
   const [importerOpen, setImporterOpen] = useState(false)
   const [pendingEditorImport, setPendingEditorImport] = useState<import("@/lib/types").Question[] | null>(null)
   const [creditsOpen, setCreditsOpen] = useState(false)
@@ -491,8 +486,7 @@ export function MedNexusApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const adminOnlyScreens: Screen[] = ["question-editor", "theory-editor", "broadcast", "live-assessments-admin", "user-management"]
-  const safeScreen = adminOnlyScreens.includes(screen) && !isAdmin ? "dashboard" : screen
+  const safeScreen = screen
 
   const handleReadyForQuiz = useCallback((config: { module: string; discipline: string | null }) => {
     let questions: Question[]
@@ -528,7 +522,7 @@ export function MedNexusApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progress.history])
 
-  if (!authReady || !adminReady) {
+  if (!authReady) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -542,7 +536,7 @@ export function MedNexusApp() {
   }
 
   // Admins bypass the user login flow entirely
-  if (!user && !isAdmin) return <AuthScreen />
+  if (!user) return <AuthScreen />
 
   // These checks only apply to regular users
   if (user) {
@@ -619,7 +613,6 @@ export function MedNexusApp() {
         screen={safeScreen}
         onNavigate={handleScreenNavigation}
         onOpenThemes={() => setThemeOpen(true)}
-        onOpenAdminLogin={() => setAdminLoginOpen(true)}
         onOpenImporter={() => setImporterOpen(true)}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
@@ -667,21 +660,8 @@ export function MedNexusApp() {
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
-          {safeScreen === "question-editor" && isAdmin && (
-            <QuestionEditor
-              pendingImport={pendingEditorImport}
-              onPendingImportConsumed={() => setPendingEditorImport(null)}
-              onOpenImporter={() => setImporterOpen(true)}
-              onOpenAssessments={() => setScreen("live-assessments-admin")}
-            />
-          )}
-          {safeScreen === "theory-editor" && isAdmin && <TheoryEditor />}
-          {safeScreen === "theory-importer" && isAdmin && <TheoryEditor openImporter />}
-          {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
           {safeScreen === "leaderboard" && <LeaderboardScreen />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen onExamActiveChange={setIsExamActive} />}
-          {safeScreen === "live-assessments-admin" && isAdmin && <LiveAssessmentsAdmin onBack={() => setScreen("question-editor")} />}
-          {safeScreen === "user-management" && isAdmin && <AdminUserManagement />}
           {safeScreen === "game" && <GameMode onExit={() => setScreen("dashboard")} onOpenStore={() => setScreen("store")} />}
           {safeScreen === "store" && <NexusStoreHub onNavigate={setScreen} />}
           {safeScreen === "store-supply" && <NexusStoreSupplyPage onBack={() => setScreen("store")} />}
@@ -745,48 +725,6 @@ export function MedNexusApp() {
 
               <div className="my-2 h-px bg-border mx-1" />
 
-              {/* Section: Admin */}
-              <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Admin</p>
-
-              {isAdmin ? (
-                <>
-                  <button type="button" onClick={() => { handleScreenNavigation("user-management"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    </span>
-                    <p className="text-sm font-semibold text-foreground">User Management</p>
-                  </button>
-                  {activeStudyHub === "mcq-qbank" ? <>
-                    <button type="button" onClick={() => { setScreen("question-editor"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400"><DatabaseIcon size={16} /></span><p className="text-sm font-semibold text-foreground">MCQ Question Editor</p></button>
-                    <button type="button" onClick={() => { setImporterOpen(true); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400"><DatabaseIcon size={16} /></span><p className="text-sm font-semibold text-foreground">MCQ Importer</p></button>
-                  </> : <>
-                    <button type="button" onClick={() => { setScreen("theory-editor"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"><LayersIcon size={16} /></span><p className="text-sm font-semibold text-foreground">Theory Vault Editor</p></button>
-                    <button type="button" onClick={() => { setScreen("theory-importer"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"><DatabaseIcon size={16} /></span><p className="text-sm font-semibold text-foreground">Theory Importer</p></button>
-                  </>}
-                  <button type="button" onClick={() => { handleScreenNavigation("broadcast"); setMobileDrawerOpen(false) }} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                      <MegaphoneIcon size={16} />
-                    </span>
-                    <p className="text-sm font-semibold text-foreground">Broadcast</p>
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => { setAdminLoginOpen(true); setMobileDrawerOpen(false) }}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors text-left w-full"
-                >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground leading-tight">Admin Login</p>
-                    <p className="text-[11px] text-muted-foreground">Access admin panel</p>
-                  </div>
-                </button>
-              )}
             </div>
 
             {/* ── Footer: Theme toggle ── */}
@@ -818,8 +756,7 @@ export function MedNexusApp() {
       />
 
       <AppearanceModal open={themeOpen} onClose={() => setThemeOpen(false)} />
-      {adminLoginOpen && <AdminLoginModal onClose={() => setAdminLoginOpen(false)} />}
-      {importerOpen && isAdmin && (
+      {importerOpen && (
         <UniversalImporter
           onImport={(qs) => {
             setPendingEditorImport(qs)

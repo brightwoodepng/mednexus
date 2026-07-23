@@ -3,7 +3,7 @@ import "server-only"
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { authenticateRequest, type RequestAuth } from "@/lib/request-auth"
-import { verifyAdminToken } from "@/lib/admin-auth"
+import { requireAdminRequest } from "@/lib/admin-access"
 
 export const IMPORT_LIMITS = {
   // Multipart overhead needs room above the file ceiling; JSON endpoints have
@@ -34,7 +34,7 @@ function tooLarge(message: string) { return NextResponse.json({ error: message, 
 export async function guardImportRequest(req: NextRequest, endpoint: keyof typeof quotas): Promise<GuardResult> {
   const auth = authenticateRequest(req.headers)
   if (!auth) return { response: NextResponse.json({ error: "Authentication is required to import content.", code: "UNAUTHORIZED" }, { status: 401 }) }
-  if (auth.role !== "ADMIN" && !verifyAdminToken(req.headers.get("x-admin-token") ?? "")) return { response: NextResponse.json({ error: "Importer or administrator access is required.", code: "FORBIDDEN" }, { status: 403 }) }
+  if (!await requireAdminRequest(req, "manage_mcq_content")) return { response: NextResponse.json({ error: "Administrator access is required.", code: "FORBIDDEN" }, { status: 403 }) }
   const length = Number(req.headers.get("content-length") ?? 0)
   if (Number.isFinite(length) && length > IMPORT_LIMITS.requestBytes) return { response: tooLarge("Request body exceeds the allowed size.") }
 

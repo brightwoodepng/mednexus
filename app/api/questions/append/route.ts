@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyAdminToken } from "@/lib/admin-auth"
+import { requireAdminRequest } from "@/lib/admin-access"
 
 export const maxDuration = 120
 
@@ -28,8 +28,7 @@ async function getFirestore() {
 // client only sends the newly-approved questions, and Postgres merges them
 // into the existing JSONB array server-side via `data || $1::jsonb`.
 export async function POST(req: NextRequest) {
-  const token = req.headers.get("x-admin-token") ?? ""
-  if (!verifyAdminToken(token)) {
+  if (!await requireAdminRequest(req, "manage_mcq_content")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
