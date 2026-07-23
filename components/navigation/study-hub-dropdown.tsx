@@ -112,12 +112,7 @@ export function StudyHubDropdown({
               <span className={`shrink-0 ${hub.available ? "text-sidebar-foreground" : "text-muted-foreground"}`}>
                 {hub.available ? <HubIcon hub={hub.id} size={18} /> : <LockKeyholeIcon size={18} aria-hidden />}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block leading-tight">{hub.name}</span>
-                <span className="block text-xs font-normal leading-tight text-sidebar-foreground/55 mt-0.5">
-                  {hub.description}
-                </span>
-              </span>
+              <span className="min-w-0 flex-1 leading-tight">{hub.name}</span>
               {!hub.available && (
                 <span className="shrink-0 rounded-full border border-sidebar-border bg-background/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sidebar-foreground/50">
                   Soon
