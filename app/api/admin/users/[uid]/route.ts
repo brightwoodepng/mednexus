@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { verifyAdminToken } from "@/lib/admin-auth"
+import { requireAdminRequest } from "@/lib/admin-access"
 
 async function getPool() {
   const { default: pool } = await import("@/lib/db")
   return pool
 }
 
-function requireAdmin(req: NextRequest) {
-  const token = req.headers.get("x-admin-token") ?? ""
-  return verifyAdminToken(token)
-}
+async function requireAdmin(req: NextRequest) { return Boolean(await requireAdminRequest(req, "manage_users")) }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
-  if (!requireAdmin(req)) {
+  if (!await requireAdmin(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -77,7 +74,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ui
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
-  if (!requireAdmin(req)) {
+  if (!await requireAdmin(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

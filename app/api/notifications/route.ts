@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyAdminToken } from "@/lib/admin-auth"
+import { requireAdminRequest } from "@/lib/admin-access"
 import { authenticateRequest } from "@/lib/request-auth"
 
 async function getPool() {
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const pool = await getPool()
     if (!pool) return NextResponse.json({ notifications: [] })
 
-    const isAdmin = verifyAdminToken(req.headers.get("x-admin-token") ?? "")
+    const isAdmin = await requireAdminRequest(req, "manage_broadcasts")
     const res = await pool.query(
       `SELECT n.id, n.title, n.body, n.type, n.admin_only, n.created_at,
               COALESCE(s.is_read, FALSE) AS is_read
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/notifications — verified admins create broadcasts.
 export async function POST(req: NextRequest) {
-  if (!verifyAdminToken(req.headers.get("x-admin-token") ?? "")) return adminUnauthorized()
+  if (!await requireAdminRequest(req, "manage_broadcasts")) return adminUnauthorized()
 
   try {
     const { title, body, type = "info", adminOnly = false } = await req.json()
@@ -113,7 +113,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Broadcast edits can only be made with a verified admin token.
-    if (!verifyAdminToken(req.headers.get("x-admin-token") ?? "")) return adminUnauthorized()
+    if (!await requireAdminRequest(req, "manage_broadcasts")) return adminUnauthorized()
     const updates: string[] = []
     const values: unknown[] = []
     if (typeof body.title === "string") {
@@ -151,7 +151,7 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE /api/notifications — verified admins permanently remove broadcasts.
 export async function DELETE(req: NextRequest) {
-  if (!verifyAdminToken(req.headers.get("x-admin-token") ?? "")) return adminUnauthorized()
+  if (!await requireAdminRequest(req, "manage_broadcasts")) return adminUnauthorized()
 
   try {
     const { id } = await req.json()
