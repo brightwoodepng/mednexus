@@ -6,6 +6,7 @@ const account = {
   status: "approved",
   classLevel: "Level 400",
   role: "ADMIN",
+  canAccessAdmin: true,
 }
 
 async function mockAuthenticatedSession(page: Page) {
