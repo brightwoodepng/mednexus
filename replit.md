@@ -62,7 +62,7 @@ Schema is auto-created on first API request via `lib/db.ts → ensureSchema()`. 
 ```
 lib/
   db.ts                   ← DB pool + ensureSchema()
-  admin-auth.ts           ← HMAC token create/verify
+  admin-access.ts         ← Server-side admin permission checks
   questions-database.ts   ← Static question bank fallback
 
 components/
@@ -74,7 +74,7 @@ components/
 
 contexts/
   app-context.tsx         ← Auth + progress state
-  admin-context.tsx       ← Admin session (token verification)
+  admin console layout    ← Cookie-authenticated server gate
   questions-context.tsx   ← DB-backed question bank (30 s poll)
 
 app/api/                  ← Next.js API routes

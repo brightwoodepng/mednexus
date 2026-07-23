@@ -6,7 +6,7 @@
 
 /**
  * Platform-wide role assigned to every user account.
- *   ADMIN       – full administrative access (managed via admin-auth.ts tokens)
+ *   ADMIN       – full administrative access (enforced by server-side session checks)
  *   REGISTERED  – a verified student account in mednexus_registered_users
  *   GUEST       – a temporary, password-free session in mednexus_guest_users
  */

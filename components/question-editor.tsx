@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
-import { useAdmin } from "@/contexts/admin-context"
 import { PdfImportModal } from "@/components/pdf-import-modal"
 import { WordImportModal } from "@/components/word-import-modal"
 import type { Question, QuestionOption, ModuleStatus } from "@/lib/types"
@@ -190,9 +189,9 @@ function formToQuestion(f: FormState, id: string): Question {
   return q
 }
 
-function QuestionForm({ initial, questionId, defaultModule, defaultSubject, adminToken, onSave, onCancel }: {
+function QuestionForm({ initial, questionId, defaultModule, defaultSubject, onSave, onCancel }: {
   initial?: Question; questionId: string; defaultModule: string; defaultSubject: string
-  adminToken: string | null; onSave: (q: Question) => void; onCancel: () => void
+  onSave: (q: Question) => void; onCancel: () => void
 }) {
   const [form, setForm] = useState<FormState>(
     initial ? questionToForm(initial) : { ...EMPTY_FORM, module: defaultModule, subject: defaultSubject }
@@ -990,7 +989,6 @@ interface QuestionEditorProps {
 
 export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenImporter, onOpenAssessments }: QuestionEditorProps = {}) {
   const { questions, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb, appendQuestions, suppressNextAutoSave } = useQuestions()
-  const { adminToken } = useAdmin()
 
   // Draft questions (imported from PDF/Word but not yet committed to DB)
   const [draftQuestions, setDraftQuestions] = useState<Question[]>([])
@@ -1041,16 +1039,15 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
     if (suppressNextAutoSave.current) { suppressNextAutoSave.current = false; return }
-    if (!adminToken) return
     setSaveStatus("saving")
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
-      const ok = await saveToDb(questions, adminToken)
+      const ok = await saveToDb(questions)
       setSaveStatus(ok ? "saved" : "error")
       setTimeout(() => setSaveStatus("idle"), 3000)
     }, 800)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [questions, adminToken, saveToDb, suppressNextAutoSave])
+  }, [questions, saveToDb, suppressNextAutoSave])
 
   const hierarchy = useMemo(
     () => buildHierarchy(questions, draftQuestions, searchQuery, filterMode),
@@ -1154,13 +1151,8 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
     setDraftQuestions((prev) => prev.filter((d) => !toMakeLive.includes(d.id)))
     setSelectedIds((prev) => { const next = new Set(prev); toMakeLive.forEach((id) => next.delete(id)); return next })
 
-    if (!adminToken) {
-      toSave.forEach((q) => addQuestion(q))
-      return
-    }
-
     setSaveStatus("saving")
-    const ok = await appendQuestions(toSave, adminToken)
+    const ok = await appendQuestions(toSave)
     setSaveStatus(ok ? "saved" : "error")
     setTimeout(() => setSaveStatus("idle"), 3000)
     if (!ok) {
@@ -1175,18 +1167,11 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
     setDraftQuestions([])
     clearSelection()
 
-    if (!adminToken) {
-      // No admin session — fall back to local-only state (auto-save effect
-      // will no-op without a token).
-      toApprove.forEach((q) => addQuestion(q))
-      return
-    }
-
     // Fast path: append only the new questions instead of re-sending the
     // entire (potentially huge) question bank in one PUT request, which for
     // large imports could take 1-2+ minutes and time out.
     setSaveStatus("saving")
-    const ok = await appendQuestions(toApprove, adminToken)
+    const ok = await appendQuestions(toApprove)
     setSaveStatus(ok ? "saved" : "error")
     setTimeout(() => setSaveStatus("idle"), 3000)
     if (!ok) {
@@ -1265,13 +1250,12 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
           message: summaryParts.join(". ") + ". All other existing modules will be kept.",
           confirmLabel: "Import", danger: false,
           action: async () => {
-            if (!adminToken) return
-            // Ensure all imported questions have IDs
+                    // Ensure all imported questions have IDs
             for (const q of parsed) { if (!q.id) q.id = `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }
             // Upsert: keep existing questions not in imported modules, add/replace imported modules
             const kept = questions.filter((q) => !importedModules.has(getModuleKey(q)))
             const merged = [...kept, ...parsed]
-            await saveToDb(merged, adminToken)
+            await saveToDb(merged)
           },
         })
       } catch (err) {
@@ -1556,7 +1540,6 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
                 questionId={editTarget.question?.id ?? `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`}
                 defaultModule={editTarget.moduleName}
                 defaultSubject={editTarget.disciplineName}
-                adminToken={adminToken}
                 onSave={handleSaveQuestion}
                 onCancel={() => setEditTarget(null)}
               />

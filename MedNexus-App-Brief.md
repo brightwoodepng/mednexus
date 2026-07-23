@@ -464,7 +464,7 @@ Cosmetics (title, frame, highlight, avatar) are rendered on every leaderboard ro
 
 ## Admin Panel
 
-Accessed via "Admin Access" on the landing page. Requires `ADMIN_PASSWORD`. Sessions use HMAC-signed tokens sent as `x-admin-token` header on every admin API request.
+Accessed via "Admin Access" on the landing page. Requires an approved administrator account. Sessions use the HttpOnly `mednexus_session` cookie, and every admin API request performs a server-side permission check.
 
 ### Question Editor (`components/question-editor.tsx`)
 
@@ -528,18 +528,18 @@ Anti-hallucination rules: discipline is only set if an explicit `DISCIPLINE:` ta
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/admin/auth` | POST | Validate admin password → return HMAC admin token |
-| `/api/admin/users` | GET | List all registered users. Requires `x-admin-token` |
-| `/api/admin/users/[uid]` | PATCH | Update user `status` or `role`. Requires `x-admin-token` |
-| `/api/admin/guests` | GET | List active guest sessions. Requires `x-admin-token` |
-| `/api/admin/guests/[uid]` | DELETE | Purge a guest session. Requires `x-admin-token` |
+| `/api/admin/users` | GET | List all registered users. Requires a cookie-authenticated administrator |
+| `/api/admin/users/[uid]` | PATCH | Update user `status` or `role`. Requires a cookie-authenticated administrator |
+| `/api/admin/guests` | GET | List active guest sessions. Requires a cookie-authenticated administrator |
+| `/api/admin/guests/[uid]` | DELETE | Purge a guest session. Requires a cookie-authenticated administrator |
 
 ### Questions
 
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/questions` | GET | Fetch full question bank. Returns `{ questions: Question[] }` |
-| `/api/questions` | PUT | Full overwrite of question bank. Requires `x-admin-token` |
-| `/api/questions/append` | POST | Append new questions without overwriting existing ones. Requires `x-admin-token` |
+| `/api/questions` | PUT | Full overwrite of question bank. Requires a cookie-authenticated administrator |
+| `/api/questions/append` | POST | Append new questions without overwriting existing ones. Requires a cookie-authenticated administrator |
 
 ### Progress Sync
 
@@ -553,9 +553,9 @@ Anti-hallucination rules: discipline is only set if an explicit `DISCIPLINE:` ta
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/notifications` | GET | Fetch admin broadcasts |
-| `/api/notifications` | POST | Create broadcast. Body: `{ id, title, body, type }`. Requires `x-admin-token` |
+| `/api/notifications` | POST | Create broadcast. Body: `{ id, title, body, type }`. Requires a cookie-authenticated administrator |
 | `/api/notifications` | PATCH | Mark broadcast as read. Body: `{ id }` |
-| `/api/notifications` | DELETE | Delete broadcast. Requires `x-admin-token` |
+| `/api/notifications` | DELETE | Delete broadcast. Requires a cookie-authenticated administrator |
 | `/api/user-notifications` | GET | Fetch personal notifications. Auth: `x-session-token` or `x-guest-token` |
 | `/api/user-notifications` | PATCH | Mark personal notification as read. Body: `{ id }` |
 | `/api/user-notifications` | DELETE | Delete personal notification. Body: `{ id }` |
@@ -584,11 +584,11 @@ Anti-hallucination rules: discipline is only set if an explicit `DISCIPLINE:` ta
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/assessments` | GET | List all assessments. Requires `x-admin-token` |
+| `/api/assessments` | GET | List all assessments. Requires a cookie-authenticated administrator |
 | `/api/assessments` | POST | Create new assessment |
 | `/api/assessments/[id]` | GET | Fetch single assessment |
-| `/api/assessments/[id]` | PATCH | Update assessment settings/status. Requires `x-admin-token` |
-| `/api/assessments/[id]` | DELETE | Delete assessment. Requires `x-admin-token` |
+| `/api/assessments/[id]` | PATCH | Update assessment settings/status. Requires a cookie-authenticated administrator |
+| `/api/assessments/[id]` | DELETE | Delete assessment. Requires a cookie-authenticated administrator |
 | `/api/assessments/[id]/attempt` | POST | Submit a student attempt. Body: `{ userId, userName, isGuest, answers }` |
 | `/api/assessments/[id]/analytics` | GET | Registered user analytics for the assessment |
 | `/api/assessments/[id]/guest-analytics` | GET | Guest analytics for the assessment |
@@ -627,7 +627,7 @@ Anti-hallucination rules: discipline is only set if an explicit `DISCIPLINE:` ta
 |---|---|
 | `lib/db.ts` | PostgreSQL pool + `ensureSchema()` — creates all tables, runs migrations, installs host-migration trigger |
 | `lib/types.ts` | All shared TypeScript interfaces |
-| `lib/admin-auth.ts` | HMAC token sign + verify for admin sessions |
+| `lib/admin-access.ts` | Cookie-backed admin role and permission verification |
 | `lib/session-auth.ts` | JWT token sign + verify for user sessions |
 | `lib/guest-auth.ts` | HMAC token sign + verify for guest sessions |
 | `lib/anti-farming.ts` | `calculateSessionNP()` — 3-repeat cap + discipline fatigue per session |
