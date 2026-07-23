@@ -7,26 +7,51 @@ import { verifySessionToken, type SessionPayload } from "@/lib/session-auth"
 export type AdminRole = "STUDENT" | "ADMIN" | "SUPER_ADMIN"
 export type AdminPermission = "manage_mcq_content" | "manage_theory_content" | "manage_assessments" | "manage_users" | "manage_broadcasts" | "manage_system"
 
-const permissions: Record<AdminPermission, AdminRole[]> = {
-  manage_mcq_content: ["ADMIN", "SUPER_ADMIN"], manage_theory_content: ["ADMIN", "SUPER_ADMIN"],
-  manage_assessments: ["ADMIN", "SUPER_ADMIN"], manage_users: ["ADMIN", "SUPER_ADMIN"],
-  manage_broadcasts: ["ADMIN", "SUPER_ADMIN"], manage_system: ["SUPER_ADMIN"],
-}
+export const ADMIN_PERMISSIONS: readonly AdminPermission[] = [
+  "manage_mcq_content", "manage_theory_content", "manage_assessments",
+  "manage_users", "manage_broadcasts", "manage_system",
+]
 
-async function currentRole(payload: SessionPayload): Promise<AdminRole | null> {
+// This is deliberately an explicit, small baseline. Per-user rows override it,
+// so a system administrator can remove an individual ADMIN capability without
+// changing the user's role. SUPER_ADMIN is intentionally not overridable.
+const ADMIN_BASELINE = new Set<AdminPermission>([
+  "manage_mcq_content", "manage_theory_content", "manage_assessments",
+  "manage_users", "manage_broadcasts",
+])
+
+async function currentAccess(payload: SessionPayload): Promise<{ role: AdminRole; permissions: Map<AdminPermission, boolean> } | null> {
   const { default: pool } = await import("@/lib/db")
-  const result = await pool.query("SELECT role, status FROM mednexus_registered_users WHERE uid = $1", [payload.uid])
+  // Role and individual permission overrides are read together after the token
+  // has been verified. Never trust role or permissions supplied by a client.
+  const result = await pool.query(
+    `SELECT u.role, u.status, p.permission, p.granted
+     FROM mednexus_registered_users u
+     LEFT JOIN mednexus_user_permissions p ON p.user_id = u.uid
+     WHERE u.uid = $1`,
+    [payload.uid],
+  )
   const user = result.rows[0]
   if (!user || user.status !== "approved") return null
-  return user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? user.role : "STUDENT"
+  const role: AdminRole = user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? user.role : "STUDENT"
+  const permissionOverrides = new Map<AdminPermission, boolean>()
+  for (const row of result.rows) {
+    if (ADMIN_PERMISSIONS.includes(row.permission as AdminPermission)) {
+      permissionOverrides.set(row.permission as AdminPermission, row.granted !== false)
+    }
+  }
+  return { role, permissions: permissionOverrides }
 }
 
 export async function getVerifiedAdmin(token: string | null | undefined, permission?: AdminPermission) {
   const payload = verifySessionToken(token ?? "")
   if (!payload) return null
-  const role = await currentRole(payload)
-  if (!role || (permission && !permissions[permission].includes(role))) return null
-  return { uid: payload.uid, role }
+  const access = await currentAccess(payload)
+  if (!access) return null
+  const allowed = !permission || access.role === "SUPER_ADMIN"
+    || (access.permissions.get(permission) ?? (access.role === "ADMIN" && ADMIN_BASELINE.has(permission)))
+  if (!allowed) return null
+  return { uid: payload.uid, role: access.role }
 }
 
 export async function getVerifiedAdminFromCookie(permission?: AdminPermission) {
