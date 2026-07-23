@@ -672,6 +672,7 @@ export function MedNexusApp() {
             />
           )}
           {safeScreen === "theory-editor" && isAdmin && <TheoryEditor />}
+          {safeScreen === "theory-importer" && isAdmin && <TheoryEditor openImporter />}
           {safeScreen === "broadcast" && isAdmin && <BroadcastScreen />}
           {safeScreen === "leaderboard" && <LeaderboardScreen />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen onExamActiveChange={setIsExamActive} />}
