@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
-import { authenticateRequest, authError } from "@/lib/request-auth"
+import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 
 // PATCH /api/user/privacy
 // Body: { isPrivate: boolean }
 // Toggles the is_private flag on the registered user's profile.
 export async function PATCH(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
     const { isPrivate } = await req.json()
     if (typeof isPrivate !== "boolean") {
       return NextResponse.json({ error: "isPrivate is required" }, { status: 400 })
@@ -34,8 +34,8 @@ export async function PATCH(req: NextRequest) {
 // GET /api/user/privacy
 export async function GET(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
 
     const res = await pool.query(
       `SELECT uid, is_private FROM mednexus_registered_users WHERE uid = $1`,

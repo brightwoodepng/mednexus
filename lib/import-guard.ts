@@ -34,7 +34,7 @@ function tooLarge(message: string) { return NextResponse.json({ error: message, 
 export async function guardImportRequest(req: NextRequest, endpoint: keyof typeof quotas): Promise<GuardResult> {
   const admin = await requireAdminRequest(req, "manage_mcq_content")
   if (!admin) return { response: await adminAccessDenied(req) }
-  const auth = authenticateRequest(req.headers) ?? { uid: admin.uid, role: admin.role, isGuest: false }
+  const auth = authenticateRequest(req.headers) ?? { uid: admin.uid, role: admin.role, permissions: new Set(), isGuest: false }
   const length = Number(req.headers.get("content-length") ?? 0)
   if (Number.isFinite(length) && length > IMPORT_LIMITS.requestBytes) return { response: tooLarge("Request body exceeds the allowed size.") }
 
