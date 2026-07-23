@@ -48,7 +48,7 @@ import {
 } from "@/components/icons"
 import { BottomNav } from "@/components/bottom-nav"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
-import { StudyHubSwitcher } from "@/components/study-hub-switcher"
+import { StudyHubDropdown } from "@/components/navigation/study-hub-dropdown"
 import { TheoryVault } from "@/components/theory-vault"
 import { TheoryEditor } from "@/components/theory-editor"
 
@@ -632,8 +632,7 @@ export function MedNexusApp() {
           </div>
           {/* Right: study mode toggle + theme toggle (desktop only) + bell */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <StudyHubSwitcher compact activeHub={activeStudyHub} onSelect={setActiveStudyHub} className="hidden lg:flex" />
-            <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
+            {activeStudyHub === "mcq-qbank" && <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />}
             {/* Theme / Appearance toggle — desktop only; lives in mobile drawer */}
             <button
               type="button"
@@ -714,7 +713,7 @@ export function MedNexusApp() {
 
             {/* ── Scrollable body ── */}
             <div className="flex-1 overflow-y-auto py-3 px-3 flex flex-col gap-0.5">
-              <StudyHubSwitcher activeHub={activeStudyHub} onSelect={setActiveStudyHub} className="mb-3" />
+              <StudyHubDropdown activeHub={activeStudyHub} onSelect={setActiveStudyHub} onAfterSelect={() => setMobileDrawerOpen(false)} />
 
               {/* Section: Quick Access */}
               <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Quick Access</p>
