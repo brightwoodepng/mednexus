@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
-import { verifyAdminToken } from "@/lib/admin-auth"
+import { requireAdminRequest } from "@/lib/admin-access"
 
 // Admin-only: forcefully overwrite a wallet balance. Database provisioning is performed by db:migrate.
 export async function PATCH(req: NextRequest) {
   try {
-    if (!verifyAdminToken(req.headers.get("x-admin-token") ?? "")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!await requireAdminRequest(req, "manage_system")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     const { uid, balance } = await req.json()
     if (!uid || typeof balance !== "number") {
       return NextResponse.json({ error: "uid and balance required" }, { status: 400 })

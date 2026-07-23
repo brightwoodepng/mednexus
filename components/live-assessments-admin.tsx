@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useAdmin } from "@/contexts/admin-context"
 import { getModules } from "@/lib/modules"
 import type { LiveAssessment, AssessmentAnalytics } from "@/lib/types"
 import {
@@ -12,7 +11,6 @@ import {
 
 // ── Create Assessment Modal ────────────────────────────────────────────────────
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const { adminToken } = useAdmin()
   const modules = getModules()
   const [form, setForm] = useState({
     title: "",
@@ -37,7 +35,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
     try {
       const res = await fetch("/api/assessments", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-token": adminToken ?? "" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: form.title.trim(),
           moduleName: form.moduleName,
@@ -125,7 +123,6 @@ function AnalyticsModal({
   assessment,
   onClose,
 }: { assessment: LiveAssessment; onClose: () => void }) {
-  const { adminToken } = useAdmin()
   const [loading, setLoading] = useState(true)
   const [analytics, setAnalytics] = useState<AssessmentAnalytics & { uniqueParticipants: number; passMark: number; triesAllowed: number; failCount: number; highestScore: number; lowestScore: number; medianScore: number } | null>(null)
   const [recentAttempts, setRecentAttempts] = useState<Array<{ userName: string; isGuest: boolean; score: number; total: number; percentage: number; submittedAt: string }>>([])
@@ -133,9 +130,7 @@ function AnalyticsModal({
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/assessments/${assessment.id}/analytics`, {
-          headers: { "x-admin-token": adminToken ?? "" },
-        })
+        const res = await fetch(`/api/assessments/${assessment.id}/analytics`)
         const data = await res.json()
         setAnalytics(data.analytics)
         setRecentAttempts(data.recentAttempts ?? [])
@@ -143,7 +138,7 @@ function AnalyticsModal({
       finally { setLoading(false) }
     }
     load()
-  }, [assessment.id, adminToken])
+  }, [assessment.id])
 
   function exportToPDF() {
     if (!analytics) return
@@ -445,7 +440,6 @@ function AnalyticsModal({
 
 // ── Main Admin Component ───────────────────────────────────────────────────────
 export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
-  const { adminToken } = useAdmin()
   const [assessments, setAssessments] = useState<LiveAssessment[]>([])
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -455,9 +449,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
   const fetchAssessments = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/assessments", {
-        headers: { "x-admin-token": adminToken ?? "" },
-      })
+      const res = await fetch("/api/assessments")
       const data = await res.json()
       setAssessments(data.assessments ?? [])
     } catch {
@@ -465,7 +457,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
     } finally {
       setLoading(false)
     }
-  }, [adminToken])
+  }, [])
 
   useEffect(() => { fetchAssessments() }, [fetchAssessments])
 
@@ -473,7 +465,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
     const newStatus = asmt.status === "live" ? "offline" : "live"
     await fetch(`/api/assessments/${asmt.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "x-admin-token": adminToken ?? "" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     })
     fetchAssessments()
@@ -483,7 +475,6 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
     if (!confirm(`Delete "${asmt.title}"? This also removes all attempts.`)) return
     await fetch(`/api/assessments/${asmt.id}`, {
       method: "DELETE",
-      headers: { "x-admin-token": adminToken ?? "" },
     })
     fetchAssessments()
   }

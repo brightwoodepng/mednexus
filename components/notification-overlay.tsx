@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useAdmin } from "@/contexts/admin-context"
 
 // ─── Unified item type ────────────────────────────────────────────────────────
 // Both admin broadcasts and personal notifications are normalised into this
@@ -201,14 +200,10 @@ function NotificationRow({
   item,
   onMarkRead,
   onDelete,
-  canManageBroadcasts,
-  adminToken,
 }: {
   item: OverlayItem
   onMarkRead: (id: string, source: OverlayItem["source"]) => void
   onDelete: (id: string, source: OverlayItem["source"]) => void
-  canManageBroadcasts: boolean
-  adminToken: string | null
 }) {
   const [deleting, setDeleting] = useState(false)
   const [marking, setMarking] = useState(false)
@@ -224,7 +219,6 @@ function NotificationRow({
         headers: {
           "Content-Type": "application/json",
           ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
-          ...(item.source === "broadcast" && adminToken ? { "x-admin-token": adminToken } : {}),
         },
         body: JSON.stringify({ id: item.id, isRead: true }),
       })
@@ -246,7 +240,6 @@ function NotificationRow({
         headers: {
           "Content-Type": "application/json",
           ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
-          ...(item.source === "broadcast" && adminToken ? { "x-admin-token": adminToken } : {}),
         },
         body: JSON.stringify({ id: item.id }),
       })
@@ -313,7 +306,7 @@ function NotificationRow({
             <CheckIcon size={13} />
           </button>
         )}
-        {(item.source === "personal" || canManageBroadcasts) && (
+        {item.source === "personal" && (
         <button
           type="button"
           onClick={handleDelete}
@@ -378,7 +371,6 @@ interface NotificationOverlayProps {
 }
 
 export function NotificationOverlay({ open, onClose, onUnreadCountChange }: NotificationOverlayProps) {
-  const { adminToken } = useAdmin()
   const [items, setItems] = useState<OverlayItem[]>([])
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all")
@@ -395,7 +387,6 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
         const broadcastHeaders: Record<string, string> = {}
         const authHeader = getStoredAuthHeader()
         if (authHeader) broadcastHeaders[authHeader.key] = authHeader.value
-        if (adminToken) broadcastHeaders["x-admin-token"] = adminToken
 
 
         const personalHeaders: Record<string, string> = {}
@@ -461,7 +452,7 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
     })()
 
     return () => { cancelled = true }
-  }, [open, adminToken]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Escape key closes
   useEffect(() => {
@@ -580,8 +571,6 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
                   item={item}
                   onMarkRead={handleMarkRead}
                   onDelete={handleDelete}
-                  canManageBroadcasts={Boolean(adminToken)}
-                  adminToken={adminToken}
                 />
               ))}
             </div>

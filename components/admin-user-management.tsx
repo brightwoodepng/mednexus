@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useAdmin } from "@/contexts/admin-context"
 import { ALL_LEVELS } from "@/lib/levels"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -190,7 +189,6 @@ function EditLevelModal({
 // ── Registered Students Table ──────────────────────────────────────────────────
 
 function RegisteredTable() {
-  const { adminToken } = useAdmin()
   const [users, setUsers] = useState<RegisteredUser[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -204,7 +202,6 @@ function RegisteredTable() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
-    if (!adminToken) return
     setLoading(true)
     try {
       const p = new URLSearchParams()
@@ -212,7 +209,7 @@ function RegisteredTable() {
       if (statusFilter) p.set("status", statusFilter)
       p.set("sort", sort)
       p.set("order", order)
-      const res = await fetch(`/api/admin/users?${p}`, { headers: { "x-admin-token": adminToken } })
+      const res = await fetch(`/api/admin/users?${p}`)
       if (res.ok) {
         const data = await res.json()
         setUsers(data.users)
@@ -220,7 +217,7 @@ function RegisteredTable() {
       }
     } catch {}
     setLoading(false)
-  }, [adminToken, search, statusFilter, sort, order])
+  }, [search, statusFilter, sort, order])
 
   useEffect(() => {
     const t = setTimeout(fetchUsers, 300)
@@ -228,12 +225,11 @@ function RegisteredTable() {
   }, [fetchUsers])
 
   async function doAction(uid: string, action: string, extra?: Record<string, string>) {
-    if (!adminToken) return
     setActionLoading(uid + action)
     try {
       const res = await fetch(`/api/admin/users/${uid}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-admin-token": adminToken },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, ...extra }),
       })
       const data = await res.json()
@@ -250,10 +246,9 @@ function RegisteredTable() {
   }
 
   async function doDelete(uid: string) {
-    if (!adminToken) return
     setActionLoading(uid + "delete")
     try {
-      await fetch(`/api/admin/users/${uid}`, { method: "DELETE", headers: { "x-admin-token": adminToken } })
+      await fetch(`/api/admin/users/${uid}`, { method: "DELETE" })
       await fetchUsers()
     } catch {}
     setActionLoading(null)
@@ -434,7 +429,6 @@ function RegisteredTable() {
 // ── Guest Users Table ──────────────────────────────────────────────────────────
 
 function GuestTable() {
-  const { adminToken } = useAdmin()
   const [guests, setGuests] = useState<GuestUser[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -445,14 +439,13 @@ function GuestTable() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const fetchGuests = useCallback(async () => {
-    if (!adminToken) return
     setLoading(true)
     try {
       const p = new URLSearchParams()
       if (search) p.set("search", search)
       p.set("sort", sort)
       p.set("order", order)
-      const res = await fetch(`/api/admin/guests?${p}`, { headers: { "x-admin-token": adminToken } })
+      const res = await fetch(`/api/admin/guests?${p}`)
       if (res.ok) {
         const data = await res.json()
         setGuests(data.guests)
@@ -460,7 +453,7 @@ function GuestTable() {
       }
     } catch {}
     setLoading(false)
-  }, [adminToken, search, sort, order])
+  }, [search, sort, order])
 
   useEffect(() => {
     const t = setTimeout(fetchGuests, 300)
@@ -468,10 +461,9 @@ function GuestTable() {
   }, [fetchGuests])
 
   async function doDelete(uid: string) {
-    if (!adminToken) return
     setActionLoading(uid)
     try {
-      await fetch(`/api/admin/guests/${uid}`, { method: "DELETE", headers: { "x-admin-token": adminToken } })
+      await fetch(`/api/admin/guests/${uid}`, { method: "DELETE" })
       await fetchGuests()
     } catch {}
     setActionLoading(null)

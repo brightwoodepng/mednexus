@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useAdmin } from "@/contexts/admin-context"
 import type { AppNotification } from "@/lib/types"
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -34,14 +33,6 @@ function RefreshIcon({ size = 16, className = "" }: { size?: number; className?:
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
       <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-    </svg>
-  )
-}
-function TrashIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" />
-      <path d="M9 6V4h6v2" />
     </svg>
   )
 }
@@ -109,13 +100,9 @@ function fmtTime(iso: string) {
 function NotificationRow({
   n,
   onMarkRead,
-  onDelete,
-  adminToken,
 }: {
   n: AppNotification
   onMarkRead: (id: string) => void
-  onDelete: (id: string) => void
-  adminToken: string | null
 }) {
   const [deleting, setDeleting] = useState(false)
   const [marking, setMarking] = useState(false)
@@ -139,21 +126,6 @@ function NotificationRow({
     }
   }
 
-  async function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation()
-    if (deleting) return
-    setDeleting(true)
-    try {
-      await fetch("/api/notifications", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json", "x-admin-token": adminToken ?? "" },
-        body: JSON.stringify({ id: n.id }),
-      })
-      onDelete(n.id)
-    } catch {
-      setDeleting(false)
-    }
-  }
 
   return (
     <div
@@ -212,18 +184,6 @@ function NotificationRow({
           </button>
         )}
 
-        {/* Delete */}
-        {adminToken && (
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={deleting}
-          title="Delete notification"
-          className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 opacity-0 group-hover:opacity-100"
-        >
-          <TrashIcon size={15} />
-        </button>
-        )}
       </div>
     </div>
   )
@@ -232,7 +192,6 @@ function NotificationRow({
 // ─── Main Page (inner, has access to contexts) ────────────────────────────────
 function NotificationsInner() {
   const router = useRouter()
-  const { adminToken } = useAdmin()
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all")
@@ -241,7 +200,6 @@ function NotificationsInner() {
     const headers: Record<string, string> = {}
     const authHeader = getStoredAuthHeader()
     if (authHeader) headers[authHeader.key] = authHeader.value
-    if (adminToken) headers["x-admin-token"] = adminToken
     try {
       const res = await fetch("/api/notifications", { cache: "no-store", headers })
       if (res.ok) {
@@ -251,7 +209,7 @@ function NotificationsInner() {
     } finally {
       setLoading(false)
     }
-  }, [adminToken])
+  }, [])
 
   useEffect(() => { load() }, [load])
 
@@ -259,10 +217,6 @@ function NotificationsInner() {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     )
-  }
-
-  function handleDelete(id: string) {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
   }
 
   async function markAllRead() {
@@ -391,8 +345,6 @@ function NotificationsInner() {
                 key={n.id}
                 n={n}
                 onMarkRead={handleMarkRead}
-                onDelete={handleDelete}
-                adminToken={adminToken}
               />
             ))}
           </div>
