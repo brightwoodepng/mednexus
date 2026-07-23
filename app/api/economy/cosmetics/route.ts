@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
-import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
+import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { STORE_ITEMS } from "@/lib/economy"
 
 // GET /api/economy/cosmetics?uid=xxx
 // Returns the currently equipped title, frame, and highlight for a user.
 export async function GET(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
-    const requestedUid = req.nextUrl.searchParams.get("uid")
-    if (requestedUid && identityMismatch(requestedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
     const uid = auth.uid
     if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 })
 
@@ -39,10 +37,9 @@ export async function GET(req: NextRequest) {
 // - itemId set  → verify ownership, then equip
 export async function PATCH(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
-    const { uid: suppliedUid, type, itemId } = await req.json()
-    if (identityMismatch(suppliedUid, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
+    const { type, itemId } = await req.json()
     const uid = auth.uid
 
     if (!type) {
