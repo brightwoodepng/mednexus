@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
-import { authenticateRequest } from "@/lib/request-auth"
+import { requireRegisteredUser } from "@/lib/request-auth"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -23,7 +23,7 @@ async function adminUnauthorized(req: NextRequest) {
 // GET /api/notifications — broadcasts plus the authenticated user's read state.
 export async function GET(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
+    const auth = await requireRegisteredUser(req)
     if (!auth) return await adminUnauthorized(req)
 
     const pool = await getPool()
@@ -95,7 +95,7 @@ export async function PATCH(req: NextRequest) {
 
     // Read-state requests are intentionally separate from broadcast content.
     if (typeof body.isRead === "boolean") {
-      const auth = authenticateRequest(req.headers)
+      const auth = await requireRegisteredUser(req)
       if (!auth) return await adminUnauthorized(req)
       const pool = await getPool()
       if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })

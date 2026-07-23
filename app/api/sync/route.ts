@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { authenticateRequest, authError } from "@/lib/request-auth"
+import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { triggerProgressionNotifications } from "@/lib/progression-notifications"
 
 async function getPgPool() {
@@ -23,8 +23,8 @@ async function getFirestore() {
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
     const { uid } = auth
 
     // Try PostgreSQL first
@@ -68,8 +68,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
     const { uid } = auth
 
     const body = await req.json()
