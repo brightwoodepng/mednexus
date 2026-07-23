@@ -1,14 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { WorkspaceProviders } from '@/components/workspace-providers'
-
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-})
 
 export const metadata: Metadata = {
   title: 'MedNexus — Clinical Q-Bank',
@@ -53,7 +46,6 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
       <body className="overflow-x-hidden font-sans antialiased text-foreground">
