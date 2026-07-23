@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { BookOpenIcon, CheckIcon, ChevronDownIcon, LockKeyholeIcon, ScrollTextIcon, StethoscopeIcon } from "lucide-react"
+import { BookOpenIcon, ChevronDownIcon, LockKeyholeIcon, ScrollTextIcon, StethoscopeIcon } from "lucide-react"
 import { STUDY_HUBS, type StudyHubId } from "@/components/study-hub-switcher"
 import { useTheme } from "@/contexts/theme-context"
 
@@ -94,53 +94,37 @@ export function StudyHubDropdown({
           role="menu"
           className={`absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl ${menuCls}`}
         >
-          {STUDY_HUBS.filter((hub) => hub.id !== activeHub).map((hub) => {
-            const active = false
-            return (
-              <button
-                key={hub.id}
-                role="menuitem"
-                type="button"
-                disabled={!hub.available}
-                onClick={() => hub.available && handleSelect(hub.id)}
-                aria-disabled={!hub.available}
-                aria-label={!hub.available ? `${hub.name} — coming soon` : hub.name}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:cursor-not-allowed ${
-                  active
-                    ? "bg-sidebar-primary/10 text-sidebar-foreground"
-                    : hub.available
-                      ? `text-sidebar-foreground ${rowHoverCls}`
-                      : "text-sidebar-foreground/40"
-                }`}
-              >
-                <span
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${
-                    active
-                      ? "bg-sidebar-primary/20 text-sidebar-primary"
-                      : hub.available
-                        ? "bg-sidebar-primary/10 text-sidebar-primary"
-                        : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {hub.available ? <HubIcon hub={hub.id} size={13} /> : <LockKeyholeIcon size={12} aria-hidden />}
+          {STUDY_HUBS.filter((hub) => hub.id !== activeHub).map((hub) => (
+            <button
+              key={hub.id}
+              role="menuitem"
+              type="button"
+              disabled={!hub.available}
+              onClick={() => hub.available && handleSelect(hub.id)}
+              aria-disabled={!hub.available}
+              aria-label={!hub.available ? `${hub.name} — coming soon` : hub.name}
+              className={`flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:cursor-not-allowed ${
+                hub.available
+                  ? `text-sidebar-foreground ${rowHoverCls}`
+                  : "text-sidebar-foreground/40"
+              }`}
+            >
+              <span className={`shrink-0 ${hub.available ? "text-sidebar-foreground" : "text-muted-foreground"}`}>
+                {hub.available ? <HubIcon hub={hub.id} size={18} /> : <LockKeyholeIcon size={18} aria-hidden />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block leading-tight">{hub.name}</span>
+                <span className="block text-xs font-normal leading-tight text-sidebar-foreground/55 mt-0.5">
+                  {hub.description}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-semibold leading-tight">{hub.name}</span>
-                  <span className="mt-0.5 block text-[10px] leading-tight text-sidebar-foreground/50">
-                    {hub.description}
-                  </span>
+              </span>
+              {!hub.available && (
+                <span className="shrink-0 rounded-full border border-sidebar-border bg-background/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sidebar-foreground/50">
+                  Soon
                 </span>
-                <span className="flex shrink-0 items-center gap-1.5">
-                  {active && <CheckIcon size={13} className="text-sidebar-primary" aria-hidden />}
-                  {!hub.available && (
-                    <span className="rounded-full border border-sidebar-border bg-background/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sidebar-foreground/50">
-                      Soon
-                    </span>
-                  )}
-                </span>
-              </button>
-            )
-          })}
+              )}
+            </button>
+          ))}
         </div>
       )}
     </div>
