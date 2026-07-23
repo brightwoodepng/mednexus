@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAdminRequest } from "@/lib/admin-access"
+import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -33,12 +33,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const pool = await getPool()
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
 
-    const isAdmin = Boolean(await requireAdminRequest(req, "manage_assessments"))
+    const canManageAssessments = Boolean(await requireAdminRequest(req, "manage_assessments"))
     const shareToken = req.nextUrl.searchParams.get("token")
 
     let row: Record<string, unknown> | null = null
 
-    if (isAdmin) {
+    if (canManageAssessments) {
       const res = await pool.query("SELECT * FROM mednexus_assessments WHERE id = $1", [id])
       row = res.rows[0] ?? null
     } else if (shareToken) {
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // body: { status?, title?, timeLimitMins?, triesAllowed?, passMark? }
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!await requireAdminRequest(req, "manage_assessments")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!await requireAdminRequest(req, "manage_assessments")) return await adminAccessDenied(req)
 
     const { id } = await params
     const pool = await getPool()
@@ -114,7 +114,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 // DELETE /api/assessments/[id] — admin only
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!await requireAdminRequest(req, "manage_assessments")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!await requireAdminRequest(req, "manage_assessments")) return await adminAccessDenied(req)
 
     const { id } = await params
     const pool = await getPool()

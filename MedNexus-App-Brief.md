@@ -33,8 +33,6 @@
 |---|---|
 | `DATABASE_URL` / `POSTGRES_URL` | All persistent features (accounts, progress, economy) |
 | `SESSION_SECRET` | JWT signing for user sessions and HMAC guest tokens |
-| `ADMIN_PASSWORD` | Admin panel login |
-| `ADMIN_SECRET` | HMAC signing for admin tokens |
 | `GEMINI_API_KEY` | AI question extraction from PDF / DOCX |
 
 > Without `DATABASE_URL`, the app runs in **localStorage-only guest mode** — quiz still works but no accounts, no economy, no sync.
@@ -49,7 +47,7 @@ Three roles selectable from the landing page (`app/page.tsx`):
 |---|---|---|
 | **Guest** | One click — no credentials | `localStorage` only, 7-day session token, progress not synced |
 | **Registered Student** | Index number + password | Full cloud sync, wallet, streaks, notifications, leaderboard |
-| **Admin** | `ADMIN_PASSWORD` → HMAC token | Question editor, assessment management, user management, broadcast notifications |
+| **Admin / Super Admin** | Approved account with an assigned role | Permission-gated content, assessment, user, broadcast, and system management |
 
 ### Registered User Fields
 `uid`, `name`, `classLevel` (e.g. "Level 400"), `indexNumber` (auto-formatted, unique), `role` (REGISTERED), `status` (pending → approved → rejected), `requiresPasswordUpdate`, `loginStreak`, `longestStreak`, `isPrivate` (opt out of leaderboard), `lastLoginDate`

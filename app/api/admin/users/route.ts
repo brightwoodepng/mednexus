@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAdminRequest } from "@/lib/admin-access"
+import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 
 async function getPool() {
   const { default: pool } = await import("@/lib/db")
@@ -8,7 +8,7 @@ async function getPool() {
 
 export async function GET(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_users")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return await adminAccessDenied(req)
   }
 
   try {
