@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAdminRequest } from "@/lib/admin-access"
+import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 
 export const maxDuration = 120
 
@@ -65,7 +65,7 @@ export async function GET() {
 // PUT /api/questions — admin only, saves question bank
 export async function PUT(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_mcq_content")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return await adminAccessDenied(req)
   }
 
   try {

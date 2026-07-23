@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAdminRequest } from "@/lib/admin-access"
+import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { authenticateRequest } from "@/lib/request-auth"
 
 async function getPool() {
@@ -16,20 +16,20 @@ function isValidType(type: unknown): type is "info" | "update" | "alert" {
   return type === "info" || type === "update" || type === "alert"
 }
 
-function adminUnauthorized() {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+async function adminUnauthorized(req: NextRequest) {
+  return adminAccessDenied(req)
 }
 
 // GET /api/notifications — broadcasts plus the authenticated user's read state.
 export async function GET(req: NextRequest) {
   try {
     const auth = authenticateRequest(req.headers)
-    if (!auth) return adminUnauthorized()
+    if (!auth) return await adminUnauthorized(req)
 
     const pool = await getPool()
     if (!pool) return NextResponse.json({ notifications: [] })
 
-    const isAdmin = await requireAdminRequest(req, "manage_broadcasts")
+    const canManageBroadcasts = await requireAdminRequest(req, "manage_broadcasts")
     const res = await pool.query(
       `SELECT n.id, n.title, n.body, n.type, n.admin_only, n.created_at,
               COALESCE(s.is_read, FALSE) AS is_read
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
         WHERE ($2 OR n.admin_only = FALSE)
         ORDER BY n.created_at DESC
         LIMIT 100`,
-      [auth.uid, isAdmin],
+      [auth.uid, canManageBroadcasts],
     )
 
     return NextResponse.json({
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/notifications — verified admins create broadcasts.
 export async function POST(req: NextRequest) {
-  if (!await requireAdminRequest(req, "manage_broadcasts")) return adminUnauthorized()
+  if (!await requireAdminRequest(req, "manage_broadcasts")) return await adminUnauthorized(req)
 
   try {
     const { title, body, type = "info", adminOnly = false } = await req.json()
@@ -96,7 +96,7 @@ export async function PATCH(req: NextRequest) {
     // Read-state requests are intentionally separate from broadcast content.
     if (typeof body.isRead === "boolean") {
       const auth = authenticateRequest(req.headers)
-      if (!auth) return adminUnauthorized()
+      if (!auth) return await adminUnauthorized(req)
       const pool = await getPool()
       if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
 
@@ -112,8 +112,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true, isRead: body.isRead })
     }
 
-    // Broadcast edits can only be made with a verified admin token.
-    if (!await requireAdminRequest(req, "manage_broadcasts")) return adminUnauthorized()
+    // Broadcast edits can only be made with a verified administrator session.
+    if (!await requireAdminRequest(req, "manage_broadcasts")) return await adminUnauthorized(req)
     const updates: string[] = []
     const values: unknown[] = []
     if (typeof body.title === "string") {
@@ -151,7 +151,7 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE /api/notifications — verified admins permanently remove broadcasts.
 export async function DELETE(req: NextRequest) {
-  if (!await requireAdminRequest(req, "manage_broadcasts")) return adminUnauthorized()
+  if (!await requireAdminRequest(req, "manage_broadcasts")) return await adminUnauthorized(req)
 
   try {
     const { id } = await req.json()
