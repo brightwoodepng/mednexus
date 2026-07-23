@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { adminScreenFromUrl, studyHubFromUrl, withHubContext } from "@/lib/admin-hub-routing"
+import { adminScreenFromUrl, withHubContext } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
@@ -9,19 +9,14 @@ import { sortByUrgency } from "@/lib/srs"
 import type { Screen } from "@/lib/view"
 import type { QuizMode, BlockResult, HistoryEntry, Question, ExamScore } from "@/lib/types"
 import { AuthScreen } from "@/components/auth-screen"
-import { Sidebar } from "@/components/sidebar"
 import { Dashboard } from "@/components/dashboard"
 import { ModuleLibrary } from "@/components/module-library"
 import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
 import { AppearanceModal } from "@/components/appearance-modal"
-import { QuestionEditor } from "@/components/question-editor"
-import { BroadcastScreen } from "@/components/broadcast-screen"
 import { LiveAssessmentsScreen } from "@/components/live-assessments-screen"
 import { LeaderboardScreen } from "@/components/leaderboard-screen"
-import { LiveAssessmentsAdmin } from "@/components/live-assessments-admin"
-import { NotificationBell } from "@/components/notification-bell"
 import { ProfileHistory } from "@/components/profile-history"
 import { WeakAreasScreen } from "@/components/weak-areas-screen"
 import { GameMode } from "@/components/game-mode"
@@ -29,27 +24,15 @@ import { NexusStoreHub, NexusStoreSupplyPage, NexusStoreVaultPage, NexusStoreCos
 import { UniversalImporter } from "@/components/universal-importer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import {
-  MenuIcon,
   StethoscopeIcon,
   PaletteIcon,
   ZapIcon,
   TimerIcon,
   XIcon,
   HeartIcon,
-  StoreIcon,
-  DatabaseIcon,
-  MegaphoneIcon,
-  ClipboardListIcon,
-  LayersIcon,
-  RadioIcon,
-  TrophyIcon,
 } from "@/components/icons"
-import { BottomNav } from "@/components/bottom-nav"
-import { getHubNavigation, PROFILE_NAVIGATION_ITEM } from "@/components/navigation/study-hub-navigation"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
-import { StudyHubDropdown } from "@/components/navigation/study-hub-dropdown"
-import { TheoryVault } from "@/components/theory-vault"
-import { TheoryEditor } from "@/components/theory-editor"
+import { LearnerWorkspaceShell } from "@/components/learner-workspace-shell"
 
 interface PendingQuiz {
   questions: Question[]
@@ -416,8 +399,7 @@ export function MedNexusApp() {
 
 
 
-  const { sidebarCollapsed, setSidebarCollapsed, mobileNavigationOpen: mobileDrawerOpen, setMobileNavigationOpen: setMobileDrawerOpen, activeStudyHub, setActiveStudyHub } = useApplicationShell()
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const { activeStudyHub, setActiveStudyHub } = useApplicationShell()
   const [isExamActive, setIsExamActive] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [importerOpen, setImporterOpen] = useState(false)
@@ -440,9 +422,9 @@ export function MedNexusApp() {
 
   useEffect(() => {
     const restoreFromLocation = () => {
-      setActiveStudyHub(studyHubFromUrl())
+      setActiveStudyHub("mcq-qbank")
       const pathname = window.location.pathname
-      setScreen(adminScreenFromUrl() ?? (pathname === "/profile" ? "profile" : studyHubFromUrl() === "theory-vault" ? "theory-dashboard" : "dashboard"))
+      setScreen(adminScreenFromUrl() ?? (pathname === "/profile" ? "profile" : "dashboard"))
     }
     restoreFromLocation()
     window.addEventListener("popstate", restoreFromLocation)
@@ -483,7 +465,6 @@ export function MedNexusApp() {
     if (loadActiveRoomSession()) {
       setScreen("game")
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const safeScreen = screen
@@ -608,55 +589,17 @@ export function MedNexusApp() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        screen={safeScreen}
-        onNavigate={handleScreenNavigation}
-        onOpenThemes={() => setThemeOpen(true)}
-        onOpenImporter={() => setImporterOpen(true)}
-        mobileOpen={mobileNavOpen}
-        onCloseMobile={() => setMobileNavOpen(false)}
-        onReadyForQuiz={handleReadyForQuiz}
-        onSelectModule={(mod) => { setModulesInitialModule(mod); setScreen("modules"); setMobileNavOpen(false) }}
-        collapsed={sidebarCollapsed}
-        onCollapse={() => setSidebarCollapsed(true)}
-        onExpand={() => setSidebarCollapsed(false)}
-      />
-
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className={`items-center justify-between border-b border-border bg-card px-3 py-2 sm:px-4 sm:py-2.5 ${safeScreen === "game" ? "hidden md:flex" : "flex"}`}>
-          {/* Left: mobile hamburger */}
-          <div className="flex items-center">
-            <button
-              type="button"
-              onClick={() => setMobileDrawerOpen(true)}
-              className="md:hidden shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-              aria-label="Open menu"
-            >
-              <MenuIcon size={20} />
-            </button>
-          </div>
-          {/* Right: study mode toggle + theme toggle (desktop only) + bell */}
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            {activeStudyHub === "mcq-qbank" && <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />}
-            {/* Theme / Appearance toggle — desktop only; lives in mobile drawer */}
-            <button
-              type="button"
-              onClick={() => setThemeOpen(true)}
-              className="hidden md:flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-              aria-label="Appearance"
-            >
-              <PaletteIcon size={20} />
-            </button>
-            <NotificationBell />
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-3 pb-24 md:p-5 lg:p-8" onClick={() => { if (!sidebarCollapsed) setSidebarCollapsed(true) }}>
+    <>
+    <LearnerWorkspaceShell
+      screen={safeScreen}
+      onNavigate={handleScreenNavigation}
+      onOpenAppearance={() => setThemeOpen(true)}
+      modeControl={activeStudyHub === "mcq-qbank" ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
+      hideBottomNavigation={isExamActive}
+    >
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
           )}
-          {safeScreen.startsWith("theory-") && <TheoryVault initialView={({ "theory-dashboard": "Dashboard", "theory-browse": "Browse Questions", "theory-bookmarks": "Bookmarks", "theory-notes": "My Notes", "theory-revision": "Revision Queue", "theory-progress": "Progress", "theory-search": "Search" } as const)[safeScreen as "theory-dashboard"] ?? "Dashboard"} />}
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
@@ -667,84 +610,8 @@ export function MedNexusApp() {
           {safeScreen === "store-supply" && <NexusStoreSupplyPage onBack={() => setScreen("store")} />}
           {safeScreen === "store-cosmetics" && <NexusStoreCosmeticsPage onBack={() => setScreen("store")} />}
           {safeScreen === "store-vault" && <NexusStoreVaultPage onBack={() => setScreen("store")} />}
-          {safeScreen === "results" && lastResult && (
-            <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />
-          )}
-        </main>
-      </div>
-
-      {/* Mobile bottom navigation — hidden on md+; also hidden during active assessment exam */}
-      <BottomNav screen={safeScreen} activeHub={activeStudyHub} onNavigate={handleScreenNavigation} hidden={isExamActive} />
-
-      {/* Mobile slide-out drawer — md:hidden (opened by header hamburger) */}
-      {mobileDrawerOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          {/* Scrim */}
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={() => setMobileDrawerOpen(false)}
-            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
-          />
-
-          <div className="absolute left-0 top-0 h-full w-72 max-w-[82%] bg-card shadow-2xl animate-in slide-in-from-left duration-200 flex flex-col">
-
-            {/* ── Header ── */}
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-border shrink-0">
-              <div className="flex items-center gap-2">
-                <StethoscopeIcon size={16} className="text-primary" />
-                <span className="text-sm font-bold tracking-tight">MedNexus</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMobileDrawerOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                aria-label="Close"
-              >
-                <XIcon size={16} />
-              </button>
-            </div>
-
-            {/* ── Scrollable body ── */}
-            <div className="flex-1 overflow-y-auto py-3 px-3 flex flex-col gap-0.5">
-              <StudyHubDropdown activeHub={activeStudyHub} onSelect={setActiveStudyHub} onAfterSelect={() => setMobileDrawerOpen(false)} />
-
-              {/* Learner navigation is shared with the desktop sidebar and bottom bar. */}
-              <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Workspace</p>
-              {getHubNavigation(activeStudyHub).map((item) => {
-                const Icon = item.icon
-                return <button key={item.id} type="button" onClick={() => { handleScreenNavigation(item.screen); setMobileDrawerOpen(false) }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon size={16} /></span>
-                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                </button>
-              })}
-              <button type="button" onClick={() => { handleScreenNavigation(PROFILE_NAVIGATION_ITEM.screen); setMobileDrawerOpen(false) }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><PROFILE_NAVIGATION_ITEM.icon size={16} /></span>
-                <p className="text-sm font-semibold text-foreground">{PROFILE_NAVIGATION_ITEM.label}</p>
-              </button>
-
-              <div className="my-2 h-px bg-border mx-1" />
-
-            </div>
-
-            {/* ── Footer: Theme toggle ── */}
-            <div className="shrink-0 border-t border-border p-3">
-              <button
-                type="button"
-                onClick={() => { setThemeOpen(true); setMobileDrawerOpen(false) }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-muted transition-colors"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  <PaletteIcon size={16} />
-                </span>
-                <p className="text-sm font-semibold text-foreground">Appearance</p>
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
+          {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
+    </LearnerWorkspaceShell>
       <QuantityModal
         open={pendingQuiz !== null}
         label={pendingQuiz?.discipline ?? pendingQuiz?.moduleName ?? ""}
@@ -768,6 +635,6 @@ export function MedNexusApp() {
       )}
       <CreditsModal open={creditsOpen} onClose={() => setCreditsOpen(false)} />
       {showWelcome && user && <WelcomeModal name={user.name} onClose={() => setShowWelcome(false)} />}
-    </div>
+    </>
   )
 }
