@@ -1,1 +1,6 @@
-export default function AdminSection() { return <section><p className="text-sm text-cyan-300">ADMIN CONSOLE</p><h1 className="mt-2 text-3xl font-bold">Workspace</h1><p className="mt-4 text-slate-400">This protected console workspace is ready for its permission-gated management tools.</p></section> }
+import { redirect } from "next/navigation"
+
+/** Legacy URL retained for existing bookmarks. */
+export default function BroadcastsPage() {
+  redirect("/admin/notifications")
+}
