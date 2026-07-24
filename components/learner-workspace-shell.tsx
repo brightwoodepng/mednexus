@@ -1,13 +1,11 @@
 "use client"
 
 import { type ReactNode, useEffect, useRef, useState } from "react"
-import { LogOutIcon, MenuIcon, PaletteIcon, StethoscopeIcon, UserIcon, XIcon } from "@/components/icons"
+import { LogOutIcon, MenuIcon, PaletteIcon, StethoscopeIcon, UserIcon } from "@/components/icons"
 import Link from "next/link"
 import { NotificationBell } from "@/components/notification-bell"
 import { Sidebar } from "@/components/sidebar"
 import { BottomNav } from "@/components/bottom-nav"
-import { StudyHubDropdown } from "@/components/navigation/study-hub-dropdown"
-import { getHubNavigation, PROFILE_NAVIGATION_ITEM } from "@/components/navigation/study-hub-navigation"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { useApp } from "@/contexts/app-context"
 import type { Screen } from "@/lib/view"
@@ -63,7 +61,7 @@ export function LearnerWorkspaceShell({
         screen={screen}
         onNavigate={navigate}
         onOpenThemes={onOpenAppearance}
-        mobileOpen={false}
+        mobileOpen={mobileNavigationOpen}
         onCloseMobile={() => setMobileNavigationOpen(false)}
         onReadyForQuiz={() => undefined}
         onSelectModule={() => undefined}
@@ -103,14 +101,6 @@ export function LearnerWorkspaceShell({
 
       <BottomNav screen={screen} activeHub={activeStudyHub} onNavigate={navigate} hidden={hideBottomNavigation} />
 
-      {mobileNavigationOpen && <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Learner navigation">
-        <button type="button" aria-label="Close navigation menu" onClick={() => setMobileNavigationOpen(false)} className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
-        <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[82%] flex-col bg-card shadow-2xl">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3.5"><div className="flex items-center gap-2"><StethoscopeIcon size={16} className="text-primary" /><span className="text-sm font-bold tracking-tight">MedNexus</span></div><button type="button" onClick={() => setMobileNavigationOpen(false)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted" aria-label="Close navigation menu"><XIcon size={18} /></button></div>
-          <div className="flex-1 overflow-y-auto p-3"><StudyHubDropdown activeHub={activeStudyHub} onSelect={setActiveStudyHub} onAfterSelect={() => setMobileNavigationOpen(false)} /><p className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Workspace</p>{getHubNavigation(activeStudyHub).map((item) => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => navigate(item.screen)} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-muted"><Icon size={17} className="text-primary" />{item.label}</button> })}<button type="button" onClick={() => navigate(PROFILE_NAVIGATION_ITEM.screen)} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-muted"><UserIcon size={17} className="text-primary" />Profile</button></div>
-          <div className="border-t border-border p-3"><button type="button" onClick={() => { onOpenAppearance(); setMobileNavigationOpen(false) }} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-muted"><PaletteIcon size={17} />Appearance</button><button type="button" onClick={signOutUser} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-destructive hover:bg-destructive/10"><LogOutIcon size={17} />Sign out</button></div>
-        </aside>
-      </div>}
     </div>
   )
 }
