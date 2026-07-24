@@ -88,7 +88,7 @@ async function appendToDb(questions: Question[]): Promise<boolean> {
 }
 
 export function QuestionsProvider({ children }: { children: ReactNode }) {
-  const [questions, setQuestions] = useState<Question[]>([...questionsDatabase])
+  const [questions, setQuestions] = useState<Question[]>([])
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const questionsRef = useRef(questions)
@@ -134,7 +134,10 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
       pollTimer = setInterval(poll, POLL_INTERVAL)
     })
 
-    return () => { if (pollTimer) clearInterval(pollTimer) }
+    const refresh = () => { void load() }
+    window.addEventListener("mednexus:questions-invalidated", refresh)
+
+    return () => { if (pollTimer) clearInterval(pollTimer); window.removeEventListener("mednexus:questions-invalidated", refresh) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
