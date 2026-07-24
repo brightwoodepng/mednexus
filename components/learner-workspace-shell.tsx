@@ -75,19 +75,14 @@ export function LearnerWorkspaceShell({
         <header className="flex min-h-14 items-center justify-between border-b border-border bg-card px-3 py-2 sm:px-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <button type="button" onClick={() => setMobileNavigationOpen(true)} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:hidden" aria-label="Open navigation menu"><MenuIcon size={20} /></button>
-            <button type="button" onClick={() => navigate("dashboard")} className="hidden items-center gap-2 text-left md:flex" aria-label="MedNexus dashboard">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"><StethoscopeIcon size={17} /></span>
-              <span className="text-sm font-bold tracking-tight text-foreground">MedNexus</span>
-            </button>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {modeControl}
             <button type="button" onClick={onOpenAppearance} className="hidden items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:flex" aria-label="Appearance"><PaletteIcon size={19} /></button>
             <NotificationBell />
             <div ref={accountRef} className="relative">
-              <button type="button" onClick={() => setAccountOpen((open) => !open)} aria-expanded={accountOpen} aria-haspopup="menu" aria-label="Open account menu" className="flex h-9 min-w-9 items-center justify-center rounded-full bg-primary/10 px-2 text-primary transition-colors hover:bg-primary/15">
+              <button type="button" onClick={() => setAccountOpen((open) => !open)} aria-expanded={accountOpen} aria-haspopup="menu" aria-label="Open account menu" className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/15">
                 <UserIcon size={18} />
-                <span className="ml-1 hidden max-w-28 truncate text-xs font-semibold sm:inline">{user?.name ?? "Account"}</span>
               </button>
               {accountOpen && <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-border bg-card p-1.5 shadow-xl">
                 <button type="button" role="menuitem" onClick={() => { navigate("profile"); setAccountOpen(false) }} className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-semibold hover:bg-muted"><UserIcon size={16} />Profile & account</button>

@@ -3,18 +3,18 @@
 import { useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
-import { LogOutIcon, PaletteIcon, UserIcon } from "@/components/icons"
+import { ChevronLeftIcon, ChevronRightIcon, LogOutIcon, StethoscopeIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
-import { SidebarFrame, SidebarHeader, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
+import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
 import { StudyHubDropdown, StudyHubDropdownIcon } from "@/components/navigation/study-hub-dropdown"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
-import { getHubNavigation, PROFILE_NAVIGATION_ITEM } from "@/components/navigation/study-hub-navigation"
+import { getHubNavigation } from "@/components/navigation/study-hub-navigation"
 
 interface SidebarProps { screen: Screen; onNavigate: (screen: Screen) => void; onOpenThemes: () => void; onOpenImporter?: () => void; mobileOpen: boolean; onCloseMobile: () => void; onReadyForQuiz: (config: { module: string; discipline: string | null }) => void; onSelectModule: (module: string) => void; collapsed: boolean; onCollapse: () => void; onExpand: () => void }
 
-/** Desktop projection of the learner shell navigation. It has no admin controls. */
-export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseMobile, collapsed, onCollapse, onExpand }: SidebarProps) {
-  const { user, signOutUser } = useApp()
+/** Desktop projection of the learner shell navigation. */
+export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collapsed, onCollapse, onExpand }: SidebarProps) {
+  const { signOutUser } = useApp()
   const { isGlassEnabled } = useTheme()
   const { activeStudyHub, setActiveStudyHub } = useApplicationShell()
   const navigation = useMemo(() => getHubNavigation(activeStudyHub), [activeStudyHub])
