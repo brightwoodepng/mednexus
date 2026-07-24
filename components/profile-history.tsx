@@ -57,7 +57,7 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 
 function ProfileHeader() {
   const { user, cloudEnabled, updateName, signOutUser } = useApp()
-  const { balance, equippedCosmetics, grantDevNP } = useEconomy()
+  const { equippedCosmetics } = useEconomy()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
@@ -167,12 +167,6 @@ function ProfileHeader() {
             : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
           }
 
-          {/* NP balance + admin cheat */}
-          <div className="mt-1 flex items-center gap-1.5">
-            <p className="text-sm font-bold text-amber-500 tabular-nums">
-              ⚡ {balance.toLocaleString()} NP
-            </p>
-          </div>
 
           {/* Sync state */}
           <div className="mt-2">
@@ -553,39 +547,110 @@ function CosmeticLoadout() {
   }
 
   const slots = [
-    { type: "avatar" as const, label: "Avatar",  emoji: "🧑‍⚕️", items: ownedAvatars, equipped: equippedCosmetics.avatar },
-    { type: "title"  as const, label: "Title",   emoji: "🏷️",   items: ownedTitles,  equipped: equippedCosmetics.title  },
-    { type: "frame"  as const, label: "Frame",   emoji: "🖼️",   items: ownedFrames,  equipped: equippedCosmetics.frame  },
+    {
+      type: "title" as const,
+      label: "Title",
+      description: "Shown beneath your name",
+      items: ownedTitles,
+      equipped: equippedCosmetics.title,
+      getName: (item: typeof STORE_ITEMS[number]) => TITLE_LABELS[item.id] ?? item.name,
+    },
+    {
+      type: "frame" as const,
+      label: "Avatar Frame",
+      description: "Ring effect around your avatar",
+      items: ownedFrames,
+      equipped: equippedCosmetics.frame,
+      getName: (item: typeof STORE_ITEMS[number]) => item.name,
+    },
+    {
+      type: "avatar" as const,
+      label: "Avatar",
+      description: "Your profile picture",
+      items: ownedAvatars,
+      equipped: equippedCosmetics.avatar,
+      getName: (item: typeof STORE_ITEMS[number]) => item.name,
+    },
   ]
 
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+
+      {/* Header */}
+      <div className="border-b border-border px-5 py-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm leading-none">✨</span>
-          <h2 className="text-sm font-semibold text-foreground">Cosmetic Loadout</h2>
+          <span className="text-base leading-none">✨</span>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Cosmetic Loadout</h2>
+            <p className="text-xs text-muted-foreground">Tap any item to equip it</p>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground">Equip unlocked items</p>
       </div>
-      <div className="grid grid-cols-3 gap-px bg-border">
-        {slots.map(({ type, label, emoji, items, equipped }) => (
-          <div key={type} className="flex flex-col gap-1.5 bg-card px-3 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {emoji} {label}
-            </p>
-            <select
-              value={equipped ?? ""}
-              onChange={(e) => handleEquip(type, e.target.value || null)}
-              disabled={savingType === type || items.length === 0}
-              className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">{items.length === 0 ? "None owned" : "— None —"}</option>
-              {items.map((i) => (
-                <option key={i.id} value={i.id}>{i.icon} {i.name}</option>
-              ))}
-            </select>
-            {savingType === type && (
-              <span className="text-[10px] text-muted-foreground animate-pulse">Saving…</span>
+
+      {/* Slots */}
+      <div className="divide-y divide-border">
+        {slots.map(({ type, label, description, items, equipped, getName }) => (
+          <div key={type} className="px-5 py-4">
+
+            {/* Slot header */}
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+                <p className="text-[11px] text-muted-foreground/60">{description}</p>
+              </div>
+              {savingType === type && (
+                <span className="animate-pulse text-[10px] text-muted-foreground">Saving…</span>
+              )}
+            </div>
+
+            {/* Item chips */}
+            {items.length === 0 ? (
+              <p className="text-sm italic text-muted-foreground/50">
+                No {label.toLowerCase()}s owned — visit the Nexus Store
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {/* None / unequip chip */}
+                <button
+                  type="button"
+                  onClick={() => equipped && handleEquip(type, null)}
+                  disabled={savingType === type || !equipped}
+                  className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all disabled:cursor-default disabled:opacity-40 ${
+                    !equipped
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-muted/40 text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                  }`}
+                >
+                  None
+                </button>
+
+                {/* Owned item chips */}
+                {items.map((item) => {
+                  const isEquipped = equipped === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => !isEquipped && handleEquip(type, item.id)}
+                      disabled={savingType === type || isEquipped}
+                      title={item.desc}
+                      className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all disabled:cursor-default ${
+                        isEquipped
+                          ? "border-primary bg-primary/10 text-primary shadow-sm"
+                          : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
+                      }`}
+                    >
+                      <span className="text-sm leading-none">{item.icon}</span>
+                      <span>{getName(item)}</span>
+                      {isEquipped && (
+                        <span className="ml-0.5 rounded-full bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+                          On
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
             )}
           </div>
         ))}
