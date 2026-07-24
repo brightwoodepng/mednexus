@@ -21,6 +21,8 @@ export interface AppUser {
   /** Display hint from a server-verified login; never used for authorization. */
   serverRole?: "STUDENT" | "ADMIN" | "SUPER_ADMIN"
   canAccessAdmin?: boolean
+  /** True only after `/api/auth/session` has verified the current cookie. */
+  sessionVerified?: boolean
   status?: string
   indexNumber?: string
   level?: string
@@ -230,6 +232,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             role: "user",
             serverRole: account.role,
             canAccessAdmin: account.canAccessAdmin,
+            sessionVerified: true,
             status: account.status,
             classLevel: account.classLevel,
             level: account.classLevel,
@@ -354,6 +357,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         role: "user",
         serverRole: account?.role,
         canAccessAdmin: account?.canAccessAdmin,
+        sessionVerified: Boolean(account),
         status: account?.status ?? data.status,
         indexNumber: data.indexNumber,
         classLevel: account?.classLevel,
