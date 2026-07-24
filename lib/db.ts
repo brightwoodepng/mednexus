@@ -70,6 +70,15 @@ export async function ensureSchema() {
       data       JSONB NOT NULL DEFAULT '[]',
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS mednexus_question_bank_audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      admin_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      source TEXT NOT NULL,
+      affected_count INTEGER NOT NULL,
+      backup JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
 
     -- ── Theory Vault ───────────────────────────────────────────────────────
     -- Theory has its own normalized content model. Do not add these fields to
