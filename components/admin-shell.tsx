@@ -3,12 +3,14 @@
 import Link from "next/link"
 import {
   ArrowLeft, BarChart3, Bell, BookOpen, ClipboardCheck, Database, FileOutput,
-  LayoutDashboard, Menu, Moon, Search, Settings, ShieldCheck, Sun, Users, Waypoints,
+  LayoutDashboard, Menu, Palette, Search, Settings, ShieldCheck, Users, Waypoints,
 } from "lucide-react"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { StethoscopeIcon } from "@/components/icons"
 import { SidebarCollapsedRail, SidebarFrame, SidebarGroup, SidebarNavLink } from "@/components/navigation/sidebar-primitives"
+import { ThemeModal } from "@/components/theme-modal"
+import { useTheme } from "@/contexts/theme-context"
 
 type Capability = "mcq" | "assessments" | "users" | "system" | "broadcasts"
 type AdminShellProps = { capabilities: Record<Capability, boolean>; children: React.ReactNode }
@@ -38,38 +40,6 @@ const groups: Array<{ label?: string; items: NavigationItem[] }> = [
   ] },
 ]
 
-// ─── Dark-mode toggle (persists to localStorage, applies data-theme on <html>) ─
-
-function useDarkMode() {
-  const [dark, setDark] = useState(false)
-
-  useEffect(() => {
-    const stored = localStorage.getItem("admin-dark")
-    const isDark = stored === "true"
-    setDark(isDark)
-    if (isDark) document.documentElement.setAttribute("data-theme", "classic-dark")
-  }, [])
-
-  function toggle() {
-    const next = !dark
-    setDark(next)
-    localStorage.setItem("admin-dark", String(next))
-    if (next) {
-      document.documentElement.setAttribute("data-theme", "classic-dark")
-    } else {
-      // Restore whatever the learner-side theme was, or remove attribute for default
-      const learnerTheme = localStorage.getItem("mednexus-theme")
-      if (learnerTheme) {
-        document.documentElement.setAttribute("data-theme", learnerTheme)
-      } else {
-        document.documentElement.removeAttribute("data-theme")
-      }
-    }
-  }
-
-  return { dark, toggle }
-}
-
 // ─── Header ────────────────────────────────────────────────────────────────────
 
 function AdminHeader({
@@ -77,7 +47,8 @@ function AdminHeader({
 }: {
   onOpenMobile: () => void
 }) {
-  const { dark, toggle } = useDarkMode()
+  const { activeTheme, isGlassEnabled } = useTheme()
+  const [themeModalOpen, setThemeModalOpen] = useState(false)
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
 
   return (
@@ -116,14 +87,15 @@ function AdminHeader({
           <Bell size={18} />
         </Link>
 
-        {/* Dark mode toggle */}
+        {/* Appearance settings share the learner workspace's theme context. */}
         <button
           type="button"
-          onClick={toggle}
-          aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+          onClick={() => setThemeModalOpen(true)}
+          aria-label="Appearance"
+          title={`Appearance: ${activeTheme}${isGlassEnabled ? " with Liquid Glass" : ""}`}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          {dark ? <Sun size={18} /> : <Moon size={18} />}
+          <Palette size={18} />
         </button>
 
         {/* Date */}
@@ -131,6 +103,7 @@ function AdminHeader({
           <span className="font-medium text-foreground">{today}</span>
         </div>
       </div>
+      <ThemeModal open={themeModalOpen} onClose={() => setThemeModalOpen(false)} />
     </header>
   )
 }
