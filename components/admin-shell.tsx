@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useState, type ComponentType } from "react"
+import { useTheme } from "@/contexts/theme-context"
 
 type Capability = "mcq" | "assessments" | "users" | "system" | "broadcasts"
 type AdminShellProps = { capabilities: Record<Capability, boolean>; children: React.ReactNode }
@@ -46,6 +47,10 @@ const groups: AdminGroup[] = [
 export function AdminShell({ capabilities, children }: AdminShellProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const { isGlassEnabled } = useTheme()
+  const navState = (active: boolean) => active
+    ? (isGlassEnabled ? "glass-pill-active text-sidebar-accent-foreground" : "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border")
+    : (isGlassEnabled ? "text-sidebar-foreground/70 glass-pill-hover" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground")
 
   const navigation = (
     <nav aria-label="Admin navigation" className="space-y-5">
@@ -64,7 +69,7 @@ export function AdminShell({ capabilities, children }: AdminShellProps) {
               const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href!)
               return (
                 <Link onClick={() => setOpen(false)} key={item.href} href={item.href!} aria-current={active ? "page" : undefined}
-                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${active ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${navState(active)}`}>
                   <Icon size={18} /><span className="min-w-0 flex-1 truncate">{item.label}</span>
                 </Link>
               )
@@ -77,10 +82,10 @@ export function AdminShell({ capabilities, children }: AdminShellProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <button type="button" aria-label="Open admin navigation" onClick={() => setOpen(true)} className="fixed left-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"><Menu size={20} /></button>
+      <button type="button" aria-label="Open admin navigation" onClick={() => setOpen(true)} className="fixed left-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-xl border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:hidden"><Menu size={20} /></button>
       {open && <button type="button" aria-label="Close admin navigation overlay" className="fixed inset-0 z-30 bg-foreground/30 backdrop-blur-sm md:hidden" onClick={() => setOpen(false)} />}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 flex h-dvh w-72 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar p-4 text-sidebar-foreground shadow-2xl transition-transform md:translate-x-0 md:shadow-none ${open ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex h-dvh w-72 flex-col overflow-hidden p-4 text-sidebar-foreground shadow-2xl transition-transform md:translate-x-0 md:shadow-none ${isGlassEnabled ? "glass-sidebar" : "border-r border-sidebar-border bg-sidebar"} ${open ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="mb-3 flex shrink-0 items-center justify-between px-1 pt-1">
           <Link href="/admin" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"><ShieldCheck size={19} /></span>
@@ -89,7 +94,7 @@ export function AdminShell({ capabilities, children }: AdminShellProps) {
           <button type="button" aria-label="Close admin navigation" onClick={() => setOpen(false)} className="rounded-xl p-2 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:hidden"><X size={19} /></button>
         </div>
 
-        <div className="mb-3 shrink-0 rounded-xl border border-sidebar-border bg-sidebar-accent/50 px-3 py-2.5">
+        <div className={`mb-3 shrink-0 rounded-xl border border-sidebar-border px-3 py-2.5 ${isGlassEnabled ? "glass-card" : "bg-sidebar-accent/50"}`}>
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground/50">Workspace</p>
           <p className="mt-0.5 text-sm font-semibold">Platform administration</p>
         </div>
