@@ -34,7 +34,8 @@ export default function RoleManagement() {
   async function save(uid: string, update: { role?: Role; permissions?: Partial<Record<Permission, boolean>> }) {
     setSaving(uid); setError("")
     try {
-      const response = await fetch("/api/admin/roles", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid, ...update }) })
+      if (!window.confirm("Confirm this role or permission change? This action is audited.")) return
+      const response = await fetch("/api/admin/roles", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid, ...update, confirmed: true }) })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? "Unable to save changes")
       await load()

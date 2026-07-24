@@ -270,6 +270,18 @@ export async function ensureSchema() {
       PRIMARY KEY (user_id, permission)
     );
 
+    -- Security-sensitive changes are immutable and originate only on the server.
+    CREATE TABLE IF NOT EXISTS mednexus_role_audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      actor_uid TEXT REFERENCES mednexus_registered_users(uid) ON DELETE SET NULL,
+      -- Keep the target identifier after account deletion so the audit trail is durable.
+      target_uid TEXT NOT NULL,
+      change_type TEXT NOT NULL,
+      old_value JSONB,
+      new_value JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     -- ── Guest users ─────────────────────────────────────────────────────────
     -- Lightweight table for password-free temporary sessions (7-day TTL).
     -- Identified solely by a signed session token — no password stored.

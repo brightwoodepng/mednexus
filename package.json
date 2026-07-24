@@ -10,6 +10,7 @@
     "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
     "seed:theory-demo": "tsx scripts/seed-theory-demo.ts",
+    "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "test": "vitest run",
     "test:integration": "vitest run tests/integration",
