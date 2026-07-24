@@ -21,6 +21,7 @@ const groups: Array<{ label?: string; items: Array<{ href?: string; label: strin
     { href: "/admin/imports-exports", label: "Imports & Exports", capability: "mcq" },
     { href: "/admin/notifications", label: "Notifications", capability: "broadcasts" },
     { href: "/admin/settings", label: "System Settings", capability: "system" },
+    { href: "/admin/system/question-bank", label: "Question Bank Source", capability: "system" },
   ] },
 ]
 
