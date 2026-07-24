@@ -66,7 +66,7 @@ export function StudyHubDropdown({
   const rowHoverCls = isGlassEnabled ? "hover:glass-pill-active" : "hover:bg-sidebar-accent"
 
   return (
-    <div ref={ref} className="relative min-w-0 flex-1">
+    <div ref={ref} className="relative min-w-0 w-full">
       {/* ── Trigger (compact, fits in header bar) ── */}
       <button
         type="button"
