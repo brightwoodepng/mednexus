@@ -29,8 +29,11 @@ export const STUDY_HUB_NAVIGATION: Record<StudyHubId, readonly HubNavigationItem
   "theory-vault": [
     { id: "theory-dashboard", label: "Dashboard", screen: "theory-dashboard", icon: LayoutDashboard, bottomNav: true },
     { id: "theory-browse", label: "Browse Questions", screen: "theory-browse", icon: BookOpen, bottomNav: true },
-    { id: "theory-bookmarks", label: "Bookmarks", screen: "theory-bookmarks", icon: Bookmark, bottomNav: true },
-    { id: "theory-notes", label: "My Notes", screen: "theory-notes", icon: NotebookPen, bottomNav: true },
+    // Bookmarks and notes remain available in the mobile drawer. Keeping them
+    // out of the bottom bar preserves the four-item, thumb-friendly mobile
+    // navigation pattern used by the MCQ workspace.
+    { id: "theory-bookmarks", label: "Bookmarks", screen: "theory-bookmarks", icon: Bookmark },
+    { id: "theory-notes", label: "My Notes", screen: "theory-notes", icon: NotebookPen },
     { id: "theory-revision", label: "Revision Queue", screen: "theory-revision", icon: RefreshCw, bottomNav: true },
     { id: "theory-search", label: "Search", screen: "theory-search", icon: Search },
   ],
