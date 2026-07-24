@@ -1,6 +1,7 @@
 "use client"
 
 import { type ReactNode } from "react"
+import Link from "next/link"
 import { ChevronLeftIcon, XIcon } from "@/components/icons"
 
 export function SidebarFrame({ collapsed, mobileOpen, onCloseMobile, children, collapsedChildren, glass = false }: { collapsed: boolean; mobileOpen: boolean; onCloseMobile: () => void; children: ReactNode; collapsedChildren: ReactNode; glass?: boolean }) {
@@ -29,6 +30,17 @@ export function SidebarNavButton({ active, onClick, icon, label, badge, trailing
   return <button type="button" onClick={onClick} aria-current={active ? "page" : undefined} className={`flex w-full min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${stateClass}`}>
     {icon}<span className="flex-1 text-left">{label}</span>{liveDot && <span className="relative flex h-2 w-2 shrink-0"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"/><span className="relative inline-flex h-2 w-2 rounded-full bg-primary"/></span>}{badge && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-sidebar-foreground/70 tabular-nums">{badge}</span>}{adminBadge && <span className="ml-auto rounded-full border border-warning/30 bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">{adminBadge}</span>}{trailing}
   </button>
+}
+
+/** A navigational counterpart to SidebarNavButton for route-based workspaces. */
+export function SidebarNavLink({ active, href, onClick, icon, label, trailing }: { active: boolean; href: string; onClick?: () => void; icon: ReactNode; label: string; trailing?: ReactNode }) {
+  const stateClass = active
+    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border"
+    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+
+  return <Link href={href} onClick={onClick} aria-current={active ? "page" : undefined} className={`flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${stateClass}`}>
+    {icon}<span className="flex-1 text-left">{label}</span>{trailing}
+  </Link>
 }
 
 export function SidebarIconButton({ active, onClick, label, children, trailing, glass = false, liveDot = false }: { active: boolean; onClick: () => void; label: string; children: ReactNode; trailing?: ReactNode; glass?: boolean; liveDot?: boolean }) {
