@@ -74,10 +74,8 @@ function useDarkMode() {
 
 function AdminHeader({
   onOpenMobile,
-  pendingCount,
 }: {
   onOpenMobile: () => void
-  pendingCount?: number
 }) {
   const { dark, toggle } = useDarkMode()
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
@@ -111,16 +109,11 @@ function AdminHeader({
       <div className="ml-auto flex items-center gap-1.5">
         {/* Notification bell */}
         <Link
-          href="/admin/users"
+          href="/admin/notifications"
           className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label={pendingCount ? `${pendingCount} pending approvals` : "Notifications"}
+          aria-label="Notifications"
         >
           <Bell size={18} />
-          {!!pendingCount && (
-            <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
-              {pendingCount > 9 ? "9+" : pendingCount}
-            </span>
-          )}
         </Link>
 
         {/* Dark mode toggle */}
