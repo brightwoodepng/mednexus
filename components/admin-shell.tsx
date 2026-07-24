@@ -43,10 +43,12 @@ export function AdminShell({ capabilities, children }: AdminShellProps) {
   return <div className="min-h-screen bg-slate-950 text-slate-100">
     <button type="button" aria-label="Open admin navigation" onClick={() => setOpen(true)} className="fixed left-4 top-4 z-30 rounded-lg border border-slate-700 bg-slate-900 p-2 text-slate-100 shadow-lg md:hidden"><Menu size={20} /></button>
     {open && <button aria-label="Close admin navigation overlay" className="fixed inset-0 z-30 bg-slate-950/70 md:hidden" onClick={() => setOpen(false)} />}
-    <aside className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-slate-800 bg-slate-900/95 p-5 shadow-2xl transition-transform md:translate-x-0 md:shadow-none ${open ? "translate-x-0" : "-translate-x-full"}`}>
-      <div className="mb-8 flex items-center justify-between"><Link href="/admin" className="text-lg font-bold tracking-tight text-white">MedNexus <span className="text-cyan-400">Console</span></Link><button type="button" aria-label="Close admin navigation" onClick={() => setOpen(false)} className="rounded p-1 text-slate-400 hover:text-white md:hidden"><X size={20} /></button></div>
-      {navigation}
-      <Link href="/" className="mt-auto rounded-lg border border-cyan-400/30 px-3 py-2.5 text-sm font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/10 focus:outline-none focus:ring-2 focus:ring-cyan-400">← Return to Learner Workspace</Link>
+    <aside className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col overflow-hidden border-r border-slate-800 bg-slate-900/95 p-5 shadow-2xl transition-transform md:translate-x-0 md:shadow-none ${open ? "translate-x-0" : "-translate-x-full"}`}>
+      <div className="mb-8 flex shrink-0 items-center justify-between"><Link href="/admin" className="text-lg font-bold tracking-tight text-white">MedNexus <span className="text-cyan-400">Console</span></Link><button type="button" aria-label="Close admin navigation" onClick={() => setOpen(false)} className="rounded p-1 text-slate-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 md:hidden"><X size={20} /></button></div>
+      <div data-testid="admin-navigation-scroll-region" className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+        {navigation}
+      </div>
+      <Link href="/" className="mt-5 shrink-0 rounded-lg border border-cyan-400/30 px-3 py-2.5 text-sm font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/10 focus:outline-none focus:ring-2 focus:ring-cyan-400">← Return to Learner Workspace</Link>
     </aside>
     <main className="min-h-screen px-4 pb-10 pt-20 md:ml-72 md:px-8 md:pt-8">{children}</main>
   </div>
