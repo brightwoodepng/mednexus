@@ -42,6 +42,16 @@ pnpm dev
 
 Open http://localhost:5000 in your browser.
 
+## Bootstrap the first administrator
+
+The bootstrap command only promotes an **existing registered account** and
+writes an audit record. Run this one supported command after the account has
+been registered:
+
+```bash
+pnpm admin:bootstrap --index-number=sm/sms/24/0123
+```
+
 ---
 
 ## Adding & Removing Questions / Modules

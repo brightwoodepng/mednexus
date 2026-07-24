@@ -84,6 +84,22 @@ describe("admin access integration", () => {
     expect(await requireAdminRequest(request(adminToken), "manage_system")).toEqual({ uid: "learner-1", role: "SUPER_ADMIN" })
   })
 
+  it("allows the console for an ADMIN with an explicit valid permission and rejects unapproved super admins", async () => {
+    const { getVerifiedAdmin } = await import("@/lib/admin-access")
+    const { createSessionToken } = await import("@/lib/session-auth")
+    const token = createSessionToken("learner-1", "STUDENT")
+
+    database.role = "ADMIN"
+    database.permissions = [{ permission: "manage_system", granted: true }]
+    expect(await getVerifiedAdmin(token)).toEqual({ uid: "learner-1", role: "ADMIN" })
+
+    database.role = "SUPER_ADMIN"
+    for (const status of ["pending", "rejected"]) {
+      database.status = status
+      expect(await getVerifiedAdmin(token)).toBeNull()
+    }
+  })
+
   it("revokes console access when every operational permission is removed", async () => {
     const { getVerifiedAdmin } = await import("@/lib/admin-access")
     const { createSessionToken } = await import("@/lib/session-auth")

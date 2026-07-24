@@ -17,6 +17,10 @@ async function mockAuthenticatedSession(page: Page) {
   await page.route("**/api/sync", async route => route.fulfill({ json: { name: account.name, progress: {} } }))
 }
 
+async function openAccountMenu(page: Page) {
+  await page.getByRole("button", { name: "Open account menu" }).click()
+}
+
 test("public visitors only see authentication actions", async ({ page }) => {
   await page.goto("/")
   await expect(page.getByRole("button", { name: "Sign in / Create account" })).toBeVisible()
@@ -33,9 +37,11 @@ test("a logged-in administrator retains the account menu after refresh", async (
   await page.getByRole("button", { name: "Sign in" }).click()
 
   await expect(page.getByText(account.name)).toBeVisible()
+  await openAccountMenu(page)
   await expect(page.getByRole("link", { name: "Open Admin Console" })).toBeVisible()
   await page.reload()
   await expect(page.getByText(account.name)).toBeVisible()
+  await openAccountMenu(page)
   await expect(page.getByRole("link", { name: "Open Admin Console" })).toBeVisible()
 })
 
@@ -57,6 +63,7 @@ test("an administrator can move to the console and return to the learner workspa
   await page.locator("#login-pw").fill("password")
   await page.getByRole("button", { name: "Sign in" }).click()
 
+  await openAccountMenu(page)
   await page.getByRole("link", { name: "Open Admin Console" }).click()
   await expect(page).toHaveURL(/\/admin$/)
   await expect(page.getByRole("heading", { name: "MedNexus Console" })).toBeVisible()
