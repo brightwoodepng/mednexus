@@ -18,7 +18,7 @@ export function SidebarHeader({ title, icon, onCollapse, onCloseMobile }: { titl
   return <div className={`mb-1 flex items-center px-1 pt-1 shrink-0 ${title ? "justify-between" : "justify-end"}`}>
     {title && <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[color:var(--hub-accent)]">{icon}{title}</span>}
     <div className="flex items-center gap-1">
-      <button type="button" onClick={onCollapse} className="hidden rounded-xl p-1.5 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring lg:flex" aria-label="Collapse sidebar"><ChevronLeftIcon size={18} /></button>
+      <button type="button" onClick={onCollapse} className="hidden rounded-xl p-1.5 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:flex" aria-label="Collapse sidebar"><ChevronLeftIcon size={18} /></button>
       <button type="button" onClick={onCloseMobile} className="rounded-xl p-1.5 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring lg:hidden" aria-label="Close menu"><XIcon size={20} /></button>
     </div>
   </div>
