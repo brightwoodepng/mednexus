@@ -3,9 +3,9 @@
 import { useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
-import { ChevronRightIcon, LogOutIcon } from "@/components/icons"
+import { ChevronLeftIcon, ChevronRightIcon, LogOutIcon, StethoscopeIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
-import { SidebarFrame, SidebarHeader, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
+import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
 import { StudyHubDropdown, StudyHubDropdownIcon } from "@/components/navigation/study-hub-dropdown"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { getHubNavigation } from "@/components/navigation/study-hub-navigation"
@@ -35,8 +35,24 @@ export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collaps
 
   const full = (
     <div className="flex h-full flex-col overflow-hidden p-4">
-      <SidebarHeader onCollapse={onCollapse} onCloseMobile={onCloseMobile} />
-      <div className="mt-2 flex min-h-0 flex-1 flex-col">
+      {/* Branded header — logo + name left, collapse chevron right, no X */}
+      <div className="mb-3 flex shrink-0 items-center justify-between px-1 pt-1">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <StethoscopeIcon size={17} />
+          </span>
+          <span className="text-sm font-bold tracking-tight text-sidebar-foreground">MedNexus</span>
+        </div>
+        <button
+          type="button"
+          onClick={onCollapse}
+          className="hidden rounded-xl p-1.5 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:flex"
+          aria-label="Collapse sidebar"
+        >
+          <ChevronLeftIcon size={18} />
+        </button>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col">
         <StudyHubDropdown activeHub={activeStudyHub} onSelect={setActiveStudyHub} onAfterSelect={onCloseMobile} />
         <nav className="mt-1 min-h-0 flex-1 overflow-y-auto">
           <div className="flex flex-col gap-0.5 pt-1">
