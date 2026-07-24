@@ -57,7 +57,7 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 
 function ProfileHeader() {
   const { user, cloudEnabled, updateName, signOutUser } = useApp()
-  const { equippedCosmetics } = useEconomy()
+  const { balance, equippedCosmetics, grantDevNP } = useEconomy()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
@@ -167,6 +167,12 @@ function ProfileHeader() {
             : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
           }
 
+          {/* NP balance badge */}
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-1">
+            <span className="text-xs leading-none">⚡</span>
+            <span className="text-xs font-bold tabular-nums text-amber-500">{balance.toLocaleString()}</span>
+            <span className="text-[10px] font-semibold text-amber-500/70">NP</span>
+          </div>
 
           {/* Sync state */}
           <div className="mt-2">
