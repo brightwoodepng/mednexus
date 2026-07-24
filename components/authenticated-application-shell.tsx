@@ -25,7 +25,10 @@ type ShellState = {
 const ShellContext = createContext<ShellState | undefined>(undefined)
 
 export function AuthenticatedApplicationShell({ children }: { children: ReactNode }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  // A desktop learner workspace should begin with its full navigation visible.
+  // The compact rail is an intentional desktop choice, not the default mobile
+  // presentation leaking into wider layouts.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
