@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { User } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ChevronLeftIcon, ChevronRightIcon, LogOutIcon, StethoscopeIcon } from "@/components/icons"
@@ -63,7 +64,7 @@ export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collaps
         </p>
         <div className="flex flex-col gap-0.5">
           {navigation.map((item) => {
-            const Icon = item.icon
+            const Icon = item.id === "profile" ? User : item.icon
             return (
               <NavButton
                 key={item.id}
@@ -107,7 +108,7 @@ export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collaps
       <StudyHubDropdownIcon activeHub={activeStudyHub} onSelect={setActiveStudyHub} />
       <div className="my-1 h-px w-6 bg-sidebar-border/60" />
       {navigation.map((item) => {
-        const Icon = item.icon
+        const Icon = item.id === "profile" ? User : item.icon
         return (
           <IconButton key={item.id} glass={isGlassEnabled} active={screen === item.screen} onClick={() => nav(item.screen)} label={item.label}>
             <Icon size={18} />
