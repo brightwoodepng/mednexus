@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       await client.query(
         `INSERT INTO mednexus_registered_users
            (uid, name, level, class_level, role, index_number, password_hash, status)
-         VALUES ($1, $2, $3, $3, 'REGISTERED', $4, $5, $6)`,
+         VALUES ($1, $2, $3, $3, 'STUDENT', $4, $5, $6)`,
         [uid, name.trim(), resolvedLevel, formatted, passwordHash, status],
       )
 
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       uid,
       name: name.trim(),
       classLevel: resolvedLevel,
-      role: "REGISTERED",
+      role: "STUDENT",
       // Keep legacy `level` field for backward compatibility
       level: resolvedLevel,
       status,

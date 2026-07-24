@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react"
 import { LogOutIcon, MenuIcon, PaletteIcon, StethoscopeIcon, UserIcon, XIcon } from "@/components/icons"
+import Link from "next/link"
 import { NotificationBell } from "@/components/notification-bell"
 import { Sidebar } from "@/components/sidebar"
 import { BottomNav } from "@/components/bottom-nav"
@@ -91,6 +92,7 @@ export function LearnerWorkspaceShell({
               </button>
               {accountOpen && <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-border bg-card p-1.5 shadow-xl">
                 <button type="button" role="menuitem" onClick={() => { navigate("profile"); setAccountOpen(false) }} className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-semibold hover:bg-muted"><UserIcon size={16} />Profile & account</button>
+                {user?.canAccessAdmin && <Link role="menuitem" href="/admin" onClick={() => setAccountOpen(false)} className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-semibold hover:bg-muted">Open Admin Console</Link>}
                 <button type="button" role="menuitem" onClick={signOutUser} className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-semibold text-destructive hover:bg-destructive/10"><LogOutIcon size={16} />Sign out</button>
               </div>}
             </div>

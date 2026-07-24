@@ -74,7 +74,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ui
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
-  if (!await requireAdmin(req)) {
+  const actor = await requireAdminRequest(req, "manage_users")
+  if (!actor) {
     return await adminAccessDenied(req)
   }
 
@@ -84,6 +85,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ u
   const pool = await getPool()
 
   try {
+    const target = await pool.query("SELECT role FROM mednexus_registered_users WHERE uid = $1", [uid])
+    if (!target.rowCount) return NextResponse.json({ error: "User not found" }, { status: 404 })
+    if (target.rows[0].role === "SUPER_ADMIN") {
+      if (actor.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Only a super administrator can delete a SUPER_ADMIN account" }, { status: 403 })
+      const superAdmins = await pool.query("SELECT COUNT(*)::int AS count FROM mednexus_registered_users WHERE role = 'SUPER_ADMIN'")
+      if (superAdmins.rows[0].count <= 1) return NextResponse.json({ error: "Cannot delete the final remaining SUPER_ADMIN" }, { status: 409 })
+    }
     await pool.query(`DELETE FROM mednexus_registered_users WHERE uid = $1`, [uid])
     await pool.query(`DELETE FROM mednexus_users WHERE uid = $1`, [uid])
     await pool.query(`DELETE FROM mednexus_progress WHERE uid = $1`, [uid])
