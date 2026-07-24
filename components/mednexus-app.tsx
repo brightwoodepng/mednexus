@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { adminScreenFromUrl, withHubContext } from "@/lib/admin-hub-routing"
+import { adminScreenFromUrl, studyHubFromUrl, withHubContext } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
@@ -33,6 +33,7 @@ import {
 } from "@/components/icons"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { LearnerWorkspaceShell } from "@/components/learner-workspace-shell"
+import { TheoryVault } from "@/components/theory-vault"
 
 interface PendingQuiz {
   questions: Question[]
@@ -422,9 +423,10 @@ export function MedNexusApp() {
 
   useEffect(() => {
     const restoreFromLocation = () => {
-      setActiveStudyHub("mcq-qbank")
+      const hub = studyHubFromUrl()
+      setActiveStudyHub(hub)
       const pathname = window.location.pathname
-      setScreen(adminScreenFromUrl() ?? (pathname === "/profile" ? "profile" : "dashboard"))
+      setScreen(adminScreenFromUrl() ?? (pathname === "/profile" ? "profile" : hub === "theory-vault" ? "theory-dashboard" : "dashboard"))
     }
     restoreFromLocation()
     window.addEventListener("popstate", restoreFromLocation)
@@ -600,6 +602,12 @@ export function MedNexusApp() {
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
           )}
+          {safeScreen === "theory-dashboard" && <TheoryVault initialView="Dashboard" />}
+          {safeScreen === "theory-browse" && <TheoryVault initialView="Browse Questions" />}
+          {safeScreen === "theory-bookmarks" && <TheoryVault initialView="Bookmarks" />}
+          {safeScreen === "theory-notes" && <TheoryVault initialView="My Notes" />}
+          {safeScreen === "theory-revision" && <TheoryVault initialView="Revision Queue" />}
+          {safeScreen === "theory-search" && <TheoryVault initialView="Search" />}
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
