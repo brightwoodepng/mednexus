@@ -83,7 +83,7 @@ function SignInNotice() {
   return <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">Sign in with a student account to save drafts, bookmarks, notes, revision items, and progress.</div>
 }
 
-export function TheoryVault({ initialView = "Dashboard" }: { initialView?: View }) {
+export function TheoryVault({ initialView = "Dashboard", externalQuery, onExternalQueryChange }: { initialView?: View; externalQuery?: string; onExternalQueryChange?: (q: string) => void }) {
   const { user } = useApp()
   const registered = user?.role === "user" && user.sessionVerified
   const [view, setView] = useState<View>(initialView)
@@ -96,7 +96,9 @@ export function TheoryVault({ initialView = "Dashboard" }: { initialView?: View 
   const [groupId, setGroupId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [globalQuery, setGlobalQuery] = useState("")
+  const [internalQuery, setInternalQuery] = useState("")
+  const globalQuery = externalQuery !== undefined ? externalQuery : internalQuery
+  const setGlobalQuery = onExternalQueryChange ?? setInternalQuery
 
   const loadDashboard = useCallback(async () => {
     setLoading(true); setError("")
@@ -139,14 +141,6 @@ export function TheoryVault({ initialView = "Dashboard" }: { initialView?: View 
   }
 
   return <div className="mx-auto max-w-7xl space-y-5">
-    {!questionId && <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <label className="flex min-h-12 flex-1 items-center gap-3 rounded-2xl border border-border bg-card px-4 shadow-sm focus-within:ring-2 focus-within:ring-primary/25">
-        <Search className="text-muted-foreground" size={19}/>
-        <input value={globalQuery} onChange={event => setGlobalQuery(event.target.value)} onKeyDown={event => event.key === "Enter" && search()} placeholder="Search Theory Vault" className="w-full bg-transparent text-sm outline-none"/>
-        {globalQuery && <button type="button" onClick={() => setGlobalQuery("")} aria-label="Clear search"><X size={17}/></button>}
-      </label>
-      <button type="button" onClick={search} className={`${button} bg-primary text-primary-foreground`}>Search</button>
-    </div>}
 
     {error && <div role="alert" className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
     {loading ? <div className={`${card} py-14 text-center text-sm text-muted-foreground`}>Opening Theory Vault…</div>
@@ -183,7 +177,7 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
     <header className="overflow-hidden rounded-3xl border border-primary/20 bg-card px-5 py-7 shadow-sm sm:px-8 sm:py-9">
       <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
         <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-primary"><Sparkles size={15}/> Theory Vault</p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{greeting}, {displayName || data.displayName}.</h1>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{greeting}, {(displayName || data.displayName)?.split(" ")[0] ?? "there"}.</h1>
           <p className="mt-2 text-lg font-semibold">Master long-answer questions and clinical reasoning.</p>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Review model answers, practise active recall, and focus revision where it matters.</p>
         </div>

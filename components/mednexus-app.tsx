@@ -30,6 +30,7 @@ import {
   TimerIcon,
   XIcon,
   HeartIcon,
+  SearchIcon,
 } from "@/components/icons"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { LearnerWorkspaceShell } from "@/components/learner-workspace-shell"
@@ -403,6 +404,7 @@ export function MedNexusApp() {
   const { activeStudyHub, setActiveStudyHub } = useApplicationShell()
   const [isExamActive, setIsExamActive] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
+  const [theorySearchQuery, setTheorySearchQuery] = useState("")
   const [importerOpen, setImporterOpen] = useState(false)
   const [pendingEditorImport, setPendingEditorImport] = useState<import("@/lib/types").Question[] | null>(null)
   const [creditsOpen, setCreditsOpen] = useState(false)
@@ -597,18 +599,35 @@ export function MedNexusApp() {
       onNavigate={handleScreenNavigation}
       onOpenAppearance={() => setThemeOpen(true)}
       modeControl={activeStudyHub === "mcq-qbank" ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
+      headerSlot={activeStudyHub === "theory-vault" ? (
+        <label className="flex h-9 w-52 items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 text-sm focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary/40 transition-all cursor-text">
+          <SearchIcon size={15} className="shrink-0 text-muted-foreground" />
+          <input
+            value={theorySearchQuery}
+            onChange={e => setTheorySearchQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && theorySearchQuery.trim()) handleScreenNavigation("theory-search") }}
+            placeholder="Search Theory Vault…"
+            className="w-full bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
+          />
+          {theorySearchQuery && (
+            <button type="button" onClick={() => setTheorySearchQuery("")} aria-label="Clear search" className="shrink-0 text-muted-foreground hover:text-foreground">
+              <XIcon size={14} />
+            </button>
+          )}
+        </label>
+      ) : undefined}
       hideBottomNavigation={isExamActive}
     >
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
           )}
-          {safeScreen === "theory-dashboard" && <TheoryVault initialView="Dashboard" />}
-          {safeScreen === "theory-browse" && <TheoryVault initialView="Browse Questions" />}
-          {safeScreen === "theory-bookmarks" && <TheoryVault initialView="Bookmarks" />}
-          {safeScreen === "theory-notes" && <TheoryVault initialView="My Notes" />}
-          {safeScreen === "theory-revision" && <TheoryVault initialView="Revision Queue" />}
-          {safeScreen === "theory-progress" && <TheoryVault initialView="Progress" />}
-          {safeScreen === "theory-search" && <TheoryVault initialView="Search" />}
+          {safeScreen === "theory-dashboard" && <TheoryVault initialView="Dashboard" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} />}
+          {safeScreen === "theory-browse" && <TheoryVault initialView="Browse Questions" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} />}
+          {safeScreen === "theory-bookmarks" && <TheoryVault initialView="Bookmarks" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} />}
+          {safeScreen === "theory-notes" && <TheoryVault initialView="My Notes" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} />}
+          {safeScreen === "theory-revision" && <TheoryVault initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} />}
+          {safeScreen === "theory-progress" && <TheoryVault initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} />}
+          {safeScreen === "theory-search" && <TheoryVault initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} />}
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
