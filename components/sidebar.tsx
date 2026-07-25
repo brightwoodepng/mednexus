@@ -53,21 +53,26 @@ export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collaps
     <div className="flex h-full flex-col overflow-hidden">
 
       {/* ── Brand header ── */}
-      <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border px-4 py-3.5">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-            <StethoscopeIcon size={17} />
+      <div className="flex min-h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-3.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Logo mark — gradient square */}
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/90 to-teal-500 text-primary-foreground shadow-md shadow-primary/25 ring-1 ring-primary/30">
+            <StethoscopeIcon size={16} />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-bold leading-tight tracking-tight text-sidebar-foreground">MedNexus</p>
-            <p className="text-[10px] leading-tight tracking-wide text-sidebar-foreground/45">Clinical Q-Bank</p>
+            <p className="text-[13px] font-extrabold leading-tight tracking-tight text-sidebar-foreground">
+              Med<span className="text-primary">Nexus</span>
+            </p>
+            <p className="text-[9.5px] font-semibold uppercase leading-tight tracking-[0.08em] text-sidebar-foreground/40">
+              Clinical Q-Bank
+            </p>
           </div>
         </div>
         <button
           type="button"
           onClick={onCollapse}
           aria-label="Collapse sidebar"
-          className="hidden shrink-0 rounded-lg p-1.5 text-sidebar-foreground/40 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:flex"
+          className="hidden shrink-0 rounded-lg p-1.5 text-sidebar-foreground/35 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring md:flex"
         >
           <ChevronLeftIcon size={16} />
         </button>
