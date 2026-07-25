@@ -233,109 +233,100 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
       </div>
     </section>
 
-    {/* ── Study Categories + Recently Studied — two labelled sections, equal card height ── */}
-    <div className="flex gap-4">
-
-      {/* ── Left: Study Categories (takes 2/3) ── */}
-      <div className="flex min-w-0 flex-[2] flex-col gap-2">
-        {/* Section label */}
-        <div className="flex h-8 items-center gap-2 px-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <FolderOpen size={16} />
-          </div>
-          <h2 className="text-lg font-bold tracking-tight">Study Categories</h2>
-        </div>
-        {/* Two cards side by side, same height */}
-        <div className="grid flex-1 grid-cols-2 gap-4">
-          {categories.map((category, idx) => {
-            const palette = CATEGORY_PALETTES[idx % CATEGORY_PALETTES.length]
-            const catProgress = category.total ? Math.round(Number(category.completed) / Number(category.total) * 100) : 0
-            const subLabel = category.title === "End of Module" ? "modules" : "disciplines"
-            return (
-              <div key={category.title} className={`group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
-                <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
-                <div className="flex flex-1 flex-col p-5">
-                  {/* Top row: icon + % */}
-                  <div className="flex items-center justify-between">
-                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${palette.icon}`}>
-                      <FolderOpen size={17} />
-                    </div>
-                    <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}18`, color: palette.bar }}>{catProgress}%</span>
-                  </div>
-                  {/* Middle: title + meta — flex-1 pushes button to bottom */}
-                  <div className="mt-4 flex-1">
-                    <h3 className="font-bold leading-snug text-foreground">{category.title}</h3>
-                    <p className="mt-0.5 text-sm text-muted-foreground">{category.groups} {subLabel} · {category.sets} sets · {category.total} Q</p>
-                  </div>
-                  {/* Bottom: browse button */}
-                  <button
-                    type="button"
-                    disabled={!category.id}
-                    onClick={() => category.id && onCollection(category.id)}
-                    className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all disabled:opacity-40"
-                    style={{ background: `${palette.bar}18`, color: palette.bar }}
-                  >
-                    Browse {category.title} <ChevronRight size={12} className="transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+    {/* ── Study Categories ── */}
+    <div className="space-y-3">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Study Categories</p>
+        <h2 className="mt-0.5 text-2xl font-bold tracking-tight">Choose your path</h2>
       </div>
-
-      {/* ── Right: Recently Studied (takes 1/3) ── */}
-      <div className="flex min-w-0 flex-[1] flex-col gap-2">
-        {/* Section label */}
-        <div className="flex h-8 items-center gap-2 px-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <BookOpen size={16} />
-          </div>
-          <h2 className="text-lg font-bold tracking-tight">Recently Studied</h2>
-        </div>
-        {/* Card — same height as category cards via flex-1 */}
-        <div className="relative flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: "#0d9488" }} />
-          <div className="flex flex-1 flex-col p-5">
-            {/* Top row: matches icon row height of category cards */}
-            <div className="flex items-center justify-between">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: "#0d948820", color: "#0d9488" }}>
-                <BookOpen size={17} />
-              </div>
-              <button type="button" onClick={() => onView("Progress")} className="rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors" style={{ background: "#0d948820", color: "#0d9488" }}>View all</button>
-            </div>
-            {/* Middle: content — flex-1 */}
-            <div className="mt-4 flex-1">
-              <h3 className="font-bold leading-snug text-foreground">Pick up where you stopped</h3>
-              {data.recentSets.length ? (
-                <div className="mt-3 space-y-2">
-                  {data.recentSets.slice(0, 3).map(item => (
-                    <div key={`${item.setId}-${item.lastStudiedAt}`} className="rounded-xl bg-muted/50 px-3 py-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="min-w-0 truncate text-xs font-semibold">{item.setTitle}</p>
-                        <span className="shrink-0 text-[11px] font-bold" style={{ color: "#0d9488" }}>{item.progressPercent}%</span>
-                      </div>
-                      <div className="mt-1.5"><ProgressBar value={item.progressPercent}/></div>
-                    </div>
-                  ))}
+      <div className="grid grid-cols-2 gap-4">
+        {categories.map((category, idx) => {
+          const palette = CATEGORY_PALETTES[idx % CATEGORY_PALETTES.length]
+          const catProgress = category.total ? Math.round(Number(category.completed) / Number(category.total) * 100) : 0
+          const subLabel = category.title === "End of Module" ? "modules" : "disciplines"
+          return (
+            <div key={category.title} className="group flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md">
+              {/* Top row: icon + % */}
+              <div className="flex items-start justify-between">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${palette.icon}`}>
+                  <FolderOpen size={17} />
                 </div>
-              ) : (
-                <p className="mt-3 text-xs text-muted-foreground">No sets studied yet. Start a theory set to track your progress here.</p>
-              )}
+                <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}15`, color: palette.bar }}>{catProgress}%</span>
+              </div>
+              {/* Title + meta */}
+              <div>
+                <h3 className="text-lg font-bold leading-snug text-foreground">{category.title}</h3>
+                <p className="mt-0.5 text-sm text-muted-foreground">{category.groups} {subLabel} · {category.sets} sets · {category.total} questions</p>
+              </div>
+              {/* Progress bar */}
+              <ProgressBar value={catProgress} />
+              {/* Browse button — pill, left-aligned */}
+              <div>
+                <button
+                  type="button"
+                  disabled={!category.id}
+                  onClick={() => category.id && onCollection(category.id)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:text-primary disabled:opacity-40"
+                >
+                  Browse {category.title} <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
             </div>
-            {/* Bottom: action button — mirrors category card button */}
-            <button
-              type="button"
-              onClick={() => data.recentSets[0] ? onSet(data.recentSets[0].setId) : onView("Browse Questions")}
-              className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all"
-              style={{ background: "#0d948820", color: "#0d9488" }}
-            >
-              {data.recentSets.length ? <>Continue Last Set <ChevronRight size={12} /></> : <>Browse Sets <ChevronRight size={12} /></>}
-            </button>
-          </div>
-        </div>
+          )
+        })}
       </div>
+    </div>
 
+    {/* ── Recently Studied ── */}
+    <div className="rounded-2xl border border-border bg-card shadow-sm">
+      {/* Header */}
+      <div className="flex items-start justify-between px-6 pt-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Recently Studied</p>
+          <h2 className="mt-0.5 text-2xl font-bold tracking-tight">Pick up where you stopped</h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => onView("Progress")}
+          className="mt-1 shrink-0 text-sm font-semibold text-primary hover:underline"
+        >
+          View progress
+        </button>
+      </div>
+      {/* List */}
+      <div className="mt-4 divide-y divide-border">
+        {data.recentSets.length ? data.recentSets.slice(0, 4).map(item => (
+          <div key={`${item.setId}-${item.lastStudiedAt}`} className="flex items-center gap-6 px-6 py-4">
+            {/* Left: breadcrumb + title + date */}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-primary">{item.collection} · {item.groupName}</p>
+              <p className="mt-0.5 font-bold text-foreground">{item.setTitle}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p>
+            </div>
+            {/* Right: progress + continue */}
+            <div className="flex shrink-0 items-center gap-4">
+              <div className="w-36">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">Progress</span>
+                  <span className="text-xs font-bold text-foreground">{item.progressPercent}%</span>
+                </div>
+                <div className="mt-1.5"><ProgressBar value={item.progressPercent} /></div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onSet(item.setId)}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:text-primary"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )) : (
+          <div className="px-6 py-8 text-sm text-muted-foreground">
+            No sets studied yet. Start a theory set to track your progress here.
+          </div>
+        )}
+      </div>
     </div>
   </div>
 }
