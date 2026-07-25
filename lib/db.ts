@@ -360,7 +360,51 @@ export async function ensureSchema() {
 
     -- ── Per-discipline NP log (anti-farming discipline fatigue) ──────────────
     -- Accumulates NP earned per user per discipline per calendar day.
-    -- discipline_f…654 tokens truncated… TABLE IF NOT EXISTS mednexus_daily_activity (
+    -- discipline_fatigue: if 7-day sum >= 1000 NP → further questions in that
+    -- discipline earn 0 NP until the rolling window resets.
+    CREATE TABLE IF NOT EXISTS mednexus_discipline_np_log (
+      user_id     TEXT    NOT NULL,
+      discipline  TEXT    NOT NULL,
+      earned_date TEXT    NOT NULL,   -- YYYY-MM-DD
+      np_earned   INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (user_id, discipline, earned_date)
+    );
+
+    -- ── Exam sessions (abandonment penalty) ──────────────────────────────────
+    -- Created when a user starts an exam-mode session, closed on proper submit.
+    -- Sessions still 'active' after the time limit + grace period are marked
+    -- 'abandoned'; all unanswered questions are recorded as incorrect.
+    CREATE TABLE IF NOT EXISTS mednexus_exam_sessions (
+      id           TEXT    PRIMARY KEY,
+      user_id      TEXT    NOT NULL,
+      mode         TEXT    NOT NULL,
+      question_ids JSONB   NOT NULL DEFAULT '[]',
+      answered_ids JSONB   NOT NULL DEFAULT '[]',
+      answer_key JSONB NOT NULL DEFAULT '[]',
+      accepted_answers JSONB NOT NULL DEFAULT '{}',
+      payout JSONB,
+      status       TEXT    NOT NULL DEFAULT 'active',  -- active | completed | abandoned
+      started_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      submitted_at TIMESTAMPTZ
+    );
+
+    -- ── Per-user notification inbox ───────────────────────────────────────────
+    -- Individual notifications for a specific user (or global when user_id IS NULL).
+    -- Distinct from mednexus_notifications which is the admin broadcast table.
+    CREATE TABLE IF NOT EXISTS mednexus_user_notifications (
+      id         TEXT    PRIMARY KEY,
+      user_id    TEXT,                             -- NULL = global
+      type       TEXT    NOT NULL DEFAULT 'economy', -- streak | leaderboard | economy | store
+      message    TEXT    NOT NULL,
+      is_read    BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- ── Daily activity log (leaderboard + weekly stats) ──────────────────────
+    -- One row per user per calendar day. Accumulates questions answered and
+    -- correct answers from every payout call so the leaderboard can compute
+    -- weekly accuracy and question volume without scanning the JSONB history.
+    CREATE TABLE IF NOT EXISTS mednexus_daily_activity (
       user_id           TEXT    NOT NULL,
       activity_date     TEXT    NOT NULL,   -- YYYY-MM-DD
       questions_answered INTEGER NOT NULL DEFAULT 0,
