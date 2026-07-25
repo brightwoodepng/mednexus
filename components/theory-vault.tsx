@@ -216,17 +216,17 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
             <h1 className="mt-0.5 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
             <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-stretch gap-2">
             {overall > 0 && (
-              <div className="flex w-fit items-center gap-2 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur-sm sm:flex-col sm:items-center sm:text-center">
-                <span className="text-2xl leading-none">📖</span>
+              <div className="flex items-center justify-center gap-2 rounded-2xl bg-white/15 px-5 py-2 backdrop-blur-sm text-center">
+                <span className="text-lg leading-none">📖</span>
                 <div>
-                  <p className="text-xl font-bold leading-tight">{overall}%</p>
-                  <p className="text-xs opacity-80">complete</p>
+                  <p className="text-base font-bold leading-tight">{overall}%</p>
+                  <p className="text-[11px] opacity-80">complete</p>
                 </div>
               </div>
             )}
-            <button type="button" onClick={resume} className="flex items-center gap-2 rounded-2xl bg-white/20 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/30 sm:self-auto">
+            <button type="button" onClick={resume} className="flex items-center justify-center gap-2 rounded-2xl bg-white/20 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/30">
               <BookOpen size={16}/> Continue
             </button>
           </div>
@@ -244,92 +244,99 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
       </div>
     </section>
 
-    {/* ── Study categories — MCQ module-card style ── */}
-    <section>
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex items-center gap-2">
+    {/* ── Study Categories + Recently Studied — side by side ── */}
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+
+      {/* Study Categories */}
+      <section>
+        <div className="mb-3 flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <FolderOpen size={16} />
           </div>
           <h2 className="text-lg font-bold tracking-tight">Study Categories</h2>
         </div>
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-        {categories.map((category, idx) => {
-          const palette = CATEGORY_PALETTES[idx % CATEGORY_PALETTES.length]
-          const catProgress = category.total ? Math.round(Number(category.completed) / Number(category.total) * 100) : 0
-          const subLabel = category.title === "End of Module" ? "modules" : "disciplines"
-          return (
-            <div key={category.title} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
-              <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
-              <div className="p-5">
-                <div className="mb-3 mt-1 flex items-start justify-between gap-2">
+        <div className="flex flex-col gap-3">
+          {categories.map((category, idx) => {
+            const palette = CATEGORY_PALETTES[idx % CATEGORY_PALETTES.length]
+            const catProgress = category.total ? Math.round(Number(category.completed) / Number(category.total) * 100) : 0
+            const subLabel = category.title === "End of Module" ? "modules" : "disciplines"
+            return (
+              <div key={category.title} className={`group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
+                <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
+                <div className="flex items-center gap-4 p-4">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
                     <FolderOpen size={18} />
                   </div>
-                  <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}18`, color: palette.bar }}>{catProgress}%</span>
-                </div>
-                <h3 className="font-bold text-foreground leading-snug">{category.title}</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {category.groups} {subLabel} · {category.sets} sets · {category.total} Q
-                </p>
-                <button
-                  type="button"
-                  disabled={!category.id}
-                  onClick={() => category.id && onCollection(category.id)}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all disabled:opacity-40"
-                  style={{ background: `${palette.bar}18`, color: palette.bar }}
-                >
-                  Browse {category.title}
-                  <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </section>
-    <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      {/* teal accent bar */}
-      <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: "#0d9488" }} />
-      <div className="p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: "#0d948818", color: "#0d9488" }}>
-              <BookOpen size={17} />
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[.18em]" style={{ color: "#0d9488" }}>Recently Studied</p>
-              <h2 className="text-lg font-bold leading-tight">Pick up where you stopped</h2>
-            </div>
-          </div>
-          <button type="button" onClick={() => onView("Progress")} className="rounded-xl px-3 py-1.5 text-xs font-bold transition-colors" style={{ background: "#0d948818", color: "#0d9488" }}>View progress</button>
-        </div>
-        {data.recentSets.length ? (
-          <div className="mt-4 divide-y divide-border">
-            {data.recentSets.map(item => (
-              <div key={`${item.setId}-${item.lastStudiedAt}`} className="grid gap-3 py-4 sm:grid-cols-[1fr_180px_auto] sm:items-center">
-                <div>
-                  <p className="text-xs font-semibold" style={{ color: "#0d9488" }}>{item.collection} · {item.groupName}</p>
-                  <p className="mt-1 font-bold">{item.setTitle}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p>
-                </div>
-                <div>
-                  <div className="mb-1 flex justify-between text-xs">
-                    <span>Progress</span>
-                    <b style={{ color: "#0d9488" }}>{item.progressPercent}%</b>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="font-bold text-foreground leading-snug">{category.title}</h3>
+                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: `${palette.bar}18`, color: palette.bar }}>{catProgress}%</span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {category.groups} {subLabel} · {category.sets} sets · {category.total} Q
+                    </p>
                   </div>
-                  <ProgressBar value={item.progressPercent}/>
+                  <button
+                    type="button"
+                    disabled={!category.id}
+                    onClick={() => category.id && onCollection(category.id)}
+                    className="shrink-0 flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold transition-all disabled:opacity-40"
+                    style={{ background: `${palette.bar}18`, color: palette.bar }}
+                  >
+                    Browse <ChevronRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                  </button>
                 </div>
-                <button type="button" onClick={() => onSet(item.setId)} className={`${button}`} style={{ background: "#0d948818", color: "#0d9488" }}>Continue</button>
               </div>
-            ))}
+            )
+          })}
+        </div>
+      </section>
+
+      {/* Recently Studied */}
+      <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: "#0d9488" }} />
+        <div className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl" style={{ background: "#0d948818", color: "#0d9488" }}>
+                <BookOpen size={16} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[.18em]" style={{ color: "#0d9488" }}>Recently Studied</p>
+                <h2 className="text-base font-bold leading-tight">Pick up where you stopped</h2>
+              </div>
+            </div>
+            <button type="button" onClick={() => onView("Progress")} className="rounded-xl px-3 py-1.5 text-xs font-bold transition-colors" style={{ background: "#0d948818", color: "#0d9488" }}>View progress</button>
           </div>
-        ) : (
-          <p className="mt-4 rounded-xl bg-muted/50 px-4 py-6 text-sm text-muted-foreground">Start your first theory set. Recently opened sets will appear here.</p>
-        )}
-      </div>
-    </section>
+          {data.recentSets.length ? (
+            <div className="mt-3 divide-y divide-border">
+              {data.recentSets.map(item => (
+                <div key={`${item.setId}-${item.lastStudiedAt}`} className="py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold" style={{ color: "#0d9488" }}>{item.collection} · {item.groupName}</p>
+                      <p className="mt-0.5 font-bold text-sm leading-snug truncate">{item.setTitle}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p>
+                    </div>
+                    <button type="button" onClick={() => onSet(item.setId)} className={`${button} shrink-0`} style={{ background: "#0d948818", color: "#0d9488" }}>Continue</button>
+                  </div>
+                  <div className="mt-2">
+                    <div className="mb-1 flex justify-between text-xs">
+                      <span className="text-muted-foreground">Progress</span>
+                      <b style={{ color: "#0d9488" }}>{item.progressPercent}%</b>
+                    </div>
+                    <ProgressBar value={item.progressPercent}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 rounded-xl bg-muted/50 px-4 py-6 text-sm text-muted-foreground">Start your first theory set. Recently opened sets will appear here.</p>
+          )}
+        </div>
+      </section>
+
+    </div>
   </div>
 }
 
