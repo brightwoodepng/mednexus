@@ -90,15 +90,10 @@ function Brand() {
 
       {/* Wordmark */}
       <h1 className="text-4xl font-bold tracking-tight leading-none">MedNexus</h1>
-      <p className="mt-2.5 text-sm text-muted-foreground max-w-[28ch] leading-relaxed">
+      <p className="mt-2.5 text-sm text-muted-foreground leading-relaxed whitespace-nowrap">
         Premium clinical Q-Bank for medical learners
       </p>
 
-      {/* Trust pill */}
-      <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3.5 py-1.5 text-[11px] font-medium text-muted-foreground backdrop-blur-sm">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        Trusted clinical question bank
-      </div>
     </div>
   )
 }
