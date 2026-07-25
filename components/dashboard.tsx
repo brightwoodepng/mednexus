@@ -443,7 +443,7 @@ function ModuleCard({
   const disciplines = getDisciplinesForModule(mod)
 
   return (
-    <div className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
+    <div className={`group relative overflow-hidden glass-surface rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
       {/* Color top bar */}
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
 
@@ -555,7 +555,7 @@ function DisciplineView({
               key={disc}
               type="button"
               onClick={() => onSelectDiscipline(disc)}
-              className={`group relative overflow-hidden rounded-3xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`}
+              className={`group relative overflow-hidden glass-surface rounded-3xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:border-border hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`}
             >
               <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: dPalette.bar }} />
               <div className="mb-4 mt-1 flex items-start justify-between">
@@ -647,7 +647,7 @@ function ExamDashboard({
                 key={mod}
                 type="button"
                 onClick={() => onReadyForQuiz({ module: mod, discipline: null })}
-                className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
+                className={`group relative overflow-hidden glass-surface rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
               >
                 <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-70" style={{ background: palette.bar }} />
                 <div className="mb-3 mt-1 flex items-start justify-between">
@@ -677,7 +677,7 @@ function ExamDashboard({
 // ── Sub-components ────────────────────────────────────────────────────────────
 function StatCard({ glass, icon, label, value, sub, color }: { glass: boolean; icon: string; label: string; value: string | number; sub: string; color: string }) {
   return (
-    <div className={`flex flex-col gap-1 rounded-3xl p-4 sm:p-5 ${glass ? "glass-card" : "border bg-card shadow-sm"}`}>
+    <div className={`flex flex-col gap-1 rounded-3xl p-4 sm:p-5 ${glass ? "glass-surface" : "border bg-card shadow-sm"}`}>
       <div className="flex items-center justify-between">
         <span className="text-xl">{icon}</span>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide border ${color}`}>{label}</span>

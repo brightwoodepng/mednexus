@@ -67,8 +67,8 @@ function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel, dang
   onConfirm: () => void; onCancel: () => void; danger?: boolean
 }) {
   return (
-    <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-      <div className="glass-modal w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+    <div className="glass-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+      <div className="glass-overlay w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
             <AlertTriangleIcon size={20} />
@@ -1523,9 +1523,9 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
 
       {/* ── Edit / Add modal ── */}
       {editTarget !== null && (
-        <div className="glass-modal-overlay fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-foreground/40 backdrop-blur-sm p-4 pt-8 pb-8">
-          <div className="glass-modal w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl">
-            <div className="glass-modal-header flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="glass-overlay-backdrop fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-foreground/40 backdrop-blur-sm p-4 pt-8 pb-8">
+          <div className="glass-overlay w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="glass-control flex items-center justify-between border-b border-border px-6 py-4">
               <div>
                 <h3 className="font-bold text-foreground">{editTarget.question ? "Edit Question" : "Add New Question"}</h3>
                 {editTarget.isDraft && <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Editing Draft</span>}
@@ -1568,8 +1568,8 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
 
       {/* ── Rename module / discipline dialog ── */}
       {renameTarget && (
-        <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-          <div className="glass-modal w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
+        <div className="glass-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+          <div className="glass-overlay w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
             <h3 className="font-bold text-foreground">
               {renameTarget.disciplineName !== undefined ? "Rename Discipline" : "Rename Module"}
             </h3>
@@ -1603,8 +1603,8 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
 
       {/* ── Bulk reassign discipline dialog ── */}
       {reassignOpen && (
-        <div className="glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
-          <div className="glass-modal w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
+        <div className="glass-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
+          <div className="glass-overlay w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4">
             <h3 className="font-bold text-foreground">Reassign Discipline</h3>
             <p className="text-sm text-muted-foreground">
               {selectedIds.size} selected question{selectedIds.size !== 1 ? "s" : ""} will be moved to a new discipline. Useful for correcting mis-sorted imports.

@@ -4,7 +4,7 @@ import path from "node:path"
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["tests/integration/**/*.test.ts"],
+    include: ["tests/integration/**/*.test.{ts,tsx}"],
     clearMocks: true,
   },
   resolve: {
