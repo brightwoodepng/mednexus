@@ -1,13 +1,14 @@
+import { fileURLToPath, URL } from "node:url"
 import { defineConfig } from "vitest/config"
-import path from "node:path"
 
 export default defineConfig({
-  test: {
-    environment: "node",
-    include: ["tests/integration/**/*.test.ts"],
-    clearMocks: true,
-  },
   resolve: {
-    alias: { "@": path.resolve(__dirname) },
+    alias: {
+      "server-only": fileURLToPath(new URL("./tests/server-only.ts", import.meta.url)),
+      "@": fileURLToPath(new URL(".", import.meta.url)),
+    },
+  },
+  test: {
+    exclude: ["tests/e2e/**", "node_modules/**", ".next/**"],
   },
 })
