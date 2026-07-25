@@ -14,6 +14,7 @@ import {
   withTransaction,
 } from "@/lib/theory-server"
 import type { PoolClient } from "pg"
+import { seedTheoryDemo } from "@/lib/theory-demo-seed"
 
 const badRequest = (message: string) => NextResponse.json({ error: message }, { status: 400 })
 
@@ -110,6 +111,11 @@ export async function POST(request: NextRequest) {
     const resource = String(body.resource ?? "")
     const pool = await theoryPool()
     const result = await withTransaction(pool, async client => {
+      if (resource === "demo_seed") {
+        const summary = await seedTheoryDemo(client)
+        await auditTheory(client, auth.uid, "seed_demo", "question", null, summary)
+        return { summary }
+      }
       if (resource === "collection") {
         const id = theoryId("theory-collection")
         const title = requiredText(body.title, "Title", 120)
@@ -286,3 +292,4 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to delete Theory content." }, { status: 400 })
   }
 }
+
