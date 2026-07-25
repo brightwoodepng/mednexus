@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft, ArrowRight, BookOpen, Bookmark, Check, CheckCircle2, ChevronRight,
   Clock3, Download, FileText, FolderOpen, ListChecks, NotebookPen, RefreshCw,
-  Save, Search, Sparkles, Target, Timer, X,
+  Save, Search, Timer, X,
 } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
+import { useTheme } from "@/contexts/theme-context"
 import { TheoryMarkdown } from "@/components/theory-markdown"
 import type { TheoryQuestionDetail, TheorySelfRating, TheoryStudyMode } from "@/lib/types"
 
@@ -154,40 +155,88 @@ export function TheoryVault({ initialView = "Dashboard", externalQuery, onExtern
   </div>
 }
 
+const THEORY_MOTIVATIONS = [
+  "Every answer you write sharpens your reasoning.",
+  "Clinical mastery is built one question at a time.",
+  "Write it out — that's how it sticks.",
+  "The best doctors never stop studying.",
+  "Active recall beats passive reading, every time.",
+  "Your future patients benefit from today's effort.",
+  "Understand the 'why' behind every answer.",
+]
+
+function TheoryStatCard({ glass, emoji, label, value, sub, color, onClick }: { glass: boolean; emoji: string; label: string; value: string | number; sub: string; color: string; onClick?: () => void }) {
+  const base = `flex flex-col gap-1 rounded-3xl p-4 sm:p-5 ${glass ? "glass-card" : "border bg-card shadow-sm"} ${onClick ? "cursor-pointer transition-opacity hover:opacity-80" : ""}`
+  return (
+    <div className={base} onClick={onClick} role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined}>
+      <div className="flex items-center justify-between">
+        <span className="text-xl">{emoji}</span>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide border ${color}`}>{label}</span>
+      </div>
+      <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight">{value}</p>
+      <p className="text-xs text-muted-foreground">{sub}</p>
+    </div>
+  )
+}
+
 function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion }: {
   data: DashboardData | null; displayName?: string; onView: (view: View) => void; onCollection: (id: string) => void
   onSet: (id: string) => void; onQuestion: (id: string) => void
 }) {
+  const { isGlassEnabled } = useTheme()
   if (!data) return <Empty title="Theory Vault is unavailable" text="Connect the application database and run migrations to begin."/>
   const total = Number(data.totals.total), completed = Number(data.totals.completed)
   const overall = total ? Math.round(completed / total * 100) : 0
   const hour = new Date().getHours()
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
+  const firstName = (displayName || data.displayName)?.split(" ")[0] ?? "there"
+  const motivation = THEORY_MOTIVATIONS[new Date().getDate() % THEORY_MOTIVATIONS.length]
   const categories = ["End of Module", "End of Year"].map(title => data.collections.find(item => item.title === title) ?? { id: "", title, groups: 0, sets: 0, total: 0, completed: 0 })
   const resume = () => data.continueStudying ? onQuestion(data.continueStudying.id) : onView("Browse Questions")
-  const metrics = [
-    { label: "Questions Completed", value: completed, icon: CheckCircle2, action: () => onView("Progress") },
-    { label: "Revision Queue", value: data.counts.revision, icon: RefreshCw, action: () => onView("Revision Queue") },
-    { label: "Bookmarks", value: data.counts.bookmarks, icon: Bookmark, action: () => onView("Bookmarks") },
-    { label: "Notes Created", value: data.counts.notes, icon: NotebookPen, action: () => onView("My Notes") },
-    { label: "Overall Progress", value: `${overall}%`, icon: Target, action: () => onView("Progress") },
-  ]
-  return <div className="space-y-6">
+
+  return <div className="space-y-5 sm:space-y-8">
     {!data.authenticated && <SignInNotice/>}
-    <header className="overflow-hidden rounded-3xl border border-primary/20 bg-card px-5 py-7 shadow-sm sm:px-8 sm:py-9">
-      <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-        <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-primary"><Sparkles size={15}/> Theory Vault</p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{greeting}, {(displayName || data.displayName)?.split(" ")[0] ?? "there"}.</h1>
-          <p className="mt-2 text-lg font-semibold">Master long-answer questions and clinical reasoning.</p>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Review model answers, practise active recall, and focus revision where it matters.</p>
+
+    {/* ── Hero banner — matches MCQ style ── */}
+    <div className="relative">
+      <div className="relative rounded-2xl bg-primary px-5 py-5 text-primary-foreground shadow-lg sm:rounded-3xl sm:px-8 sm:py-8 overflow-hidden">
+        <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/[0.07]" />
+        <div className="pointer-events-none absolute -bottom-10 right-20 h-28 w-28 rounded-full bg-white/[0.04]" />
+        <div className="pointer-events-none absolute bottom-4 left-1/2 h-16 w-16 rounded-full bg-white/[0.03]" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-medium opacity-80">{greeting},</p>
+            <h1 className="mt-0.5 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
+            <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {overall > 0 && (
+              <div className="flex w-fit items-center gap-2 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur-sm sm:flex-col sm:items-center sm:text-center">
+                <span className="text-2xl leading-none">📖</span>
+                <div>
+                  <p className="text-xl font-bold leading-tight">{overall}%</p>
+                  <p className="text-xs opacity-80">complete</p>
+                </div>
+              </div>
+            )}
+            <button type="button" onClick={resume} className="flex items-center gap-2 rounded-2xl bg-white/20 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/30 sm:self-auto">
+              <BookOpen size={16}/> Continue
+            </button>
+          </div>
         </div>
-        <button type="button" onClick={resume} className={`${button} bg-primary text-primary-foreground`}><BookOpen size={17}/> Continue Studying</button>
       </div>
-    </header>
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{metrics.map(({ label, value, icon: Icon, action }) =>
-      <button key={label} type="button" onClick={action} className={`${card} text-left transition hover:border-primary/40 hover:bg-primary/5`}>
-        <Icon className="text-primary" size={20}/><p className="mt-4 text-2xl font-bold">{value}</p><p className="mt-1 text-sm text-muted-foreground">{label}</p>
-      </button>)}</section>
+    </div>
+
+    {/* ── Stat cards — matches MCQ StatCard style ── */}
+    <section>
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-5">
+        <TheoryStatCard glass={isGlassEnabled} emoji="📋" label="Completed" value={completed} sub={total ? `of ${total} questions` : "no questions yet"} color="bg-sky-50 text-sky-700 border-sky-200/80" onClick={() => onView("Progress")} />
+        <TheoryStatCard glass={isGlassEnabled} emoji="🎯" label="Progress" value={`${overall}%`} sub={completed ? `${completed} done` : "not started"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" onClick={() => onView("Progress")} />
+        <TheoryStatCard glass={isGlassEnabled} emoji="🔁" label="Revision" value={data.counts.revision} sub="items queued" color="bg-amber-50 text-amber-700 border-amber-200/80" onClick={() => onView("Revision Queue")} />
+        <TheoryStatCard glass={isGlassEnabled} emoji="🔖" label="Bookmarks" value={data.counts.bookmarks} sub="saved questions" color="bg-violet-50 text-violet-700 border-violet-200/80" onClick={() => onView("Bookmarks")} />
+        <TheoryStatCard glass={isGlassEnabled} emoji="📝" label="Notes" value={data.counts.notes} sub="notes created" color="bg-rose-50 text-rose-700 border-rose-200/80" onClick={() => onView("My Notes")} />
+      </div>
+    </section>
     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Study categories</p><h2 className="mt-1 text-xl font-bold">Choose your path</h2></div>
       <div className="grid gap-5 md:grid-cols-2">{categories.map(category => {
         const progress = category.total ? Math.round(Number(category.completed) / Number(category.total) * 100) : 0
