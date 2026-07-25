@@ -174,9 +174,18 @@ export type TheoryStatus = "draft" | "review" | "published" | "archived"
 /** A top-level Theory curriculum collection, such as End of Rotation. */
 export interface TheoryCollection {
   id: string
-  slug: "end-of-rotation" | "end-of-year" | string
+  slug: "end-of-module" | "end-of-year" | string
   title: string
+  kind: "end_of_module" | "end_of_year"
   status: TheoryStatus
+  sortOrder: number
+}
+
+export interface TheoryModule {
+  id: string
+  collectionId: string
+  name: string
+  description: string
   sortOrder: number
 }
 
@@ -192,8 +201,12 @@ export interface TheoryDiscipline {
 export interface TheorySet {
   id: string
   collectionId: string
-  disciplineId: string
+  moduleId: string | null
+  disciplineId: string | null
   name: string
+  description: string
+  status: TheoryStatus
+  questionLimit: number
   sortOrder: number
 }
 
@@ -209,17 +222,49 @@ export interface TheorySourceMetadata {
 export interface TheoryQuestion {
   id: string
   collectionId: string
-  disciplineId: string
+  moduleId: string | null
+  disciplineId: string | null
   setId: string | null
+  title: string
   prompt: string
   modelAnswer: string
   keyMarkingPoints: string[]
+  marks: number | null
+  referencesMd: string
+  media: Array<{ type: "image" | "diagram"; url: string; alt?: string }>
   tags: string[]
   sourceMetadata: TheorySourceMetadata
   difficulty: number
   estimatedStudyMinutes: number
   status: TheoryStatus
   sortOrder: number
+}
+
+export type TheoryConfidence = "high" | "medium" | "low"
+export type TheorySelfRating = "excellent" | "partial" | "needs_revision"
+export type TheoryStudyMode = "review" | "practice"
+
+export interface TheoryQuestionState {
+  openedAt: string | null
+  reviewedAt: string | null
+  completedAt: string | null
+  confidence: TheoryConfidence | null
+  bookmark: boolean
+  revision: boolean
+  note: string
+  draft: { id: string; answerMd: string; updatedAt: string } | null
+}
+
+export interface TheoryQuestionDetail extends TheoryQuestion {
+  collectionTitle: string
+  moduleName: string | null
+  disciplineName: string | null
+  setTitle: string | null
+  position: number
+  setTotal: number
+  previousId: string | null
+  nextId: string | null
+  state: TheoryQuestionState | null
 }
 
 // ─── OSCE Hub (contract only; no learner or editor workspace is exposed) ────
