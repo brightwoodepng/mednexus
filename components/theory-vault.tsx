@@ -199,7 +199,7 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
   const firstName = (displayName || data.displayName)?.split(" ")[0] ?? "there"
   const motivation = THEORY_MOTIVATIONS[new Date().getDate() % THEORY_MOTIVATIONS.length]
   const categories = ["End of Module", "End of Year"].map(title => data.collections.find(item => item.title === title) ?? { id: "", title, groups: 0, sets: 0, total: 0, completed: 0 })
-  const resume = () => data.continueStudying ? onQuestion(data.continueStudying.id) : onView("Browse Questions")
+  const resume = () => data.continueStudying?.setId ? onSet(data.continueStudying.setId) : onView("Browse Questions")
 
   return <div className="space-y-5 sm:space-y-8">
     {!data.authenticated && <SignInNotice/>}
