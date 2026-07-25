@@ -240,10 +240,10 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
       <div className="flex min-w-0 flex-[2] flex-col gap-2">
         {/* Section label */}
         <div className="flex h-8 items-center gap-2 px-1">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <FolderOpen size={14} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <FolderOpen size={16} />
           </div>
-          <h2 className="text-sm font-bold tracking-tight text-foreground/70">Study Categories</h2>
+          <h2 className="text-lg font-bold tracking-tight">Study Categories</h2>
         </div>
         {/* Two cards side by side, same height */}
         <div className="grid flex-1 grid-cols-2 gap-4">
@@ -288,10 +288,10 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
       <div className="flex min-w-0 flex-[1] flex-col gap-2">
         {/* Section label */}
         <div className="flex h-8 items-center gap-2 px-1">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "#0d948820", color: "#0d9488" }}>
-            <BookOpen size={14} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <BookOpen size={16} />
           </div>
-          <h2 className="text-sm font-bold tracking-tight text-foreground/70">Recently Studied</h2>
+          <h2 className="text-lg font-bold tracking-tight">Recently Studied</h2>
         </div>
         {/* Card — same height as category cards via flex-1 */}
         <div className="relative flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
