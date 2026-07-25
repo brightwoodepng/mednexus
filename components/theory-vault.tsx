@@ -234,10 +234,14 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
     </section>
 
     {/* ── Study Categories ── */}
-    <div className="space-y-3">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Study Categories</p>
-        <h2 className="mt-0.5 text-2xl font-bold tracking-tight">Choose your path</h2>
+    <section>
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <FolderOpen size={16} />
+          </div>
+          <h2 className="text-lg font-bold tracking-tight">Study Categories</h2>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         {categories.map((category, idx) => {
@@ -245,52 +249,51 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
           const catProgress = category.total ? Math.round(Number(category.completed) / Number(category.total) * 100) : 0
           const subLabel = category.title === "End of Module" ? "modules" : "disciplines"
           return (
-            <div key={category.title} className="group flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md">
-              {/* Top row: icon + % */}
-              <div className="flex items-start justify-between">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${palette.icon}`}>
-                  <FolderOpen size={17} />
+            <div key={category.title} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
+              {/* Color top bar — same as MCQ ModuleCard */}
+              <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
+              <div className="p-5">
+                <div className="mb-3 mt-1 flex items-start justify-between gap-2">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
+                    <FolderOpen size={18} />
+                  </div>
+                  <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}18`, color: palette.bar }}>{catProgress}%</span>
                 </div>
-                <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}15`, color: palette.bar }}>{catProgress}%</span>
-              </div>
-              {/* Title + meta */}
-              <div>
-                <h3 className="text-lg font-bold leading-snug text-foreground">{category.title}</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">{category.groups} {subLabel} · {category.sets} sets · {category.total} questions</p>
-              </div>
-              {/* Progress bar */}
-              <ProgressBar value={catProgress} />
-              {/* Browse button — pill, left-aligned */}
-              <div>
+                <h3 className="font-bold text-foreground leading-snug">{category.title}</h3>
+                <p className="mt-0.5 text-sm text-muted-foreground">{category.groups} {subLabel} · {category.sets} sets · {category.total}Q</p>
                 <button
                   type="button"
                   disabled={!category.id}
                   onClick={() => category.id && onCollection(category.id)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:text-primary disabled:opacity-40"
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all disabled:opacity-40"
+                  style={{ background: `${palette.bar}18`, color: palette.bar }}
                 >
-                  Browse {category.title} <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                  Browse {category.title}
+                  <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
                 </button>
               </div>
             </div>
           )
         })}
       </div>
-    </div>
+    </section>
 
     {/* ── Recently Studied ── */}
     <div className="rounded-2xl border border-border bg-card shadow-sm">
-      {/* Header */}
-      <div className="flex items-start justify-between px-6 pt-5">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Recently Studied</p>
-          <h2 className="mt-0.5 text-2xl font-bold tracking-tight">Pick up where you stopped</h2>
+      {/* Header — matches MCQ section header style */}
+      <div className="flex items-center gap-3 px-6 pt-5">
+        <div className="flex items-center gap-2 flex-1">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <BookOpen size={16} />
+          </div>
+          <h2 className="text-lg font-bold tracking-tight">Recently Studied</h2>
         </div>
         <button
           type="button"
           onClick={() => onView("Progress")}
-          className="mt-1 shrink-0 text-sm font-semibold text-primary hover:underline"
+          className="shrink-0 text-xs font-medium text-primary hover:underline flex items-center gap-1"
         >
-          View progress
+          View all <ChevronRight size={12} />
         </button>
       </div>
       {/* List */}
