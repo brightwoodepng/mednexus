@@ -54,17 +54,14 @@ export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collaps
 
       {/* ── Brand header ── */}
       <div className="flex min-h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-3.5">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           {/* Logo mark — gradient square */}
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/90 to-teal-500 text-primary-foreground shadow-md shadow-primary/25 ring-1 ring-primary/30">
-            <StethoscopeIcon size={16} />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/90 to-teal-500 text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/20">
+            <StethoscopeIcon size={17} />
           </span>
           <div className="min-w-0">
-            <p className="text-[13px] font-extrabold leading-tight tracking-tight text-sidebar-foreground">
+            <p className="text-[15px] font-extrabold leading-none tracking-tight text-sidebar-foreground">
               Med<span className="text-primary">Nexus</span>
-            </p>
-            <p className="text-[9.5px] font-semibold uppercase leading-tight tracking-[0.08em] text-sidebar-foreground/40">
-              Clinical Q-Bank
             </p>
           </div>
         </div>

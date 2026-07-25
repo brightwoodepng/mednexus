@@ -265,7 +265,7 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
                   {/* Middle: title + meta — flex-1 pushes button to bottom */}
                   <div className="mt-4 flex-1">
                     <h3 className="font-bold leading-snug text-foreground">{category.title}</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">{category.groups} {subLabel} · {category.sets} sets · {category.total} Q</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">{category.groups} {subLabel} · {category.sets} sets · {category.total} Q</p>
                   </div>
                   {/* Bottom: browse button */}
                   <button
