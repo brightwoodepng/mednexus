@@ -35,6 +35,7 @@ export const STUDY_HUB_NAVIGATION: Record<StudyHubId, readonly HubNavigationItem
     { id: "theory-bookmarks", label: "Bookmarks", screen: "theory-bookmarks", icon: Bookmark },
     { id: "theory-notes", label: "My Notes", screen: "theory-notes", icon: NotebookPen },
     { id: "theory-revision", label: "Revision Queue", screen: "theory-revision", icon: RefreshCw, bottomNav: true },
+    { id: "theory-progress", label: "Progress", screen: "theory-progress", icon: ActivityIcon },
     { id: "theory-search", label: "Search", screen: "theory-search", icon: Search },
   ],
   "osce-hub": [],
