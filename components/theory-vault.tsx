@@ -289,13 +289,48 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
         })}
       </div>
     </section>
-    <section className={card}><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Recently Studied</p><h2 className="mt-1 text-xl font-bold">Pick up where you stopped</h2></div><button type="button" onClick={() => onView("Progress")} className="text-sm font-bold text-primary">View progress</button></div>
-      {data.recentSets.length ? <div className="mt-4 divide-y divide-border">{data.recentSets.map(item => <div key={`${item.setId}-${item.lastStudiedAt}`} className="grid gap-3 py-4 sm:grid-cols-[1fr_180px_auto] sm:items-center">
-        <div><p className="text-xs font-semibold text-primary">{item.collection} · {item.groupName}</p><p className="mt-1 font-bold">{item.setTitle}</p><p className="mt-1 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p></div>
-        <div><div className="mb-1 flex justify-between text-xs"><span>Progress</span><b>{item.progressPercent}%</b></div><ProgressBar value={item.progressPercent}/></div>
-        <button type="button" onClick={() => onSet(item.setId)} className={`${button} border border-border`}>Continue</button>
-      </div>)}</div> : <p className="mt-4 rounded-xl bg-muted/50 px-4 py-6 text-sm text-muted-foreground">Start your first theory set. Recently opened sets will appear here.</p>}
-  </section></div>
+    <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      {/* teal accent bar */}
+      <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: "#0d9488" }} />
+      <div className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: "#0d948818", color: "#0d9488" }}>
+              <BookOpen size={17} />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[.18em]" style={{ color: "#0d9488" }}>Recently Studied</p>
+              <h2 className="text-lg font-bold leading-tight">Pick up where you stopped</h2>
+            </div>
+          </div>
+          <button type="button" onClick={() => onView("Progress")} className="rounded-xl px-3 py-1.5 text-xs font-bold transition-colors" style={{ background: "#0d948818", color: "#0d9488" }}>View progress</button>
+        </div>
+        {data.recentSets.length ? (
+          <div className="mt-4 divide-y divide-border">
+            {data.recentSets.map(item => (
+              <div key={`${item.setId}-${item.lastStudiedAt}`} className="grid gap-3 py-4 sm:grid-cols-[1fr_180px_auto] sm:items-center">
+                <div>
+                  <p className="text-xs font-semibold" style={{ color: "#0d9488" }}>{item.collection} · {item.groupName}</p>
+                  <p className="mt-1 font-bold">{item.setTitle}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p>
+                </div>
+                <div>
+                  <div className="mb-1 flex justify-between text-xs">
+                    <span>Progress</span>
+                    <b style={{ color: "#0d9488" }}>{item.progressPercent}%</b>
+                  </div>
+                  <ProgressBar value={item.progressPercent}/>
+                </div>
+                <button type="button" onClick={() => onSet(item.setId)} className={`${button}`} style={{ background: "#0d948818", color: "#0d9488" }}>Continue</button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-xl bg-muted/50 px-4 py-6 text-sm text-muted-foreground">Start your first theory set. Recently opened sets will appear here.</p>
+        )}
+      </div>
+    </section>
+  </div>
 }
 
 function Catalog({ data, collectionId, groupId, onCollection, onGroup, onBack, onSet }: {
