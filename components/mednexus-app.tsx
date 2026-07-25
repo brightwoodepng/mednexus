@@ -600,7 +600,7 @@ export function MedNexusApp() {
       onOpenAppearance={() => setThemeOpen(true)}
       modeControl={activeStudyHub === "mcq-qbank" ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
       headerSlot={activeStudyHub === "theory-vault" ? (
-        <label className="flex h-9 w-72 items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 text-sm focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary/40 transition-all cursor-text">
+        <label className="flex h-9 w-full max-w-xl items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 text-sm focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary/40 transition-all cursor-text">
           <SearchIcon size={15} className="shrink-0 text-muted-foreground" />
           <input
             value={theorySearchQuery}

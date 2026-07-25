@@ -75,7 +75,7 @@ export function LearnerWorkspaceShell({
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex min-h-14 items-center justify-between border-b border-border bg-card px-3 py-2 sm:px-4">
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <button type="button" onClick={() => setMobileNavigationOpen(true)} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:hidden" aria-label="Open navigation menu"><MenuIcon size={20} /></button>
             {headerSlot}
           </div>
