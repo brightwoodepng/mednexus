@@ -659,13 +659,50 @@
 
   /* ── Glass auth card (landing page & exam page panels) ── */
   .glass-auth-card {
-    background: light-dark(rgba(255, 255, 255, 0.55), rgba(20, 20, 28, 0.62));
-    backdrop-filter: blur(32px);
-    -webkit-backdrop-filter: blur(32px);
-    border: 1px solid light-dark(rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.12));
+    background: light-dark(rgba(255, 255, 255, 0.60), rgba(20, 20, 28, 0.68));
+    backdrop-filter: blur(40px) saturate(1.4);
+    -webkit-backdrop-filter: blur(40px) saturate(1.4);
+    border: 1px solid light-dark(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.13));
     box-shadow:
-      inset 0 1.5px 0 light-dark(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.2)),
-      0 12px 40px light-dark(rgba(0, 0, 0, 0.07), rgba(0, 0, 0, 0.36));
+      inset 0 1.5px 0 light-dark(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.22)),
+      0 20px 60px light-dark(rgba(0, 0, 0, 0.09), rgba(0, 0, 0, 0.44)),
+      0 4px 16px light-dark(rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.22));
+  }
+
+  /* ── Auth landing — primary CTA button ── */
+  .auth-btn-primary {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 4px 16px rgba(0, 0, 0, 0.18),
+      0 1px 4px rgba(0, 0, 0, 0.12);
+  }
+  .auth-btn-primary:hover {
+    opacity: 0.93;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 8px 28px rgba(0, 0, 0, 0.22),
+      0 2px 8px rgba(0, 0, 0, 0.14);
+  }
+
+  /* ── Auth landing — secondary ghost button ── */
+  .auth-btn-secondary {
+    background: light-dark(rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.05));
+    border: 1px solid light-dark(rgba(0, 0, 0, 0.10), rgba(255, 255, 255, 0.10));
+    color: var(--foreground);
+  }
+  .auth-btn-secondary:hover {
+    background: light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.09));
+  }
+
+  /* ── Auth logo glow pulse ── */
+  @keyframes auth-logo-glow-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1.45); }
+    50%       { opacity: 1;   transform: scale(1.55); }
+  }
+  .auth-logo-glow {
+    animation: auth-logo-glow-pulse 3s ease-in-out infinite;
   }
 
   /* ════════════════════════════════════════════════════════════════════════
