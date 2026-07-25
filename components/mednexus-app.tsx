@@ -57,8 +57,8 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button type="button" aria-label="Close" onClick={onClose} className="glass-modal-overlay absolute inset-0 bg-foreground/40 backdrop-blur-sm" />
-      <div className="glass-modal relative w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+      <button type="button" aria-label="Close" onClick={onClose} className="glass-overlay-backdrop absolute inset-0 bg-foreground/40 backdrop-blur-sm" />
+      <div className="glass-overlay relative w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
 
         {/* ── Header — left-aligned, teal background ── */}
         <div className="relative flex items-center gap-4 bg-primary px-5 py-5 text-primary-foreground">
@@ -354,8 +354,8 @@ function StudyModeToggle({ globalMode, setGlobalMode }: { globalMode: QuizMode; 
 // ── Welcome Modal ─────────────────────────────────────────────────────────────
 function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) {
   return (
-    <div className="glass-modal-overlay fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-foreground/30 backdrop-blur-sm">
-      <div className="glass-modal w-full max-w-sm rounded-3xl bg-card border border-border shadow-2xl overflow-hidden">
+    <div className="glass-overlay-backdrop fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4 bg-foreground/30 backdrop-blur-sm">
+      <div className="glass-overlay w-full max-w-sm rounded-3xl bg-card border border-border shadow-2xl overflow-hidden">
         <div className="bg-primary px-6 pt-8 pb-10 flex flex-col items-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
             <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={32} height={32}>

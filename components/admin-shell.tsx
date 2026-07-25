@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { StethoscopeIcon } from "@/components/icons"
 import { SidebarCollapsedRail, SidebarFrame, SidebarGroup, SidebarNavLink } from "@/components/navigation/sidebar-primitives"
-import { ThemeModal } from "@/components/theme-modal"
+import { AppearanceModal } from "@/components/appearance-modal"
 import { useTheme } from "@/contexts/theme-context"
 
 type Capability = "mcq" | "assessments" | "users" | "system" | "broadcasts"
@@ -103,7 +103,7 @@ function AdminHeader({
           <span className="font-medium text-foreground">{today}</span>
         </div>
       </div>
-      <ThemeModal open={themeModalOpen} onClose={() => setThemeModalOpen(false)} />
+      <AppearanceModal open={themeModalOpen} onClose={() => setThemeModalOpen(false)} />
     </header>
   )
 }

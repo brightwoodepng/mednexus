@@ -42,13 +42,13 @@ export function Modal({ open, onClose, title, children, widthClass = "max-w-lg",
         type="button"
         aria-label="Close dialog"
         onClick={onClose}
-        className="glass-modal-overlay absolute inset-0 bg-foreground/40 backdrop-blur-sm animate-in fade-in"
+        className="glass-overlay-backdrop absolute inset-0 bg-foreground/40 backdrop-blur-sm animate-in fade-in"
       />
       <div
-        className={`glass-modal relative w-full ${widthClass} max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl animate-ios-sheet`}
+        className={`glass-overlay relative w-full ${widthClass} max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl animate-ios-sheet`}
       >
         {showHeader && (
-          <div className="glass-modal-header sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-card px-6 py-4">
+          <div className="glass-control sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-card px-6 py-4">
             <h2 className="text-lg font-semibold text-balance">{title}</h2>
             <button
               type="button"
