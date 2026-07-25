@@ -216,20 +216,9 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
             <h1 className="mt-0.5 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
             <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
           </div>
-          <div className="flex flex-col items-stretch gap-2">
-            {overall > 0 && (
-              <div className="flex items-center justify-center gap-2 rounded-2xl bg-white/15 px-5 py-2 backdrop-blur-sm text-center">
-                <span className="text-lg leading-none">📖</span>
-                <div>
-                  <p className="text-base font-bold leading-tight">{overall}%</p>
-                  <p className="text-[11px] opacity-80">complete</p>
-                </div>
-              </div>
-            )}
-            <button type="button" onClick={resume} className="flex items-center justify-center gap-2 rounded-2xl bg-white/20 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/30">
-              <BookOpen size={16}/> Continue
-            </button>
-          </div>
+          <button type="button" onClick={resume} className="flex items-center justify-center gap-2 rounded-2xl bg-white/20 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+            <BookOpen size={16}/> Continue
+          </button>
         </div>
       </div>
     </div>
