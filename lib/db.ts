@@ -10,11 +10,16 @@ if (!process.env.DATABASE_URL && process.env.POSTGRES_URL) {
 // On Vercel / Netlify / external hosts, SSL is required (Neon, Supabase, etc.)
 const isReplit = Boolean(process.env.REPL_ID)
 
+// Detect whether the connection string explicitly requests SSL (e.g. Neon).
+// When sslmode=require is in the URL we must enable SSL even on Replit.
+const connectionString = process.env.DATABASE_URL ?? ""
+const requiresSsl = connectionString.includes("sslmode=require") || connectionString.includes("neon.tech")
+
 // In serverless environments (Vercel), keep the pool small to avoid
 // exhausting Neon's connection limit across concurrent function invocations.
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: isReplit ? false : { rejectUnauthorized: false },
+  connectionString,
+  ssl: (!isReplit || requiresSsl) ? { rejectUnauthorized: false } : false,
   max: isReplit ? 10 : 3,
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 20000,
