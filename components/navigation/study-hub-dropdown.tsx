@@ -11,6 +11,13 @@ function HubIcon({ hub, size = 16 }: { hub: StudyHubId; size?: number }) {
   return <BookOpenIcon size={size} aria-hidden />
 }
 
+/** Per-hub colour classes for the icon container in the trigger button. */
+function hubIconClasses(hub: StudyHubId) {
+  if (hub === "theory-vault") return { bg: "bg-violet-500/15", text: "text-violet-500" }
+  if (hub === "osce-hub")     return { bg: "bg-emerald-500/15", text: "text-emerald-500" }
+  return                             { bg: "bg-cyan-500/15",    text: "text-cyan-500" }   // mcq-qbank
+}
+
 /**
  * Compact header-bar trigger + floating overlay dropdown for switching study hubs.
  * The menu is position:absolute so it overlays sidebar content without pushing it down.
@@ -75,7 +82,7 @@ export function StudyHubDropdown({
         onClick={() => setOpen((o) => !o)}
         className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${triggerCls}`}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary/15 text-sidebar-primary">
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${hubIconClasses(activeHub).bg} ${hubIconClasses(activeHub).text}`}>
           <HubIcon hub={activeHub} size={18} />
         </span>
         <span className="min-w-0 flex-1">
@@ -112,7 +119,7 @@ export function StudyHubDropdown({
                     : "text-sidebar-foreground/40"
               }`}
             >
-              <span className={`shrink-0 ${hub.available ? "text-sidebar-foreground" : "text-muted-foreground"}`}>
+              <span className={`shrink-0 ${hub.available ? hubIconClasses(hub.id).text : "text-muted-foreground"}`}>
                 {hub.available ? <HubIcon hub={hub.id} size={18} /> : <LockKeyholeIcon size={18} aria-hidden />}
               </span>
               <span className="min-w-0 flex-1 leading-tight">{hub.name}</span>
