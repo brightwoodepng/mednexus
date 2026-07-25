@@ -7,7 +7,10 @@ const STORAGE_KEY = "mednexus-theme"
 const GLASS_STORAGE_KEY = "mednexus-glass"
 
 // Legacy liquid-glass theme IDs that may be in localStorage from before this was a toggle
-const LEGACY_GLASS_THEMES = ["liquid-glass-light", "liquid-glass-dark"]
+const LEGACY_GLASS_THEME_BASE = {
+  "liquid-glass-light": "clinical-light",
+  "liquid-glass-dark": "classic-dark",
+} as const
 
 interface ThemeContextValue {
   /** The active color theme ID (e.g. "clinical-light", "ocean-breeze", "midnight-purple"). */
@@ -32,11 +35,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const storedTheme = localStorage.getItem(STORAGE_KEY)
     const storedGlass = localStorage.getItem(GLASS_STORAGE_KEY)
 
-    if (storedTheme && LEGACY_GLASS_THEMES.includes(storedTheme)) {
-      // Migrate: old liquid-glass theme → default color theme + glass ON
-      setThemeState(DEFAULT_THEME)
+    if (storedTheme && storedTheme in LEGACY_GLASS_THEME_BASE) {
+      // One-time migration: preserve the legacy light/dark intent and enable the material.
+      const migratedTheme = LEGACY_GLASS_THEME_BASE[storedTheme as keyof typeof LEGACY_GLASS_THEME_BASE]
+      setThemeState(migratedTheme)
       setGlassState(true)
-      localStorage.setItem(STORAGE_KEY, DEFAULT_THEME)
+      localStorage.setItem(STORAGE_KEY, migratedTheme)
       localStorage.setItem(GLASS_STORAGE_KEY, "true")
     } else if (storedTheme) {
       setThemeState(storedTheme as ThemeId)

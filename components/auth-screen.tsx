@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
-import { ThemeModal } from "@/components/theme-modal"
+import { AppearanceModal } from "@/components/appearance-modal"
 import { StethoscopeIcon, ArrowRightIcon } from "@/components/icons"
 import { CLASS_LEVELS, ALL_LEVELS } from "@/lib/levels"
 
@@ -87,7 +87,7 @@ function Footer() {
 }
 
 // ── Entry choices ───────────────────────────────────────────────────────────
-function RoleSelect({ onSelect, glass }: { onSelect: (tab: "guest" | "student") => void; glass: boolean }) { return <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glass ? "glass-auth-card" : ""}`}><h2 className="mb-1 text-xl font-semibold">Welcome</h2><p className="mb-6 text-sm text-muted-foreground">Sign in, create an account, or continue as a guest.</p><div className="flex flex-col gap-3"><button onClick={()=>onSelect("student")} className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 text-left text-sm font-semibold">Sign in / Create account</button><button onClick={()=>onSelect("guest")} className="rounded-2xl border border-border px-4 py-3.5 text-left text-sm font-semibold">Continue as guest</button></div></div> }
+function RoleSelect({ onSelect, glass }: { onSelect: (tab: "guest" | "student") => void; glass: boolean }) { return <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glass ? "glass-surface-elevated" : ""}`}><h2 className="mb-1 text-xl font-semibold">Welcome</h2><p className="mb-6 text-sm text-muted-foreground">Sign in, create an account, or continue as a guest.</p><div className="flex flex-col gap-3"><button onClick={()=>onSelect("student")} className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 text-left text-sm font-semibold">Sign in / Create account</button><button onClick={()=>onSelect("guest")} className="rounded-2xl border border-border px-4 py-3.5 text-left text-sm font-semibold">Continue as guest</button></div></div> }
 
 // ── Guest Form ────────────────────────────────────────────────────────────────
 function GuestForm({ onBack }: { onBack: () => void }) {
@@ -106,7 +106,7 @@ function GuestForm({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${isGlassEnabled ? "glass-auth-card" : ""}`}>
+    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${isGlassEnabled ? "glass-surface-elevated" : ""}`}>
       <BackButton onClick={onBack} />
       <h2 className="mb-1 text-xl font-semibold tracking-tight">Guest Access</h2>
       <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
@@ -208,7 +208,7 @@ function StudentForm({ onBack }: { onBack: () => void }) {
   const { isGlassEnabled } = useTheme()
 
   return (
-    <div className={`rounded-3xl border border-border bg-card shadow-2xl overflow-hidden ${isGlassEnabled ? "glass-auth-card" : ""}`}>
+    <div className={`rounded-3xl border border-border bg-card shadow-2xl overflow-hidden ${isGlassEnabled ? "glass-surface-elevated" : ""}`}>
       {/* Tab toggle */}
       <div className="flex border-b border-border">
         <button
@@ -612,7 +612,7 @@ export function AuthScreen() {
         <Footer />
       </div>
 
-      <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
+      <AppearanceModal open={themeOpen} onClose={() => setThemeOpen(false)} />
     </main>
   )
 }

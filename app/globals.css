@@ -465,90 +465,6 @@
   --sidebar-ring: oklch(0.72 0.22 330);
 }
 
-/* 10. Liquid Glass Light — icy azure glass, airy and translucent */
-[data-theme='liquid-glass-light'] {
-  color-scheme: light;
-  --radius: 1.25rem;
-  --background: oklch(0.964 0.014 223);
-  --foreground: oklch(0.17 0.026 238);
-  --card: oklch(0.996 0.005 218);
-  --card-foreground: oklch(0.17 0.026 238);
-  --popover: oklch(0.996 0.005 218);
-  --popover-foreground: oklch(0.17 0.026 238);
-  --primary: oklch(0.56 0.22 234);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.92 0.02 226);
-  --secondary-foreground: oklch(0.26 0.03 238);
-  --muted: oklch(0.935 0.014 223);
-  --muted-foreground: oklch(0.5 0.022 236);
-  --accent: oklch(0.865 0.058 224);
-  --accent-foreground: oklch(0.26 0.04 238);
-  --destructive: oklch(0.57 0.22 25);
-  --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.6 0.15 162);
-  --success-foreground: oklch(0.99 0 0);
-  --warning: oklch(0.72 0.17 68);
-  --warning-foreground: oklch(0.17 0.026 238);
-  --border: oklch(0.875 0.018 223);
-  --input: oklch(0.875 0.018 223);
-  --ring: oklch(0.56 0.22 234);
-  --chart-1: oklch(0.56 0.22 234);
-  --chart-2: oklch(0.6 0.15 162);
-  --chart-3: oklch(0.72 0.17 68);
-  --chart-4: oklch(0.6 0.2 25);
-  --chart-5: oklch(0.6 0.15 300);
-  --sidebar: oklch(0.978 0.011 222);
-  --sidebar-foreground: oklch(0.26 0.026 238);
-  --sidebar-primary: oklch(0.56 0.22 234);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.9 0.04 226);
-  --sidebar-accent-foreground: oklch(0.26 0.04 238);
-  --sidebar-border: oklch(0.875 0.018 223);
-  --sidebar-ring: oklch(0.56 0.22 234);
-}
-
-/* 11. Liquid Glass Dark — deep navy glass with electric cyan shimmer */
-[data-theme='liquid-glass-dark'] {
-  color-scheme: dark;
-  --radius: 1.25rem;
-  --background: oklch(0.13 0.022 242);
-  --foreground: oklch(0.94 0.012 226);
-  --card: oklch(0.178 0.028 242);
-  --card-foreground: oklch(0.94 0.012 226);
-  --popover: oklch(0.178 0.028 242);
-  --popover-foreground: oklch(0.94 0.012 226);
-  --primary: oklch(0.76 0.165 212);
-  --primary-foreground: oklch(0.12 0.022 242);
-  --secondary: oklch(0.228 0.032 242);
-  --secondary-foreground: oklch(0.94 0.012 226);
-  --muted: oklch(0.228 0.032 242);
-  --muted-foreground: oklch(0.68 0.02 232);
-  --accent: oklch(0.295 0.052 234);
-  --accent-foreground: oklch(0.94 0.012 226);
-  --destructive: oklch(0.63 0.21 22);
-  --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.69 0.15 158);
-  --success-foreground: oklch(0.13 0.022 242);
-  --warning: oklch(0.77 0.15 72);
-  --warning-foreground: oklch(0.13 0.022 242);
-  --border: oklch(0.275 0.034 242);
-  --input: oklch(0.275 0.034 242);
-  --ring: oklch(0.76 0.165 212);
-  --chart-1: oklch(0.76 0.165 212);
-  --chart-2: oklch(0.69 0.15 158);
-  --chart-3: oklch(0.77 0.15 72);
-  --chart-4: oklch(0.63 0.21 22);
-  --chart-5: oklch(0.65 0.18 295);
-  --sidebar: oklch(0.15 0.025 242);
-  --sidebar-foreground: oklch(0.9 0.012 226);
-  --sidebar-primary: oklch(0.76 0.165 212);
-  --sidebar-primary-foreground: oklch(0.12 0.022 242);
-  --sidebar-accent: oklch(0.275 0.05 236);
-  --sidebar-accent-foreground: oklch(0.94 0.012 226);
-  --sidebar-border: oklch(0.275 0.034 242);
-  --sidebar-ring: oklch(0.76 0.165 212);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -562,182 +478,76 @@
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   iOS 26 LIQUID GLASS
-   Neutral-white frosted glass — colour-independent, light/dark aware.
-   light-dark() picks the first value for light color-scheme and the
-   second for dark color-scheme, matching each theme's color-scheme setting.
-   ═══════════════════════════════════════════════════════════════════════ */
-
-/* ── Glass has ThematicCanvas to refract — no extra body gradient needed ── */
+/* Liquid Glass is a material layer, never a color theme. The values below
+   derive from the active theme's surfaces and canvas. */
+[data-glass="true"] {
+  --glass-tint: color-mix(in oklch, var(--card) 68%, transparent);
+  --glass-tint-strong: color-mix(in oklch, var(--popover) 84%, transparent);
+  --glass-navigation-tint: color-mix(in oklch, var(--sidebar) 76%, transparent);
+  --glass-control-tint: color-mix(in oklch, var(--card) 90%, var(--background) 10%);
+  --glass-edge-top: light-dark(rgb(255 255 255 / 72%), rgb(255 255 255 / 18%));
+  --glass-highlight: light-dark(rgb(255 255 255 / 24%), rgb(255 255 255 / 7%));
+  --glass-edge-bottom: color-mix(in oklch, var(--primary) 18%, var(--border));
+  --glass-shadow: light-dark(0 10px 30px rgb(31 41 55 / 10%), 0 14px 38px rgb(0 0 0 / 38%));
+  --glass-shadow-elevated: light-dark(0 22px 56px rgb(31 41 55 / 16%), 0 28px 70px rgb(0 0 0 / 52%));
+  --glass-blur: 22px;
+  --glass-blur-elevated: 30px;
+  --glass-saturation: 1.22;
+}
 
 @layer utilities {
-  /* ── Sidebar panel ── */
-  .glass-sidebar {
-    background: light-dark(rgba(255, 255, 255, 0.44), rgba(14, 14, 20, 0.54));
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
-    border-right: 1px solid light-dark(rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.09));
-    box-shadow:
-      inset -1px 0 0 light-dark(rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.06)),
-      4px 0 20px light-dark(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.22));
-  }
-
-  /* ── Active nav capsule ── */
-  .glass-pill-active {
-    background: light-dark(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.14));
-    border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.2));
-    box-shadow:
-      inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.25)),
-      0 2px 8px light-dark(rgba(0, 0, 0, 0.07), rgba(0, 0, 0, 0.28));
-  }
-
-  /* ── Hover nav capsule ── */
-  .glass-pill-hover {
-    border: 1px solid transparent;
-    transition: background 130ms ease, box-shadow 130ms ease, border-color 130ms ease;
-  }
-  .glass-pill-hover:hover {
-    background: light-dark(rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.08));
-    border-color: light-dark(rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.13));
-    box-shadow: inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.16));
-  }
-
-  /* ── Glass card (user info, admin panel, sidebar inset cards) ── */
-  .glass-card {
-    background: light-dark(rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.07));
-    border: 1px solid light-dark(rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.11));
-    box-shadow:
-      inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.14)),
-      0 2px 8px light-dark(rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.18));
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-
-  /* ── Floating dropdown overlay (higher opacity so nav content beneath is occluded) ── */
-  .glass-dropdown {
-    background: light-dark(rgba(240, 244, 248, 0.82), rgba(18, 22, 30, 0.88));
-    border: 1px solid light-dark(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.10));
-    box-shadow:
-      inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.12)),
-      0 8px 32px light-dark(rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.48));
-    backdrop-filter: blur(28px) saturate(1.4);
-    -webkit-backdrop-filter: blur(28px) saturate(1.4);
-  }
-
-  /* ── Glass divider line ── */
-  .glass-divider {
-    background: light-dark(rgba(0, 0, 0, 0.07), rgba(255, 255, 255, 0.08));
-    border: none;
-  }
-
-  /* ── Modal overlay ── */
-  [data-glass="true"] .glass-modal-overlay {
-    background: light-dark(rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.48));
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-
-  /* ── Modal panel ── */
-  [data-glass="true"] .glass-modal {
-    background: light-dark(rgba(255, 255, 255, 0.58), rgba(20, 20, 28, 0.65));
-    backdrop-filter: blur(40px);
-    -webkit-backdrop-filter: blur(40px);
-    border: 1px solid light-dark(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.12));
-    box-shadow:
-      inset 0 1.5px 0 light-dark(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.2)),
-      0 24px 64px light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.42));
-  }
-
-  /* ── Modal sticky header ── */
-  [data-glass="true"] .glass-modal-header {
-    background: light-dark(rgba(255, 255, 255, 0.48), rgba(20, 20, 28, 0.55));
-    border-bottom: 1px solid light-dark(rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.1));
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
-  }
-
-  /* ── Glass auth card (landing page & exam page panels) ── */
-  .glass-auth-card {
-    background: light-dark(rgba(255, 255, 255, 0.55), rgba(20, 20, 28, 0.62));
-    backdrop-filter: blur(32px);
-    -webkit-backdrop-filter: blur(32px);
-    border: 1px solid light-dark(rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.12));
-    box-shadow:
-      inset 0 1.5px 0 light-dark(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.2)),
-      0 12px 40px light-dark(rgba(0, 0, 0, 0.07), rgba(0, 0, 0, 0.36));
-  }
-
-  /* ════════════════════════════════════════════════════════════════════════
-     GlassCard component — Layer 2 visual surface
-     Two CSS classes toggled by the GlassCard React component based on
-     isGlassEnabled.  All values are light-dark() aware so they adapt to
-     whichever theme is active without any JavaScript.
-
-     Layer 3 Rule enforcement:
-       • Background alpha is on background-color, NOT on opacity — children
-         are never made translucent by this wrapper.
-       • backdrop-filter acts only on content BEHIND the element.
-       • isolation: isolate creates a fresh stacking context so no parent
-         filter leaks into child elements.
-     ════════════════════════════════════════════════════════════════════════ */
-
-  /* ── Glass ON ── */
-  .gc-glass {
-    /* Frosted Lens: heavy blur + high saturation pulls canvas colours through */
-    backdrop-filter: blur(48px) saturate(1.6);
-    -webkit-backdrop-filter: blur(48px) saturate(1.6);
-
-    /* Base Fill
-       Light mode: faint white tint (≈ bg-white/15)
-       Dark mode : highly transparent deep slate/900 (≈ bg-slate-900/40)     */
-    background: light-dark(
-      rgba(255, 255, 255, 0.15),
-      rgba(15,  23,  42,  0.40)
-    );
-
-    /* Physical Edge: 1 px light-catching border
-       Light mode: white/30  — visible specular highlight
-       Dark mode : white/10  — razor-thin translucent seam               */
-    border: 1px solid light-dark(
-      rgba(255, 255, 255, 0.32),
-      rgba(255, 255, 255, 0.10)
-    );
-
-    /* Depth: inset top-edge highlight + soft dispersed drop shadow */
-    box-shadow:
-      inset 0 1.5px 0 light-dark(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.13)),
-      0 8px  32px light-dark(rgba(0,   0,   0,   0.08), rgba(0,   0,   0,   0.32)),
-      0 2px  8px  light-dark(rgba(0,   0,   0,   0.04), rgba(0,   0,   0,   0.20));
-
-    /* Fresh stacking context — children unaffected by wrapper transparency */
+  [data-glass="true"] :is(.glass-surface, .glass-surface-elevated, .glass-navigation, .glass-overlay) {
+    position: relative;
     isolation: isolate;
-
-    /* Smooth cross-fade when switching glass on/off or changing themes */
-    transition:
-      background     500ms ease,
-      border-color   500ms ease,
-      box-shadow     500ms ease,
-      backdrop-filter 400ms ease;
+    background: var(--glass-tint);
+    border-color: color-mix(in oklch, var(--border) 62%, var(--glass-edge-top));
+    box-shadow: inset 0 1px 0 var(--glass-edge-top), inset 0 -1px 0 var(--glass-edge-bottom), var(--glass-shadow);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+    transition: background-color 280ms ease, border-color 280ms ease, box-shadow 280ms ease, backdrop-filter 280ms ease, transform 200ms ease, filter 200ms ease;
   }
-
-  /* ── Glass OFF — standard solid opaque surface ── */
-  .gc-solid {
-    /* Solid opaque background — matches the active theme's card token */
-    background: var(--card);
-    border: 1px solid var(--border);
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.07),
-      0 1px 2px rgba(0, 0, 0, 0.04);
-
-    /* Fresh stacking context — same guarantee as gc-glass for consistency */
-    isolation: isolate;
-
-    transition:
-      background   500ms ease,
-      border-color 500ms ease,
-      box-shadow   500ms ease;
+  [data-glass="true"] :is(.glass-surface, .glass-surface-elevated, .glass-navigation)::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    z-index: -1;
+    inset: 1px;
+    border-radius: inherit;
+    background: linear-gradient(155deg, var(--glass-highlight), transparent 38%, transparent 78%, color-mix(in oklch, var(--primary) 7%, transparent));
+    transition: transform 240ms ease, filter 240ms ease;
   }
+  [data-glass="true"] .glass-surface-elevated,
+  [data-glass="true"] .glass-overlay {
+    --glass-tint: var(--glass-tint-strong);
+    --glass-blur: var(--glass-blur-elevated);
+    box-shadow: inset 0 1px 0 var(--glass-edge-top), inset 0 -1px 0 var(--glass-edge-bottom), var(--glass-shadow-elevated);
+  }
+  [data-glass="true"] .glass-navigation { --glass-tint: var(--glass-navigation-tint); }
+  [data-glass="true"] .glass-control {
+    background: var(--glass-control-tint);
+    border-color: color-mix(in oklch, var(--border) 78%, var(--glass-edge-top));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-edge-top) 70%, transparent);
+    transition: background-color 220ms ease, border-color 220ms ease, transform 180ms ease, filter 220ms ease;
+  }
+  [data-glass="true"] :is(.glass-surface, .glass-surface-elevated, .glass-control, .glass-navigation):hover { filter: brightness(1.025); }
+  [data-glass="true"] :is(button, a).glass-control:active { transform: scale(.985); }
+  [data-glass="true"] .glass-modal-backdrop {
+    background: color-mix(in oklch, var(--foreground) 34%, transparent);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-glass="true"] :is(.glass-surface, .glass-surface-elevated, .glass-navigation, .glass-overlay) {
+    background: color-mix(in oklch, var(--card) 94%, var(--background));
+    box-shadow: 0 10px 28px rgb(0 0 0 / 16%);
+  }
+}
+@media (max-width: 640px) {
+  [data-glass="true"] { --glass-blur: 12px; --glass-blur-elevated: 16px; --glass-saturation: 1.08; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-glass="true"] :is(.glass-surface, .glass-surface-elevated, .glass-control, .glass-navigation, .glass-overlay),
+  [data-glass="true"] :is(.glass-surface, .glass-surface-elevated, .glass-navigation)::before { transition-duration: 0.01ms; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -793,16 +603,6 @@
 [data-theme='nebula'] {
   --canvas-orb-1: color-mix(in oklch, oklch(0.72 0.22 330) 46%, transparent);
   --canvas-orb-2: color-mix(in oklch, oklch(0.65 0.21 215) 32%, transparent);
-}
-/* 10 · Liquid Glass Light — icy azure on pearl white */
-[data-theme='liquid-glass-light'] {
-  --canvas-orb-1: color-mix(in oklch, oklch(0.56 0.22 234) 20%, transparent);
-  --canvas-orb-2: color-mix(in oklch, oklch(0.65 0.15 200) 14%, transparent);
-}
-/* 11 · Liquid Glass Dark — electric cyan on deep navy */
-[data-theme='liquid-glass-dark'] {
-  --canvas-orb-1: color-mix(in oklch, oklch(0.76 0.165 212) 36%, transparent);
-  --canvas-orb-2: color-mix(in oklch, oklch(0.60 0.18 260) 24%, transparent);
 }
 
 /* ── Canvas drift keyframes ──────────────────────────────────────────────── */
