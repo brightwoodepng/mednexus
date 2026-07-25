@@ -320,7 +320,7 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
                 onClick={() => onSet(item.setId)}
                 className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:text-primary"
               >
-                Continue Studying
+                Continue
               </button>
             </div>
           </div>
