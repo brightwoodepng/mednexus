@@ -12,7 +12,7 @@ import { SidebarCollapsedRail, SidebarFrame, SidebarGroup, SidebarNavLink } from
 import { ThemeModal } from "@/components/theme-modal"
 import { useTheme } from "@/contexts/theme-context"
 
-type Capability = "mcq" | "assessments" | "users" | "system" | "broadcasts"
+type Capability = "mcq" | "theory" | "assessments" | "users" | "system" | "broadcasts"
 type AdminShellProps = { capabilities: Record<Capability, boolean>; children: React.ReactNode }
 type NavigationItem = { href?: string; label: string; icon: React.ComponentType<{ size?: number }>; capability?: Capability; soon?: boolean }
 
@@ -20,7 +20,7 @@ const groups: Array<{ label?: string; items: NavigationItem[] }> = [
   { items: [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }] },
   { label: "Content Management", items: [
     { href: "/admin/mcq", label: "MCQ Bank", icon: BookOpen, capability: "mcq" },
-    { label: "Theory Vault", icon: BookOpen, soon: true },
+    { href: "/admin/theory", label: "Theory Vault", icon: BookOpen, capability: "theory" },
     { label: "OSCE Simulator", icon: ClipboardCheck, soon: true },
   ] },
   { label: "Assessments", items: [
