@@ -16,7 +16,7 @@ export function BottomNav({ screen, activeHub, onNavigate, hidden }: BottomNavPr
         const Icon = tab.icon
         const active = screen === tab.screen
         return <button key={tab.id} type="button" onClick={() => onNavigate(tab.screen)} aria-current={active ? "page" : undefined} aria-label={tab.label} className="flex min-h-16 min-w-[76px] flex-1 flex-col items-center justify-center px-1">
-          <span className={`flex flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 transition-all duration-200 ${active ? "bg-primary/10 shadow-sm" : "bg-transparent"}`}><Icon size={20} className={active ? "text-primary" : "text-muted-foreground"} /><span className={`text-[10px] font-semibold leading-none ${active ? "font-bold text-primary" : "text-muted-foreground"}`}>{tab.label}</span></span>
+          <span className={`flex flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 transition-all duration-200 ${active ? "bg-primary/10 shadow-sm" : "bg-transparent"}`}><Icon size={20} className={active ? "text-primary" : (tab.iconColor ?? "text-muted-foreground")} /><span className={`text-[10px] font-semibold leading-none ${active ? "font-bold text-primary" : "text-muted-foreground"}`}>{tab.label}</span></span>
         </button>
       })}
     </div>

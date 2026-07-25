@@ -99,7 +99,7 @@ export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collaps
                 glass={isGlassEnabled}
                 active={screen === item.screen}
                 onClick={() => nav(item.screen)}
-                icon={<Icon size={17} />}
+                icon={<Icon size={17} className={item.iconColor} />}
                 label={item.label}
               />
             )
@@ -161,7 +161,7 @@ export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collaps
         const Icon = item.id === "profile" ? User : item.icon
         return (
           <IconButton key={item.id} glass={isGlassEnabled} active={screen === item.screen} onClick={() => nav(item.screen)} label={item.label}>
-            <Icon size={18} />
+            <Icon size={18} className={item.iconColor} />
           </IconButton>
         )
       })}
