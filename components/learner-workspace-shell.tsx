@@ -20,6 +20,7 @@ export function LearnerWorkspaceShell({
   onNavigate,
   onOpenAppearance,
   modeControl,
+  headerSlot,
   hideBottomNavigation = false,
   children,
 }: {
@@ -27,6 +28,7 @@ export function LearnerWorkspaceShell({
   onNavigate: (screen: Screen) => void
   onOpenAppearance: () => void
   modeControl?: ReactNode
+  headerSlot?: ReactNode
   hideBottomNavigation?: boolean
   children: ReactNode
 }) {
@@ -75,6 +77,7 @@ export function LearnerWorkspaceShell({
         <header className="flex min-h-14 items-center justify-between border-b border-border bg-card px-3 py-2 sm:px-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <button type="button" onClick={() => setMobileNavigationOpen(true)} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:hidden" aria-label="Open navigation menu"><MenuIcon size={20} /></button>
+            {headerSlot}
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {modeControl}

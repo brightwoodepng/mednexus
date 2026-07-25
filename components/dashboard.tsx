@@ -118,7 +118,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const greeting = useGreeting()
   const liveExams = useLiveAssessments()
 
-  const firstName = user?.name?.split(" ").pop() ?? "Clinician"
+  const firstName = user?.name?.split(" ")[0] ?? "Clinician"
   const motivation = MOTIVATIONS[new Date().getDate() % MOTIVATIONS.length]
 
   // Trial-only stats (from history entries with mode="trial")
