@@ -15,7 +15,9 @@ import crypto from "crypto"
 // Require SESSION_SECRET in production.  In development we use a fixed
 // fallback so the app boots without pre-configuring secrets, but tokens
 // minted with the fallback are trivially forgeable — never use in prod.
-const SECRET = (() => {
+let warnedAboutDevSecret = false
+
+function getSessionSecret() {
   const s = process.env.SESSION_SECRET
   if (!s) {
     if (process.env.NODE_ENV === "production") {
@@ -27,14 +29,17 @@ const SECRET = (() => {
       )
     }
     // Development fallback — intentionally weak, prints a clear warning.
-    console.warn(
-      "[guest-auth] SESSION_SECRET is not set. " +
-        "Using insecure dev fallback — do NOT deploy without setting it.",
-    )
+    if (!warnedAboutDevSecret) {
+      warnedAboutDevSecret = true
+      console.warn(
+        "[guest-auth] SESSION_SECRET is not set. " +
+          "Using insecure dev fallback — do NOT deploy without setting it.",
+      )
+    }
     return "mednexus-dev-session-secret-insecure"
   }
   return s
-})()
+}
 
 /** Default TTL for a guest session: 7 days. */
 const DEFAULT_TTL_HOURS = 24 * 7
@@ -67,7 +72,7 @@ export function createGuestToken(uid: string, ttlHours = DEFAULT_TTL_HOURS): str
   }
 
   const data = Buffer.from(JSON.stringify(payload)).toString("base64url")
-  const sig = crypto.createHmac("sha256", SECRET).update(data).digest("base64url")
+  const sig = crypto.createHmac("sha256", getSessionSecret()).update(data).digest("base64url")
   return `${data}.${sig}`
 }
 
@@ -82,6 +87,7 @@ export function createGuestToken(uid: string, ttlHours = DEFAULT_TTL_HOURS): str
  * - The token has expired.
  */
 export function verifyGuestToken(token: string): GuestTokenPayload | null {
+  const secret = getSessionSecret()
   try {
     if (!token) return null
 
@@ -92,7 +98,7 @@ export function verifyGuestToken(token: string): GuestTokenPayload | null {
     const sig = token.slice(dot + 1)
 
     // Constant-time HMAC comparison to prevent timing attacks
-    const expected = crypto.createHmac("sha256", SECRET).update(data).digest("base64url")
+    const expected = crypto.createHmac("sha256", secret).update(data).digest("base64url")
     const sigBuf = Buffer.from(sig)
     const expBuf = Buffer.from(expected)
     if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
