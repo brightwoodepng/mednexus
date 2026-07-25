@@ -344,10 +344,38 @@ function Catalog({ data, collectionId, groupId, onCollection, onGroup, onBack, o
     ? data.modules.filter(item => item.collectionId === collectionId)
     : data.disciplines.filter(item => item.collectionId === collectionId)
   const sets = data.sets.filter(item => item.collectionId === collectionId && (!groupId || item.moduleId === groupId || item.disciplineId === groupId))
-  if (!selectedCollection) return <div className="space-y-4"><div><h1 className="text-2xl font-bold">Browse Theory Questions</h1><p className="mt-1 text-sm text-muted-foreground">Choose End of Module or End of Year, then open a focused set.</p></div>
-    <div className="grid gap-5 md:grid-cols-2">{data.collections.map(collection => <button type="button" key={collection.id} onClick={() => onCollection(collection.id)} className={`${card} p-6 text-left transition hover:border-primary/45`}>
-      <BookOpen className="text-primary"/><h2 className="mt-5 text-xl font-bold">{collection.title}</h2><p className="mt-2 text-sm text-muted-foreground">{collection.totalQuestions} published questions</p><div className="mt-4"><ProgressBar value={collection.totalQuestions ? Math.round(collection.completedQuestions / collection.totalQuestions * 100) : 0}/></div>
-    </button>)}</div></div>
+  if (!selectedCollection) return <div className="space-y-4">
+    <div><h1 className="text-2xl font-bold">Browse Theory Questions</h1><p className="mt-1 text-sm text-muted-foreground">Choose End of Module or End of Year, then open a focused set.</p></div>
+    <div className="grid gap-4 md:grid-cols-2">{data.collections.map((collection, idx) => {
+      const palette = CATEGORY_PALETTES[idx % CATEGORY_PALETTES.length]
+      const progress = collection.totalQuestions ? Math.round(collection.completedQuestions / collection.totalQuestions * 100) : 0
+      return (
+        <div key={collection.id} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
+          <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
+          <div className="p-5">
+            <div className="mb-3 mt-1 flex items-start justify-between gap-2">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
+                <BookOpen size={18} />
+              </div>
+              <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}18`, color: palette.bar }}>{progress}%</span>
+            </div>
+            <h3 className="font-bold text-foreground leading-snug">{collection.title}</h3>
+            <p className="mt-0.5 text-sm text-muted-foreground">{collection.totalQuestions} published questions</p>
+            <div className="mt-3"><ProgressBar value={progress} /></div>
+            <button
+              type="button"
+              onClick={() => onCollection(collection.id)}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all"
+              style={{ background: `${palette.bar}18`, color: palette.bar }}
+            >
+              Browse {collection.title}
+              <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
+        </div>
+      )
+    })}</div>
+  </div>
   if (!groupId) return <div className="space-y-4"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Categories</button><div><p className="text-sm text-primary">{selectedCollection.title}</p><h1 className="text-2xl font-bold">{selectedCollection.kind === "end_of_module" ? "Modules" : "Disciplines"}</h1></div>
     {groups.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{groups.map(group => {
       const count = data.sets.filter(item => item.moduleId === group.id || item.disciplineId === group.id).length
