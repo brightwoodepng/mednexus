@@ -225,7 +225,144 @@ function Catalog({ data, collectionId, groupId, onCollection, onGroup, onBack, o
   if (!selectedCollection) return <div className="space-y-4"><div><h1 className="text-2xl font-bold">Browse Theory Questions</h1><p className="mt-1 text-sm text-muted-foreground">Choose End of Module or End of Year, then open a focused set.</p></div>
     <div className="grid gap-5 md:grid-cols-2">{data.collections.map(collection => <button type="button" key={collection.id} onClick={() => onCollection(collection.id)} className={`${card} p-6 text-left transition hover:border-primary/45`}>
       <BookOpen className="text-primary"/><h2 className="mt-5 text-xl font-bold">{collection.title}</h2><p className="mt-2 text-sm text-muted-foreground">{collection.totalQuestions} published questions</p><div className="mt-4"><ProgressBar value={collection.totalQuestions ? Math.round(collection.completedQuestions / collection.totalQuestions * 100) : 0}/></div>
-    </button>)}<…3833 tokens truncated…{question.title || question.prompt}</h1>{question.title && <p className="mt-4 leading-7">{question.prompt}</p>}</article>
+    </button>)}</div></div>
+  if (!groupId) return <div className="space-y-4"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Categories</button><div><p className="text-sm text-primary">{selectedCollection.title}</p><h1 className="text-2xl font-bold">{selectedCollection.kind === "end_of_module" ? "Modules" : "Disciplines"}</h1></div>
+    {groups.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{groups.map(group => {
+      const count = data.sets.filter(item => item.moduleId === group.id || item.disciplineId === group.id).length
+      return <button key={group.id} onClick={() => onGroup(group.id)} className={`${card} text-left hover:border-primary/45`}><FolderOpen className="text-primary"/><h2 className="mt-4 font-bold">{group.name}</h2><p className="mt-1 text-sm text-muted-foreground">{count} sets</p></button>
+    })}</div> : <Empty title="No study groups yet" text="Published modules or disciplines will appear here."/>}</div>
+  const groupName = groups.find(item => item.id === groupId)?.name ?? "Study sets"
+  return <div className="space-y-4"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> {selectedCollection.title}</button><div><p className="text-sm text-primary">{selectedCollection.title}</p><h1 className="text-2xl font-bold">{groupName}</h1></div>
+    {sets.length ? <div className="grid gap-4 md:grid-cols-2">{sets.map(set => {
+      const progress = set.totalQuestions ? Math.round(set.completedQuestions / set.totalQuestions * 100) : 0
+      return <article key={set.id} className={card}><div className="flex justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-primary">{progressStatus(set.completedQuestions, set.totalQuestions)}</p><h2 className="mt-2 text-lg font-bold">{set.name}</h2></div><span className="text-sm font-bold text-primary">{progress}%</span></div>
+        <p className="mt-2 text-sm text-muted-foreground">{set.description || `${set.totalQuestions} focused long-answer questions`}</p>
+        <p className="mt-3 text-xs text-muted-foreground">Questions {set.rangeStart ?? "—"}–{set.rangeEnd ?? "—"} · {set.totalQuestions} total</p><div className="mt-4"><ProgressBar value={progress}/></div>
+        <button onClick={() => onSet(set.id)} className={`${button} mt-5 bg-primary text-primary-foreground`}>{set.completedQuestions ? "Continue Set" : "Start Set"}<ArrowRight size={16}/></button>
+      </article>})}</div> : <Empty title="No published sets" text="This section does not have a published question set yet."/>}</div>
+}
+
+function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: SetData; registered: boolean; onBack: () => void; onOpen: (id: string) => void; onSession: (ids: string[]) => void }) {
+  const start = async () => {
+    if (registered) {
+      try {
+        const session = await mutate({ action: "session", kind: "set", setId: data.id }) as { questionIds?: string[] }
+        if (session.questionIds?.[0]) return onSession(session.questionIds)
+      } catch {}
+    }
+    if (data.questions[0]) onOpen(data.questions.find(item => !item.completed)?.id ?? data.questions[0].id)
+  }
+  return <div className="space-y-5"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Back to sets</button>
+    {!registered && <SignInNotice/>}
+    <header className={card}><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">{data.collectionTitle} · {data.moduleName ?? data.disciplineName}</p><h1 className="mt-3 text-3xl font-bold">{data.name}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{data.description || "A focused set of long-answer questions."}</p>
+      <div className="mt-5 grid gap-4 sm:grid-cols-3"><div><b className="text-2xl">{data.total}</b><span className="block text-xs text-muted-foreground">Questions</span></div><div><b className="text-2xl">{data.completed}</b><span className="block text-xs text-muted-foreground">Completed</span></div><div><b className="text-2xl">{data.progressPercent}%</b><span className="block text-xs text-muted-foreground">Progress</span></div></div>
+      <div className="mt-4"><ProgressBar value={data.progressPercent}/></div><div className="mt-5 flex flex-wrap gap-3"><button onClick={start} className={`${button} bg-primary text-primary-foreground`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
+    </header>
+    <section className={`${card} p-0`}><div className="border-b border-border px-5 py-4"><h2 className="font-bold">Questions</h2><p className="text-sm text-muted-foreground">Jump to any question in the set.</p></div><div className="divide-y divide-border">{data.questions.map((question, index) => <button key={question.id} onClick={() => onOpen(question.id)} className="grid w-full grid-cols-[36px_1fr_auto] items-center gap-3 px-5 py-4 text-left hover:bg-muted/50">
+      <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${question.completed ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{question.completed ? <Check size={15}/> : index + 1}</span>
+      <span><b className="line-clamp-1">{question.title || question.prompt}</b><small className="mt-1 flex flex-wrap gap-2 text-muted-foreground">{question.marks != null && <span>{question.marks} marks</span>}{question.bookmarked && <span>Bookmarked</span>}{question.revision && <span>Revision</span>}{question.draft && <span>Draft saved</span>}</small></span><ChevronRight className="text-muted-foreground" size={18}/>
+    </button>)}</div></section>
+  </div>
+}
+
+function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onMove }: { questionId: string; sessionQuestionIds: string[] | null; registered: boolean; onBack: () => void; onMove: (id: string) => void }) {
+  const [question, setQuestion] = useState<TheoryQuestionDetail | null>(null)
+  const [mode, setMode] = useState<TheoryStudyMode>("review")
+  const [answer, setAnswer] = useState("")
+  const [note, setNote] = useState("")
+  const [revealed, setRevealed] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [saving, setSaving] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  const [message, setMessage] = useState("")
+  const reviewRecorded = useRef(false)
+  const restored = useRef(false)
+
+  const load = useCallback(async () => {
+    setMessage(""); reviewRecorded.current = false; restored.current = false
+    try {
+      const next = await api<TheoryQuestionDetail>(`/api/theory?mode=question&id=${encodeURIComponent(questionId)}`)
+      const sessionIndex = sessionQuestionIds?.indexOf(questionId) ?? -1
+      const stable = sessionIndex >= 0 && sessionQuestionIds ? {
+        ...next,
+        position: sessionIndex + 1,
+        setTotal: sessionQuestionIds.length,
+        previousId: sessionIndex > 0 ? sessionQuestionIds[sessionIndex - 1] : null,
+        nextId: sessionIndex < sessionQuestionIds.length - 1 ? sessionQuestionIds[sessionIndex + 1] : null,
+      } : next
+      setQuestion(stable); setNote(next.state?.note ?? ""); setAnswer(next.state?.draft?.answerMd ?? "")
+      restored.current = true
+      if (registered) void mutate({ action: "opened", questionId })
+    } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to open question.") }
+  }, [questionId, registered, sessionQuestionIds])
+  useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    if (!registered || mode !== "review" || !question || reviewRecorded.current) return
+    let visibleSeconds = 0
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return
+      visibleSeconds += 1
+      if (visibleSeconds >= 10 && !reviewRecorded.current) {
+        reviewRecorded.current = true
+        void mutate({ action: "reviewed", questionId: question.id }).then(() => setQuestion(current => current ? { ...current, state: current.state ? { ...current.state, completedAt: new Date().toISOString(), reviewedAt: new Date().toISOString() } : current.state } : current))
+        window.clearInterval(timer)
+      }
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [registered, mode, question])
+
+  useEffect(() => {
+    if (!registered || mode !== "practice" || !question || !restored.current) return
+    setSaving("saving")
+    const timer = window.setTimeout(() => {
+      void mutate({ action: "draft", questionId: question.id, answer })
+        .then(() => setSaving("saved")).catch(() => setSaving("error"))
+    }, 800)
+    return () => window.clearTimeout(timer)
+  }, [answer, mode, question, registered])
+
+  if (!question) return message ? <Empty title="Question unavailable" text={message}/> : <div className={`${card} py-14 text-center text-sm text-muted-foreground`}>Loading question…</div>
+  const state = question.state
+  const personalized = async (payload: Record<string, unknown>) => {
+    if (!registered) return setMessage("Sign in with a student account to save this action.")
+    try { await mutate({ ...payload, questionId: question.id }); setMessage("") }
+    catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to save.") }
+  }
+  const toggleBookmark = async () => {
+    const enabled = !state?.bookmark
+    await personalized({ action: "bookmark", enabled })
+    setQuestion(current => current?.state ? { ...current, state: { ...current.state, bookmark: enabled } } : current)
+  }
+  const toggleRevision = async () => {
+    const enabled = !state?.revision
+    await personalized({ action: "revision", enabled, source: "manual" })
+    setQuestion(current => current?.state ? { ...current, state: { ...current.state, revision: enabled } } : current)
+  }
+  const saveNote = async () => {
+    await personalized({ action: "note", note })
+    setQuestion(current => current?.state ? { ...current, state: { ...current.state, note } } : current)
+  }
+  const reveal = async () => {
+    if (registered) await personalized({ action: "reveal" })
+    setRevealed(true)
+  }
+  const submit = async () => {
+    if (!registered) return setMessage("Sign in to submit and rate a practice answer.")
+    await personalized({ action: "submit", answer })
+    setSubmitted(true); setRevealed(true)
+  }
+  const rate = async (rating: TheorySelfRating) => {
+    await personalized({ action: "rate", rating })
+    const confidence = rating === "excellent" ? "high" : rating === "partial" ? "medium" : "low"
+    setQuestion(current => current?.state ? { ...current, state: { ...current.state, completedAt: new Date().toISOString(), confidence, revision: rating === "needs_revision" ? true : rating === "excellent" ? false : current.state.revision } } : current)
+    setMessage("Self-rating saved.")
+  }
+  const words = answer.trim() ? answer.trim().split(/\s+/u).length : 0
+
+  return <div className="mx-auto max-w-6xl space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Back to Set</button><div className="flex items-center gap-2"><span className="text-sm text-muted-foreground">Question {question.position} of {question.setTotal}</span><div className="flex rounded-xl bg-muted p-1"><button onClick={() => setMode("review")} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === "review" ? "bg-card text-primary shadow-sm" : ""}`}>Review</button><button onClick={() => setMode("practice")} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === "practice" ? "bg-card text-primary shadow-sm" : ""}`}>Practice</button></div></div></div>
+    {!registered && <SignInNotice/>}{message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
+    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground"><p>{question.collectionTitle} · {question.moduleName ?? question.disciplineName} · {question.setTitle}</p><div className="flex gap-2"><button onClick={toggleBookmark} className={`${button} border border-border px-3 ${state?.bookmark ? "text-primary" : ""}`}><Bookmark size={16} fill={state?.bookmark ? "currentColor" : "none"}/> {state?.bookmark ? "Bookmarked" : "Bookmark"}</button><button onClick={toggleRevision} className={`${button} border border-border px-3 ${state?.revision ? "text-primary" : ""}`}><RefreshCw size={16}/> {state?.revision ? "In Revision" : "Mark for Revision"}</button></div></div>
+    <article className={card}><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">{question.marks != null ? `${question.marks} marks` : "Theory question"}</p><h1 className="mt-3 text-2xl font-bold leading-snug">{question.title || question.prompt}</h1>{question.title && <p className="mt-4 leading-7">{question.prompt}</p>}</article>
     {mode === "review" ? <div className="grid gap-5 lg:grid-cols-[1fr_320px]"><article className={card}><h2 className="text-lg font-bold">Model Answer</h2><TheoryMarkdown className="mt-3" children={question.modelAnswer}/>{question.keyMarkingPoints.length > 0 && <><h3 className="mt-6 font-bold">Key points</h3><ul className="mt-3 space-y-2">{question.keyMarkingPoints.map(point => <li key={point} className="flex gap-2 text-sm"><CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={17}/><span>{point}</span></li>)}</ul></>}{question.referencesMd && <><h3 className="mt-6 font-bold">References</h3><TheoryMarkdown className="mt-2" children={question.referencesMd}/></>}</article><NoteEditor note={note} onChange={setNote} onSave={saveNote}/></div>
       : <div className="space-y-5"><article className={card}><div className="flex flex-wrap justify-between gap-2"><h2 className="font-bold">My Answer</h2><span className="text-xs text-muted-foreground">{words} words · {saving === "saving" ? "Saving…" : saving === "saved" ? "Draft saved" : saving === "error" ? "Autosave failed" : "Not saved yet"}</span></div><textarea value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={12} placeholder="Build a structured answer in Markdown…" className="mt-4 w-full resize-y rounded-xl border border-border bg-background p-4 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70"/><div className="mt-4 flex flex-wrap gap-3"><button onClick={() => personalized({ action: "draft", answer })} disabled={!registered || submitted} className={`${button} border border-border disabled:opacity-50`}><Save size={16}/> Save Draft</button><button onClick={submit} disabled={!registered || submitted} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}>Submit Answer</button><button onClick={reveal} className={`${button} border border-border`}>Reveal Model Answer</button></div></article>
         {(revealed || submitted) && <><div className="grid gap-5 lg:grid-cols-2"><article className={card}><h2 className="font-bold">My Answer</h2>{answer ? <TheoryMarkdown className="mt-3" children={answer}/> : <p className="mt-3 text-sm text-muted-foreground">No written answer was submitted.</p>}</article><article className={card}><h2 className="font-bold text-primary">Model Answer</h2><TheoryMarkdown className="mt-3" children={question.modelAnswer}/></article></div><article className={card}><h2 className="font-bold">How well did you answer?</h2><p className="mt-1 text-sm text-muted-foreground">This is self-assessment, not AI grading.</p><div className="mt-4 grid gap-3 sm:grid-cols-3"><Rating label="Excellent" text="Confident and complete" onClick={() => rate("excellent")}/><Rating label="Partial" text="Some gaps remain" onClick={() => rate("partial")}/><Rating label="Needs Revision" text="Add to revision queue" onClick={() => rate("needs_revision")}/></div></article></>}</div>}
