@@ -60,7 +60,7 @@ export function StudyHubDropdown({
     : "hover:bg-sidebar-accent"
 
   const menuCls = isGlassEnabled
-    ? "glass-card"
+    ? "glass-dropdown"
     : "border border-sidebar-border bg-card shadow-xl"
 
   const rowHoverCls = isGlassEnabled ? "hover:glass-pill-active" : "hover:bg-sidebar-accent"
