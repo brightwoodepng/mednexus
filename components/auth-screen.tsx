@@ -33,14 +33,22 @@ function EyeIcon({ open }: { open: boolean }) {
 
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}><path d="m15 18-6-6 6-6"/></svg>
+    <button
+      type="button"
+      onClick={onClick}
+      className="mb-5 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
+        <path d="m15 18-6-6 6-6"/>
+      </svg>
       Back
     </button>
   )
 }
 
-function LevelSelect({ id, value, onChange, required, levels = CLASS_LEVELS }: { id: string; value: string; onChange: (v: string) => void; required?: boolean; levels?: readonly string[] }) {
+function LevelSelect({ id, value, onChange, required, levels = CLASS_LEVELS }: {
+  id: string; value: string; onChange: (v: string) => void; required?: boolean; levels?: readonly string[]
+}) {
   return (
     <select
       id={id}
@@ -57,42 +65,131 @@ function LevelSelect({ id, value, onChange, required, levels = CLASS_LEVELS }: {
   )
 }
 
+// ── Brand ─────────────────────────────────────────────────────────────────────
 function Brand() {
   return (
     <div className="mb-8 flex flex-col items-center text-center">
-      <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-xl">
-        <StethoscopeIcon size={38} />
+      {/* Logo mark */}
+      <div className="relative mb-5">
+        {/* Ambient glow halo */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 rounded-[2.25rem] bg-primary/25 blur-2xl scale-[1.45] auth-logo-glow"
+        />
+        {/* Icon container */}
+        <div className="relative flex h-[88px] w-[88px] items-center justify-center rounded-[2.25rem] bg-primary text-primary-foreground shadow-2xl ring-1 ring-primary/20">
+          <StethoscopeIcon size={42} />
+          {/* Inner top-edge highlight */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-[2.25rem]"
+            style={{ background: "linear-gradient(160deg, rgba(255,255,255,0.22) 0%, transparent 55%)" }}
+          />
+        </div>
       </div>
-      <h1 className="text-3xl font-semibold tracking-tight">MedNexus</h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">Premium clinical Q-Bank for medical learners.</p>
+
+      {/* Wordmark */}
+      <h1 className="text-4xl font-bold tracking-tight leading-none">MedNexus</h1>
+      <p className="mt-2.5 text-sm text-muted-foreground max-w-[28ch] leading-relaxed">
+        Premium clinical Q-Bank for medical learners
+      </p>
+
+      {/* Trust pill */}
+      <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3.5 py-1.5 text-[11px] font-medium text-muted-foreground backdrop-blur-sm">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        Trusted clinical question bank
+      </div>
     </div>
   )
 }
 
+// ── Footer ────────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <div className="mt-8 flex flex-col items-center gap-1.5 text-center">
-      <p className="text-xs text-muted-foreground">Created by <span className="font-semibold text-foreground">Britechinc</span></p>
+    <div className="mt-7 flex flex-col items-center gap-2">
+      <div className="h-px w-16 bg-border/60" />
+      <p className="text-xs text-muted-foreground">
+        Created by <span className="font-semibold text-foreground">Britechinc</span>
+      </p>
       <a
         href="https://wa.me/233543982307"
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 text-xs text-[#25D366] hover:underline font-medium"
       >
-        <WhatsAppIcon size={14} />
-        For support contact admin
+        <WhatsAppIcon size={13} />
+        Contact support
       </a>
     </div>
   )
 }
 
-// ── Entry choices ───────────────────────────────────────────────────────────
-function RoleSelect({ onSelect, glass }: { onSelect: (tab: "guest" | "student") => void; glass: boolean }) { return <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${glass ? "glass-auth-card" : ""}`}><h2 className="mb-1 text-xl font-semibold">Welcome</h2><p className="mb-6 text-sm text-muted-foreground">Sign in, create an account, or continue as a guest.</p><div className="flex flex-col gap-3"><button onClick={()=>onSelect("student")} className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 text-left text-sm font-semibold">Sign in / Create account</button><button onClick={()=>onSelect("guest")} className="rounded-2xl border border-border px-4 py-3.5 text-left text-sm font-semibold">Continue as guest</button></div></div> }
+// ── Entry choices ─────────────────────────────────────────────────────────────
+function RoleSelect({ onSelect }: { onSelect: (tab: "guest" | "student") => void }) {
+  return (
+    <div className="glass-auth-card rounded-3xl p-7">
+      {/* Card header */}
+      <div className="mb-6 text-center">
+        <h2 className="text-xl font-bold tracking-tight">Welcome</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Choose how you'd like to continue</p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {/* Primary CTA — Sign in / Register */}
+        <button
+          onClick={() => onSelect("student")}
+          className="group flex items-center gap-4 rounded-2xl bg-primary px-5 py-4 text-left text-primary-foreground shadow-lg transition-all hover:opacity-90 active:scale-[0.988]"
+          style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.16), 0 4px 20px rgba(0,0,0,0.18)" }}
+        >
+          {/* Icon cell */}
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/15">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={17} height={17}>
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          {/* Text */}
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold leading-snug">Sign in / Create account</div>
+            <div className="mt-0.5 text-xs font-normal opacity-65">Cloud sync · Full features</div>
+          </div>
+          {/* Arrow */}
+          <ArrowRightIcon
+            size={15}
+            className="shrink-0 opacity-55 transition-all group-hover:opacity-90 group-hover:translate-x-0.5"
+          />
+        </button>
+
+        {/* Secondary CTA — Guest */}
+        <button
+          onClick={() => onSelect("guest")}
+          className="group flex items-center gap-4 rounded-2xl border border-border/70 bg-background/50 px-5 py-4 text-left transition-all hover:bg-background/80 active:scale-[0.988]"
+        >
+          {/* Icon cell */}
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={17} height={17}>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              <line x1="17" x2="22" y1="8" y2="8"/>
+            </svg>
+          </div>
+          {/* Text */}
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-foreground leading-snug">Continue as guest</div>
+            <div className="mt-0.5 text-xs font-normal text-muted-foreground">Saves locally on this device</div>
+          </div>
+          {/* Arrow */}
+          <ArrowRightIcon
+            size={15}
+            className="shrink-0 text-muted-foreground opacity-40 transition-all group-hover:opacity-70 group-hover:translate-x-0.5"
+          />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // ── Guest Form ────────────────────────────────────────────────────────────────
 function GuestForm({ onBack }: { onBack: () => void }) {
   const { enterApp } = useApp()
-  const { isGlassEnabled } = useTheme()
   const [name, setName] = useState("")
   const [classLevel, setClassLevel] = useState("")
   const [loading, setLoading] = useState(false)
@@ -106,11 +203,11 @@ function GuestForm({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className={`rounded-3xl border border-border bg-card p-7 shadow-2xl ${isGlassEnabled ? "glass-auth-card" : ""}`}>
+    <div className="glass-auth-card rounded-3xl p-7">
       <BackButton onClick={onBack} />
-      <h2 className="mb-1 text-xl font-semibold tracking-tight">Guest Access</h2>
-      <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
-        Your progress will be saved on this device only. Sign out to clear your session.
+      <h2 className="text-xl font-bold tracking-tight">Guest Access</h2>
+      <p className="mt-1.5 mb-6 text-sm text-muted-foreground leading-relaxed">
+        Progress saves on this device only. Sign out to clear your session.
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
@@ -133,10 +230,10 @@ function GuestForm({ onBack }: { onBack: () => void }) {
         <button
           type="submit"
           disabled={loading || !name.trim() || !classLevel}
-          className="mt-1 flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+          className="mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:opacity-90 hover:shadow-primary/20 active:scale-[0.988] disabled:opacity-50 disabled:shadow-none"
         >
           {loading ? "Setting up…" : "Enter MedNexus"}
-          {!loading && <ArrowRightIcon size={16} />}
+          {!loading && <ArrowRightIcon size={15} />}
         </button>
       </form>
     </div>
@@ -160,14 +257,20 @@ function GuestModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm glass-auth-card rounded-3xl p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Continue as Guest</h2>
+            <h2 className="text-xl font-bold tracking-tight">Continue as Guest</h2>
             <p className="mt-1 text-sm text-muted-foreground">Progress saves locally on this device only.</p>
           </div>
-          <button type="button" onClick={onClose} className="shrink-0 rounded-xl p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-xl p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
+              <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+            </svg>
           </button>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -191,10 +294,10 @@ function GuestModal({ onClose }: { onClose: () => void }) {
           <button
             type="submit"
             disabled={loading || !name.trim() || !classLevel}
-            className="mt-1 flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+            className="mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:opacity-90 hover:shadow-primary/20 active:scale-[0.988] disabled:opacity-50 disabled:shadow-none"
           >
             {loading ? "Setting up…" : "Enter MedNexus"}
-            {!loading && <ArrowRightIcon size={16} />}
+            {!loading && <ArrowRightIcon size={15} />}
           </button>
         </form>
       </div>
@@ -202,26 +305,33 @@ function GuestModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ── Student Form (Login + Register toggled) ───────────────────────────────────
+// ── Student Form (Login + Register toggled) ────────────────────────────────────
 function StudentForm({ onBack }: { onBack: () => void }) {
   const [mode, setMode] = useState<"login" | "register">("register")
-  const { isGlassEnabled } = useTheme()
 
   return (
-    <div className={`rounded-3xl border border-border bg-card shadow-2xl overflow-hidden ${isGlassEnabled ? "glass-auth-card" : ""}`}>
+    <div className="glass-auth-card rounded-3xl overflow-hidden">
       {/* Tab toggle */}
-      <div className="flex border-b border-border">
+      <div className="flex border-b border-border/60">
         <button
           type="button"
           onClick={() => setMode("register")}
-          className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${mode === "register" ? "bg-card text-foreground border-b-2 border-primary" : "bg-muted/50 text-muted-foreground hover:text-foreground"}`}
+          className={`flex-1 py-3.5 text-sm font-semibold tracking-tight transition-colors ${
+            mode === "register"
+              ? "bg-transparent text-foreground border-b-2 border-primary"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
           Create Account
         </button>
         <button
           type="button"
           onClick={() => setMode("login")}
-          className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${mode === "login" ? "bg-card text-foreground border-b-2 border-primary" : "bg-muted/50 text-muted-foreground hover:text-foreground"}`}
+          className={`flex-1 py-3.5 text-sm font-semibold tracking-tight transition-colors ${
+            mode === "login"
+              ? "bg-transparent text-foreground border-b-2 border-primary"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
           Log In
         </button>
@@ -244,7 +354,6 @@ function OtpResetFields({ onBack }: { onBack: () => void }) {
   const [otp, setOtp] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [whatsappSent, setWhatsappSent] = useState(false)
 
   const whatsappMessage = indexNumber.trim()
     ? `Hello, I would like to reset my MedNexus password. My index number is: ${indexNumber.trim()}`
@@ -263,7 +372,6 @@ function OtpResetFields({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="flex flex-col gap-5">
-
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground" htmlFor="otp-index">Your Index Number</label>
         <input
@@ -281,7 +389,6 @@ function OtpResetFields({ onBack }: { onBack: () => void }) {
         href={whatsappHref}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => setWhatsappSent(true)}
         className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#20bd5a] transition-colors"
       >
         <WhatsAppIcon size={16} />
@@ -304,28 +411,34 @@ function OtpResetFields({ onBack }: { onBack: () => void }) {
           className="w-full rounded-xl border border-input bg-background px-4 py-3 text-center text-xl font-bold tracking-[0.4em] font-mono outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
         />
 
-        {error && (
-          <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15} className="mt-0.5 shrink-0">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
-            </svg>
-            {error}
-          </div>
-        )}
+        {error && <ErrorAlert message={error} />}
 
         <button
           type="submit"
           disabled={loading || !indexNumber.trim() || otp.length < 6}
-          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:opacity-90 hover:shadow-primary/20 active:scale-[0.988] disabled:opacity-50 disabled:shadow-none"
         >
           {loading ? "Verifying…" : "Verify Token & Set New Password"}
-          {!loading && <ArrowRightIcon size={16} />}
+          {!loading && <ArrowRightIcon size={15} />}
         </button>
       </form>
 
       <button type="button" onClick={onBack} className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors">
         ← Back to Log In
       </button>
+    </div>
+  )
+}
+
+// ── Error alert ───────────────────────────────────────────────────────────────
+function ErrorAlert({ message }: { message: string }) {
+  return (
+    <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15} className="mt-0.5 shrink-0">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+        <path d="M12 9v4"/><path d="M12 17h.01"/>
+      </svg>
+      {message}
     </div>
   )
 }
@@ -382,28 +495,21 @@ function LoginFields() {
               placeholder="Your password"
               className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
             />
-            <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
               <EyeIcon open={showPw} />
             </button>
           </div>
         </div>
 
-        {error && (
-          <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15} className="mt-0.5 shrink-0">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
-            </svg>
-            {error}
-          </div>
-        )}
+        {error && <ErrorAlert message={error} />}
 
         <button
           type="submit"
           disabled={loading || !indexNumber.trim() || !password.trim()}
-          className="mt-1 flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+          className="mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:opacity-90 hover:shadow-primary/20 active:scale-[0.988] disabled:opacity-50 disabled:shadow-none"
         >
           {loading ? "Signing in…" : "Log In"}
-          {!loading && <ArrowRightIcon size={16} />}
+          {!loading && <ArrowRightIcon size={15} />}
         </button>
 
         <button
@@ -423,7 +529,8 @@ function LoginFields() {
           onClick={() => setMode("otp")}
           className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          Forgot password? <span className="font-semibold text-primary">Enter with OTP</span>
+          Forgot password?{" "}
+          <span className="font-semibold text-primary">Enter with OTP</span>
         </button>
       </form>
     </>
@@ -455,11 +562,9 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
       setLoading(false)
       setError(result.error ?? "Registration failed")
     } else if (result.status === "approved") {
-      // Auto-login: seamlessly authenticate and go straight to the dashboard
       const login = await loginUser(indexNumber, password)
       setLoading(false)
       if (!login.ok) {
-        // Account was created but auto-login failed — let user log in manually
         setError(login.error ?? "Account created! Automatic sign-in failed — please log in manually.")
         onRegistered()
       }
@@ -477,11 +582,11 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
           </svg>
         </div>
-        <h3 className="mb-2 text-lg font-semibold">Account Created</h3>
+        <h3 className="mb-2 text-lg font-bold tracking-tight">Account Created</h3>
         {success.status === "approved" ? (
           <>
             <p className="mb-5 text-sm text-muted-foreground">Your account has been automatically approved. You can now log in.</p>
-            <button type="button" onClick={onRegistered} className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
+            <button type="button" onClick={onRegistered} className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:opacity-90 hover:shadow-primary/20">
               Go to Log In
             </button>
           </>
@@ -493,7 +598,7 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
               href="https://wa.me/233543982307"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               <WhatsAppIcon size={16} />
               Contact admin for quick approval
@@ -546,7 +651,7 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
             placeholder="Min. 6 characters"
             className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
           />
-          <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
             <EyeIcon open={showPw} />
           </button>
         </div>
@@ -563,22 +668,15 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
         />
       </div>
 
-      {error && (
-        <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15} className="mt-0.5 shrink-0">
-            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
-          </svg>
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       <button
         type="submit"
         disabled={loading || !name.trim() || !indexNumber.trim() || !password.trim() || !confirmPassword.trim()}
-        className="mt-1 flex min-h-14 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+        className="mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:opacity-90 hover:shadow-primary/20 active:scale-[0.988] disabled:opacity-50 disabled:shadow-none"
       >
         {loading ? "Creating account…" : "Create Account"}
-        {!loading && <ArrowRightIcon size={16} />}
+        {!loading && <ArrowRightIcon size={15} />}
       </button>
     </form>
   )
@@ -588,25 +686,26 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
 export function AuthScreen() {
   const [view, setView] = useState<"role-select" | "guest" | "student">("role-select")
   const [themeOpen, setThemeOpen] = useState(false)
-  const { isGlassEnabled } = useTheme()
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center px-5 py-12 safe-area-inset">
+    <main className="relative flex min-h-screen flex-col items-center justify-center px-5 py-14 safe-area-inset">
+      {/* Theme button — top right */}
       <button
         type="button"
         onClick={() => setThemeOpen(true)}
         title="Change theme"
-        className="absolute right-4 top-4 flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+        className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-card hover:text-foreground"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}>
-          <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
         </svg>
         Theme
       </button>
 
-      <div className="w-full max-w-sm sm:max-w-md">
+      <div className="w-full max-w-[420px]">
         <Brand />
-        {view === "role-select" && <RoleSelect onSelect={setView} glass={isGlassEnabled} />}
+        {view === "role-select" && <RoleSelect onSelect={setView} />}
         {view === "guest" && <GuestForm onBack={() => setView("role-select")} />}
         {view === "student" && <StudentForm onBack={() => setView("role-select")} />}
         <Footer />
