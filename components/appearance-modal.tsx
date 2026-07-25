@@ -75,14 +75,14 @@ export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
         type="button"
         aria-label="Close dialog"
         onClick={onClose}
-        className="glass-modal-backdrop absolute inset-0 bg-foreground/40 animate-in fade-in"
+        className="absolute inset-0 bg-foreground/40 backdrop-blur-sm animate-in fade-in"
       />
 
       {/* ── GlassCard panel ───────────────────────────────────────────────── */}
-      <GlassCard className="glass-surface-elevated relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border border-border animate-ios-sheet">
+      <GlassCard className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border border-border animate-ios-sheet">
 
         {/* Header */}
-        <div className="glass-control sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-4 backdrop-blur-md bg-card/70">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-4 backdrop-blur-md bg-card/70">
           <h2 className="text-lg font-semibold">Appearance</h2>
           <button
             type="button"
@@ -103,16 +103,15 @@ export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
           </p>
 
           {/* ── Liquid Glass toggle ─────────────────────────────────────────── */}
-          <div className="glass-control mb-6 overflow-hidden rounded-2xl border border-border">
+          <div className="mb-6 overflow-hidden rounded-2xl border border-border">
             <button
               type="button"
               onClick={() => setIsGlassEnabled(!isGlassEnabled)}
               className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-muted/30"
             >
               {/* Liquid Glass icon */}
-              <div className="glass-surface relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-card/60 text-primary shadow-sm">
-                <span className="absolute inset-x-2 top-2 h-3 rounded-full bg-primary/20" />
-                <SparklesIcon className="relative" size={28} />
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-border bg-primary/10 text-primary shadow-sm">
+                <SparklesIcon size={28} />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -123,7 +122,7 @@ export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
                   )}
                 </div>
                 <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
-                  Adds a liquid-glass material over your current theme.
+                  Frosted glass sidebar and cards — works with any theme.
                 </p>
               </div>
 

@@ -6,7 +6,7 @@ import { AssessmentExamRunner } from "@/components/assessment-exam-runner"
 import { AssessmentReview } from "@/components/assessment-review"
 import { StethoscopeIcon, ClockIcon, AlertTriangleIcon, CheckIcon, TrophyIcon, RefreshCwIcon } from "@/components/icons"
 import { ThemeProvider } from "@/contexts/theme-context"
-import { AppearanceModal } from "@/components/appearance-modal"
+import { ThemeModal } from "@/components/theme-modal"
 
 type Phase = "loading" | "unavailable" | "name-entry" | "exam" | "blind-review" | "results"
 
@@ -265,7 +265,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         </svg>
         Appearance
       </button>
-      <AppearanceModal open={themeOpen} onClose={() => setThemeOpen(false)} />
+      <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
     </>
   )
 
