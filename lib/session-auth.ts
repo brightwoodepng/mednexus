@@ -11,7 +11,9 @@
 
 import crypto from "crypto"
 
-const SECRET = (() => {
+let warnedAboutDevSecret = false
+
+function getSessionSecret() {
   const s = process.env.SESSION_SECRET
   if (!s) {
     if (process.env.NODE_ENV === "production") {
@@ -20,14 +22,17 @@ const SECRET = (() => {
           "Set this environment variable before deploying.",
       )
     }
-    console.warn(
-      "[session-auth] SESSION_SECRET is not set. " +
-        "Using insecure dev fallback — do NOT deploy without setting it.",
-    )
+    if (!warnedAboutDevSecret) {
+      warnedAboutDevSecret = true
+      console.warn(
+        "[session-auth] SESSION_SECRET is not set. " +
+          "Using insecure dev fallback — do NOT deploy without setting it.",
+      )
+    }
     return "mednexus-dev-session-secret-insecure"
   }
   return s
-})()
+}
 
 export interface SessionPayload {
   uid: string
@@ -47,7 +52,7 @@ export function createSessionToken(uid: string, role: string, ttlHours = 24 * 30
     exp: Math.floor(Date.now() / 1000) + ttlHours * 3600,
   }
   const data = Buffer.from(JSON.stringify(payload)).toString("base64url")
-  const sig = crypto.createHmac("sha256", SECRET).update(data).digest("base64url")
+  const sig = crypto.createHmac("sha256", getSessionSecret()).update(data).digest("base64url")
   return `${data}.${sig}`
 }
 
@@ -56,13 +61,14 @@ export function createSessionToken(uid: string, role: string, ttlHours = 24 * 30
  * Returns null when the token is missing, malformed, tampered, or expired.
  */
 export function verifySessionToken(token: string): SessionPayload | null {
+  const secret = getSessionSecret()
   try {
     if (!token) return null
     const dot = token.lastIndexOf(".")
     if (dot === -1) return null
     const data = token.slice(0, dot)
     const sig = token.slice(dot + 1)
-    const expected = crypto.createHmac("sha256", SECRET).update(data).digest("base64url")
+    const expected = crypto.createHmac("sha256", secret).update(data).digest("base64url")
     const sigBuf = Buffer.from(sig)
     const expBuf = Buffer.from(expected)
     if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null

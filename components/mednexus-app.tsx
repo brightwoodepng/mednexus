@@ -607,6 +607,7 @@ export function MedNexusApp() {
           {safeScreen === "theory-bookmarks" && <TheoryVault initialView="Bookmarks" />}
           {safeScreen === "theory-notes" && <TheoryVault initialView="My Notes" />}
           {safeScreen === "theory-revision" && <TheoryVault initialView="Revision Queue" />}
+          {safeScreen === "theory-progress" && <TheoryVault initialView="Progress" />}
           {safeScreen === "theory-search" && <TheoryVault initialView="Search" />}
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}

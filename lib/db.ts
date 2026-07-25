@@ -537,6 +537,186 @@ export async function ensureSchema() {
     DELETE FROM mednexus_guest_users  WHERE expires_at < NOW();
   `)
 
+  // ── Step 3.5: Complete Theory Vault study model ──────────────────────────
+  // Additive migration: preserve existing Theory content and learner records.
+  await pool.query(`
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+    ALTER TABLE mednexus_theory_collections
+      ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'end_of_year'
+        CHECK (kind IN ('end_of_module', 'end_of_year'));
+    UPDATE mednexus_theory_collections
+      SET kind = CASE WHEN slug IN ('end-of-module', 'end-of-rotation') THEN 'end_of_module' ELSE 'end_of_year' END;
+    UPDATE mednexus_theory_collections
+      SET slug = 'end-of-module', title = 'End of Module'
+      WHERE slug = 'end-of-rotation'
+        AND NOT EXISTS (SELECT 1 FROM mednexus_theory_collections WHERE slug = 'end-of-module');
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_modules (
+      id TEXT PRIMARY KEY,
+      collection_id TEXT NOT NULL REFERENCES mednexus_theory_collections(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (collection_id, name)
+    );
+
+    ALTER TABLE mednexus_theory_sets ALTER COLUMN discipline_id DROP NOT NULL;
+    ALTER TABLE mednexus_theory_sets
+      ADD COLUMN IF NOT EXISTS module_id TEXT REFERENCES mednexus_theory_modules(id) ON DELETE CASCADE,
+      ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'published'
+        CHECK (status IN ('draft', 'review', 'published', 'archived')),
+      ADD COLUMN IF NOT EXISTS question_limit INTEGER NOT NULL DEFAULT 20
+        CHECK (question_limit BETWEEN 1 AND 100),
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+    ALTER TABLE mednexus_theory_questions ALTER COLUMN discipline_id DROP NOT NULL;
+    ALTER TABLE mednexus_theory_questions
+      ADD COLUMN IF NOT EXISTS module_id TEXT REFERENCES mednexus_theory_modules(id) ON DELETE RESTRICT,
+      ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS marks INTEGER CHECK (marks IS NULL OR marks >= 0),
+      ADD COLUMN IF NOT EXISTS references_md TEXT NOT NULL DEFAULT '',
+      ADD COLUMN IF NOT EXISTS media JSONB NOT NULL DEFAULT '[]';
+
+    DO $$ BEGIN
+      ALTER TABLE mednexus_theory_questions
+        ADD CONSTRAINT mednexus_theory_questions_set_fk
+        FOREIGN KEY (set_id) REFERENCES mednexus_theory_sets(id) ON DELETE SET NULL;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+
+    INSERT INTO mednexus_theory_modules (id, collection_id, name, sort_order)
+    SELECT 'theory-module-' || md5(d.collection_id || ':' || d.name), d.collection_id, d.name, d.sort_order
+    FROM mednexus_theory_disciplines d
+    JOIN mednexus_theory_collections c ON c.id = d.collection_id
+    WHERE c.kind = 'end_of_module'
+    ON CONFLICT (collection_id, name) DO NOTHING;
+
+    UPDATE mednexus_theory_sets s SET module_id = m.id
+    FROM mednexus_theory_modules m
+    WHERE s.module_id IS NULL AND s.collection_id = m.collection_id
+      AND EXISTS (SELECT 1 FROM mednexus_theory_disciplines d WHERE d.id = s.discipline_id AND d.name = m.name);
+    UPDATE mednexus_theory_questions q SET module_id = m.id
+    FROM mednexus_theory_modules m
+    WHERE q.module_id IS NULL AND q.collection_id = m.collection_id
+      AND EXISTS (SELECT 1 FROM mednexus_theory_disciplines d WHERE d.id = q.discipline_id AND d.name = m.name);
+
+    ALTER TABLE mednexus_theory_reading_progress
+      ADD COLUMN IF NOT EXISTS opened_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS confidence TEXT
+        CHECK (confidence IS NULL OR confidence IN ('high', 'medium', 'low')),
+      ADD COLUMN IF NOT EXISTS last_mode TEXT
+        CHECK (last_mode IS NULL OR last_mode IN ('review', 'practice')),
+      ADD COLUMN IF NOT EXISTS review_count INTEGER NOT NULL DEFAULT 0;
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_attempts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      question_id TEXT NOT NULL REFERENCES mednexus_theory_questions(id) ON DELETE CASCADE,
+      answer_md TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted')),
+      model_answer_revealed_at TIMESTAMPTZ,
+      submitted_at TIMESTAMPTZ,
+      self_rating TEXT CHECK (self_rating IS NULL OR self_rating IN ('excellent', 'partial', 'needs_revision')),
+      word_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS mednexus_theory_attempts_active_draft_idx
+      ON mednexus_theory_attempts (user_id, question_id) WHERE status = 'draft';
+    CREATE INDEX IF NOT EXISTS mednexus_theory_attempts_user_idx
+      ON mednexus_theory_attempts (user_id, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_revision_queue (
+      user_id TEXT NOT NULL,
+      question_id TEXT NOT NULL REFERENCES mednexus_theory_questions(id) ON DELETE CASCADE,
+      source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'self_rating')),
+      added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_reviewed_at TIMESTAMPTZ,
+      review_count INTEGER NOT NULL DEFAULT 0,
+      confidence TEXT CHECK (confidence IS NULL OR confidence IN ('high', 'medium', 'low')),
+      priority SMALLINT NOT NULL DEFAULT 0 CHECK (priority BETWEEN 0 AND 3),
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      removed_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, question_id)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_theory_revision_queue_active_idx
+      ON mednexus_theory_revision_queue (user_id, priority DESC, added_at DESC)
+      WHERE active = TRUE;
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_study_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('set', 'revision')),
+      set_id TEXT REFERENCES mednexus_theory_sets(id) ON DELETE SET NULL,
+      question_ids JSONB NOT NULL DEFAULT '[]',
+      current_index INTEGER NOT NULL DEFAULT 0,
+      timer_seconds INTEGER,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_theory_study_sessions_user_idx
+      ON mednexus_theory_study_sessions (user_id, started_at DESC);
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_settings (
+      id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+      default_set_size INTEGER NOT NULL DEFAULT 20 CHECK (default_set_size BETWEEN 15 AND 20),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    INSERT INTO mednexus_theory_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      admin_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      resource_type TEXT NOT NULL,
+      resource_id TEXT,
+      details JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS mednexus_theory_questions_search_idx
+      ON mednexus_theory_questions USING GIN (
+        to_tsvector('english', coalesce(title, '') || ' ' || coalesce(prompt, '') || ' ' || coalesce(model_answer, ''))
+      );
+    CREATE INDEX IF NOT EXISTS mednexus_theory_questions_prompt_trgm_idx
+      ON mednexus_theory_questions USING GIN (prompt gin_trgm_ops);
+    CREATE INDEX IF NOT EXISTS mednexus_theory_notes_body_trgm_idx
+      ON mednexus_theory_notes USING GIN (body gin_trgm_ops);
+    CREATE INDEX IF NOT EXISTS mednexus_theory_sets_name_trgm_idx
+      ON mednexus_theory_sets USING GIN (name gin_trgm_ops);
+
+    WITH ranked AS (
+      SELECT q.id, q.collection_id, q.discipline_id, q.module_id,
+        CEIL(ROW_NUMBER() OVER (
+          PARTITION BY q.collection_id, q.discipline_id, q.module_id
+          ORDER BY q.sort_order, q.created_at, q.id
+        ) / 20.0)::int AS set_number
+      FROM mednexus_theory_questions q
+      WHERE q.set_id IS NULL
+    ), created_sets AS (
+      INSERT INTO mednexus_theory_sets (
+        id, collection_id, discipline_id, module_id, name, sort_order, question_limit
+      )
+      SELECT DISTINCT
+        'theory-set-' || md5(collection_id || ':' || coalesce(discipline_id, '') || ':' || coalesce(module_id, '') || ':' || set_number),
+        collection_id, discipline_id, module_id, 'Set ' || set_number, set_number * 10, 20
+      FROM ranked
+      ON CONFLICT DO NOTHING
+      RETURNING id
+    )
+    UPDATE mednexus_theory_questions q
+    SET set_id = 'theory-set-' || md5(r.collection_id || ':' || coalesce(r.discipline_id, '') || ':' || coalesce(r.module_id, '') || ':' || r.set_number)
+    FROM ranked r
+    WHERE q.id = r.id AND q.set_id IS NULL;
+  `)
+
   // ── Step 4: Host-migration trigger ────────────────────────────────────────
   // When a player whose id matches host_id has their status set to
   // 'disconnected', the trigger instantly promotes the oldest remaining active
