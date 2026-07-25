@@ -14,7 +14,7 @@
  *   Background transparency is achieved with background-color alpha
  *   (bg-white/15) NOT with `opacity`.  CSS opacity cascades to children;
  *   background-color alpha does NOT.  Children are always fully opaque.
- *   `isolation: isolate` (via the .glass-surface CSS utility) also
+ *   `isolation: isolate` (via the .gc-glass / .gc-solid CSS classes) also
  *   creates a fresh stacking context so no parent filter leaks into children.
  *
  * Usage:
@@ -87,10 +87,10 @@ function GlassCardInner<E extends ElementType = "div">(
       ref={ref}
       {...rest}
       className={cn(
-        // Glass class adds only the overlay; solid mode preserves caller classes (see
+        // Mode-specific class drives ALL the glass/solid visual logic (see
         // globals.css for the full spec — no opacity prop is used here so
         // children are never made translucent by this wrapper).
-        useGlass ? "glass-surface" : undefined,
+        useGlass ? "gc-glass" : "gc-solid",
         className,
       )}
     >
@@ -121,5 +121,5 @@ export function useGlassClass(variant: GlassCardVariant = "auto"): string {
   const { isGlassEnabled } = useTheme()
   const useGlass =
     variant === "glass" || (variant === "auto" && isGlassEnabled)
-  return useGlass ? "glass-surface" : ""
+  return useGlass ? "gc-glass" : "gc-solid"
 }
