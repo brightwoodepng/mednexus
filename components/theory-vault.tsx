@@ -155,6 +155,13 @@ export function TheoryVault({ initialView = "Dashboard", externalQuery, onExtern
   </div>
 }
 
+const CATEGORY_PALETTES = [
+  { ring: "hover:ring-sky-400/50",     icon: "bg-sky-100 text-sky-600",         bar: "#0ea5e9" },
+  { ring: "hover:ring-violet-400/50",  icon: "bg-violet-100 text-violet-600",   bar: "#8b5cf6" },
+  { ring: "hover:ring-emerald-400/50", icon: "bg-emerald-100 text-emerald-600", bar: "#10b981" },
+  { ring: "hover:ring-amber-400/50",   icon: "bg-amber-100 text-amber-600",     bar: "#f59e0b" },
+]
+
 const THEORY_MOTIVATIONS = [
   "Every answer you write sharpens your reasoning.",
   "Clinical mastery is built one question at a time.",
@@ -229,23 +236,59 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
 
     {/* ── Stat cards — matches MCQ StatCard style ── */}
     <section>
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
         <TheoryStatCard glass={isGlassEnabled} emoji="📋" label="Completed" value={completed} sub={total ? `of ${total} questions` : "no questions yet"} color="bg-sky-50 text-sky-700 border-sky-200/80" onClick={() => onView("Progress")} />
-        <TheoryStatCard glass={isGlassEnabled} emoji="🎯" label="Progress" value={`${overall}%`} sub={completed ? `${completed} done` : "not started"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" onClick={() => onView("Progress")} />
         <TheoryStatCard glass={isGlassEnabled} emoji="🔁" label="Revision" value={data.counts.revision} sub="items queued" color="bg-amber-50 text-amber-700 border-amber-200/80" onClick={() => onView("Revision Queue")} />
         <TheoryStatCard glass={isGlassEnabled} emoji="🔖" label="Bookmarks" value={data.counts.bookmarks} sub="saved questions" color="bg-violet-50 text-violet-700 border-violet-200/80" onClick={() => onView("Bookmarks")} />
         <TheoryStatCard glass={isGlassEnabled} emoji="📝" label="Notes" value={data.counts.notes} sub="notes created" color="bg-rose-50 text-rose-700 border-rose-200/80" onClick={() => onView("My Notes")} />
       </div>
     </section>
-    <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Study categories</p><h2 className="mt-1 text-xl font-bold">Choose your path</h2></div>
-      <div className="grid gap-5 md:grid-cols-2">{categories.map(category => {
-        const progress = category.total ? Math.round(Number(category.completed) / Number(category.total) * 100) : 0
-        return <article key={category.title} className={`${card} p-6`}><div className="flex items-start justify-between"><FolderOpen className="text-primary" size={24}/><span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{progress}%</span></div>
-          <h3 className="mt-5 text-xl font-bold">{category.title}</h3>
-          <p className="mt-2 text-sm text-muted-foreground">{category.groups} {category.title === "End of Module" ? "modules" : "disciplines"} · {category.sets} sets · {category.total} questions</p>
-          <div className="mt-4"><ProgressBar value={progress}/></div>
-          <button type="button" disabled={!category.id} onClick={() => category.id && onCollection(category.id)} className={`${button} mt-5 border border-border disabled:opacity-50`}>Browse {category.title}<ChevronRight size={16}/></button>
-        </article>})}</div></section>
+
+    {/* ── Study categories — MCQ module-card style ── */}
+    <section>
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <FolderOpen size={16} />
+          </div>
+          <h2 className="text-lg font-bold tracking-tight">Study Categories</h2>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+        {categories.map((category, idx) => {
+          const palette = CATEGORY_PALETTES[idx % CATEGORY_PALETTES.length]
+          const catProgress = category.total ? Math.round(Number(category.completed) / Number(category.total) * 100) : 0
+          const subLabel = category.title === "End of Module" ? "modules" : "disciplines"
+          return (
+            <div key={category.title} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
+              <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
+              <div className="p-5">
+                <div className="mb-3 mt-1 flex items-start justify-between gap-2">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
+                    <FolderOpen size={18} />
+                  </div>
+                  <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}18`, color: palette.bar }}>{catProgress}%</span>
+                </div>
+                <h3 className="font-bold text-foreground leading-snug">{category.title}</h3>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {category.groups} {subLabel} · {category.sets} sets · {category.total} Q
+                </p>
+                <button
+                  type="button"
+                  disabled={!category.id}
+                  onClick={() => category.id && onCollection(category.id)}
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all disabled:opacity-40"
+                  style={{ background: `${palette.bar}18`, color: palette.bar }}
+                >
+                  Browse {category.title}
+                  <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
     <section className={card}><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Recently Studied</p><h2 className="mt-1 text-xl font-bold">Pick up where you stopped</h2></div><button type="button" onClick={() => onView("Progress")} className="text-sm font-bold text-primary">View progress</button></div>
       {data.recentSets.length ? <div className="mt-4 divide-y divide-border">{data.recentSets.map(item => <div key={`${item.setId}-${item.lastStudiedAt}`} className="grid gap-3 py-4 sm:grid-cols-[1fr_180px_auto] sm:items-center">
         <div><p className="text-xs font-semibold text-primary">{item.collection} · {item.groupName}</p><p className="mt-1 font-bold">{item.setTitle}</p><p className="mt-1 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p></div>
