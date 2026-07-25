@@ -37,10 +37,14 @@ Set these in the **Replit Secrets tab** (not as plain env vars). See `.env.examp
 
 | Secret | Required | Description |
 |--------|----------|-------------|
-| `DATABASE_URL` | Auto | Injected automatically by Replit's built-in PostgreSQL — do not set manually |
+| `POSTGRES_URL` | Yes (set) | Neon PostgreSQL connection string — picked up by `lib/db.ts` when `DATABASE_URL` is absent |
+| `SESSION_SECRET` | Yes (set) | Signs user session tokens |
+| `ADMIN_PASSWORD` | For admin panel | Password typed on the Admin login screen |
+| `ADMIN_SECRET` | For admin panel | Random string that signs admin session tokens (generate: `openssl rand -hex 32`) |
 | `GEMINI_API_KEY` | For AI import | Powers AI question extraction from Word (.docx) and PDF imports. Free key at https://aistudio.google.com/app/apikey |
 
-> **No secrets needed to start.** Guest mode (localStorage) works immediately. Add `DATABASE_URL` for persistent cloud-synced accounts; approved accounts with assigned roles can access administration features.
+> Database migrations run automatically on first API request via `ensureSchema()` in `lib/db.ts`.
+> SSL is enabled automatically when `POSTGRES_URL` contains `sslmode=require` (Neon default).
 
 ## Database schema
 
