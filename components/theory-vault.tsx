@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft, ArrowRight, BookOpen, Bookmark, Check, CheckCircle2, ChevronRight,
   Clock3, Download, FileText, FolderOpen, ListChecks, NotebookPen, RefreshCw,
-  Save, Search, Timer, X,
+  Save, Search, Target, Timer, X,
 } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
