@@ -1,7 +1,7 @@
 "use client"
 
 import type { ComponentType } from "react"
-import { Bookmark, BookOpen, LayoutDashboard, NotebookPen, RefreshCw, Search, User } from "lucide-react"
+import { Bookmark, BookOpen, LayoutDashboard, NotebookPen, RefreshCw, Search } from "lucide-react"
 import { ActivityIcon, GamepadIcon, LayersIcon, RadioIcon, StoreIcon, TrophyIcon } from "@/components/icons"
 import type { StudyHubId } from "@/components/study-hub-switcher"
 import type { Screen } from "@/lib/view"
@@ -23,7 +23,7 @@ export type HubNavigationItem = {
 export const STUDY_HUB_NAVIGATION: Record<StudyHubId, readonly HubNavigationItem[]> = {
   "mcq-qbank": [
     { id: "dashboard", label: "Dashboard", screen: "dashboard", icon: LayoutDashboard, iconColor: "text-primary", bottomNav: true },
-    { id: "modules", label: "Study Modules", screen: "modules", icon: LayersIcon, iconColor: "text-primary" },
+    { id: "modules", label: "Study Modules", mobileLabel: "Modules", screen: "modules", icon: LayersIcon, iconColor: "text-primary", bottomNav: true },
     { id: "weak-areas", label: "Weak Areas", screen: "weak-areas", icon: ActivityIcon, iconColor: "text-primary" },
     { id: "live-assessments", label: "Live Assessments", screen: "live-assessments", icon: RadioIcon, iconColor: "text-primary" },
     { id: "game", label: "Game Mode", screen: "game", icon: GamepadIcon, iconColor: "text-primary", bottomNav: true },
@@ -41,8 +41,6 @@ export const STUDY_HUB_NAVIGATION: Record<StudyHubId, readonly HubNavigationItem
   ],
   "osce-hub": [],
 }
-
-export const PROFILE_NAVIGATION_ITEM: HubNavigationItem = { id: "profile", label: "Profile", screen: "profile", icon: User, iconColor: "text-slate-400", bottomNav: true }
 
 export function getHubNavigation(hub: StudyHubId) {
   return STUDY_HUB_NAVIGATION[hub]
