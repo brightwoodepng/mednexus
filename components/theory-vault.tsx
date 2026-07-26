@@ -509,19 +509,171 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
   }
   const words = answer.trim() ? answer.trim().split(/\s+/u).length : 0
 
-  return <div className="mx-auto max-w-6xl space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Back to Set</button><div className="flex items-center gap-2"><span className="text-sm text-muted-foreground">Question {question.position} of {question.setTotal}</span><div className="flex rounded-xl bg-muted p-1"><button onClick={() => setMode("review")} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === "review" ? "bg-card text-primary shadow-sm" : ""}`}>Review</button><button onClick={() => setMode("practice")} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === "practice" ? "bg-card text-primary shadow-sm" : ""}`}>Practice</button></div></div></div>
-    {!registered && <SignInNotice/>}{message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
-    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground"><p>{question.collectionTitle} · {question.moduleName ?? question.disciplineName} · {question.setTitle}</p><div className="flex gap-2"><button onClick={toggleBookmark} className={`${button} border border-border px-3 ${state?.bookmark ? "text-primary" : ""}`}><Bookmark size={16} fill={state?.bookmark ? "currentColor" : "none"}/> {state?.bookmark ? "Bookmarked" : "Bookmark"}</button><button onClick={toggleRevision} className={`${button} border border-border px-3 ${state?.revision ? "text-primary" : ""}`}><RefreshCw size={16}/> {state?.revision ? "In Revision" : "Mark for Revision"}</button></div></div>
-    <article className={card}><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">{question.marks != null ? `${question.marks} marks` : "Theory question"}</p><h1 className="mt-3 text-2xl font-bold leading-snug">{question.title || question.prompt}</h1>{question.title && <p className="mt-4 leading-7">{question.prompt}</p>}</article>
-    {mode === "review" ? <div className="grid gap-5 lg:grid-cols-[1fr_320px]"><article className={card}><h2 className="text-lg font-bold">Model Answer</h2><TheoryMarkdown className="mt-3" children={question.modelAnswer}/>{question.keyMarkingPoints.length > 0 && <><h3 className="mt-6 font-bold">Key points</h3><ul className="mt-3 space-y-2">{question.keyMarkingPoints.map(point => <li key={point} className="flex gap-2 text-sm"><CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={17}/><span>{point}</span></li>)}</ul></>}{question.referencesMd && <><h3 className="mt-6 font-bold">References</h3><TheoryMarkdown className="mt-2" children={question.referencesMd}/></>}</article><NoteEditor note={note} onChange={setNote} onSave={saveNote}/></div>
-      : <div className="space-y-5"><article className={card}><div className="flex flex-wrap justify-between gap-2"><h2 className="font-bold">My Answer</h2><span className="text-xs text-muted-foreground">{words} words · {saving === "saving" ? "Saving…" : saving === "saved" ? "Draft saved" : saving === "error" ? "Autosave failed" : "Not saved yet"}</span></div><textarea value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={12} placeholder="Build a structured answer in Markdown…" className="mt-4 w-full resize-y rounded-xl border border-border bg-background p-4 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70"/><div className="mt-4 flex flex-wrap gap-3"><button onClick={() => personalized({ action: "draft", answer })} disabled={!registered || submitted} className={`${button} border border-border disabled:opacity-50`}><Save size={16}/> Save Draft</button><button onClick={submit} disabled={!registered || submitted} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}>Submit Answer</button><button onClick={reveal} className={`${button} border border-border`}>Reveal Model Answer</button></div></article>
-        {(revealed || submitted) && <><div className="grid gap-5 lg:grid-cols-2"><article className={card}><h2 className="font-bold">My Answer</h2>{answer ? <TheoryMarkdown className="mt-3" children={answer}/> : <p className="mt-3 text-sm text-muted-foreground">No written answer was submitted.</p>}</article><article className={card}><h2 className="font-bold text-primary">Model Answer</h2><TheoryMarkdown className="mt-3" children={question.modelAnswer}/></article></div><article className={card}><h2 className="font-bold">How well did you answer?</h2><p className="mt-1 text-sm text-muted-foreground">This is self-assessment, not AI grading.</p><div className="mt-4 grid gap-3 sm:grid-cols-3"><Rating label="Excellent" text="Confident and complete" onClick={() => rate("excellent")}/><Rating label="Partial" text="Some gaps remain" onClick={() => rate("partial")}/><Rating label="Needs Revision" text="Add to revision queue" onClick={() => rate("needs_revision")}/></div></article></>}</div>}
-    <div className="flex justify-between">{question.previousId ? <button onClick={() => onMove(question.previousId!)} className={`${button} border border-border`}><ArrowLeft size={17}/> Previous</button> : <span/>}{question.nextId && <button onClick={() => onMove(question.nextId!)} className={`${button} bg-primary text-primary-foreground`}>Next <ArrowRight size={17}/></button>}</div>
-  </div>
+  return (
+    <div className="mx-auto max-w-6xl space-y-4">
+
+      {/* ── Top nav bar ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button onClick={onBack} className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+          <ArrowLeft size={15}/> Back to Set
+        </button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium text-muted-foreground">Question {question.position} of {question.setTotal}</span>
+          <div className="flex rounded-xl bg-muted p-1">
+            <button onClick={() => setMode("review")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition-colors ${mode === "review" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Review</button>
+            <button onClick={() => setMode("practice")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition-colors ${mode === "practice" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Practice</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Action bar: breadcrumb + bookmark/revision ── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">{question.collectionTitle} · {question.moduleName ?? question.disciplineName} · {question.setTitle}</p>
+        <div className="flex gap-2">
+          <button onClick={toggleBookmark} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${state?.bookmark ? "border-primary/40 bg-primary/5 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+            <Bookmark size={13} fill={state?.bookmark ? "currentColor" : "none"}/>{state?.bookmark ? "Bookmarked" : "Bookmark"}
+          </button>
+          <button onClick={toggleRevision} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${state?.revision ? "border-amber-400/40 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400" : "border-border text-muted-foreground hover:text-foreground"}`}>
+            <RefreshCw size={13}/>{state?.revision ? "In Revision" : "Mark for Revision"}
+          </button>
+        </div>
+      </div>
+
+      {!registered && <SignInNotice/>}
+      {message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
+
+      {/* ── Question card — premium colored header ── */}
+      <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="bg-primary px-6 py-5">
+          {question.marks != null && (
+            <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest text-white/90">
+              {question.marks} marks
+            </span>
+          )}
+          <h1 className="mt-2 text-xl font-bold leading-snug text-white">{question.title || question.prompt}</h1>
+        </div>
+        {question.title && (
+          <div className="px-6 py-4">
+            <p className="leading-7 text-foreground/80">{question.prompt}</p>
+          </div>
+        )}
+      </article>
+
+      {/* ── Review mode ── */}
+      {mode === "review" ? (
+        <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+
+          {/* Model Answer card */}
+          <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <BookOpen size={14}/>
+              </div>
+              <h2 className="font-bold">Model Answer</h2>
+            </div>
+            <div className="p-5">
+              <TheoryMarkdown children={question.modelAnswer}/>
+              {question.keyMarkingPoints.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-primary">Key Points</h3>
+                  <ul className="space-y-2">
+                    {question.keyMarkingPoints.map(point => (
+                      <li key={point} className="flex items-start gap-3 rounded-xl bg-primary/5 px-4 py-2.5 text-sm">
+                        <CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={16}/>
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {question.referencesMd && (
+                <div className="mt-6 border-t border-border pt-5">
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">References</h3>
+                  <TheoryMarkdown children={question.referencesMd}/>
+                </div>
+              )}
+            </div>
+          </article>
+
+          {/* Note sidebar */}
+          <NoteEditor note={note} onChange={setNote} onSave={saveNote}/>
+        </div>
+
+      ) : (
+        /* ── Practice mode ── */
+        <div className="space-y-4">
+          <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="flex items-center justify-between border-b border-border bg-muted/40 px-5 py-3">
+              <h2 className="font-bold">My Answer</h2>
+              <span className="text-xs text-muted-foreground">{words} words · {saving === "saving" ? "Saving…" : saving === "saved" ? "Draft saved" : saving === "error" ? "Autosave failed" : "Unsaved"}</span>
+            </div>
+            <div className="p-5">
+              <textarea value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={12}
+                placeholder="Build a structured answer…"
+                className="w-full resize-y rounded-xl border border-border bg-background p-4 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70"/>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button onClick={() => personalized({ action: "draft", answer })} disabled={!registered || submitted} className={`${button} border border-border disabled:opacity-50`}><Save size={15}/> Save Draft</button>
+                <button onClick={submit} disabled={!registered || submitted} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}>Submit Answer</button>
+                <button onClick={reveal} className={`${button} border border-border`}>Reveal Answer</button>
+              </div>
+            </div>
+          </article>
+
+          {(revealed || submitted) && <>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                <div className="border-b border-border bg-muted/40 px-5 py-3"><h2 className="font-bold">My Answer</h2></div>
+                <div className="p-5">{answer ? <TheoryMarkdown children={answer}/> : <p className="text-sm text-muted-foreground">No answer submitted.</p>}</div>
+              </article>
+              <article className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
+                <div className="border-b border-primary/15 bg-primary/5 px-5 py-3"><h2 className="font-bold text-primary">Model Answer</h2></div>
+                <div className="p-5"><TheoryMarkdown children={question.modelAnswer}/></div>
+              </article>
+            </div>
+            <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="border-b border-border bg-muted/40 px-5 py-3">
+                <h2 className="font-bold">How did you do?</h2>
+              </div>
+              <div className="grid gap-3 p-5 sm:grid-cols-3">
+                <Rating label="Excellent" text="Confident and complete" onClick={() => rate("excellent")}/>
+                <Rating label="Partial" text="Some gaps remain" onClick={() => rate("partial")}/>
+                <Rating label="Needs Revision" text="Add to revision queue" onClick={() => rate("needs_revision")}/>
+              </div>
+            </article>
+          </>}
+        </div>
+      )}
+
+      {/* ── Prev / Next ── */}
+      <div className="flex justify-between pt-1">
+        {question.previousId
+          ? <button onClick={() => onMove(question.previousId!)} className={`${button} border border-border`}><ArrowLeft size={16}/> Previous</button>
+          : <span/>}
+        {question.nextId && <button onClick={() => onMove(question.nextId!)} className={`${button} bg-primary text-primary-foreground`}>Next <ArrowRight size={16}/></button>}
+      </div>
+    </div>
+  )
 }
 
 function NoteEditor({ note, onChange, onSave }: { note: string; onChange: (value: string) => void; onSave: () => void }) {
-  return <aside className={card}><div className="flex items-center gap-2"><NotebookPen className="text-primary" size={18}/><h2 className="font-bold">Personal Note</h2></div><textarea value={note} onChange={event => onChange(event.target.value)} rows={9} placeholder="Add a Markdown note…" className="mt-4 w-full rounded-xl border border-border bg-background p-3 text-sm leading-6 outline-none focus:ring-2 focus:ring-primary/25"/><button onClick={onSave} className={`${button} mt-3 w-full bg-primary text-primary-foreground`}><Save size={16}/> Save Note</button></aside>
+  return (
+    <aside className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <NotebookPen size={13}/>
+        </div>
+        <h2 className="font-bold">My Note</h2>
+      </div>
+      <div className="p-4">
+        <textarea value={note} onChange={event => onChange(event.target.value)} rows={9}
+          placeholder="Jot down key takeaways, mnemonics, or reminders…"
+          className="w-full rounded-xl border border-border bg-background p-3 text-sm leading-6 outline-none focus:ring-2 focus:ring-primary/25"/>
+        <button onClick={onSave} className={`${button} mt-3 w-full bg-primary text-primary-foreground`}>
+          <Save size={15}/> Save Note
+        </button>
+      </div>
+    </aside>
+  )
 }
 
 function Rating({ label, text, onClick }: { label: string; text: string; onClick: () => void }) {
