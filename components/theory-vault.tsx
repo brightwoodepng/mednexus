@@ -51,7 +51,7 @@ type TheoryAiStatus = {
   remaining: { refinements: number; transcriptions: number }
 }
 
-const card = "rounded-2xl border border-border bg-card p-5 shadow-sm"
+const card = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
 const button = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition"
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -251,7 +251,7 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
           <h2 className="text-lg font-bold tracking-tight">Study Categories</h2>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
         {categories.map((category, idx) => {
           const palette = CATEGORY_PALETTES[idx % CATEGORY_PALETTES.length]
           const catProgress = category.total ? Math.round(Number(category.completed) / Number(category.total) * 100) : 0
@@ -260,7 +260,7 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
             <div key={category.title} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
               {/* Color top bar — same as MCQ ModuleCard */}
               <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
-              <div className="p-5">
+              <div className="p-4 sm:p-5">
                 <div className="mb-3 mt-1 flex items-start justify-between gap-2">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
                     <FolderOpen size={18} />
@@ -289,7 +289,7 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
     {/* ── Recently Studied ── */}
     <div className="rounded-2xl border border-border bg-card shadow-sm">
       {/* Header — matches MCQ section header style */}
-      <div className="flex items-center gap-3 px-6 pt-5">
+      <div className="flex items-center gap-3 px-4 pt-4 sm:px-6 sm:pt-5">
         <div className="flex items-center gap-2 flex-1">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <BookOpen size={16} />
@@ -307,7 +307,7 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
       {/* List */}
       <div className="mt-4 divide-y divide-border">
         {data.recentSets.length ? data.recentSets.slice(0, 4).map(item => (
-          <div key={`${item.setId}-${item.lastStudiedAt}`} className="flex items-center gap-6 px-6 py-4">
+          <div key={`${item.setId}-${item.lastStudiedAt}`} className="flex flex-col items-stretch gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-6 sm:px-6">
             {/* Left: breadcrumb + title + date */}
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-primary">{item.collection} · {item.groupName}</p>
@@ -315,8 +315,8 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
               <p className="mt-0.5 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p>
             </div>
             {/* Right: progress + continue */}
-            <div className="flex shrink-0 items-center gap-4">
-              <div className="w-36">
+            <div className="flex w-full shrink-0 flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
+              <div className="w-full sm:w-36">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">Progress</span>
                   <span className="text-xs font-bold text-foreground">{item.progressPercent}%</span>
@@ -326,14 +326,14 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
               <button
                 type="button"
                 onClick={() => onSet(item.setId)}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:text-primary"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:text-primary sm:min-h-0 sm:w-auto sm:rounded-full"
               >
                 Continue
               </button>
             </div>
           </div>
         )) : (
-          <div className="px-6 py-8 text-sm text-muted-foreground">
+          <div className="px-4 py-8 text-sm text-muted-foreground sm:px-6">
             No sets studied yet. Start a theory set to track your progress here.
           </div>
         )}
@@ -360,7 +360,7 @@ function Catalog({ data, collectionId, groupId, onCollection, onGroup, onBack, o
       return (
         <div key={collection.id} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
           <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
-          <div className="p-5">
+          <div className="p-4 sm:p-5">
             <div className="mb-3 mt-1 flex items-start justify-between gap-2">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
                 <BookOpen size={18} />
@@ -412,11 +412,11 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
   }
   return <div className="space-y-5"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Back to sets</button>
     {!registered && <SignInNotice/>}
-    <header className={card}><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">{data.collectionTitle} · {data.moduleName ?? data.disciplineName}</p><h1 className="mt-3 text-3xl font-bold">{data.name}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{data.description || "A focused set of long-answer questions."}</p>
-      <div className="mt-5 grid gap-4 sm:grid-cols-3"><div><b className="text-2xl">{data.total}</b><span className="block text-xs text-muted-foreground">Questions</span></div><div><b className="text-2xl">{data.completed}</b><span className="block text-xs text-muted-foreground">Completed</span></div><div><b className="text-2xl">{data.progressPercent}%</b><span className="block text-xs text-muted-foreground">Progress</span></div></div>
-      <div className="mt-4"><ProgressBar value={data.progressPercent}/></div><div className="mt-5 flex flex-wrap gap-3"><button onClick={start} className={`${button} bg-primary text-primary-foreground`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
+    <header className={card}><p className="text-[11px] font-bold uppercase tracking-[.14em] text-primary sm:text-xs sm:tracking-[.18em]">{data.collectionTitle} · {data.moduleName ?? data.disciplineName}</p><h1 className="mt-3 text-2xl font-bold sm:text-3xl">{data.name}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{data.description || "A focused set of long-answer questions."}</p>
+      <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-4"><div className="rounded-xl bg-muted/60 p-3 text-center sm:bg-transparent sm:p-0 sm:text-left"><b className="text-xl sm:text-2xl">{data.total}</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Questions</span></div><div className="rounded-xl bg-muted/60 p-3 text-center sm:bg-transparent sm:p-0 sm:text-left"><b className="text-xl sm:text-2xl">{data.completed}</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Completed</span></div><div className="rounded-xl bg-muted/60 p-3 text-center sm:bg-transparent sm:p-0 sm:text-left"><b className="text-xl sm:text-2xl">{data.progressPercent}%</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Progress</span></div></div>
+      <div className="mt-4"><ProgressBar value={data.progressPercent}/></div><div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
     </header>
-    <section className={`${card} p-0`}><div className="border-b border-border px-5 py-4"><h2 className="font-bold">Questions</h2><p className="text-sm text-muted-foreground">Jump to any question in the set.</p></div><div className="divide-y divide-border">{data.questions.map((question, index) => <button key={question.id} onClick={() => onOpen(question.id)} className="grid w-full grid-cols-[36px_1fr_auto] items-center gap-3 px-5 py-4 text-left hover:bg-muted/50">
+    <section className={`${card} p-0`}><div className="border-b border-border px-4 py-4 sm:px-5"><h2 className="font-bold">Questions</h2><p className="text-sm text-muted-foreground">Jump to any question in the set.</p></div><div className="divide-y divide-border">{data.questions.map((question, index) => <button key={question.id} onClick={() => onOpen(question.id)} className="grid w-full grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-2.5 px-3 py-4 text-left hover:bg-muted/50 sm:grid-cols-[36px_1fr_auto] sm:gap-3 sm:px-5">
       <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${question.completed ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{question.completed ? <Check size={15}/> : index + 1}</span>
       <span><b className="line-clamp-1">{question.title || question.prompt}</b><small className="mt-1 flex flex-wrap gap-2 text-muted-foreground">{question.marks != null && <span>{question.marks} marks</span>}{question.bookmarked && <span>Bookmarked</span>}{question.revision && <span>Revision</span>}{question.draft && <span>Draft saved</span>}</small></span><ChevronRight className="text-muted-foreground" size={18}/>
     </button>)}</div></section>
@@ -556,33 +556,33 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4">
+    <div className="mx-auto max-w-6xl space-y-3 pb-16 sm:space-y-4 md:pb-0">
 
       {/* ── Top nav bar ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button onClick={onBack} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-semibold shadow-sm transition-colors hover:bg-muted">
           <ArrowLeft size={15}/> Back to Set
         </button>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:px-3 sm:text-xs">
             Question {question.position} of {question.setTotal}
           </span>
-          <div className="flex rounded-xl bg-muted p-1">
-            <button onClick={() => setMode("review")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition-all ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Review</button>
-            <button onClick={() => setMode("practice")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition-all ${mode === "practice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Practice</button>
+          <div className="grid min-w-0 flex-1 grid-cols-2 rounded-xl bg-muted p-1 sm:flex sm:flex-none">
+            <button onClick={() => setMode("review")} className={`rounded-lg px-3 py-2 text-sm font-bold transition-all sm:px-4 sm:py-1.5 ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Review</button>
+            <button onClick={() => setMode("practice")} className={`rounded-lg px-3 py-2 text-sm font-bold transition-all sm:px-4 sm:py-1.5 ${mode === "practice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Practice</button>
           </div>
         </div>
       </div>
 
       {/* ── Breadcrumb pill + action buttons ── */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <span className="w-full truncate rounded-full border border-border/60 bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground sm:w-auto">
           {[question.collectionTitle, question.moduleName, question.disciplineName, question.setTitle].filter(Boolean).join(" · ")}
         </span>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <button
             onClick={toggleBookmark}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-all ${
+            className={`flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold shadow-sm transition-all sm:min-h-0 sm:px-3 ${
               state?.bookmark ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
@@ -591,7 +591,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
           </button>
           <button
             onClick={toggleRevision}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-all ${
+            className={`flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold shadow-sm transition-all sm:min-h-0 sm:px-3 ${
               state?.revision ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
@@ -619,9 +619,9 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
 
       {/* ── Question card — theme-coloured full border, title in pill ── */}
       <article className="rounded-2xl border-2 border-primary/30 bg-card shadow-sm">
-        <div className="px-6 py-5">
-          <div className="inline-block rounded-xl bg-muted/60 px-4 py-2.5 border border-border/50">
-            <h1 className="text-xl font-bold leading-snug">{question.title || question.prompt}</h1>
+        <div className="px-4 py-4 sm:px-6 sm:py-5">
+          <div className="inline-block max-w-full rounded-xl border border-border/50 bg-muted/60 px-3 py-2.5 sm:px-4">
+            <h1 className="break-words text-lg font-bold leading-snug sm:text-xl">{question.title || question.prompt}</h1>
           </div>
           {question.title && (
             <p className="mt-4 leading-7 text-foreground/75">{question.prompt}</p>
@@ -636,15 +636,15 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
 
           {/* Model Answer card */}
           <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex items-center gap-2 border-b border-border bg-primary/8 px-5 py-3">
+            <div className="flex items-center gap-2 border-b border-border bg-primary/8 px-4 py-3 sm:px-5">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <BookOpen size={14}/>
               </div>
               <h2 className="font-bold">Model Answer</h2>
             </div>
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               {/* Main narrative answer — card-style to distinguish from key points */}
-              <div className="rounded-xl border border-border/60 bg-muted/30 px-5 py-4">
+              <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-4 sm:px-5">
                 <TheoryMarkdown children={question.modelAnswer}/>
               </div>
               {question.keyMarkingPoints.length > 0 && (
@@ -684,16 +684,16 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
         /* ── Practice mode ── */
         <div className="space-y-4">
           <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex items-center justify-between border-b border-border bg-muted/40 px-5 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-3 sm:px-5">
               <h2 className="font-bold">My Answer</h2>
               <span className="text-xs text-muted-foreground">{words} words · {saving === "saving" ? "Saving…" : saving === "saved" ? "Draft saved" : saving === "error" ? "Autosave failed" : "Unsaved"}</span>
             </div>
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               <textarea ref={answerRef} value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={12}
                 placeholder="Build a structured answer…"
-                className="w-full resize-y rounded-xl border border-border bg-background p-4 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70"/>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={() => personalized({ action: "draft", answer })} disabled={!registered || submitted} className={`${button} border border-border disabled:opacity-50`}><Save size={15}/> Save Draft</button>
+                className="w-full resize-y rounded-xl border border-border bg-background p-3 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70 sm:p-4"/>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                <button onClick={() => personalized({ action: "draft", answer })} disabled={!registered || submitted} className={`${button} w-full border border-border disabled:opacity-50 sm:w-auto`}><Save size={15}/> Save Draft</button>
                 {registered && <DictationControl
                   questionId={question.id}
                   target="answer"
@@ -702,8 +702,8 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
                   onTranscript={insertAnswerTranscript}
                   onQuota={remaining => updateAiQuota("transcriptions", remaining)}
                 />}
-                <button onClick={submit} disabled={!registered || submitted} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}>Submit Answer</button>
-                <button onClick={reveal} className={`${button} border border-border`}>Reveal Answer</button>
+                <button onClick={submit} disabled={!registered || submitted} className={`${button} w-full bg-primary text-primary-foreground disabled:opacity-50 sm:w-auto`}>Submit Answer</button>
+                <button onClick={reveal} className={`${button} w-full border border-border sm:w-auto`}>Reveal Answer</button>
               </div>
             </div>
           </article>
@@ -711,19 +711,19 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
           {(revealed || submitted) && <>
             <div className="grid gap-4 lg:grid-cols-2">
               <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                <div className="border-b border-border bg-muted/40 px-5 py-3"><h2 className="font-bold">My Answer</h2></div>
-                <div className="p-5">{answer ? <TheoryMarkdown children={answer}/> : <p className="text-sm text-muted-foreground">No answer submitted.</p>}</div>
+                <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-5"><h2 className="font-bold">My Answer</h2></div>
+                <div className="overflow-hidden p-4 sm:p-5">{answer ? <TheoryMarkdown children={answer}/> : <p className="text-sm text-muted-foreground">No answer submitted.</p>}</div>
               </article>
               <article className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
-                <div className="border-b border-primary/15 bg-primary/5 px-5 py-3"><h2 className="font-bold text-primary">Model Answer</h2></div>
-                <div className="p-5"><TheoryMarkdown children={question.modelAnswer}/></div>
+                <div className="border-b border-primary/15 bg-primary/5 px-4 py-3 sm:px-5"><h2 className="font-bold text-primary">Model Answer</h2></div>
+                <div className="overflow-hidden p-4 sm:p-5"><TheoryMarkdown children={question.modelAnswer}/></div>
               </article>
             </div>
             <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-              <div className="border-b border-border bg-muted/40 px-5 py-3">
+              <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-5">
                 <h2 className="font-bold">How did you do?</h2>
               </div>
-              <div className="grid gap-3 p-5 sm:grid-cols-3">
+              <div className="grid gap-2 p-4 sm:grid-cols-3 sm:gap-3 sm:p-5">
                 <Rating label="Excellent" text="Confident and complete" onClick={() => rate("excellent")}/>
                 <Rating label="Partial" text="Some gaps remain" onClick={() => rate("partial")}/>
                 <Rating label="Needs Revision" text="Add to revision queue" onClick={() => rate("needs_revision")}/>
@@ -733,12 +733,32 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
         </div>
       )}
 
-      {/* ── Prev / Next ── */}
-      <div className="flex justify-between pt-1">
+      {/* ── Desktop Prev / Next ── */}
+      <div className="hidden justify-between pt-1 md:flex">
         {question.previousId
           ? <button onClick={() => onMove(question.previousId!)} className={`${button} border border-border`}><ArrowLeft size={16}/> Previous</button>
           : <span/>}
         {question.nextId && <button onClick={() => onMove(question.nextId!)} className={`${button} bg-primary text-primary-foreground`}>Next <ArrowRight size={16}/></button>}
+      </div>
+      {/* Compact study navigation stays above the global Theory phone navigator. */}
+      <div className="fixed inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur-md md:hidden">
+        <button
+          type="button"
+          onClick={() => question.previousId && onMove(question.previousId)}
+          disabled={!question.previousId}
+          className={`${button} min-w-0 border border-border px-2 disabled:opacity-40`}
+        >
+          <ArrowLeft size={15}/> <span className="hidden min-[350px]:inline">Previous</span>
+        </button>
+        <span className="whitespace-nowrap px-1 text-[11px] font-bold text-muted-foreground">{question.position} / {question.setTotal}</span>
+        <button
+          type="button"
+          onClick={() => question.nextId && onMove(question.nextId)}
+          disabled={!question.nextId}
+          className={`${button} min-w-0 bg-primary px-2 text-primary-foreground disabled:opacity-40`}
+        >
+          <span className="hidden min-[350px]:inline">Next</span> <ArrowRight size={15}/>
+        </button>
       </div>
     </div>
   )
@@ -755,7 +775,7 @@ function insertDictation(value: string, transcript: string, position: number) {
 
 function AiConsentNotice({ available, accepting, onAccept }: { available: boolean; accepting: boolean; onAccept: () => void }) {
   return (
-    <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5">
+    <section className="rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:p-5">
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={18}/></div>
         <div className="min-w-0 flex-1">
@@ -900,21 +920,21 @@ function DictationControl({ questionId, target, textareaRef, disabled, onTranscr
   const timer = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
       {!recording && (
         <button type="button" onClick={startRecording} disabled={disabled || transcribing}
           title={disabled ? "Accept the AI privacy notice and check your daily quota first." : `Dictate ${target}`}
-          className={`${button} border border-border disabled:cursor-not-allowed disabled:opacity-50`}>
+          className={`${button} w-full border border-border disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto`}>
           {transcribing ? <LoaderCircle className="animate-spin" size={15}/> : <Mic size={15}/>}
           {transcribing ? "Transcribing…" : "Dictate"}
         </button>
       )}
       {recording && <>
-        <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 text-sm font-bold text-destructive">
+        <span className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 text-sm font-bold text-destructive sm:flex-none">
           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-destructive"/> {timer} / 5:00
         </span>
-        <button type="button" onClick={stopRecording} className={`${button} bg-primary text-primary-foreground`}><Square size={14} fill="currentColor"/> Stop</button>
-        <button type="button" onClick={cancelRecording} className={`${button} border border-border`}><X size={15}/> Cancel</button>
+        <button type="button" onClick={stopRecording} className={`${button} flex-1 bg-primary text-primary-foreground sm:flex-none`}><Square size={14} fill="currentColor"/> Stop</button>
+        <button type="button" onClick={cancelRecording} className={`${button} flex-1 border border-border sm:flex-none`}><X size={15}/> Cancel</button>
       </>}
       {error && <p className="w-full text-xs leading-5 text-destructive">{error}</p>}
     </div>
@@ -1037,10 +1057,10 @@ function LibraryView({ view, registered, onOpen, onSession }: { view: Exclude<Vi
   }, [apiView, query, registered, sort])
   if (!registered) return <><SignInNotice/><Empty icon={view === "Bookmarks" ? Bookmark : view === "My Notes" ? NotebookPen : RefreshCw} title={view} text="This personal study space becomes available after you sign in."/></>
   const emptyText = view === "Bookmarks" ? "Bookmark important questions for quick access." : view === "My Notes" ? "Your notes will appear here." : "No questions need revision yet."
-  return <div className="space-y-4"><div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-bold">{view}</h1><p className="mt-1 text-sm text-muted-foreground">{items.length} items</p></div><ExportButton source={apiView}/></div>
-    {error && <div className="text-sm text-destructive">{error}</div>}<div className="grid gap-3 sm:grid-cols-[1fr_180px]"><label className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder={`Search ${view.toLowerCase()}`} className="w-full bg-transparent text-sm outline-none"/></label><select value={sort} onChange={event => setSort(event.target.value)} className="rounded-xl border border-border bg-card px-3 text-sm"><option value="recent">Recently added</option><option value="module">Module / discipline</option>{view === "Revision Queue" && <option value="priority">Priority</option>}</select></div>
-    {view === "Revision Queue" && items.length > 0 && <button onClick={async () => { const session = await mutate({ action: "session", kind: "revision" }) as { questionIds?: string[] }; if (session.questionIds?.[0]) onSession(session.questionIds) }} className={`${button} bg-primary text-primary-foreground`}><Timer size={16}/> Start Revision</button>}
-    {items.length ? <div className="space-y-3">{items.map(item => <article key={item.id} className={card}><p className="text-xs font-semibold text-primary">{item.collection} · {item.module ?? item.discipline} · {item.setTitle}</p><h2 className="mt-2 font-bold">{item.title || item.prompt}</h2>{item.note && <p className="mt-3 line-clamp-3 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{item.note}</p>}<div className="mt-4 flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-muted-foreground">{dateLabel(item.updatedAt)}{item.confidence ? ` · ${item.confidence} confidence` : ""}</span><button onClick={() => onOpen(item.id)} className={`${button} border border-border px-3`}>Open Question<ChevronRight size={16}/></button></div></article>)}</div> : <Empty icon={view === "Bookmarks" ? Bookmark : view === "My Notes" ? NotebookPen : RefreshCw} title="Nothing here yet" text={emptyText}/>}
+  return <div className="space-y-4"><div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-bold">{view}</h1><p className="mt-1 text-sm text-muted-foreground">{items.length} items</p></div><ExportButton source={apiView}/></div>
+    {error && <div className="text-sm text-destructive">{error}</div>}<div className="grid gap-3 sm:grid-cols-[1fr_180px]"><label className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder={`Search ${view.toLowerCase()}`} className="min-w-0 w-full bg-transparent text-sm outline-none"/></label><select value={sort} onChange={event => setSort(event.target.value)} className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"><option value="recent">Recently added</option><option value="module">Module / discipline</option>{view === "Revision Queue" && <option value="priority">Priority</option>}</select></div>
+    {view === "Revision Queue" && items.length > 0 && <button onClick={async () => { const session = await mutate({ action: "session", kind: "revision" }) as { questionIds?: string[] }; if (session.questionIds?.[0]) onSession(session.questionIds) }} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}><Timer size={16}/> Start Revision</button>}
+    {items.length ? <div className="space-y-3">{items.map(item => <article key={item.id} className={`${card} overflow-hidden`}><p className="break-words text-xs font-semibold text-primary">{item.collection} · {item.module ?? item.discipline} · {item.setTitle}</p><h2 className="mt-2 break-words font-bold">{item.title || item.prompt}</h2>{item.note && <p className="mt-3 line-clamp-3 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{item.note}</p>}<div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between"><span className="text-xs text-muted-foreground">{dateLabel(item.updatedAt)}{item.confidence ? ` · ${item.confidence} confidence` : ""}</span><button onClick={() => onOpen(item.id)} className={`${button} w-full border border-border px-3 sm:w-auto`}>Open Question<ChevronRight size={16}/></button></div></article>)}</div> : <Empty icon={view === "Bookmarks" ? Bookmark : view === "My Notes" ? NotebookPen : RefreshCw} title="Nothing here yet" text={emptyText}/>}
   </div>
 }
 
@@ -1074,7 +1094,7 @@ function ProgressView({ registered }: { registered: boolean }) {
   if (!data) return <div className={`${card} py-14 text-center text-sm text-muted-foreground`}>Loading Theory progress…</div>
   const total = Number(data.totals.total), completed = Number(data.totals.completed), overall = total ? Math.round(completed / total * 100) : 0
   const stats = [["Total Questions", total], ["Completed", completed], ["In Progress", data.totals.inProgress], ["Needs Revision", data.totals.needsRevision], ["Overall Completion", `${overall}%`]]
-  return <div className="space-y-6"><div><h1 className="text-2xl font-bold">Theory Vault Progress</h1><p className="mt-1 text-sm text-muted-foreground">Real activity from Review and Practice modes.</p></div><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{stats.map(([label, value]) => <div key={label} className={card}><p className="text-2xl font-bold text-primary">{value}</p><p className="mt-1 text-sm text-muted-foreground">{label}</p></div>)}</section>
+  return <div className="space-y-5 sm:space-y-6"><div><h1 className="text-2xl font-bold">Theory Vault Progress</h1><p className="mt-1 text-sm text-muted-foreground">Real activity from Review and Practice modes.</p></div><section className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-5">{stats.map(([label, value], index) => <div key={label} className={`${card} ${index === stats.length - 1 ? "col-span-2 xl:col-span-1" : ""}`}><p className="text-xl font-bold text-primary sm:text-2xl">{value}</p><p className="mt-1 text-xs text-muted-foreground sm:text-sm">{label}</p></div>)}</section>
     <section className={`${card} grid gap-5 md:grid-cols-2`}><div><h2 className="font-bold">Confidence distribution</h2><div className="mt-4 space-y-3">{[["High", data.totals.high], ["Medium", data.totals.medium], ["Low", data.totals.low]].map(([label, value]) => <div key={label as string} className="flex items-center justify-between rounded-xl bg-muted px-4 py-3 text-sm"><span>{label}</span><b>{value}</b></div>)}</div></div><div><h2 className="font-bold">Study records</h2><div className="mt-4 grid grid-cols-2 gap-3">{[["Practice attempts",data.totals.attempts],["Drafts",data.totals.drafts],["Bookmarks",data.totals.bookmarks],["Notes",data.totals.notes]].map(([label,value]) => <div key={label as string} className="rounded-xl bg-muted p-3"><b className="text-xl">{value}</b><span className="block text-xs text-muted-foreground">{label}</span></div>)}</div></div></section>
     <section className="space-y-3"><h2 className="text-xl font-bold">Module and year progress</h2>{data.groups.map(group => { const value = group.total ? Math.round(group.completed / group.total * 100) : 0; return <article key={`${group.collectionId}-${group.groupId}`} className={card}><div className="flex flex-wrap justify-between gap-3"><div><p className="text-xs font-semibold text-primary">{group.collection}</p><h3 className="mt-1 font-bold">{group.name}</h3><p className="mt-1 text-xs text-muted-foreground">{group.completed}/{group.total} questions · {group.completedSets}/{group.totalSets} sets completed</p></div><b className="text-primary">{value}%</b></div><div className="mt-4"><ProgressBar value={value}/></div></article>})}</section>
     <section className={card}><h2 className="font-bold">Recent study activity</h2>{data.recent.length ? <div className="mt-3 divide-y divide-border">{data.recent.map((item, index) => <div key={`${item.occurredAt}-${index}`} className="py-3 text-sm"><b>{item.prompt || item.type}</b><p className="mt-1 text-xs text-muted-foreground">{item.groupName} · {item.setTitle} · {dateLabel(item.occurredAt)}</p></div>)}</div> : <p className="mt-3 text-sm text-muted-foreground">Your recent Theory activity will appear here.</p>}</section>
@@ -1098,5 +1118,5 @@ function ExportButton({ source, sourceId }: { source: "set" | "bookmarks" | "rev
       anchor.click(); URL.revokeObjectURL(url); setOpen(false)
     } finally { setBusy(false) }
   }
-  return <div className="relative"><button onClick={() => setOpen(value => !value)} className={`${button} border border-border`}><Download size={16}/> Export PDF</button>{open && <div className="absolute right-0 z-20 mt-2 w-72 rounded-2xl border border-border bg-card p-4 shadow-xl"><h3 className="font-bold">PDF options</h3><label className="mt-3 flex items-center justify-between text-sm">Questions and model answers<input type="checkbox" checked={answers} onChange={event => setAnswers(event.target.checked)} className="h-4 w-4 accent-primary"/></label><label className="mt-3 flex items-center justify-between text-sm">Include personal notes<input type="checkbox" checked={notes} onChange={event => setNotes(event.target.checked)} className="h-4 w-4 accent-primary"/></label><button onClick={download} disabled={busy} className={`${button} mt-4 w-full bg-primary text-primary-foreground disabled:opacity-50`}>{busy ? "Generating…" : "Download PDF"}</button></div>}</div>
+  return <div className="relative w-full sm:w-auto"><button onClick={() => setOpen(value => !value)} className={`${button} w-full border border-border sm:w-auto`}><Download size={16}/> Export PDF</button>{open && <div role="dialog" aria-label="PDF export options" className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] z-[60] rounded-2xl border border-border bg-card p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:z-20 sm:mt-2 sm:w-72 sm:shadow-xl"><h3 className="font-bold">PDF options</h3><label className="mt-3 flex min-h-11 items-center justify-between gap-4 text-sm">Questions and model answers<input type="checkbox" checked={answers} onChange={event => setAnswers(event.target.checked)} className="h-4 w-4 shrink-0 accent-primary"/></label><label className="mt-3 flex min-h-11 items-center justify-between gap-4 text-sm">Include personal notes<input type="checkbox" checked={notes} onChange={event => setNotes(event.target.checked)} className="h-4 w-4 shrink-0 accent-primary"/></label><button onClick={download} disabled={busy} className={`${button} mt-4 w-full bg-primary text-primary-foreground disabled:opacity-50`}>{busy ? "Generating…" : "Download PDF"}</button></div>}</div>
 }
