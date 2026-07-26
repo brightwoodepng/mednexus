@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises"
 import { describe, expect, it } from "vitest"
-import { getHubNavigation, PROFILE_NAVIGATION_ITEM } from "@/components/navigation/study-hub-navigation"
+import { getHubNavigation } from "@/components/navigation/study-hub-navigation"
 
 describe("Theory Vault phone experience", () => {
   it("uses five study-specific Theory destinations and keeps Profile outside that bar", () => {
@@ -20,15 +20,14 @@ describe("Theory Vault phone experience", () => {
       "Notes",
       "Revision",
     ])
-    expect(theoryTabs.some(item => item.screen === PROFILE_NAVIGATION_ITEM.screen)).toBe(false)
+    expect(theoryTabs.some(item => item.screen === "profile")).toBe(false)
   })
 
-  it("preserves the existing four-button MCQ phone navigation", () => {
-    const mcqTabs = [
-      ...getHubNavigation("mcq-qbank").filter(item => item.bottomNav),
-      PROFILE_NAVIGATION_ITEM,
-    ]
-    expect(mcqTabs.map(item => item.screen)).toEqual(["dashboard", "game", "leaderboard", "profile"])
+  it("uses four study destinations in MCQ without duplicating Profile", () => {
+    const mcqTabs = getHubNavigation("mcq-qbank").filter(item => item.bottomNav)
+    expect(mcqTabs.map(item => item.screen)).toEqual(["dashboard", "modules", "game", "leaderboard"])
+    expect(mcqTabs.map(item => item.mobileLabel ?? item.label)).toEqual(["Dashboard", "Modules", "Game Mode", "Leaderboard"])
+    expect(mcqTabs.some(item => item.screen === "profile")).toBe(false)
   })
 
   it("uses non-scrolling equal-width Theory navigation with safe-area support", async () => {
@@ -40,6 +39,19 @@ describe("Theory Vault phone experience", () => {
     expect(source).not.toContain("min-w-max")
   })
 
+  it("centers the welcome modal and keeps the phone drawer above navigation", async () => {
+    const [app, shell, sidebar] = await Promise.all([
+      readFile("components/mednexus-app.tsx", "utf8"),
+      readFile("components/learner-workspace-shell.tsx", "utf8"),
+      readFile("components/navigation/sidebar-primitives.tsx", "utf8"),
+    ])
+    expect(app).toContain("fixed inset-0 z-[70] flex items-center justify-center")
+    expect(app).toContain("max-h-[calc(100dvh-1.5rem)]")
+    expect(shell).toContain("hideBottomNavigation || mobileNavigationOpen")
+    expect(sidebar).toContain("fixed inset-0 z-[60] md:hidden")
+    expect(sidebar).toContain('paddingBottom: "env(safe-area-inset-bottom, 0px)"')
+  })
+
   it("includes phone reflow and unobscured question navigation contracts", async () => {
     const source = await readFile("components/theory-vault.tsx", "utf8")
     expect(source).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2")
@@ -48,5 +60,9 @@ describe("Theory Vault phone experience", () => {
     expect(source).toContain("space-y-3 pb-16")
     expect(source).toContain('role="dialog" aria-label="PDF export options"')
     expect(source).toContain("fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]")
+    expect(source).toContain("onQuestionViewChange")
+    expect(source).not.toContain("[question.collectionTitle, question.moduleName, question.disciplineName, question.setTitle]")
+    expect(source).toContain("sm:hidden")
+    expect(source).toContain("hidden sm:block")
   })
 })
