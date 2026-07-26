@@ -540,16 +540,16 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
               state?.bookmark ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <Bookmark size={13} className={state?.bookmark ? "" : "text-yellow-500"} fill={state?.bookmark ? "currentColor" : "currentColor"}/>
+            <Bookmark size={13} className={state?.bookmark ? "" : "text-primary"} fill={state?.bookmark ? "currentColor" : "none"}/>
             {state?.bookmark ? "Bookmarked" : "Bookmark"}
           </button>
           <button
             onClick={toggleRevision}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-all ${
-              state?.revision ? "bg-amber-500 text-white" : "bg-card border border-border text-foreground hover:bg-muted"
+              state?.revision ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <RefreshCw size={13} className={state?.revision ? "" : "text-amber-500"}/>
+            <RefreshCw size={13} className={state?.revision ? "" : "text-primary"}/>
             {state?.revision ? "In Revision" : "Mark for Revision"}
           </button>
         </div>
@@ -558,12 +558,14 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
       {!registered && <SignInNotice/>}
       {message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
 
-      {/* ── Question card — left accent stripe + subtle tint ── */}
-      <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="border-l-4 border-l-primary px-6 py-5">
-          <h1 className="text-xl font-bold leading-snug">{question.title || question.prompt}</h1>
+      {/* ── Question card — theme-coloured full border, title in pill ── */}
+      <article className="rounded-2xl border-2 border-primary/30 bg-card shadow-sm">
+        <div className="px-6 py-5">
+          <div className="inline-block rounded-xl bg-muted/60 px-4 py-2.5 border border-border/50">
+            <h1 className="text-xl font-bold leading-snug">{question.title || question.prompt}</h1>
+          </div>
           {question.title && (
-            <p className="mt-3 border-t border-border/50 pt-3 leading-7 text-foreground/70">{question.prompt}</p>
+            <p className="mt-4 leading-7 text-foreground/75">{question.prompt}</p>
           )}
         </div>
       </article>
