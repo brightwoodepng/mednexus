@@ -741,7 +741,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
         {question.nextId && <button onClick={() => onMove(question.nextId!)} className={`${button} bg-primary text-primary-foreground`}>Next <ArrowRight size={16}/></button>}
       </div>
       {/* Compact study navigation stays above the global Theory phone navigator. */}
-      <div className="fixed inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur-md md:hidden">
+      <div className="fixed inset-x-3 bottom-[calc(4rem+1px+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur-md md:hidden">
         <button
           type="button"
           onClick={() => question.previousId && onMove(question.previousId)}
