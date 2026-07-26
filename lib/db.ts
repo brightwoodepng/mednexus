@@ -595,6 +595,31 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS references_md TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS media JSONB NOT NULL DEFAULT '[]';
 
+    UPDATE mednexus_theory_questions
+    SET title = LEFT(TRIM(REGEXP_REPLACE(
+      REGEXP_REPLACE(prompt, '^[[:space:]]*(#{1,6}[[:space:]]*)?(question([[:space:]]+[0-9]+)?[:.)-]?[[:space:]]*)', '', 'i'),
+      '[[:space:]]+', ' ', 'g'
+    )), 96)
+    WHERE TRIM(title) = '';
+
+    UPDATE mednexus_theory_questions
+    SET marks = CASE
+      WHEN jsonb_typeof(key_marking_points) = 'array' THEN jsonb_array_length(key_marking_points) * 2
+      ELSE 0
+    END;
+
+    UPDATE mednexus_theory_questions
+    SET status = 'review', updated_at = NOW()
+    WHERE status = 'published'
+      AND (
+        set_id IS NULL
+        OR TRIM(model_answer) = ''
+        OR CASE
+          WHEN jsonb_typeof(key_marking_points) = 'array' THEN jsonb_array_length(key_marking_points) = 0
+          ELSE TRUE
+        END
+      );
+
     DO $$ BEGIN
       ALTER TABLE mednexus_theory_questions
         ADD CONSTRAINT mednexus_theory_questions_set_fk

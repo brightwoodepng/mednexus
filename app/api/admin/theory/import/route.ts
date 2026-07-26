@@ -15,13 +15,10 @@ Return JSON only, in this shape:
   "collectionKind":"end_of_module or end_of_year",
   "moduleName":"module heading or empty string",
   "disciplineName":"discipline/subject heading or empty string",
-  "setName":"set/paper heading or Imported Set 1",
-  "title":"short question title",
+  "title":"concise, specific question-card title",
   "prompt":"complete question prompt, preserving any [IMAGE_N] markers",
   "modelAnswer":"complete model answer in Markdown, preserving any [IMAGE_N] markers",
   "keyMarkingPoints":["one point per item"],
-  "marks":number or null,
-  "referencesMd":"references in Markdown or empty string",
   "tags":["tags"],
   "imageIds":["IMAGE_1"],
   "difficulty":1 to 5,
@@ -31,11 +28,15 @@ Return JSON only, in this shape:
 
 Rules:
 - Extract every long-answer, essay, short-answer, teaching, or past-paper question in source order.
-- Headings establish running collection, module, discipline, and set context for following questions.
+- Headings establish running collection, module, and discipline context for following questions.
+- Do not return or create sets. Administrators assign imported drafts to sets later.
+- Generate a concise, specific title even when the source has no explicit question title.
 - Never invent a module or discipline. Use the exact document heading.
 - For End of Module content, moduleName is required; disciplineName may identify a discipline related to that module.
 - For End of Year content, disciplineName is required.
 - Keep model answers and marking schemes as Markdown.
+- Return at least one key marking point for every question. Marks are calculated by the system.
+- Ignore source marks and references.
 - Copy every [IMAGE_N] marker into the relevant prompt or answer and include its id in imageIds.
 - Do not publish or grade anything.`
 
@@ -81,34 +82,12 @@ async function findOrCreateDiscipline(client: PoolClient, collectionId: string, 
   return id
 }
 
-async function findOrCreateSet(
-  client: PoolClient,
-  collectionId: string,
-  moduleId: string | null,
-  disciplineId: string | null,
-  name: string,
-) {
-  const found = await client.query(`SELECT id FROM mednexus_theory_sets
-    WHERE collection_id=$1 AND module_id IS NOT DISTINCT FROM $2
-      AND discipline_id IS NOT DISTINCT FROM $3 AND lower(name)=lower($4)
-      AND status<>'archived' LIMIT 1`, [collectionId, moduleId, disciplineId, name])
-  if (found.rows[0]) return found.rows[0].id as string
-  const id = theoryId("theory-set")
-  await client.query(`INSERT INTO mednexus_theory_sets
-    (id,collection_id,module_id,discipline_id,name,description,status,question_limit,sort_order)
-    VALUES ($1,$2,$3,$4,$5,'Imported Theory questions','published',20,
-      COALESCE((SELECT MAX(sort_order)+10 FROM mednexus_theory_sets WHERE collection_id=$2),10))`,
-  [id, collectionId, moduleId, disciplineId, name])
-  return id
-}
-
 async function commitItems(client: PoolClient, items: TheoryImportItem[]) {
   let created = 0
   let skipped = 0
   const collections = new Set<string>()
   const modules = new Set<string>()
   const disciplines = new Set<string>()
-  const sets = new Set<string>()
 
   for (const item of items) {
     const collectionId = await findOrCreateCollection(client, item)
@@ -118,11 +97,9 @@ async function commitItems(client: PoolClient, items: TheoryImportItem[]) {
       await client.query(`INSERT INTO mednexus_theory_module_disciplines (module_id,discipline_id)
         VALUES ($1,$2) ON CONFLICT (module_id,discipline_id) DO NOTHING`, [moduleId, disciplineId])
     }
-    const setId = await findOrCreateSet(client, collectionId, moduleId, disciplineId, item.setName)
     collections.add(collectionId)
     if (moduleId) modules.add(moduleId)
     if (disciplineId) disciplines.add(disciplineId)
-    sets.add(setId)
 
     const duplicate = await client.query(`SELECT id FROM mednexus_theory_questions
       WHERE collection_id=$1 AND lower(trim(prompt))=lower(trim($2)) AND status<>'archived' LIMIT 1`,
@@ -133,11 +110,11 @@ async function commitItems(client: PoolClient, items: TheoryImportItem[]) {
     }
     await client.query(`INSERT INTO mednexus_theory_questions
       (id,collection_id,module_id,discipline_id,set_id,title,prompt,model_answer,key_marking_points,
-       marks,references_md,media,tags,source_metadata,difficulty,estimated_study_minutes,status,sort_order)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12::jsonb,$13::jsonb,$14::jsonb,$15,$16,'draft',
-        COALESCE((SELECT MAX(sort_order)+10 FROM mednexus_theory_questions WHERE set_id=$5),10))`,
-    [theoryId("theory-question"), collectionId, moduleId, disciplineId, setId, item.title, item.prompt,
-      item.modelAnswer, JSON.stringify(item.keyMarkingPoints), item.marks, item.referencesMd,
+       marks,media,tags,source_metadata,difficulty,estimated_study_minutes,status,sort_order)
+      VALUES ($1,$2,$3,$4,NULL,$5,$6,$7,$8::jsonb,$9,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14,'draft',
+        COALESCE((SELECT MAX(sort_order)+10 FROM mednexus_theory_questions WHERE set_id IS NULL),10))`,
+    [theoryId("theory-question"), collectionId, moduleId, disciplineId, item.title, item.prompt,
+      item.modelAnswer, JSON.stringify(item.keyMarkingPoints), item.marks,
       JSON.stringify(item.media), JSON.stringify(item.tags),
       JSON.stringify({ imported: true, sourceOrder: item.sourceOrder }),
       item.difficulty, item.estimatedStudyMinutes])
@@ -149,7 +126,7 @@ async function commitItems(client: PoolClient, items: TheoryImportItem[]) {
     collections: collections.size,
     modules: modules.size,
     disciplines: disciplines.size,
-    sets: sets.size,
+    unassigned: created,
   }
 }
 

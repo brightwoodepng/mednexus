@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
           : ""
     const where = source === "set" ? "q.set_id=$2" : "TRUE"
     const result = await pool.query(`SELECT q.id,q.title,q.prompt,q.model_answer AS "modelAnswer",
-      q.key_marking_points AS "keyMarkingPoints",q.marks,q.references_md AS "referencesMd",
+      q.key_marking_points AS "keyMarkingPoints",q.marks,
       c.title AS collection,COALESCE(m.name,d.name,'Unassigned') AS "groupName",s.name AS "setTitle",
       CASE WHEN $1::text IS NULL THEN NULL ELSE n.body END AS note
       FROM mednexus_theory_questions q ${join}
@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
           doc.moveDown(0.8).font("Helvetica-Bold").text("Key points")
           question.keyMarkingPoints.forEach((point: string) => doc.font("Helvetica").text(`• ${plain(point)}`, { indent: 10, lineGap: 2 }))
         }
-        if (question.referencesMd) doc.moveDown(0.8).font("Helvetica-Bold").text("References").font("Helvetica").text(plain(question.referencesMd))
       }
       if (includeNotes && question.note) {
         doc.moveDown(1).fillColor("#0f766e").font("Helvetica-Bold").text("MY NOTE")

@@ -230,7 +230,6 @@ export interface TheoryQuestion {
   modelAnswer: string
   keyMarkingPoints: string[]
   marks: number | null
-  referencesMd: string
   media: Array<{ type: "image" | "diagram"; url: string; alt?: string }>
   tags: string[]
   sourceMetadata: TheorySourceMetadata
