@@ -56,8 +56,8 @@ describe("Theory Vault phone experience", () => {
     const source = await readFile("components/theory-vault.tsx", "utf8")
     expect(source).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2")
     expect(source).toContain("flex flex-col items-stretch gap-3 px-4 py-4 sm:flex-row")
-    expect(source).toContain("fixed inset-x-3 bottom-[calc(4rem+1px+env(safe-area-inset-bottom,0px))]")
-    expect(source).toContain("space-y-3 pb-16")
+    expect(source).toContain("fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))]")
+    expect(source).toContain("space-y-2.5 pb-24")
     expect(source).toContain('role="dialog" aria-label="PDF export options"')
     expect(source).toContain("fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]")
     expect(source).toContain("onQuestionViewChange")
@@ -65,4 +65,26 @@ describe("Theory Vault phone experience", () => {
     expect(source).toContain("sm:hidden")
     expect(source).toContain("hidden sm:block")
   })
+
+  it("uses a focused phone question header and finishes back at the current set", async () => {
+    const [question, app] = await Promise.all([
+      readFile("components/theory-vault.tsx", "utf8"),
+      readFile("components/mednexus-app.tsx", "utf8"),
+    ])
+    expect(question).toContain("min-h-11 w-fit")
+    expect(question).toContain("sm:hidden")
+    expect(question).toContain("hidden w-full truncate")
+    expect(question).toContain('question.nextId ? onMove(question.nextId) : onBack()')
+    expect(question).toContain('<>Finish <CheckCircle2 size={16}/></>')
+    expect(app).toContain('hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}')
+  })
+
+  it("keeps the Theory search compact on phones and wider on desktop", async () => {
+    const source = await readFile("components/mednexus-app.tsx", "utf8")
+    expect(source).toContain("max-w-[10.5rem]")
+    expect(source).toContain("sm:max-w-xl")
+    expect(source).toContain("lg:max-w-2xl")
+    expect(source).toContain("activeStudyHub === \"theory-vault\" && !theoryQuestionOpen")
+  })
 })
+
