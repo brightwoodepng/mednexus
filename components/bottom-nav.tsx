@@ -2,16 +2,14 @@
 
 import type { Screen } from "@/lib/view"
 import type { StudyHubId } from "@/components/study-hub-switcher"
-import { getHubNavigation, PROFILE_NAVIGATION_ITEM } from "@/components/navigation/study-hub-navigation"
+import { getHubNavigation } from "@/components/navigation/study-hub-navigation"
 
 interface BottomNavProps { screen: Screen; activeHub: StudyHubId; onNavigate: (s: Screen) => void; hidden?: boolean }
 
 /** A compact, responsive projection of the same hub navigation used by the sidebar. */
 export function BottomNav({ screen, activeHub, onNavigate, hidden }: BottomNavProps) {
   if (hidden) return null
-  const tabs = activeHub === "theory-vault"
-    ? getHubNavigation(activeHub).filter((item) => item.bottomNav)
-    : [...getHubNavigation(activeHub).filter((item) => item.bottomNav), PROFILE_NAVIGATION_ITEM]
+  const tabs = getHubNavigation(activeHub).filter((item) => item.bottomNav)
   return <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur-md md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }} aria-label="Primary navigation">
     <div className={`grid items-stretch ${activeHub === "theory-vault" ? "grid-cols-5" : "grid-cols-4"}`}>
       {tabs.map((tab) => {
