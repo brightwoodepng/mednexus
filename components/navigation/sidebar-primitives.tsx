@@ -8,9 +8,9 @@ export function SidebarFrame({ collapsed, mobileOpen, onCloseMobile, children, c
   const panelClass = glass ? "glass-sidebar" : "bg-sidebar border-r border-sidebar-border"
   return <>
     <aside className={`hidden shrink-0 md:block transition-[width] duration-200 ${panelClass} ${collapsed ? "w-14" : "w-64"}`}>{collapsed ? collapsedChildren : children}</aside>
-    {mobileOpen && <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
+    {mobileOpen && <div className="fixed inset-0 z-[60] md:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
       <button type="button" aria-label="Close menu" onClick={onCloseMobile} className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
-      <div className={`absolute left-0 top-0 h-full w-72 max-w-[80%] shadow-2xl animate-in slide-in-from-left duration-200 ${panelClass}`}>{children}</div>
+      <div className={`absolute left-0 top-0 h-full w-72 max-w-[80%] shadow-2xl animate-in slide-in-from-left duration-200 ${panelClass}`} style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>{children}</div>
     </div>}
   </>
 }
