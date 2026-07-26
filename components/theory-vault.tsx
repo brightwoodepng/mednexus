@@ -514,42 +514,42 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
 
       {/* ── Top nav bar ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+        <button onClick={onBack} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-semibold shadow-sm transition-colors hover:bg-muted">
           <ArrowLeft size={15}/> Back to Set
         </button>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-muted-foreground">Question {question.position} of {question.setTotal}</span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+            Question {question.position} of {question.setTotal}
+          </span>
           <div className="flex rounded-xl bg-muted p-1">
-            <button onClick={() => setMode("review")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition-colors ${mode === "review" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Review</button>
-            <button onClick={() => setMode("practice")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition-colors ${mode === "practice" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Practice</button>
+            <button onClick={() => setMode("review")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition-all ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Review</button>
+            <button onClick={() => setMode("practice")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition-all ${mode === "practice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Practice</button>
           </div>
         </div>
       </div>
 
-      {/* ── Breadcrumb + action buttons ── */}
+      {/* ── Breadcrumb pill + action buttons ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{question.collectionTitle} · {question.moduleName ?? question.disciplineName} · {question.setTitle}</p>
+        <span className="rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
+          {question.collectionTitle} · {question.moduleName ?? question.disciplineName} · {question.setTitle}
+        </span>
         <div className="flex gap-2">
           <button
             onClick={toggleBookmark}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-all ${
-              state?.bookmark
-                ? "bg-primary text-primary-foreground"
-                : "bg-card border border-border text-foreground hover:bg-muted"
+              state?.bookmark ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <Bookmark size={13} fill={state?.bookmark ? "currentColor" : "none"}/>
+            <Bookmark size={13} className={state?.bookmark ? "" : "text-yellow-500"} fill={state?.bookmark ? "currentColor" : "currentColor"}/>
             {state?.bookmark ? "Bookmarked" : "Bookmark"}
           </button>
           <button
             onClick={toggleRevision}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-all ${
-              state?.revision
-                ? "bg-amber-500 text-white"
-                : "bg-card border border-border text-foreground hover:bg-muted"
+              state?.revision ? "bg-amber-500 text-white" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <RefreshCw size={13}/>
+            <RefreshCw size={13} className={state?.revision ? "" : "text-amber-500"}/>
             {state?.revision ? "In Revision" : "Mark for Revision"}
           </button>
         </div>
@@ -558,12 +558,12 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
       {!registered && <SignInNotice/>}
       {message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
 
-      {/* ── Question card — clean, no heavy colour header ── */}
-      <article className="rounded-2xl border border-border bg-card shadow-sm">
-        <div className="px-6 py-5">
+      {/* ── Question card — left accent stripe + subtle tint ── */}
+      <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="border-l-4 border-l-primary px-6 py-5">
           <h1 className="text-xl font-bold leading-snug">{question.title || question.prompt}</h1>
           {question.title && (
-            <p className="mt-3 leading-7 text-foreground/70 border-t border-border/50 pt-3">{question.prompt}</p>
+            <p className="mt-3 border-t border-border/50 pt-3 leading-7 text-foreground/70">{question.prompt}</p>
           )}
         </div>
       </article>
@@ -574,21 +574,29 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
 
           {/* Model Answer card */}
           <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
+            <div className="flex items-center gap-2 border-b border-border bg-primary/8 px-5 py-3">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <BookOpen size={14}/>
               </div>
               <h2 className="font-bold">Model Answer</h2>
             </div>
             <div className="p-5">
-              <TheoryMarkdown children={question.modelAnswer}/>
+              {/* Main narrative answer — card-style to distinguish from key points */}
+              <div className="rounded-xl border border-border/60 bg-muted/30 px-5 py-4">
+                <TheoryMarkdown children={question.modelAnswer}/>
+              </div>
               {question.keyMarkingPoints.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-primary">Key Points</h3>
+                <div className="mt-5">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <CheckCircle2 size={12}/>
+                    </div>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-primary">Key Points</h3>
+                  </div>
                   <ul className="space-y-2">
                     {question.keyMarkingPoints.map(point => (
                       <li key={point} className="flex items-start gap-3 rounded-xl bg-primary/5 px-4 py-2.5 text-sm">
-                        <CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={16}/>
+                        <CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={15}/>
                         <span>{point}</span>
                       </li>
                     ))}
@@ -596,7 +604,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
                 </div>
               )}
               {question.referencesMd && (
-                <div className="mt-6 border-t border-border pt-5">
+                <div className="mt-5 rounded-xl border border-border/60 bg-muted/20 px-5 py-4">
                   <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">References</h3>
                   <TheoryMarkdown children={question.referencesMd}/>
                 </div>
