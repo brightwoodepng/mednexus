@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  ArrowLeft, ArrowRight, BookOpen, Bookmark, Check, CheckCircle2, ChevronRight,
+  ArrowLeft, ArrowRight, BookOpen, Bookmark, Check, CheckCircle2, ChevronDown, ChevronRight,
   Clock3, Download, FileText, FolderOpen, ListChecks, LoaderCircle, Mic, NotebookPen,
   RefreshCw, Save, Search, ShieldCheck, Sparkles, Square, Target, Timer, X,
 } from "lucide-react"
@@ -88,11 +88,48 @@ function ProgressBar({ value }: { value: number }) {
   return <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${Math.max(0, Math.min(100, value))}%` }}/></div>
 }
 
+function KeyPointsList({ points }: { points: string[] }) {
+  return <ul className="space-y-2">
+    {points.map(point => (
+      <li key={point} className="flex items-start gap-3 rounded-xl bg-primary/5 px-4 py-2.5 text-sm">
+        <CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={15}/>
+        <span>{point}</span>
+      </li>
+    ))}
+  </ul>
+}
+
+function KeyPointsSection({ points }: { points: string[] }) {
+  if (!points.length) return null
+  return <>
+    <details className="group mt-5 overflow-hidden rounded-xl border border-primary/20 bg-primary/5 sm:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-primary [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground"><CheckCircle2 size={13}/></span>
+          Key Points
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px]">{points.length}</span>
+        </span>
+        <ChevronDown size={17} className="transition-transform group-open:rotate-180"/>
+      </summary>
+      <div className="border-t border-primary/15 p-3"><KeyPointsList points={points}/></div>
+    </details>
+    <div className="mt-5 hidden sm:block">
+      <div className="mb-3 flex items-center gap-2">
+        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <CheckCircle2 size={12}/>
+        </div>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-primary">Key Points</h3>
+      </div>
+      <KeyPointsList points={points}/>
+    </div>
+  </>
+}
+
 function SignInNotice() {
   return <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">Sign in with a student account to save drafts, bookmarks, notes, revision items, and progress.</div>
 }
 
-export function TheoryVault({ initialView = "Dashboard", externalQuery, onExternalQueryChange }: { initialView?: View; externalQuery?: string; onExternalQueryChange?: (q: string) => void }) {
+export function TheoryVault({ initialView = "Dashboard", externalQuery, onExternalQueryChange, onQuestionViewChange }: { initialView?: View; externalQuery?: string; onExternalQueryChange?: (q: string) => void; onQuestionViewChange?: (active: boolean) => void }) {
   const { user } = useApp()
   const registered = user?.role === "user" && user.sessionVerified
   const [view, setView] = useState<View>(initialView)
@@ -108,6 +145,7 @@ export function TheoryVault({ initialView = "Dashboard", externalQuery, onExtern
   const [internalQuery, setInternalQuery] = useState("")
   const globalQuery = externalQuery !== undefined ? externalQuery : internalQuery
   const setGlobalQuery = onExternalQueryChange ?? setInternalQuery
+  const showingQuestion = questionId !== null
 
   const loadDashboard = useCallback(async () => {
     setLoading(true); setError("")
@@ -128,6 +166,13 @@ export function TheoryVault({ initialView = "Dashboard", externalQuery, onExtern
     else if (view === "Browse Questions") void loadCatalog()
     else setLoading(false)
   }, [view, loadDashboard, loadCatalog])
+
+  useEffect(() => {
+    onQuestionViewChange?.(showingQuestion)
+    return () => {
+      if (showingQuestion) onQuestionViewChange?.(false)
+    }
+  }, [onQuestionViewChange, showingQuestion])
 
   const navigate = (next: View) => {
     setQuestionId(null); setSessionQuestionIds(null); setSetData(null); setCollectionId(null); setGroupId(null); setError(""); setView(next)
@@ -576,8 +621,8 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
 
       {/* ── Breadcrumb pill + action buttons ── */}
       <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="w-full truncate rounded-full border border-border/60 bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground sm:w-auto">
-          {[question.collectionTitle, question.moduleName, question.disciplineName, question.setTitle].filter(Boolean).join(" · ")}
+        <span className="w-full truncate rounded-full border border-border/60 bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground sm:w-auto" title={[question.moduleName ?? question.disciplineName, question.setTitle].filter(Boolean).join(" · ")}>
+          {[question.moduleName ?? question.disciplineName, question.setTitle].filter(Boolean).join(" · ")}
         </span>
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <button
@@ -647,24 +692,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
               <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-4 sm:px-5">
                 <TheoryMarkdown children={question.modelAnswer}/>
               </div>
-              {question.keyMarkingPoints.length > 0 && (
-                <div className="mt-5">
-                  <div className="mb-3 flex items-center gap-2">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <CheckCircle2 size={12}/>
-                    </div>
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-primary">Key Points</h3>
-                  </div>
-                  <ul className="space-y-2">
-                    {question.keyMarkingPoints.map(point => (
-                      <li key={point} className="flex items-start gap-3 rounded-xl bg-primary/5 px-4 py-2.5 text-sm">
-                        <CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={15}/>
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <KeyPointsSection points={question.keyMarkingPoints}/>
             </div>
           </article>
 
@@ -716,7 +744,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
               </article>
               <article className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
                 <div className="border-b border-primary/15 bg-primary/5 px-4 py-3 sm:px-5"><h2 className="font-bold text-primary">Model Answer</h2></div>
-                <div className="overflow-hidden p-4 sm:p-5"><TheoryMarkdown children={question.modelAnswer}/></div>
+                <div className="overflow-hidden p-4 sm:p-5"><TheoryMarkdown children={question.modelAnswer}/><KeyPointsSection points={question.keyMarkingPoints}/></div>
               </article>
             </div>
             <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
