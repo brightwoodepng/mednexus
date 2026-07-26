@@ -44,7 +44,7 @@ describe("Theory Vault phone experience", () => {
     const source = await readFile("components/theory-vault.tsx", "utf8")
     expect(source).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2")
     expect(source).toContain("flex flex-col items-stretch gap-3 px-4 py-4 sm:flex-row")
-    expect(source).toContain("fixed inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))]")
+    expect(source).toContain("fixed inset-x-3 bottom-[calc(4rem+1px+env(safe-area-inset-bottom,0px))]")
     expect(source).toContain("space-y-3 pb-16")
     expect(source).toContain('role="dialog" aria-label="PDF export options"')
     expect(source).toContain("fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]")
