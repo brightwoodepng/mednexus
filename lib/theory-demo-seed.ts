@@ -42,17 +42,17 @@ export async function seedTheoryDemo(client: PoolClient) {
   for (const item of theoryDemoQuestions) {
     await client.query(`INSERT INTO mednexus_theory_questions
       (id,collection_id,module_id,discipline_id,set_id,title,prompt,model_answer,key_marking_points,
-       marks,references_md,media,tags,source_metadata,difficulty,estimated_study_minutes,status,sort_order)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,'[]'::jsonb,$12::jsonb,$13::jsonb,$14,$15,'published',$16)
+       marks,media,tags,source_metadata,difficulty,estimated_study_minutes,status,sort_order)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'[]'::jsonb,$11::jsonb,$12::jsonb,$13,$14,'published',$15)
       ON CONFLICT (id) DO UPDATE SET collection_id=EXCLUDED.collection_id,module_id=EXCLUDED.module_id,
         discipline_id=EXCLUDED.discipline_id,set_id=EXCLUDED.set_id,title=EXCLUDED.title,prompt=EXCLUDED.prompt,
         model_answer=EXCLUDED.model_answer,key_marking_points=EXCLUDED.key_marking_points,marks=EXCLUDED.marks,
-        references_md=EXCLUDED.references_md,media=EXCLUDED.media,tags=EXCLUDED.tags,
+        media=EXCLUDED.media,tags=EXCLUDED.tags,
         source_metadata=EXCLUDED.source_metadata,difficulty=EXCLUDED.difficulty,
         estimated_study_minutes=EXCLUDED.estimated_study_minutes,status=EXCLUDED.status,
         sort_order=EXCLUDED.sort_order,updated_at=NOW()`,
     [item.id, item.collectionId, item.moduleId, item.disciplineId, item.setId, item.title, item.prompt,
-      item.modelAnswer, JSON.stringify(item.markingPoints), item.marks, item.referencesMd,
+      item.modelAnswer, JSON.stringify(item.markingPoints), item.markingPoints.length * 2,
       JSON.stringify(item.tags), JSON.stringify({ demo: true, sourceTitle: THEORY_DEMO_SOURCE }),
       item.difficulty, item.estimatedStudyMinutes, item.sortOrder])
   }

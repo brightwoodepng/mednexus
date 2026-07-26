@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft, ArrowRight, BookOpen, Bookmark, Check, CheckCircle2, ChevronRight,
-  Clock3, Download, FileText, FolderOpen, ListChecks, NotebookPen, RefreshCw,
-  Save, Search, Target, Timer, X,
+  Clock3, Download, FileText, FolderOpen, ListChecks, LoaderCircle, Mic, NotebookPen,
+  RefreshCw, Save, Search, ShieldCheck, Sparkles, Square, Target, Timer, X,
 } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { TheoryMarkdown } from "@/components/theory-markdown"
+import { TheoryQuestionMedia } from "@/components/theory-question-media"
 import type { TheoryQuestionDetail, TheorySelfRating, TheoryStudyMode } from "@/lib/types"
 
 type View = "Dashboard" | "Browse Questions" | "Bookmarks" | "My Notes" | "Revision Queue" | "Progress" | "Search"
@@ -41,6 +42,13 @@ type ProgressData = {
   totals: { total: number; completed: number; inProgress: number; needsRevision: number; high: number; medium: number; low: number; attempts: number; drafts: number; bookmarks: number; notes: number; revisions: number }
   groups: Array<{ collectionId: string; collection: string; groupId: string; name: string; total: number; completed: number; totalSets: number; completedSets: number }>
   recent: Array<{ type: string; occurredAt: string; questionId: string; prompt: string; groupName: string; setTitle: string }>
+}
+type TheoryAiStatus = {
+  available: boolean
+  consent: { required: boolean; version: string }
+  actions: { refineNote: boolean; transcribeNote: boolean; transcribeAnswer: boolean }
+  dailyLimit: number
+  remaining: { refinements: number; transcriptions: number }
 }
 
 const card = "rounded-2xl border border-border bg-card p-5 shadow-sm"
@@ -424,8 +432,12 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState<"idle" | "saving" | "saved" | "error">("idle")
   const [message, setMessage] = useState("")
+  const [aiStatus, setAiStatus] = useState<TheoryAiStatus | null>(null)
+  const [aiMessage, setAiMessage] = useState("")
+  const [acceptingAi, setAcceptingAi] = useState(false)
   const reviewRecorded = useRef(false)
   const restored = useRef(false)
+  const answerRef = useRef<HTMLTextAreaElement>(null)
 
   const load = useCallback(async () => {
     setMessage(""); reviewRecorded.current = false; restored.current = false
@@ -445,6 +457,16 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to open question.") }
   }, [questionId, registered, sessionQuestionIds])
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    if (!registered) {
+      setAiStatus(null)
+      return
+    }
+    void api<TheoryAiStatus>("/api/theory/ai")
+      .then(setAiStatus)
+      .catch(cause => setAiMessage(cause instanceof Error ? cause.message : "AI study tools are unavailable."))
+  }, [registered])
 
   useEffect(() => {
     if (!registered || mode !== "review" || !question || reviewRecorded.current) return
@@ -508,6 +530,30 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
     setMessage("Self-rating saved.")
   }
   const words = answer.trim() ? answer.trim().split(/\s+/u).length : 0
+  const acceptAiConsent = async () => {
+    if (!aiStatus) return
+    setAcceptingAi(true)
+    setAiMessage("")
+    try {
+      await api("/api/theory/ai/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accepted: true, version: aiStatus.consent.version }),
+      })
+      setAiStatus(current => current ? { ...current, consent: { ...current.consent, required: false } } : current)
+    } catch (cause) {
+      setAiMessage(cause instanceof Error ? cause.message : "Unable to save AI consent.")
+    } finally {
+      setAcceptingAi(false)
+    }
+  }
+  const updateAiQuota = (kind: "refinements" | "transcriptions", remaining: number) => {
+    setAiStatus(current => current ? { ...current, remaining: { ...current.remaining, [kind]: remaining } } : current)
+  }
+  const insertAnswerTranscript = (text: string, position: number) => {
+    setAnswer(current => insertDictation(current, text, position))
+    window.setTimeout(() => answerRef.current?.focus(), 0)
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -531,7 +577,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
       {/* ── Breadcrumb pill + action buttons ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
-          {question.collectionTitle} · {question.moduleName ?? question.disciplineName} · {question.setTitle}
+          {[question.collectionTitle, question.moduleName, question.disciplineName, question.setTitle].filter(Boolean).join(" · ")}
         </span>
         <div className="flex gap-2">
           <button
@@ -557,6 +603,19 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
 
       {!registered && <SignInNotice/>}
       {message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
+      {registered && aiStatus?.consent.required && (
+        <AiConsentNotice
+          available={aiStatus.available}
+          accepting={acceptingAi}
+          onAccept={acceptAiConsent}
+        />
+      )}
+      {registered && aiStatus && !aiStatus.available && !aiStatus.consent.required && (
+        <div className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+          AI refinement and dictation are temporarily unavailable because Gemini is not configured.
+        </div>
+      )}
+      {aiMessage && <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">{aiMessage}</div>}
 
       {/* ── Question card — theme-coloured full border, title in pill ── */}
       <article className="rounded-2xl border-2 border-primary/30 bg-card shadow-sm">
@@ -567,6 +626,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
           {question.title && (
             <p className="mt-4 leading-7 text-foreground/75">{question.prompt}</p>
           )}
+          {question.media.length > 0 && <div className="mt-5"><TheoryQuestionMedia media={question.media}/></div>}
         </div>
       </article>
 
@@ -605,17 +665,19 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
                   </ul>
                 </div>
               )}
-              {question.referencesMd && (
-                <div className="mt-5 rounded-xl border border-border/60 bg-muted/20 px-5 py-4">
-                  <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">References</h3>
-                  <TheoryMarkdown children={question.referencesMd}/>
-                </div>
-              )}
             </div>
           </article>
 
           {/* Note sidebar */}
-          <NoteEditor note={note} onChange={setNote} onSave={saveNote}/>
+          <NoteEditor
+            note={note}
+            questionId={question.id}
+            registered={registered}
+            aiStatus={aiStatus}
+            onChange={setNote}
+            onSave={saveNote}
+            onQuota={updateAiQuota}
+          />
         </div>
 
       ) : (
@@ -627,11 +689,19 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
               <span className="text-xs text-muted-foreground">{words} words · {saving === "saving" ? "Saving…" : saving === "saved" ? "Draft saved" : saving === "error" ? "Autosave failed" : "Unsaved"}</span>
             </div>
             <div className="p-5">
-              <textarea value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={12}
+              <textarea ref={answerRef} value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={12}
                 placeholder="Build a structured answer…"
                 className="w-full resize-y rounded-xl border border-border bg-background p-4 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70"/>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button onClick={() => personalized({ action: "draft", answer })} disabled={!registered || submitted} className={`${button} border border-border disabled:opacity-50`}><Save size={15}/> Save Draft</button>
+                {registered && <DictationControl
+                  questionId={question.id}
+                  target="answer"
+                  textareaRef={answerRef}
+                  disabled={submitted || !aiStatus?.available || aiStatus.consent.required || aiStatus.remaining.transcriptions <= 0}
+                  onTranscript={insertAnswerTranscript}
+                  onQuota={remaining => updateAiQuota("transcriptions", remaining)}
+                />}
                 <button onClick={submit} disabled={!registered || submitted} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}>Submit Answer</button>
                 <button onClick={reveal} className={`${button} border border-border`}>Reveal Answer</button>
               </div>
@@ -674,22 +744,274 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
   )
 }
 
-function NoteEditor({ note, onChange, onSave }: { note: string; onChange: (value: string) => void; onSave: () => void }) {
+function insertDictation(value: string, transcript: string, position: number) {
+  const safePosition = Math.max(0, Math.min(position, value.length))
+  const before = value.slice(0, safePosition)
+  const after = value.slice(safePosition)
+  const prefix = before && !/[\s\n]$/u.test(before) ? " " : ""
+  const suffix = after && !/^[\s\n.,;:!?)]/u.test(after) ? " " : ""
+  return `${before}${prefix}${transcript}${suffix}${after}`
+}
+
+function AiConsentNotice({ available, accepting, onAccept }: { available: boolean; accepting: boolean; onAccept: () => void }) {
+  return (
+    <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={18}/></div>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-bold">Before using AI study tools</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Note text and recorded audio are sent to Google Gemini for refinement or transcription. Do not include names,
+            dates of birth, hospital numbers, or any identifiable patient information. Google may use free-tier content to
+            improve its products; paid-tier data treatment may differ. Audio is held in memory only and discarded after transcription.
+          </p>
+          <button onClick={onAccept} disabled={!available || accepting} className={`${button} mt-3 bg-primary text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50`}>
+            {accepting ? <LoaderCircle className="animate-spin" size={16}/> : <ShieldCheck size={16}/>}
+            {accepting ? "Saving consent…" : available ? "I understand and agree" : "Gemini is not configured"}
+          </button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+type DictationControlProps = {
+  questionId: string
+  target: "note" | "answer"
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  disabled: boolean
+  onTranscript: (text: string, cursorPosition: number) => void
+  onQuota: (remaining: number) => void
+}
+
+function DictationControl({ questionId, target, textareaRef, disabled, onTranscript, onQuota }: DictationControlProps) {
+  const [recording, setRecording] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const [seconds, setSeconds] = useState(0)
+  const [error, setError] = useState("")
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const intervalRef = useRef<number | null>(null)
+  const startedAtRef = useRef(0)
+  const cursorRef = useRef(0)
+  const cancelledRef = useRef(false)
+
+  const cleanup = useCallback(() => {
+    if (intervalRef.current != null) window.clearInterval(intervalRef.current)
+    intervalRef.current = null
+    streamRef.current?.getTracks().forEach(track => track.stop())
+    streamRef.current = null
+  }, [])
+
+  useEffect(() => () => {
+    cancelledRef.current = true
+    const recorder = recorderRef.current
+    if (recorder?.state === "recording") recorder.stop()
+    cleanup()
+  }, [cleanup])
+
+  const startRecording = async () => {
+    setError("")
+    if (disabled) return
+    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setError("Audio recording is not supported in this browser.")
+      return
+    }
+    const candidates = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4", "audio/wav", "audio/mpeg"]
+    const mimeType = candidates.find(type => MediaRecorder.isTypeSupported(type))
+    if (!mimeType) {
+      setError("This browser cannot create a supported audio recording.")
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, { mimeType })
+      streamRef.current = stream
+      recorderRef.current = recorder
+      chunksRef.current = []
+      cancelledRef.current = false
+      cursorRef.current = textareaRef.current?.selectionStart ?? textareaRef.current?.value.length ?? 0
+      startedAtRef.current = Date.now()
+      setSeconds(0)
+
+      recorder.ondataavailable = event => {
+        if (event.data.size) chunksRef.current.push(event.data)
+        const totalBytes = chunksRef.current.reduce((total, chunk) => total + chunk.size, 0)
+        if (totalBytes > 8 * 1024 * 1024 && recorder.state === "recording") {
+          setError("Recording stopped because it reached the 8 MB limit.")
+          recorder.stop()
+        }
+      }
+      recorder.onerror = () => setError("The browser could not finish this recording.")
+      recorder.onstop = async () => {
+        const durationSeconds = Math.max(1, Math.ceil((Date.now() - startedAtRef.current) / 1000))
+        cleanup()
+        setRecording(false)
+        if (cancelledRef.current) {
+          chunksRef.current = []
+          return
+        }
+        const audio = new Blob(chunksRef.current, { type: recorder.mimeType })
+        chunksRef.current = []
+        if (!audio.size) {
+          setError("No audio was captured. Check microphone access and try again.")
+          return
+        }
+        setTranscribing(true)
+        try {
+          const extension = recorder.mimeType.includes("ogg") ? "ogg" : recorder.mimeType.includes("mp4") ? "mp4" : recorder.mimeType.includes("wav") ? "wav" : recorder.mimeType.includes("mpeg") ? "mp3" : "webm"
+          const form = new FormData()
+          form.append("audio", audio, `theory-dictation.${extension}`)
+          form.append("questionId", questionId)
+          form.append("target", target)
+          form.append("durationSeconds", String(Math.min(300, durationSeconds)))
+          const result = await api<{ text: string; durationSeconds: number; remaining: number }>("/api/theory/ai/transcribe", { method: "POST", body: form })
+          onTranscript(result.text, cursorRef.current)
+          onQuota(result.remaining)
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : "Unable to transcribe this recording.")
+        } finally {
+          setTranscribing(false)
+        }
+      }
+
+      recorder.start(1000)
+      setRecording(true)
+      intervalRef.current = window.setInterval(() => {
+        const elapsed = Math.min(300, Math.floor((Date.now() - startedAtRef.current) / 1000))
+        setSeconds(elapsed)
+        if (elapsed >= 300 && recorder.state === "recording") recorder.stop()
+      }, 250)
+    } catch (cause) {
+      cleanup()
+      const denied = cause instanceof DOMException && (cause.name === "NotAllowedError" || cause.name === "SecurityError")
+      setError(denied ? "Microphone permission was denied. Allow access in your browser and try again." : "Unable to start the microphone.")
+    }
+  }
+
+  const stopRecording = () => {
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop()
+  }
+  const cancelRecording = () => {
+    cancelledRef.current = true
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop()
+  }
+  const timer = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {!recording && (
+        <button type="button" onClick={startRecording} disabled={disabled || transcribing}
+          title={disabled ? "Accept the AI privacy notice and check your daily quota first." : `Dictate ${target}`}
+          className={`${button} border border-border disabled:cursor-not-allowed disabled:opacity-50`}>
+          {transcribing ? <LoaderCircle className="animate-spin" size={15}/> : <Mic size={15}/>}
+          {transcribing ? "Transcribing…" : "Dictate"}
+        </button>
+      )}
+      {recording && <>
+        <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 text-sm font-bold text-destructive">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-destructive"/> {timer} / 5:00
+        </span>
+        <button type="button" onClick={stopRecording} className={`${button} bg-primary text-primary-foreground`}><Square size={14} fill="currentColor"/> Stop</button>
+        <button type="button" onClick={cancelRecording} className={`${button} border border-border`}><X size={15}/> Cancel</button>
+      </>}
+      {error && <p className="w-full text-xs leading-5 text-destructive">{error}</p>}
+    </div>
+  )
+}
+
+function NoteEditor({
+  note, questionId, registered, aiStatus, onChange, onSave, onQuota,
+}: {
+  note: string
+  questionId: string
+  registered: boolean
+  aiStatus: TheoryAiStatus | null
+  onChange: (value: string) => void
+  onSave: () => void
+  onQuota: (kind: "refinements" | "transcriptions", remaining: number) => void
+}) {
+  const [refining, setRefining] = useState(false)
+  const [preview, setPreview] = useState<{ original: string; refined: string } | null>(null)
+  const [error, setError] = useState("")
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const aiEnabled = registered && Boolean(aiStatus?.available) && !aiStatus?.consent.required
+
+  const refine = async () => {
+    if (!note.trim()) {
+      setError("Write a note before asking Gemini to refine it.")
+      return
+    }
+    setRefining(true)
+    setError("")
+    setPreview(null)
+    try {
+      const result = await api<{ refinedNote: string; remaining: number }>("/api/theory/ai/refine-note", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId, note }),
+      })
+      setPreview({ original: note, refined: result.refinedNote })
+      onQuota("refinements", result.remaining)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Gemini could not refine this note.")
+    } finally {
+      setRefining(false)
+    }
+  }
+  const insertNoteTranscript = (text: string, position: number) => {
+    onChange(insertDictation(note, text, position))
+    window.setTimeout(() => textareaRef.current?.focus(), 0)
+  }
+
   return (
     <aside className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <NotebookPen size={13}/>
-        </div>
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground"><NotebookPen size={13}/></div>
         <h2 className="font-bold">My Note</h2>
       </div>
       <div className="p-4">
-        <textarea value={note} onChange={event => onChange(event.target.value)} rows={9}
+        <textarea ref={textareaRef} value={note} onChange={event => onChange(event.target.value)} rows={9}
           placeholder="Jot down key takeaways, mnemonics, or reminders…"
           className="w-full rounded-xl border border-border bg-background p-3 text-sm leading-6 outline-none focus:ring-2 focus:ring-primary/25"/>
-        <button onClick={onSave} className={`${button} mt-3 w-full bg-primary text-primary-foreground`}>
-          <Save size={15}/> Save Note
-        </button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button onClick={refine}
+            disabled={!aiEnabled || refining || !note.trim() || (aiStatus?.remaining.refinements ?? 0) <= 0}
+            className={`${button} flex-1 border border-primary/30 text-primary disabled:cursor-not-allowed disabled:opacity-50`}>
+            {refining ? <LoaderCircle className="animate-spin" size={15}/> : <Sparkles size={15}/>}
+            {refining ? "Refining…" : "Refine with AI"}
+          </button>
+          {registered && <DictationControl questionId={questionId} target="note" textareaRef={textareaRef}
+            disabled={!aiEnabled || (aiStatus?.remaining.transcriptions ?? 0) <= 0}
+            onTranscript={insertNoteTranscript}
+            onQuota={remaining => onQuota("transcriptions", remaining)}/>}
+        </div>
+        {aiEnabled && aiStatus && <p className="mt-2 text-xs text-muted-foreground">
+          {aiStatus.remaining.refinements} refinements · {aiStatus.remaining.transcriptions} transcriptions left today
+        </p>}
+        {error && <p className="mt-2 text-xs leading-5 text-destructive">{error}</p>}
+        {preview && (
+          <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary">Review the polished note</p>
+            <div className="mt-3 grid gap-3">
+              <div>
+                <p className="mb-1 text-xs font-semibold text-muted-foreground">Original</p>
+                <div className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-xs leading-5">{preview.original}</div>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-semibold text-muted-foreground">Polished</p>
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-primary/20 bg-background p-3 text-xs leading-5"><TheoryMarkdown children={preview.refined}/></div>
+              </div>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button onClick={() => { onChange(preview.refined); setPreview(null) }} className={`${button} min-h-9 flex-1 bg-primary text-primary-foreground`}>Accept</button>
+              <button onClick={() => setPreview(null)} className={`${button} min-h-9 flex-1 border border-border`}>Discard</button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Accepting changes the editor only. Use Save Note when you are ready.</p>
+          </div>
+        )}
+        <button onClick={onSave} className={`${button} mt-3 w-full bg-primary text-primary-foreground`}><Save size={15}/> Save Note</button>
       </div>
     </aside>
   )

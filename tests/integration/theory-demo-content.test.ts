@@ -38,9 +38,8 @@ describe("Theory Vault demonstration content", () => {
       expect(item.prompt.trim().length).toBeGreaterThan(20)
       expect(item.modelAnswer.trim().length).toBeGreaterThan(100)
       expect(item.markingPoints.length).toBeGreaterThanOrEqual(5)
-      expect(item.marks).toBeGreaterThan(0)
+      expect(item.marks).toBe(item.markingPoints.length * 2)
       expect(item.tags).toContain("demo")
-      expect(item.referencesMd).toContain("Demo reference")
       expect(theoryDemoSets.some(set => set.id === item.setId)).toBe(true)
     }
   })

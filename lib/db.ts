@@ -568,6 +568,14 @@ export async function ensureSchema() {
       UNIQUE (collection_id, name)
     );
 
+    CREATE TABLE IF NOT EXISTS mednexus_theory_module_disciplines (
+      module_id TEXT NOT NULL REFERENCES mednexus_theory_modules(id) ON DELETE CASCADE,
+      discipline_id TEXT NOT NULL REFERENCES mednexus_theory_disciplines(id) ON DELETE CASCADE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (module_id, discipline_id)
+    );
+
     ALTER TABLE mednexus_theory_sets ALTER COLUMN discipline_id DROP NOT NULL;
     ALTER TABLE mednexus_theory_sets
       ADD COLUMN IF NOT EXISTS module_id TEXT REFERENCES mednexus_theory_modules(id) ON DELETE CASCADE,
@@ -586,6 +594,31 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS marks INTEGER CHECK (marks IS NULL OR marks >= 0),
       ADD COLUMN IF NOT EXISTS references_md TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS media JSONB NOT NULL DEFAULT '[]';
+
+    UPDATE mednexus_theory_questions
+    SET title = LEFT(TRIM(REGEXP_REPLACE(
+      REGEXP_REPLACE(prompt, '^[[:space:]]*(#{1,6}[[:space:]]*)?(question([[:space:]]+[0-9]+)?[:.)-]?[[:space:]]*)', '', 'i'),
+      '[[:space:]]+', ' ', 'g'
+    )), 96)
+    WHERE TRIM(title) = '';
+
+    UPDATE mednexus_theory_questions
+    SET marks = CASE
+      WHEN jsonb_typeof(key_marking_points) = 'array' THEN jsonb_array_length(key_marking_points) * 2
+      ELSE 0
+    END;
+
+    UPDATE mednexus_theory_questions
+    SET status = 'review', updated_at = NOW()
+    WHERE status = 'published'
+      AND (
+        set_id IS NULL
+        OR TRIM(model_answer) = ''
+        OR CASE
+          WHEN jsonb_typeof(key_marking_points) = 'array' THEN jsonb_array_length(key_marking_points) = 0
+          ELSE TRUE
+        END
+      );
 
     DO $$ BEGIN
       ALTER TABLE mednexus_theory_questions
@@ -685,6 +718,36 @@ export async function ensureSchema() {
       details JSONB NOT NULL DEFAULT '{}',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_ai_consents (
+      user_id TEXT PRIMARY KEY,
+      consent_version TEXT NOT NULL,
+      consented_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_ai_rate_limits (
+      user_id TEXT NOT NULL,
+      usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      refinement_count INTEGER NOT NULL DEFAULT 0 CHECK (refinement_count BETWEEN 0 AND 50),
+      transcription_count INTEGER NOT NULL DEFAULT 0 CHECK (transcription_count BETWEEN 0 AND 50),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, usage_date)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_theory_ai_rate_limits_user_idx
+      ON mednexus_theory_ai_rate_limits (user_id, usage_date DESC);
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_ai_audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      action TEXT NOT NULL CHECK (action IN ('refine_note', 'transcribe_note', 'transcribe_answer')),
+      outcome TEXT NOT NULL,
+      duration_ms INTEGER NOT NULL DEFAULT 0 CHECK (duration_ms >= 0),
+      quota_used INTEGER NOT NULL DEFAULT 0 CHECK (quota_used >= 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_theory_ai_audit_log_user_idx
+      ON mednexus_theory_ai_audit_log (user_id, created_at DESC);
 
     CREATE INDEX IF NOT EXISTS mednexus_theory_questions_search_idx
       ON mednexus_theory_questions USING GIN (
