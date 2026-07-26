@@ -9,6 +9,7 @@ import {
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { TheoryMarkdown } from "@/components/theory-markdown"
+import { TheoryQuestionMedia } from "@/components/theory-question-media"
 import type { TheoryQuestionDetail, TheorySelfRating, TheoryStudyMode } from "@/lib/types"
 
 type View = "Dashboard" | "Browse Questions" | "Bookmarks" | "My Notes" | "Revision Queue" | "Progress" | "Search"
@@ -531,7 +532,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
       {/* ── Breadcrumb pill + action buttons ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full border border-border/60 bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
-          {question.collectionTitle} · {question.moduleName ?? question.disciplineName} · {question.setTitle}
+          {[question.collectionTitle, question.moduleName, question.disciplineName, question.setTitle].filter(Boolean).join(" · ")}
         </span>
         <div className="flex gap-2">
           <button
@@ -567,6 +568,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
           {question.title && (
             <p className="mt-4 leading-7 text-foreground/75">{question.prompt}</p>
           )}
+          {question.media.length > 0 && <div className="mt-5"><TheoryQuestionMedia media={question.media}/></div>}
         </div>
       </article>
 
