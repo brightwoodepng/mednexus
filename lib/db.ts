@@ -568,6 +568,14 @@ export async function ensureSchema() {
       UNIQUE (collection_id, name)
     );
 
+    CREATE TABLE IF NOT EXISTS mednexus_theory_module_disciplines (
+      module_id TEXT NOT NULL REFERENCES mednexus_theory_modules(id) ON DELETE CASCADE,
+      discipline_id TEXT NOT NULL REFERENCES mednexus_theory_disciplines(id) ON DELETE CASCADE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (module_id, discipline_id)
+    );
+
     ALTER TABLE mednexus_theory_sets ALTER COLUMN discipline_id DROP NOT NULL;
     ALTER TABLE mednexus_theory_sets
       ADD COLUMN IF NOT EXISTS module_id TEXT REFERENCES mednexus_theory_modules(id) ON DELETE CASCADE,

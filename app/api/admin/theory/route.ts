@@ -15,6 +15,7 @@ import {
 } from "@/lib/theory-server"
 import type { PoolClient } from "pg"
 import { seedTheoryDemo } from "@/lib/theory-demo-seed"
+import { sanitizeTheoryMedia } from "@/lib/theory-media"
 
 const badRequest = (message: string) => NextResponse.json({ error: message }, { status: 400 })
 
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
         [id, collectionId, moduleId, disciplineId, setId, optionalText(body.title, 200), prompt, modelAnswer,
           stringArray(body.keyMarkingPoints), body.marks == null ? null : Math.max(0, Number(body.marks) || 0),
-          optionalText(body.referencesMd), Array.isArray(body.media) ? body.media : [], stringArray(body.tags),
+          optionalText(body.referencesMd), sanitizeTheoryMedia(body.media), stringArray(body.tags),
           typeof body.sourceMetadata === "object" && body.sourceMetadata ? body.sourceMetadata : {},
           intInRange(body.difficulty, 1, 5, 3), intInRange(body.estimatedStudyMinutes, 1, 180, 5),
           status, Number(body.sortOrder) || 0])
@@ -261,7 +262,8 @@ export async function PATCH(request: NextRequest) {
           body.marks == null ? null : Math.max(0, Number(body.marks) || 0),
           typeof body.referencesMd === "string" ? body.referencesMd : null,
           Array.isArray(body.tags) ? stringArray(body.tags) : null, nextStatus,
-          collectionId, moduleId, disciplineId, setId, Array.isArray(body.media) ? body.media : null])
+          collectionId, moduleId, disciplineId, setId,
+          Object.hasOwn(body, "media") ? sanitizeTheoryMedia(body.media) : null])
       } else throw new Error("Unknown Theory resource.")
       await auditTheory(client, auth.uid, "update", resource, id, {})
     })

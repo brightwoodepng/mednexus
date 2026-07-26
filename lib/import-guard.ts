@@ -26,13 +26,17 @@ const quotas: Record<string, { limit: number; windowSeconds: number }> = {
   "parse-pdf": { limit: 8, windowSeconds: 60 },
   "parse-docx": { limit: 12, windowSeconds: 60 },
   "parse-pdf-file": { limit: 8, windowSeconds: 60 },
+  "theory-parse": { limit: 12, windowSeconds: 60 },
 }
 
 function tooLarge(message: string) { return NextResponse.json({ error: message, code: "PAYLOAD_TOO_LARGE" }, { status: 413 }) }
 
 /** Authenticates and atomically consumes a durable, per-user endpoint quota. */
 export async function guardImportRequest(req: NextRequest, endpoint: keyof typeof quotas): Promise<GuardResult> {
-  const admin = await requireAdminRequest(req, "manage_mcq_content")
+  let admin = await requireAdminRequest(req, "manage_mcq_content")
+  if (!admin && (endpoint === "parse-docx" || endpoint === "parse-pdf-file" || endpoint === "theory-parse")) {
+    admin = await requireAdminRequest(req, "manage_theory_content")
+  }
   if (!admin) return { response: await adminAccessDenied(req) }
   const auth = authenticateRequest(req.headers) ?? { uid: admin.uid, role: admin.role, permissions: new Set(), isGuest: false }
   const length = Number(req.headers.get("content-length") ?? 0)
