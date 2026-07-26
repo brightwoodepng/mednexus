@@ -87,4 +87,3 @@ describe("Theory Vault phone experience", () => {
     expect(source).toContain("activeStudyHub === \"theory-vault\" && !theoryQuestionOpen")
   })
 })
-
