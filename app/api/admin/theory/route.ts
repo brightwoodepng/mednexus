@@ -13,38 +13,11 @@ import {
   theoryStatus,
   withTransaction,
 } from "@/lib/theory-server"
-import type { PoolClient } from "pg"
 import { seedTheoryDemo } from "@/lib/theory-demo-seed"
+import { sanitizeTheoryMedia } from "@/lib/theory-media"
+import { calculateTheoryMarks, deriveTheoryTitle } from "@/lib/theory-content"
 
 const badRequest = (message: string) => NextResponse.json({ error: message }, { status: 400 })
-
-async function nextSet(
-  client: PoolClient,
-  collectionId: string,
-  moduleId: string | null,
-  disciplineId: string | null,
-) {
-  const settings = await client.query("SELECT default_set_size FROM mednexus_theory_settings WHERE id=1")
-  const limit = settings.rows[0]?.default_set_size ?? 20
-  const existing = await client.query(`SELECT s.id,s.name,s.sort_order,COUNT(q.id)::int AS count
-    FROM mednexus_theory_sets s
-    LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id AND q.status<>'archived'
-    WHERE s.collection_id=$1 AND s.module_id IS NOT DISTINCT FROM $2 AND s.discipline_id IS NOT DISTINCT FROM $3
-      AND s.status<>'archived'
-    GROUP BY s.id HAVING COUNT(q.id)<$4 ORDER BY s.sort_order,s.created_at LIMIT 1`,
-  [collectionId, moduleId, disciplineId, limit])
-  if (existing.rows[0]) return existing.rows[0].id as string
-  const count = await client.query(`SELECT COUNT(*)::int AS count FROM mednexus_theory_sets
-    WHERE collection_id=$1 AND module_id IS NOT DISTINCT FROM $2 AND discipline_id IS NOT DISTINCT FROM $3`,
-  [collectionId, moduleId, disciplineId])
-  const number = Number(count.rows[0]?.count ?? 0) + 1
-  const id = theoryId("theory-set")
-  await client.query(`INSERT INTO mednexus_theory_sets
-    (id,collection_id,module_id,discipline_id,name,sort_order,question_limit,status)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,'published')`,
-  [id, collectionId, moduleId, disciplineId, `Set ${number}`, number * 10, limit])
-  return id
-}
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, "manage_theory_content")
@@ -55,6 +28,7 @@ export async function GET(request: NextRequest) {
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? ""
     const collectionId = request.nextUrl.searchParams.get("collectionId")
     const status = request.nextUrl.searchParams.get("status")
+    const unassigned = request.nextUrl.searchParams.get("unassigned") === "true"
     const [collections, modules, disciplines, sets, questions, settings, audit] = await Promise.all([
       pool.query(`SELECT id,slug,title,kind,status,sort_order AS "sortOrder"
         FROM mednexus_theory_collections ORDER BY sort_order,title`),
@@ -65,7 +39,7 @@ export async function GET(request: NextRequest) {
       pool.query(`SELECT s.id,s.collection_id AS "collectionId",s.module_id AS "moduleId",
         s.discipline_id AS "disciplineId",s.name,s.description,s.status,s.question_limit AS "questionLimit",
         s.sort_order AS "sortOrder",COUNT(q.id)::int AS "questionCount"
-        FROM mednexus_theory_sets s LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id
+        FROM mednexus_theory_sets s LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id AND q.status<>'archived'
         GROUP BY s.id ORDER BY s.sort_order,s.name`),
       pool.query(`SELECT ${theoryQuestionProjection},
         c.title AS "collectionTitle",m.name AS "moduleName",d.name AS "disciplineName",s.name AS "setTitle",
@@ -78,7 +52,8 @@ export async function GET(request: NextRequest) {
         WHERE ($1='' OR q.prompt ILIKE '%'||$1||'%' OR q.title ILIKE '%'||$1||'%')
           AND ($2::text IS NULL OR q.collection_id=$2)
           AND ($3::text IS NULL OR q.status=$3)
-        ORDER BY q.updated_at DESC LIMIT $4 OFFSET $5`, [query, collectionId, status, pageSize, offset]),
+          AND ($4::boolean=FALSE OR q.set_id IS NULL)
+        ORDER BY q.updated_at DESC LIMIT $5 OFFSET $6`, [query, collectionId, status, unassigned, pageSize, offset]),
       pool.query(`SELECT default_set_size AS "defaultSetSize",updated_at AS "updatedAt"
         FROM mednexus_theory_settings WHERE id=1`),
       pool.query(`SELECT id,action,resource_type AS "resourceType",resource_id AS "resourceId",
@@ -166,19 +141,22 @@ export async function POST(request: NextRequest) {
         const collectionId = requiredText(body.collectionId, "Collection", 100)
         const moduleId = typeof body.moduleId === "string" && body.moduleId ? body.moduleId : null
         const disciplineId = typeof body.disciplineId === "string" && body.disciplineId ? body.disciplineId : null
-        let setId = typeof body.setId === "string" && body.setId ? body.setId : null
-        if (!setId && body.autoAssign !== false) setId = await nextSet(client, collectionId, moduleId, disciplineId)
+        const setId = typeof body.setId === "string" && body.setId ? body.setId : null
         const prompt = requiredText(body.prompt, "Question prompt")
         const modelAnswer = optionalText(body.modelAnswer)
+        const keyMarkingPoints = stringArray(body.keyMarkingPoints)
+        const title = deriveTheoryTitle(prompt, optionalText(body.title, 200))
+        const marks = calculateTheoryMarks(keyMarkingPoints)
         const status = theoryStatus(body.status)
-        if (status === "published" && !modelAnswer.trim()) throw new Error("A model answer is required before publishing.")
+        if (status === "published" && (!setId || !modelAnswer.trim() || !keyMarkingPoints.length)) {
+          throw new Error("A set, model answer, and key marking points are required before publishing.")
+        }
         await client.query(`INSERT INTO mednexus_theory_questions
           (id,collection_id,module_id,discipline_id,set_id,title,prompt,model_answer,key_marking_points,
-           marks,references_md,media,tags,source_metadata,difficulty,estimated_study_minutes,status,sort_order)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
-        [id, collectionId, moduleId, disciplineId, setId, optionalText(body.title, 200), prompt, modelAnswer,
-          stringArray(body.keyMarkingPoints), body.marks == null ? null : Math.max(0, Number(body.marks) || 0),
-          optionalText(body.referencesMd), Array.isArray(body.media) ? body.media : [], stringArray(body.tags),
+           marks,media,tags,source_metadata,difficulty,estimated_study_minutes,status,sort_order)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+        [id, collectionId, moduleId, disciplineId, setId, title, prompt, modelAnswer,
+          keyMarkingPoints, marks, sanitizeTheoryMedia(body.media), stringArray(body.tags),
           typeof body.sourceMetadata === "object" && body.sourceMetadata ? body.sourceMetadata : {},
           intInRange(body.difficulty, 1, 5, 3), intInRange(body.estimatedStudyMinutes, 1, 180, 5),
           status, Number(body.sortOrder) || 0])
@@ -220,11 +198,23 @@ export async function PATCH(request: NextRequest) {
       }
       if (action === "move") {
         const questionIds = stringArray(body.questionIds, 500)
+        if (!questionIds.length) throw new Error("Select at least one question.")
         const setId = requiredText(body.setId, "Destination set", 100)
-        const set = await client.query(`SELECT collection_id,module_id,discipline_id FROM mednexus_theory_sets WHERE id=$1`, [setId])
+        const set = await client.query(`SELECT collection_id,module_id,discipline_id,question_limit
+          FROM mednexus_theory_sets WHERE id=$1 AND status<>'archived'`, [setId])
         if (!set.rows[0]) throw new Error("Destination set not found.")
+        const capacity = await client.query(`SELECT
+          COUNT(*) FILTER (WHERE set_id=$1 AND status<>'archived' AND NOT (id=ANY($2::text[])))::int AS existing,
+          COUNT(*) FILTER (WHERE id=ANY($2::text[]) AND status<>'archived')::int AS moving
+          FROM mednexus_theory_questions`, [setId, questionIds])
+        const existing = Number(capacity.rows[0]?.existing ?? 0)
+        const moving = Number(capacity.rows[0]?.moving ?? 0)
+        if (existing + moving > Number(set.rows[0].question_limit)) {
+          throw new Error(`This set has ${Math.max(0, Number(set.rows[0].question_limit) - existing)} available places.`)
+        }
         await client.query(`UPDATE mednexus_theory_questions SET set_id=$1,collection_id=$2,module_id=$3,
-          discipline_id=$4,status=CASE WHEN status='published' THEN 'review' ELSE status END,updated_at=NOW()
+          discipline_id=COALESCE($4,discipline_id),
+          status=CASE WHEN status='published' THEN 'review' ELSE status END,updated_at=NOW()
           WHERE id=ANY($5::text[])`, [setId, set.rows[0].collection_id, set.rows[0].module_id, set.rows[0].discipline_id, questionIds])
         await auditTheory(client, auth.uid, "move", "question", null, { questionIds, setId })
         return
@@ -238,30 +228,37 @@ export async function PATCH(request: NextRequest) {
           typeof body.description === "string" ? body.description : null,
           typeof body.status === "string" ? theoryStatus(body.status) : null])
       } else if (resource === "question") {
-        const current = await client.query(`SELECT model_answer,collection_id,module_id,discipline_id,set_id
+        const current = await client.query(`SELECT title,prompt,model_answer,key_marking_points,status,
+          collection_id,module_id,discipline_id,set_id
           FROM mednexus_theory_questions WHERE id=$1`, [id])
         if (!current.rows[0]) throw new Error("Question not found.")
         const nextStatus = typeof body.status === "string" ? theoryStatus(body.status) : null
         const modelAnswer = typeof body.modelAnswer === "string" ? body.modelAnswer : current.rows[0].model_answer
-        if (nextStatus === "published" && !modelAnswer.trim()) throw new Error("A model answer is required before publishing.")
         const collectionId = typeof body.collectionId === "string" ? body.collectionId : current.rows[0].collection_id
         const moduleId = Object.hasOwn(body, "moduleId") ? (typeof body.moduleId === "string" && body.moduleId ? body.moduleId : null) : current.rows[0].module_id
         const disciplineId = Object.hasOwn(body, "disciplineId") ? (typeof body.disciplineId === "string" && body.disciplineId ? body.disciplineId : null) : current.rows[0].discipline_id
-        let setId = Object.hasOwn(body, "setId") ? (typeof body.setId === "string" && body.setId ? body.setId : null) : current.rows[0].set_id
-        if (!setId && body.autoAssign === true) setId = await nextSet(client, collectionId, moduleId, disciplineId)
+        const setId = Object.hasOwn(body, "setId") ? (typeof body.setId === "string" && body.setId ? body.setId : null) : current.rows[0].set_id
+        const prompt = typeof body.prompt === "string" ? requiredText(body.prompt, "Question prompt") : current.rows[0].prompt
+        const keyMarkingPoints = Array.isArray(body.keyMarkingPoints)
+          ? stringArray(body.keyMarkingPoints)
+          : current.rows[0].key_marking_points as string[]
+        const title = deriveTheoryTitle(prompt, typeof body.title === "string" ? body.title : current.rows[0].title)
+        const marks = calculateTheoryMarks(keyMarkingPoints)
+        const effectiveStatus = nextStatus ?? current.rows[0].status
+        if (effectiveStatus === "published" && (!setId || !modelAnswer.trim() || !keyMarkingPoints.length)) {
+          throw new Error("A set, model answer, and key marking points are required before publishing.")
+        }
         await client.query(`UPDATE mednexus_theory_questions SET
-          title=COALESCE($2,title),prompt=COALESCE($3,prompt),model_answer=COALESCE($4,model_answer),
-          key_marking_points=COALESCE($5,key_marking_points),marks=COALESCE($6,marks),
-          references_md=COALESCE($7,references_md),tags=COALESCE($8,tags),
-          status=COALESCE($9,status),collection_id=$10,module_id=$11,discipline_id=$12,set_id=$13,
-          media=COALESCE($14,media),updated_at=NOW() WHERE id=$1`,
-        [id, typeof body.title === "string" ? body.title : null, typeof body.prompt === "string" ? body.prompt.trim() : null,
+          title=$2,prompt=$3,model_answer=COALESCE($4,model_answer),
+          key_marking_points=$5,marks=$6,tags=COALESCE($7,tags),
+          status=COALESCE($8,status),collection_id=$9,module_id=$10,discipline_id=$11,set_id=$12,
+          media=COALESCE($13,media),updated_at=NOW() WHERE id=$1`,
+        [id, title, prompt,
           typeof body.modelAnswer === "string" ? body.modelAnswer : null,
-          Array.isArray(body.keyMarkingPoints) ? stringArray(body.keyMarkingPoints) : null,
-          body.marks == null ? null : Math.max(0, Number(body.marks) || 0),
-          typeof body.referencesMd === "string" ? body.referencesMd : null,
+          keyMarkingPoints, marks,
           Array.isArray(body.tags) ? stringArray(body.tags) : null, nextStatus,
-          collectionId, moduleId, disciplineId, setId, Array.isArray(body.media) ? body.media : null])
+          collectionId, moduleId, disciplineId, setId,
+          Object.hasOwn(body, "media") ? sanitizeTheoryMedia(body.media) : null])
       } else throw new Error("Unknown Theory resource.")
       await auditTheory(client, auth.uid, "update", resource, id, {})
     })
