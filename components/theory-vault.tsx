@@ -561,12 +561,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
       {/* ── Question card — clean, no heavy colour header ── */}
       <article className="rounded-2xl border border-border bg-card shadow-sm">
         <div className="px-6 py-5">
-          {question.marks != null && (
-            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest text-primary">
-              {question.marks} marks
-            </span>
-          )}
-          <h1 className="mt-2 text-xl font-bold leading-snug">{question.title || question.prompt}</h1>
+          <h1 className="text-xl font-bold leading-snug">{question.title || question.prompt}</h1>
           {question.title && (
             <p className="mt-3 leading-7 text-foreground/70 border-t border-border/50 pt-3">{question.prompt}</p>
           )}
