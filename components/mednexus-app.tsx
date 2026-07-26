@@ -53,7 +53,7 @@ interface ActiveQuiz {
   gamificationEnabled: boolean
 }
 
-// ── Credits Modal ─────────────────────────────────────────────────────────────
+// â”€â”€ Credits Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null
   return (
@@ -61,7 +61,7 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
       <button type="button" aria-label="Close" onClick={onClose} className="glass-modal-overlay absolute inset-0 bg-foreground/40 backdrop-blur-sm" />
       <div className="glass-modal relative w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
 
-        {/* ── Header — left-aligned, teal background ── */}
+        {/* â”€â”€ Header â€” left-aligned, teal background â”€â”€ */}
         <div className="relative flex items-center gap-4 bg-primary px-5 py-5 text-primary-foreground">
           <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
           <div className="pointer-events-none absolute -left-6 bottom-0 h-20 w-20 rounded-full bg-white/8" />
@@ -79,7 +79,7 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
 
         <div className="space-y-4 px-5 py-5">
 
-          {/* ── Creator Card ── */}
+          {/* â”€â”€ Creator Card â”€â”€ */}
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/40 px-4 py-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-base shadow-sm">
               B
@@ -90,7 +90,7 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
             </div>
           </div>
 
-          {/* ── Contact Section ── */}
+          {/* â”€â”€ Contact Section â”€â”€ */}
           <div className="space-y-2.5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Contact</p>
 
@@ -132,14 +132,14 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
             </a>
           </div>
 
-          {/* ── Action Button ── */}
+          {/* â”€â”€ Action Button â”€â”€ */}
           <button type="button" onClick={onClose} className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-            Continue Studying 📚
+            Continue Studying ðŸ“š
           </button>
 
-          {/* ── Metadata & Legal Footer ── */}
+          {/* â”€â”€ Metadata & Legal Footer â”€â”€ */}
           <p className="text-center text-[10px] text-muted-foreground">
-            Version 1.0.0 • Privacy Policy •{" "}
+            Version 1.0.0 â€¢ Privacy Policy â€¢{" "}
             <a
               href="https://wa.me/233543982307?text=Hi%20Britechinc,%20I%20found%20a%20bug%20or%20I%20am%20experiencing%20some%20difficulty%20using%20MedNexus:%20"
               target="_blank"
@@ -155,7 +155,7 @@ function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void })
   )
 }
 
-// ── Force Password Update Screen ──────────────────────────────────────────────
+// â”€â”€ Force Password Update Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ForcePasswordUpdate() {
   const { updatePassword, signOutUser, user } = useApp()
   const [password, setPassword] = useState("")
@@ -246,7 +246,7 @@ function ForcePasswordUpdate() {
               disabled={loading || !password || !confirm}
               className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
             >
-              {loading ? "Saving…" : "Set Password & Enter MedNexus"}
+              {loading ? "Savingâ€¦" : "Set Password & Enter MedNexus"}
             </button>
           </form>
           <button type="button" onClick={signOutUser} className="mt-4 w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -274,7 +274,7 @@ function WhatsAppButton({ label }: { label: string }) {
   )
 }
 
-// ── Pending Approval Screen ───────────────────────────────────────────────────
+// â”€â”€ Pending Approval Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function PendingApprovalScreen() {
   const { signOutUser, user } = useApp()
   return (
@@ -301,19 +301,14 @@ function PendingApprovalScreen() {
   )
 }
 
-// ── Rejected Screen ───────────────────────────────────────────────────────────
+// â”€â”€ Rejected Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function RejectedScreen() {
   const { signOutUser, user } = useApp()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-5 py-12">
       <div className="w-full max-w-sm sm:max-w-md text-center">
         <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-destructive/10 text-destructive">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={38} height={38}>
-            <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
-          </svg>
-        </div>
-        <h1 className="mb-2 text-2xl font-bold tracking-tight">Account Rejected</h1>
-        <p className="mb-1 text-sm text-muted-foreground">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" widt…65 tokens truncated…sm text-muted-foreground">
           Hi <span className="font-semibold text-foreground">{user?.name}</span>, your account registration was not approved.
         </p>
         <p className="mb-8 text-sm text-muted-foreground">
@@ -328,7 +323,7 @@ function RejectedScreen() {
   )
 }
 
-// ── Study Mode Toggle ─────────────────────────────────────────────────────────
+// â”€â”€ Study Mode Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StudyModeToggle({ globalMode, setGlobalMode }: { globalMode: QuizMode; setGlobalMode: (mode: QuizMode) => void }) {
   return (
     <div className="flex items-center rounded-xl border border-border bg-muted p-0.5">
@@ -352,7 +347,7 @@ function StudyModeToggle({ globalMode, setGlobalMode }: { globalMode: QuizMode; 
   )
 }
 
-// ── Welcome Modal ─────────────────────────────────────────────────────────────
+// â”€â”€ Welcome Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) {
   return (
     <div
@@ -370,14 +365,14 @@ function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) 
             </svg>
           </div>
           <h2 className="text-xl font-bold text-white">Welcome to MedNexus!</h2>
-          <p className="mt-1.5 text-sm text-white/80">Hi {name.split(" ")[0]} — you&apos;re all set.</p>
+          <p className="mt-1.5 text-sm text-white/80">Hi {name.split(" ")[0]} â€” you&apos;re all set.</p>
         </div>
         <div className="px-6 py-5 flex flex-col gap-4">
           <div className="flex flex-col gap-2.5">
             {[
-              { icon: "📚", text: "Practice questions across all your modules" },
-              { icon: "📊", text: "Track your progress and identify weak areas" },
-              { icon: "🎯", text: "Take timed exams to sharpen your skills" },
+              { icon: "ðŸ“š", text: "Practice questions across all your modules" },
+              { icon: "ðŸ“Š", text: "Track your progress and identify weak areas" },
+              { icon: "ðŸŽ¯", text: "Take timed exams to sharpen your skills" },
             ].map(({ icon, text }) => (
               <div key={text} className="flex items-center gap-3">
                 <span className="text-lg">{icon}</span>
@@ -398,7 +393,7 @@ function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) 
   )
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+// â”€â”€ Main App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
   const { globalMode, setGlobalMode } = useStudyMode()
@@ -521,7 +516,7 @@ export function MedNexusApp() {
           <div className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-primary text-primary-foreground">
             <StethoscopeIcon size={26} />
           </div>
-          <p className="text-sm">Loading MedNexus…</p>
+          <p className="text-sm">Loading MedNexusâ€¦</p>
         </div>
       </div>
     )
@@ -607,13 +602,13 @@ export function MedNexusApp() {
       onOpenAppearance={() => setThemeOpen(true)}
       modeControl={activeStudyHub === "mcq-qbank" ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
       headerSlot={activeStudyHub === "theory-vault" && !theoryQuestionOpen ? (
-        <label className="flex h-9 min-w-0 w-full max-w-xl items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 text-sm focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary/40 transition-all cursor-text">
+        <label className="mr-1 flex h-8 min-w-0 w-full max-w-[10.5rem] items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 text-sm transition-all focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/25 sm:mr-2 sm:h-9 sm:max-w-xl sm:gap-2 sm:rounded-xl sm:px-3 lg:max-w-2xl">
           <SearchIcon size={15} className="shrink-0 text-muted-foreground" />
           <input
             value={theorySearchQuery}
             onChange={e => setTheorySearchQuery(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && theorySearchQuery.trim()) handleScreenNavigation("theory-search") }}
-            placeholder="Search Theory Vault…"
+            placeholder="Search Theory Vaultâ€¦"
             className="min-w-0 w-full bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
           />
           {theorySearchQuery && (
@@ -623,7 +618,7 @@ export function MedNexusApp() {
           )}
         </label>
       ) : undefined}
-      hideBottomNavigation={isExamActive}
+      hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
@@ -673,3 +668,4 @@ export function MedNexusApp() {
     </>
   )
 }
+
