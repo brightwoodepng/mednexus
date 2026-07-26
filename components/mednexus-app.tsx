@@ -600,14 +600,14 @@ export function MedNexusApp() {
       onOpenAppearance={() => setThemeOpen(true)}
       modeControl={activeStudyHub === "mcq-qbank" ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
       headerSlot={activeStudyHub === "theory-vault" ? (
-        <label className="flex h-9 w-full max-w-xl items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 text-sm focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary/40 transition-all cursor-text">
+        <label className="flex h-9 min-w-0 w-full max-w-xl items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 text-sm focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary/40 transition-all cursor-text">
           <SearchIcon size={15} className="shrink-0 text-muted-foreground" />
           <input
             value={theorySearchQuery}
             onChange={e => setTheorySearchQuery(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && theorySearchQuery.trim()) handleScreenNavigation("theory-search") }}
             placeholder="Search Theory Vault…"
-            className="w-full bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
+            className="min-w-0 w-full bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
           />
           {theorySearchQuery && (
             <button type="button" onClick={() => setTheorySearchQuery("")} aria-label="Clear search" className="shrink-0 text-muted-foreground hover:text-foreground">
