@@ -719,6 +719,36 @@ export async function ensureSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS mednexus_theory_ai_consents (
+      user_id TEXT PRIMARY KEY,
+      consent_version TEXT NOT NULL,
+      consented_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_ai_rate_limits (
+      user_id TEXT NOT NULL,
+      usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      refinement_count INTEGER NOT NULL DEFAULT 0 CHECK (refinement_count BETWEEN 0 AND 50),
+      transcription_count INTEGER NOT NULL DEFAULT 0 CHECK (transcription_count BETWEEN 0 AND 50),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, usage_date)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_theory_ai_rate_limits_user_idx
+      ON mednexus_theory_ai_rate_limits (user_id, usage_date DESC);
+
+    CREATE TABLE IF NOT EXISTS mednexus_theory_ai_audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      action TEXT NOT NULL CHECK (action IN ('refine_note', 'transcribe_note', 'transcribe_answer')),
+      outcome TEXT NOT NULL,
+      duration_ms INTEGER NOT NULL DEFAULT 0 CHECK (duration_ms >= 0),
+      quota_used INTEGER NOT NULL DEFAULT 0 CHECK (quota_used >= 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_theory_ai_audit_log_user_idx
+      ON mednexus_theory_ai_audit_log (user_id, created_at DESC);
+
     CREATE INDEX IF NOT EXISTS mednexus_theory_questions_search_idx
       ON mednexus_theory_questions USING GIN (
         to_tsvector('english', coalesce(title, '') || ' ' || coalesce(prompt, '') || ' ' || coalesce(model_answer, ''))
