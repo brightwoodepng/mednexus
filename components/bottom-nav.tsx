@@ -9,14 +9,16 @@ interface BottomNavProps { screen: Screen; activeHub: StudyHubId; onNavigate: (s
 /** A compact, responsive projection of the same hub navigation used by the sidebar. */
 export function BottomNav({ screen, activeHub, onNavigate, hidden }: BottomNavProps) {
   if (hidden) return null
-  const tabs = [...getHubNavigation(activeHub).filter((item) => item.bottomNav), PROFILE_NAVIGATION_ITEM]
-  return <nav className="fixed bottom-0 left-0 right-0 z-50 overflow-x-auto border-t border-border bg-background/95 backdrop-blur-md md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }} aria-label="Primary navigation">
-    <div className="flex min-w-max items-stretch">
+  const tabs = activeHub === "theory-vault"
+    ? getHubNavigation(activeHub).filter((item) => item.bottomNav)
+    : [...getHubNavigation(activeHub).filter((item) => item.bottomNav), PROFILE_NAVIGATION_ITEM]
+  return <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur-md md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }} aria-label="Primary navigation">
+    <div className={`grid items-stretch ${activeHub === "theory-vault" ? "grid-cols-5" : "grid-cols-4"}`}>
       {tabs.map((tab) => {
         const Icon = tab.icon
         const active = screen === tab.screen
-        return <button key={tab.id} type="button" onClick={() => onNavigate(tab.screen)} aria-current={active ? "page" : undefined} aria-label={tab.label} className="flex min-h-16 min-w-[76px] flex-1 flex-col items-center justify-center px-1">
-          <span className={`flex flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 transition-all duration-200 ${active ? "bg-primary/10 shadow-sm" : "bg-transparent"}`}><Icon size={20} className={active ? "text-primary" : (tab.iconColor ?? "text-muted-foreground")} /><span className={`text-[10px] font-semibold leading-none ${active ? "font-bold text-primary" : "text-muted-foreground"}`}>{tab.label}</span></span>
+        return <button key={tab.id} type="button" onClick={() => onNavigate(tab.screen)} aria-current={active ? "page" : undefined} aria-label={tab.label} className="flex min-h-16 min-w-0 flex-col items-center justify-center px-0.5">
+          <span className={`flex min-w-0 max-w-full flex-col items-center justify-center gap-0.5 rounded-2xl px-1.5 py-1.5 transition-all duration-200 ${active ? "bg-primary/10 shadow-sm" : "bg-transparent"}`}><Icon size={19} className={active ? "text-primary" : (tab.iconColor ?? "text-muted-foreground")} /><span className={`max-w-full truncate text-[9px] font-semibold leading-none min-[360px]:text-[10px] ${active ? "font-bold text-primary" : "text-muted-foreground"}`}>{tab.mobileLabel ?? tab.label}</span></span>
         </button>
       })}
     </div>
