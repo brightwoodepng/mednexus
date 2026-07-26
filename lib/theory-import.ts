@@ -1,4 +1,5 @@
 import { sanitizeTheoryMedia, type TheoryMediaItem } from "@/lib/theory-media"
+import { calculateTheoryMarks, deriveTheoryTitle } from "@/lib/theory-content"
 
 export type TheoryImportImage = { id: string; dataUri: string }
 
@@ -7,13 +8,11 @@ export type TheoryImportItem = {
   collectionKind: "end_of_module" | "end_of_year"
   moduleName: string
   disciplineName: string
-  setName: string
   title: string
   prompt: string
   modelAnswer: string
   keyMarkingPoints: string[]
-  marks: number | null
-  referencesMd: string
+  marks: number
   tags: string[]
   media: TheoryMediaItem[]
   difficulty: number
@@ -31,7 +30,6 @@ type Context = {
   collectionKind?: string
   moduleName?: string
   disciplineName?: string
-  setName?: string
 }
 
 function text(value: unknown, fallback = "") {
@@ -65,8 +63,7 @@ function collect(payload: unknown): Array<Record<string, unknown>> {
     for (const set of sets) {
       if (!set || typeof set !== "object") continue
       const record = set as Record<string, unknown>
-      const next = { ...context, setName: text(record.name ?? record.title, context.setName) }
-      walkQuestions(record.questions, next)
+      walkQuestions(record.questions, context)
     }
   }
   const walkDisciplines = (disciplines: unknown, context: Context) => {
@@ -143,7 +140,10 @@ export function normalizeTheoryImport(payload: unknown, images: TheoryImportImag
 
       const rawPrompt = text(record.prompt ?? record.question)
       if (!rawPrompt) throw new Error("Question prompt is required.")
+      const prompt = stripImageMarkers(rawPrompt)
       const rawAnswer = text(record.modelAnswer ?? record.answer ?? record.model_answer)
+      const keyMarkingPoints = list(record.keyMarkingPoints ?? record.markingPoints ?? record.key_points)
+      if (!keyMarkingPoints.length) throw new Error("At least one key marking point is required.")
       const key = `${collectionTitle.toLowerCase()}|${rawPrompt.toLowerCase().replace(/\s+/g, " ")}`
       if (seen.has(key)) throw new Error("Duplicate question in this import.")
       seen.add(key)
@@ -163,13 +163,11 @@ export function normalizeTheoryImport(payload: unknown, images: TheoryImportImag
         collectionKind,
         moduleName,
         disciplineName,
-        setName: text(record.setName ?? record.set, "Imported Set 1"),
-        title: text(record.title).slice(0, 200),
-        prompt: stripImageMarkers(rawPrompt),
+        title: deriveTheoryTitle(prompt, text(record.questionTitle ?? record.title)),
+        prompt,
         modelAnswer: stripImageMarkers(rawAnswer),
-        keyMarkingPoints: list(record.keyMarkingPoints ?? record.markingPoints ?? record.key_points),
-        marks: record.marks == null || record.marks === "" ? null : Math.max(0, Number(record.marks) || 0),
-        referencesMd: text(record.referencesMd ?? record.references),
+        keyMarkingPoints,
+        marks: calculateTheoryMarks(keyMarkingPoints),
         tags: list(record.tags),
         media: sanitizeTheoryMedia([...suppliedMedia, ...importedMedia]),
         difficulty: Math.min(5, Math.max(1, Number(record.difficulty) || 3)),

@@ -607,12 +607,6 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
                   </ul>
                 </div>
               )}
-              {question.referencesMd && (
-                <div className="mt-5 rounded-xl border border-border/60 bg-muted/20 px-5 py-4">
-                  <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">References</h3>
-                  <TheoryMarkdown children={question.referencesMd}/>
-                </div>
-              )}
             </div>
           </article>
 

@@ -37,14 +37,11 @@ export type TheoryDemoQuestion = {
   modelAnswer: string
   markingPoints: string[]
   marks: number
-  referencesMd: string
   tags: string[]
   difficulty: number
   estimatedStudyMinutes: number
   sortOrder: number
 }
-
-const reference = "Demo reference: verify against your school curriculum and current local clinical guidance before formal use."
 
 function question(
   id: string,
@@ -68,8 +65,7 @@ function question(
     prompt,
     modelAnswer,
     markingPoints,
-    marks: options.marks ?? markingPoints.length * 2,
-    referencesMd: reference,
+    marks: markingPoints.length * 2,
     tags: ["demo", ...tags],
     difficulty: options.difficulty ?? 3,
     estimatedStudyMinutes: options.minutes ?? 8,

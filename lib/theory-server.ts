@@ -116,7 +116,6 @@ export const theoryQuestionProjection = `
   q.model_answer AS "modelAnswer",
   q.key_marking_points AS "keyMarkingPoints",
   q.marks,
-  q.references_md AS "referencesMd",
   q.media,
   q.tags,
   q.source_metadata AS "sourceMetadata",
