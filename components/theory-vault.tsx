@@ -526,15 +526,31 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
         </div>
       </div>
 
-      {/* ── Action bar: breadcrumb + bookmark/revision ── */}
+      {/* ── Breadcrumb + action buttons ── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">{question.collectionTitle} · {question.moduleName ?? question.disciplineName} · {question.setTitle}</p>
         <div className="flex gap-2">
-          <button onClick={toggleBookmark} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${state?.bookmark ? "border-primary/40 bg-primary/5 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
-            <Bookmark size={13} fill={state?.bookmark ? "currentColor" : "none"}/>{state?.bookmark ? "Bookmarked" : "Bookmark"}
+          <button
+            onClick={toggleBookmark}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-all ${
+              state?.bookmark
+                ? "bg-primary text-primary-foreground"
+                : "bg-card border border-border text-foreground hover:bg-muted"
+            }`}
+          >
+            <Bookmark size={13} fill={state?.bookmark ? "currentColor" : "none"}/>
+            {state?.bookmark ? "Bookmarked" : "Bookmark"}
           </button>
-          <button onClick={toggleRevision} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${state?.revision ? "border-amber-400/40 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400" : "border-border text-muted-foreground hover:text-foreground"}`}>
-            <RefreshCw size={13}/>{state?.revision ? "In Revision" : "Mark for Revision"}
+          <button
+            onClick={toggleRevision}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-all ${
+              state?.revision
+                ? "bg-amber-500 text-white"
+                : "bg-card border border-border text-foreground hover:bg-muted"
+            }`}
+          >
+            <RefreshCw size={13}/>
+            {state?.revision ? "In Revision" : "Mark for Revision"}
           </button>
         </div>
       </div>
@@ -542,21 +558,19 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
       {!registered && <SignInNotice/>}
       {message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
 
-      {/* ── Question card — premium colored header ── */}
-      <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="bg-primary px-6 py-5">
+      {/* ── Question card — clean, no heavy colour header ── */}
+      <article className="rounded-2xl border border-border bg-card shadow-sm">
+        <div className="px-6 py-5">
           {question.marks != null && (
-            <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest text-white/90">
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest text-primary">
               {question.marks} marks
             </span>
           )}
-          <h1 className="mt-2 text-xl font-bold leading-snug text-white">{question.title || question.prompt}</h1>
+          <h1 className="mt-2 text-xl font-bold leading-snug">{question.title || question.prompt}</h1>
+          {question.title && (
+            <p className="mt-3 leading-7 text-foreground/70 border-t border-border/50 pt-3">{question.prompt}</p>
+          )}
         </div>
-        {question.title && (
-          <div className="px-6 py-4">
-            <p className="leading-7 text-foreground/80">{question.prompt}</p>
-          </div>
-        )}
       </article>
 
       {/* ── Review mode ── */}
