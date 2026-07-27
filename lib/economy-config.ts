@@ -70,6 +70,8 @@ export type EconomyConfig = {
   }[]
   rankUp: { reward: number; thresholds: readonly { name: string; minPoints: number }[] }
   store: {
+    /** Maximum number of copies of a stackable item a user may hold. */
+    inventoryQuantityLimit: number
     /** Expected sustainable earnings used to audit purchase earning-time. */
     dailyIncome: { casual: number; active: number }
     priceBands: Readonly<Record<StoreProductGroup, { minimum: number; maximum: number }>>
@@ -150,6 +152,7 @@ export const ECONOMY_CONFIG = {
     { name: "Fellow", minPoints: 7_000 }, { name: "Attending", minPoints: 12_000 },
   ] },
   store: {
+    inventoryQuantityLimit: 999,
     dailyIncome: { casual: 100, active: 400 },
     priceBands: {
       basic_consumable: { minimum: 50, maximum: 100 },
