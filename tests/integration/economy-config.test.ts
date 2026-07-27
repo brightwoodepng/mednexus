@@ -5,10 +5,19 @@ import { BOUNTY_POOL, STORE_ITEMS } from "@/lib/economy"
 
 describe("versioned economy configuration", () => {
   it("enables only the v1 MCQ earning families and daily login", () => {
-    expect(ECONOMY_CONFIG.economyVersion).toBe("1.5.0")
+    expect(ECONOMY_CONFIG.economyVersion).toBe("1.6.0")
     expect(Object.values(ECONOMY_CONFIG.enabledEarningModes).every(Boolean)).toBe(true)
     expect(ECONOMY_CONFIG.modeIds.trialTutor).toEqual(["trial", "tutor"])
     expect(ECONOMY_CONFIG.modeIds.exam).toEqual(["exam"])
+  })
+
+  it("defines the shared weekly goal policy", () => {
+    expect(ECONOMY_CONFIG.timezone).toBe("UTC")
+    expect(ECONOMY_CONFIG.weeklyGoals).toEqual([
+      { id: "answer_100", type: "answers", minimumAnswers: 100, reward: 100 },
+      { id: "accuracy_70", type: "accuracy", minimumAnswers: 100, minimumAccuracy: 70, reward: 75 },
+      { id: "exam_dates_3", type: "exam_dates", qualifyingExams: 3, distinctExamDates: 3, reward: 75 },
+    ])
   })
 
   it("configures capped Trial/Tutor rewards and repeat scaling", () => {

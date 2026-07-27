@@ -89,7 +89,7 @@ export function PayoutResult({
 
 // ── Daily Bounties Panel ───────────────────────────────────────────────────────
 export function DailyBountiesPanel() {
-  const { bounties, claimBounty, loading } = useEconomy()
+  const { bounties, weeklyGoals, claimBounty, loading } = useEconomy()
   const [claiming, setClaiming] = useState<string | null>(null)
   const [flash, setFlash] = useState<{ id: string; earned: number } | null>(null)
 
@@ -106,6 +106,35 @@ export function DailyBountiesPanel() {
   if (loading && bounties.length === 0) return null
 
   return (
+    <div className="grid gap-3">
+      <div className="overflow-hidden rounded-3xl border border-violet-200/70 bg-card dark:border-violet-800/40">
+        <div className="flex items-center justify-between bg-violet-500/10 px-4 py-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-violet-700 dark:text-violet-300">Weekly rounds</p>
+          <span className="text-[10px] font-semibold text-muted-foreground">Monday reset</span>
+        </div>
+        <div className="grid gap-3 p-4">
+          {weeklyGoals.map(goal => {
+            const labels = {
+              answers: "Complete 100 eligible questions",
+              accuracy: "Reach 70% accuracy across 100+ answers",
+              exam_dates: "Complete 3 qualifying exams on separate days",
+            }
+            const pct = Math.min(goal.progress / Math.max(goal.target, 1) * 100, 100)
+            return (
+              <div key={goal.id} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1">
+                <p className="text-xs font-semibold text-foreground">{labels[goal.type]}</p>
+                <span className={`text-[10px] font-bold ${goal.credited ? "text-emerald-600 dark:text-emerald-400" : "text-violet-600 dark:text-violet-300"}`}>
+                  {goal.credited ? "✓ Credited" : `+${goal.reward} NP`}
+                </span>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className={`h-full rounded-full transition-all duration-500 ${goal.completed ? "bg-emerald-500" : "bg-violet-500"}`} style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-[10px] tabular-nums text-muted-foreground">{Math.min(goal.progress, goal.target)}/{goal.target}{goal.type === "accuracy" ? "%" : ""}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     <div className="rounded-3xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Daily Bounties</p>
@@ -167,6 +196,7 @@ export function DailyBountiesPanel() {
           )
         })}
       </div>
+    </div>
     </div>
   )
 }
