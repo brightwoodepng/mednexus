@@ -5,7 +5,7 @@ import { BOUNTY_POOL, STORE_ITEMS } from "@/lib/economy"
 
 describe("versioned economy configuration", () => {
   it("enables only the v1 MCQ earning families and daily login", () => {
-    expect(ECONOMY_CONFIG.economyVersion).toBe("1.6.0")
+    expect(ECONOMY_CONFIG.economyVersion).toBe("1.7.0")
     expect(Object.values(ECONOMY_CONFIG.enabledEarningModes).every(Boolean)).toBe(true)
     expect(ECONOMY_CONFIG.modeIds.trialTutor).toEqual(["trial", "tutor"])
     expect(ECONOMY_CONFIG.modeIds.exam).toEqual(["exam"])
@@ -83,8 +83,12 @@ describe("versioned economy configuration", () => {
       expect(bounty.target).toBe(configured?.target)
     }
     for (const item of STORE_ITEMS) {
-      expect(item.price).toBe((ECONOMY_CONFIG.storePrices as Record<string, number>)[item.id])
+      expect(item).toMatchObject(ECONOMY_CONFIG.store.catalog[item.id as keyof typeof ECONOMY_CONFIG.store.catalog])
     }
+    expect(STORE_ITEMS.filter(item => item.category === "lifeline").map(item => item.id)).toEqual([
+      "lifeline_50_50", "lifeline_freeze",
+    ])
+    expect(Object.keys(ECONOMY_CONFIG.store.catalog).sort()).toEqual(STORE_ITEMS.map(item => item.id).sort())
   })
 
   it("adds the economy version to all current ledger insertion paths", () => {

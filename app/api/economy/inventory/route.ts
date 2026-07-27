@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
+import { STORE_ITEMS } from "@/lib/economy"
 
 // PATCH /api/economy/inventory — use (consume) one item from inventory
 export async function PATCH(req: Request) {
@@ -11,6 +12,10 @@ export async function PATCH(req: Request) {
     const { itemId } = await req.json() as { itemId: string }
     const uid = auth.uid
     if (!itemId) return NextResponse.json({ error: "Missing uid or itemId" }, { status: 400 })
+    const item = STORE_ITEMS.find(candidate => candidate.id === itemId)
+    if (!item || item.category !== "lifeline") {
+      return NextResponse.json({ error: "Item is not an implemented consumable" }, { status: 400 })
+    }
 
     await client.query("BEGIN")
     const res = await client.query(
