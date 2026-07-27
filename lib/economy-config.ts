@@ -28,7 +28,12 @@ export type EconomyConfig = {
     milestones: readonly { day: number; bonus: number; name: string }[]
   }
   questionRewards: { trialTutor: { correct: number; streakThresholds: readonly { minimum: number; bonus: number }[]; completionThresholds: readonly { minimumAnswered: number; bonus: number }[]; dailyCap: number } }
-  examRewards: { completion: number; accuracyThresholds: readonly { above: number; bonus: number }[] }
+  examRewards: {
+    minimumAnswered: number
+    baseCap: number
+    dailyCap: number
+    accuracyMultipliers: readonly { minimumAccuracy: number; band: string; multiplier: number }[]
+  }
   gameRewards: {
     solo: { participation: number; accuracy80: number; accuracy90: number; perfect: number; perfectMinimumQuestions: number; streakEvery: number; streakUnit: number; streakMaximum: number; personalBest: number; flawlessMultiplier: number; dailyCompletionLimit: number }
     multiplayer: { participation: number; clashPlaces: readonly number[]; cohortPlaces: readonly number[]; cohortTopTen: number; firstDailyWin: number; studyGroupPerPlayer: number }
@@ -41,7 +46,7 @@ export type EconomyConfig = {
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.2.0",
+  economyVersion: "1.3.0",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
     mcq_multiplayer_game: true, mcq_bounty: true, daily_login: true,
@@ -60,7 +65,18 @@ export const ECONOMY_CONFIG = {
     { day: 30, bonus: 250, name: "30-Day Streak" },
   ] },
   questionRewards: { trialTutor: { correct: 5, streakThresholds: [{ minimum: 5, bonus: 2 }, { minimum: 10, bonus: 3 }], completionThresholds: [{ minimumAnswered: 10, bonus: 15 }, { minimumAnswered: 25, bonus: 25 }], dailyCap: 200 } },
-  examRewards: { completion: 50, accuracyThresholds: [{ above: 50, bonus: 100 }, { above: 75, bonus: 250 }, { above: 90, bonus: 500 }] },
+  examRewards: {
+    minimumAnswered: 10,
+    baseCap: 50,
+    dailyCap: 250,
+    accuracyMultipliers: [
+      { minimumAccuracy: 0, band: "below 50%", multiplier: 1 },
+      { minimumAccuracy: 50, band: "50%–69%", multiplier: 1.25 },
+      { minimumAccuracy: 70, band: "70%–84%", multiplier: 1.5 },
+      { minimumAccuracy: 85, band: "85%–94%", multiplier: 1.75 },
+      { minimumAccuracy: 95, band: "95%–100%", multiplier: 2 },
+    ],
+  },
   gameRewards: {
     solo: { participation: 25, accuracy80: 50, accuracy90: 50, perfect: 100, perfectMinimumQuestions: 3, streakEvery: 5, streakUnit: 25, streakMaximum: 150, personalBest: 75, flawlessMultiplier: 2, dailyCompletionLimit: 5 },
     multiplayer: { participation: 25, clashPlaces: [150, 100, 50], cohortPlaces: [500, 350, 200], cohortTopTen: 75, firstDailyWin: 250, studyGroupPerPlayer: 20 },
