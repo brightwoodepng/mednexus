@@ -29,6 +29,7 @@ import {
   type NPCredit,
 } from "@/lib/np-ledger"
 import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
+import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
 
 interface AnswerEntry {
   /** Index into the room's question_pool */
@@ -283,6 +284,7 @@ export async function POST(
       }
       const credit = await applyNPCredits(client, playerId, credits)
       await recordDailyActivity(client, playerId, total, correct)
+      const weekly = await recordWeeklyGoalActivity(client, playerId, { answered: total, correct })
 
       const todayBounties = getTodaysBounties()
       const today = TODAY_DATE()
@@ -332,14 +334,16 @@ export async function POST(
       const bountyCredit = await applyNPCredits(client, playerId, bountyCredits)
 
       const payload = {
-        earned: credit.credited + bountyCredit.credited,
-        newBalance: bountyCredit.newBalance,
+        earned: credit.credited + bountyCredit.credited + weekly.credited.credited,
+        newBalance: bountyCredit.credited > 0 ? bountyCredit.newBalance : weekly.credited.newBalance,
         breakdown: [
           ...(completionNP > 0 ? [{ label: "Participation", amount: completionNP }] : []),
           ...achievementBreakdown,
           ...extraBreakdown,
           ...bountyUpdates.filter(item => item.newlyComplete).map(item => ({ label: `Bounty: ${todayBounties.find(b => b.id === item.id)?.label ?? item.id}`, amount: item.reward })),
           ...credit.rankBreakdown,
+          ...weekly.newlyCompleted.map(id => ({ label: `Weekly goal: ${id}`, amount: ECONOMY_CONFIG.weeklyGoals.find(goal => goal.id === id)?.reward ?? 0 })),
+          ...weekly.credited.rankBreakdown,
           ...bountyCredit.rankBreakdown,
         ],
         bountyUpdates,

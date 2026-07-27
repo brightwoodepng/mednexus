@@ -18,6 +18,7 @@ import {
   recordDailyActivity,
   type NPCredit,
 } from "@/lib/np-ledger"
+import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
 
 type Key = {
   id: string
@@ -269,6 +270,12 @@ export async function POST(req: NextRequest) {
       }
       const credit = await applyNPCredits(client, auth.uid, credits)
       await recordDailyActivity(client, auth.uid, total, correctCount)
+      const weekly = await recordWeeklyGoalActivity(client, auth.uid, {
+        answered: total,
+        correct: correctCount,
+        qualifyingExam: session.mode === "exam" && total >= ECONOMY_CONFIG.examRewards.minimumAnswered,
+        occurredAt: session.submitted_at ? new Date(session.submitted_at) : undefined,
+      })
 
       const bountyUpdates: Array<{
         id: string
@@ -322,11 +329,13 @@ export async function POST(req: NextRequest) {
         ...achievementBreakdown,
         ...bountyUpdates.filter(item => item.newlyComplete).map(item => ({ label: `Bounty: ${getTodaysBounties().find(b => b.id === item.id)?.label ?? item.id}`, amount: item.reward })),
         ...credit.rankBreakdown,
+        ...weekly.newlyCompleted.map(id => ({ label: `Weekly goal: ${id}`, amount: ECONOMY_CONFIG.weeklyGoals.find(goal => goal.id === id)?.reward ?? 0 })),
+        ...weekly.credited.rankBreakdown,
         ...bountyCredit.rankBreakdown,
       ]
       const payload = {
-        earned: credit.credited + bountyCredit.credited,
-        newBalance: bountyCredit.newBalance,
+        earned: credit.credited + bountyCredit.credited + weekly.credited.credited,
+        newBalance: bountyCredit.credited > 0 ? bountyCredit.newBalance : weekly.credited.newBalance,
         breakdown,
         examRewardBreakdown: anti.examRewardBreakdown,
         bountyUpdates,

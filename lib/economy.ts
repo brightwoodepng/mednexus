@@ -44,7 +44,24 @@ export function getTodaysBounties(date = TODAY_DATE()): BountyDef[] {
   })
 }
 
-export const TODAY_DATE = () => new Date().toISOString().slice(0, 10)
+/** Calendar date in the shared economy timezone. */
+export function economyDate(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: ECONOMY_CONFIG.timezone,
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(date)
+}
+
+export const TODAY_DATE = () => economyDate()
+
+/** Canonical Monday date (YYYY-MM-DD) identifying an economy week. */
+export function economyWeekId(date = new Date()): string {
+  const calendarDate = economyDate(date)
+  const midnight = new Date(`${calendarDate}T00:00:00Z`)
+  const daysSinceMonday = (midnight.getUTCDay() + 6) % 7
+  midnight.setUTCDate(midnight.getUTCDate() - daysSinceMonday)
+  return midnight.toISOString().slice(0, 10)
+}
 
 // ── Store catalog ──────────────────────────────────────────────────────────────
 

@@ -9,6 +9,16 @@ export interface BountyWithProgress extends BountyDef {
   progress: number
   claimed: boolean
 }
+export interface WeeklyGoal {
+  id: string
+  type: "answers" | "accuracy" | "exam_dates"
+  reward: number
+  progress: number
+  target: number
+  completed: boolean
+  credited: boolean
+  minimumAnswers?: number
+}
 
 export interface EquippedCosmetics {
   title:     string | null
@@ -27,6 +37,7 @@ export interface PayoutResponse {
 export interface EconomyContextValue {
   balance: number
   bounties: BountyWithProgress[]
+  weeklyGoals: WeeklyGoal[]
   inventory: Record<string, number>
   equippedCosmetics: EquippedCosmetics
   loading: boolean
@@ -77,6 +88,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const { user } = useApp()
   const [balance, setBalance]                       = useState(0)
   const [bounties, setBounties]                     = useState<BountyWithProgress[]>([])
+  const [weeklyGoals, setWeeklyGoals]               = useState<WeeklyGoal[]>([])
   const [inventory, setInventory]                   = useState<Record<string, number>>({})
   const [equippedCosmetics, setEquippedCosmetics]   = useState<EquippedCosmetics>(DEFAULT_COSMETICS)
   const [loading, setLoading]                       = useState(false)
@@ -90,14 +102,16 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     if (!uid) return
     setLoading(true)
     try {
-      const [walletRes, bountiesRes, storeRes, cosmeticsRes] = await Promise.all([
+      const [walletRes, bountiesRes, weeklyRes, storeRes, cosmeticsRes] = await Promise.all([
         fetch(`/api/economy/wallet`, { headers: economyHeaders() }).then(r => r.json()),
         fetch(`/api/economy/bounties`, { headers: economyHeaders() }).then(r => r.json()),
+        fetch(`/api/economy/weekly-goals`, { headers: economyHeaders() }).then(r => r.json()),
         fetch(`/api/economy/store`, { headers: economyHeaders() }).then(r => r.json()),
         fetch(`/api/economy/cosmetics`, { headers: economyHeaders() }).then(r => r.json()),
       ])
       setBalance(walletRes.balance ?? 0)
       setBounties(bountiesRes.bounties ?? [])
+      setWeeklyGoals(weeklyRes.goals ?? [])
       setInventory(storeRes.inventory ?? {})
       setEquippedCosmetics(cosmeticsRes.equipped ?? DEFAULT_COSMETICS)
     } catch {
@@ -337,7 +351,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
 
   return (
     <EconomyContext.Provider value={{
-      balance, bounties, inventory, equippedCosmetics, loading,
+      balance, bounties, weeklyGoals, inventory, equippedCosmetics, loading,
       dailyLoginReward, clearDailyLoginReward,
       refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP,
       startScoredActivity, submitGameResult, submitMultiplayerResult,
