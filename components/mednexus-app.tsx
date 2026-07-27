@@ -654,7 +654,7 @@ export function MedNexusApp() {
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
-          {safeScreen === "leaderboard" && <LeaderboardScreen />}
+          {safeScreen === "leaderboard" && <LeaderboardScreen onNavigate={handleScreenNavigation} />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen onExamActiveChange={setIsExamActive} />}
           {safeScreen === "game" && <GameMode onExit={() => setScreen("dashboard")} onOpenStore={() => setScreen("store")} />}
           {safeScreen === "store" && <NexusStoreHub onNavigate={setScreen} />}

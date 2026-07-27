@@ -6,7 +6,8 @@ import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
 import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
-import { useEconomy } from "@/contexts/economy-context"
+import { useEconomy, type PayoutResponse } from "@/contexts/economy-context"
+import { PayoutResult } from "@/components/economy-panel"
 import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS } from "@/lib/economy"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -864,6 +865,22 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
   const iAmWinner = isKnockout && knockoutWinnerId === myId
   const podiumEmoji = isKnockout && iAmWinner ? "💀" : myRank === 1 ? "🏆" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🎯"
   const history = answerHistory ?? []
+  const { submitMultiplayerResult } = useEconomy()
+  const [payoutData, setPayoutData] = useState<PayoutResponse | null>(null)
+  const payoutSubmitted = useRef(false)
+
+  useEffect(() => {
+    if (payoutSubmitted.current) return
+    payoutSubmitted.current = true
+    const answers = history
+      .map((entry) => ({
+        qi: room.questionPool.findIndex(question => question.id === entry.question.id),
+        answer: entry.selected,
+      }))
+      .filter((entry) => entry.qi >= 0)
+    void submitMultiplayerResult(room.pin, myId, answers)
+      .then((payout) => { if (payout) setPayoutData(payout) })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -987,6 +1004,8 @@ function FinalResults({ room, myId, onExit, answerHistory }: {
               <p className="mt-2 text-sm text-muted-foreground">Rank #{myRank} of {sorted.length}</p>
             </div>
           )}
+
+          {payoutData && <div className="mb-5"><PayoutResult {...payoutData} /></div>}
 
           <div className="mb-5 rounded-3xl border border-border bg-card p-4">
             <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Final Leaderboard</p>

@@ -1,0 +1,15 @@
+import { NextRequest, NextResponse } from "next/server"
+import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
+import { auditAdmin } from "@/lib/platform-settings"
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await requireAdminRequest(req, "manage_mcq_content")
+  if (!admin) return adminAccessDenied(req)
+  const { id } = await params
+  const { default: pool, ensureSchema } = await import("@/lib/db")
+  await ensureSchema()
+  const result = await pool.query("DELETE FROM mednexus_mcq_media_assets WHERE id=$1 RETURNING question_id", [id])
+  if (!result.rowCount) return NextResponse.json({ error: "Media asset not found." }, { status: 404 })
+  await auditAdmin(pool, admin.uid, "delete", "mcq_media", id, { questionId: result.rows[0]?.question_id })
+  return NextResponse.json({ success: true })
+}

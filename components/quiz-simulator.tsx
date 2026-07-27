@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
 import { computeResult } from "@/lib/modules"
-import type { QuizMode, HistoryEntry, BlockResult, Question } from "@/lib/types"
+import type { QuizMode, HistoryEntry, BlockResult, Question, QuestionMedia } from "@/lib/types"
 import { CalculatorModal } from "@/components/calculator-modal"
 import { LabValuesModal } from "@/components/lab-values-modal"
 import { RichText } from "@/components/rich-text"
@@ -26,6 +26,14 @@ import {
 } from "@/components/icons"
 import { AppearanceModal } from "@/components/appearance-modal"
 import { useEconomy } from "@/contexts/economy-context"
+
+function QuestionMediaGallery({ items, className = "" }: { items: QuestionMedia[]; className?: string }) {
+  if (!items.length) return null
+  return <div className={"grid gap-3 " + className}>{[...items].sort((a, b) => a.sortOrder - b.sortOrder).map((asset) => <figure key={asset.id} className="overflow-hidden rounded-xl border border-border bg-muted/30 p-2">
+    <img src={asset.url} alt={asset.alt || "Question image"} className="max-h-80 w-full rounded-lg object-contain" />
+    {asset.caption && <figcaption className="px-1 pt-2 text-xs text-muted-foreground">{asset.caption}</figcaption>}
+  </figure>)}</div>
+}
 
 interface QuizSimulatorProps {
   questions: Question[]   // pre-selected and shuffled by the caller
@@ -629,8 +637,9 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
             <RichText content={current.vignette} className="text-[15px] text-foreground text-pretty sm:text-base" />
 
+            <QuestionMediaGallery items={(current.media ?? []).filter((asset) => asset.placement === "stem")} className="mt-4" />
+
             {current.mediaBase64 && (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={current.mediaBase64}
                 alt="Question image"
@@ -695,7 +704,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
                       <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${badgeCls}`}>
                         {(isSataSelected || (revealed && isOptCorrect)) ? <CheckIcon size={13} /> : null}
                       </span>
-                      <span className="flex-1 text-sm leading-snug">{opt.text}</span>
+                      <div className="min-w-0 flex-1"><span className="text-sm leading-snug">{opt.text}</span><QuestionMediaGallery items={(current.media ?? []).filter((asset) => asset.placement === "option" && asset.optionId === opt.id)} className="mt-3" /></div>
                       {revealed && isOptCorrect && isSataSelected && <CheckIcon size={18} className="shrink-0 text-success" />}
                       {revealed && isWrongSelected && <XIcon size={18} className="shrink-0 text-destructive" />}
                       {revealed && isMissed && (
@@ -738,9 +747,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
                     }`}>
                       {opt.id}
                     </span>
-                    <span className={`flex-1 text-sm leading-snug ${isStruck ? "text-muted-foreground line-through" : ""}`}>
-                      {opt.text}
-                    </span>
+                    <div className="min-w-0 flex-1"><span className={`text-sm leading-snug ${isStruck ? "text-muted-foreground line-through" : ""}`}>{opt.text}</span><QuestionMediaGallery items={(current.media ?? []).filter((asset) => asset.placement === "option" && asset.optionId === opt.id)} className="mt-3" /></div>
                     {revealed && isCorrect && <CheckIcon size={18} className="shrink-0 text-success" />}
                     {revealed && isSelected && !isCorrect && <XIcon size={18} className="shrink-0 text-destructive" />}
                     {!revealed && (
@@ -807,6 +814,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
                   <ExplanationBlock title="Learning Objective" body={current.explanation?.objective ?? ""} />
                   <ExplanationBlock title="Why It's Correct" body={current.explanation?.details ?? ""} />
                   <ExplanationBlock title="Distractor Reasoning" body={current.explanation?.incorrectReasoning ?? ""} />
+                  <QuestionMediaGallery items={(current.media ?? []).filter((asset) => asset.placement === "explanation")} />
                 </div>
               </div>
             )}

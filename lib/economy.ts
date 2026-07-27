@@ -21,7 +21,7 @@ export const BOUNTY_POOL: BountyDef[] = [
   { id: "double_correct3",   label: "High Roller",            desc: "Answer 3 Double Jeopardy questions correctly",     icon: "🎲", target: 3,   reward: 200, type: "mode_correct",   mode: "double"  },
   { id: "streak_cashout5",   label: "Cash Out King",          desc: "Finish Streak Master with a 5+ streak",            icon: "💰", target: 5,   reward: 175, type: "streak_cashout", mode: "streak"  },
   { id: "rapid_newbest",     label: "Personal Best",          desc: "Set a new high score in Rapid Fire",               icon: "🏆", target: 1,   reward: 250, type: "mode_correct",   mode: "rapid"   },
-  { id: "timeatk_play2",     label: "Beat The Clock",         desc: "Complete 2 Time Attack games",                     icon: "🕐", target: 2,   reward: 150, type: "any_play"                       },
+  { id: "timeatk_play2",     label: "Beat The Clock",         desc: "Complete 2 Time Attack games",                     icon: "🕐", target: 2,   reward: 150, type: "any_play",      mode: "timeatk" },
 ]
 
 /** Pick 3 bounties for today, deterministically based on date */
@@ -712,7 +712,7 @@ export interface PayoutBreakdown {
 export function calculatePayout(result: GameResult): { total: number; breakdown: PayoutBreakdown[] } {
   const breakdown: PayoutBreakdown[] = []
 
-  breakdown.push({ label: "Participation", amount: 50 })
+  breakdown.push({ label: "Participation", amount: 25 })
 
   if (result.accuracy >= 80) breakdown.push({ label: "Accuracy Bonus (80%+)", amount: 50 })
   if (result.accuracy >= 90) breakdown.push({ label: "Accuracy Bonus (90%+)", amount: 50 })
@@ -724,11 +724,14 @@ export function calculatePayout(result: GameResult): { total: number; breakdown:
   let subtotal = breakdown.reduce((s, b) => s + b.amount, 0)
 
   // ── Flawless Execution (solo only) ────────────────────────────────────────
-  // 100% accuracy with ≥3 questions answered AND no lifelines used → 2× payout.
+  // Double achievement rewards, while the capped participation component stays 25 NP.
   const isSoloMode = !["clash", "cohort", "wager", "djmulti"].includes(result.mode)
   if (isSoloMode && result.accuracy === 100 && result.total >= 3 && !result.lifelineUsed) {
-    breakdown.push({ label: "⚡ Flawless Execution (2×)", amount: subtotal })
-    subtotal *= 2
+    const achievementSubtotal = Math.max(0, subtotal - 25)
+    if (achievementSubtotal > 0) {
+      breakdown.push({ label: "⚡ Flawless Execution (2×)", amount: achievementSubtotal })
+      subtotal += achievementSubtotal
+    }
   }
 
   return { total: subtotal, breakdown }
@@ -756,6 +759,7 @@ export function computeBountyProgress(
     case "accuracy_game":
       return result.accuracy >= 80 ? 1 : 0
     case "any_play":
+      if (bounty.mode && bounty.mode !== result.mode) return 0
       return 1
     case "streak_cashout":
       if (bounty.mode && bounty.mode !== result.mode) return 0
