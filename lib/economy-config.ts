@@ -15,6 +15,8 @@ export type EarningMode =
 
 export type EconomyConfig = {
   economyVersion: string
+  /** IANA timezone used for every daily and weekly economy boundary. */
+  timezone: string
   enabledEarningModes: Readonly<Record<EarningMode, boolean>>
   modeIds: {
     trialTutor: readonly string[]
@@ -40,13 +42,23 @@ export type EconomyConfig = {
   }
   earningCaps: { daily: number; weekly: number }
   bounties: readonly { id: string; reward: number; target: number; type: string; mode?: string }[]
+  weeklyGoals: readonly {
+    id: string
+    reward: number
+    type: "answers" | "accuracy" | "exam_dates"
+    minimumAnswers?: number
+    minimumAccuracy?: number
+    qualifyingExams?: number
+    distinctExamDates?: number
+  }[]
   rankUp: { reward: number; thresholds: readonly { name: string; minPoints: number }[] }
   storePrices: Readonly<Record<string, number>>
   antiFarming: { repeatRewardMultipliers: readonly number[]; masteryResetDays: number | null; disciplineNPWindowLimit: number; disciplineWindowDays: number; abandonedExamMinutes: number }
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.5.0",
+  economyVersion: "1.6.0",
+  timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
     mcq_multiplayer_game: true, mcq_bounty: true, daily_login: true,
@@ -102,6 +114,11 @@ export const ECONOMY_CONFIG = {
     { id: "streak_8", target: 8, reward: 45, type: "streak" },
     { id: "game_variety2", target: 2, reward: 40, type: "game_variety" },
     { id: "rapid_newbest", target: 1, reward: 45, type: "game", mode: "rapid" },
+  ],
+  weeklyGoals: [
+    { id: "answer_100", type: "answers", minimumAnswers: 100, reward: 100 },
+    { id: "accuracy_70", type: "accuracy", minimumAnswers: 100, minimumAccuracy: 70, reward: 75 },
+    { id: "exam_dates_3", type: "exam_dates", qualifyingExams: 3, distinctExamDates: 3, reward: 75 },
   ],
   rankUp: { reward: 1_000, thresholds: [
     { name: "Medical Student", minPoints: 0 }, { name: "Clerkship", minPoints: 500 },
