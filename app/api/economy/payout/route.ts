@@ -9,6 +9,7 @@ import {
   type GameResult,
 } from "@/lib/economy"
 import { calculateSessionNP, type SessionQuestionInput } from "@/lib/anti-farming"
+import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import {
   applyNPCredits,
@@ -27,7 +28,7 @@ type OrderedAnswer = {
   answer: string | string[] | null
 }
 
-const SOLO_GAME_MODES = new Set(["rapid", "sudden", "timeatk", "double", "streak"])
+const SOLO_GAME_MODES = new Set<string>(ECONOMY_CONFIG.modeIds.soloGames)
 
 function isCorrect(answer: unknown, expected: Key["correctAnswer"]) {
   if (Array.isArray(answer) && Array.isArray(expected)) {
@@ -122,6 +123,16 @@ export async function POST(req: NextRequest) {
         await client.query("ROLLBACK")
         return NextResponse.json({ error: "Activity is not completed" }, { status: 409 })
       }
+      const enabledMode = session.mode === "exam"
+        ? isEarningModeEnabled("mcq_exam")
+        : SOLO_GAME_MODES.has(session.mode)
+          ? isEarningModeEnabled("mcq_solo_game")
+          : (ECONOMY_CONFIG.modeIds.trialTutor as readonly string[]).includes(session.mode)
+            && isEarningModeEnabled("mcq_trial_tutor")
+      if (!enabledMode) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: "Rewards are disabled for this mode" }, { status: 422 })
+      }
 
       const keys: Key[] = Array.isArray(session.answer_key) ? session.answer_key : []
       const keyById = new Map(keys.map((key) => [key.id, key]))
@@ -211,7 +222,7 @@ export async function POST(req: NextRequest) {
         credits.push({
           source: "game_completion",
           sourceId: sessionId,
-          amount: 25,
+          amount: ECONOMY_CONFIG.gameRewards.solo.participation,
           metadata: { mode: session.mode },
         })
       }
@@ -265,7 +276,7 @@ export async function POST(req: NextRequest) {
 
       const breakdown = [
         ...anti.breakdown,
-        ...(canAwardCompletion ? [{ label: "Participation", amount: 25 }] : []),
+        ...(canAwardCompletion ? [{ label: "Participation", amount: ECONOMY_CONFIG.gameRewards.solo.participation }] : []),
         ...achievementBreakdown,
         ...credit.rankBreakdown,
       ]
