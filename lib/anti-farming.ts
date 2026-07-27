@@ -45,6 +45,15 @@ export interface SessionNPResult {
   fatiguedDisciplines: string[]
   /** Separately ledgered Trial/Tutor reward categories. */
   rewardComponents: { questions: number; streaks: number; completion: number }
+  /** Structured, server-authoritative exam calculation; null outside exam mode. */
+  examRewardBreakdown: {
+    questionCount: number
+    baseReward: number
+    accuracyBand: string
+    multiplier: number
+    capSuppression: number
+    finalCreditedAmount: number
+  } | null
   /** Per-question detail (trial mode only) */
   perQuestion: {
     questionId:       string
@@ -199,29 +208,114 @@ export async function calculateSessionNP(
   const fatiguedDisciplines: string[]               = []
   let totalNP = 0
   const rewardComponents = { questions: 0, streaks: 0, completion: 0 }
+  let examRewardBreakdown: SessionNPResult["examRewardBreakdown"] = null
 
   if (mode === "exam") {
-    // ── Exam: single completion bounty ────────────────────────────────────
-    if (examMeta) {
-      const { accuracy, correct, total, primaryDiscipline } = examMeta
-      const accuracyBonus = [...ECONOMY_CONFIG.examRewards.accuracyThresholds]
-        .reverse().find((threshold) => accuracy > threshold.above)?.bonus ?? 0
-      const bounty = ECONOMY_CONFIG.examRewards.completion + accuracyBonus
+    // Rebuild exams from the completed server snapshot. Besides preventing
+    // client-supplied scores, these checks prevent one question being counted
+    // twice or a partially persisted snapshot receiving currency.
+    if (!sessionId) throw new Error("A server session is required for exam rewards")
+    const snapshotResult = await client.query<{
+      question_ids: string[]
+      answer_key: Array<{ id: string; discipline: string; correctAnswer: unknown }>
+      accepted_answers: Record<string, unknown>
+      answer_order: Array<{ questionId: string }>
+    }>(`SELECT question_ids, answer_key, accepted_answers, answer_order
+          FROM mednexus_exam_sessions
+         WHERE id = $1 AND user_id = $2 AND mode = 'exam' AND status = 'completed'`,
+      [sessionId, userId])
+    const snapshot = snapshotResult.rows[0]
+    if (!snapshot) throw new Error("Completed exam session not found")
+    const plannedIds = Array.isArray(snapshot.question_ids) ? snapshot.question_ids : []
+    const keys = Array.isArray(snapshot.answer_key) ? snapshot.answer_key : []
+    const order = Array.isArray(snapshot.answer_order) ? snapshot.answer_order : []
+    const answers = snapshot.accepted_answers && typeof snapshot.accepted_answers === "object" ? snapshot.accepted_answers : {}
+    const hasDuplicates = (ids: string[]) => new Set(ids).size !== ids.length
+    const keyIds = keys.map((key) => key?.id)
+    const submittedIds = order.map((entry) => entry?.questionId)
+    const plannedSet = new Set(plannedIds)
+    const completeSnapshot = plannedIds.length > 0
+      && !hasDuplicates(plannedIds)
+      && !hasDuplicates(keyIds)
+      && !hasDuplicates(submittedIds)
+      && keys.length === plannedIds.length
+      && keys.every((key) => key && typeof key.id === "string" && plannedSet.has(key.id)
+        && typeof key.discipline === "string" && key.discipline.length > 0 && key.correctAnswer != null)
+      && order.every((entry) => typeof entry?.questionId === "string" && plannedSet.has(entry.questionId)
+        && Object.prototype.hasOwnProperty.call(answers, entry.questionId) && answers[entry.questionId] != null)
+    if (!completeSnapshot) throw new Error("Exam server snapshot is incomplete or contains duplicate question IDs")
+    if (order.length < ECONOMY_CONFIG.examRewards.minimumAnswered) {
+      throw new Error(`At least ${ECONOMY_CONFIG.examRewards.minimumAnswered} submitted answers are required for an exam reward`)
+    }
 
-      const disc     = primaryDiscipline ?? disciplines[0] ?? ""
-      const runningNP = disciplineRunningNP.get(disc) ?? 0
+    const keyById = new Map(keys.map((key) => [key.id, key]))
+    sessionData = order.map(({ questionId }) => {
+      const key = keyById.get(questionId)!
+      const actual = answers[questionId]
+      const expected = key.correctAnswer
+      const isCorrect = Array.isArray(actual) && Array.isArray(expected)
+        ? actual.length === expected.length && [...actual].sort().every((value, index) => value === [...expected].sort()[index])
+        : actual === expected
+      return { questionId, discipline: key.discipline, isCorrect }
+    })
+    // Replace the preliminary increments as well: academic progress must use
+    // the same authoritative snapshot as the currency calculation.
+    correctIncrements.clear()
+    for (const question of sessionData) {
+      if (!question.isCorrect) continue
+      const previous = correctIncrements.get(question.questionId) ?? { discipline: question.discipline, delta: 0 }
+      correctIncrements.set(question.questionId, { discipline: question.discipline, delta: previous.delta + 1 })
+    }
+    const total = sessionData.length
+    const correct = sessionData.filter((question) => question.isCorrect).length
+    const accuracy = correct * 100 / total
+    const accuracyRule = [...ECONOMY_CONFIG.examRewards.accuracyMultipliers]
+      .reverse().find((rule) => accuracy >= rule.minimumAccuracy)!
+    const baseReward = Math.min(total, ECONOMY_CONFIG.examRewards.baseCap)
+    // Rewards are non-negative, so Math.round documents and implements
+    // conventional half-up rounding (a .5 fractional NP rounds upward).
+    const calculatedReward = Math.round(baseReward * accuracyRule.multiplier)
+    const disc = keys[0]?.discipline ?? examMeta?.primaryDiscipline ?? ""
+    const authoritativeFatigue = disc
+      ? await client.query<{ total: string }>(
+          `SELECT COALESCE(SUM(np_earned), 0)::text AS total
+             FROM mednexus_discipline_np_log
+            WHERE user_id = $1 AND discipline = $2 AND earned_date = ANY($3::text[])`,
+          [userId, disc, window7],
+        )
+      : null
+    const runningNP = Number(authoritativeFatigue?.rows[0]?.total ?? 0)
+    let eligibleReward = calculatedReward
+    if (disc && runningNP >= DISCIPLINE_NP_LIMIT) {
+      fatiguedDisciplines.push(disc)
+      breakdown.push({ label: "⚡ Discipline Fatigue — exam bounty suppressed", amount: 0 })
+      eligibleReward = 0
+    }
 
-      if (disc && runningNP >= DISCIPLINE_NP_LIMIT) {
-        fatiguedDisciplines.push(disc)
-        breakdown.push({ label: "⚡ Discipline Fatigue — exam bounty suppressed", amount: 0 })
-      } else {
-        totalNP = bounty
-        breakdown.push({ label: `📋 Exam Completion (${correct}/${total} correct)`, amount: ECONOMY_CONFIG.examRewards.completion })
-        if (accuracyBonus > 0) {
-          breakdown.push({ label: `🎯 Accuracy Bonus (${Math.round(accuracy)}%)`, amount: accuracyBonus })
-        }
-        if (disc) disciplineNPThisSession.set(disc, bounty)
-      }
+    // The advisory transaction lock serializes the cap read with the later
+    // exam_reward ledger insert performed by the caller in this transaction.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`exam-cap:${userId}:${today}`])
+    const capResult = await client.query<{ total: string }>(
+      `SELECT COALESCE(SUM(amount), 0)::text AS total FROM mednexus_np_transactions
+        WHERE user_id = $1 AND source = 'exam_reward'
+          AND created_at >= $2::date AND created_at < $2::date + INTERVAL '1 day'`,
+      [userId, today],
+    )
+    const remaining = Math.max(0, ECONOMY_CONFIG.examRewards.dailyCap - Number(capResult.rows[0]?.total ?? 0))
+    totalNP = Math.min(eligibleReward, remaining)
+    const capSuppression = eligibleReward - totalNP
+    if (disc && totalNP > 0) disciplineNPThisSession.set(disc, totalNP)
+    breakdown.push({ label: `📋 Exam Questions (${total} answered; base capped at ${ECONOMY_CONFIG.examRewards.baseCap})`, amount: baseReward })
+    breakdown.push({ label: `🎯 Accuracy Band (${accuracyRule.band}; ×${accuracyRule.multiplier})`, amount: calculatedReward - baseReward })
+    if (capSuppression > 0) breakdown.push({ label: "🚫 Daily Exam Cap Suppression", amount: -capSuppression })
+    breakdown.push({ label: "💳 Final Exam Credit", amount: totalNP })
+    examRewardBreakdown = {
+      questionCount: total,
+      baseReward,
+      accuracyBand: accuracyRule.band,
+      multiplier: accuracyRule.multiplier,
+      capSuppression,
+      finalCreditedAmount: totalNP,
     }
   } else {
     // ── Trial: per-question NP with streak bonus ──────────────────────────
@@ -325,7 +419,7 @@ export async function calculateSessionNP(
     )
   }
 
-  return { totalNP, breakdown, fatiguedDisciplines, rewardComponents, perQuestion }
+  return { totalNP, breakdown, fatiguedDisciplines, rewardComponents, examRewardBreakdown, perQuestion }
 }
 
 // ── Daily Login Reward ────────────────────────────────────────────────────────
