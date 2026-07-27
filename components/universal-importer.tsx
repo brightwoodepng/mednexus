@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question, QuestionOption } from "@/lib/types"
+import { findImportQuestionDuplicates } from "@/lib/game-question-pool"
 import { importAuthHeaders, importError } from "@/lib/import-client"
 import {
   XIcon,
@@ -329,6 +330,14 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
 
   // ── Stage questions for preview ─────────────────────────────────────────────
   function stageQuestions(qs: Question[], source: "ai" | "regex" | "json") {
+    const duplicates = findImportQuestionDuplicates(qs, liveQuestions)
+    if (duplicates.duplicateCount > 0) {
+      setPartialImportWarning((current) => [
+        current,
+        `${duplicates.duplicateCount} materially identical question${duplicates.duplicateCount === 1 ? "" : "s"} detected within this import or the existing bank. Review or remove duplicate content before publishing.`,
+      ].filter(Boolean).join(" "))
+      console.warn("[mcq-import] Material duplicates detected", { count: duplicates.duplicateCount })
+    }
     setPendingImport(qs)
     setParseSource(source)
     setView("preview")
