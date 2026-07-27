@@ -14,6 +14,17 @@ const SOLO_GAME_MODES = new Set(["rapid", "sudden", "timeatk", "double", "streak
 const MAX_SESSION_QUESTIONS = 200
 const MAX_SESSION_ANSWERS = MAX_SESSION_QUESTIONS
 
+const COMPLETION_REASONS: Record<string, ReadonlySet<string>> = {
+  tutor: new Set(["pool_completed"]),
+  exam: new Set(["pool_completed"]),
+  trial: new Set(["pool_completed"]),
+  rapid: new Set(["lives_exhausted", "pool_completed"]),
+  sudden: new Set(["incorrect_answer", "pool_completed"]),
+  timeatk: new Set(["timeout", "pool_completed"]),
+  double: new Set(["bank_depleted", "pool_completed"]),
+  streak: new Set(["player_finished", "pool_completed"]),
+}
+
 type AcceptedAnswer = string | string[] | null
 type OrderedAnswer = { questionId: string; answer: AcceptedAnswer }
 type SnapshotQuestion = {
@@ -119,7 +130,16 @@ export async function PATCH(req: NextRequest) {
       sessionId?: string
       answers?: Record<string, AcceptedAnswer>
       orderedAnswers?: OrderedAnswer[]
-      resultMeta?: { lifelineUsed?: boolean }
+      resultMeta?: {
+        lifelineUsed?: boolean
+        completionReason?: string
+        clientRoundStartedAt?: string
+        clientRoundFinishedAt?: string
+        selectedQuestionCount?: number
+        answeredQuestionCount?: number
+        freezeCount?: number
+        wagerHistory?: number[]
+      }
     }
     const { sessionId } = body
     const answers = body.answers ?? {}
@@ -137,7 +157,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const session = await pool.query(
-      "SELECT question_ids, status FROM mednexus_exam_sessions WHERE id = $1 AND user_id = $2",
+      "SELECT question_ids, status, mode FROM mednexus_exam_sessions WHERE id = $1 AND user_id = $2",
       [sessionId, auth.uid],
     )
     if (!session.rows[0]) return NextResponse.json({ error: "Session not found" }, { status: 404 })
@@ -156,8 +176,37 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Answers include an invalid question or option value" }, { status: 400 })
     }
 
+    const meta = body.resultMeta
+    const startedAt = typeof meta?.clientRoundStartedAt === "string" ? Date.parse(meta.clientRoundStartedAt) : NaN
+    const finishedAt = typeof meta?.clientRoundFinishedAt === "string" ? Date.parse(meta.clientRoundFinishedAt) : NaN
+    const validCompletionMeta = !!meta
+      && typeof meta.completionReason === "string"
+      && COMPLETION_REASONS[session.rows[0].mode]?.has(meta.completionReason)
+      && Number.isFinite(startedAt)
+      && Number.isFinite(finishedAt)
+      && finishedAt >= startedAt
+      && Number.isInteger(meta.selectedQuestionCount)
+      && meta.selectedQuestionCount === allowedIds.size
+      && Number.isInteger(meta.answeredQuestionCount)
+      && meta.answeredQuestionCount === orderedAnswers.length
+      && meta.answeredQuestionCount >= 0
+      && meta.answeredQuestionCount <= meta.selectedQuestionCount
+      && (meta.freezeCount === undefined || (Number.isInteger(meta.freezeCount) && meta.freezeCount >= 0 && meta.freezeCount <= 100))
+      && (meta.wagerHistory === undefined || (Array.isArray(meta.wagerHistory)
+        && meta.wagerHistory.length === orderedAnswers.length
+        && meta.wagerHistory.every((wager) => Number.isInteger(wager) && wager > 0)))
+    if (!validCompletionMeta) {
+      return NextResponse.json({ error: "Completion metadata is invalid for this mode" }, { status: 400 })
+    }
     const resultMeta = {
-      lifelineUsed: body.resultMeta?.lifelineUsed === true,
+      lifelineUsed: meta.lifelineUsed === true,
+      completionReason: meta.completionReason,
+      clientRoundStartedAt: meta.clientRoundStartedAt,
+      clientRoundFinishedAt: meta.clientRoundFinishedAt,
+      selectedQuestionCount: meta.selectedQuestionCount,
+      answeredQuestionCount: meta.answeredQuestionCount,
+      freezeCount: meta.freezeCount ?? 0,
+      wagerHistory: meta.wagerHistory ?? [],
     }
     const updated = await pool.query(
       `UPDATE mednexus_exam_sessions

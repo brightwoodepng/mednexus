@@ -206,6 +206,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             sessionData: examSessionData,
             sessionId: scoredSessionIdRef.current ?? undefined,
             answers,
+            orderedAnswers: questions.map((question) => ({ questionId: question.id, answer: answers[question.id] ?? null })),
+            completionReason: "pool_completed",
+            clientRoundStartedAt: new Date(startedAt.current).toISOString(),
+            clientRoundFinishedAt: new Date().toISOString(),
+            selectedQuestionCount: questions.length,
+            answeredQuestionCount: questions.length,
             examMeta: {
               accuracy: result.percentage,
               correct: result.correct,
@@ -227,6 +233,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           sessionData: sessionDataRef.current,
           sessionId: scoredSessionIdRef.current ?? undefined,
           answers,
+          orderedAnswers: questions.map((question) => ({ questionId: question.id, answer: answers[question.id] ?? null })),
+          completionReason: "pool_completed",
+          clientRoundStartedAt: new Date(startedAt.current).toISOString(),
+          clientRoundFinishedAt: new Date().toISOString(),
+          selectedQuestionCount: questions.length,
+          answeredQuestionCount: questions.length,
         }).catch(() => {/* ignore */})
       }
     }
@@ -304,6 +316,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           sessionData: sessionDataRef.current,
           sessionId: scoredSessionIdRef.current ?? undefined,
           answers,
+          orderedAnswers: questions.map((question) => ({ questionId: question.id, answer: answers[question.id] ?? null })),
+          completionReason: "pool_completed",
+          clientRoundStartedAt: new Date(startedAt.current).toISOString(),
+          clientRoundFinishedAt: new Date().toISOString(),
+          selectedQuestionCount: questions.length,
+          answeredQuestionCount: questions.length,
         }).catch(() => {/* ignore */})
       }
     }
