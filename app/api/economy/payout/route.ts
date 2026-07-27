@@ -289,6 +289,7 @@ export async function POST(req: NextRequest) {
         earned: credit.credited,
         newBalance: credit.newBalance,
         breakdown,
+        examRewardBreakdown: anti.examRewardBreakdown,
         bountyUpdates,
         score,
         correct: correctCount,
@@ -311,4 +312,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 }
-
