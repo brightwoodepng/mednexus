@@ -53,6 +53,7 @@ export function normalizeQuestionContent(value: string): string {
 export function createQuestionContentFingerprint(question: Question): string {
   const options = question.options
     .map((option) => normalizeQuestionContent(option.text))
+    .sort()
     .join("\u001f")
   return [
     normalizeQuestionContent(question.vignette),
