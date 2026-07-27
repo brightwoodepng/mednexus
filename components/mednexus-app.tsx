@@ -607,7 +607,7 @@ export function MedNexusApp() {
       onOpenAppearance={() => setThemeOpen(true)}
       modeControl={activeStudyHub === "mcq-qbank" ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
       headerSlot={activeStudyHub === "theory-vault" && !theoryQuestionOpen ? (
-        <label className="flex h-9 min-w-0 w-full max-w-xl items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 text-sm focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary/40 transition-all cursor-text">
+        <label className="mr-1 flex h-8 min-w-0 w-full max-w-[10.5rem] items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 text-sm transition-all focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/25 sm:mr-2 sm:h-9 sm:max-w-xl sm:gap-2 sm:rounded-xl sm:px-3 lg:max-w-2xl">
           <SearchIcon size={15} className="shrink-0 text-muted-foreground" />
           <input
             value={theorySearchQuery}
@@ -623,7 +623,7 @@ export function MedNexusApp() {
           )}
         </label>
       ) : undefined}
-      hideBottomNavigation={isExamActive}
+      hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
