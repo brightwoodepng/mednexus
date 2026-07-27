@@ -15,6 +15,8 @@ export type EarningMode =
 
 export type EconomyConfig = {
   economyVersion: string
+  /** Version of the item/price catalog, recorded on purchases for auditability. */
+  catalogVersion: string
   /** IANA timezone used for every daily and weekly economy boundary. */
   timezone: string
   enabledEarningModes: Readonly<Record<EarningMode, boolean>>
@@ -58,6 +60,7 @@ export type EconomyConfig = {
 
 export const ECONOMY_CONFIG = {
   economyVersion: "1.6.0",
+  catalogVersion: "1.0.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,

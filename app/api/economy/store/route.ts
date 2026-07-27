@@ -72,7 +72,13 @@ export async function POST(req: NextRequest) {
           uid,
           crypto.randomUUID(),
           -item.price,
-          JSON.stringify({ itemId: item.id, economyVersion: ECONOMY_CONFIG.economyVersion }),
+          JSON.stringify({
+            itemId: item.id,
+            price: item.price,
+            catalogPrice: item.price,
+            economyVersion: ECONOMY_CONFIG.economyVersion,
+            catalogVersion: ECONOMY_CONFIG.catalogVersion,
+          }),
         ],
       )
       await client.query(
@@ -82,11 +88,18 @@ export async function POST(req: NextRequest) {
         [uid, itemId]
       )
       const { rows: newWallet } = await client.query(
-        "SELECT balance FROM mednexus_wallet WHERE uid = $1",
+        "SELECT balance, lifetime_earned, rank_points FROM mednexus_wallet WHERE uid = $1",
         [uid]
       )
       await client.query("COMMIT")
-      return NextResponse.json({ ok: true, newBalance: newWallet[0].balance })
+      return NextResponse.json({
+        ok: true,
+        balance: Number(newWallet[0].balance),
+        lifetimeEarned: Number(newWallet[0].lifetime_earned),
+        rankPoints: Number(newWallet[0].rank_points),
+        // Kept for compatibility with clients deployed before the wallet response was expanded.
+        newBalance: Number(newWallet[0].balance),
+      })
     } catch (e) {
       await client.query("ROLLBACK")
       throw e
