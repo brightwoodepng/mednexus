@@ -46,7 +46,7 @@ export type EconomyConfig = {
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.4.0",
+  economyVersion: "1.5.0",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
     mcq_multiplayer_game: true, mcq_bounty: true, daily_login: true,
@@ -93,16 +93,15 @@ export const ECONOMY_CONFIG = {
   },
   earningCaps: { daily: 5_000, weekly: 20_000 },
   bounties: [
-    { id: "rapid_5correct", target: 5, reward: 200, type: "mode_correct", mode: "rapid" },
-    { id: "timeatk_score800", target: 800, reward: 250, type: "mode_score", mode: "timeatk" },
-    { id: "streak_8", target: 8, reward: 200, type: "mode_streak", mode: "streak" },
-    { id: "sudden_survive15", target: 15, reward: 300, type: "mode_survive", mode: "sudden" },
-    { id: "any_accuracy80", target: 1, reward: 175, type: "accuracy_game" },
-    { id: "any_play3", target: 3, reward: 150, type: "any_play" },
-    { id: "double_correct3", target: 3, reward: 200, type: "mode_correct", mode: "double" },
-    { id: "streak_cashout5", target: 5, reward: 175, type: "streak_cashout", mode: "streak" },
-    { id: "rapid_newbest", target: 1, reward: 250, type: "mode_correct", mode: "rapid" },
-    { id: "timeatk_play2", target: 2, reward: 150, type: "any_play", mode: "timeatk" },
+    { id: "practice_correct10", target: 10, reward: 35, type: "practice" },
+    { id: "practice_correct20", target: 20, reward: 35, type: "practice" },
+    { id: "exam_complete", target: 1, reward: 45, type: "exam" },
+    { id: "any_accuracy80", target: 1, reward: 40, type: "accuracy" },
+    { id: "discipline_variety3", target: 3, reward: 45, type: "discipline_variety" },
+    { id: "any_play3", target: 3, reward: 40, type: "game" },
+    { id: "streak_8", target: 8, reward: 45, type: "streak" },
+    { id: "game_variety2", target: 2, reward: 40, type: "game_variety" },
+    { id: "rapid_newbest", target: 1, reward: 45, type: "game", mode: "rapid" },
   ],
   rankUp: { reward: 1_000, thresholds: [
     { name: "Medical Student", minPoints: 0 }, { name: "Clerkship", minPoints: 500 },

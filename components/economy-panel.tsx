@@ -27,7 +27,7 @@ export function PayoutResult({
 }: {
   earned: number
   breakdown: { label: string; amount: number }[]
-  bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[]
+  bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean; reward?: number }[]
 }) {
   return (
     <div className="rounded-3xl border-2 border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 p-4">
@@ -65,7 +65,7 @@ export function PayoutResult({
                     <span className="truncate max-w-[150px]">{def?.label ?? b.id}</span>
                   </span>
                   {b.newlyComplete ? (
-                    <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">✓ Complete! Claim →</span>
+                    <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">✓ +{b.reward ?? def?.reward ?? 0} NP awarded</span>
                   ) : (
                     <span className="text-[10px] tabular-nums font-bold text-amber-600 dark:text-amber-400">
                       {Math.min(b.progress, b.target)}/{b.target}
