@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
         sourceId: uid,
         amount: 500,
         metadata: { autoApproved: autoApprove },
+        countsTowardClinicalRank: false,
       }])
 
       if (!autoApprove) {
