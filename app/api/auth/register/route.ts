@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { isValidLevel } from "@/lib/levels"
+import { defaultPlatformSettings, getPlatformSettings } from "@/lib/platform-settings"
 
 function formatIndexNumber(raw: string): { formatted: string; autoApprove: boolean } {
   const cleaned = raw.toLowerCase().replace(/[^a-z0-9]/g, "")
@@ -70,12 +71,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { formatted, autoApprove } = formatIndexNumber(indexNumber)
-    const status = autoApprove ? "approved" : "pending"
+    const { formatted, autoApprove: verifiedIndex } = formatIndexNumber(indexNumber)
     const passwordHash = await bcrypt.hash(password, 10)
     const uid = crypto.randomUUID()
 
     const pool = await getPool()
+    const settings = await getPlatformSettings(pool).catch(() => defaultPlatformSettings())
+    if (!settings.registrationEnabled) {
+      return NextResponse.json({ error: "New account registration is currently closed." }, { status: 403 })
+    }
+    const autoApprove = settings.registrationApprovalMode === "verified_index" && verifiedIndex
+    const status = autoApprove ? "approved" : "pending"
 
     // Duplicate-index check (outside the transaction — cheap read before we acquire a client).
     const existing = await pool.query(

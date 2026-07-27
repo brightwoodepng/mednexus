@@ -85,6 +85,56 @@ export async function ensureSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS mednexus_system_settings (
+      id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+      registration_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      guest_access_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      registration_approval_mode TEXT NOT NULL DEFAULT 'verified_index'
+        CHECK (registration_approval_mode IN ('verified_index','manual')),
+      maintenance_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      maintenance_message TEXT NOT NULL DEFAULT 'MedNexus study workspaces are temporarily unavailable while scheduled maintenance is completed.',
+      assessment_default_question_count INTEGER NOT NULL DEFAULT 10 CHECK (assessment_default_question_count BETWEEN 1 AND 200),
+      assessment_default_time_limit_mins INTEGER NOT NULL DEFAULT 30 CHECK (assessment_default_time_limit_mins BETWEEN 1 AND 360),
+      assessment_default_tries_allowed INTEGER NOT NULL DEFAULT 1 CHECK (assessment_default_tries_allowed BETWEEN 1 AND 20),
+      assessment_default_pass_mark INTEGER NOT NULL DEFAULT 50 CHECK (assessment_default_pass_mark BETWEEN 1 AND 100),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_by TEXT
+    );
+    INSERT INTO mednexus_system_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS mednexus_admin_audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      actor_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      resource_type TEXT NOT NULL,
+      resource_id TEXT,
+      details JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_admin_audit_recent_idx
+      ON mednexus_admin_audit_log (created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS mednexus_content_import_jobs (
+      id TEXT PRIMARY KEY,
+      bank TEXT NOT NULL CHECK (bank IN ('mcq','theory')),
+      source_name TEXT NOT NULL,
+      source_type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'review'
+        CHECK (status IN ('review','partial','committed','failed')),
+      total_count INTEGER NOT NULL DEFAULT 0,
+      valid_count INTEGER NOT NULL DEFAULT 0,
+      error_count INTEGER NOT NULL DEFAULT 0,
+      committed_count INTEGER NOT NULL DEFAULT 0,
+      validation_errors JSONB NOT NULL DEFAULT '[]',
+      draft_payload JSONB NOT NULL DEFAULT '[]',
+      created_by TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      committed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_content_import_jobs_recent_idx
+      ON mednexus_content_import_jobs (created_at DESC);
+
     -- ── Theory Vault ───────────────────────────────────────────────────────
     -- Theory has its own normalized content model. Do not add these fields to
     -- mednexus_questions: that table is the MCQ-only bank used by the editor.
@@ -231,6 +281,7 @@ export async function ensureSchema() {
       title           TEXT    NOT NULL,
       module_name     TEXT    NOT NULL,
       question_ids    JSONB   NOT NULL DEFAULT '[]',
+      question_snapshot JSONB NOT NULL DEFAULT '[]',
       question_count  INTEGER NOT NULL DEFAULT 10,
       time_limit_mins INTEGER NOT NULL DEFAULT 30,
       tries_allowed   INTEGER NOT NULL DEFAULT 1,
@@ -536,10 +587,32 @@ export async function ensureSchema() {
       ALTER COLUMN scoring_rubric SET DEFAULT '[]';
     ALTER TABLE mednexus_osce_learner_competency_history
       ADD COLUMN IF NOT EXISTS attempt_id TEXT REFERENCES mednexus_osce_station_attempts(id) ON DELETE SET NULL;
+    ALTER TABLE mednexus_assessments
+      ADD COLUMN IF NOT EXISTS question_snapshot JSONB NOT NULL DEFAULT '[]';
 
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();
     DELETE FROM mednexus_guest_users  WHERE expires_at < NOW();
+  `)
+
+  // Existing assessment scores remain intact. This snapshot only preserves
+  // the question metadata needed for reliable future result reporting.
+  await pool.query(`
+    UPDATE mednexus_assessments assessment
+    SET question_snapshot = COALESCE((
+      SELECT jsonb_agg(question.value ORDER BY requested.ordinality)
+      FROM jsonb_array_elements_text(assessment.question_ids)
+        WITH ORDINALITY AS requested(question_id, ordinality)
+      JOIN LATERAL (
+        SELECT item AS value
+        FROM mednexus_questions bank,
+          jsonb_array_elements(bank.data) item
+        WHERE bank.id=1 AND item->>'id'=requested.question_id
+        LIMIT 1
+      ) question ON TRUE
+    ), '[]'::jsonb)
+    WHERE assessment.question_snapshot='[]'::jsonb
+      AND jsonb_array_length(assessment.question_ids)>0
   `)
 
   // ── Step 3.5: Complete Theory Vault study model ──────────────────────────

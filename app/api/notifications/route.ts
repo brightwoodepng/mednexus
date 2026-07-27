@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { requireRegisteredUser } from "@/lib/request-auth"
+import { auditAdmin } from "@/lib/platform-settings"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -61,7 +62,8 @@ export async function GET(req: NextRequest) {
 
 // POST /api/notifications — verified admins create broadcasts.
 export async function POST(req: NextRequest) {
-  if (!await requireAdminRequest(req, "manage_broadcasts")) return await adminUnauthorized(req)
+  const admin = await requireAdminRequest(req, "manage_broadcasts")
+  if (!admin) return await adminUnauthorized(req)
 
   try {
     const { title, body, type = "info", adminOnly = false } = await req.json()
@@ -79,6 +81,7 @@ export async function POST(req: NextRequest) {
       "INSERT INTO mednexus_notifications (id, title, body, type, admin_only) VALUES ($1, $2, $3, $4, $5)",
       [id, title.trim(), body.trim(), type, adminOnly],
     )
+    await auditAdmin(pool, admin.uid, "create", "broadcast", id, { title: title.trim(), type, adminOnly })
     return NextResponse.json({ success: true, id })
   } catch (err) {
     console.error("[notifications POST]", err)
@@ -113,7 +116,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Broadcast edits can only be made with a verified administrator session.
-    if (!await requireAdminRequest(req, "manage_broadcasts")) return await adminUnauthorized(req)
+    const admin = await requireAdminRequest(req, "manage_broadcasts")
+    if (!admin) return await adminUnauthorized(req)
     const updates: string[] = []
     const values: unknown[] = []
     if (typeof body.title === "string") {
@@ -142,6 +146,7 @@ export async function PATCH(req: NextRequest) {
       values,
     )
     if (result.rowCount === 0) return NextResponse.json({ error: "Notification not found" }, { status: 404 })
+    await auditAdmin(pool, admin.uid, "update", "broadcast", id, { fields: updates.map((update) => update.split(" =")[0]) })
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error("[notifications PATCH]", err)
@@ -151,14 +156,17 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE /api/notifications — verified admins permanently remove broadcasts.
 export async function DELETE(req: NextRequest) {
-  if (!await requireAdminRequest(req, "manage_broadcasts")) return await adminUnauthorized(req)
+  const admin = await requireAdminRequest(req, "manage_broadcasts")
+  if (!admin) return await adminUnauthorized(req)
 
   try {
-    const { id } = await req.json()
+    const { id, confirm } = await req.json()
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 })
+    if (confirm !== true) return NextResponse.json({ error: "Confirmation required." }, { status: 400 })
     const pool = await getPool()
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
     await pool.query("DELETE FROM mednexus_notifications WHERE id = $1", [id])
+    await auditAdmin(pool, admin.uid, "delete", "broadcast", id)
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error("[notifications DELETE]", err)

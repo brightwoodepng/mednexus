@@ -4,12 +4,8 @@ import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { abandonStaleSessions } from "@/lib/anti-farming"
 import { questionsDatabase } from "@/lib/questions-database"
 
-type Answer = string | string[] | null
 const SCORABLE_MODES = new Set(["tutor", "exam", "trial", "game"])
 const MAX_SESSION_QUESTIONS = 200
-const sameAnswer = (answer: Answer, correct: Answer) => Array.isArray(answer) && Array.isArray(correct)
-  ? answer.length === correct.length && [...answer].sort().every((x, i) => x === [...correct].sort()[i])
-  : answer === correct
 
 /** Starts a scored activity and snapshots answer keys on the server. */
 export async function POST(req: NextRequest) {
@@ -33,7 +29,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sessionId })
   } catch (error) { console.error("economy session POST", error); return NextResponse.json({ error: "Server error" }, { status: 500 }) }
 }
-
 /** Records accepted answers. Completion remains idempotent and belongs only to its creator. */
 export async function PATCH(req: NextRequest) {
   try {
@@ -64,5 +59,3 @@ export async function DELETE(req: NextRequest) {
     : 480
   return NextResponse.json(await abandonStaleSessions(auth.uid, boundedStaleMins))
 }
-
-export { sameAnswer }

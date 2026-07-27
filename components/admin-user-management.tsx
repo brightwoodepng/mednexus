@@ -248,7 +248,7 @@ function RegisteredTable() {
   async function doDelete(uid: string) {
     setActionLoading(uid + "delete")
     try {
-      await fetch(`/api/admin/users/${uid}`, { method: "DELETE" })
+      await fetch(`/api/admin/users/${uid}?confirm=true`, { method: "DELETE" })
       await fetchUsers()
     } catch {}
     setActionLoading(null)

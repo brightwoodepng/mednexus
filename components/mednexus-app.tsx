@@ -404,6 +404,7 @@ export function MedNexusApp() {
   const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
+  const [platformConfig, setPlatformConfig] = useState<{ maintenanceEnabled: boolean; maintenanceMessage: string } | null>(null)
 
 
 
@@ -429,6 +430,10 @@ export function MedNexusApp() {
     answers: Record<string, string | string[] | null>
     earnedNP?: number
   } | null>(null)
+
+  useEffect(() => {
+    fetch("/api/platform/config").then((response) => response.json()).then((body) => setPlatformConfig(body.config ?? body ?? null)).catch(() => setPlatformConfig(null))
+  }, [])
 
   useEffect(() => {
     const restoreFromLocation = () => {
@@ -535,6 +540,17 @@ export function MedNexusApp() {
     if (requiresPasswordUpdate) return <ForcePasswordUpdate />
     if (user.role === "user" && user.status === "pending") return <PendingApprovalScreen />
     if (user.role === "user" && user.status === "rejected") return <RejectedScreen />
+  }
+
+  if (platformConfig?.maintenanceEnabled && !user.canAccessAdmin) {
+    return <div className="flex min-h-screen items-center justify-center bg-background px-5 py-12 text-foreground">
+      <div className="w-full max-w-md rounded-3xl border border-amber-400/40 bg-card p-7 text-center shadow-xl">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/15 text-2xl" aria-hidden>🛠️</div>
+        <h1 className="mt-5 text-2xl font-bold">Study workspaces are under maintenance</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">{platformConfig.maintenanceMessage}</p>
+        <p className="mt-4 text-xs text-muted-foreground">Your account and saved progress remain available. Please return shortly.</p>
+      </div>
+    </div>
   }
 
   function handleStartQuiz(selectedQuestions: Question[], gamificationEnabled: boolean) {

@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation"
 import { getVerifiedAdminFromCookie } from "@/lib/admin-access"
+import { ContentWorkspace } from "@/components/admin/content-workspace"
 
 export default async function ImportsExportsPage() {
   if (!await getVerifiedAdminFromCookie("manage_mcq_content")) redirect("/admin")
 
-  return <section className="max-w-4xl"><p className="text-sm font-semibold tracking-wide text-primary">CONTENT MANAGEMENT</p><h1 className="mt-2 text-3xl font-bold">Imports &amp; Exports</h1><p className="mt-3 max-w-2xl text-muted-foreground">Prepare bulk question imports and controlled exports from one protected workspace.</p><div className="mt-8 rounded-xl border border-border bg-card p-6"><h2 className="font-semibold">Bulk import workspace is being prepared</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">The existing importer will move here after it no longer reads from the learner question provider and can commit directly through the protected content API.</p></div></section>
+  return <ContentWorkspace />
 }

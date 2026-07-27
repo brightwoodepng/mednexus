@@ -1,16 +1,18 @@
 import { getVerifiedAdminFromCookie } from "@/lib/admin-access"
 import { AdminDashboard, type DashboardData } from "@/components/admin/admin-dashboard"
+import { bestAttempts, loadAttempts } from "@/lib/admin-results"
+import { getQuestionBankStatus } from "@/lib/question-bank-server"
 
 async function fetchDashboardData(): Promise<DashboardData> {
   try {
     const { default: pool } = await import("@/lib/db")
-    const [students, questions, liveAsmt, pending, recentAsmt, theoryQ, osceStations, activity] = await Promise.all([
+    const [students, questions, liveAsmt, pending, recentAsmt, theoryQ, osceStations, activity, recentActivities, bankStatus, attempts, assessmentSnapshots] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS count FROM mednexus_registered_users WHERE status = 'approved'"),
       pool.query("SELECT COALESCE(jsonb_array_length(data), 0)::int AS count FROM mednexus_questions WHERE id = 1"),
       pool.query("SELECT COUNT(*)::int AS count FROM mednexus_assessments WHERE status = 'live'"),
       pool.query("SELECT COUNT(*)::int AS count FROM mednexus_registered_users WHERE status = 'pending'"),
       pool.query(`
-        SELECT id, title, module_name, question_count, status, created_at::text
+        SELECT id, title, module_name, question_count, status, share_token, created_at::text
         FROM mednexus_assessments
         ORDER BY created_at DESC
         LIMIT 6
@@ -53,7 +55,27 @@ async function fetchDashboardData(): Promise<DashboardData> {
         LEFT JOIN osce_attempts ON osce_attempts.day = days.day
         ORDER BY days.day
       `).catch(() => ({ rows: [] })),
+      pool.query(`SELECT id,actor_id,action,resource_type,resource_id,details,created_at::text FROM mednexus_admin_audit_log ORDER BY created_at DESC LIMIT 8`).catch(() => ({ rows: [] })),
+      getQuestionBankStatus(),
+      loadAttempts(pool).catch(() => []),
+      pool.query("SELECT id,module_name,question_snapshot FROM mednexus_assessments").catch(() => ({ rows: [] })),
     ])
+    const best = bestAttempts(attempts)
+    const assessmentMap = new Map(assessmentSnapshots.rows.map((row) => [row.id, row]))
+    const topicScores = new Map<string, { correct: number; total: number }>()
+    for (const attempt of best) {
+      const assessment = assessmentMap.get(attempt.assessmentId)
+      const snapshot = Array.isArray(assessment?.question_snapshot) ? assessment.question_snapshot : []
+      for (const question of snapshot) {
+        const topic = question.subject || question.module || assessment?.module_name || "Uncategorised"
+        const aggregate = topicScores.get(topic) ?? { correct: 0, total: 0 }
+        if (Object.hasOwn(attempt.answers, question.id)) {
+          aggregate.total++
+          if (attempt.answers[question.id] === question.correctAnswer) aggregate.correct++
+        }
+        topicScores.set(topic, aggregate)
+      }
+    }
     return {
       dbReady: true,
       students: students.rows[0]?.count ?? 0,
@@ -64,6 +86,16 @@ async function fetchDashboardData(): Promise<DashboardData> {
       pendingApprovals: pending.rows[0]?.count ?? 0,
       recentAssessments: recentAsmt.rows,
       activity: activity.rows,
+      recentActivities: recentActivities.rows,
+      topTopics: [...topicScores].filter(([, value]) => value.total > 0).map(([topic, value]) => ({ topic, attempts: value.total, accuracy: Math.round(value.correct / value.total * 100) })).sort((a, b) => b.accuracy - a.accuracy).slice(0, 5),
+      health: {
+        database: true,
+        questionBankSource: bankStatus.source,
+        questionBankCount: bankStatus.questions.length,
+        gemini: Boolean(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY),
+        firestoreConfigured: bankStatus.firestore.configured,
+        firestoreAvailable: bankStatus.firestore.available,
+      },
     }
   } catch (err) {
     console.error("[admin/dashboard]", err)
@@ -77,6 +109,9 @@ async function fetchDashboardData(): Promise<DashboardData> {
       pendingApprovals: 0,
       recentAssessments: [],
       activity: [],
+      recentActivities: [],
+      topTopics: [],
+      health: { database: false, questionBankSource: "unavailable", questionBankCount: 0, gemini: false, firestoreConfigured: false, firestoreAvailable: false },
     }
   }
 }

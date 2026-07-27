@@ -52,10 +52,11 @@ export function BroadcastScreen() {
   }
 
   async function handleDelete(id: string) {
+    if (!window.confirm("Delete this broadcast permanently?")) return
     await fetch("/api/notifications", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, confirm: true }),
     })
     setNotifications((prev) => prev.filter((n) => n.id !== id))
   }
