@@ -19,7 +19,7 @@ export type ServerCompletionTiming = {
 const TIME_ATTACK_START_SECONDS = 90
 const TIME_ATTACK_CORRECT_EXTENSION_SECONDS = 3
 const TIME_ATTACK_WRONG_PENALTY_SECONDS = 5
-const FREEZE_EXTENSION_SECONDS = 10
+const STAT_LABS_ADDED_SECONDS = 10
 const TIMEOUT_CLOCK_TOLERANCE_MS = 5_000
 const DOUBLE_STARTING_BANK = 500
 const DOUBLE_WAGER_RATIOS = [0.1, 0.25, 0.5, 1]
@@ -48,7 +48,7 @@ export function hasConsistentSoloCompletion(
   const reason = metadata.completionReason
   // Client clock values remain in metadata for diagnostics, but never establish
   // payout eligibility. The session row and authenticated usage events are the
-  // authoritative clock and Freeze ledger.
+  // authoritative clock and Stat Labs activation ledger.
   const startedAt = new Date(serverTiming.startedAt).getTime()
   const finishedAt = new Date(serverTiming.finishedAt).getTime()
   if (!Number.isFinite(startedAt) || !Number.isFinite(finishedAt) || finishedAt < startedAt
@@ -81,7 +81,7 @@ export function hasConsistentSoloCompletion(
       TIME_ATTACK_START_SECONDS
       + correct * TIME_ATTACK_CORRECT_EXTENSION_SECONDS
       - wrong * TIME_ATTACK_WRONG_PENALTY_SECONDS
-      + freezes * FREEZE_EXTENSION_SECONDS) * 1000
+      + freezes * STAT_LABS_ADDED_SECONDS) * 1000
     return Math.abs((finishedAt - startedAt) - expectedDuration) <= TIMEOUT_CLOCK_TOLERANCE_MS
   }
   if (mode === "double" && reason === "bank_depleted") {

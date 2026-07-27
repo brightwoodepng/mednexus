@@ -163,7 +163,7 @@ const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [
   {
     id: "lifeline_freeze",
     name: "Stat Labs",
-    desc: "Pauses the question timer for 10 seconds.",
+    desc: "Adds 10 seconds to the current question timer.",
     icon: "🧪",
     category: "lifeline",
     gradient: "from-blue-500 to-cyan-600",

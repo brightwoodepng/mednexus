@@ -847,12 +847,13 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
 }
 
 // ── Lifeline Bar ─────────────────────────────────────────────────────────────
-function LifelineBar({ onUse50_50, onUseFreeze, qty5050, qtyFreeze, disabled5050, disabledFreeze }: {
+function LifelineBar({ onUse50_50, onUseFreeze, qty5050, qtyFreeze, disabled5050, disabledFreeze, freezeActivated = false }: {
   onUse50_50: () => void; onUseFreeze: () => void
   qty5050: number; qtyFreeze: number
   disabled5050: boolean; disabledFreeze: boolean
+  freezeActivated?: boolean
 }) {
-  if (qty5050 <= 0 && qtyFreeze <= 0) return null
+  if (qty5050 <= 0 && qtyFreeze <= 0 && !freezeActivated) return null
   return (
     <div className="flex items-center justify-center gap-2 py-0.5">
       {qty5050 > 0 && (
@@ -862,11 +863,12 @@ function LifelineBar({ onUse50_50, onUseFreeze, qty5050, qtyFreeze, disabled5050
           <span className="rounded-full bg-violet-200 dark:bg-violet-800 px-1.5 py-0.5 text-[10px] font-extrabold text-violet-800 dark:text-violet-200">×{qty5050}</span>
         </button>
       )}
-      {qtyFreeze > 0 && (
-        <button type="button" onClick={onUseFreeze} disabled={disabledFreeze}
+      {(qtyFreeze > 0 || freezeActivated) && (
+        <button type="button" onClick={onUseFreeze} disabled={disabledFreeze} title="Adds 10 seconds to the current question timer."
+          aria-label={freezeActivated ? "Stat Labs activated. 10 seconds added." : "Stat Labs. Adds 10 seconds to the current question timer."}
           className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${disabledFreeze ? "opacity-40 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-cyan-200 dark:border-cyan-800/40 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 hover:opacity-80 active:scale-95"}`}>
-          🧊 Stat Labs +10s
-          <span className="rounded-full bg-cyan-200 dark:bg-cyan-800 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:text-cyan-200">×{qtyFreeze}</span>
+          {freezeActivated ? <span aria-live="polite">✓ +10s added</span> : <>🧪 Stat Labs</>}
+          {!freezeActivated && <span className="rounded-full bg-cyan-200 dark:bg-cyan-800 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:text-cyan-200">×{qtyFreeze}</span>}
         </button>
       )}
     </div>
@@ -1290,7 +1292,8 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
           </div>
           <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} onUse50_50={use50_50} onUseFreeze={useFreeze}
             disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
-            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)} />
+            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
+            freezeActivated={isItemUsed("lifeline_freeze", q.id)} />
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
@@ -1439,7 +1442,8 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
           </div>
           <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} onUse50_50={use50_50} onUseFreeze={useFreeze}
             disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
-            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)} />
+            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
+            freezeActivated={isItemUsed("lifeline_freeze", q.id)} />
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
@@ -1453,7 +1457,7 @@ const TIMEATK_START = 90
 function TimeAttackMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("timeatk")
-  const { inventory, useItem: consumeItem } = useEconomy()
+  const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[2]
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1565,6 +1569,8 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     return <GameOver emoji={acc >= 80 ? "⚡🏆" : acc >= 60 ? "⏱️" : "💨"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : "Time's Up!"} scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Correct", value: String(totalRight) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} gameResult={{ mode: "timeatk", score, correct: totalRight, total: totalQ, bestStreak: 0, isNewHigh, lifelineUsed: lifelineUsedTA, freezeCount: freezeCountTA }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={start} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
   }
   const q = pool[qi]; if (!q) return null
+  const qty5050 = inventory["lifeline_50_50"] ?? 0
+  const qtyFreeze = inventory["lifeline_freeze"] ?? 0
   const pct = Math.min((timeLeft / TIMEATK_START) * 100, 100)
   const tc = timeLeft <= 10 ? "bg-rose-500" : timeLeft <= 25 ? "bg-amber-500" : "bg-cyan-500"
 
@@ -1589,6 +1595,10 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">✓ +100 pts +3s</span>
             <span className="text-xs text-rose-500 font-semibold">✗ −5s</span>
           </div>
+          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} onUse50_50={use50_50} onUseFreeze={useFreeze}
+            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
+            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
+            freezeActivated={isItemUsed("lifeline_freeze", q.id)} />
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
