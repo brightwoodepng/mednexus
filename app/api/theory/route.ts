@@ -9,6 +9,7 @@ import {
   theoryPool,
   theoryQuestionProjection,
   theoryRatingOutcome,
+  theorySetDisplayProjection,
   withTransaction,
   wordCount,
 } from "@/lib/theory-server"
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
           FROM mednexus_theory_disciplines ORDER BY sort_order, name`),
         pool.query(`SELECT s.id, s.collection_id AS "collectionId", s.module_id AS "moduleId",
           s.discipline_id AS "disciplineId", s.name, s.description, s.question_limit AS "questionLimit",
+          ${theorySetDisplayProjection("s")},
           COUNT(q.id)::int AS "totalQuestions",
           COUNT(CASE WHEN rp.completed_at IS NOT NULL THEN 1 END)::int AS "completedQuestions",
           MIN(q.sort_order)::int AS "rangeStart", MAX(q.sort_order)::int AS "rangeEnd"
@@ -57,6 +59,7 @@ export async function GET(request: NextRequest) {
       const [setResult, questions] = await Promise.all([
         pool.query(`SELECT s.id, s.name, s.description, s.collection_id AS "collectionId",
           s.module_id AS "moduleId", s.discipline_id AS "disciplineId",
+          ${theorySetDisplayProjection("s")},
           c.title AS "collectionTitle", c.kind, m.name AS "moduleName", d.name AS "disciplineName"
           FROM mednexus_theory_sets s
           JOIN mednexus_theory_collections c ON c.id=s.collection_id
@@ -83,7 +86,8 @@ export async function GET(request: NextRequest) {
       const questionId = request.nextUrl.searchParams.get("id")
       if (!questionId) return badRequest("Question id is required.")
       const result = await pool.query(`SELECT ${theoryQuestionProjection},
-        c.title AS "collectionTitle", m.name AS "moduleName", d.name AS "disciplineName", s.name AS "setTitle"
+        c.title AS "collectionTitle", m.name AS "moduleName", d.name AS "disciplineName", s.name AS "setTitle",
+        ${theorySetDisplayProjection("s")}
         FROM mednexus_theory_questions q
         JOIN mednexus_theory_collections c ON c.id=q.collection_id
         LEFT JOIN mednexus_theory_modules m ON m.id=q.module_id
@@ -135,7 +139,8 @@ export async function GET(request: NextRequest) {
       const dateColumn = view === "notes" ? "owned.updated_at" : view === "revision" ? "owned.added_at" : "owned.created_at"
       const order = sort === "module" ? `COALESCE(m.name,d.name), q.sort_order` : sort === "priority" && view === "revision" ? `owned.priority DESC, ${dateColumn} DESC` : `${dateColumn} DESC`
       const result = await pool.query(`SELECT q.id, q.title, q.prompt, q.marks, c.title AS collection,
-        m.name AS module, d.name AS discipline, s.name AS "setTitle", ${dateColumn} AS "updatedAt",
+        m.name AS module, d.name AS discipline, s.name AS "setTitle", ${theorySetDisplayProjection("s")},
+        ${dateColumn} AS "updatedAt",
         ${view === "notes" ? "owned.body AS note," : "NULL::text AS note,"}
         ${view === "revision" ? "owned.priority, owned.confidence," : "0::int AS priority, NULL::text AS confidence,"}
         COUNT(*) OVER()::int AS "totalCount"
@@ -158,7 +163,7 @@ export async function GET(request: NextRequest) {
       const collectionId = request.nextUrl.searchParams.get("collectionId")
       const groupId = request.nextUrl.searchParams.get("groupId")
       const result = await pool.query(`SELECT q.id, q.title, q.prompt, c.title AS collection,
-        m.name AS module, d.name AS discipline, s.name AS "setTitle",
+        m.name AS module, d.name AS discipline, s.name AS "setTitle", ${theorySetDisplayProjection("s")},
         CASE WHEN $1::text IS NOT NULL THEN n.body ELSE NULL END AS "noteMatch",
         ts_headline('english', q.prompt, plainto_tsquery('english', $2),
           'StartSel=<mark>, StopSel=</mark>, MaxWords=24, MinWords=8') AS highlight,
@@ -229,7 +234,8 @@ export async function GET(request: NextRequest) {
           WHERE q.status='published'
           GROUP BY c.id,c.title,m.id,m.name,d.id,d.name ORDER BY c.title,name`, [auth.uid]),
         pool.query(`SELECT ra.activity_type AS type, ra.occurred_at AS "occurredAt", q.id AS "questionId",
-          q.prompt, COALESCE(m.name,d.name) AS "groupName", s.name AS "setTitle"
+          q.prompt, COALESCE(m.name,d.name) AS "groupName", s.name AS "setTitle",
+          ${theorySetDisplayProjection("s")}
           FROM mednexus_theory_recent_activity ra
           LEFT JOIN mednexus_theory_questions q ON q.id=ra.question_id
           LEFT JOIN mednexus_theory_modules m ON m.id=q.module_id
