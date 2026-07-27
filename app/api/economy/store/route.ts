@@ -39,13 +39,30 @@ export async function POST(req: NextRequest) {
       await client.query("BEGIN")
 
       if (item.maxQuantity === 1) {
-        const { rows } = await client.query(
-          "SELECT quantity FROM mednexus_user_inventory WHERE uid = $1 AND item_id = $2 FOR UPDATE",
+        const inserted = await client.query(
+          `INSERT INTO mednexus_user_inventory (uid, item_id, quantity)
+           VALUES ($1, $2, 1)
+           ON CONFLICT (uid, item_id) DO NOTHING
+           RETURNING quantity`,
           [uid, itemId]
         )
-        if (rows[0]?.quantity >= 1) {
+        if (inserted.rowCount === 0) {
           await client.query("ROLLBACK")
           return NextResponse.json({ error: "Already owned" }, { status: 400 })
+        }
+      } else {
+        const granted = await client.query(
+          `INSERT INTO mednexus_user_inventory (uid, item_id, quantity)
+           VALUES ($1, $2, 1)
+           ON CONFLICT (uid, item_id) DO UPDATE
+             SET quantity = mednexus_user_inventory.quantity + 1
+             WHERE mednexus_user_inventory.quantity < $3
+           RETURNING quantity`,
+          [uid, itemId, ECONOMY_CONFIG.store.inventoryQuantityLimit]
+        )
+        if (granted.rowCount === 0) {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Inventory limit reached" }, { status: 400 })
         }
       }
 
@@ -81,12 +98,6 @@ export async function POST(req: NextRequest) {
             storeCategory: (ECONOMY_CONFIG.store.catalog as Record<string, { productGroup: string }>)[item.id]?.productGroup ?? "uncategorized",
           }),
         ],
-      )
-      await client.query(
-        `INSERT INTO mednexus_user_inventory (uid, item_id, quantity)
-         VALUES ($1, $2, 1)
-         ON CONFLICT (uid, item_id) DO UPDATE SET quantity = mednexus_user_inventory.quantity + 1`,
-        [uid, itemId]
       )
       const { rows: newWallet } = await client.query(
         "SELECT balance, lifetime_earned, rank_points FROM mednexus_wallet WHERE uid = $1",
