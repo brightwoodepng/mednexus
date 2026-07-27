@@ -10,6 +10,12 @@ export type CompletionMetadata = {
   wagerHistory?: unknown
 }
 
+export type ServerCompletionTiming = {
+  startedAt: Date | string
+  finishedAt: Date | string
+  verifiedFreezeCount?: number
+}
+
 const TIME_ATTACK_START_SECONDS = 90
 const TIME_ATTACK_CORRECT_EXTENSION_SECONDS = 3
 const TIME_ATTACK_WRONG_PENALTY_SECONDS = 5
@@ -24,12 +30,14 @@ export function hasConsistentSoloCompletion(
   snapshotIds: string[],
   attempts: CompletionAttempt[],
   metadata: CompletionMetadata,
+  serverTiming: ServerCompletionTiming,
 ): boolean {
   const reason = metadata.completionReason
-  const startedAt = typeof metadata.clientRoundStartedAt === "string"
-    ? Date.parse(metadata.clientRoundStartedAt) : NaN
-  const finishedAt = typeof metadata.clientRoundFinishedAt === "string"
-    ? Date.parse(metadata.clientRoundFinishedAt) : NaN
+  // Client clock values remain in metadata for diagnostics, but never establish
+  // payout eligibility. The session row and authenticated usage events are the
+  // authoritative clock and Freeze ledger.
+  const startedAt = new Date(serverTiming.startedAt).getTime()
+  const finishedAt = new Date(serverTiming.finishedAt).getTime()
   if (!Number.isFinite(startedAt) || !Number.isFinite(finishedAt) || finishedAt < startedAt
     || metadata.selectedQuestionCount !== snapshotIds.length
     || metadata.answeredQuestionCount !== attempts.length) return false
@@ -50,15 +58,15 @@ export function hasConsistentSoloCompletion(
   }
   if (mode === "streak" && reason === "player_finished") return true
   if (mode === "timeatk" && reason === "timeout") {
-    const freezes = metadata.freezeCount
-    if (!Number.isInteger(freezes) || (freezes as number) < 0) return false
+    const freezes = serverTiming.verifiedFreezeCount ?? 0
+    if (!Number.isInteger(freezes) || freezes < 0) return false
     const correct = attempts.filter((attempt) => attempt.isCorrect).length
     const wrong = attempts.length - correct
     const expectedDuration = Math.max(0,
       TIME_ATTACK_START_SECONDS
       + correct * TIME_ATTACK_CORRECT_EXTENSION_SECONDS
       - wrong * TIME_ATTACK_WRONG_PENALTY_SECONDS
-      + (freezes as number) * FREEZE_EXTENSION_SECONDS) * 1000
+      + freezes * FREEZE_EXTENSION_SECONDS) * 1000
     return Math.abs((finishedAt - startedAt) - expectedDuration) <= TIMEOUT_CLOCK_TOLERANCE_MS
   }
   if (mode === "double" && reason === "bank_depleted") {

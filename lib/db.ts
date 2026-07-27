@@ -500,6 +500,18 @@ export async function ensureSchema() {
       submitted_at TIMESTAMPTZ
     );
 
+    -- Server-owned audit trail for consumables used during scored sessions.
+    CREATE TABLE IF NOT EXISTS mednexus_session_consumable_events (
+      id          TEXT PRIMARY KEY,
+      user_id     TEXT NOT NULL,
+      session_id  TEXT NOT NULL REFERENCES mednexus_exam_sessions(id) ON DELETE CASCADE,
+      item_id     TEXT NOT NULL,
+      question_id TEXT NOT NULL,
+      used_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_consumable_events_session_idx
+      ON mednexus_session_consumable_events (user_id, session_id, item_id, used_at);
+
     -- ── Per-user notification inbox ───────────────────────────────────────────
     -- Individual notifications for a specific user (or global when user_id IS NULL).
     -- Distinct from mednexus_notifications which is the admin broadcast table.

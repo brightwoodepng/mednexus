@@ -1101,7 +1101,7 @@ const BASE_PTS = 100
 function RapidFireMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("rapid")
-  const { inventory, useItem } = useEconomy()
+  const { inventory, useItem: consumeItem } = useEconomy()
   const cfg = MODES[0]
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1178,7 +1178,9 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
 
   async function use50_50() {
     const q = pool[qi]; if (!q || fb !== null) return
-    const ok = await useItem("lifeline_50_50")
+    const sessionId = await scoring.sessionPromise.current
+    if (!sessionId) return
+    const ok = await consumeItem("lifeline_50_50", { sessionId, questionId: q.id })
     if (!ok) return
     setLifelineUsed(true)
     const wrongs = q.options.filter(o => o.id !== q.correctAnswer).map(o => o.id)
@@ -1187,8 +1189,11 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   }
 
   async function useFreeze() {
-    if (fb !== null) return
-    const ok = await useItem("lifeline_freeze")
+    const q = pool[qi]
+    if (!q || fb !== null) return
+    const sessionId = await scoring.sessionPromise.current
+    if (!sessionId) return
+    const ok = await consumeItem("lifeline_freeze", { sessionId, questionId: q.id })
     if (!ok) return
     setLifelineUsed(true)
     expiryRef.current += 10000
@@ -1280,7 +1285,7 @@ const SUDDEN_TIME = 20
 function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("sudden")
-  const { inventory, useItem } = useEconomy()
+  const { inventory, useItem: consumeItem } = useEconomy()
   const cfg = MODES[1]
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1347,7 +1352,9 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
 
   async function use50_50() {
     const q = pool[qi]; if (!q || fb !== null) return
-    const ok = await useItem("lifeline_50_50")
+    const sessionId = await scoring.sessionPromise.current
+    if (!sessionId) return
+    const ok = await consumeItem("lifeline_50_50", { sessionId, questionId: q.id })
     if (!ok) return
     setLifelineUsedSD(true)
     const wrongs = q.options.filter(o => o.id !== q.correctAnswer).map(o => o.id)
@@ -1356,8 +1363,11 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   }
 
   async function useFreeze() {
-    if (fb !== null) return
-    const ok = await useItem("lifeline_freeze")
+    const q = pool[qi]
+    if (!q || fb !== null) return
+    const sessionId = await scoring.sessionPromise.current
+    if (!sessionId) return
+    const ok = await consumeItem("lifeline_freeze", { sessionId, questionId: q.id })
     if (!ok) return
     setLifelineUsedSD(true)
     expiryRef.current += 10000
@@ -1421,7 +1431,7 @@ const TIMEATK_START = 90
 function TimeAttackMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("timeatk")
-  const { inventory, useItem } = useEconomy()
+  const { inventory, useItem: consumeItem } = useEconomy()
   const cfg = MODES[2]
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1490,7 +1500,9 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
 
   async function use50_50() {
     const q = pool[qi]; if (!q || fb !== null) return
-    const ok = await useItem("lifeline_50_50")
+    const sessionId = await scoring.sessionPromise.current
+    if (!sessionId) return
+    const ok = await consumeItem("lifeline_50_50", { sessionId, questionId: q.id })
     if (!ok) return
     setLifelineUsedTA(true)
     const wrongs = q.options.filter(o => o.id !== q.correctAnswer).map(o => o.id)
@@ -1499,8 +1511,11 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   }
 
   async function useFreeze() {
-    if (fb !== null) return
-    const ok = await useItem("lifeline_freeze")
+    const q = pool[qi]
+    if (!q || fb !== null) return
+    const sessionId = await scoring.sessionPromise.current
+    if (!sessionId) return
+    const ok = await consumeItem("lifeline_freeze", { sessionId, questionId: q.id })
     if (!ok) return
     setLifelineUsedTA(true)
     setFreezeCountTA(count => count + 1)
@@ -1572,7 +1587,7 @@ type DJPhase = "menu" | "wager" | "answering" | "feedback" | "over"
 function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("double")
-  const { inventory, useItem } = useEconomy()
+  const { inventory, useItem: consumeItem } = useEconomy()
   const cfg = MODES.find(m => m.id === "double")!
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1648,7 +1663,9 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
 
   async function use50_50dj() {
     const q = pool[qi]; if (!q || djPhase !== "answering") return
-    const ok = await useItem("lifeline_50_50")
+    const sessionId = await scoring.sessionPromise.current
+    if (!sessionId) return
+    const ok = await consumeItem("lifeline_50_50", { sessionId, questionId: q.id })
     if (!ok) return
     setLifelineUsedDJ(true)
     const wrongs = q.options.filter(o => o.id !== q.correctAnswer).map(o => o.id)
@@ -1773,7 +1790,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
 function StreakMasterMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("streak")
-  const { inventory, useItem } = useEconomy()
+  const { inventory, useItem: consumeItem } = useEconomy()
   const cfg = MODES[3]
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1819,7 +1836,9 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 
   async function use50_50sm() {
     const q = pool[qi]; if (!q || fb !== null) return
-    const ok = await useItem("lifeline_50_50")
+    const sessionId = await scoring.sessionPromise.current
+    if (!sessionId) return
+    const ok = await consumeItem("lifeline_50_50", { sessionId, questionId: q.id })
     if (!ok) return
     setLifelineUsedSM(true)
     const wrongs = q.options.filter(o => o.id !== q.correctAnswer).map(o => o.id)

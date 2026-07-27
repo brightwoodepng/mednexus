@@ -177,14 +177,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     const meta = body.resultMeta
-    const startedAt = typeof meta?.clientRoundStartedAt === "string" ? Date.parse(meta.clientRoundStartedAt) : NaN
-    const finishedAt = typeof meta?.clientRoundFinishedAt === "string" ? Date.parse(meta.clientRoundFinishedAt) : NaN
     const validCompletionMeta = !!meta
       && typeof meta.completionReason === "string"
       && COMPLETION_REASONS[session.rows[0].mode]?.has(meta.completionReason)
-      && Number.isFinite(startedAt)
-      && Number.isFinite(finishedAt)
-      && finishedAt >= startedAt
       && Number.isInteger(meta.selectedQuestionCount)
       && meta.selectedQuestionCount === allowedIds.size
       && Number.isInteger(meta.answeredQuestionCount)
@@ -201,8 +196,8 @@ export async function PATCH(req: NextRequest) {
     const resultMeta = {
       lifelineUsed: meta.lifelineUsed === true,
       completionReason: meta.completionReason,
-      clientRoundStartedAt: meta.clientRoundStartedAt,
-      clientRoundFinishedAt: meta.clientRoundFinishedAt,
+      clientRoundStartedAt: typeof meta.clientRoundStartedAt === "string" ? meta.clientRoundStartedAt : undefined,
+      clientRoundFinishedAt: typeof meta.clientRoundFinishedAt === "string" ? meta.clientRoundFinishedAt : undefined,
       selectedQuestionCount: meta.selectedQuestionCount,
       answeredQuestionCount: meta.answeredQuestionCount,
       freezeCount: meta.freezeCount ?? 0,
@@ -244,4 +239,3 @@ export async function DELETE(req: NextRequest) {
     : 480
   return NextResponse.json(await abandonStaleSessions(auth.uid, boundedStaleMins))
 }
-

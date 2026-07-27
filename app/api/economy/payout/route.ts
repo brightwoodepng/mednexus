@@ -172,8 +172,21 @@ export async function POST(req: NextRequest) {
       }
 
       const snapshotIds = keys.map((key) => key.id)
+      const verifiedFreezeResult = session.mode === "timeatk"
+        ? await client.query(
+            `SELECT COUNT(*)::int AS count
+             FROM mednexus_session_consumable_events
+             WHERE user_id = $1 AND session_id = $2 AND item_id = 'lifeline_freeze'
+               AND used_at BETWEEN $3 AND $4`,
+            [auth.uid, sessionId, session.started_at, session.submitted_at],
+          )
+        : null
       const completionMetadataConsistent = SOLO_GAME_MODES.has(session.mode)
-        ? hasConsistentSoloCompletion(session.mode, snapshotIds, sessionData, session.result_meta ?? {})
+        ? hasConsistentSoloCompletion(session.mode, snapshotIds, sessionData, session.result_meta ?? {}, {
+            startedAt: session.started_at,
+            finishedAt: session.submitted_at,
+            verifiedFreezeCount: Number(verifiedFreezeResult?.rows[0]?.count ?? 0),
+          })
         : session.result_meta?.completionReason === "pool_completed"
           && sessionData.length === snapshotIds.length
           && sessionData.every((attempt, index) => attempt.questionId === snapshotIds[index])
