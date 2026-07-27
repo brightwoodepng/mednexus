@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import { createGuestToken } from "@/lib/guest-auth"
 import { isValidLevel } from "@/lib/levels"
+import { defaultPlatformSettings, getPlatformSettings } from "@/lib/platform-settings"
 
 async function getPool() {
   const { default: pool, ensureSchema } = await import("@/lib/db")
@@ -58,6 +59,11 @@ export async function POST(req: NextRequest) {
 
     const cleanName = name.trim()
     const cleanLevel = classLevel.trim()
+    const pool = await getPool()
+    const settings = await getPlatformSettings(pool).catch(() => defaultPlatformSettings())
+    if (!settings.guestAccessEnabled) {
+      return NextResponse.json({ error: "Guest access is currently disabled." }, { status: 403 })
+    }
 
     // ── Generate identity ────────────────────────────────────────────────────
     const uid = `guest_${crypto.randomUUID()}`
@@ -76,7 +82,6 @@ export async function POST(req: NextRequest) {
     const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex")
 
     // ── Persist to database ──────────────────────────────────────────────────
-    const pool = await getPool()
     const { rows } = await pool.query<{
       uid: string
       name: string

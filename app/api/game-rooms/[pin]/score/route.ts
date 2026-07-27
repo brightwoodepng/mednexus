@@ -15,17 +15,20 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
-import { authenticateRequest, authError, identityMismatch } from "@/lib/request-auth"
+import { requireRegisteredUser, unauthorized, identityMismatch } from "@/lib/request-auth"
 import {
   calculatePayout,
   getTodaysBounties,
   computeBountyProgress,
-  computeRankUpBonus,
-  CLINICAL_TIERS,
-  RANK_UP_BONUS_NP,
   TODAY_DATE,
   type GameResult,
 } from "@/lib/economy"
+import {
+  applyNPCredits,
+  completionBonusAvailable,
+  recordDailyActivity,
+  type NPCredit,
+} from "@/lib/np-ledger"
 
 const FIRST_WIN_BONUS_NP = 250
 const STUDY_GROUP_BONUS_PER_PLAYER = 20
@@ -42,8 +45,8 @@ export async function POST(
   { params }: { params: Promise<{ pin: string }> }
 ) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
+    const auth = await requireRegisteredUser(req)
+    if (!auth) return unauthorized()
     const { pin } = await params
 
     const body = await req.json() as {
@@ -77,7 +80,7 @@ export async function POST(
 
       // ── Load authoritative room state (with row lock) ──────────────────────
       const res = await client.query(
-        "SELECT question_pool, phase, players, host_id, mode, scored_uids FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE",
+        "SELECT question_pool, phase, players, host_id, mode, scored_uids, answer_history FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE",
         [pin]
       )
       if (res.rows.length === 0) {
@@ -92,6 +95,16 @@ export async function POST(
         host_id: string
         mode: string
         scored_uids: string[]
+        answer_history: Record<string, AnswerEntry[]>
+      }
+
+      const storedPayout = await client.query(
+        "SELECT payout FROM mednexus_multiplayer_payouts WHERE room_pin = $1 AND user_id = $2",
+        [pin, playerId],
+      )
+      if (storedPayout.rows[0]?.payout) {
+        await client.query("COMMIT")
+        return NextResponse.json(storedPayout.rows[0].payout)
       }
 
       // ── Verify room is finished (only score completed games) ───────────────
@@ -136,7 +149,10 @@ export async function POST(
       // repeat the same correct question index to inflate correct/total/streak.
       const seen = new Set<number>()
       const deduped: AnswerEntry[] = []
-      for (const entry of user_answers_array) {
+      const authoritativeAnswers = room.answer_history?.[playerId]?.length
+        ? room.answer_history[playerId]
+        : user_answers_array
+      for (const entry of authoritativeAnswers) {
         if (typeof entry.qi !== "number" || typeof entry.answer !== "string") continue
         if (seen.has(entry.qi)) continue
         seen.add(entry.qi)
@@ -226,84 +242,85 @@ export async function POST(
         breakdown = payout.breakdown
       }
 
+      const canAwardCompletion = total > 0
+        && await completionBonusAvailable(client, playerId)
+      const completionNP = canAwardCompletion ? Math.min(25, earned) : 0
+      const achievementNP = total > 0 ? Math.max(0, earned - 25) : 0
+      const achievementBreakdown = total > 0
+        ? breakdown
+            .filter(item => item.label !== "Participation")
+            .map(item => ({ ...item, amount: Math.max(0, item.amount - (item.amount === earned ? 25 : 0)) }))
+            .filter(item => item.amount > 0)
+        : []
       const extraBreakdown: { label: string; amount: number }[] = []
 
-      // ── Determine bonus eligibility ────────────────────────────────────────
       const isHost = room.host_id === playerId
-      const activePlayers = room.players.filter(p => p.status === undefined || (p as { status?: string }).status !== "disconnected")
-      const sortedByScore = [...room.players].sort((a, b) => b.score - a.score)
-      const playerRank1 = sortedByScore[0]?.id === playerId
-
-      // ── Atomic wallet credit (base payout) ────────────────────────────────
-      // INSERT ... ON CONFLICT ensures the wallet row exists even for first-time players.
-      const { rows: walletRows } = await client.query(
-        `INSERT INTO mednexus_wallet (uid, balance, updated_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (uid) DO UPDATE
-           SET balance     = mednexus_wallet.balance + $2,
-               updated_at  = NOW()
-         RETURNING balance, last_multiplayer_win_at`,
-        [playerId, earned]
+      const activePlayers = room.players.filter(player =>
+        player.status === undefined || player.status !== "disconnected",
       )
-      let newBalance = walletRows[0].balance
-
-      // ── Study Group Dividend: host earns +20 NP per extra player ──────────
-      if (isHost && activePlayers.length > 1) {
-        const dividendBonus = (activePlayers.length - 1) * STUDY_GROUP_BONUS_PER_PLAYER
-        await client.query(
-          `UPDATE mednexus_wallet SET balance = balance + $1, updated_at = NOW() WHERE uid = $2`,
-          [dividendBonus, playerId]
-        )
-        newBalance += dividendBonus
-        extraBreakdown.push({ label: `📚 Study Group Dividend (${activePlayers.length - 1} players)`, amount: dividendBonus })
+      const rankedPlayers = activePlayers
+        .filter(player => !player.isSpectator && !(room.mode === "cohort" && player.id === room.host_id))
+        .sort((a, b) => b.score - a.score)
+      const playerRank1 = rankedPlayers[0]?.id === playerId
+      const credits: NPCredit[] = []
+      if (completionNP > 0) {
+        credits.push({
+          source: "game_completion",
+          sourceId: `${pin}:${playerId}`,
+          amount: completionNP,
+          metadata: { mode: room.mode, multiplayer: true },
+        })
+      }
+      if (achievementNP > 0) {
+        credits.push({
+          source: "multiplayer_reward",
+          sourceId: `${pin}:${playerId}`,
+          amount: achievementNP,
+          metadata: { mode: room.mode, score: inGameScore, accuracy, bestStreak },
+        })
       }
 
-      // ── First Win of the Day: rank-1 finish, once per 24 hours ───────────
+      if (isHost && activePlayers.length > 1) {
+        const dividendBonus = (activePlayers.length - 1) * STUDY_GROUP_BONUS_PER_PLAYER
+        credits.push({
+          source: "study_group_dividend",
+          sourceId: `${pin}:${playerId}`,
+          amount: dividendBonus,
+          metadata: { playerCount: activePlayers.length },
+        })
+        extraBreakdown.push({
+          label: `📚 Study Group Dividend (${activePlayers.length - 1} players)`,
+          amount: dividendBonus,
+        })
+      }
+
       if (playerRank1) {
-        const lastWin: Date | null = walletRows[0].last_multiplayer_win_at
+        const walletState = await client.query(
+          "SELECT last_multiplayer_win_at FROM mednexus_wallet WHERE uid = $1 FOR UPDATE",
+          [playerId],
+        )
+        const lastWin: Date | null = walletState.rows[0]?.last_multiplayer_win_at ?? null
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-        const isFirstWinToday = !lastWin || lastWin < twentyFourHoursAgo
-        if (isFirstWinToday) {
+        if (!lastWin || lastWin < twentyFourHoursAgo) {
+          credits.push({
+            source: "first_multiplayer_win",
+            sourceId: `${TODAY_DATE()}:${playerId}`,
+            amount: FIRST_WIN_BONUS_NP,
+            metadata: { roomPin: pin, mode: room.mode },
+          })
           await client.query(
-            `UPDATE mednexus_wallet
-                SET balance = balance + $1,
-                    last_multiplayer_win_at = NOW(),
-                    updated_at = NOW()
-              WHERE uid = $2`,
-            [FIRST_WIN_BONUS_NP, playerId]
+            `INSERT INTO mednexus_wallet (uid, last_multiplayer_win_at)
+             VALUES ($1, NOW())
+             ON CONFLICT (uid) DO UPDATE SET last_multiplayer_win_at = NOW()`,
+            [playerId],
           )
-          newBalance += FIRST_WIN_BONUS_NP
           extraBreakdown.push({ label: "🌅 First Win of the Day!", amount: FIRST_WIN_BONUS_NP })
         }
       }
 
-      // ── Clinical Rank-Up: increment rank_points, award tier bonus ─────────
-      const totalEarned = earned + extraBreakdown.reduce((s, b) => s + b.amount, 0)
-      const { rows: rpRows } = await client.query(
-        `INSERT INTO mednexus_wallet (uid, rank_points)
-           VALUES ($1, $2)
-         ON CONFLICT (uid) DO UPDATE
-           SET rank_points = mednexus_wallet.rank_points + $2
-         RETURNING rank_points, (rank_points - $2) AS old_rank_points`,
-        [playerId, totalEarned]
-      )
+      const credit = await applyNPCredits(client, playerId, credits)
+      await recordDailyActivity(client, playerId, total, correct)
 
-      const rankUpResult = computeRankUpBonus(
-        Number(rpRows[0].old_rank_points),
-        Number(rpRows[0].rank_points)
-      )
-      if (rankUpResult.tiersGained > 0) {
-        await client.query(
-          `UPDATE mednexus_wallet SET balance = balance + $1 WHERE uid = $2`,
-          [rankUpResult.bonusNP, playerId]
-        )
-        newBalance += rankUpResult.bonusNP
-        for (const tierName of rankUpResult.newTierNames) {
-          extraBreakdown.push({ label: `🎓 Rank-Up: ${tierName}!`, amount: RANK_UP_BONUS_NP })
-        }
-      }
-
-      // ── Bounty progress update ─────────────────────────────────────────────
       const todayBounties = getTodaysBounties()
       const today = TODAY_DATE()
       const bountyUpdates: {
@@ -316,21 +333,22 @@ export async function POST(
 
         const { rows: existing } = await client.query(
           `SELECT progress, claimed FROM mednexus_bounty_progress
-           WHERE uid = $1 AND bounty_id = $2 AND bounty_date = $3`,
+           WHERE uid = $1 AND bounty_id = $2 AND bounty_date = $3
+           FOR UPDATE`,
           [playerId, bounty.id, today]
         )
         const current = existing[0]
         if (current?.claimed) continue
 
-        const oldProgress = current?.progress ?? 0
+        const oldProgress = Number(current?.progress ?? 0)
         const newProgress = Math.min(oldProgress + delta, bounty.target)
 
         await client.query(
           `INSERT INTO mednexus_bounty_progress (uid, bounty_id, bounty_date, progress, claimed)
            VALUES ($1, $2, $3, $4, FALSE)
            ON CONFLICT (uid, bounty_id, bounty_date) DO UPDATE
-             SET progress = LEAST(mednexus_bounty_progress.progress + $4, $5)`,
-          [playerId, bounty.id, today, delta, bounty.target]
+             SET progress = EXCLUDED.progress`,
+          [playerId, bounty.id, today, newProgress]
         )
 
         bountyUpdates.push({
@@ -342,9 +360,25 @@ export async function POST(
         })
       }
 
-      // ── Mark this player as scored in the room ledger ──────────────────────
-      // Uses jsonb_array_append so no race condition can produce duplicates
-      // even if two requests somehow slip past the row lock check above.
+      const payload = {
+        earned: credit.credited,
+        newBalance: credit.newBalance,
+        breakdown: [
+          ...(completionNP > 0 ? [{ label: "Participation", amount: completionNP }] : []),
+          ...achievementBreakdown,
+          ...extraBreakdown,
+          ...credit.rankBreakdown,
+        ],
+        bountyUpdates,
+        serverStats: { correct, total, accuracy, bestStreak },
+      }
+
+      await client.query(
+        `INSERT INTO mednexus_multiplayer_payouts (room_pin, user_id, payout)
+         VALUES ($1, $2, $3::jsonb)
+         ON CONFLICT (room_pin, user_id) DO NOTHING`,
+        [pin, playerId, JSON.stringify(payload)],
+      )
       await client.query(
         `UPDATE mednexus_game_rooms
             SET scored_uids = scored_uids || $1::jsonb
@@ -353,15 +387,7 @@ export async function POST(
       )
 
       await client.query("COMMIT")
-
-      return NextResponse.json({
-        earned: earned + extraBreakdown.reduce((s, b) => s + b.amount, 0),
-        newBalance,
-        breakdown: [...breakdown, ...extraBreakdown],
-        bountyUpdates,
-        // Echo back the server-calculated stats for the UI to display
-        serverStats: { correct, total, accuracy, bestStreak },
-      })
+      return NextResponse.json(payload)
     } catch (e) {
       await client.query("ROLLBACK")
       throw e

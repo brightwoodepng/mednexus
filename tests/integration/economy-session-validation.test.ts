@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}))
 
 describe("economy session answer validation", () => {
   it("keeps multi-select answer comparison order-independent", async () => {
-    const { sameAnswer } = await import("@/app/api/economy/session/route")
+    const { sameAnswer } = await import("@/lib/answer-utils")
 
     expect(sameAnswer(["B", "A"], ["A", "B"])).toBe(true)
     expect(sameAnswer(["A"], ["A", "B"])).toBe(false)

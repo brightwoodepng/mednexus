@@ -88,9 +88,17 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
     setStage("committing")
     setMessage("Creating hierarchy and saving imported questions as drafts…")
     try {
+      const staged = await jsonRequest<{ id: string }>("/api/admin/content/imports", {
+        bank: "theory", sourceName: file?.name || "Theory bulk importer", drafts: items, errors,
+      })
       const result = await jsonRequest<{
         summary: { created: number; skipped: number; modules: number; disciplines: number; unassigned: number }
       }>("/api/admin/theory/import", { action: "commit", items })
+      await fetch(`/api/admin/content/imports/${staged.id}`, {
+        method: "PATCH",
+        headers: { ...importAuthHeaders(true), "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_committed" }),
+      })
       setMessage(`${result.summary.created} draft questions imported; ${result.summary.skipped} existing questions skipped.`)
       setStage("done")
       await onImported()

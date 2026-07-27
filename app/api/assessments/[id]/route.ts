@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
+import { auditAdmin } from "@/lib/platform-settings"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -61,7 +62,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Also return the actual question objects for the selected IDs
     const qRes = await pool.query("SELECT data FROM mednexus_questions WHERE id = 1")
-    const allQuestions: Array<{ id: string }> = qRes.rows[0]?.data ?? []
+    const snapshot = Array.isArray(row.question_snapshot) ? row.question_snapshot as Array<{ id: string }> : []
+    const allQuestions: Array<{ id: string }> = snapshot.length ? snapshot : (qRes.rows[0]?.data ?? [])
     const questionIdSet = new Set(assessment.questionIds as string[])
     // Deduplicate: filter then keep only the first occurrence of each id
     const seenIds = new Set<string>()
@@ -82,7 +84,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // body: { status?, title?, timeLimitMins?, triesAllowed?, passMark? }
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!await requireAdminRequest(req, "manage_assessments")) return await adminAccessDenied(req)
+    const admin = await requireAdminRequest(req, "manage_assessments")
+    if (!admin) return await adminAccessDenied(req)
 
     const { id } = await params
     const pool = await getPool()
@@ -102,7 +105,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (fields.length === 0) return NextResponse.json({ error: "Nothing to update" }, { status: 400 })
 
     values.push(id)
-    await pool.query(`UPDATE mednexus_assessments SET ${fields.join(", ")} WHERE id = $${i}`, values)
+    const client = await pool.connect()
+    try {
+      await client.query("BEGIN")
+      await client.query(`UPDATE mednexus_assessments SET ${fields.join(", ")} WHERE id = $${i}`, values)
+      await auditAdmin(client, admin.uid, "update", "assessment", id, body)
+      await client.query("COMMIT")
+    } catch (error) {
+      await client.query("ROLLBACK")
+      throw error
+    } finally { client.release() }
 
     return NextResponse.json({ success: true })
   } catch (err) {
@@ -114,14 +126,26 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 // DELETE /api/assessments/[id] — admin only
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!await requireAdminRequest(req, "manage_assessments")) return await adminAccessDenied(req)
+    const admin = await requireAdminRequest(req, "manage_assessments")
+    if (!admin) return await adminAccessDenied(req)
+    if (req.nextUrl.searchParams.get("confirm") !== "true") return NextResponse.json({ error: "Confirmation required." }, { status: 400 })
 
     const { id } = await params
     const pool = await getPool()
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
 
-    await pool.query("DELETE FROM mednexus_assessment_attempts WHERE assessment_id = $1", [id])
-    await pool.query("DELETE FROM mednexus_assessments WHERE id = $1", [id])
+    const client = await pool.connect()
+    try {
+      await client.query("BEGIN")
+      await auditAdmin(client, admin.uid, "delete", "assessment", id)
+      await client.query("DELETE FROM mednexus_assessment_attempts WHERE assessment_id = $1", [id])
+      await client.query("DELETE FROM mednexus_guest_analytics WHERE assessment_id = $1", [id])
+      await client.query("DELETE FROM mednexus_assessments WHERE id = $1", [id])
+      await client.query("COMMIT")
+    } catch (error) {
+      await client.query("ROLLBACK")
+      throw error
+    } finally { client.release() }
 
     return NextResponse.json({ success: true })
   } catch (err) {

@@ -63,6 +63,18 @@ export async function POST(req: NextRequest) {
         [uid, item.price]
       )
       await client.query(
+        `INSERT INTO mednexus_np_transactions
+           (id, user_id, source, source_id, amount, metadata)
+         VALUES ($1, $2, 'store_purchase', $3, $4, $5::jsonb)`,
+        [
+          `np-${crypto.randomUUID()}`,
+          uid,
+          crypto.randomUUID(),
+          -item.price,
+          JSON.stringify({ itemId: item.id }),
+        ],
+      )
+      await client.query(
         `INSERT INTO mednexus_user_inventory (uid, item_id, quantity)
          VALUES ($1, $2, 1)
          ON CONFLICT (uid, item_id) DO UPDATE SET quantity = mednexus_user_inventory.quantity + 1`,
