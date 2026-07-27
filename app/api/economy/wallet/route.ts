@@ -61,7 +61,16 @@ export async function PATCH(req: NextRequest) {
         }
       }
       await client.query("COMMIT")
-      return NextResponse.json({ ok: true, balance: finalBalance })
+      const wallet = await client.query(
+        "SELECT balance, lifetime_earned, rank_points FROM mednexus_wallet WHERE uid = $1",
+        [uid],
+      )
+      return NextResponse.json({
+        ok: true,
+        balance: Number(wallet.rows[0]?.balance ?? finalBalance),
+        lifetimeEarned: Number(wallet.rows[0]?.lifetime_earned ?? 0),
+        rankPoints: Number(wallet.rows[0]?.rank_points ?? 0),
+      })
     } catch (error) {
       await client.query("ROLLBACK")
       throw error
@@ -81,10 +90,14 @@ export async function GET(req: NextRequest) {
     const uid = auth.uid
     if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 })
     const { rows } = await pool.query(
-      "SELECT balance FROM mednexus_wallet WHERE uid = $1",
+      "SELECT balance, lifetime_earned, rank_points FROM mednexus_wallet WHERE uid = $1",
       [uid]
     )
-    return NextResponse.json({ balance: rows[0]?.balance ?? 0 })
+    return NextResponse.json({
+      balance: Number(rows[0]?.balance ?? 0),
+      lifetimeEarned: Number(rows[0]?.lifetime_earned ?? 0),
+      rankPoints: Number(rows[0]?.rank_points ?? 0),
+    })
   } catch (e) {
     console.error("wallet GET", e)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
