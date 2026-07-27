@@ -13,6 +13,19 @@ export type EarningMode =
   | "mcq_bounty"
   | "daily_login"
 
+export type StoreProductGroup =
+  | "basic_consumable"
+  | "strong_consumable"
+  | "basic_cosmetic"
+  | "premium_cosmetic"
+  | "prestige_cosmetic"
+  | "permanent_premium_mcq"
+
+export type StoreCatalogEntry = {
+  price: number
+  productGroup: StoreProductGroup
+}
+
 export type EconomyConfig = {
   economyVersion: string
   /** Version of the item/price catalog, recorded on purchases for auditability. */
@@ -54,13 +67,18 @@ export type EconomyConfig = {
     distinctExamDates?: number
   }[]
   rankUp: { reward: number; thresholds: readonly { name: string; minPoints: number }[] }
-  storePrices: Readonly<Record<string, number>>
+  store: {
+    /** Expected sustainable earnings used to audit purchase earning-time. */
+    dailyIncome: { casual: number; active: number }
+    priceBands: Readonly<Record<StoreProductGroup, { minimum: number; maximum: number }>>
+    catalog: Readonly<Record<string, StoreCatalogEntry>>
+  }
   antiFarming: { repeatRewardMultipliers: readonly number[]; masteryResetDays: number | null; disciplineNPWindowLimit: number; disciplineWindowDays: number; abandonedExamMinutes: number }
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.6.0",
-  catalogVersion: "1.0.0",
+  economyVersion: "1.7.0",
+  catalogVersion: "2.0.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
@@ -128,13 +146,45 @@ export const ECONOMY_CONFIG = {
     { name: "Intern", minPoints: 1_500 }, { name: "Resident", minPoints: 3_500 },
     { name: "Fellow", minPoints: 7_000 }, { name: "Attending", minPoints: 12_000 },
   ] },
-  storePrices: {
-    lifeline_50_50:150,lifeline_freeze:100,lifeline_second_opinion:200,lifeline_beeper_page:250,lifeline_bolus_dose:125,lifeline_chart_review:75,
-    vault_sepsis_cascade:800,vault_stemi_2am:750,vault_dka_peds:700,vault_bacterial_meningitis:650,vault_hepatic_failure:900,
-    title_pre_med:50,title_intern:75,title_fellow:200,title_attending:300,title_chief_resident:500,title_the_gunner:750,title_department_chair:1500,title_chief_of_surgery:3500,title_dean_of_medicine:10000,title_caffeine_dependent:100,
-    frame_gold:400,frame_neon:600,frame_fire:2500,frame_legendary_diamond:1500,frame_legendary_biohazard:1800,frame_mythic_nebula:3000,frame_mythic_heartbeat:4000,frame_lightning:3500,frame_toxic_drip:3000,
-    highlight_neon:300,highlight_gold:350,highlight_amethyst:800,highlight_legendary_crimson:1500,highlight_legendary_emerald:1800,highlight_mythic_lightning:3000,highlight_mythic_void_walker:5000,
-    avatar_scrub_tech:500,avatar_coffee_drip:500,avatar_lab_rat:800,avatar_night_shift:800,avatar_gold_steth:2000,avatar_plague_doctor:2500,avatar_cyber_surgeon:2500,avatar_ascended:5000,avatar_marble:5000,avatar_vital_sign:7500,
+  store: {
+    dailyIncome: { casual: 100, active: 400 },
+    priceBands: {
+      basic_consumable: { minimum: 50, maximum: 100 },
+      strong_consumable: { minimum: 125, maximum: 200 },
+      basic_cosmetic: { minimum: 300, maximum: 600 },
+      premium_cosmetic: { minimum: 1_000, maximum: 2_500 },
+      prestige_cosmetic: { minimum: 4_000, maximum: 8_000 },
+      permanent_premium_mcq: { minimum: 1_500, maximum: 3_000 },
+    },
+    // Only consumables with authenticated inventory consumption and implemented
+    // gameplay behavior belong in this sellable catalog.
+    catalog: {
+      lifeline_50_50: { price: 150, productGroup: "strong_consumable" },
+      lifeline_freeze: { price: 100, productGroup: "basic_consumable" },
+      vault_sepsis_cascade: { price: 2_000, productGroup: "permanent_premium_mcq" },
+      vault_stemi_2am: { price: 1_750, productGroup: "permanent_premium_mcq" },
+      vault_dka_peds: { price: 2_500, productGroup: "permanent_premium_mcq" },
+      vault_bacterial_meningitis: { price: 1_500, productGroup: "permanent_premium_mcq" },
+      vault_hepatic_failure: { price: 3_000, productGroup: "permanent_premium_mcq" },
+      title_pre_med: { price: 300, productGroup: "basic_cosmetic" }, title_intern: { price: 350, productGroup: "basic_cosmetic" },
+      title_fellow: { price: 400, productGroup: "basic_cosmetic" }, title_attending: { price: 500, productGroup: "basic_cosmetic" },
+      title_chief_resident: { price: 600, productGroup: "basic_cosmetic" }, title_the_gunner: { price: 1_000, productGroup: "premium_cosmetic" },
+      title_department_chair: { price: 2_000, productGroup: "premium_cosmetic" }, title_chief_of_surgery: { price: 4_000, productGroup: "prestige_cosmetic" },
+      title_dean_of_medicine: { price: 8_000, productGroup: "prestige_cosmetic" }, title_caffeine_dependent: { price: 300, productGroup: "basic_cosmetic" },
+      frame_gold: { price: 400, productGroup: "basic_cosmetic" }, frame_neon: { price: 600, productGroup: "basic_cosmetic" },
+      frame_fire: { price: 2_500, productGroup: "premium_cosmetic" }, frame_legendary_diamond: { price: 1_500, productGroup: "premium_cosmetic" },
+      frame_legendary_biohazard: { price: 1_800, productGroup: "premium_cosmetic" }, frame_mythic_nebula: { price: 4_000, productGroup: "prestige_cosmetic" },
+      frame_mythic_heartbeat: { price: 5_000, productGroup: "prestige_cosmetic" }, frame_lightning: { price: 4_500, productGroup: "prestige_cosmetic" },
+      frame_toxic_drip: { price: 4_000, productGroup: "prestige_cosmetic" }, highlight_neon: { price: 300, productGroup: "basic_cosmetic" },
+      highlight_gold: { price: 350, productGroup: "basic_cosmetic" }, highlight_amethyst: { price: 600, productGroup: "basic_cosmetic" },
+      highlight_legendary_crimson: { price: 1_500, productGroup: "premium_cosmetic" }, highlight_legendary_emerald: { price: 1_800, productGroup: "premium_cosmetic" },
+      highlight_mythic_lightning: { price: 4_000, productGroup: "prestige_cosmetic" }, highlight_mythic_void_walker: { price: 5_000, productGroup: "prestige_cosmetic" },
+      avatar_scrub_tech: { price: 500, productGroup: "basic_cosmetic" }, avatar_coffee_drip: { price: 500, productGroup: "basic_cosmetic" },
+      avatar_lab_rat: { price: 600, productGroup: "basic_cosmetic" }, avatar_night_shift: { price: 600, productGroup: "basic_cosmetic" },
+      avatar_gold_steth: { price: 2_000, productGroup: "premium_cosmetic" }, avatar_plague_doctor: { price: 2_500, productGroup: "premium_cosmetic" },
+      avatar_cyber_surgeon: { price: 2_500, productGroup: "premium_cosmetic" }, avatar_ascended: { price: 5_000, productGroup: "prestige_cosmetic" },
+      avatar_marble: { price: 5_000, productGroup: "prestige_cosmetic" }, avatar_vital_sign: { price: 7_500, productGroup: "prestige_cosmetic" },
+    },
   },
   // Reset stays disabled until a mastery-reset period and timestamp storage are approved.
   antiFarming: { repeatRewardMultipliers: [1, 1, 0.5], masteryResetDays: null, disciplineNPWindowLimit: 1_000, disciplineWindowDays: 7, abandonedExamMinutes: 480 },
