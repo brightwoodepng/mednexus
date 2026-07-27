@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { STORE_ITEMS } from "@/lib/economy"
-import { ECONOMY_CONFIG } from "@/lib/economy-config"
 
 // PATCH /api/economy/inventory — use (consume) one item from inventory
 export async function PATCH(req: Request) {
@@ -23,6 +22,19 @@ export async function PATCH(req: Request) {
     }
 
     await client.query("BEGIN")
+    const session = await client.query(
+      `SELECT question_ids, mode FROM mednexus_exam_sessions
+       WHERE id = $1 AND user_id = $2 AND status = 'active' FOR UPDATE`,
+      [sessionId, uid],
+    )
+    if (!session.rows[0] || !(session.rows[0].question_ids as unknown[]).includes(questionId)) {
+      await client.query("ROLLBACK")
+      return NextResponse.json({ error: "Active session question not found" }, { status: 409 })
+    }
+    if (!item.supply || !item.supply.supportedModes.includes(session.rows[0].mode)) {
+      await client.query("ROLLBACK")
+      return NextResponse.json({ error: `${item.name} is not supported in this game mode` }, { status: 409 })
+    }
     const previous = await client.query(
       `SELECT item_id, session_id, question_id, usage_status, remaining_quantity
          FROM mednexus_session_consumable_events
@@ -38,17 +50,7 @@ export async function PATCH(req: Request) {
       await client.query("COMMIT")
       return NextResponse.json({ ok: true, quantity: event.remaining_quantity, usageStatus: event.usage_status })
     }
-    const session = await client.query(
-      `SELECT question_ids FROM mednexus_exam_sessions
-       WHERE id = $1 AND user_id = $2 AND status = 'active' FOR UPDATE`,
-      [sessionId, uid],
-    )
-    if (!session.rows[0] || !(session.rows[0].question_ids as unknown[]).includes(questionId)) {
-      await client.query("ROLLBACK")
-      return NextResponse.json({ error: "Active session question not found" }, { status: 409 })
-    }
-    const perQuestionLimits: Readonly<Record<string, number>> = ECONOMY_CONFIG.store.perQuestionLimits
-    const limitOne = perQuestionLimits[itemId] === 1
+    const limitOne = item.supply.perQuestionUsageLimit === 1
     const inserted = await client.query(
       `INSERT INTO mednexus_session_consumable_events
         (id, user_id, usage_id, session_id, item_id, question_id, limit_one_per_question, usage_status, used_at)
