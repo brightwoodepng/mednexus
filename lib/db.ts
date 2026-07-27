@@ -625,7 +625,7 @@ export async function ensureSchema() {
       'legacy_discipline',
       discipline || ':' || earned_date,
       np_earned,
-      jsonb_build_object('discipline', discipline),
+      jsonb_build_object('discipline', discipline, 'economyVersion', 'legacy'),
       (earned_date::date + TIME '12:00:00') AT TIME ZONE 'UTC'
     FROM mednexus_discipline_np_log
     WHERE np_earned > 0

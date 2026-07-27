@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { forbidden, requireAdminPermission, requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { applyNPCredits } from "@/lib/np-ledger"
+import { ECONOMY_CONFIG } from "@/lib/economy-config"
 
 // Admin-only: forcefully overwrite a wallet balance. Database provisioning is performed by db:migrate.
 export async function PATCH(req: NextRequest) {
@@ -54,7 +55,7 @@ export async function PATCH(req: NextRequest) {
               uid,
               crypto.randomUUID(),
               balance - previous,
-              JSON.stringify({ targetBalance: balance }),
+              JSON.stringify({ targetBalance: balance, economyVersion: ECONOMY_CONFIG.economyVersion }),
             ],
           )
         }

@@ -29,9 +29,10 @@ import {
   recordDailyActivity,
   type NPCredit,
 } from "@/lib/np-ledger"
+import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
 
-const FIRST_WIN_BONUS_NP = 250
-const STUDY_GROUP_BONUS_PER_PLAYER = 20
+const FIRST_WIN_BONUS_NP = ECONOMY_CONFIG.gameRewards.multiplayer.firstDailyWin
+const STUDY_GROUP_BONUS_PER_PLAYER = ECONOMY_CONFIG.gameRewards.multiplayer.studyGroupPerPlayer
 
 interface AnswerEntry {
   /** Index into the room's question_pool */
@@ -96,6 +97,11 @@ export async function POST(
         mode: string
         scored_uids: string[]
         answer_history: Record<string, AnswerEntry[]>
+      }
+      if (!isEarningModeEnabled("mcq_multiplayer_game")
+        || !(ECONOMY_CONFIG.modeIds.multiplayerGames as readonly string[]).includes(room.mode)) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: "Rewards are disabled for this mode" }, { status: 422 })
       }
 
       const storedPayout = await client.query(
@@ -221,17 +227,17 @@ export async function POST(
           rankNP    = 0
           rankLabel = "📋 Host (Presenter)"
         } else if (room.mode === "clash") {
-          if      (playerRank === 1)                       { rankNP = 150; rankLabel = "🥇 1st Place"           }
-          else if (playerRank === 2 && totalRanked >= 2)   { rankNP = 100; rankLabel = "🥈 2nd Place"           }
-          else if (playerRank === 3 && totalRanked >= 3)   { rankNP = 50;  rankLabel = "🥉 3rd Place"           }
-          else                                             { rankNP = 25;  rankLabel = "🎯 Participation Bonus"  }
+          if      (playerRank === 1)                       { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.clashPlaces[0]; rankLabel = "🥇 1st Place"           }
+          else if (playerRank === 2 && totalRanked >= 2)   { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.clashPlaces[1]; rankLabel = "🥈 2nd Place"           }
+          else if (playerRank === 3 && totalRanked >= 3)   { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.clashPlaces[2];  rankLabel = "🥉 3rd Place"           }
+          else                                             { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.participation;  rankLabel = "🎯 Participation Bonus"  }
         } else {
           // Cohort — Top 10 tier payouts
-          if      (playerRank === 1)              { rankNP = 500; rankLabel = "🥇 1st Place"                    }
-          else if (playerRank === 2)              { rankNP = 350; rankLabel = "🥈 2nd Place"                    }
-          else if (playerRank === 3)              { rankNP = 200; rankLabel = "🥉 3rd Place"                    }
-          else if (playerRank <= 10)              { rankNP = 75;  rankLabel = `🏅 Top 10 (Rank #${playerRank})` }
-          else                                    { rankNP = 25;  rankLabel = "🎯 Participation Bonus"          }
+          if      (playerRank === 1)              { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.cohortPlaces[0]; rankLabel = "🥇 1st Place"                    }
+          else if (playerRank === 2)              { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.cohortPlaces[1]; rankLabel = "🥈 2nd Place"                    }
+          else if (playerRank === 3)              { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.cohortPlaces[2]; rankLabel = "🥉 3rd Place"                    }
+          else if (playerRank <= 10)              { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.cohortTopTen;  rankLabel = `🏅 Top 10 (Rank #${playerRank})` }
+          else                                    { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.participation;  rankLabel = "🎯 Participation Bonus"          }
         }
 
         earned    = rankNP
@@ -244,8 +250,8 @@ export async function POST(
 
       const canAwardCompletion = total > 0
         && await completionBonusAvailable(client, playerId)
-      const completionNP = canAwardCompletion ? Math.min(25, earned) : 0
-      const achievementNP = total > 0 ? Math.max(0, earned - 25) : 0
+      const completionNP = canAwardCompletion ? Math.min(ECONOMY_CONFIG.gameRewards.multiplayer.participation, earned) : 0
+      const achievementNP = total > 0 ? Math.max(0, earned - ECONOMY_CONFIG.gameRewards.multiplayer.participation) : 0
       const achievementBreakdown = total > 0
         ? breakdown
             .filter(item => item.label !== "Participation")

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { STORE_ITEMS } from "@/lib/economy"
+import { ECONOMY_CONFIG } from "@/lib/economy-config"
 
 export async function GET(req: NextRequest) {
   try {
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
           uid,
           crypto.randomUUID(),
           -item.price,
-          JSON.stringify({ itemId: item.id }),
+          JSON.stringify({ itemId: item.id, economyVersion: ECONOMY_CONFIG.economyVersion }),
         ],
       )
       await client.query(
