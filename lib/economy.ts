@@ -8,21 +8,22 @@ export interface BountyDef {
   icon: string
   target: number
   reward: number
-  type: "mode_correct" | "mode_score" | "mode_streak" | "mode_survive" | "accuracy_game" | "any_play" | "streak_cashout" | "any_newbest"
+  type: "practice" | "exam" | "accuracy" | "game" | "streak" | "discipline_variety" | "game_variety"
   mode?: string
+  modes?: readonly string[]
+  category: "practice" | "exam_accuracy" | "game_variety"
 }
 
 const BOUNTY_DEFINITIONS: BountyDef[] = [
-  { id: "rapid_5correct",    label: "Rapid Fire Marksman",    desc: "Answer 5 questions correctly in Rapid Fire",        icon: "⚡", target: 5,   reward: 200, type: "mode_correct",   mode: "rapid"   },
-  { id: "timeatk_score800",  label: "Time Bandit",            desc: "Score 800+ points in Time Attack",                 icon: "⏱️", target: 800, reward: 250, type: "mode_score",     mode: "timeatk" },
-  { id: "streak_8",          label: "On A Roll",              desc: "Build an 8× streak in Streak Master",              icon: "🔥", target: 8,   reward: 200, type: "mode_streak",    mode: "streak"  },
-  { id: "sudden_survive15",  label: "Untouchable",            desc: "Survive 15 questions in Sudden Death",             icon: "💀", target: 15,  reward: 300, type: "mode_survive",   mode: "sudden"  },
-  { id: "any_accuracy80",    label: "Clinical Precision",     desc: "Finish any game with 80%+ accuracy",               icon: "🎯", target: 1,   reward: 175, type: "accuracy_game"                  },
-  { id: "any_play3",         label: "Daily Rounds",           desc: "Play 3 games of any mode",                        icon: "🏥", target: 3,   reward: 150, type: "any_play"                       },
-  { id: "double_correct3",   label: "High Roller",            desc: "Answer 3 Double Jeopardy questions correctly",     icon: "🎲", target: 3,   reward: 200, type: "mode_correct",   mode: "double"  },
-  { id: "streak_cashout5",   label: "Cash Out King",          desc: "Finish Streak Master with a 5+ streak",            icon: "💰", target: 5,   reward: 175, type: "streak_cashout", mode: "streak"  },
-  { id: "rapid_newbest",     label: "Personal Best",          desc: "Set a new high score in Rapid Fire",               icon: "🏆", target: 1,   reward: 250, type: "mode_correct",   mode: "rapid"   },
-  { id: "timeatk_play2",     label: "Beat The Clock",         desc: "Complete 2 Time Attack games",                     icon: "🕐", target: 2,   reward: 150, type: "any_play",      mode: "timeatk" },
+  { id: "practice_correct10", label: "Practice Makes Progress", desc: "Answer 10 practice questions correctly", icon: "📚", target: 10, reward: 35, type: "practice", category: "practice" },
+  { id: "practice_correct20", label: "Focused Practice", desc: "Answer 20 practice questions correctly", icon: "🩺", target: 20, reward: 35, type: "practice", category: "practice" },
+  { id: "exam_complete", label: "Exam Day", desc: "Complete an exam", icon: "📝", target: 1, reward: 45, type: "exam", category: "exam_accuracy" },
+  { id: "any_accuracy80", label: "Clinical Precision", desc: "Finish an activity with 80%+ accuracy", icon: "🎯", target: 1, reward: 40, type: "accuracy", category: "exam_accuracy" },
+  { id: "discipline_variety3", label: "Clinical Rotation", desc: "Practice across 3 disciplines in one activity", icon: "🧭", target: 3, reward: 45, type: "discipline_variety", category: "exam_accuracy" },
+  { id: "any_play3", label: "Daily Rounds", desc: "Play 3 games", icon: "🏥", target: 3, reward: 40, type: "game", category: "game_variety" },
+  { id: "streak_8", label: "On A Roll", desc: "Build an 8× streak", icon: "🔥", target: 8, reward: 45, type: "streak", category: "game_variety" },
+  { id: "game_variety2", label: "Change of Pace", desc: "Complete 2 eligible game rounds", icon: "🎮", target: 2, reward: 40, type: "game_variety", modes: ["rapid", "sudden", "timeatk", "double", "streak", "clash", "cohort", "wager", "djmulti"], category: "game_variety" },
+  { id: "rapid_newbest", label: "Personal Best", desc: "Set a new high score in Rapid Fire", icon: "🏆", target: 1, reward: 45, type: "game", mode: "rapid", category: "game_variety" },
 ]
 
 export const BOUNTY_POOL: BountyDef[] = BOUNTY_DEFINITIONS.map((definition) => {
@@ -31,17 +32,16 @@ export const BOUNTY_POOL: BountyDef[] = BOUNTY_DEFINITIONS.map((definition) => {
   return { ...definition, target: configured.target, reward: configured.reward }
 })
 
-/** Pick 3 bounties for today, deterministically based on date */
-export function getTodaysBounties(): BountyDef[] {
-  const dayNum = Math.floor(Date.now() / 86_400_000)
-  const indices: number[] = []
+/** Pick one bounty from each daily category, deterministically by economy date. */
+export function getTodaysBounties(date = TODAY_DATE()): BountyDef[] {
+  const dayNum = Math.floor(Date.parse(`${date}T00:00:00Z`) / 86_400_000)
+  const categories: BountyDef["category"][] = ["practice", "exam_accuracy", "game_variety"]
   let seed = dayNum
-  while (indices.length < 3) {
+  return categories.map(category => {
     seed = (seed * 1664525 + 1013904223) & 0x7fffffff
-    const idx = seed % BOUNTY_POOL.length
-    if (!indices.includes(idx)) indices.push(idx)
-  }
-  return indices.map(i => BOUNTY_POOL[i])
+    const pool = BOUNTY_POOL.filter(bounty => bounty.category === category)
+    return pool[seed % pool.length]
+  })
 }
 
 export const TODAY_DATE = () => new Date().toISOString().slice(0, 10)
@@ -708,6 +708,7 @@ export interface GameResult {
   accuracy: number
   /** True when the player activated at least one Supply Closet lifeline this session. */
   lifelineUsed?: boolean
+  disciplines?: readonly string[]
 }
 
 export interface PayoutBreakdown {
@@ -733,27 +734,23 @@ export function computeBountyProgress(
   result: GameResult
 ): number {
   switch (bounty.type) {
-    case "mode_correct":
+    case "practice":
+      return result.mode === "trial" || result.mode === "tutor" ? result.correct : 0
+    case "exam":
+      return result.mode === "exam" ? 1 : 0
+    case "game":
       if (bounty.mode && bounty.mode !== result.mode) return 0
       if (bounty.id === "rapid_newbest") return result.isNewHigh ? 1 : 0
-      return result.correct
-    case "mode_score":
-      if (bounty.mode && bounty.mode !== result.mode) return 0
-      return result.score >= bounty.target ? bounty.target : 0
-    case "mode_streak":
-      if (bounty.mode && bounty.mode !== result.mode) return 0
-      return result.bestStreak
-    case "mode_survive":
-      if (bounty.mode && bounty.mode !== result.mode) return 0
-      return result.survivedCount ?? result.total
-    case "accuracy_game":
-      return result.accuracy >= 80 ? 1 : 0
-    case "any_play":
-      if (bounty.mode && bounty.mode !== result.mode) return 0
       return 1
-    case "streak_cashout":
-      if (bounty.mode && bounty.mode !== result.mode) return 0
+    case "streak":
       return result.bestStreak
+    case "accuracy":
+      return result.accuracy >= 80 ? 1 : 0
+    case "discipline_variety":
+      return new Set(result.disciplines ?? []).size
+    case "game_variety":
+      if (!bounty.modes?.includes(result.mode)) return 0
+      return 1
     default:
       return 0
   }

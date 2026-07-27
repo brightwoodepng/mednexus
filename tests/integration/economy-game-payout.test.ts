@@ -29,11 +29,11 @@ describe("verified NP rewards", () => {
     ])
   })
 
-  it("matches time-attack and generic play bounties against server mode data", () => {
-    const timeAttack = BOUNTY_POOL.find((bounty) => bounty.id === "timeatk_play2")!
+  it("matches categorized game and personal-best bounties against server data", () => {
+    const personalBest = BOUNTY_POOL.find((bounty) => bounty.id === "rapid_newbest")!
     const anyPlay = BOUNTY_POOL.find((bounty) => bounty.id === "any_play3")!
-    expect(computeBountyProgress(timeAttack, result({ mode: "timeatk" }))).toBe(1)
-    expect(computeBountyProgress(timeAttack, result({ mode: "rapid" }))).toBe(0)
+    expect(computeBountyProgress(personalBest, result({ mode: "rapid", correct: 1, isNewHigh: false }))).toBe(0)
+    expect(computeBountyProgress(personalBest, result({ mode: "rapid", correct: 0, isNewHigh: true }))).toBe(1)
     expect(computeBountyProgress(anyPlay, result({ mode: "double" }))).toBe(1)
   })
 
