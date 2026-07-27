@@ -24,6 +24,19 @@ const TIMEOUT_CLOCK_TOLERANCE_MS = 5_000
 const DOUBLE_STARTING_BANK = 500
 const DOUBLE_WAGER_RATIOS = [0.1, 0.25, 0.5, 1]
 
+export function calculateDoubleBank(attempts: CompletionAttempt[], wagerHistory: unknown): number | null {
+  if (!Array.isArray(wagerHistory) || wagerHistory.length !== attempts.length) return null
+  let bank = DOUBLE_STARTING_BANK
+  for (let index = 0; index < attempts.length; index++) {
+    const wager = wagerHistory[index]
+    const permitted = DOUBLE_WAGER_RATIOS.map((ratio) => Math.max(10, Math.floor(bank * ratio)))
+    if (!Number.isInteger(wager) || !permitted.includes(wager as number)) return null
+    bank = attempts[index].isCorrect ? bank + (wager as number) : Math.max(0, bank - (wager as number))
+    if (bank === 0 && index !== attempts.length - 1) return null
+  }
+  return bank
+}
+
 /** Reconstructs a solo round solely from its immutable answer snapshot and bounded metadata. */
 export function hasConsistentSoloCompletion(
   mode: string,
@@ -44,7 +57,9 @@ export function hasConsistentSoloCompletion(
 
   const isExactSnapshot = attempts.length === snapshotIds.length
     && attempts.every((attempt, index) => attempt.questionId === snapshotIds[index])
-  if (reason === "pool_completed") return isExactSnapshot
+  if (reason === "pool_completed") {
+    return isExactSnapshot && (mode !== "double" || calculateDoubleBank(attempts, metadata.wagerHistory) !== null)
+  }
 
   const isPrefix = attempts.length > 0 && attempts.length <= snapshotIds.length
     && attempts.every((attempt, index) => attempt.questionId === snapshotIds[index])
@@ -70,16 +85,7 @@ export function hasConsistentSoloCompletion(
     return Math.abs((finishedAt - startedAt) - expectedDuration) <= TIMEOUT_CLOCK_TOLERANCE_MS
   }
   if (mode === "double" && reason === "bank_depleted") {
-    if (!Array.isArray(metadata.wagerHistory) || metadata.wagerHistory.length !== attempts.length) return false
-    let bank = DOUBLE_STARTING_BANK
-    for (let index = 0; index < attempts.length; index++) {
-      const wager = metadata.wagerHistory[index]
-      const permitted = DOUBLE_WAGER_RATIOS.map((ratio) => Math.max(10, Math.floor(bank * ratio)))
-      if (!Number.isInteger(wager) || !permitted.includes(wager as number)) return false
-      bank = attempts[index].isCorrect ? bank + (wager as number) : Math.max(0, bank - (wager as number))
-      if (bank === 0 && index !== attempts.length - 1) return false
-    }
-    return bank === 0
+    return calculateDoubleBank(attempts, metadata.wagerHistory) === 0
   }
   return false
 }
