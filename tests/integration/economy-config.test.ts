@@ -5,7 +5,7 @@ import { BOUNTY_POOL, STORE_ITEMS } from "@/lib/economy"
 
 describe("versioned economy configuration", () => {
   it("enables only the v1 MCQ earning families and daily login", () => {
-    expect(ECONOMY_CONFIG.economyVersion).toBe("1.3.0")
+    expect(ECONOMY_CONFIG.economyVersion).toBe("1.4.0")
     expect(Object.values(ECONOMY_CONFIG.enabledEarningModes).every(Boolean)).toBe(true)
     expect(ECONOMY_CONFIG.modeIds.trialTutor).toEqual(["trial", "tutor"])
     expect(ECONOMY_CONFIG.modeIds.exam).toEqual(["exam"])
@@ -35,6 +35,23 @@ describe("versioned economy configuration", () => {
         { minimumAccuracy: 95, band: "95%–100%", multiplier: 2 },
       ],
     })
+  })
+
+  it("centralizes the solo and multiplayer game payout policy", () => {
+    expect(ECONOMY_CONFIG.gameRewards.solo).toMatchObject({
+      completion: 10, correctAnswer: 3, personalBest: 25,
+      firstDailyCompletion: 15, dailyCap: 200,
+    })
+    expect(ECONOMY_CONFIG.gameRewards.solo.accuracyBonuses).toEqual([
+      { minimumAccuracy: 70, bonus: 10 },
+      { minimumAccuracy: 85, bonus: 20 },
+      { minimumAccuracy: 95, bonus: 30 },
+    ])
+    expect(ECONOMY_CONFIG.gameRewards.multiplayer).toMatchObject({
+      participation: 10, placeBonuses: [40, 25, 15],
+      firstDailyWin: 25, dailyCap: 150,
+    })
+    expect(ECONOMY_CONFIG.gameRewards.multiplayer).not.toHaveProperty("studyGroupPerPlayer")
   })
 
   it("defines the finite daily-login reward program", () => {

@@ -35,8 +35,8 @@ export type EconomyConfig = {
     accuracyMultipliers: readonly { minimumAccuracy: number; band: string; multiplier: number }[]
   }
   gameRewards: {
-    solo: { participation: number; accuracy80: number; accuracy90: number; perfect: number; perfectMinimumQuestions: number; streakEvery: number; streakUnit: number; streakMaximum: number; personalBest: number; flawlessMultiplier: number; dailyCompletionLimit: number }
-    multiplayer: { participation: number; clashPlaces: readonly number[]; cohortPlaces: readonly number[]; cohortTopTen: number; firstDailyWin: number; studyGroupPerPlayer: number }
+    solo: { completion: number; correctAnswer: number; accuracyBonuses: readonly { minimumAccuracy: number; bonus: number }[]; personalBest: number; firstDailyCompletion: number; dailyCap: number; minimumAnswers: number; suddenDeathMinimumAnswers: number }
+    multiplayer: { participation: number; placeBonuses: readonly number[]; firstDailyWin: number; dailyCap: number; minimumAnswers: number; minimumPlayers: number }
   }
   earningCaps: { daily: number; weekly: number }
   bounties: readonly { id: string; reward: number; target: number; type: string; mode?: string }[]
@@ -46,7 +46,7 @@ export type EconomyConfig = {
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.3.0",
+  economyVersion: "1.4.0",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
     mcq_multiplayer_game: true, mcq_bounty: true, daily_login: true,
@@ -78,8 +78,18 @@ export const ECONOMY_CONFIG = {
     ],
   },
   gameRewards: {
-    solo: { participation: 25, accuracy80: 50, accuracy90: 50, perfect: 100, perfectMinimumQuestions: 3, streakEvery: 5, streakUnit: 25, streakMaximum: 150, personalBest: 75, flawlessMultiplier: 2, dailyCompletionLimit: 5 },
-    multiplayer: { participation: 25, clashPlaces: [150, 100, 50], cohortPlaces: [500, 350, 200], cohortTopTen: 75, firstDailyWin: 250, studyGroupPerPlayer: 20 },
+    solo: {
+      completion: 10, correctAnswer: 3,
+      accuracyBonuses: [{ minimumAccuracy: 70, bonus: 10 }, { minimumAccuracy: 85, bonus: 20 }, { minimumAccuracy: 95, bonus: 30 }],
+      personalBest: 25, firstDailyCompletion: 15, dailyCap: 200,
+      minimumAnswers: 3,
+      // Sudden Death legitimately finishes on the first incorrect answer.
+      suddenDeathMinimumAnswers: 1,
+    },
+    multiplayer: {
+      participation: 10, placeBonuses: [40, 25, 15], firstDailyWin: 25,
+      dailyCap: 150, minimumAnswers: 3, minimumPlayers: 2,
+    },
   },
   earningCaps: { daily: 5_000, weekly: 20_000 },
   bounties: [
