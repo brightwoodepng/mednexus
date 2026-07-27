@@ -198,6 +198,7 @@ export async function POST(req: NextRequest) {
               primaryDiscipline: keys[0]?.discipline,
             }
           : undefined,
+        sessionId,
       )
 
       const gross = calculatePayout(result)
@@ -210,13 +211,17 @@ export async function POST(req: NextRequest) {
         : []
       const achievementNP = achievementBreakdown.reduce((sum, item) => sum + item.amount, 0)
       const credits: NPCredit[] = []
-      if (anti.totalNP > 0) {
-        credits.push({
-          source: session.mode === "exam" ? "exam_reward" : "question_reward",
-          sourceId: sessionId,
-          amount: anti.totalNP,
-          metadata: { mode: session.mode },
-        })
+      if (session.mode === "trial" || session.mode === "tutor") {
+        const categories = [
+          ["trial_tutor_question", anti.rewardComponents.questions],
+          ["trial_tutor_streak", anti.rewardComponents.streaks],
+          ["trial_tutor_completion", anti.rewardComponents.completion],
+        ] as const
+        for (const [source, amount] of categories) {
+          if (amount > 0) credits.push({ source, sourceId: sessionId, amount, metadata: { mode: session.mode, rewardCategory: source } })
+        }
+      } else if (anti.totalNP > 0) {
+        credits.push({ source: session.mode === "exam" ? "exam_reward" : "question_reward", sourceId: sessionId, amount: anti.totalNP, metadata: { mode: session.mode } })
       }
       if (canAwardCompletion) {
         credits.push({

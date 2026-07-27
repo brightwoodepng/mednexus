@@ -5,10 +5,21 @@ import { BOUNTY_POOL, STORE_ITEMS } from "@/lib/economy"
 
 describe("versioned economy configuration", () => {
   it("enables only the v1 MCQ earning families and daily login", () => {
-    expect(ECONOMY_CONFIG.economyVersion).toBe("1.1.0")
+    expect(ECONOMY_CONFIG.economyVersion).toBe("1.2.0")
     expect(Object.values(ECONOMY_CONFIG.enabledEarningModes).every(Boolean)).toBe(true)
     expect(ECONOMY_CONFIG.modeIds.trialTutor).toEqual(["trial", "tutor"])
     expect(ECONOMY_CONFIG.modeIds.exam).toEqual(["exam"])
+  })
+
+  it("configures capped Trial/Tutor rewards and repeat scaling", () => {
+    expect(ECONOMY_CONFIG.questionRewards.trialTutor).toEqual({
+      correct: 5,
+      streakThresholds: [{ minimum: 5, bonus: 2 }, { minimum: 10, bonus: 3 }],
+      completionThresholds: [{ minimumAnswered: 10, bonus: 15 }, { minimumAnswered: 25, bonus: 25 }],
+      dailyCap: 200,
+    })
+    expect(ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers).toEqual([1, 1, 0.5])
+    expect(ECONOMY_CONFIG.antiFarming.masteryResetDays).toBeNull()
   })
 
   it("defines the finite daily-login reward program", () => {
