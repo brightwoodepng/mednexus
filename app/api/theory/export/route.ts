@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import PDFDocument from "pdfkit"
 import { getRequestAuth, unauthorized } from "@/lib/request-auth"
-import { theoryDatabaseAvailable, theoryPool } from "@/lib/theory-server"
+import { theoryDatabaseAvailable, theoryPool, theorySetDisplayProjection } from "@/lib/theory-server"
 
 export const runtime = "nodejs"
 
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(`SELECT q.id,q.title,q.prompt,q.model_answer AS "modelAnswer",
       q.key_marking_points AS "keyMarkingPoints",q.marks,
       c.title AS collection,COALESCE(m.name,d.name,'Unassigned') AS "groupName",s.name AS "setTitle",
+      ${theorySetDisplayProjection("s")},
       CASE WHEN $1::text IS NULL THEN NULL ELSE n.body END AS note
       FROM mednexus_theory_questions q ${join}
       JOIN mednexus_theory_collections c ON c.id=q.collection_id
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     [auth?.uid ?? null, sourceId])
     if (!result.rows.length) return NextResponse.json({ error: "No Theory questions matched this export." }, { status: 404 })
 
-    const title = source === "set" ? result.rows[0].setTitle : source === "bookmarks"
+    const title = source === "set" ? result.rows[0].setLabel : source === "bookmarks"
       ? "Theory Bookmarks" : source === "revision" ? "Theory Revision Queue" : "Theory Notes"
     const doc = new PDFDocument({ size: "A4", margins: { top: 54, right: 54, bottom: 62, left: 54 }, bufferPages: true, info: { Title: `MedNexus — ${title}` } })
     doc.fillColor("#0f766e").fontSize(12).font("Helvetica-Bold").text("MEDNEXUS")
@@ -71,6 +72,9 @@ export async function POST(request: NextRequest) {
 
     result.rows.forEach((question, index) => {
       if (index > 0) doc.addPage()
+      doc.fillColor("#64748b").fontSize(8.5).font("Helvetica-Bold")
+        .text(`${question.collection} · ${question.groupName} · ${question.setLabel ?? "Unassigned"}`)
+      doc.moveDown(0.35)
       doc.fillColor("#0f766e").fontSize(10).font("Helvetica-Bold").text(`QUESTION ${index + 1}${question.marks != null ? ` · ${question.marks} MARKS` : ""}`)
       if (question.title) doc.fillColor("#111827").fontSize(15).text(plain(question.title))
       doc.moveDown(0.4).fillColor("#111827").fontSize(12).font("Helvetica").text(plain(question.prompt), { lineGap: 3 })
