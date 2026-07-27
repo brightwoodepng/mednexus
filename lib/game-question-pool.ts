@@ -19,7 +19,7 @@ export interface GameQuestionPool {
 
 /** The legacy bank used the discipline as its module before `module` was added. */
 export function getEffectiveQuestionModule(question: Question): string {
-  return question.module?.trim() || question.subject.trim()
+  return question.module?.trim() || question.subject
 }
 
 function decodeEntities(value: string): string {
