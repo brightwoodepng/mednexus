@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
              SET quantity = mednexus_user_inventory.quantity + 1
              WHERE mednexus_user_inventory.quantity < $3
            RETURNING quantity`,
-          [uid, itemId, ECONOMY_CONFIG.store.inventoryQuantityLimit]
+          [uid, itemId, item.supply?.stackLimit ?? ECONOMY_CONFIG.store.inventoryQuantityLimit]
         )
         if (granted.rowCount === 0) {
           await client.query("ROLLBACK")

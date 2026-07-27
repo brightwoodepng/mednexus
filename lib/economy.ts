@@ -77,6 +77,25 @@ export interface StoreItem {
   gradient: string
   cosmeticType?: "title" | "frame" | "highlight" | "avatar"
   imagePath?: string
+  /** Server-authoritative behavior and availability for Supply Closet items. */
+  supply?: {
+    effectType: "eliminate_wrong_answers" | "add_time"
+    supportedModes: readonly SoloSupplyMode[]
+    perQuestionUsageLimit: number
+    stackLimit: number
+    effectAmount: number
+    effectUnit: "answer_choices" | "seconds"
+  }
+}
+
+export type SoloSupplyMode = "rapid" | "sudden" | "timeatk" | "streak" | "double"
+
+export const SOLO_SUPPLY_MODE_LABELS: Readonly<Record<SoloSupplyMode, string>> = {
+  rapid: "Rapid Fire",
+  sudden: "Sudden Death",
+  timeatk: "Time Attack",
+  streak: "Streak Master",
+  double: "Double Jeopardy",
 }
 
 // ── Vault metadata for rich case-study display ──────────────────────────────
@@ -159,6 +178,14 @@ const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [
     icon: "🩺",
     category: "lifeline",
     gradient: "from-emerald-500 to-teal-600",
+    supply: {
+      effectType: "eliminate_wrong_answers",
+      supportedModes: ["rapid", "sudden", "timeatk", "streak", "double"],
+      perQuestionUsageLimit: 1,
+      stackLimit: ECONOMY_CONFIG.store.inventoryQuantityLimit,
+      effectAmount: 2,
+      effectUnit: "answer_choices",
+    },
   },
   {
     id: "lifeline_freeze",
@@ -167,6 +194,14 @@ const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [
     icon: "🧪",
     category: "lifeline",
     gradient: "from-blue-500 to-cyan-600",
+    supply: {
+      effectType: "add_time",
+      supportedModes: ["rapid", "sudden", "timeatk"],
+      perQuestionUsageLimit: 1,
+      stackLimit: ECONOMY_CONFIG.store.inventoryQuantityLimit,
+      effectAmount: 10,
+      effectUnit: "seconds",
+    },
   },
 
   // ── The Vault — Premium clinical simulations ─────────────────────────────

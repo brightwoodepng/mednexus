@@ -91,6 +91,28 @@ describe("versioned economy configuration", () => {
     expect(Object.keys(ECONOMY_CONFIG.store.catalog).sort()).toEqual(STORE_ITEMS.map(item => item.id).sort())
   })
 
+  it("defines mode-specific Supply Closet effects", () => {
+    const consult = STORE_ITEMS.find(item => item.id === "lifeline_50_50")?.supply
+    const labs = STORE_ITEMS.find(item => item.id === "lifeline_freeze")?.supply
+
+    expect(consult).toMatchObject({
+      effectType: "eliminate_wrong_answers",
+      supportedModes: ["rapid", "sudden", "timeatk", "streak", "double"],
+      perQuestionUsageLimit: 1,
+      effectAmount: 2,
+      effectUnit: "answer_choices",
+    })
+    expect(labs).toMatchObject({
+      effectType: "add_time",
+      supportedModes: ["rapid", "sudden", "timeatk"],
+      perQuestionUsageLimit: 1,
+      effectAmount: 10,
+      effectUnit: "seconds",
+    })
+    expect(consult?.stackLimit).toBe(ECONOMY_CONFIG.store.inventoryQuantityLimit)
+    expect(labs?.stackLimit).toBe(ECONOMY_CONFIG.store.inventoryQuantityLimit)
+  })
+
   it("adds the economy version to all current ledger insertion paths", () => {
     const ledger = readFileSync("lib/np-ledger.ts", "utf8")
     const store = readFileSync("app/api/economy/store/route.ts", "utf8")
