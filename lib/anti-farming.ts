@@ -43,6 +43,8 @@ export interface SessionNPResult {
   /** Ready-to-append payout-style breakdown entries */
   breakdown: { label: string; amount: number }[]
   fatiguedDisciplines: string[]
+  /** Separately ledgered Trial/Tutor reward categories. */
+  rewardComponents: { questions: number; streaks: number; completion: number }
   /** Per-question detail (trial mode only) */
   perQuestion: {
     questionId:       string
@@ -53,7 +55,7 @@ export interface SessionNPResult {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const REPEAT_CAP = ECONOMY_CONFIG.antiFarming.repeatCorrectLimit
+const REPEAT_MULTIPLIERS = ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers
 const DISCIPLINE_NP_LIMIT = ECONOMY_CONFIG.antiFarming.disciplineNPWindowLimit
 const FATIGUE_DAYS = ECONOMY_CONFIG.antiFarming.disciplineWindowDays
 
@@ -96,6 +98,7 @@ export async function calculateSessionNP(
   sessionData: SessionQuestionInput[],
   client:      PoolClient,
   examMeta?:   ExamMeta,
+  sessionId?:  string,
 ): Promise<SessionNPResult> {
   const enabled = mode === "exam"
     ? isEarningModeEnabled("mcq_exam") && (ECONOMY_CONFIG.modeIds.exam as readonly string[]).includes(mode)
@@ -105,6 +108,44 @@ export async function calculateSessionNP(
 
   const today   = todayStr()
   const window7 = last7DaysStrings()
+
+  // Reconstruct Trial/Tutor results from server-owned session data. Client
+  // correctness and streak claims are deliberately ignored.
+  if ((ECONOMY_CONFIG.modeIds.trialTutor as readonly string[]).includes(mode)) {
+    if (!sessionId) throw new Error("A server session is required for Trial/Tutor rewards")
+    const { rows } = await client.query<{
+      answer_key: Array<{ id: string; discipline: string; correctAnswer: unknown }>
+      accepted_answers: Record<string, unknown>
+      answer_order: Array<{ questionId: string }>
+    }>(`SELECT answer_key, accepted_answers, answer_order
+          FROM mednexus_exam_sessions
+         WHERE id = $1 AND user_id = $2 AND mode = $3 AND status = 'completed'`,
+      [sessionId, userId, mode])
+    if (!rows[0]) throw new Error("Completed Trial/Tutor session not found")
+    const keys = Array.isArray(rows[0].answer_key) ? rows[0].answer_key : []
+    const keyById = new Map(keys
+      .filter((key) => key && typeof key.id === "string" && typeof key.discipline === "string" && key.correctAnswer != null)
+      .map((key) => [key.id, key]))
+    const answers = rows[0].accepted_answers && typeof rows[0].accepted_answers === "object" ? rows[0].accepted_answers : {}
+    const order = Array.isArray(rows[0].answer_order) ? rows[0].answer_order : []
+    const seen = new Set<string>()
+    let streak = 0
+    sessionData = order.flatMap((entry) => {
+      const id = entry?.questionId
+      const key = typeof id === "string" ? keyById.get(id) : undefined
+      // Absent answers include revealed-only questions. Unknown and duplicate
+      // attempts are invalid; none count toward rewards or completion.
+      if (!key || seen.has(id) || !Object.prototype.hasOwnProperty.call(answers, id) || answers[id] == null) return []
+      seen.add(id)
+      const actual = answers[id]
+      const expected = key.correctAnswer
+      const correct = Array.isArray(actual) && Array.isArray(expected)
+        ? actual.length === expected.length && [...actual].sort().every((value, index) => value === [...expected].sort()[index])
+        : actual === expected
+      streak = correct ? streak + 1 : 0
+      return [{ questionId: id, discipline: key.discipline, isCorrect: correct, currentStreak: streak }]
+    })
+  }
 
   const questionIds = sessionData.map((q) => q.questionId)
   const disciplines = [...new Set(sessionData.map((q) => q.discipline))]
@@ -157,6 +198,7 @@ export async function calculateSessionNP(
   const breakdown:   SessionNPResult["breakdown"]   = []
   const fatiguedDisciplines: string[]               = []
   let totalNP = 0
+  const rewardComponents = { questions: 0, streaks: 0, completion: 0 }
 
   if (mode === "exam") {
     // ── Exam: single completion bounty ────────────────────────────────────
@@ -195,11 +237,14 @@ export async function calculateSessionNP(
       const streak      = q.currentStreak ?? 0
       const streakBonus = [...ECONOMY_CONFIG.questionRewards.trialTutor.streakThresholds]
         .reverse().find((threshold) => streak >= threshold.minimum)?.bonus ?? 0
-      const baseNP = ECONOMY_CONFIG.questionRewards.trialTutor.correct + streakBonus
-
-      // Rule 1: 3-repeat cap
       const correctCount = correctCountMap.get(q.questionId) ?? 0
-      if (correctCount >= REPEAT_CAP) {
+      const multiplier = REPEAT_MULTIPLIERS[correctCount] ?? 0
+      const questionNP = Math.floor(ECONOMY_CONFIG.questionRewards.trialTutor.correct * multiplier)
+      const streakNP = Math.floor(streakBonus * multiplier)
+      const baseNP = questionNP + streakNP
+
+      // Rule 1: configurable repeat-encounter schedule
+      if (multiplier <= 0) {
         repeatCappedCount++
         perQuestion.push({ questionId: q.questionId, awardedNP: 0, suppressedReason: "repeat_cap" })
         continue
@@ -216,6 +261,8 @@ export async function calculateSessionNP(
 
       // Approved
       totalNP += baseNP
+      rewardComponents.questions += questionNP
+      rewardComponents.streaks += streakNP
       correctCountMap.set(q.questionId, correctCount + 1)
       disciplineRunningNP.set(q.discipline, runningNP + baseNP)
       disciplineNPThisSession.set(q.discipline, (disciplineNPThisSession.get(q.discipline) ?? 0) + baseNP)
@@ -223,10 +270,29 @@ export async function calculateSessionNP(
       perQuestion.push({ questionId: q.questionId, awardedNP: baseNP, suppressedReason: null })
     }
 
-    const awardedCount = perQuestion.filter((p) => p.awardedNP > 0).length
-    if (totalNP > 0) {
-      breakdown.push({ label: `📚 Trial Session (${awardedCount} answered)`, amount: totalNP })
+    const answeredCount = sessionData.length
+    rewardComponents.completion = ECONOMY_CONFIG.questionRewards.trialTutor.completionThresholds
+      .filter(({ minimumAnswered }) => answeredCount >= minimumAnswered)
+      .reduce((sum, threshold) => sum + threshold.bonus, 0)
+
+    // The three sources share one economy-date cap. The surrounding payout
+    // transaction and locked session make this calculation atomic per session.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`trial-tutor-cap:${userId}:${today}`])
+    const capRows = await client.query<{ total: string }>(
+      `SELECT COALESCE(SUM(amount), 0)::text AS total FROM mednexus_np_transactions
+        WHERE user_id = $1 AND source = ANY($2::text[])
+          AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
+      [userId, ["trial_tutor_question", "trial_tutor_streak", "trial_tutor_completion"], today],
+    )
+    let remaining = Math.max(0, ECONOMY_CONFIG.questionRewards.trialTutor.dailyCap - Number(capRows.rows[0]?.total ?? 0))
+    for (const category of ["questions", "streaks", "completion"] as const) {
+      rewardComponents[category] = Math.min(rewardComponents[category], remaining)
+      remaining -= rewardComponents[category]
     }
+    totalNP = rewardComponents.questions + rewardComponents.streaks + rewardComponents.completion
+    if (rewardComponents.questions) breakdown.push({ label: `📚 Correct Answers (${answeredCount} answered)`, amount: rewardComponents.questions })
+    if (rewardComponents.streaks) breakdown.push({ label: "🔥 Streak Bonuses", amount: rewardComponents.streaks })
+    if (rewardComponents.completion) breakdown.push({ label: `✅ Completion Bonuses (${answeredCount} answered)`, amount: rewardComponents.completion })
     if (repeatCappedCount > 0) {
       breakdown.push({ label: `🚫 Repeat Cap (${repeatCappedCount}q already mastered)`, amount: 0 })
     }
@@ -259,7 +325,7 @@ export async function calculateSessionNP(
     )
   }
 
-  return { totalNP, breakdown, fatiguedDisciplines, perQuestion }
+  return { totalNP, breakdown, fatiguedDisciplines, rewardComponents, perQuestion }
 }
 
 // ── Daily Login Reward ────────────────────────────────────────────────────────

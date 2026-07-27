@@ -27,7 +27,7 @@ export type EconomyConfig = {
     /** One-time bonuses within the initial 30-day streak program. */
     milestones: readonly { day: number; bonus: number; name: string }[]
   }
-  questionRewards: { trialTutor: { correct: number; streakThresholds: readonly { minimum: number; bonus: number }[] } }
+  questionRewards: { trialTutor: { correct: number; streakThresholds: readonly { minimum: number; bonus: number }[]; completionThresholds: readonly { minimumAnswered: number; bonus: number }[]; dailyCap: number } }
   examRewards: { completion: number; accuracyThresholds: readonly { above: number; bonus: number }[] }
   gameRewards: {
     solo: { participation: number; accuracy80: number; accuracy90: number; perfect: number; perfectMinimumQuestions: number; streakEvery: number; streakUnit: number; streakMaximum: number; personalBest: number; flawlessMultiplier: number; dailyCompletionLimit: number }
@@ -37,11 +37,11 @@ export type EconomyConfig = {
   bounties: readonly { id: string; reward: number; target: number; type: string; mode?: string }[]
   rankUp: { reward: number; thresholds: readonly { name: string; minPoints: number }[] }
   storePrices: Readonly<Record<string, number>>
-  antiFarming: { repeatCorrectLimit: number; disciplineNPWindowLimit: number; disciplineWindowDays: number; abandonedExamMinutes: number }
+  antiFarming: { repeatRewardMultipliers: readonly number[]; masteryResetDays: number | null; disciplineNPWindowLimit: number; disciplineWindowDays: number; abandonedExamMinutes: number }
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.1.0",
+  economyVersion: "1.2.0",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
     mcq_multiplayer_game: true, mcq_bounty: true, daily_login: true,
@@ -59,7 +59,7 @@ export const ECONOMY_CONFIG = {
     // day 60+ until product defines a recurring cycle or named monthly rewards.
     { day: 30, bonus: 250, name: "30-Day Streak" },
   ] },
-  questionRewards: { trialTutor: { correct: 10, streakThresholds: [{ minimum: 4, bonus: 5 }, { minimum: 11, bonus: 10 }] } },
+  questionRewards: { trialTutor: { correct: 5, streakThresholds: [{ minimum: 5, bonus: 2 }, { minimum: 10, bonus: 3 }], completionThresholds: [{ minimumAnswered: 10, bonus: 15 }, { minimumAnswered: 25, bonus: 25 }], dailyCap: 200 } },
   examRewards: { completion: 50, accuracyThresholds: [{ above: 50, bonus: 100 }, { above: 75, bonus: 250 }, { above: 90, bonus: 500 }] },
   gameRewards: {
     solo: { participation: 25, accuracy80: 50, accuracy90: 50, perfect: 100, perfectMinimumQuestions: 3, streakEvery: 5, streakUnit: 25, streakMaximum: 150, personalBest: 75, flawlessMultiplier: 2, dailyCompletionLimit: 5 },
@@ -91,7 +91,8 @@ export const ECONOMY_CONFIG = {
     highlight_neon:300,highlight_gold:350,highlight_amethyst:800,highlight_legendary_crimson:1500,highlight_legendary_emerald:1800,highlight_mythic_lightning:3000,highlight_mythic_void_walker:5000,
     avatar_scrub_tech:500,avatar_coffee_drip:500,avatar_lab_rat:800,avatar_night_shift:800,avatar_gold_steth:2000,avatar_plague_doctor:2500,avatar_cyber_surgeon:2500,avatar_ascended:5000,avatar_marble:5000,avatar_vital_sign:7500,
   },
-  antiFarming: { repeatCorrectLimit: 3, disciplineNPWindowLimit: 1_000, disciplineWindowDays: 7, abandonedExamMinutes: 480 },
+  // Reset stays disabled until a mastery-reset period and timestamp storage are approved.
+  antiFarming: { repeatRewardMultipliers: [1, 1, 0.5], masteryResetDays: null, disciplineNPWindowLimit: 1_000, disciplineWindowDays: 7, abandonedExamMinutes: 480 },
 } as const satisfies EconomyConfig
 
 export const economyVersion = ECONOMY_CONFIG.economyVersion
