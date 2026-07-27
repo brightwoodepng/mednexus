@@ -197,6 +197,7 @@ export async function POST(req: NextRequest) {
         isNewHigh,
         survivedCount,
         accuracy,
+        disciplines: [...new Set(sessionData.map(answer => answer.discipline).filter(Boolean))],
         lifelineUsed: session.result_meta?.lifelineUsed === true,
       }
 
@@ -275,7 +276,9 @@ export async function POST(req: NextRequest) {
         target: number
         claimed: boolean
         newlyComplete: boolean
+        reward: number
       }> = []
+      const bountyCredits: NPCredit[] = []
       for (const bounty of getTodaysBounties()) {
         const delta = computeBountyProgress(bounty, result)
         if (!delta) continue
@@ -288,33 +291,42 @@ export async function POST(req: NextRequest) {
         if (old.rows[0]?.claimed) continue
         const oldProgress = Number(old.rows[0]?.progress ?? 0)
         const progress = Math.min(oldProgress + delta, bounty.target)
+        const newlyComplete = progress === bounty.target && oldProgress < bounty.target
         await client.query(
           `INSERT INTO mednexus_bounty_progress
              (uid, bounty_id, bounty_date, progress, claimed)
-           VALUES ($1, $2, $3, $4, FALSE)
+           VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (uid, bounty_id, bounty_date) DO UPDATE
-             SET progress = EXCLUDED.progress`,
-          [auth.uid, bounty.id, TODAY_DATE(), progress],
+             SET progress = EXCLUDED.progress, claimed = EXCLUDED.claimed`,
+          [auth.uid, bounty.id, TODAY_DATE(), progress, newlyComplete],
         )
+        if (newlyComplete) bountyCredits.push({
+          source: "bounty", sourceId: `${TODAY_DATE()}:${bounty.id}`, amount: bounty.reward,
+          metadata: { bountyId: bounty.id, automatic: true },
+        })
         bountyUpdates.push({
           id: bounty.id,
           progress,
           target: bounty.target,
-          claimed: false,
-          newlyComplete: progress === bounty.target && oldProgress < bounty.target,
+          claimed: newlyComplete,
+          newlyComplete,
+          reward: newlyComplete ? bounty.reward : 0,
         })
       }
+      const bountyCredit = await applyNPCredits(client, auth.uid, bountyCredits)
 
       const breakdown = [
         ...anti.breakdown,
         ...(meaningfulSoloCompletion ? [{ label: "Valid Completion", amount: ECONOMY_CONFIG.gameRewards.solo.completion }] : []),
         ...(canAwardFirstCompletion ? [{ label: "First Solo Completion", amount: ECONOMY_CONFIG.gameRewards.solo.firstDailyCompletion }] : []),
         ...achievementBreakdown,
+        ...bountyUpdates.filter(item => item.newlyComplete).map(item => ({ label: `Bounty: ${getTodaysBounties().find(b => b.id === item.id)?.label ?? item.id}`, amount: item.reward })),
         ...credit.rankBreakdown,
+        ...bountyCredit.rankBreakdown,
       ]
       const payload = {
-        earned: credit.credited,
-        newBalance: credit.newBalance,
+        earned: credit.credited + bountyCredit.credited,
+        newBalance: bountyCredit.newBalance,
         breakdown,
         examRewardBreakdown: anti.examRewardBreakdown,
         bountyUpdates,
