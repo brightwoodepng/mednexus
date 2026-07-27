@@ -9,6 +9,7 @@ import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } 
 import { useEconomy, type PayoutResponse } from "@/contexts/economy-context"
 import { PayoutResult } from "@/components/economy-panel"
 import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS } from "@/lib/economy"
+import { getMultiplayerRewardRules } from "@/lib/multiplayer-reward-presentation"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MultiMode = "clash" | "cohort" | "wager" | "djmulti"
@@ -158,6 +159,17 @@ function CopyPinCard({ pin }: { pin: string }) {
         className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
         {copied ? "✓ Copied!" : "Copy PIN"}
       </button>
+    </div>
+  )
+}
+
+function MultiplayerRewardsCard() {
+  return (
+    <div className="mb-4 rounded-2xl border border-primary/15 bg-primary/5 p-3">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-primary">NP rewards</p>
+      <ul className="space-y-1 text-xs text-muted-foreground">
+        {getMultiplayerRewardRules().map(rule => <li key={rule}>• {rule}</li>)}
+      </ul>
     </div>
   )
 }
@@ -499,6 +511,8 @@ function RoomLobby({ room, myId, isHost, onStart, onExit }: {
         </div>
 
         <CopyPinCard pin={room.pin} />
+
+        <MultiplayerRewardsCard />
 
         <div className="my-4 rounded-3xl border border-border bg-card p-4">
           <div className="mb-3 flex items-center justify-between">
@@ -1144,9 +1158,11 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
             {mode === "clash" ? "Competitive room · Max 5 players · Free Entry"
             : mode === "cohort" ? "Lecture hall mode · Unlimited players · Free Entry"
             : mode === "djmulti" ? "Confidence wagering · Max 5 players · Starting bank: 500 pts"
-            : "Betting game · Max 8 players · Starting balance: 1,000 chips"}
+            : "Match-chip wagering · Max 8 players · Chips are not spendable NP"}
           </p>
         </div>
+
+        <MultiplayerRewardsCard />
 
         <div className="mb-4">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Your Name (Host)</p>
