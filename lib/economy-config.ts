@@ -24,7 +24,8 @@ export type EconomyConfig = {
   }
   dailyLogin: {
     base: number
-    milestones: readonly { day: number; bonus: number; repeatsEveryDays?: number }[]
+    /** One-time bonuses within the initial 30-day streak program. */
+    milestones: readonly { day: number; bonus: number; name: string }[]
   }
   questionRewards: { trialTutor: { correct: number; streakThresholds: readonly { minimum: number; bonus: number }[] } }
   examRewards: { completion: number; accuracyThresholds: readonly { above: number; bonus: number }[] }
@@ -40,7 +41,7 @@ export type EconomyConfig = {
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.0.0",
+  economyVersion: "1.1.0",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
     mcq_multiplayer_game: true, mcq_bounty: true, daily_login: true,
@@ -50,9 +51,13 @@ export const ECONOMY_CONFIG = {
     soloGames: ["rapid", "sudden", "timeatk", "double", "streak"],
     multiplayerGames: ["clash", "cohort", "wager", "djmulti"],
   },
-  dailyLogin: { base: 25, milestones: [
-    { day: 3, bonus: 50 }, { day: 7, bonus: 150 }, { day: 14, bonus: 300 },
-    { day: 30, bonus: 1_000, repeatsEveryDays: 30 },
+  dailyLogin: { base: 10, milestones: [
+    { day: 3, bonus: 20, name: "3-Day Streak" },
+    { day: 7, bonus: 50, name: "7-Day Streak" },
+    { day: 14, bonus: 100, name: "14-Day Streak" },
+    // The initial streak program ends at day 30. Do not repeat this bonus at
+    // day 60+ until product defines a recurring cycle or named monthly rewards.
+    { day: 30, bonus: 250, name: "30-Day Streak" },
   ] },
   questionRewards: { trialTutor: { correct: 10, streakThresholds: [{ minimum: 4, bonus: 5 }, { minimum: 11, bonus: 10 }] } },
   examRewards: { completion: 50, accuracyThresholds: [{ above: 50, bonus: 100 }, { above: 75, bonus: 250 }, { above: 90, bonus: 500 }] },

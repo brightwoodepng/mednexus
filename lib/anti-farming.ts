@@ -264,13 +264,18 @@ export async function calculateSessionNP(
 
 // ── Daily Login Reward ────────────────────────────────────────────────────────
 
-/**
- * NP milestones awarded as a lump-sum bonus on top of the 25 NP base payout.
- * Day 30+ resets to a 30-day cycle (30, 60, 90 …) to prevent infinite scaling.
- */
-const LOGIN_MILESTONES = ECONOMY_CONFIG.dailyLogin.milestones.map((milestone) => ({
-  ...milestone, label: `${milestone.day}-Day Streak`,
-}))
+export interface DailyLoginMilestone {
+  day: number
+  reward: number
+  name: string
+}
+
+function nextLoginMilestone(streak: number): DailyLoginMilestone | null {
+  const milestone = ECONOMY_CONFIG.dailyLogin.milestones.find(({ day }) => day > streak)
+  return milestone
+    ? { day: milestone.day, reward: milestone.bonus, name: milestone.name }
+    : null
+}
 
 export interface DailyLoginResult {
   /** True when the user already got their reward today — caller should no-op */
@@ -280,6 +285,8 @@ export interface DailyLoginResult {
   longestStreak: number
   /** e.g. "7-Day Streak" when a milestone was hit, otherwise null */
   milestoneName: string | null
+  /** The next one-time streak milestone, or null after completing day 30. */
+  nextMilestone: DailyLoginMilestone | null
   breakdown:     { label: string; amount: number }[]
 }
 
@@ -293,8 +300,8 @@ export interface DailyLoginResult {
  *   - 2+ calendar days ago  → streak resets to 1
  *
  * NP payout:
- *   - Base: 25 NP always
- *   - Milestone bonuses: Day 3 (+50), Day 7 (+150), Day 14 (+300), Day 30n (+1000)
+ * Payout values and the finite, non-repeating 30-day milestone program live in
+ * ECONOMY_CONFIG.dailyLogin.
  */
 export async function processDailyLogin(userId: string): Promise<DailyLoginResult> {
   if (!isEarningModeEnabled("daily_login")) throw new Error("Daily login rewards are disabled")
@@ -317,7 +324,7 @@ export async function processDailyLogin(userId: string): Promise<DailyLoginResul
 
     if (rows.length === 0) {
       await client.query("ROLLBACK")
-      return { alreadyDone: true, earned: 0, newStreak: 0, longestStreak: 0, milestoneName: null, breakdown: [] }
+      return { alreadyDone: true, earned: 0, newStreak: 0, longestStreak: 0, milestoneName: null, nextMilestone: nextLoginMilestone(0), breakdown: [] }
     }
 
     const row       = rows[0]
@@ -334,7 +341,7 @@ export async function processDailyLogin(userId: string): Promise<DailyLoginResul
       return {
         alreadyDone: true, earned: 0,
         newStreak: row.login_streak, longestStreak: row.longest_streak,
-        milestoneName: null, breakdown: [],
+        milestoneName: null, nextMilestone: nextLoginMilestone(row.login_streak), breakdown: [],
       }
     }
 
@@ -353,17 +360,11 @@ export async function processDailyLogin(userId: string): Promise<DailyLoginResul
     let earned: number = ECONOMY_CONFIG.dailyLogin.base
     let milestoneName = null as string | null
 
-    // Check all milestones; for 30+ day cycle use modulo
-    for (const m of LOGIN_MILESTONES) {
-      const hit = m.day < 30
-        ? newStreak === m.day
-        : newStreak >= 30 && newStreak % 30 === 0 && (newStreak / 30) * 30 === newStreak
-
-      // For exact milestones below 30, just check equality
-      const exactHit = m.day < 30 ? newStreak === m.day : (newStreak >= 30 && newStreak % 30 === 0)
-
-      if (exactHit) {
-        const label = m.day >= 30 ? `${newStreak}-Day Streak` : m.label
+    // Milestones are exact, one-time streak achievements. In particular, the
+    // day-30 reward does not implicitly recur on day 60, 90, and so on.
+    for (const m of ECONOMY_CONFIG.dailyLogin.milestones) {
+      if (newStreak === m.day) {
+        const label = m.name
         breakdown.push({ label: `🔥 ${label} Milestone!`, amount: m.bonus })
         earned        += m.bonus
         milestoneName  = label
@@ -384,7 +385,7 @@ export async function processDailyLogin(userId: string): Promise<DailyLoginResul
     // ── Write: credit wallet, lifetime earnings and ledger ───────────────────
     const credit = await applyNPCredits(client, userId, [{
       source: "daily_login",
-      sourceId: todayDate,
+      sourceId: `daily-login:${todayDate}`,
       amount: earned,
       metadata: { streak: newStreak, milestoneName },
     }])
@@ -407,7 +408,15 @@ export async function processDailyLogin(userId: string): Promise<DailyLoginResul
 
     await client.query("COMMIT")
 
-    return { alreadyDone: false, earned, newStreak, longestStreak: newLongest, milestoneName, breakdown }
+    return {
+      alreadyDone: false,
+      earned,
+      newStreak,
+      longestStreak: newLongest,
+      milestoneName,
+      nextMilestone: nextLoginMilestone(newStreak),
+      breakdown,
+    }
   } catch (err) {
     await client.query("ROLLBACK")
     throw err
