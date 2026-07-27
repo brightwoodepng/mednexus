@@ -65,6 +65,24 @@ export function wordCount(markdown: string) {
   return markdown.trim() ? markdown.trim().split(/\s+/u).length : 0
 }
 
+export function theorySetNumberExpression(alias = "s") {
+  return `(SELECT COUNT(*)::int
+    FROM mednexus_theory_sets numbered_set
+    WHERE numbered_set.status='published'
+      AND numbered_set.collection_id=${alias}.collection_id
+      AND numbered_set.module_id IS NOT DISTINCT FROM ${alias}.module_id
+      AND numbered_set.discipline_id IS NOT DISTINCT FROM ${alias}.discipline_id
+      AND ROW(COALESCE(numbered_set.sort_order,0),COALESCE(numbered_set.name,''),numbered_set.id)
+        <= ROW(COALESCE(${alias}.sort_order,0),COALESCE(${alias}.name,''),${alias}.id))`
+}
+
+/** Stable learner-only set numbering; editorial set names remain unchanged. */
+export function theorySetDisplayProjection(alias = "s") {
+  const number = theorySetNumberExpression(alias)
+  return `CASE WHEN ${alias}.id IS NULL THEN NULL ELSE ${number} END AS "setNumber",
+    CASE WHEN ${alias}.id IS NULL THEN NULL ELSE CONCAT('Set ', ${number}) END AS "setLabel"`
+}
+
 export function theoryRatingOutcome(rating: TheorySelfRating): {
   confidence: TheoryConfidence
   revisionAction: "add" | "preserve" | "remove"

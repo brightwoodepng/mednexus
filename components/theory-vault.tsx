@@ -18,30 +18,30 @@ type DashboardData = {
   displayName: string
   totals: { total: number; completed: number }
   collections: Array<{ id: string; slug: string; title: string; kind: string; groups: number; sets: number; total: number; completed: number }>
-  continueStudying: null | { id: string; setId: string | null; setTitle: string | null; collection: string; groupName: string; lastStudiedAt: string; setTotal: number; setCompleted: number }
+  continueStudying: null | { id: string; setId: string | null; setTitle: string | null; setNumber: number | null; setLabel: string | null; collection: string; groupName: string; lastStudiedAt: string; setTotal: number; setCompleted: number }
   counts: { bookmarks: number; notes: number; drafts: number; revision: number }
-  recentSets: Array<{ id: string; setId: string; setTitle: string; collection: string; groupName: string; lastStudiedAt: string; progressPercent: number }>
+  recentSets: Array<{ id: string; setId: string; setTitle: string; setNumber: number; setLabel: string; collection: string; groupName: string; lastStudiedAt: string; progressPercent: number }>
 }
 type CatalogData = {
   collections: Array<{ id: string; slug: string; title: string; kind: string; totalQuestions: number; completedQuestions: number }>
   modules: Array<{ id: string; collectionId: string; name: string; description: string }>
   disciplines: Array<{ id: string; collectionId: string; name: string }>
-  sets: Array<{ id: string; collectionId: string; moduleId: string | null; disciplineId: string | null; name: string; description: string; totalQuestions: number; completedQuestions: number; rangeStart: number | null; rangeEnd: number | null }>
+  sets: Array<{ id: string; collectionId: string; moduleId: string | null; disciplineId: string | null; name: string; description: string; setNumber: number; setLabel: string; totalQuestions: number; completedQuestions: number; rangeStart: number | null; rangeEnd: number | null }>
 }
 type SetData = {
-  id: string; name: string; description: string; collectionTitle: string; collectionId: string
+  id: string; name: string; description: string; setNumber: number; setLabel: string; collectionTitle: string; collectionId: string
   moduleName: string | null; disciplineName: string | null; moduleId: string | null; disciplineId: string | null
   total: number; completed: number; progressPercent: number
   questions: Array<{ id: string; title: string; prompt: string; sortOrder: number; marks: number | null; completed: boolean; bookmarked: boolean; revision: boolean; draft: boolean }>
 }
 type LibraryItem = {
   id: string; title: string; prompt: string; collection: string; module: string | null; discipline: string | null
-  setTitle: string | null; updatedAt: string; note: string | null; priority: number; confidence: string | null
+  setTitle: string | null; setNumber: number | null; setLabel: string | null; updatedAt: string; note: string | null; priority: number; confidence: string | null
 }
 type ProgressData = {
   totals: { total: number; completed: number; inProgress: number; needsRevision: number; high: number; medium: number; low: number; attempts: number; drafts: number; bookmarks: number; notes: number; revisions: number }
   groups: Array<{ collectionId: string; collection: string; groupId: string; name: string; total: number; completed: number; totalSets: number; completedSets: number }>
-  recent: Array<{ type: string; occurredAt: string; questionId: string; prompt: string; groupName: string; setTitle: string }>
+  recent: Array<{ type: string; occurredAt: string; questionId: string; prompt: string; groupName: string; setTitle: string; setNumber: number | null; setLabel: string | null }>
 }
 type TheoryAiStatus = {
   available: boolean
@@ -193,12 +193,17 @@ export function TheoryVault({ initialView = "Dashboard", externalQuery, onExtern
     setSessionQuestionIds(questionIds)
     setQuestionId(questionIds[0])
   }
+  const finishQuestion = async (setId: string | null) => {
+    setQuestionId(null)
+    setSessionQuestionIds(null)
+    if (setId) await openSet(setId)
+  }
 
   return <div className="mx-auto max-w-7xl space-y-5">
 
     {error && <div role="alert" className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
     {loading ? <div className={`${card} py-14 text-center text-sm text-muted-foreground`}>Opening Theory Vault…</div>
-      : questionId ? <StudyQuestion questionId={questionId} sessionQuestionIds={sessionQuestionIds} registered={Boolean(registered)} onBack={() => { setQuestionId(null); setSessionQuestionIds(null) }} onMove={setQuestionId}/>
+      : questionId ? <StudyQuestion questionId={questionId} sessionQuestionIds={sessionQuestionIds} registered={Boolean(registered)} onBack={() => { setQuestionId(null); setSessionQuestionIds(null) }} onFinish={finishQuestion} onMove={setQuestionId}/>
       : setData ? <SetOverview data={setData} registered={Boolean(registered)} onBack={() => setSetData(null)} onOpen={openQuestion} onSession={openSession}/>
       : view === "Dashboard" ? <Dashboard data={dashboard} displayName={user?.name} onView={navigate} onCollection={id => { setCollectionId(id); setView("Browse Questions") }} onSet={openSet} onQuestion={openQuestion}/>
       : view === "Browse Questions" ? <Catalog data={catalog} collectionId={collectionId} groupId={groupId} onCollection={setCollectionId} onGroup={setGroupId} onBack={() => groupId ? setGroupId(null) : setCollectionId(null)} onSet={openSet}/>
@@ -356,7 +361,7 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
             {/* Left: breadcrumb + title + date */}
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-primary">{item.collection} · {item.groupName}</p>
-              <p className="mt-0.5 font-bold text-foreground">{item.setTitle}</p>
+              <p className="mt-0.5 font-bold text-foreground">{item.setLabel}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p>
             </div>
             {/* Right: progress + continue */}
@@ -397,52 +402,78 @@ function Catalog({ data, collectionId, groupId, onCollection, onGroup, onBack, o
     ? data.modules.filter(item => item.collectionId === collectionId)
     : data.disciplines.filter(item => item.collectionId === collectionId)
   const sets = data.sets.filter(item => item.collectionId === collectionId && (!groupId || item.moduleId === groupId || item.disciplineId === groupId))
+
   if (!selectedCollection) return <div className="space-y-4">
     <div><h1 className="text-2xl font-bold">Browse Theory Questions</h1><p className="mt-1 text-sm text-muted-foreground">Choose End of Module or End of Year, then open a focused set.</p></div>
-    <div className="grid gap-4 md:grid-cols-2">{data.collections.map((collection, idx) => {
-      const palette = CATEGORY_PALETTES[idx % CATEGORY_PALETTES.length]
+    <div className="grid gap-4 md:grid-cols-2">{data.collections.map((collection, index) => {
+      const palette = CATEGORY_PALETTES[index % CATEGORY_PALETTES.length]
       const progress = collection.totalQuestions ? Math.round(collection.completedQuestions / collection.totalQuestions * 100) : 0
-      return (
-        <div key={collection.id} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
-          <div className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80" style={{ background: palette.bar }} />
-          <div className="p-4 sm:p-5">
-            <div className="mb-3 mt-1 flex items-start justify-between gap-2">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}>
-                <BookOpen size={18} />
-              </div>
-              <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}18`, color: palette.bar }}>{progress}%</span>
-            </div>
-            <h3 className="font-bold text-foreground leading-snug">{collection.title}</h3>
-            <p className="mt-0.5 text-sm text-muted-foreground">{collection.totalQuestions} published questions</p>
-            <div className="mt-3"><ProgressBar value={progress} /></div>
-            <button
-              type="button"
-              onClick={() => onCollection(collection.id)}
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all"
-              style={{ background: `${palette.bar}18`, color: palette.bar }}
-            >
-              Browse {collection.title}
-              <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-            </button>
+      return <article key={collection.id} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" style={{ background: palette.bar }}/>
+        <div className="p-4 sm:p-5">
+          <div className="mb-3 mt-1 flex items-start justify-between gap-2">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}><BookOpen size={18}/></div>
+            <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}18`, color: palette.bar }}>{progress}%</span>
           </div>
+          <h3 className="font-bold leading-snug text-foreground">{collection.title}</h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">{collection.totalQuestions} published questions</p>
+          <div className="mt-3"><ProgressBar value={progress}/></div>
+          <button type="button" onClick={() => onCollection(collection.id)} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all" style={{ background: `${palette.bar}18`, color: palette.bar }}>
+            Browse {collection.title}<ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5"/>
+          </button>
         </div>
-      )
+      </article>
     })}</div>
   </div>
-  if (!groupId) return <div className="space-y-4"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Categories</button><div><p className="text-sm text-primary">{selectedCollection.title}</p><h1 className="text-2xl font-bold">{selectedCollection.kind === "end_of_module" ? "Modules" : "Disciplines"}</h1></div>
-    {groups.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{groups.map(group => {
-      const count = data.sets.filter(item => item.moduleId === group.id || item.disciplineId === group.id).length
-      return <button key={group.id} onClick={() => onGroup(group.id)} className={`${card} text-left hover:border-primary/45`}><FolderOpen className="text-primary"/><h2 className="mt-4 font-bold">{group.name}</h2><p className="mt-1 text-sm text-muted-foreground">{count} sets</p></button>
-    })}</div> : <Empty title="No study groups yet" text="Published modules or disciplines will appear here."/>}</div>
+
+  if (!groupId) return <div className="space-y-4">
+    <button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Categories</button>
+    <div><p className="text-sm text-primary">{selectedCollection.title}</p><h1 className="text-2xl font-bold">{selectedCollection.kind === "end_of_module" ? "Modules" : "Disciplines"}</h1></div>
+    {groups.length ? <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">{groups.map((group, index) => {
+      const groupSets = data.sets.filter(item => item.moduleId === group.id || item.disciplineId === group.id)
+      const totalQuestions = groupSets.reduce((sum, item) => sum + Number(item.totalQuestions), 0)
+      const completedQuestions = groupSets.reduce((sum, item) => sum + Number(item.completedQuestions), 0)
+      const progress = totalQuestions ? Math.round(completedQuestions / totalQuestions * 100) : 0
+      const palette = CATEGORY_PALETTES[index % CATEGORY_PALETTES.length]
+      const groupType = selectedCollection.kind === "end_of_module" ? "Module" : "Discipline"
+      return <article key={group.id} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" style={{ background: palette.bar }}/>
+        <div className="p-4 sm:p-5">
+          <div className="mb-3 mt-1 flex items-start justify-between gap-2">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${palette.icon}`}><FolderOpen size={18}/></div>
+            <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${palette.bar}18`, color: palette.bar }}>{progress}%</span>
+          </div>
+          <h2 className="font-bold leading-snug text-foreground">{group.name}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{groupSets.length} {groupSets.length === 1 ? "set" : "sets"} · {totalQuestions}Q</p>
+          <button type="button" onClick={() => onGroup(group.id)} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-all" style={{ background: `${palette.bar}18`, color: palette.bar }}>
+            Open {groupType}<ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5"/>
+          </button>
+        </div>
+      </article>
+    })}</div> : <Empty title="No study groups yet" text="Published modules or disciplines will appear here."/>}
+  </div>
+
   const groupName = groups.find(item => item.id === groupId)?.name ?? "Study sets"
-  return <div className="space-y-4"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> {selectedCollection.title}</button><div><p className="text-sm text-primary">{selectedCollection.title}</p><h1 className="text-2xl font-bold">{groupName}</h1></div>
+  const groupPalette = CATEGORY_PALETTES[Math.max(0, groups.findIndex(item => item.id === groupId)) % CATEGORY_PALETTES.length]
+  return <div className="space-y-4">
+    <button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> {selectedCollection.title}</button>
+    <div><p className="text-sm text-primary">{selectedCollection.title}</p><h1 className="text-2xl font-bold">{groupName}</h1></div>
     {sets.length ? <div className="grid gap-4 md:grid-cols-2">{sets.map(set => {
       const progress = set.totalQuestions ? Math.round(set.completedQuestions / set.totalQuestions * 100) : 0
-      return <article key={set.id} className={card}><div className="flex justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-primary">{progressStatus(set.completedQuestions, set.totalQuestions)}</p><h2 className="mt-2 text-lg font-bold">{set.name}</h2></div><span className="text-sm font-bold text-primary">{progress}%</span></div>
-        <p className="mt-2 text-sm text-muted-foreground">{set.description || `${set.totalQuestions} focused long-answer questions`}</p>
-        <p className="mt-3 text-xs text-muted-foreground">Questions {set.rangeStart ?? "—"}–{set.rangeEnd ?? "—"} · {set.totalQuestions} total</p><div className="mt-4"><ProgressBar value={progress}/></div>
-        <button onClick={() => onSet(set.id)} className={`${button} mt-5 bg-primary text-primary-foreground`}>{set.completedQuestions ? "Continue Set" : "Start Set"}<ArrowRight size={16}/></button>
-      </article>})}</div> : <Empty title="No published sets" text="This section does not have a published question set yet."/>}</div>
+      return <article key={set.id} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 ${groupPalette.ring}`}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" style={{ background: groupPalette.bar }}/>
+        <div className="p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div><p className="text-xs font-bold uppercase tracking-wider" style={{ color: groupPalette.bar }}>{progressStatus(set.completedQuestions, set.totalQuestions)}</p><h2 className="mt-2 text-lg font-bold">{set.setLabel}</h2></div>
+            <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: `${groupPalette.bar}18`, color: groupPalette.bar }}>{progress}%</span>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">{set.totalQuestions} {set.totalQuestions === 1 ? "question" : "questions"}</p>
+          <div className="mt-4"><ProgressBar value={progress}/></div>
+          <button onClick={() => onSet(set.id)} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition-all" style={{ background: groupPalette.bar }}>{set.completedQuestions ? "Continue Set" : "Start Set"}<ArrowRight size={16}/></button>
+        </div>
+      </article>
+    })}</div> : <Empty title="No published sets" text="This section does not have a published question set yet."/>}
+  </div>
 }
 
 function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: SetData; registered: boolean; onBack: () => void; onOpen: (id: string) => void; onSession: (ids: string[]) => void }) {
@@ -457,10 +488,15 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
   }
   return <div className="space-y-5"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Back to sets</button>
     {!registered && <SignInNotice/>}
-    <header className={card}><p className="text-[11px] font-bold uppercase tracking-[.14em] text-primary sm:text-xs sm:tracking-[.18em]">{data.collectionTitle} · {data.moduleName ?? data.disciplineName}</p><h1 className="mt-3 text-2xl font-bold sm:text-3xl">{data.name}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{data.description || "A focused set of long-answer questions."}</p>
-      <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-4"><div className="rounded-xl bg-muted/60 p-3 text-center sm:bg-transparent sm:p-0 sm:text-left"><b className="text-xl sm:text-2xl">{data.total}</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Questions</span></div><div className="rounded-xl bg-muted/60 p-3 text-center sm:bg-transparent sm:p-0 sm:text-left"><b className="text-xl sm:text-2xl">{data.completed}</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Completed</span></div><div className="rounded-xl bg-muted/60 p-3 text-center sm:bg-transparent sm:p-0 sm:text-left"><b className="text-xl sm:text-2xl">{data.progressPercent}%</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Progress</span></div></div>
-      <div className="mt-4"><ProgressBar value={data.progressPercent}/></div><div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
-    </header>
+    <section aria-label="Set study summary" className="space-y-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="rounded-xl border border-border bg-card p-3 text-center shadow-sm"><b className="text-xl sm:text-2xl">{data.total}</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Questions</span></div>
+        <div className="rounded-xl border border-border bg-card p-3 text-center shadow-sm"><b className="text-xl sm:text-2xl">{data.completed}</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Completed</span></div>
+        <div className="rounded-xl border border-border bg-card p-3 text-center shadow-sm"><b className="text-xl sm:text-2xl">{data.progressPercent}%</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Progress</span></div>
+      </div>
+      <ProgressBar value={data.progressPercent}/>
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
+    </section>
     <section className={`${card} p-0`}><div className="border-b border-border px-4 py-4 sm:px-5"><h2 className="font-bold">Questions</h2><p className="text-sm text-muted-foreground">Jump to any question in the set.</p></div><div className="divide-y divide-border">{data.questions.map((question, index) => <button key={question.id} onClick={() => onOpen(question.id)} className="grid w-full grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-2.5 px-3 py-4 text-left hover:bg-muted/50 sm:grid-cols-[36px_1fr_auto] sm:gap-3 sm:px-5">
       <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${question.completed ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{question.completed ? <Check size={15}/> : index + 1}</span>
       <span><b className="line-clamp-1">{question.title || question.prompt}</b><small className="mt-1 flex flex-wrap gap-2 text-muted-foreground">{question.marks != null && <span>{question.marks} marks</span>}{question.bookmarked && <span>Bookmarked</span>}{question.revision && <span>Revision</span>}{question.draft && <span>Draft saved</span>}</small></span><ChevronRight className="text-muted-foreground" size={18}/>
@@ -468,7 +504,7 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
   </div>
 }
 
-function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onMove }: { questionId: string; sessionQuestionIds: string[] | null; registered: boolean; onBack: () => void; onMove: (id: string) => void }) {
+function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onFinish, onMove }: { questionId: string; sessionQuestionIds: string[] | null; registered: boolean; onBack: () => void; onFinish: (setId: string | null) => void; onMove: (id: string) => void }) {
   const [question, setQuestion] = useState<TheoryQuestionDetail | null>(null)
   const [mode, setMode] = useState<TheoryStudyMode>("review")
   const [answer, setAnswer] = useState("")
@@ -601,28 +637,33 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-3 pb-16 sm:space-y-4 md:pb-0">
+    <div className="mx-auto max-w-6xl space-y-2.5 pb-24 sm:space-y-4 md:pb-0">
 
       {/* ── Top nav bar ── */}
-      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button onClick={onBack} className="flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-semibold shadow-sm transition-colors hover:bg-muted">
-          <ArrowLeft size={15}/> Back to Set
-        </button>
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:px-3 sm:text-xs">
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <button onClick={onBack} className="flex min-h-11 w-fit items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-sm font-semibold shadow-sm transition-colors hover:bg-muted">
+            <ArrowLeft size={15}/> Back to Set
+          </button>
+          <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:hidden">
             Question {question.position} of {question.setTotal}
           </span>
-          <div className="grid min-w-0 flex-1 grid-cols-2 rounded-xl bg-muted p-1 sm:flex sm:flex-none">
-            <button onClick={() => setMode("review")} className={`rounded-lg px-3 py-2 text-sm font-bold transition-all sm:px-4 sm:py-1.5 ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Review</button>
-            <button onClick={() => setMode("practice")} className={`rounded-lg px-3 py-2 text-sm font-bold transition-all sm:px-4 sm:py-1.5 ${mode === "practice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Practice</button>
+        </div>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <span className="hidden shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground sm:inline">
+            Question {question.position} of {question.setTotal}
+          </span>
+          <div className="grid min-w-0 flex-1 grid-cols-2 rounded-full bg-muted p-1 sm:flex sm:flex-none sm:rounded-xl">
+            <button onClick={() => setMode("review")} className={`min-h-11 rounded-full px-3 text-sm font-bold transition-all sm:min-h-0 sm:rounded-lg sm:px-4 sm:py-1.5 ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Review</button>
+            <button onClick={() => setMode("practice")} className={`min-h-11 rounded-full px-3 text-sm font-bold transition-all sm:min-h-0 sm:rounded-lg sm:px-4 sm:py-1.5 ${mode === "practice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Practice</button>
           </div>
         </div>
       </div>
 
       {/* ── Breadcrumb pill + action buttons ── */}
-      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="w-full truncate rounded-full border border-border/60 bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground sm:w-auto" title={[question.moduleName ?? question.disciplineName, question.setTitle].filter(Boolean).join(" · ")}>
-          {[question.moduleName ?? question.disciplineName, question.setTitle].filter(Boolean).join(" · ")}
+      <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+        <span className="hidden w-full truncate rounded-full border border-border/60 bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground sm:block sm:w-auto" title={[question.moduleName ?? question.disciplineName, question.setLabel].filter(Boolean).join(" · ")}>
+          {[question.moduleName ?? question.disciplineName, question.setLabel].filter(Boolean).join(" · ")}
         </span>
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <button
@@ -766,10 +807,12 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
         {question.previousId
           ? <button onClick={() => onMove(question.previousId!)} className={`${button} border border-border`}><ArrowLeft size={16}/> Previous</button>
           : <span/>}
-        {question.nextId && <button onClick={() => onMove(question.nextId!)} className={`${button} bg-primary text-primary-foreground`}>Next <ArrowRight size={16}/></button>}
+        <button onClick={() => question.nextId ? onMove(question.nextId) : onFinish(question.setId)} className={`${button} bg-primary text-primary-foreground`}>
+          {question.nextId ? <>Next <ArrowRight size={16}/></> : <>Finish <CheckCircle2 size={16}/></>}
+        </button>
       </div>
-      {/* Compact study navigation stays above the global Theory phone navigator. */}
-      <div className="fixed inset-x-3 bottom-[calc(4rem+1px+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur-md md:hidden">
+      {/* Compact study navigation occupies the safe-area edge while global Theory navigation is hidden. */}
+      <div className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur-md md:hidden">
         <button
           type="button"
           onClick={() => question.previousId && onMove(question.previousId)}
@@ -781,11 +824,11 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onM
         <span className="whitespace-nowrap px-1 text-[11px] font-bold text-muted-foreground">{question.position} / {question.setTotal}</span>
         <button
           type="button"
-          onClick={() => question.nextId && onMove(question.nextId)}
-          disabled={!question.nextId}
-          className={`${button} min-w-0 bg-primary px-2 text-primary-foreground disabled:opacity-40`}
+          onClick={() => question.nextId ? onMove(question.nextId) : onFinish(question.setId)}
+          className={`${button} min-w-0 bg-primary px-2 text-primary-foreground`}
         >
-          <span className="hidden min-[350px]:inline">Next</span> <ArrowRight size={15}/>
+          <span className="hidden min-[350px]:inline">{question.nextId ? "Next" : "Finish"}</span>
+          {question.nextId ? <ArrowRight size={15}/> : <CheckCircle2 size={15}/>}
         </button>
       </div>
     </div>
@@ -1069,6 +1112,25 @@ function Rating({ label, text, onClick }: { label: string; text: string; onClick
   return <button onClick={onClick} className="rounded-xl border border-border p-4 text-left transition hover:border-primary/45 hover:bg-primary/5"><b>{label}</b><span className="mt-1 block text-xs text-muted-foreground">{text}</span></button>
 }
 
+function TheoryLibraryCard({ item, colored, onOpen }: { item: LibraryItem; colored: boolean; onOpen: (id: string) => void }) {
+  const palette = CATEGORY_PALETTES[item.collection === "End of Year" ? 1 : 0]
+  return <article className={`relative overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm transition-all sm:p-5 ${colored ? `ring-0 hover:shadow-md hover:ring-2 ${palette.ring}` : ""}`}>
+    {colored && <div className="pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" style={{ background: palette.bar }}/>}
+    <div className="flex items-start gap-2">
+      {colored && <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${palette.icon}`}><Bookmark size={14} fill="currentColor"/></div>}
+      <p className={`min-w-0 break-words text-xs font-semibold ${colored ? "rounded-full px-2.5 py-1" : "text-primary"}`} style={colored ? { background: `${palette.bar}18`, color: palette.bar } : undefined}>
+        {item.collection} · {item.module ?? item.discipline} · {item.setLabel ?? "Unassigned"}
+      </p>
+    </div>
+    <h2 className="mt-2 break-words font-bold">{item.title || item.prompt}</h2>
+    {item.note && <p className="mt-3 line-clamp-3 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{item.note}</p>}
+    <div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <span className="text-xs text-muted-foreground">{dateLabel(item.updatedAt)}{item.confidence ? ` · ${item.confidence} confidence` : ""}</span>
+      <button onClick={() => onOpen(item.id)} className={`${button} w-full border border-border px-3 sm:w-auto`}>Open Question<ChevronRight size={16}/></button>
+    </div>
+  </article>
+}
+
 function LibraryView({ view, registered, onOpen, onSession }: { view: Exclude<View, "Dashboard" | "Browse Questions" | "Search" | "Progress">; registered: boolean; onOpen: (id: string) => void; onSession: (ids: string[]) => void }) {
   const apiView = view === "My Notes" ? "notes" : view === "Revision Queue" ? "revision" : "bookmarks"
   const [items, setItems] = useState<LibraryItem[]>([])
@@ -1088,13 +1150,13 @@ function LibraryView({ view, registered, onOpen, onSession }: { view: Exclude<Vi
   return <div className="space-y-4"><div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-bold">{view}</h1><p className="mt-1 text-sm text-muted-foreground">{items.length} items</p></div><ExportButton source={apiView}/></div>
     {error && <div className="text-sm text-destructive">{error}</div>}<div className="grid gap-3 sm:grid-cols-[1fr_180px]"><label className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder={`Search ${view.toLowerCase()}`} className="min-w-0 w-full bg-transparent text-sm outline-none"/></label><select value={sort} onChange={event => setSort(event.target.value)} className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"><option value="recent">Recently added</option><option value="module">Module / discipline</option>{view === "Revision Queue" && <option value="priority">Priority</option>}</select></div>
     {view === "Revision Queue" && items.length > 0 && <button onClick={async () => { const session = await mutate({ action: "session", kind: "revision" }) as { questionIds?: string[] }; if (session.questionIds?.[0]) onSession(session.questionIds) }} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}><Timer size={16}/> Start Revision</button>}
-    {items.length ? <div className="space-y-3">{items.map(item => <article key={item.id} className={`${card} overflow-hidden`}><p className="break-words text-xs font-semibold text-primary">{item.collection} · {item.module ?? item.discipline} · {item.setTitle}</p><h2 className="mt-2 break-words font-bold">{item.title || item.prompt}</h2>{item.note && <p className="mt-3 line-clamp-3 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">{item.note}</p>}<div className="mt-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between"><span className="text-xs text-muted-foreground">{dateLabel(item.updatedAt)}{item.confidence ? ` · ${item.confidence} confidence` : ""}</span><button onClick={() => onOpen(item.id)} className={`${button} w-full border border-border px-3 sm:w-auto`}>Open Question<ChevronRight size={16}/></button></div></article>)}</div> : <Empty icon={view === "Bookmarks" ? Bookmark : view === "My Notes" ? NotebookPen : RefreshCw} title="Nothing here yet" text={emptyText}/>}
+    {items.length ? <div className="space-y-3">{items.map(item => <TheoryLibraryCard key={item.id} item={item} colored={view === "Bookmarks"} onOpen={onOpen}/>)}</div> : <Empty icon={view === "Bookmarks" ? Bookmark : view === "My Notes" ? NotebookPen : RefreshCw} title="Nothing here yet" text={emptyText}/>}
   </div>
 }
 
 function SearchView({ initialQuery, onOpen }: { initialQuery: string; onOpen: (id: string) => void }) {
   const [query, setQuery] = useState(initialQuery)
-  const [items, setItems] = useState<Array<{ id: string; title: string; prompt: string; collection: string; module: string | null; discipline: string | null; setTitle: string | null }>>([])
+  const [items, setItems] = useState<Array<{ id: string; title: string; prompt: string; collection: string; module: string | null; discipline: string | null; setTitle: string | null; setNumber: number | null; setLabel: string | null }>>([])
   const [total, setTotal] = useState(0)
   useEffect(() => {
     if (query.trim().length < 2) { setItems([]); setTotal(0); return }
@@ -1105,7 +1167,7 @@ function SearchView({ initialQuery, onOpen }: { initialQuery: string; onOpen: (i
     return () => window.clearTimeout(timer)
   }, [query])
   return <div className="space-y-4"><div><h1 className="text-2xl font-bold">Search Theory Vault</h1><p className="mt-1 text-sm text-muted-foreground">Search modules, disciplines, sets, prompts, model answers, tags, and your notes.</p></div><label className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-card px-4"><Search size={18}/><input autoFocus value={query} onChange={event => setQuery(event.target.value)} className="w-full bg-transparent outline-none" placeholder="Enter at least two characters"/></label><p className="text-sm text-muted-foreground">{total} results</p>
-    {items.length ? <div className="space-y-3">{items.map(item => <button key={item.id} onClick={() => onOpen(item.id)} className={`${card} w-full text-left hover:border-primary/45`}><p className="text-xs font-semibold text-primary">{item.collection} · {item.module ?? item.discipline} · {item.setTitle}</p><h2 className="mt-2 font-bold"><Highlight text={item.title || item.prompt} query={query}/></h2><p className="mt-2 line-clamp-2 text-sm text-muted-foreground"><Highlight text={item.prompt} query={query}/></p></button>)}</div> : query.length >= 2 ? <Empty icon={Search} title="No matching theory content" text="Try a broader clinical term, module, discipline, or tag."/> : null}
+    {items.length ? <div className="space-y-3">{items.map(item => <button key={item.id} onClick={() => onOpen(item.id)} className={`${card} w-full text-left hover:border-primary/45`}><p className="text-xs font-semibold text-primary">{item.collection} · {item.module ?? item.discipline} · {item.setLabel ?? "Unassigned"}</p><h2 className="mt-2 font-bold"><Highlight text={item.title || item.prompt} query={query}/></h2><p className="mt-2 line-clamp-2 text-sm text-muted-foreground"><Highlight text={item.prompt} query={query}/></p></button>)}</div> : query.length >= 2 ? <Empty icon={Search} title="No matching theory content" text="Try a broader clinical term, module, discipline, or tag."/> : null}
   </div>
 }
 
@@ -1125,7 +1187,7 @@ function ProgressView({ registered }: { registered: boolean }) {
   return <div className="space-y-5 sm:space-y-6"><div><h1 className="text-2xl font-bold">Theory Vault Progress</h1><p className="mt-1 text-sm text-muted-foreground">Real activity from Review and Practice modes.</p></div><section className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-5">{stats.map(([label, value], index) => <div key={label} className={`${card} ${index === stats.length - 1 ? "col-span-2 xl:col-span-1" : ""}`}><p className="text-xl font-bold text-primary sm:text-2xl">{value}</p><p className="mt-1 text-xs text-muted-foreground sm:text-sm">{label}</p></div>)}</section>
     <section className={`${card} grid gap-5 md:grid-cols-2`}><div><h2 className="font-bold">Confidence distribution</h2><div className="mt-4 space-y-3">{[["High", data.totals.high], ["Medium", data.totals.medium], ["Low", data.totals.low]].map(([label, value]) => <div key={label as string} className="flex items-center justify-between rounded-xl bg-muted px-4 py-3 text-sm"><span>{label}</span><b>{value}</b></div>)}</div></div><div><h2 className="font-bold">Study records</h2><div className="mt-4 grid grid-cols-2 gap-3">{[["Practice attempts",data.totals.attempts],["Drafts",data.totals.drafts],["Bookmarks",data.totals.bookmarks],["Notes",data.totals.notes]].map(([label,value]) => <div key={label as string} className="rounded-xl bg-muted p-3"><b className="text-xl">{value}</b><span className="block text-xs text-muted-foreground">{label}</span></div>)}</div></div></section>
     <section className="space-y-3"><h2 className="text-xl font-bold">Module and year progress</h2>{data.groups.map(group => { const value = group.total ? Math.round(group.completed / group.total * 100) : 0; return <article key={`${group.collectionId}-${group.groupId}`} className={card}><div className="flex flex-wrap justify-between gap-3"><div><p className="text-xs font-semibold text-primary">{group.collection}</p><h3 className="mt-1 font-bold">{group.name}</h3><p className="mt-1 text-xs text-muted-foreground">{group.completed}/{group.total} questions · {group.completedSets}/{group.totalSets} sets completed</p></div><b className="text-primary">{value}%</b></div><div className="mt-4"><ProgressBar value={value}/></div></article>})}</section>
-    <section className={card}><h2 className="font-bold">Recent study activity</h2>{data.recent.length ? <div className="mt-3 divide-y divide-border">{data.recent.map((item, index) => <div key={`${item.occurredAt}-${index}`} className="py-3 text-sm"><b>{item.prompt || item.type}</b><p className="mt-1 text-xs text-muted-foreground">{item.groupName} · {item.setTitle} · {dateLabel(item.occurredAt)}</p></div>)}</div> : <p className="mt-3 text-sm text-muted-foreground">Your recent Theory activity will appear here.</p>}</section>
+    <section className={card}><h2 className="font-bold">Recent study activity</h2>{data.recent.length ? <div className="mt-3 divide-y divide-border">{data.recent.map((item, index) => <div key={`${item.occurredAt}-${index}`} className="py-3 text-sm"><b>{item.prompt || item.type}</b><p className="mt-1 text-xs text-muted-foreground">{item.groupName} · {item.setLabel ?? "Unassigned"} · {dateLabel(item.occurredAt)}</p></div>)}</div> : <p className="mt-3 text-sm text-muted-foreground">Your recent Theory activity will appear here.</p>}</section>
   </div>
 }
 
