@@ -56,9 +56,22 @@ const query = vi.fn(async (sql: string, params: unknown[] = []) => {
   if (sql.includes("INSERT INTO mednexus_users")) {
     return { rows: [], rowCount: 1 }
   }
+  if (sql.includes("INSERT INTO mednexus_np_transactions")) {
+    return { rows: [{ id: params[0] }], rowCount: 1 }
+  }
   if (sql.includes("INSERT INTO mednexus_wallet")) {
-    wallets.push({ uid: params[0] as string, balance: 500 })
-    return { rows: [], rowCount: 1 }
+    const balance = Number(params[1] ?? 500)
+    const rankPoints = Number(params[2] ?? 0)
+    wallets.push({ uid: params[0] as string, balance })
+    return {
+      rows: [{
+        balance,
+        rank_points: rankPoints,
+        lifetime_earned: balance,
+        old_rank_points: 0,
+      }],
+      rowCount: 1,
+    }
   }
   if (sql.includes("INSERT INTO mednexus_notifications")) {
     notifications.push({ title: params[1] as string, body: params[2] as string })

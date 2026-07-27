@@ -33,6 +33,7 @@ interface RawRoom {
   question_pool: SlimQuestion[]; current_qi: number; phase: RoomPhase
   players: RoomPlayer[]; version: number; created_at: Date
   scored_uids: string[]; phase_started_at: Date
+  answer_history: Record<string, Array<{ qi: number; answer: string }>>
   knockout_winner_id: string | null
 }
 
@@ -327,7 +328,7 @@ export async function PATCH(
           ...(isWagerLikeStart ? { balance: startBal, wagerAmount: null, isSpectator: false } : {}),
         }))
         await client.query(
-          "UPDATE mednexus_game_rooms SET phase = $1, current_qi = 0, players = $2, phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $3",
+          "UPDATE mednexus_game_rooms SET phase = $1, current_qi = 0, players = $2, answer_history = '{}', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $3",
           [startPhase, JSON.stringify(players), pin]
         )
         break
@@ -423,6 +424,12 @@ export async function PATCH(
           : 0
 
         const isWagerLikeAnswer = row.mode === "wager" || row.mode === "djmulti"
+        const answeringPlayer = players.find(player => player.id === body.playerId)
+        const shouldRecordAnswer = Boolean(
+          answeringPlayer
+          && answeringPlayer.answer === null
+          && !(isWagerLikeAnswer && answeringPlayer.isSpectator),
+        )
 
         players = players.map(p => {
           if (p.id !== body.playerId) return p
@@ -450,9 +457,17 @@ export async function PATCH(
           return { ...p, answer: body.answer!, answeredAt: now, reactionTimeMs, score: newScore, streak: newStreak }
         })
 
+        const answerHistory = row.answer_history ?? {}
+        if (shouldRecordAnswer) {
+          answerHistory[body.playerId] = [
+            ...(answerHistory[body.playerId] ?? []),
+            { qi: row.current_qi, answer: body.answer },
+          ]
+        }
+
         await client.query(
-          "UPDATE mednexus_game_rooms SET players = $1, version = COALESCE(version, 0) + 1 WHERE pin = $2",
-          [JSON.stringify(players), pin]
+          "UPDATE mednexus_game_rooms SET players = $1, answer_history = $2::jsonb, version = COALESCE(version, 0) + 1 WHERE pin = $3",
+          [JSON.stringify(players), JSON.stringify(answerHistory), pin]
         )
 
         // ── Pressure timer ──────────────────────────────────────────────────────

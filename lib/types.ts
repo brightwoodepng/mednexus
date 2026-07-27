@@ -68,6 +68,19 @@ export type AuthUser = RegisteredUser | GuestUser
 export interface QuestionOption {
   id: string // e.g. "A", "B", "C"
   text: string
+  media?: QuestionMedia[]
+}
+
+/** An ordered image attached to a question section. */
+export interface QuestionMedia {
+  id: string
+  url: string
+  kind: "image"
+  placement: "stem" | "option" | "explanation"
+  optionId?: string
+  caption?: string
+  alt: string
+  sortOrder: number
 }
 
 /** The structured explanation shown after answering. */
@@ -164,6 +177,12 @@ export interface Question {
    * Stored as a data URI string (e.g. "data:image/png;base64,…") or null.
    */
   mediaBase64?: string | null
+
+  /** Multiple ordered images for the stem, individual options, or explanation. */
+  media?: QuestionMedia[]
+  status?: "draft" | "review" | "live" | "offline" | "archived"
+  tags?: string[]
+  updatedAt?: string
 }
 
 // ─── Theory Vault (kept separate from the MCQ Question bank) ────────────────

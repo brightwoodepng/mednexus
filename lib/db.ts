@@ -75,6 +75,19 @@ export async function ensureSchema() {
       data       JSONB NOT NULL DEFAULT '[]',
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS mednexus_mcq_media_assets (
+      id TEXT PRIMARY KEY,
+      question_id TEXT,
+      mime_type TEXT NOT NULL,
+      data BYTEA NOT NULL,
+      caption TEXT NOT NULL DEFAULT '',
+      alt_text TEXT NOT NULL DEFAULT 'Clinical question image',
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_mcq_media_question_idx ON mednexus_mcq_media_assets(question_id);
+
     CREATE TABLE IF NOT EXISTS mednexus_question_bank_audit_log (
       id BIGSERIAL PRIMARY KEY,
       admin_id TEXT NOT NULL,
@@ -376,9 +389,39 @@ export async function ensureSchema() {
       expires_at    TIMESTAMPTZ DEFAULT NOW() + INTERVAL '4 hours'
     );
     CREATE TABLE IF NOT EXISTS mednexus_wallet (
-      uid        TEXT    PRIMARY KEY,
-      balance    INTEGER NOT NULL DEFAULT 0,
-      updated_at TIMESTAMPTZ DEFAULT NOW()
+      uid              TEXT    PRIMARY KEY,
+      balance          INTEGER NOT NULL DEFAULT 0,
+      rank_points      INTEGER NOT NULL DEFAULT 0,
+      lifetime_earned  INTEGER NOT NULL DEFAULT 0,
+      updated_at       TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_np_transactions (
+      id         TEXT        PRIMARY KEY,
+      user_id    TEXT        NOT NULL,
+      source     TEXT        NOT NULL,
+      source_id  TEXT        NOT NULL,
+      amount     INTEGER     NOT NULL,
+      metadata   JSONB       NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, source, source_id)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_np_transactions_user_date_idx
+      ON mednexus_np_transactions (user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS mednexus_np_transactions_date_idx
+      ON mednexus_np_transactions (created_at DESC);
+    CREATE TABLE IF NOT EXISTS mednexus_game_personal_bests (
+      user_id    TEXT        NOT NULL,
+      mode       TEXT        NOT NULL,
+      best_score INTEGER     NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, mode)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_multiplayer_payouts (
+      room_pin   TEXT        NOT NULL,
+      user_id    TEXT        NOT NULL,
+      payout     JSONB       NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (room_pin, user_id)
     );
     CREATE TABLE IF NOT EXISTS mednexus_bounty_progress (
       uid         TEXT    NOT NULL,
@@ -438,6 +481,8 @@ export async function ensureSchema() {
       answered_ids JSONB   NOT NULL DEFAULT '[]',
       answer_key JSONB NOT NULL DEFAULT '[]',
       accepted_answers JSONB NOT NULL DEFAULT '{}',
+      answer_order JSONB NOT NULL DEFAULT '[]',
+      result_meta JSONB NOT NULL DEFAULT '{}',
       payout JSONB,
       status       TEXT    NOT NULL DEFAULT 'active',  -- active | completed | abandoned
       started_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -530,6 +575,8 @@ export async function ensureSchema() {
     -- Prevents double-submission of the secure score RPC.
     ALTER TABLE mednexus_game_rooms
       ADD COLUMN IF NOT EXISTS scored_uids JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE mednexus_game_rooms
+      ADD COLUMN IF NOT EXISTS answer_history JSONB NOT NULL DEFAULT '{}';
 
     -- phase_started_at: timestamp of the most recent phase transition.
     -- Used to self-drive match advancement (question timeout, reveal→next)
@@ -546,10 +593,14 @@ export async function ensureSchema() {
     -- every NP payout; tier-up bonuses are awarded when crossing thresholds.
     ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS answer_key JSONB NOT NULL DEFAULT '[]';
     ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS accepted_answers JSONB NOT NULL DEFAULT '{}';
+    ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS answer_order JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS result_meta JSONB NOT NULL DEFAULT '{}';
     ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS payout JSONB;
 
     ALTER TABLE mednexus_wallet
       ADD COLUMN IF NOT EXISTS rank_points INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE mednexus_wallet
+      ADD COLUMN IF NOT EXISTS lifetime_earned INTEGER NOT NULL DEFAULT 0;
 
     -- last_multiplayer_win_at: tracks when the user last achieved rank-1 in a
     -- multiplayer match, used for the First Win of the Day (+250 NP) bonus.
@@ -559,6 +610,26 @@ export async function ensureSchema() {
 
     ALTER TABLE mednexus_wallet
       ADD COLUMN IF NOT EXISTS last_multiplayer_win_at TIMESTAMPTZ;
+
+    -- Preserve the currently visible total as the minimum lifetime value.
+    UPDATE mednexus_wallet
+       SET rank_points = GREATEST(rank_points, balance),
+           lifetime_earned = GREATEST(lifetime_earned, rank_points, balance);
+
+    -- Seed dated question earnings for Weekly and Monthly continuity.
+    INSERT INTO mednexus_np_transactions
+      (id, user_id, source, source_id, amount, metadata, created_at)
+    SELECT
+      'np-legacy-' || md5(user_id || ':' || discipline || ':' || earned_date),
+      user_id,
+      'legacy_discipline',
+      discipline || ':' || earned_date,
+      np_earned,
+      jsonb_build_object('discipline', discipline),
+      (earned_date::date + TIME '12:00:00') AT TIME ZONE 'UTC'
+    FROM mednexus_discipline_np_log
+    WHERE np_earned > 0
+    ON CONFLICT (user_id, source, source_id) DO NOTHING;
 
     -- is_private: user opts out of leaderboard visibility.
     ALTER TABLE mednexus_registered_users
