@@ -36,7 +36,7 @@ describe("Theory Vault phone experience", () => {
     expect(source).toContain("grid grid-cols-4 items-stretch")
     expect(source).toContain('bottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))"')
     expect(source).toContain("rounded-[2rem]")
-    expect(source).toContain("shadow-[0_14px_36px")
+    expect(source).toContain("shadow-[0_12px_36px")
     expect(source).toContain("min-w-0")
     expect(source).not.toContain("overflow-x-auto")
     expect(source).not.toContain("min-w-max")
