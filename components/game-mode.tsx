@@ -13,6 +13,7 @@ import { buildGameQuestionPool, getEffectiveQuestionModule } from "@/lib/game-qu
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getPersonalBestUpdate } from "@/lib/game-personal-best"
 import { getSuddenDeathResultTotal } from "@/lib/sudden-death-result"
+import { getMultiplayerRewardRules } from "@/lib/multiplayer-reward-presentation"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort" | "wager" | "djmulti"
@@ -106,28 +107,28 @@ const MULTI_MODES: MultiModeCard[] = [
     badgeColor: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
     icon: "⚔️", gradient: "from-fuchsia-500 to-violet-600", shadow: "shadow-fuchsia-500/20",
     desc: "Compete with up to 5 players. Fastest correct answer takes max points.",
-    rules: ["Free entry — 0 NP to host or join", "Max 5 players per room · 6-digit PIN", "1st +150 · 2nd +100 · 3rd +50 · Others +25 NP"],
+    rules: ["No NP entry fee", "Max 5 players per room · 6-digit PIN", ...getMultiplayerRewardRules()],
   },
   {
     id: "cohort", name: "Cohort Review", badge: "Kahoot Style",
     badgeColor: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
     icon: "🎓", gradient: "from-teal-500 to-cyan-500", shadow: "shadow-teal-500/20",
     desc: "Lecture hall mode — unlimited players, host controls the pace.",
-    rules: ["Free entry — 0 NP to host or join", "Unlimited players · Players buzz in via phone", "1st +500 · 2nd +350 · 3rd +200 · Top 10 +75 NP"],
+    rules: ["No NP entry fee", "Unlimited players · Players buzz in via phone", ...getMultiplayerRewardRules()],
   },
   {
     id: "wager", name: "Wager Wars", badge: "High Stakes",
     badgeColor: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
     icon: "🎰", gradient: "from-amber-500 to-rose-500", shadow: "shadow-amber-500/20",
-    desc: "Bet before seeing options. Win big or lose it all — spectate when broke.",
-    rules: ["Vignette shown first, options hidden", "Wager: 50 / 100 / 500 / 750 / All-In", "Balance hits 0 → Spectator mode"],
+    desc: "Wager match chips before seeing options. Chips affect this match only and are not spendable NP.",
+    rules: ["Vignette shown first, options hidden", "Wager match chips or go All-In", "Chip balance hits 0 → Spectator mode", ...getMultiplayerRewardRules()],
   },
   {
     id: "djmulti", name: "Double Jeopardy", badge: "Confidence",
     badgeColor: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
     icon: "🎲", gradient: "from-indigo-500 to-purple-600", shadow: "shadow-indigo-500/20",
     desc: "Read the vignette, wager your confidence — then see the options. Now with friends.",
-    rules: ["Max 5 players · Starting bank 500 pts", "Wager: Safe 10% / Moderate 25% / Bold 50% / All In 100%", "Bank hits 0 → Spectator mode"],
+    rules: ["Max 5 players · In-game points bank", "Wager: Safe 10% / Moderate 25% / Bold 50% / All In 100%", "Points bank hits 0 → Spectator mode", ...getMultiplayerRewardRules()],
   },
 ]
 
