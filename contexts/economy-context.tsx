@@ -67,6 +67,13 @@ export interface EconomyContextValue {
     sessionId?: string
     answers?: Record<string, string | string[] | null>
     orderedAnswers?: Array<{ questionId: string; answer: string | string[] | null }>
+    completionReason?: string | null
+    clientRoundStartedAt?: string
+    clientRoundFinishedAt?: string
+    selectedQuestionCount?: number
+    answeredQuestionCount?: number
+    freezeCount?: number
+    wagerHistory?: number[]
   }) => Promise<PayoutResponse | null>
   submitMultiplayerResult: (
     pin: string,
@@ -298,6 +305,13 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     sessionId?: string
     answers?: Record<string, string | string[] | null>
     orderedAnswers?: Array<{ questionId: string; answer: string | string[] | null }>
+    completionReason?: string | null
+    clientRoundStartedAt?: string
+    clientRoundFinishedAt?: string
+    selectedQuestionCount?: number
+    answeredQuestionCount?: number
+    freezeCount?: number
+    wagerHistory?: number[]
   }) => {
     const uid = user?.uid
     if (!uid) return null
@@ -310,7 +324,16 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
           uid,
           answers: payload.answers,
           orderedAnswers: payload.orderedAnswers,
-          resultMeta: { lifelineUsed: payload.lifelineUsed === true },
+          resultMeta: {
+            lifelineUsed: payload.lifelineUsed === true,
+            completionReason: payload.completionReason,
+            clientRoundStartedAt: payload.clientRoundStartedAt,
+            clientRoundFinishedAt: payload.clientRoundFinishedAt,
+            selectedQuestionCount: payload.selectedQuestionCount,
+            answeredQuestionCount: payload.answeredQuestionCount,
+            freezeCount: payload.freezeCount,
+            wagerHistory: payload.wagerHistory,
+          },
         }),
       })
       if (!completion.ok) return null
