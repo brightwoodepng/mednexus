@@ -331,7 +331,7 @@ function SubPageShell({
             <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
               {balance.toLocaleString()}
             </span>
-            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP</span>
+            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP Balance</span>
           </div>
         </div>
 
@@ -564,7 +564,7 @@ export function NexusStoreHub({ onNavigate }: { onNavigate: (screen: Screen) => 
             <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
               {balance.toLocaleString()}
             </span>
-            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP</span>
+            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP Balance</span>
           </div>
         </div>
 

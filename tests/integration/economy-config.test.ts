@@ -93,6 +93,8 @@ describe("versioned economy configuration", () => {
     const wallet = readFileSync("app/api/economy/wallet/route.ts", "utf8")
     expect(ledger.match(/economyVersion/g)?.length).toBeGreaterThanOrEqual(2)
     expect(store).toContain("economyVersion")
+    expect(store).toContain("catalogVersion")
+    expect(store).toContain("catalogPrice")
     expect(wallet).toContain("economyVersion")
   })
 })

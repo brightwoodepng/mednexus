@@ -14,7 +14,7 @@ type LeaderboardScreenProps = { onNavigate?: (screen: Screen) => void }
 const ranges: Array<{ id: RankingTab; label: string; description: string }> = [
   { id: "weekly", label: "Weekly", description: "Nexus Points earned in the last 7 days" },
   { id: "monthly", label: "Monthly", description: "Nexus Points earned in the last 30 days" },
-  { id: "alltime", label: "All Time", description: "Your complete Nexus Points ranking" },
+  { id: "alltime", label: "All Time", description: "Lifetime NP earned — spending does not lower your place" },
 ]
 
 const podium = {
@@ -140,7 +140,7 @@ function ViewerCard({ entry, onProfile, onStudy }: { entry: LeaderboardEntry; on
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 text-sm font-black">{entry.rank}</span>
           <span className="min-w-0">
             <span className="block text-[10px] font-bold uppercase tracking-[0.15em] text-primary-foreground/70">Your ranking</span>
-            <span className="block truncate text-sm font-bold sm:text-base">{formatNP(entry.np)} Nexus Points</span>
+            <span className="block truncate text-sm font-bold sm:text-base">{formatNP(entry.np)} NP earned</span>
           </span>
         </button>
         <button type="button" onClick={onStudy} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-primary-foreground px-3 text-xs font-bold text-primary shadow-sm transition hover:scale-[1.02] sm:px-5 sm:text-sm">
@@ -237,7 +237,7 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
       </>}
 
       {showViewer && viewerEntry && <ViewerCard entry={viewerEntry} onProfile={() => setSelected(viewerEntry)} onStudy={() => onNavigate?.("modules")} />}
-      {selected && <PublicProfileModal entry={selected} onClose={() => setSelected(null)} />}
+      {selected && <PublicProfileModal entry={selected} npLabel={tab === "alltime" ? "Lifetime NP" : "NP Earned This Period"} onClose={() => setSelected(null)} />}
     </div>
   )
 }

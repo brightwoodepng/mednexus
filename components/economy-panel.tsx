@@ -14,7 +14,7 @@ export function WalletBadge({ onOpenStore }: { onOpenStore: () => void }) {
     >
       <span className="text-sm">🪙</span>
       <span className="text-sm font-extrabold tabular-nums text-white">{balance.toLocaleString()}</span>
-      <span className="text-[10px] font-bold text-white/80">NP</span>
+      <span className="text-[10px] font-bold text-white/80">NP Balance</span>
     </button>
   )
 }
@@ -241,6 +241,7 @@ export function StoreModal({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1.5">
               <span className="text-sm">🪙</span>
               <span className="text-sm font-extrabold tabular-nums text-amber-700 dark:text-amber-300">{balance.toLocaleString()}</span>
+              <span className="text-[10px] font-bold text-amber-600/70 dark:text-amber-400/70">NP Balance</span>
             </div>
             <button type="button" onClick={onClose} className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-muted">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}>
