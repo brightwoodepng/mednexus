@@ -13,7 +13,7 @@ export interface QuestionPoolDiagnostics {
 }
 
 export interface GameQuestionPool {
-  questions: Question[]
+  questions: readonly Question[]
   diagnostics: QuestionPoolDiagnostics
 }
 
@@ -80,6 +80,20 @@ function canonicalOrder(left: Question, right: Question): number {
     || createQuestionContentFingerprint(left).localeCompare(createQuestionContentFingerprint(right))
 }
 
+/** Deduplicates a pre-filtered source by both durable ID and visible content. */
+export function deduplicateGameQuestions(source: readonly Question[]): readonly Question[] {
+  const seenIds = new Set<string>()
+  const seenFingerprints = new Set<string>()
+  const questions = source.filter((question) => {
+    const fingerprint = createQuestionContentFingerprint(question)
+    if (seenIds.has(question.id) || seenFingerprints.has(fingerprint)) return false
+    seenIds.add(question.id)
+    seenFingerprints.add(fingerprint)
+    return true
+  })
+  return Object.freeze(questions)
+}
+
 /** Builds the authoritative solo pool and reports every discarded duplicate. */
 export function buildGameQuestionPool(
   allQuestions: Question[],
@@ -97,19 +111,15 @@ export function buildGameQuestionPool(
     if (!byId.has(question.id)) byId.set(question.id, question)
   }
 
-  const byFingerprint = new Map<string, Question>()
-  for (const question of [...byId.values()].sort(canonicalOrder)) {
-    const fingerprint = createQuestionContentFingerprint(question)
-    if (!byFingerprint.has(fingerprint)) byFingerprint.set(fingerprint, question)
-  }
+  const questions = deduplicateGameQuestions([...byId.values()].sort(canonicalOrder))
 
   return {
-    questions: [...byFingerprint.values()],
+    questions,
     diagnostics: {
       inputCount: allQuestions.length,
       eligibleCount: eligible.length,
       idDuplicateCount: eligible.length - byId.size,
-      contentDuplicateCount: byId.size - byFingerprint.size,
+      contentDuplicateCount: byId.size - questions.length,
     },
   }
 }

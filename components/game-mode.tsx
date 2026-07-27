@@ -9,7 +9,7 @@ import { MultiplayerClash, CohortReview, WagerWars, DoubleJeopardyMulti } from "
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/economy-panel"
-import { buildGameQuestionPool, getEffectiveQuestionModule } from "@/lib/game-question-pool"
+import { buildGameQuestionPool, createQuestionContentFingerprint, deduplicateGameQuestions, getEffectiveQuestionModule } from "@/lib/game-question-pool"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getPersonalBestUpdate } from "@/lib/game-personal-best"
 import { getSuddenDeathResultTotal } from "@/lib/sudden-death-result"
@@ -135,7 +135,7 @@ const MULTI_MODES: MultiModeCard[] = [
 const DEFAULT_FILTER: GameFilter = { module: null, discipline: null }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-function shuffle<T>(arr: T[]): T[] {
+function shuffle<T>(arr: readonly T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -205,7 +205,7 @@ function useSoloScoring(mode: "rapid" | "sudden" | "timeatk" | "double" | "strea
   const sessionPromise = useRef<Promise<string | null> | null>(null)
   return {
     sessionPromise,
-    begin(questions: Question[]) {
+    begin(questions: readonly Question[]) {
       sessionPromise.current = startScoredActivity(mode, questions.map(question => question.id))
     },
   }
@@ -232,16 +232,25 @@ function useSoloGameRound(mode: ModeConfig["id"], onFinalize: (reason: SoloCompl
   }
   useEffect(() => () => { generationRef.current += 1; cancelTimers() }, [])
 
-  function startRound(source: Question[], filter: GameFilter, selectedQuantity: number, eligiblePoolSize: number) {
+  function startRound(source: readonly Question[], filter: GameFilter, selectedQuantity: number, eligiblePoolSize: number) {
     generationRef.current += 1; cancelTimers(); finalizedRef.current = false
-    const seen = new Set<string>()
-    const unique = source.filter(question => !seen.has(question.id) && !!seen.add(question.id))
-    setPool(Object.freeze([...unique])); setQi(0); setAnsweredIds(new Set())
+    const finalPool = deduplicateGameQuestions(source)
+    const serverSnapshotIds = Object.freeze(finalPool.map(question => question.id))
+    if (process.env.NODE_ENV !== "production") {
+      const fingerprints = finalPool.map(createQuestionContentFingerprint)
+      console.assert(new Set(serverSnapshotIds).size === finalPool.length, "Solo round question IDs must be unique")
+      console.assert(new Set(fingerprints).size === finalPool.length, "Solo round content fingerprints must be unique")
+      console.assert(selectedQuantity === finalPool.length, "Solo round selectedQuantity must equal its final pool length")
+      console.assert(serverSnapshotIds.length === finalPool.length
+        && serverSnapshotIds.every((id, index) => id === finalPool[index].id),
+      "Server snapshot IDs must match the final client pool IDs")
+    }
+    setPool(finalPool); setQi(0); setAnsweredIds(new Set())
     setConfiguration(Object.freeze({ mode, module: filter.module, discipline: filter.discipline,
-      selectedQuantity, eligiblePoolSize, selectedQuestionIds: Object.freeze(unique.map(question => question.id)),
+      selectedQuantity: finalPool.length, eligiblePoolSize, selectedQuestionIds: serverSnapshotIds,
       startedAt: new Date().toISOString() }))
     setCompleted(false); setCompletionReason(null)
-    return unique
+    return finalPool
   }
   function markAnswered(id: string) {
     setAnsweredIds(previous => previous.has(id) ? previous : new Set(previous).add(id))
@@ -1210,8 +1219,9 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   function start(qty?: number | null) {
     const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
     const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
-    scoring.begin(selection.selected)
-    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize); r.current.pool = p; r.current.qi = 0
+    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
+    scoring.begin(p)
+    r.current.pool = p; r.current.qi = 0
     setLives(MAX_LIVES); r.current.lives = MAX_LIVES
     setScore(0); r.current.score = 0; setStreak(0); r.current.streak = 0
     setBestStreak(0); r.current.bestStreak = 0; setTimeLeft(RAPID_TIME)
@@ -1384,8 +1394,9 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   function start(qty?: number | null) {
     const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
     const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
-    scoring.begin(selection.selected)
-    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize); r.current.pool = p; r.current.qi = 0
+    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
+    scoring.begin(p)
+    r.current.pool = p; r.current.qi = 0
     setSurvived(0); r.current.survived = 0; setTimeLeft(SUDDEN_TIME)
     setFb(null); r.current.fb = null; setPicked(null)
     setIsNewHigh(false); setEliminated([]); setAnswerHistory([])
@@ -1534,8 +1545,9 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   function start(qty?: number | null) {
     const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
     const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
-    scoring.begin(selection.selected)
-    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize); r.current.pool = p; r.current.qi = 0
+    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
+    scoring.begin(p)
+    r.current.pool = p; r.current.qi = 0
     setScore(0); r.current.score = 0; setTimeLeft(TIMEATK_START); r.current.timeLeft = TIMEATK_START
     setFb(null); r.current.fb = null; setPicked(null)
     setTotalQ(0); r.current.totalQ = 0; setTotalRight(0); r.current.totalRight = 0
@@ -1629,8 +1641,9 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
   function start(qty?: number | null) {
     const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
     const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
-    scoring.begin(selection.selected)
-    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize); r.current.pool = p; r.current.qi = 0
+    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
+    scoring.begin(p)
+    r.current.pool = p; r.current.qi = 0
     setBank(DJ_STARTING_BANK); r.current.bank = DJ_STARTING_BANK
     setWager(0); r.current.wager = 0
     setPicked(null); setFb(null); setEliminated([]); setAnswerHistory([])
@@ -1866,8 +1879,9 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
   function start(qty?: number | null) {
     const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
     const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
-    scoring.begin(selection.selected)
-    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize); r.current.pool = p; r.current.qi = 0
+    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
+    scoring.begin(p)
+    r.current.pool = p; r.current.qi = 0
     setStreak(0); r.current.streak = 0; setBestStreak(0); r.current.bestStreak = 0
     setTotalQ(0); r.current.totalQ = 0; setTotalRight(0); r.current.totalRight = 0
     setFb(null); r.current.fb = null; setPicked(null)
