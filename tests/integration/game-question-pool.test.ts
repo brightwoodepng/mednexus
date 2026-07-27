@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildGameQuestionPool,
   createQuestionContentFingerprint,
+  deduplicateGameQuestions,
   findImportQuestionDuplicates,
 } from "@/lib/game-question-pool"
 import type { Question } from "@/lib/types"
@@ -34,6 +35,13 @@ describe("game question pool", () => {
   it("gives different IDs with identical content the same fingerprint", () => {
     expect(createQuestionContentFingerprint(question("first")))
       .toBe(createQuestionContentFingerprint(question("second")))
+  })
+
+  it("deduplicates different IDs with duplicate content at the round-selection boundary", () => {
+    const selected = deduplicateGameQuestions([question("first"), question("second")])
+
+    expect(selected.map(({ id }) => id)).toEqual(["first"])
+    expect(Object.isFrozen(selected)).toBe(true)
   })
 
   it("ignores option ordering and labels when fingerprinting visible text", () => {
