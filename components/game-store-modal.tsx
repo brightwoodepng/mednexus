@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useEconomy } from "@/contexts/economy-context"
 import {
-  STORE_ITEMS, VAULT_META, TITLE_LABELS,
+  STORE_ITEMS, VAULT_META, TITLE_LABELS, SOLO_SUPPLY_MODE_LABELS,
   FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES,
   type StoreItem, type VaultMeta,
 } from "@/lib/economy"
@@ -370,6 +370,19 @@ function SupplyGridCard({
       {/* Description — single short sentence */}
       <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.desc}</p>
 
+      {item.supply && (
+        <div className="mt-3 w-full" aria-label={`Works in ${item.supply.supportedModes.map(mode => SOLO_SUPPLY_MODE_LABELS[mode]).join(", ")}`}>
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Works in</p>
+          <div className="flex flex-wrap justify-center gap-1">
+            {item.supply.supportedModes.map(mode => (
+              <span key={mode} className="rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 ring-1 ring-inset ring-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-300 dark:ring-cyan-800/60">
+                {SOLO_SUPPLY_MODE_LABELS[mode]}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Owned count */}
       {owned > 0 && (
         <span className="mt-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
@@ -516,7 +529,7 @@ export function NexusStoreHub({ onNavigate }: { onNavigate: (screen: Screen) => 
       screen:      "store-supply" as Screen,
       emoji:       "⚗️",
       title:       "Supply Closet",
-      description: "Consumable lifelines you can activate during a quiz. Stock up and use them when you need an edge.",
+      description: "Consumable lifelines for solo MCQ games. Stock up and use them when you need an edge.",
       gradient:    "from-cyan-500 to-teal-600",
       bg:          "bg-cyan-50/60 dark:bg-cyan-950/20 border-cyan-200/60 dark:border-cyan-800/40",
       chevronColor:"text-cyan-600 dark:text-cyan-400",
@@ -635,7 +648,7 @@ export function NexusStoreSupplyPage({ onBack }: { onBack: () => void }) {
         </div>
       )}
       <p className="mb-6 text-sm text-muted-foreground">
-        Consumable lifelines you can activate during a quiz. Stacks up in your inventory — use them when you need an edge.
+        Consumable lifelines for solo MCQ games. Stack them in your inventory and use them when you need an edge.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
         {supplyItems.map(item => (
