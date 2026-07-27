@@ -72,6 +72,8 @@ export type EconomyConfig = {
   store: {
     /** Maximum number of copies of a stackable item a user may hold. */
     inventoryQuantityLimit: number
+    /** Per-question consumption caps keyed by consumable item id. */
+    perQuestionLimits: Readonly<Record<string, number>>
     /** Expected sustainable earnings used to audit purchase earning-time. */
     dailyIncome: { casual: number; active: number }
     priceBands: Readonly<Record<StoreProductGroup, { minimum: number; maximum: number }>>
@@ -153,6 +155,10 @@ export const ECONOMY_CONFIG = {
   ] },
   store: {
     inventoryQuantityLimit: 999,
+    perQuestionLimits: {
+      lifeline_50_50: 1,
+      lifeline_freeze: 1,
+    },
     dailyIncome: { casual: 100, active: 400 },
     priceBands: {
       basic_consumable: { minimum: 50, maximum: 100 },

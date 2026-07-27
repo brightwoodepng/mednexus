@@ -504,11 +504,25 @@ export async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS mednexus_session_consumable_events (
       id          TEXT PRIMARY KEY,
       user_id     TEXT NOT NULL,
+      usage_id    TEXT NOT NULL,
       session_id  TEXT NOT NULL REFERENCES mednexus_exam_sessions(id) ON DELETE CASCADE,
       item_id     TEXT NOT NULL,
       question_id TEXT NOT NULL,
+      limit_one_per_question BOOLEAN NOT NULL DEFAULT FALSE,
+      usage_status TEXT NOT NULL DEFAULT 'pending',
+      remaining_quantity INTEGER,
       used_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE mednexus_session_consumable_events
+      ADD COLUMN IF NOT EXISTS usage_id TEXT,
+      ADD COLUMN IF NOT EXISTS limit_one_per_question BOOLEAN NOT NULL DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS usage_status TEXT NOT NULL DEFAULT 'pending',
+      ADD COLUMN IF NOT EXISTS remaining_quantity INTEGER;
+    CREATE UNIQUE INDEX IF NOT EXISTS mednexus_consumable_events_usage_idx
+      ON mednexus_session_consumable_events (user_id, usage_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS mednexus_consumable_events_question_limit_idx
+      ON mednexus_session_consumable_events (user_id, session_id, question_id, item_id)
+      WHERE limit_one_per_question;
     CREATE INDEX IF NOT EXISTS mednexus_consumable_events_session_idx
       ON mednexus_session_consumable_events (user_id, session_id, item_id, used_at);
 

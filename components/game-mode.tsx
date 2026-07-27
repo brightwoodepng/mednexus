@@ -1118,7 +1118,7 @@ const BASE_PTS = 100
 function RapidFireMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("rapid")
-  const { inventory, useItem: consumeItem } = useEconomy()
+  const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[0]
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1289,7 +1289,8 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
             {msg ? <span className={`text-xs font-bold ${isHighAlert ? "text-rose-500 animate-pulse" : "text-amber-600 dark:text-amber-400"}`}>{msg}</span> : bonus > 0 && fb === null ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">+{BASE_PTS + bonus} if correct</span> : null}
           </div>
           <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} onUse50_50={use50_50} onUseFreeze={useFreeze}
-            disabled5050={fb !== null || eliminated.length > 0} disabledFreeze={fb !== null} />
+            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
+            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)} />
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
@@ -1303,7 +1304,7 @@ const SUDDEN_TIME = 20
 function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("sudden")
-  const { inventory, useItem: consumeItem } = useEconomy()
+  const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[1]
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1437,7 +1438,8 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
             <span className="text-[11px] font-semibold text-rose-500/70">One wrong = game over</span>
           </div>
           <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} onUse50_50={use50_50} onUseFreeze={useFreeze}
-            disabled5050={fb !== null || eliminated.length > 0} disabledFreeze={fb !== null} />
+            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
+            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)} />
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
@@ -1608,7 +1610,7 @@ type DJPhase = "menu" | "wager" | "answering" | "feedback" | "over"
 function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("double")
-  const { inventory, useItem: consumeItem } = useEconomy()
+  const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES.find(m => m.id === "double")!
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1800,7 +1802,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
             </div>
           </div>
           <LifelineBar qty5050={qty5050dj} qtyFreeze={0} onUse50_50={use50_50dj} onUseFreeze={() => {}}
-            disabled5050={fb !== null || eliminated.length > 0} disabledFreeze={true} />
+            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)} disabledFreeze={true} />
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
