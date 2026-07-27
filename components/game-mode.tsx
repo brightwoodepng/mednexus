@@ -16,13 +16,12 @@ type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash"
 type AppView = "hero" | "solo" | "multi" | "quickjoin" | GameModeId
 type Phase = "menu" | "playing" | "over"
 type Feedback = "correct" | "wrong" | null
-type FilterScope = "all" | "module" | "subject"
 interface AnswerHistoryEntry { question: Question; selected: string | null }
 type SoloCompletionReason = "lives_exhausted" | "incorrect_answer" | "timeout" | "pool_completed" | "bank_depleted" | "player_finished"
 
 interface GameFilter {
-  scope: FilterScope
-  value: string | null
+  module: string | null
+  discipline: string | null
 }
 
 interface ModeConfig {
@@ -119,7 +118,7 @@ const MULTI_MODES: MultiModeCard[] = [
   },
 ]
 
-const DEFAULT_FILTER: GameFilter = { scope: "all", value: null }
+const DEFAULT_FILTER: GameFilter = { module: null, discipline: null }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function shuffle<T>(arr: T[]): T[] {
@@ -151,8 +150,8 @@ function streakMsg(streak: number): string {
 
 function makeFilteredSrc(allQ: Question[], filter: GameFilter): Question[] {
   const pool = buildGameQuestionPool(allQ, {
-    effectiveModule: filter.scope === "module" ? filter.value : undefined,
-    discipline: filter.scope === "subject" ? filter.value : undefined,
+    effectiveModule: filter.module,
+    discipline: filter.discipline,
   })
   if (pool.diagnostics.idDuplicateCount || pool.diagnostics.contentDuplicateCount) {
     console.warn("[game-question-pool] Duplicate questions excluded", pool.diagnostics)
@@ -163,8 +162,8 @@ function makeFilteredSrc(allQ: Question[], filter: GameFilter): Question[] {
 /** Count how many (live, single-answer) questions match a filter. */
 function countForFilter(allQ: Question[], filter: GameFilter): number {
   return buildGameQuestionPool(allQ, {
-    effectiveModule: filter.scope === "module" ? filter.value : undefined,
-    discipline: filter.scope === "subject" ? filter.value : undefined,
+    effectiveModule: filter.module,
+    discipline: filter.discipline,
   }).questions.length
 }
 
@@ -535,110 +534,47 @@ function FilterPicker({ allQ, filter, onChange }: {
   filter: GameFilter
   onChange: (f: GameFilter) => void
 }) {
-  const [activeTab, setActiveTab] = useState<FilterScope>(filter.scope === "all" ? "all" : filter.scope)
-
-  const modules = useMemo(() =>
-    [...new Set(allQ.map(getEffectiveQuestionModule).filter(Boolean))].sort(),
-    [allQ]
-  )
-  const subjects = useMemo(() =>
-    [...new Set(allQ.map(q => q.subject).filter(Boolean) as string[])].sort(),
-    [allQ]
-  )
+  const eligibleQuestions = useMemo(() => buildGameQuestionPool(allQ).questions, [allQ])
+  const modules = useMemo(() => [...new Set(eligibleQuestions.map(getEffectiveQuestionModule))].sort(), [eligibleQuestions])
+  const disciplines = useMemo(() => filter.module === null ? [] : [
+    ...new Set(eligibleQuestions
+      .filter(question => getEffectiveQuestionModule(question) === filter.module)
+      .map(question => question.subject)),
+  ].sort(), [eligibleQuestions, filter.module])
 
   const count = countForFilter(allQ, filter)
-  const hasFilter = filter.scope !== "all" && filter.value !== null
-
-  function selectTab(tab: FilterScope) {
-    setActiveTab(tab)
-    if (tab === "all") onChange(DEFAULT_FILTER)
-  }
-
-  function pick(scope: FilterScope, value: string) {
-    if (filter.scope === scope && filter.value === value) {
-      onChange(DEFAULT_FILTER)
-      setActiveTab("all")
-    } else {
-      onChange({ scope, value })
-    }
-  }
+  const summary = filter.module === null
+    ? `All Questions · ${count} available`
+    : `${filter.module} · ${filter.discipline ?? "Whole Module"} · ${count} available`
 
   return (
     <div className="mb-5 rounded-3xl border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Question Scope</p>
-        {hasFilter && (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-            {count} question{count !== 1 ? "s" : ""}
-          </span>
+      <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Question Scope</p>
+      <div className="space-y-3">
+        <button type="button" onClick={() => onChange(DEFAULT_FILTER)}
+          className={`w-full rounded-2xl border px-3 py-2.5 text-left text-xs font-semibold transition-all ${filter.module === null ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"}`}>
+          All Questions
+        </button>
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Module</span>
+          <select value={filter.module ?? ""} onChange={event => onChange({ module: event.target.value || null, discipline: null })}
+            className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-xs font-semibold text-foreground outline-none focus:border-primary">
+            <option value="">Choose a module</option>
+            {modules.map(module => <option key={module} value={module}>{module}</option>)}
+          </select>
+        </label>
+        {filter.module !== null && (
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Discipline</span>
+            <select value={filter.discipline ?? ""} onChange={event => onChange({ module: filter.module, discipline: event.target.value || null })}
+              className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-xs font-semibold text-foreground outline-none focus:border-primary">
+              <option value="">Whole Module</option>
+              {disciplines.map(discipline => <option key={discipline} value={discipline}>{discipline}</option>)}
+            </select>
+          </label>
         )}
       </div>
-
-      {/* Scope tabs */}
-      <div className="mb-3 flex gap-1 rounded-2xl bg-muted p-1">
-        {(["all", "module", "subject"] as FilterScope[]).map(tab => (
-          <button
-            key={tab} type="button" onClick={() => selectTab(tab)}
-            className={`flex-1 rounded-xl py-1.5 text-xs font-semibold capitalize transition-all ${activeTab === tab ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            {tab === "all" ? "All" : tab === "module" ? "Module" : "Discipline"}
-          </button>
-        ))}
-      </div>
-
-      {/* Module pills */}
-      {activeTab === "module" && (
-        modules.length === 0 ? (
-          <p className="text-center text-xs text-muted-foreground py-2">No modules found</p>
-        ) : (
-          <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
-            {modules.map(m => (
-              <button
-                key={m} type="button" onClick={() => pick("module", m)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${filter.scope === "module" && filter.value === m ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        )
-      )}
-
-      {/* Subject/discipline pills */}
-      {activeTab === "subject" && (
-        subjects.length === 0 ? (
-          <p className="text-center text-xs text-muted-foreground py-2">No disciplines found</p>
-        ) : (
-          <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
-            {subjects.map(s => (
-              <button
-                key={s} type="button" onClick={() => pick("subject", s)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${filter.scope === "subject" && filter.value === s ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"}`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )
-      )}
-
-      {/* Active filter summary when on "all" tab */}
-      {activeTab === "all" && (
-        <p className="text-center text-xs text-muted-foreground py-1">
-          All {countForFilter(allQ, DEFAULT_FILTER)} available questions
-        </p>
-      )}
-
-      {/* Active filter badge below pills */}
-      {hasFilter && (
-        <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-primary/8 px-3 py-2">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={12} height={12} className="text-primary shrink-0">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-          </svg>
-          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-primary">{filter.value}</span>
-          <button type="button" onClick={() => { onChange(DEFAULT_FILTER); setActiveTab("all") }} className="text-[11px] text-muted-foreground hover:text-foreground shrink-0">✕ Clear</button>
-        </div>
-      )}
+      <p className="mt-3 rounded-xl bg-primary/8 px-3 py-2 text-center text-[11px] font-semibold text-primary">{summary}</p>
     </div>
   )
 }
@@ -652,12 +588,19 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
   onStart: (qty: number | null) => void; onBack: () => void
 }) {
   const count = countForFilter(allQ, filter)
-  const tooFew = filter.scope !== "all" && filter.value && count < 3
+  const tooFew = filter.module !== null && count < 3
 
   // — Quantity selection state —
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [customValue, setCustomValue] = useState("")
   const [useCustom, setUseCustom] = useState(false)
+
+  function handleFilterChange(nextFilter: GameFilter) {
+    const nextCount = countForFilter(allQ, nextFilter)
+    const selectedQuantity = useCustom ? Number(customValue) : selectedPreset
+    if (selectedQuantity !== null && selectedQuantity > nextCount) handleAll()
+    onFilterChange(nextFilter)
+  }
 
   // "All" is the default: no preset chosen, no custom value
   const isAllSelected = !useCustom && selectedPreset === null
@@ -714,7 +657,7 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
         </div>
 
         {/* Filter picker */}
-        <FilterPicker allQ={allQ} filter={filter} onChange={onFilterChange} />
+        <FilterPicker allQ={allQ} filter={filter} onChange={handleFilterChange} />
 
         {/* Question Count */}
         <div className="mb-5 rounded-3xl border border-border bg-card p-4">
