@@ -70,7 +70,7 @@ describe("solo completion metadata reconstruction", () => {
     })).toBe(false)
   })
 
-  it("rejects an inflated client Freeze count without authenticated usage events", async () => {
+  it("rejects an inflated client Stat Labs count without authenticated usage events", async () => {
     const { hasConsistentSoloCompletion } = await import("@/lib/solo-completion-validation")
     expect(hasConsistentSoloCompletion("timeatk", ["a"], [{ questionId: "a", isCorrect: false }], {
       completionReason: "timeout", clientRoundStartedAt: "2026-01-01T00:00:00.000Z",
