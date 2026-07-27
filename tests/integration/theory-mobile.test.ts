@@ -34,7 +34,9 @@ describe("Theory Vault phone experience", () => {
   it("uses non-scrolling equal-width Theory navigation with safe-area support", async () => {
     const source = await readFile("components/bottom-nav.tsx", "utf8")
     expect(source).toContain("grid grid-cols-4 items-stretch")
-    expect(source).toContain('paddingBottom: "env(safe-area-inset-bottom, 0px)"')
+    expect(source).toContain('bottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))"')
+    expect(source).toContain("rounded-[2rem]")
+    expect(source).toContain("shadow-[0_14px_36px")
     expect(source).toContain("min-w-0")
     expect(source).not.toContain("overflow-x-auto")
     expect(source).not.toContain("min-w-max")

@@ -15,6 +15,7 @@
 
 import type { PoolClient } from "pg"
 import pool from "@/lib/db"
+import { applyNPCredits } from "@/lib/np-ledger"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -376,15 +377,15 @@ export async function processDailyLogin(userId: string): Promise<DailyLoginResul
       [newStreak, newLongest, userId],
     )
 
-    // ── Write: credit wallet ───────────────────────────────────────────────────
-    await client.query(
-      `INSERT INTO mednexus_wallet (uid, balance, updated_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (uid) DO UPDATE
-         SET balance    = mednexus_wallet.balance + $2,
-             updated_at = NOW()`,
-      [userId, earned],
-    )
+    // ── Write: credit wallet, lifetime earnings and ledger ───────────────────
+    const credit = await applyNPCredits(client, userId, [{
+      source: "daily_login",
+      sourceId: todayDate,
+      amount: earned,
+      metadata: { streak: newStreak, milestoneName },
+    }])
+    earned = credit.credited
+    breakdown.push(...credit.rankBreakdown)
 
     // ── Write: user notification (deterministic ID = idempotent) ─────────────
     const notifId     = `login-${userId}-${todayDate}`

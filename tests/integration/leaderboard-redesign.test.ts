@@ -12,7 +12,7 @@ describe("MCQ leaderboard redesign", () => {
     expect(component).toContain('{ id: "monthly", label: "Monthly"')
     expect(component).toContain('role="tablist"')
     expect(api).toContain('type RankingTab = "weekly" | "monthly" | "alltime"')
-    expect(api).toContain('tab === "weekly" ? 6 : 29')
+    expect(api).toContain('tab === "weekly" ? 7 : 30')
   })
 
   it("uses an exact authenticated viewer rank and protects public entries", async () => {
@@ -30,9 +30,23 @@ describe("MCQ leaderboard redesign", () => {
     expect(navigation).toContain("<LeaderboardScreen onNavigate={handleScreenNavigation} />")
   })
 
-  it("supports animated and reduced-motion presentations", async () => {
-    const styles = await readFile(stylesPath, "utf8")
-    expect(styles).toContain("@keyframes leaderboard-rise")
+  it("uses tapered podiums, framed rank badges, and layered reduced-motion-safe decoration", async () => {
+    const [component, styles] = await Promise.all([readFile(componentPath, "utf8"), readFile(stylesPath, "utf8")])
+    expect(component).toContain("leaderboard-pedestal")
+    expect(component).toContain("leaderboard-particle")
+    expect(component).toContain("leaderboard-star")
+    expect(component).not.toContain(">#{entry.rank}</span>")
+    expect(styles).toContain("clip-path: polygon")
+    expect(styles).toContain("@keyframes leaderboard-orbit-reverse")
+    expect(styles).toContain("@keyframes leaderboard-twinkle")
     expect(styles).toContain("@media (prefers-reduced-motion: reduce)")
+  })
+
+  it("ranks timed periods from the ledger and all-time from lifetime earnings", async () => {
+    const api = await readFile(apiPath, "utf8")
+    expect(api).toContain("FROM mednexus_np_transactions")
+    expect(api).toContain("created_at >= $1::timestamptz")
+    expect(api).toContain("w.lifetime_earned")
+    expect(api).not.toContain("ORDER BY COALESCE(w.balance")
   })
 })

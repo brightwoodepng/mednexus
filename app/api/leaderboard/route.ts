@@ -44,21 +44,21 @@ function allTimeEntry(row: Record<string, unknown>) {
 }
 
 async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | null) {
-  const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - (tab === "weekly" ? 6 : 29))
-  const cutoff = cutoffDate.toISOString().slice(0, 10)
+  const periodDays = tab === "weekly" ? 7 : 30
+  const cutoff = new Date(Date.now() - periodDays * 86_400_000).toISOString()
   const commonCtes = `
     WITH np AS (
-      SELECT user_id, SUM(np_earned) AS period_np
-      FROM mednexus_discipline_np_log
-      WHERE earned_date >= $1
+      SELECT user_id, SUM(amount) AS period_np
+      FROM mednexus_np_transactions
+      WHERE amount > 0
+        AND created_at >= $1::timestamptz
       GROUP BY user_id
     ), da AS (
       SELECT user_id,
              SUM(questions_answered) AS period_questions,
              SUM(correct_answers) AS period_correct
       FROM mednexus_daily_activity
-      WHERE activity_date >= $1
+      WHERE activity_date >= LEFT($1::text, 10)
       GROUP BY user_id
     )
   `
@@ -148,12 +148,12 @@ async function allTimeLeaderboard(viewerUid: string | null) {
   const publicResult = await pool.query(`
     WITH ranked AS (
       SELECT r.uid, r.name, r.level, r.class_level,
-             COALESCE(w.balance, 0) AS total_np,
+             COALESCE(w.lifetime_earned, 0) AS total_np,
              COALESCE(w.rank_points, 0) AS rank_points,
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
              ${accuracySql} AS accuracy,
              ROW_NUMBER() OVER (
-               ORDER BY COALESCE(w.balance, 0) DESC, ${accuracySql} DESC, r.uid ASC
+               ORDER BY COALESCE(w.lifetime_earned, 0) DESC, ${accuracySql} DESC, r.uid ASC
              ) AS public_rank
       FROM mednexus_registered_users r
       LEFT JOIN mednexus_wallet w ON w.uid = r.uid
@@ -169,7 +169,7 @@ async function allTimeLeaderboard(viewerUid: string | null) {
   if (viewerUid && !viewerEntry) {
     const viewerResult = await pool.query(`
       SELECT r.uid, r.name, r.level, r.class_level,
-             COALESCE(w.balance, 0) AS total_np,
+             COALESCE(w.lifetime_earned, 0) AS total_np,
              COALESCE(w.rank_points, 0) AS rank_points,
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
              ${accuracySql} AS accuracy
@@ -184,7 +184,7 @@ async function allTimeLeaderboard(viewerUid: string | null) {
       const rankResult = await pool.query(`
         SELECT 1 + COUNT(*)::int AS exact_rank
         FROM (
-          SELECT r.uid, COALESCE(w.balance, 0) AS total_np, ${accuracySql} AS accuracy
+          SELECT r.uid, COALESCE(w.lifetime_earned, 0) AS total_np, ${accuracySql} AS accuracy
           FROM mednexus_registered_users r
           LEFT JOIN mednexus_wallet w ON w.uid = r.uid
           LEFT JOIN mednexus_progress p ON p.uid = r.uid
@@ -213,6 +213,19 @@ export async function GET(req: NextRequest) {
     const data = tab === "alltime"
       ? await allTimeLeaderboard(viewerUid)
       : await timedLeaderboard(tab, viewerUid)
+
+    if (viewerUid) {
+      const viewerPrivacy = await pool.query(
+        "SELECT is_private FROM mednexus_registered_users WHERE uid = $1 AND status = 'approved'",
+        [viewerUid],
+      )
+      if (viewerPrivacy.rows[0]?.is_private === true) {
+        return NextResponse.json({
+          ...data,
+          entries: data.viewerEntry ? [data.viewerEntry] : [],
+        })
+      }
+    }
     return NextResponse.json(data)
   } catch (error) {
     console.error("[leaderboard GET]", error)

@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { ArrowRight, RefreshCw, Sparkles, Trophy } from "lucide-react"
+import { ArrowRight, RefreshCw, Trophy } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS, TITLE_LABELS } from "@/lib/economy"
 import { PublicProfileModal } from "@/components/public-profile-modal"
@@ -33,20 +33,52 @@ function subtitle(entry: LeaderboardEntry) {
   return entry.classLevel || entry.level || (entry.equippedTitle ? TITLE_LABELS[entry.equippedTitle] : null) || "MedNexus learner"
 }
 
-function Avatar({ entry, size, orbit = false }: { entry: LeaderboardEntry; size: string; orbit?: boolean }) {
+function Avatar({ entry, size, orbit = false, rank }: {
+  entry: LeaderboardEntry
+  size: string
+  orbit?: boolean
+  rank?: 1 | 2 | 3
+}) {
   const frame = entry.equippedFrame ? FRAME_RING_CLASSES[entry.equippedFrame] ?? "" : ""
   const avatar = entry.equippedAvatar ? STORE_ITEMS.find((item) => item.id === entry.equippedAvatar) : null
+  const medal = rank === 1
+    ? "border-amber-300 bg-amber-400 text-amber-950"
+    : rank === 2
+      ? "border-slate-200 bg-slate-300 text-slate-900"
+      : "border-orange-300 bg-orange-400 text-orange-950"
+  const orbitStrong = rank === 1
+    ? "border-amber-400/70"
+    : rank === 2
+      ? "border-slate-400/70"
+      : "border-orange-400/70"
+  const orbitSoft = rank === 1
+    ? "border-amber-300/35"
+    : rank === 2
+      ? "border-slate-300/35"
+      : "border-orange-300/35"
+  const orbitDot = rank === 1
+    ? "bg-amber-400"
+    : rank === 2
+      ? "bg-slate-300"
+      : "bg-orange-400"
   return (
-    <div className={"relative shrink-0 " + size}>
+    <div className={"leaderboard-avatar-stage relative shrink-0 " + size}>
       {orbit && <>
-        <span className="leaderboard-orbit absolute -inset-2 rounded-full border border-primary/45" />
-        <span className="leaderboard-orbit-dot absolute -right-2 top-1/2 h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary))]" />
-        <Sparkles className="leaderboard-sparkle absolute -left-4 -top-3 text-primary" size={15} aria-hidden />
+        <span className={"leaderboard-orbit leaderboard-orbit-a absolute -inset-3 rounded-full border-2 border-dashed " + orbitStrong} />
+        <span className={"leaderboard-orbit leaderboard-orbit-b absolute -inset-5 rounded-full border " + orbitSoft} />
+        <span className={"leaderboard-particle leaderboard-particle-a absolute -right-4 top-1/2 h-2.5 w-2.5 rounded-full shadow-[0_0_12px_currentColor] " + orbitDot} />
+        <span className="leaderboard-particle leaderboard-particle-b absolute -left-3 bottom-0 h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.7)]" />
+        <span className="leaderboard-star leaderboard-star-a absolute -left-5 -top-3 text-primary" aria-hidden>✦</span>
+        <span className="leaderboard-star leaderboard-star-b absolute -right-5 top-0 text-amber-400" aria-hidden>★</span>
+        <span className="leaderboard-star leaderboard-star-c absolute -right-3 -bottom-3 text-primary/70" aria-hidden>✧</span>
       </>}
-      <div className={"relative flex h-full w-full items-center justify-center overflow-hidden rounded-full border-4 border-card bg-primary/10 text-xl font-extrabold text-primary shadow-xl " + frame}>
-        {avatar?.imagePath
-          ? <img src={avatar.imagePath} alt="" className="h-full w-full object-cover" />
-          : (entry.name[0] ?? "?").toUpperCase()}
+      <div className={"leaderboard-avatar-frame relative flex h-full w-full items-center justify-center rounded-full border-2 border-card bg-card p-1 shadow-xl " + frame}>
+        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xl font-extrabold text-primary">
+          {avatar?.imagePath
+            ? <img src={avatar.imagePath} alt="" className="h-full w-full object-cover" />
+            : (entry.name[0] ?? "?").toUpperCase()}
+        </div>
+        {rank && <span className={"absolute bottom-0 left-1/2 z-20 flex h-6 min-w-6 -translate-x-1/2 items-center justify-center rounded-full border-2 px-1 text-[11px] font-black shadow-md " + medal}>{rank}</span>}
       </div>
     </div>
   )
@@ -64,14 +96,13 @@ function PodiumPlace({ entry, onSelect }: { entry: LeaderboardEntry; onSelect: (
       aria-label={`Open ${entry.name}'s profile, rank ${entry.rank}`}
     >
       <div className="relative z-10 flex min-w-0 flex-col items-center">
-        <Avatar entry={entry} size={style.avatar} orbit />
-        <span className={"-mt-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-card px-1 text-[11px] font-black shadow " + style.badge}>{entry.rank}</span>
-        <p className="mt-2 max-w-[104px] truncate text-sm font-bold text-foreground sm:max-w-[150px] sm:text-base">{entry.name}</p>
+        <Avatar entry={entry} size={style.avatar} orbit rank={entry.rank as 1 | 2 | 3} />
+        <p className="mt-5 max-w-[104px] truncate text-sm font-bold text-foreground sm:max-w-[150px] sm:text-base">{entry.name}</p>
         <p className="max-w-[104px] truncate text-[10px] uppercase tracking-wide text-muted-foreground sm:max-w-[150px]">{subtitle(entry)}</p>
       </div>
-      <div className={"leaderboard-pedestal mt-3 flex w-full max-w-[132px] flex-col items-center rounded-t-[1.4rem] bg-gradient-to-b px-2 pt-3 shadow-lg transition-transform group-hover:-translate-y-1 sm:max-w-[170px] " + style.height + " " + style.tone}>
-        <span className="rounded-xl bg-white/30 px-2.5 py-1 text-xs font-black tabular-nums text-slate-900 backdrop-blur-sm sm:text-sm">{formatNP(entry.np)} NP</span>
-        <Trophy className="mt-auto mb-4 text-white/90 drop-shadow" size={entry.rank === 1 ? 24 : 19} aria-hidden />
+      <div className={"leaderboard-pedestal mt-3 flex w-full max-w-[132px] flex-col items-center overflow-hidden bg-gradient-to-b px-2 pt-4 shadow-lg transition-transform group-hover:-translate-y-1 sm:max-w-[170px] " + style.height + " " + style.tone}>
+        <span className="relative z-10 rounded-xl bg-white/30 px-2.5 py-1 text-xs font-black tabular-nums text-slate-900 backdrop-blur-sm sm:text-sm">{formatNP(entry.np)} NP</span>
+        <Trophy className="relative z-10 mt-auto mb-4 text-white/90 drop-shadow" size={entry.rank === 1 ? 24 : 19} aria-hidden />
       </div>
     </button>
   )
@@ -86,7 +117,7 @@ function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardE
       style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}
       className={"leaderboard-row flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-4 " + (viewer ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20 " : "") + highlight}
     >
-      <span className="w-8 shrink-0 text-center text-sm font-bold tabular-nums text-muted-foreground">#{entry.rank}</span>
+      <span className="w-8 shrink-0 text-center text-sm font-bold tabular-nums text-muted-foreground">{entry.rank}</span>
       <Avatar entry={entry} size="h-11 w-11 sm:h-12 sm:w-12" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
@@ -103,10 +134,10 @@ function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardE
 
 function ViewerCard({ entry, onProfile, onStudy }: { entry: LeaderboardEntry; onProfile: () => void; onStudy: () => void }) {
   return (
-    <section className="leaderboard-viewer fixed inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-2xl rounded-2xl border border-primary/30 bg-primary p-3 text-primary-foreground shadow-2xl md:sticky md:bottom-4 md:inset-x-auto md:p-4">
+    <section className="leaderboard-viewer fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-w-2xl rounded-2xl border border-primary/30 bg-primary p-3 text-primary-foreground shadow-2xl md:sticky md:bottom-4 md:inset-x-auto md:p-4">
       <div className="flex items-center gap-3">
         <button type="button" onClick={onProfile} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 text-sm font-black">#{entry.rank}</span>
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 text-sm font-black">{entry.rank}</span>
           <span className="min-w-0">
             <span className="block text-[10px] font-bold uppercase tracking-[0.15em] text-primary-foreground/70">Your ranking</span>
             <span className="block truncate text-sm font-bold sm:text-base">{formatNP(entry.np)} Nexus Points</span>
@@ -187,9 +218,11 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
 
       {!loading && !error && entries.length > 0 && <>
         <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-b from-primary/[0.08] via-card to-card px-2 pt-10 shadow-sm sm:px-6 sm:pt-14">
-          <span className="pointer-events-none absolute left-[12%] top-10 h-2 w-2 rounded-full bg-primary/50" />
-          <span className="pointer-events-none absolute right-[14%] top-20 h-1.5 w-1.5 rounded-full bg-amber-400/70" />
-          <span className="pointer-events-none absolute left-1/2 top-5 h-1.5 w-1.5 rounded-full bg-primary/40" />
+          <span className="leaderboard-field-star pointer-events-none absolute left-[8%] top-12 text-primary/60">✦</span>
+          <span className="leaderboard-field-star leaderboard-field-star-delay pointer-events-none absolute right-[9%] top-20 text-amber-400/80">★</span>
+          <span className="leaderboard-field-star pointer-events-none absolute left-[46%] top-4 text-primary/45">✧</span>
+          <span className="leaderboard-field-dot pointer-events-none absolute left-[18%] top-[42%] h-1.5 w-1.5 rounded-full bg-primary/45" />
+          <span className="leaderboard-field-dot leaderboard-field-star-delay pointer-events-none absolute right-[21%] top-[35%] h-2 w-2 rounded-full bg-amber-400/65" />
           <div className="flex min-h-[300px] items-end justify-center gap-1.5 sm:min-h-[365px] sm:gap-4">
             {top3.map((entry) => <PodiumPlace key={entry.uid} entry={entry} onSelect={() => setSelected(entry)} />)}
           </div>
