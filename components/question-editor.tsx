@@ -5,6 +5,7 @@ import { useQuestions } from "@/contexts/questions-context"
 import { PdfImportModal } from "@/components/pdf-import-modal"
 import { WordImportModal } from "@/components/word-import-modal"
 import type { Question, QuestionOption, ModuleStatus } from "@/lib/types"
+import { findImportQuestionDuplicates } from "@/lib/game-question-pool"
 import {
   TrashIcon, PencilIcon, PlusIcon, XIcon, CheckIcon, DatabaseIcon,
   RefreshCwIcon, AlertTriangleIcon, CheckSquareIcon, DownloadIcon,
@@ -1021,13 +1022,12 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
   // re-importing the same document (to recover a failed batch) is safe.
   useEffect(() => {
     if (!pendingImport || pendingImport.length === 0) return
-    const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ")
     setDraftQuestions((prev) => {
-      const existingVignettes = new Set([
-        ...questions.map((q) => normalize(q.vignette)),
-        ...prev.map((q) => normalize(q.vignette)),
-      ])
-      const fresh = pendingImport.filter((q) => !existingVignettes.has(normalize(q.vignette)))
+      const duplicates = findImportQuestionDuplicates(pendingImport, [...questions, ...prev])
+      const fresh = pendingImport.filter((q) => !duplicates.duplicateCandidateIds.has(q.id))
+      if (duplicates.duplicateCount) {
+        console.warn("[mcq-import] Duplicate drafts skipped", { count: duplicates.duplicateCount })
+      }
       return [...prev, ...fresh]
     })
     setFilterMode("draft")
@@ -1272,7 +1272,14 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
 
   // ── Draft import from PDF or Word ──
   function handleDraftImport(imported: Question[]) {
-    setDraftQuestions((prev) => [...prev, ...imported])
+    setDraftQuestions((prev) => {
+      const duplicates = findImportQuestionDuplicates(imported, [...questions, ...prev])
+      if (duplicates.duplicateCount) {
+        window.alert(`${duplicates.duplicateCount} materially identical question${duplicates.duplicateCount === 1 ? " was" : "s were"} detected and skipped.`)
+        console.warn("[mcq-import] Duplicate drafts skipped", { count: duplicates.duplicateCount })
+      }
+      return [...prev, ...imported.filter((q) => !duplicates.duplicateCandidateIds.has(q.id))]
+    })
     setFilterMode("draft")
   }
 
