@@ -9,6 +9,7 @@ import { MultiplayerClash, CohortReview, WagerWars, DoubleJeopardyMulti } from "
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/economy-panel"
+import { buildGameQuestionPool, getEffectiveQuestionModule } from "@/lib/game-question-pool"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort" | "wager" | "djmulti"
@@ -147,35 +148,23 @@ function streakMsg(streak: number): string {
   return ""
 }
 
-/** Returns true when a question has multiple correct answers (SATA).
- *  Single-item arrays ["A"] are treated as single-answer (normalised on save).
- *  Game modes only support single-answer MCQs so true SATA must be excluded. */
-function isSATA(q: Question): boolean {
-  return Array.isArray(q.correctAnswer) && q.correctAnswer.length > 1
-}
-
-/** Returns a shuffled pool of live, single-answer questions, optionally filtered by module or subject.
- *  Falls back to the full set if the filtered result is fewer than 3 questions. */
 function makeFilteredSrc(allQ: Question[], filter: GameFilter): Question[] {
-  let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
-  if (base.length < 5) base = allQ.filter(q => !isSATA(q))
-  if (filter.scope === "module" && filter.value) {
-    const f = base.filter(q => q.module === filter.value)
-    if (f.length >= 3) base = f
-  } else if (filter.scope === "subject" && filter.value) {
-    const f = base.filter(q => q.subject === filter.value)
-    if (f.length >= 3) base = f
+  const pool = buildGameQuestionPool(allQ, {
+    effectiveModule: filter.scope === "module" ? filter.value : undefined,
+    discipline: filter.scope === "subject" ? filter.value : undefined,
+  })
+  if (pool.diagnostics.idDuplicateCount || pool.diagnostics.contentDuplicateCount) {
+    console.warn("[game-question-pool] Duplicate questions excluded", pool.diagnostics)
   }
-  return shuffle(base)
+  return shuffle(pool.questions)
 }
 
 /** Count how many (live, single-answer) questions match a filter. */
 function countForFilter(allQ: Question[], filter: GameFilter): number {
-  let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
-  if (base.length < 5) base = allQ.filter(q => !isSATA(q))
-  if (filter.scope === "module" && filter.value) return base.filter(q => q.module === filter.value).length
-  if (filter.scope === "subject" && filter.value) return base.filter(q => q.subject === filter.value).length
-  return base.length
+  return buildGameQuestionPool(allQ, {
+    effectiveModule: filter.scope === "module" ? filter.value : undefined,
+    discipline: filter.scope === "subject" ? filter.value : undefined,
+  }).questions.length
 }
 
 function useSoloScoring(mode: "rapid" | "sudden" | "timeatk" | "double" | "streak") {
@@ -490,7 +479,7 @@ function FilterPicker({ allQ, filter, onChange }: {
   const [activeTab, setActiveTab] = useState<FilterScope>(filter.scope === "all" ? "all" : filter.scope)
 
   const modules = useMemo(() =>
-    [...new Set(allQ.map(q => q.module).filter(Boolean) as string[])].sort(),
+    [...new Set(allQ.map(getEffectiveQuestionModule).filter(Boolean))].sort(),
     [allQ]
   )
   const subjects = useMemo(() =>

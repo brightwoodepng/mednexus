@@ -4,11 +4,13 @@ import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { abandonStaleSessions } from "@/lib/anti-farming"
 import { questionsDatabase } from "@/lib/questions-database"
 import type { Question } from "@/lib/types"
+import { buildGameQuestionPool } from "@/lib/game-question-pool"
 
 const SCORABLE_MODES = new Set([
   "tutor", "exam", "trial",
   "rapid", "sudden", "timeatk", "double", "streak",
 ])
+const SOLO_GAME_MODES = new Set(["rapid", "sudden", "timeatk", "double", "streak"])
 const MAX_SESSION_QUESTIONS = 200
 const MAX_SESSION_ANSWERS = MAX_SESSION_QUESTIONS
 
@@ -26,11 +28,20 @@ function validAnswer(value: unknown): value is AcceptedAnswer {
     || (Array.isArray(value) && value.every((item) => typeof item === "string"))
 }
 
-async function loadQuestionSnapshot(questionIds: string[]): Promise<SnapshotQuestion[] | null> {
+type SnapshotResult = {
+  snapshot: SnapshotQuestion[] | null
+  duplicateCounts: { id: number; content: number }
+  invalidQuestionIds: string[]
+}
+
+async function loadQuestionSnapshot(questionIds: string[], validateSoloPool: boolean): Promise<SnapshotResult> {
   const saved = await pool.query("SELECT data FROM mednexus_questions WHERE id = 1")
   const savedBank: Question[] = Array.isArray(saved.rows[0]?.data) ? saved.rows[0].data : []
   const bank = savedBank.length ? savedBank : questionsDatabase
-  const byId = new Map(bank.map((question) => [question.id, question]))
+  const permittedPool = validateSoloPool ? buildGameQuestionPool(bank) : null
+  const permittedQuestions = permittedPool?.questions ?? bank
+  const byId = new Map(permittedQuestions.map((question) => [question.id, question]))
+  const invalidQuestionIds = questionIds.filter((id) => !byId.has(id))
   const snapshot = questionIds.map((id) => {
     const question = byId.get(id)
     return question
@@ -41,9 +52,14 @@ async function loadQuestionSnapshot(questionIds: string[]): Promise<SnapshotQues
         }
       : null
   })
-  return snapshot.some((question) => !question)
-    ? null
-    : snapshot as SnapshotQuestion[]
+  return {
+    snapshot: invalidQuestionIds.length ? null : snapshot as SnapshotQuestion[],
+    duplicateCounts: {
+      id: permittedPool?.diagnostics.idDuplicateCount ?? 0,
+      content: permittedPool?.diagnostics.contentDuplicateCount ?? 0,
+    },
+    invalidQuestionIds,
+  }
 }
 
 /** Starts a scored activity and snapshots answer keys on the server. */
@@ -67,9 +83,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const snapshot = await loadQuestionSnapshot(questionIds)
-    if (!snapshot) {
-      return NextResponse.json({ error: "Unknown question in scored activity" }, { status: 400 })
+    const loaded = await loadQuestionSnapshot(questionIds, SOLO_GAME_MODES.has(mode))
+    if (loaded.duplicateCounts.id || loaded.duplicateCounts.content) {
+      console.warn("[economy-session] Duplicate question records excluded", loaded.duplicateCounts)
+    }
+    if (!loaded.snapshot) {
+      return NextResponse.json({
+        error: "Activity includes a question that is unavailable or duplicates canonical content",
+        duplicateCounts: loaded.duplicateCounts,
+        invalidQuestionCount: loaded.invalidQuestionIds.length,
+      }, { status: 400 })
     }
 
     await abandonStaleSessions(auth.uid)
@@ -78,9 +101,9 @@ export async function POST(req: NextRequest) {
       `INSERT INTO mednexus_exam_sessions
         (id, user_id, mode, question_ids, answer_key, status)
        VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, 'active')`,
-      [sessionId, auth.uid, mode, JSON.stringify(questionIds), JSON.stringify(snapshot)],
+      [sessionId, auth.uid, mode, JSON.stringify(questionIds), JSON.stringify(loaded.snapshot)],
     )
-    return NextResponse.json({ sessionId })
+    return NextResponse.json({ sessionId, duplicateCounts: loaded.duplicateCounts })
   } catch (error) {
     console.error("economy session POST", error)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
