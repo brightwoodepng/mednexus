@@ -30,6 +30,7 @@ export interface EquippedCosmetics {
 export interface PayoutResponse {
   earned: number
   newBalance: number
+  isNewHigh: boolean
   breakdown: { label: string; amount: number }[]
   bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[]
 }
