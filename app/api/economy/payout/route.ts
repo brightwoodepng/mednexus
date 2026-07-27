@@ -19,6 +19,7 @@ import {
   type NPCredit,
 } from "@/lib/np-ledger"
 import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
+import { hasConsistentSoloCompletion } from "@/lib/solo-completion-validation"
 
 type Key = {
   id: string
@@ -170,6 +171,15 @@ export async function POST(req: NextRequest) {
         })
       }
 
+      const snapshotIds = keys.map((key) => key.id)
+      const completionMetadataConsistent = SOLO_GAME_MODES.has(session.mode)
+        ? hasConsistentSoloCompletion(session.mode, snapshotIds, sessionData, session.result_meta ?? {})
+        : session.result_meta?.completionReason === "pool_completed"
+          && sessionData.length === snapshotIds.length
+          && sessionData.every((attempt, index) => attempt.questionId === snapshotIds[index])
+          && session.result_meta?.selectedQuestionCount === snapshotIds.length
+          && session.result_meta?.answeredQuestionCount === sessionData.length
+
       const total = sessionData.length
       const correctCount = sessionData.filter((question) => question.isCorrect).length
       const accuracy = total ? Math.round(correctCount * 100 / total) : 0
@@ -178,13 +188,10 @@ export async function POST(req: NextRequest) {
         ? ECONOMY_CONFIG.gameRewards.solo.suddenDeathMinimumAnswers
         : ECONOMY_CONFIG.gameRewards.solo.minimumAnswers
       const meaningfulSoloCompletion = isSoloGame
+        && completionMetadataConsistent
         && total >= minimumAnswers
         && keys.length > 0
         && sessionData.every((answer) => keyById.has(answer.questionId))
-      if (isSoloGame && !meaningfulSoloCompletion) {
-        await client.query("ROLLBACK")
-        return NextResponse.json({ error: "Game does not meet the reward eligibility policy" }, { status: 422 })
-      }
       const score = calculateServerScore(session.mode, sessionData, bestStreak)
       const isNewHigh = meaningfulSoloCompletion
         ? await updatePersonalBest(auth.uid, session.mode, score, client)
@@ -205,7 +212,7 @@ export async function POST(req: NextRequest) {
       const anti = await calculateSessionNP(
         auth.uid,
         session.mode,
-        sessionData,
+        completionMetadataConsistent ? sessionData : [],
         client,
         session.mode === "exam"
           ? {
@@ -221,7 +228,7 @@ export async function POST(req: NextRequest) {
       const gross = calculatePayout(result)
       const canAwardFirstCompletion = meaningfulSoloCompletion
         && await completionBonusAvailable(client, auth.uid)
-      const achievementBreakdown = isSoloGame
+      const achievementBreakdown = isSoloGame && completionMetadataConsistent
         ? gross.breakdown.filter((item) => item.label !== "Valid Completion")
         : []
       const achievementNP = achievementBreakdown.reduce((sum, item) => sum + item.amount, 0)
@@ -270,12 +277,17 @@ export async function POST(req: NextRequest) {
       }
       const credit = await applyNPCredits(client, auth.uid, credits)
       await recordDailyActivity(client, auth.uid, total, correctCount)
-      const weekly = await recordWeeklyGoalActivity(client, auth.uid, {
-        answered: total,
-        correct: correctCount,
-        qualifyingExam: session.mode === "exam" && total >= ECONOMY_CONFIG.examRewards.minimumAnswered,
-        occurredAt: session.submitted_at ? new Date(session.submitted_at) : undefined,
-      })
+      const weekly = completionMetadataConsistent
+        ? await recordWeeklyGoalActivity(client, auth.uid, {
+            answered: total,
+            correct: correctCount,
+            qualifyingExam: session.mode === "exam" && total >= ECONOMY_CONFIG.examRewards.minimumAnswered,
+            occurredAt: session.submitted_at ? new Date(session.submitted_at) : undefined,
+          })
+        : { newlyCompleted: [] as string[], credited: {
+            credited: 0, suppressed: 0, newBalance: credit.newBalance,
+            rankBreakdown: [] as Array<{ label: string; amount: number }>, dailyRepeatableCredited: 0,
+          } }
 
       const bountyUpdates: Array<{
         id: string
@@ -286,7 +298,7 @@ export async function POST(req: NextRequest) {
         reward: number
       }> = []
       const bountyCredits: NPCredit[] = []
-      for (const bounty of getTodaysBounties()) {
+      for (const bounty of completionMetadataConsistent ? getTodaysBounties() : []) {
         const delta = computeBountyProgress(bounty, result)
         if (!delta) continue
         const old = await client.query(
