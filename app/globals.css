@@ -1162,9 +1162,22 @@
 @keyframes leaderboard-orbit {
   to { transform: rotate(360deg); }
 }
-@keyframes leaderboard-sparkle {
-  0%, 100% { opacity: 0.45; transform: scale(0.85) rotate(-8deg); }
-  50% { opacity: 1; transform: scale(1.12) rotate(8deg); }
+@keyframes leaderboard-orbit-reverse {
+  to { transform: rotate(-360deg); }
+}
+@keyframes leaderboard-twinkle {
+  0%, 100% { opacity: 0.35; transform: translateY(0) scale(0.75) rotate(-8deg); }
+  50% { opacity: 1; transform: translateY(-4px) scale(1.15) rotate(10deg); }
+}
+@keyframes leaderboard-particle-a {
+  to { transform: rotate(360deg) translateX(2px); }
+}
+@keyframes leaderboard-particle-b {
+  to { transform: rotate(-360deg) translateY(-2px); }
+}
+@keyframes leaderboard-field-float {
+  0%, 100% { opacity: 0.35; transform: translateY(0) scale(0.8); }
+  50% { opacity: 0.9; transform: translateY(-9px) scale(1.12); }
 }
 .leaderboard-podium-entry {
   opacity: 0;
@@ -1178,16 +1191,53 @@
   animation: leaderboard-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .leaderboard-orbit {
+  pointer-events: none;
+}
+.leaderboard-orbit-a {
   border-left-color: transparent;
   border-bottom-color: transparent;
   animation: leaderboard-orbit 9s linear infinite;
 }
-.leaderboard-orbit-dot {
-  transform-origin: calc(-50% - 2.5rem) 50%;
-  animation: leaderboard-orbit 7s linear infinite reverse;
+.leaderboard-orbit-b {
+  border-right-color: transparent;
+  border-top-color: transparent;
+  animation: leaderboard-orbit-reverse 13s linear infinite;
 }
-.leaderboard-sparkle {
-  animation: leaderboard-sparkle 2.4s ease-in-out infinite;
+.leaderboard-particle {
+  pointer-events: none;
+}
+.leaderboard-particle-a {
+  transform-origin: calc(-50% - 2.5rem) 50%;
+  animation: leaderboard-particle-a 7s linear infinite;
+}
+.leaderboard-particle-b {
+  transform-origin: calc(50% + 2.8rem) -1rem;
+  animation: leaderboard-particle-b 10s linear infinite;
+}
+.leaderboard-star {
+  pointer-events: none;
+  animation: leaderboard-twinkle 2.4s ease-in-out infinite;
+}
+.leaderboard-star-b { animation-delay: -0.8s; }
+.leaderboard-star-c { animation-delay: -1.6s; }
+.leaderboard-field-star,
+.leaderboard-field-dot {
+  animation: leaderboard-field-float 3.2s ease-in-out infinite;
+}
+.leaderboard-field-star-delay { animation-delay: -1.4s; }
+.leaderboard-pedestal {
+  position: relative;
+  clip-path: polygon(15% 0, 85% 0, 100% 100%, 0 100%);
+  border-radius: 1.65rem 1.65rem 0.35rem 0.35rem;
+}
+.leaderboard-pedestal::before {
+  content: "";
+  position: absolute;
+  inset: 0 15% auto;
+  height: 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  filter: blur(0.5px);
 }
 @media (prefers-reduced-motion: reduce) {
   .leaderboard-podium-entry,
@@ -1197,8 +1247,10 @@
     animation: none;
   }
   .leaderboard-orbit,
-  .leaderboard-orbit-dot,
-  .leaderboard-sparkle {
+  .leaderboard-particle,
+  .leaderboard-star,
+  .leaderboard-field-star,
+  .leaderboard-field-dot {
     animation: none;
   }
   .leaderboard-pedestal {
