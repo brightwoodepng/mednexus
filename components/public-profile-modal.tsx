@@ -29,6 +29,7 @@ export interface LeaderboardEntry {
 
 interface PublicProfileModalProps {
   entry: LeaderboardEntry
+  npLabel?: string
   onClose: () => void
 }
 
@@ -44,7 +45,7 @@ function formatNP(n: number): string {
   return String(n)
 }
 
-export function PublicProfileModal({ entry, onClose }: PublicProfileModalProps) {
+export function PublicProfileModal({ entry, npLabel = "Lifetime NP", onClose }: PublicProfileModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -121,11 +122,11 @@ export function PublicProfileModal({ entry, onClose }: PublicProfileModalProps) 
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-2xl bg-muted px-2 py-3 text-center">
               <p className="text-lg font-bold text-foreground tabular-nums">{formatNP(entry.np)}</p>
-              <p className="text-[10px] text-muted-foreground">Nexus Points</p>
+              <p className="text-[10px] text-muted-foreground">{npLabel}</p>
             </div>
             <div className="rounded-2xl bg-muted px-2 py-3 text-center">
-              <p className="text-lg font-bold text-foreground">#{entry.rank}</p>
-              <p className="text-[10px] text-muted-foreground">Rank</p>
+              <p className="truncate text-sm font-bold text-foreground">{entry.rankPoints === undefined ? `#${entry.rank}` : tierName}</p>
+              <p className="text-[10px] text-muted-foreground">{entry.rankPoints === undefined ? "Leaderboard Place" : "Clinical Rank"}</p>
             </div>
             <div className="rounded-2xl bg-muted px-2 py-3 text-center">
               <p className="text-lg font-bold text-foreground tabular-nums">

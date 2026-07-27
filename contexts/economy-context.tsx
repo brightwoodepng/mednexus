@@ -36,6 +36,8 @@ export interface PayoutResponse {
 
 export interface EconomyContextValue {
   balance: number
+  lifetimeEarned: number
+  rankPoints: number
   bounties: BountyWithProgress[]
   weeklyGoals: WeeklyGoal[]
   inventory: Record<string, number>
@@ -87,6 +89,8 @@ function economyHeaders(): Record<string, string> {
 export function EconomyProvider({ children }: { children: ReactNode }) {
   const { user } = useApp()
   const [balance, setBalance]                       = useState(0)
+  const [lifetimeEarned, setLifetimeEarned]         = useState(0)
+  const [rankPoints, setRankPoints]                 = useState(0)
   const [bounties, setBounties]                     = useState<BountyWithProgress[]>([])
   const [weeklyGoals, setWeeklyGoals]               = useState<WeeklyGoal[]>([])
   const [inventory, setInventory]                   = useState<Record<string, number>>({})
@@ -110,6 +114,8 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
         fetch(`/api/economy/cosmetics`, { headers: economyHeaders() }).then(r => r.json()),
       ])
       setBalance(walletRes.balance ?? 0)
+      setLifetimeEarned(walletRes.lifetimeEarned ?? 0)
+      setRankPoints(walletRes.rankPoints ?? 0)
       setBounties(bountiesRes.bounties ?? [])
       setWeeklyGoals(weeklyRes.goals ?? [])
       setInventory(storeRes.inventory ?? {})
@@ -141,6 +147,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
               // Update balance optimistically so the header reflects the award immediately
               setBalance((prev) => prev + data.earned)
               setDailyLoginReward(data)
+              void refresh()
             }
           })
           .catch(() => { /* silent — non-critical */ })
@@ -160,12 +167,13 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       const data = await res.json()
       if (!res.ok) return { ok: false, error: data.error }
       setBalance(data.newBalance)
+      void refresh()
       setBounties(prev => prev.map(b => b.id === bountyId ? { ...b, claimed: true } : b))
       return { ok: true, earned: data.earned }
     } catch {
       return { ok: false, error: "Network error" }
     }
-  }, [user?.uid])
+  }, [user?.uid, refresh])
 
   const purchase = useCallback(async (itemId: string) => {
     const uid = user?.uid
@@ -178,13 +186,15 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       })
       const data = await res.json()
       if (!res.ok) return { ok: false, error: data.error }
-      setBalance(data.newBalance)
+      setBalance(data.balance ?? data.newBalance)
+      setLifetimeEarned(data.lifetimeEarned ?? lifetimeEarned)
+      setRankPoints(data.rankPoints ?? rankPoints)
       setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] ?? 0) + 1 }))
       return { ok: true }
     } catch {
       return { ok: false, error: "Network error" }
     }
-  }, [user?.uid])
+  }, [user?.uid, lifetimeEarned, rankPoints])
 
   const useItem = useCallback(async (itemId: string) => {
     const uid = user?.uid
@@ -252,6 +262,8 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       }
       // Confirm with the value the DB echoed back
       setBalance(data.balance ?? target)
+      setLifetimeEarned(data.lifetimeEarned ?? lifetimeEarned)
+      setRankPoints(data.rankPoints ?? rankPoints)
       return { ok: true }
     } catch (e) {
       // Network failure — revert by re-fetching the real balance
@@ -261,7 +273,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
         .catch(() => {/* silent */})
       return { ok: false, error: String(e) }
     }
-  }, [user?.uid])
+  }, [user?.uid, lifetimeEarned, rankPoints])
 
   const startScoredActivity = useCallback(async (mode: string, questionIds: string[]) => {
     if (!user?.uid) return null
@@ -305,6 +317,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       if (!res.ok) return null
       const data = await res.json()
       setBalance(data.newBalance)
+      void refresh()
       if (data.bountyUpdates?.length) {
         setBounties(prev => prev.map(b => {
           const upd = data.bountyUpdates.find((u: { id: string }) => u.id === b.id)
@@ -316,7 +329,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     } catch {
       return null
     }
-  }, [user?.uid])
+  }, [user?.uid, refresh])
 
   const submitMultiplayerResult = useCallback(async (
     pin: string,
@@ -337,6 +350,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
       if (!response.ok) return null
       setBalance(data.newBalance)
+      void refresh()
       if (data.bountyUpdates?.length) {
         setBounties(previous => previous.map((bounty) => {
           const update = data.bountyUpdates.find((item: { id: string }) => item.id === bounty.id)
@@ -347,11 +361,11 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     } catch {
       return null
     }
-  }, [user?.uid])
+  }, [user?.uid, refresh])
 
   return (
     <EconomyContext.Provider value={{
-      balance, bounties, weeklyGoals, inventory, equippedCosmetics, loading,
+      balance, lifetimeEarned, rankPoints, bounties, weeklyGoals, inventory, equippedCosmetics, loading,
       dailyLoginReward, clearDailyLoginReward,
       refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP,
       startScoredActivity, submitGameResult, submitMultiplayerResult,
