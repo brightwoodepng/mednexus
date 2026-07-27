@@ -83,7 +83,13 @@ export async function POST(req: NextRequest) {
         ok: true,
         newBalance: credit.newBalance,
         earned: credit.credited,
-        breakdown: credit.rankBreakdown,
+        breakdown: [
+          ...(credit.credited - credit.rankBonus > 0 ? [{ label: "Bounty", amount: credit.credited - credit.rankBonus }] : []),
+          ...(credit.suppressed > 0 ? [{ label: "Daily repeatable NP ceiling", amount: -credit.suppressed }] : []),
+          ...credit.rankBreakdown,
+        ],
+        suppressed: credit.suppressed,
+        dailyCeiling: credit.dailyCeiling,
       })
     } catch (e) {
       await client.query("ROLLBACK")

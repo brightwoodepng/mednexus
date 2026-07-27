@@ -56,6 +56,8 @@ export type EconomyConfig = {
     multiplayer: { participation: number; placeBonuses: readonly number[]; firstDailyWin: number; dailyCap: number; minimumAnswers: number; minimumPlayers: number }
   }
   earningCaps: { daily: number; weekly: number }
+  /** Maximum NP created by repeatable MCQ activity per user/economy date. */
+  repeatableDailyCeiling: number
   bounties: readonly { id: string; reward: number; target: number; type: string; mode?: string }[]
   weeklyGoals: readonly {
     id: string
@@ -77,7 +79,7 @@ export type EconomyConfig = {
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.7.0",
+  economyVersion: "1.8.0",
   catalogVersion: "2.0.0",
   timezone: "UTC",
   enabledEarningModes: {
@@ -125,6 +127,7 @@ export const ECONOMY_CONFIG = {
     },
   },
   earningCaps: { daily: 5_000, weekly: 20_000 },
+  repeatableDailyCeiling: 750,
   bounties: [
     { id: "practice_correct10", target: 10, reward: 35, type: "practice" },
     { id: "practice_correct20", target: 20, reward: 35, type: "practice" },
