@@ -17,7 +17,7 @@ type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash"
 type AppView = "hero" | "solo" | "multi" | "quickjoin" | GameModeId
 type Phase = "menu" | "playing" | "over"
 type Feedback = "correct" | "wrong" | null
-interface AnswerHistoryEntry { question: Question; selected: string | null }
+interface AnswerHistoryEntry { question: Question; selected: string | null; wager?: number }
 type SoloCompletionReason = "lives_exhausted" | "incorrect_answer" | "timeout" | "pool_completed" | "bank_depleted" | "player_finished"
 
 interface GameFilter {
@@ -368,15 +368,17 @@ interface GameResult {
   mode: string; score: number; correct: number; total: number
   bestStreak: number; isNewHigh: boolean; survivedCount?: number
   lifelineUsed?: boolean
+  freezeCount?: number
 }
 
-function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameResult, answerHistory, sessionPromise, configuration, onReplay, onChangeSetup, onExit }: {
+function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameResult, answerHistory, sessionPromise, configuration, completionReason, onReplay, onChangeSetup, onExit }: {
   emoji: string; headline: string; scoreLabel: string; score: number
   stats: { label: string; value: string }[]
   isNewHigh: boolean; gameResult?: GameResult
   answerHistory?: AnswerHistoryEntry[]
   sessionPromise?: Promise<string | null> | null
   configuration: SoloRoundConfiguration | null
+  completionReason: SoloCompletionReason | null
   onReplay: () => void; onChangeSetup: () => void; onExit: () => void
 }) {
   const { submitGameResult } = useEconomy()
@@ -405,6 +407,15 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
         sessionId,
         answers,
         orderedAnswers,
+        completionReason,
+        clientRoundStartedAt: configuration?.startedAt,
+        clientRoundFinishedAt: new Date().toISOString(),
+        selectedQuestionCount: configuration?.selectedQuestionIds.length,
+        answeredQuestionCount: orderedAnswers.length,
+        freezeCount: gameResult.freezeCount ?? 0,
+        wagerHistory: answerHistory.some((entry) => entry.wager !== undefined)
+          ? answerHistory.map((entry) => entry.wager).filter((wager): wager is number => wager !== undefined)
+          : undefined,
       }).then(data => { if (data) setPayoutData(data) })
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1202,7 +1213,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
-    return <GameOver emoji={acc >= 80 ? "🏆" : acc >= 60 ? "🎯" : "💪"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : "Game Over!"} scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }, { label: "Best Streak", value: `${bestStreak}×` }]} isNewHigh={isNewHigh} gameResult={{ mode: "rapid", score, correct: totalRight, total: totalQ, bestStreak, isNewHigh, lifelineUsed }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} onReplay={start} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
+    return <GameOver emoji={acc >= 80 ? "🏆" : acc >= 60 ? "🎯" : "💪"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : "Game Over!"} scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }, { label: "Best Streak", value: `${bestStreak}×` }]} isNewHigh={isNewHigh} gameResult={{ mode: "rapid", score, correct: totalRight, total: totalQ, bestStreak, isNewHigh, lifelineUsed }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={start} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
   }
   const q = pool[qi]; if (!q) return null
   const pct = (timeLeft / RAPID_TIME) * 100
@@ -1368,7 +1379,7 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const score = survived * BASE_PTS
-    return <GameOver emoji={survived >= 20 ? "💀🏆" : survived >= 10 ? "😤" : "💀"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : survived === 0 ? "Out on Question 1!" : `${survived} Questions Survived`} scoreLabel="Score" score={score} stats={[{ label: "Survived", value: String(survived) }, { label: "Best", value: `${hs} questions` }]} isNewHigh={isNewHigh} gameResult={{ mode: "sudden", score, correct: survived, total: Math.max(survived + 1, 1), bestStreak: survived, isNewHigh, survivedCount: survived, lifelineUsed: lifelineUsedSD }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} onReplay={start} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
+    return <GameOver emoji={survived >= 20 ? "💀🏆" : survived >= 10 ? "😤" : "💀"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : survived === 0 ? "Out on Question 1!" : `${survived} Questions Survived`} scoreLabel="Score" score={score} stats={[{ label: "Survived", value: String(survived) }, { label: "Best", value: `${hs} questions` }]} isNewHigh={isNewHigh} gameResult={{ mode: "sudden", score, correct: survived, total: Math.max(survived + 1, 1), bestStreak: survived, isNewHigh, survivedCount: survived, lifelineUsed: lifelineUsedSD }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={start} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
   }
   const q = pool[qi]; if (!q) return null
   const pct = (timeLeft / SUDDEN_TIME) * 100
@@ -1426,6 +1437,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   const [eliminated, setEliminated] = useState<string[]>([])
   const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
   const [lifelineUsedTA, setLifelineUsedTA] = useState(false)
+  const [freezeCountTA, setFreezeCountTA] = useState(0)
 
   const round = useSoloGameRound(cfg.id, () => endGame(r.current.score))
   const { pool, qi } = round
@@ -1491,6 +1503,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     const ok = await useItem("lifeline_freeze")
     if (!ok) return
     setLifelineUsedTA(true)
+    setFreezeCountTA(count => count + 1)
     expiryRef.current += 10000
   }
 
@@ -1503,7 +1516,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     setFb(null); r.current.fb = null; setPicked(null)
     setTotalQ(0); r.current.totalQ = 0; setTotalRight(0); r.current.totalRight = 0
     setIsNewHigh(false); setEliminated([]); setAnswerHistory([])
-    setLifelineUsedTA(false)
+    setLifelineUsedTA(false); setFreezeCountTA(0)
     setPhase("playing"); r.current.phase = "playing"
     expiryRef.current = Date.now() + TIMEATK_START * 1000
   }
@@ -1511,7 +1524,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
-    return <GameOver emoji={acc >= 80 ? "⚡🏆" : acc >= 60 ? "⏱️" : "💨"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : "Time's Up!"} scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Correct", value: String(totalRight) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} gameResult={{ mode: "timeatk", score, correct: totalRight, total: totalQ, bestStreak: 0, isNewHigh, lifelineUsed: lifelineUsedTA }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} onReplay={start} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
+    return <GameOver emoji={acc >= 80 ? "⚡🏆" : acc >= 60 ? "⏱️" : "💨"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : "Time's Up!"} scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Correct", value: String(totalRight) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} gameResult={{ mode: "timeatk", score, correct: totalRight, total: totalQ, bestStreak: 0, isNewHigh, lifelineUsed: lifelineUsedTA, freezeCount: freezeCountTA }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={start} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
   }
   const q = pool[qi]; if (!q) return null
   const pct = Math.min((timeLeft / TIMEATK_START) * 100, 100)
@@ -1615,7 +1628,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
     const nfb: Feedback = right ? "correct" : "wrong"
     setFb(nfb); setPicked(c)
     round.markAnswered(q.id)
-    setAnswerHistory(prev => [...prev, { question: q, selected: c }])
+    setAnswerHistory(prev => [...prev, { question: q, selected: c, wager: r.current.wager }])
     const nb = right ? r.current.bank + r.current.wager : Math.max(0, r.current.bank - r.current.wager)
     const ntq = r.current.totalQ + 1; const ntr = right ? r.current.totalRight + 1 : r.current.totalRight
     const nbw = Math.max(r.current.bestWager, r.current.wager)
@@ -1665,6 +1678,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
         answerHistory={answerHistory}
         sessionPromise={scoring.sessionPromise.current}
         configuration={round.configuration}
+        completionReason={round.completionReason}
         onReplay={start}
         onChangeSetup={() => setDjPhase("menu")}
         onExit={onExit}
@@ -1838,7 +1852,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
     const finalScore = bestStreak * 50 + totalRight * 10
-    return <GameOver emoji={bestStreak >= 15 ? "🔥🏆" : bestStreak >= 8 ? "🔥" : "💪"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : "Great run!"} scoreLabel="Score" score={finalScore} stats={[{ label: "Best Streak", value: `${bestStreak}×` }, { label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} gameResult={{ mode: "streak", score: finalScore, correct: totalRight, total: totalQ, bestStreak, isNewHigh, lifelineUsed: lifelineUsedSM }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} onReplay={start} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
+    return <GameOver emoji={bestStreak >= 15 ? "🔥🏆" : bestStreak >= 8 ? "🔥" : "💪"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : "Great run!"} scoreLabel="Score" score={finalScore} stats={[{ label: "Best Streak", value: `${bestStreak}×` }, { label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} gameResult={{ mode: "streak", score: finalScore, correct: totalRight, total: totalQ, bestStreak, isNewHigh, lifelineUsed: lifelineUsedSM }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={start} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
   }
 
   const q = pool[qi]; if (!q) return null
