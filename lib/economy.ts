@@ -1,3 +1,4 @@
+import { ECONOMY_CONFIG } from "@/lib/economy-config"
 // ── Economy constants shared between API and frontend ──────────────────────────
 
 export interface BountyDef {
@@ -11,7 +12,7 @@ export interface BountyDef {
   mode?: string
 }
 
-export const BOUNTY_POOL: BountyDef[] = [
+const BOUNTY_DEFINITIONS: BountyDef[] = [
   { id: "rapid_5correct",    label: "Rapid Fire Marksman",    desc: "Answer 5 questions correctly in Rapid Fire",        icon: "⚡", target: 5,   reward: 200, type: "mode_correct",   mode: "rapid"   },
   { id: "timeatk_score800",  label: "Time Bandit",            desc: "Score 800+ points in Time Attack",                 icon: "⏱️", target: 800, reward: 250, type: "mode_score",     mode: "timeatk" },
   { id: "streak_8",          label: "On A Roll",              desc: "Build an 8× streak in Streak Master",              icon: "🔥", target: 8,   reward: 200, type: "mode_streak",    mode: "streak"  },
@@ -23,6 +24,12 @@ export const BOUNTY_POOL: BountyDef[] = [
   { id: "rapid_newbest",     label: "Personal Best",          desc: "Set a new high score in Rapid Fire",               icon: "🏆", target: 1,   reward: 250, type: "mode_correct",   mode: "rapid"   },
   { id: "timeatk_play2",     label: "Beat The Clock",         desc: "Complete 2 Time Attack games",                     icon: "🕐", target: 2,   reward: 150, type: "any_play",      mode: "timeatk" },
 ]
+
+export const BOUNTY_POOL: BountyDef[] = BOUNTY_DEFINITIONS.map((definition) => {
+  const configured = ECONOMY_CONFIG.bounties.find((bounty) => bounty.id === definition.id)
+  if (!configured) throw new Error(`Missing economy bounty configuration: ${definition.id}`)
+  return { ...definition, target: configured.target, reward: configured.reward }
+})
 
 /** Pick 3 bounties for today, deterministically based on date */
 export function getTodaysBounties(): BountyDef[] {
@@ -125,7 +132,7 @@ export const HIGHLIGHT_ROW_CLASSES: Record<string, string> = {
   highlight_mythic_void_walker:      "bg-black border-l-4 border-gray-100 shadow-[inset_0_0_20px_rgba(255,255,255,0.2)]",
 }
 
-export const STORE_ITEMS: StoreItem[] = [
+const STORE_ITEM_DEFINITIONS: StoreItem[] = [
   // ── Supply Closet — Consumable lifelines ─────────────────────────────────
   {
     id: "lifeline_50_50",
@@ -649,18 +656,17 @@ export const STORE_ITEMS: StoreItem[] = [
   },
 ]
 
+
+export const STORE_ITEMS: StoreItem[] = STORE_ITEM_DEFINITIONS.map((item) => ({
+  ...item,
+  price: (ECONOMY_CONFIG.storePrices as Readonly<Record<string, number>>)[item.id] ?? item.price,
+}))
+
 // ── Clinical Ladder ──────────────────────────────────────────────────────────
 // Rank points accumulate from every NP payout. Crossing a tier boundary
 // triggers a one-time +1000 NP bonus awarded server-side.
 
-export const CLINICAL_TIERS = [
-  { name: "Medical Student", minPoints: 0 },
-  { name: "Clerkship",       minPoints: 500 },
-  { name: "Intern",          minPoints: 1_500 },
-  { name: "Resident",        minPoints: 3_500 },
-  { name: "Fellow",          minPoints: 7_000 },
-  { name: "Attending",       minPoints: 12_000 },
-] as const
+export const CLINICAL_TIERS = ECONOMY_CONFIG.rankUp.thresholds
 
 export type ClinicalTierName = (typeof CLINICAL_TIERS)[number]["name"]
 
@@ -673,7 +679,7 @@ export function getClinicalTierIndex(rankPoints: number): number {
   return idx
 }
 
-export const RANK_UP_BONUS_NP = 1_000
+export const RANK_UP_BONUS_NP = ECONOMY_CONFIG.rankUp.reward
 
 /** Compute rank-up bonus when rank_points cross one or more Clinical Ladder tiers. */
 export function computeRankUpBonus(oldPoints: number, newPoints: number): {
@@ -712,22 +718,23 @@ export interface PayoutBreakdown {
 export function calculatePayout(result: GameResult): { total: number; breakdown: PayoutBreakdown[] } {
   const breakdown: PayoutBreakdown[] = []
 
-  breakdown.push({ label: "Participation", amount: 25 })
+  const rewards = ECONOMY_CONFIG.gameRewards.solo
+  breakdown.push({ label: "Participation", amount: rewards.participation })
 
-  if (result.accuracy >= 80) breakdown.push({ label: "Accuracy Bonus (80%+)", amount: 50 })
-  if (result.accuracy >= 90) breakdown.push({ label: "Accuracy Bonus (90%+)", amount: 50 })
-  if (result.accuracy === 100 && result.total >= 3) breakdown.push({ label: "Perfect Round!", amount: 100 })
+  if (result.accuracy >= 80) breakdown.push({ label: "Accuracy Bonus (80%+)", amount: rewards.accuracy80 })
+  if (result.accuracy >= 90) breakdown.push({ label: "Accuracy Bonus (90%+)", amount: rewards.accuracy90 })
+  if (result.accuracy === 100 && result.total >= rewards.perfectMinimumQuestions) breakdown.push({ label: "Perfect Round!", amount: rewards.perfect })
 
-  if (result.bestStreak >= 5)  breakdown.push({ label: `Streak Bonus (${result.bestStreak}×)`, amount: Math.min(Math.floor(result.bestStreak / 5) * 25, 150) })
-  if (result.isNewHigh)        breakdown.push({ label: "New Personal Best!", amount: 75 })
+  if (result.bestStreak >= rewards.streakEvery)  breakdown.push({ label: `Streak Bonus (${result.bestStreak}×)`, amount: Math.min(Math.floor(result.bestStreak / rewards.streakEvery) * rewards.streakUnit, rewards.streakMaximum) })
+  if (result.isNewHigh)        breakdown.push({ label: "New Personal Best!", amount: rewards.personalBest })
 
   let subtotal = breakdown.reduce((s, b) => s + b.amount, 0)
 
   // ── Flawless Execution (solo only) ────────────────────────────────────────
   // Double achievement rewards, while the capped participation component stays 25 NP.
   const isSoloMode = !["clash", "cohort", "wager", "djmulti"].includes(result.mode)
-  if (isSoloMode && result.accuracy === 100 && result.total >= 3 && !result.lifelineUsed) {
-    const achievementSubtotal = Math.max(0, subtotal - 25)
+  if (isSoloMode && result.accuracy === 100 && result.total >= rewards.perfectMinimumQuestions && !result.lifelineUsed) {
+    const achievementSubtotal = Math.max(0, subtotal - rewards.participation)
     if (achievementSubtotal > 0) {
       breakdown.push({ label: "⚡ Flawless Execution (2×)", amount: achievementSubtotal })
       subtotal += achievementSubtotal

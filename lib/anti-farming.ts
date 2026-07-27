@@ -16,6 +16,7 @@
 import type { PoolClient } from "pg"
 import pool from "@/lib/db"
 import { applyNPCredits } from "@/lib/np-ledger"
+import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,9 +53,9 @@ export interface SessionNPResult {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const REPEAT_CAP          = 3      // correct answers before a question earns 0 NP
-const DISCIPLINE_NP_LIMIT = 1000   // NP ceiling per discipline per 7-day window
-const FATIGUE_DAYS        = 7
+const REPEAT_CAP = ECONOMY_CONFIG.antiFarming.repeatCorrectLimit
+const DISCIPLINE_NP_LIMIT = ECONOMY_CONFIG.antiFarming.disciplineNPWindowLimit
+const FATIGUE_DAYS = ECONOMY_CONFIG.antiFarming.disciplineWindowDays
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,12 @@ export async function calculateSessionNP(
   client:      PoolClient,
   examMeta?:   ExamMeta,
 ): Promise<SessionNPResult> {
+  const enabled = mode === "exam"
+    ? isEarningModeEnabled("mcq_exam") && (ECONOMY_CONFIG.modeIds.exam as readonly string[]).includes(mode)
+    : (isEarningModeEnabled("mcq_trial_tutor") && (ECONOMY_CONFIG.modeIds.trialTutor as readonly string[]).includes(mode))
+      || (isEarningModeEnabled("mcq_solo_game") && (ECONOMY_CONFIG.modeIds.soloGames as readonly string[]).includes(mode))
+  if (!enabled) throw new Error(`Economy rewards are disabled for mode: ${mode}`)
+
   const today   = todayStr()
   const window7 = last7DaysStrings()
 
@@ -155,11 +162,9 @@ export async function calculateSessionNP(
     // ── Exam: single completion bounty ────────────────────────────────────
     if (examMeta) {
       const { accuracy, correct, total, primaryDiscipline } = examMeta
-      const accuracyBonus =
-        accuracy > 90 ? 500 :
-        accuracy > 75 ? 250 :
-        accuracy > 50 ? 100 : 0
-      const bounty = 50 + accuracyBonus
+      const accuracyBonus = [...ECONOMY_CONFIG.examRewards.accuracyThresholds]
+        .reverse().find((threshold) => accuracy > threshold.above)?.bonus ?? 0
+      const bounty = ECONOMY_CONFIG.examRewards.completion + accuracyBonus
 
       const disc     = primaryDiscipline ?? disciplines[0] ?? ""
       const runningNP = disciplineRunningNP.get(disc) ?? 0
@@ -169,7 +174,7 @@ export async function calculateSessionNP(
         breakdown.push({ label: "⚡ Discipline Fatigue — exam bounty suppressed", amount: 0 })
       } else {
         totalNP = bounty
-        breakdown.push({ label: `📋 Exam Completion (${correct}/${total} correct)`, amount: 50 })
+        breakdown.push({ label: `📋 Exam Completion (${correct}/${total} correct)`, amount: ECONOMY_CONFIG.examRewards.completion })
         if (accuracyBonus > 0) {
           breakdown.push({ label: `🎯 Accuracy Bonus (${Math.round(accuracy)}%)`, amount: accuracyBonus })
         }
@@ -188,8 +193,9 @@ export async function calculateSessionNP(
       }
 
       const streak      = q.currentStreak ?? 0
-      const streakBonus = streak > 10 ? 10 : streak > 3 ? 5 : 0
-      const baseNP      = 10 + streakBonus
+      const streakBonus = [...ECONOMY_CONFIG.questionRewards.trialTutor.streakThresholds]
+        .reverse().find((threshold) => streak >= threshold.minimum)?.bonus ?? 0
+      const baseNP = ECONOMY_CONFIG.questionRewards.trialTutor.correct + streakBonus
 
       // Rule 1: 3-repeat cap
       const correctCount = correctCountMap.get(q.questionId) ?? 0
@@ -262,12 +268,9 @@ export async function calculateSessionNP(
  * NP milestones awarded as a lump-sum bonus on top of the 25 NP base payout.
  * Day 30+ resets to a 30-day cycle (30, 60, 90 …) to prevent infinite scaling.
  */
-const LOGIN_MILESTONES: { day: number; bonus: number; label: string }[] = [
-  { day:  3, bonus:    50, label: "3-Day Streak"  },
-  { day:  7, bonus:   150, label: "7-Day Streak"  },
-  { day: 14, bonus:   300, label: "14-Day Streak" },
-  { day: 30, bonus: 1_000, label: "30-Day Streak" }, // repeats every 30 days
-]
+const LOGIN_MILESTONES = ECONOMY_CONFIG.dailyLogin.milestones.map((milestone) => ({
+  ...milestone, label: `${milestone.day}-Day Streak`,
+}))
 
 export interface DailyLoginResult {
   /** True when the user already got their reward today — caller should no-op */
@@ -294,6 +297,7 @@ export interface DailyLoginResult {
  *   - Milestone bonuses: Day 3 (+50), Day 7 (+150), Day 14 (+300), Day 30n (+1000)
  */
 export async function processDailyLogin(userId: string): Promise<DailyLoginResult> {
+  if (!isEarningModeEnabled("daily_login")) throw new Error("Daily login rewards are disabled")
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
@@ -344,9 +348,9 @@ export async function processDailyLogin(userId: string): Promise<DailyLoginResul
 
     // ── NP calculation ────────────────────────────────────────────────────────
     const breakdown: DailyLoginResult["breakdown"] = [
-      { label: "📅 Daily Login", amount: 25 },
+      { label: "📅 Daily Login", amount: ECONOMY_CONFIG.dailyLogin.base },
     ]
-    let earned        = 25
+    let earned: number = ECONOMY_CONFIG.dailyLogin.base
     let milestoneName = null as string | null
 
     // Check all milestones; for 30+ day cycle use modulo
@@ -466,7 +470,7 @@ export async function completeExamSession(
  */
 export async function abandonStaleSessions(
   userId:    string,
-  staleMins: number = 480,
+  staleMins: number = ECONOMY_CONFIG.antiFarming.abandonedExamMinutes,
 ): Promise<{ abandoned: number; penalisedQuestions: number }> {
   const { rows: staleSessions } = await pool.query<{
     id: string

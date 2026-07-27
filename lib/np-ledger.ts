@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg"
 import { computeRankUpBonus, RANK_UP_BONUS_NP, TODAY_DATE } from "@/lib/economy"
+import { ECONOMY_CONFIG } from "@/lib/economy-config"
 
 export interface NPCredit {
   source: string
@@ -47,7 +48,7 @@ export async function applyNPCredits(
         credit.source,
         credit.sourceId,
         amount,
-        JSON.stringify(credit.metadata ?? {}),
+        JSON.stringify({ ...credit.metadata, economyVersion: ECONOMY_CONFIG.economyVersion }),
       ],
     )
     if (result.rowCount) inserted.push({ ...credit, amount })
@@ -93,7 +94,7 @@ export async function applyNPCredits(
         userId,
         sourceId,
         RANK_UP_BONUS_NP,
-        JSON.stringify({ tierName }),
+        JSON.stringify({ tierName, economyVersion: ECONOMY_CONFIG.economyVersion }),
       ],
     )
     if (!bonus.rowCount) continue
@@ -163,6 +164,6 @@ export async function completionBonusAvailable(client: PoolClient, userId: strin
        AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
     [userId],
   )
-  return Number(result.rows[0]?.count ?? 0) < 5
+  return Number(result.rows[0]?.count ?? 0) < ECONOMY_CONFIG.gameRewards.solo.dailyCompletionLimit
 }
 
