@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { PoolClient } from "pg"
 import pool from "@/lib/db"
 import {
   calculatePayout,
@@ -65,7 +66,7 @@ async function updatePersonalBest(
   userId: string,
   mode: string,
   score: number,
-  client: Awaited<ReturnType<typeof pool.connect>>,
+  client: PoolClient,
 ) {
   if (!SOLO_GAME_MODES.has(mode) || score <= 0) return false
   const existing = await client.query(
