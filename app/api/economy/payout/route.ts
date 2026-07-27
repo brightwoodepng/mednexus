@@ -19,7 +19,8 @@ import {
   type NPCredit,
 } from "@/lib/np-ledger"
 import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
-import { hasConsistentSoloCompletion } from "@/lib/solo-completion-validation"
+import { calculateDoubleBank, hasConsistentSoloCompletion } from "@/lib/solo-completion-validation"
+import { getPersonalBestUpdate, personalBestValue, type SoloPersonalBestResult } from "@/lib/game-personal-best"
 
 type Key = {
   id: string
@@ -52,6 +53,7 @@ function calculateServerScore(
   mode: string,
   attempts: Array<SessionQuestionInput & { currentStreak: number }>,
   bestStreak: number,
+  wagerHistory?: unknown,
 ) {
   const correct = attempts.filter((attempt) => attempt.isCorrect).length
   if (mode === "rapid") {
@@ -62,7 +64,7 @@ function calculateServerScore(
   }
   if (mode === "sudden" || mode === "timeatk") return correct * 100
   if (mode === "streak") return bestStreak * 50 + correct * 10
-  if (mode === "double") return correct * 100
+  if (mode === "double") return calculateDoubleBank(attempts, wagerHistory) ?? 0
   return attempts.length ? Math.round(correct * 100 / attempts.length) : 0
 }
 
@@ -80,7 +82,7 @@ async function updatePersonalBest(
     [userId, mode],
   )
   const previous = Number(existing.rows[0]?.best_score ?? 0)
-  const isNewHigh = score > previous
+  const { isNewHigh } = getPersonalBestUpdate(previous, score)
   await client.query(
     `INSERT INTO mednexus_game_personal_bests
        (user_id, mode, best_score, updated_at)
@@ -205,9 +207,12 @@ export async function POST(req: NextRequest) {
         && total >= minimumAnswers
         && keys.length > 0
         && sessionData.every((answer) => keyById.has(answer.questionId))
-      const score = calculateServerScore(session.mode, sessionData, bestStreak)
+      const score = calculateServerScore(session.mode, sessionData, bestStreak, session.result_meta?.wagerHistory)
+      const personalBestScore = isSoloGame
+        ? personalBestValue({ mode: session.mode, score, bestStreak, survivedCount } as SoloPersonalBestResult)
+        : score
       const isNewHigh = meaningfulSoloCompletion
-        ? await updatePersonalBest(auth.uid, session.mode, score, client)
+        ? await updatePersonalBest(auth.uid, session.mode, personalBestScore, client)
         : false
       const result: GameResult = {
         mode: session.mode,
@@ -372,6 +377,7 @@ export async function POST(req: NextRequest) {
         score,
         correct: correctCount,
         total,
+        isNewHigh,
       }
       await client.query(
         "UPDATE mednexus_exam_sessions SET payout = $2::jsonb WHERE id = $1",

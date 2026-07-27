@@ -11,6 +11,7 @@ import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/economy-panel"
 import { buildGameQuestionPool, getEffectiveQuestionModule } from "@/lib/game-question-pool"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
+import { getPersonalBestUpdate } from "@/lib/game-personal-best"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort" | "wager" | "djmulti"
@@ -388,6 +389,7 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
     bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[]
   } | null>(null)
   const [reviewOpen, setReviewOpen] = useState(false)
+  const [authoritativeIsNewHigh, setAuthoritativeIsNewHigh] = useState(isNewHigh)
   const submitted = useRef(false)
 
   useEffect(() => {
@@ -416,7 +418,11 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
         wagerHistory: answerHistory.some((entry) => entry.wager !== undefined)
           ? answerHistory.map((entry) => entry.wager).filter((wager): wager is number => wager !== undefined)
           : undefined,
-      }).then(data => { if (data) setPayoutData(data) })
+      }).then(data => {
+        if (!data) return
+        setPayoutData(data)
+        setAuthoritativeIsNewHigh(data.isNewHigh)
+      })
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -531,7 +537,7 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
           <div className="mb-6 text-center">
             <div className="mb-3 text-6xl">{emoji}</div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">{headline}</h1>
-            {isNewHigh && score > 0 && (
+            {authoritativeIsNewHigh && score > 0 && (
               <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-400">
                 🏆 New Best!
               </div>
@@ -1122,8 +1128,8 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   const [lifelineUsed, setLifelineUsed] = useState(false)
 
   const round = useSoloGameRound(cfg.id, () => {
-    const best = Math.max(r.current.hs, r.current.score)
-    setIsNewHigh(r.current.score > 0 && r.current.score >= r.current.hs)
+    const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, r.current.score)
+    setIsNewHigh(isNewHigh)
     setHsState(best); writeHs(cfg.hsKey, best)
     setPhase("over"); r.current.phase = "over"
   })
@@ -1309,8 +1315,8 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   const expiryRef = useRef(0)
 
   function endGame(finalSurvived: number) {
-    const best = Math.max(r.current.hs, finalSurvived)
-    setIsNewHigh(finalSurvived > 0 && finalSurvived >= r.current.hs)
+    const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, finalSurvived)
+    setIsNewHigh(isNewHigh)
     setHsState(best); writeHs(cfg.hsKey, best)
     setSurvived(finalSurvived); setPhase("over"); r.current.phase = "over"
   }
@@ -1457,8 +1463,8 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   const expiryRef = useRef(0)
 
   function endGame(finalScore: number) {
-    const best = Math.max(r.current.hs, finalScore)
-    setIsNewHigh(finalScore > 0 && finalScore >= r.current.hs)
+    const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, finalScore)
+    setIsNewHigh(isNewHigh)
     setHsState(best); writeHs(cfg.hsKey, best)
     setPhase("over"); r.current.phase = "over"
   }
@@ -1606,8 +1612,8 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
   const [lifelineUsedDJ, setLifelineUsedDJ] = useState(false)
 
   const round = useSoloGameRound(cfg.id, () => {
-    const best = Math.max(r.current.hs, r.current.bank)
-    setIsNewHigh(r.current.bank > 0 && r.current.bank >= r.current.hs)
+    const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, r.current.bank)
+    setIsNewHigh(isNewHigh)
     setHsState(best); writeHs(cfg.hsKey, best); setDjPhase("over")
   })
   const { pool, qi } = round
@@ -1847,8 +1853,8 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
   }
 
   function finishGameStats() {
-    const best = Math.max(r.current.hs, r.current.bestStreak)
-    setIsNewHigh(r.current.bestStreak > 0 && r.current.bestStreak >= r.current.hs)
+    const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, r.current.bestStreak)
+    setIsNewHigh(isNewHigh)
     setHsState(best); writeHs(cfg.hsKey, best); setPhase("over")
   }
 
