@@ -10,6 +10,7 @@ import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/economy-panel"
 import { buildGameQuestionPool, getEffectiveQuestionModule } from "@/lib/game-question-pool"
+import { ECONOMY_CONFIG } from "@/lib/economy-config"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort" | "wager" | "djmulti"
@@ -165,6 +166,12 @@ function countForFilter(allQ: Question[], filter: GameFilter): number {
     effectiveModule: filter.module,
     discipline: filter.discipline,
   }).questions.length
+}
+
+function minimumQuestionsForRewardedGame(mode: ModeConfig["id"]): number {
+  return mode === "sudden"
+    ? ECONOMY_CONFIG.gameRewards.solo.suddenDeathMinimumAnswers
+    : ECONOMY_CONFIG.gameRewards.solo.minimumAnswers
 }
 
 function useSoloScoring(mode: "rapid" | "sudden" | "timeatk" | "double" | "streak") {
@@ -588,17 +595,27 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
   onStart: (qty: number | null) => void; onBack: () => void
 }) {
   const count = countForFilter(allQ, filter)
-  const tooFew = filter.module !== null && count < 3
+  const minimumQuestions = minimumQuestionsForRewardedGame(mode.id)
+  const tooFew = count < minimumQuestions
 
   // — Quantity selection state —
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [customValue, setCustomValue] = useState("")
   const [useCustom, setUseCustom] = useState(false)
 
+  useEffect(() => {
+    if (useCustom) {
+      const selected = Number(customValue)
+      if (selected > count) {
+        setCustomValue(count > 0 ? String(count) : "")
+        setUseCustom(count > 0)
+      }
+    } else if (selectedPreset !== null && selectedPreset > count) {
+      setSelectedPreset(null)
+    }
+  }, [count, customValue, selectedPreset, useCustom])
+
   function handleFilterChange(nextFilter: GameFilter) {
-    const nextCount = countForFilter(allQ, nextFilter)
-    const selectedQuantity = useCustom ? Number(customValue) : selectedPreset
-    if (selectedQuantity !== null && selectedQuantity > nextCount) handleAll()
     onFilterChange(nextFilter)
   }
 
@@ -726,14 +743,28 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
         </div>
 
         {tooFew && (
-          <div className="mb-3 rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-400">
-            ⚠️ Only {count} question{count !== 1 ? "s" : ""} in this filter — will fall back to all questions.
+          <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400">
+            <p className="font-semibold">
+              Only {count} eligible question{count !== 1 ? "s" : ""} available. A rewarded {mode.name} game needs at least {minimumQuestions}.
+            </p>
+            {filter.module !== null && filter.discipline !== null && (
+              <button
+                type="button"
+                onClick={() => handleFilterChange({ module: filter.module, discipline: null })}
+                className="mt-3 w-full rounded-xl bg-amber-600 px-3 py-2 font-bold text-white transition-colors hover:bg-amber-700"
+              >
+                Use Whole Module
+              </button>
+            )}
+            {filter.module !== null && (
+              <p className="mt-2 text-center">Or choose another discipline above.</p>
+            )}
           </div>
         )}
 
         <button
-          type="button" onClick={() => onStart(getQty())}
-          className={`w-full rounded-2xl bg-gradient-to-r ${mode.gradient} py-4 text-base font-bold text-white shadow-lg ${mode.shadow} transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.99]`}
+          type="button" disabled={tooFew} onClick={() => onStart(getQty())}
+          className={`w-full rounded-2xl bg-gradient-to-r ${mode.gradient} py-4 text-base font-bold text-white shadow-lg ${mode.shadow} transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100`}
         >
           {startLabel}
         </button>
