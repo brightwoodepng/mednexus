@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
-import { getTodaysBounties, TODAY_DATE, STORE_ITEMS } from "@/lib/economy"
+import { getTodaysBounties, TODAY_DATE } from "@/lib/economy"
+import { applyNPCredits } from "@/lib/np-ledger"
 
 export async function GET(req: NextRequest) {
   try {
@@ -71,16 +72,19 @@ export async function POST(req: NextRequest) {
          WHERE uid = $1 AND bounty_id = $2 AND bounty_date = $3`,
         [uid, bountyId, today]
       )
-      const { rows: walletRows } = await client.query(
-        `INSERT INTO mednexus_wallet (uid, balance, updated_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (uid) DO UPDATE
-           SET balance = mednexus_wallet.balance + $2, updated_at = NOW()
-         RETURNING balance`,
-        [uid, bounty.reward]
-      )
+      const credit = await applyNPCredits(client, uid, [{
+        source: "bounty",
+        sourceId: `${today}:${bounty.id}`,
+        amount: bounty.reward,
+        metadata: { bountyId: bounty.id },
+      }])
       await client.query("COMMIT")
-      return NextResponse.json({ ok: true, newBalance: walletRows[0].balance, earned: bounty.reward })
+      return NextResponse.json({
+        ok: true,
+        newBalance: credit.newBalance,
+        earned: credit.credited,
+        breakdown: credit.rankBreakdown,
+      })
     } catch (e) {
       await client.query("ROLLBACK")
       throw e

@@ -10,15 +10,18 @@ import {
 } from "@/components/icons"
 
 // ── Create Assessment Modal ────────────────────────────────────────────────────
-function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+type AssessmentDefaults = { questionCount: number; timeLimitMins: number; triesAllowed: number; passMark: number }
+const FALLBACK_DEFAULTS: AssessmentDefaults = { questionCount: 10, timeLimitMins: 30, triesAllowed: 1, passMark: 50 }
+
+function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; onCreated: () => void; defaults: AssessmentDefaults }) {
   const modules = getModules()
   const [form, setForm] = useState({
     title: "",
     moduleName: modules[0] ?? "",
-    questionCount: "20",
-    timeLimitMins: "30",
-    triesAllowed: "1",
-    passMark: "50",
+    questionCount: String(defaults.questionCount),
+    timeLimitMins: String(defaults.timeLimitMins),
+    triesAllowed: String(defaults.triesAllowed),
+    passMark: String(defaults.passMark),
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -445,6 +448,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
   const [createOpen, setCreateOpen] = useState(false)
   const [analyticsTarget, setAnalyticsTarget] = useState<LiveAssessment | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [defaults, setDefaults] = useState<AssessmentDefaults>(FALLBACK_DEFAULTS)
 
   const fetchAssessments = useCallback(async () => {
     setLoading(true)
@@ -452,6 +456,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
       const res = await fetch("/api/assessments")
       const data = await res.json()
       setAssessments(data.assessments ?? [])
+      if (data.defaults) setDefaults(data.defaults)
     } catch {
       setAssessments([])
     } finally {
@@ -473,7 +478,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
 
   async function deleteAssessment(asmt: LiveAssessment) {
     if (!confirm(`Delete "${asmt.title}"? This also removes all attempts.`)) return
-    await fetch(`/api/assessments/${asmt.id}`, {
+    await fetch(`/api/assessments/${asmt.id}?confirm=true`, {
       method: "DELETE",
     })
     fetchAssessments()
@@ -624,7 +629,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
         </div>
       )}
 
-      {createOpen && <CreateModal onClose={() => setCreateOpen(false)} onCreated={fetchAssessments} />}
+      {createOpen && <CreateModal defaults={defaults} onClose={() => setCreateOpen(false)} onCreated={fetchAssessments} />}
       {analyticsTarget && <AnalyticsModal assessment={analyticsTarget} onClose={() => setAnalyticsTarget(null)} />}
     </div>
   )

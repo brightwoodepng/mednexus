@@ -17,6 +17,13 @@ export interface EquippedCosmetics {
   avatar:    string | null
 }
 
+export interface PayoutResponse {
+  earned: number
+  newBalance: number
+  breakdown: { label: string; amount: number }[]
+  bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[]
+}
+
 export interface EconomyContextValue {
   balance: number
   bounties: BountyWithProgress[]
@@ -46,7 +53,13 @@ export interface EconomyContextValue {
     examMeta?: { accuracy: number; correct: number; total: number; primaryDiscipline?: string }
     sessionId?: string
     answers?: Record<string, string | string[] | null>
-  }) => Promise<{ earned: number; breakdown: { label: string; amount: number }[]; bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[] } | null>
+    orderedAnswers?: Array<{ questionId: string; answer: string | string[] | null }>
+  }) => Promise<PayoutResponse | null>
+  submitMultiplayerResult: (
+    pin: string,
+    playerId: string,
+    answers: Array<{ qi: number; answer: string }>,
+  ) => Promise<PayoutResponse | null>
 }
 
 const EconomyContext = createContext<EconomyContextValue | undefined>(undefined)
@@ -57,7 +70,7 @@ function economyHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {}
   const guest = localStorage.getItem("mednexus-guest-token")
   const session = localStorage.getItem("mednexus-user-token")
-  return guest ? { "x-guest-token": guest } : session ? { "x-session-token": session } : {}
+  return session ? { "x-session-token": session } : guest ? { "x-guest-token": guest } : {}
 }
 
 export function EconomyProvider({ children }: { children: ReactNode }) {
@@ -254,6 +267,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     examMeta?: { accuracy: number; correct: number; total: number; primaryDiscipline?: string }
     sessionId?: string
     answers?: Record<string, string | string[] | null>
+    orderedAnswers?: Array<{ questionId: string; answer: string | string[] | null }>
   }) => {
     const uid = user?.uid
     if (!uid) return null
@@ -261,7 +275,13 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       if (!payload.sessionId || !payload.answers) return null
       const completion = await fetch("/api/economy/session", {
         method: "PATCH", headers: { "Content-Type": "application/json", ...economyHeaders() },
-        body: JSON.stringify({ sessionId: payload.sessionId, uid, answers: payload.answers }),
+        body: JSON.stringify({
+          sessionId: payload.sessionId,
+          uid,
+          answers: payload.answers,
+          orderedAnswers: payload.orderedAnswers,
+          resultMeta: { lifelineUsed: payload.lifelineUsed === true },
+        }),
       })
       if (!completion.ok) return null
       const res = await fetch("/api/economy/payout", {
@@ -284,11 +304,43 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid])
 
+  const submitMultiplayerResult = useCallback(async (
+    pin: string,
+    playerId: string,
+    answers: Array<{ qi: number; answer: string }>,
+  ): Promise<PayoutResponse | null> => {
+    if (!user?.uid || user.uid !== playerId) return null
+    try {
+      const response = await fetch(`/api/game-rooms/${encodeURIComponent(pin)}/score`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...economyHeaders() },
+        body: JSON.stringify({
+          match_id: pin,
+          playerId,
+          user_answers_array: answers,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) return null
+      setBalance(data.newBalance)
+      if (data.bountyUpdates?.length) {
+        setBounties(previous => previous.map((bounty) => {
+          const update = data.bountyUpdates.find((item: { id: string }) => item.id === bounty.id)
+          return update ? { ...bounty, progress: update.progress } : bounty
+        }))
+      }
+      return data
+    } catch {
+      return null
+    }
+  }, [user?.uid])
+
   return (
     <EconomyContext.Provider value={{
       balance, bounties, inventory, equippedCosmetics, loading,
       dailyLoginReward, clearDailyLoginReward,
-      refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP, startScoredActivity, submitGameResult,
+      refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP,
+      startScoredActivity, submitGameResult, submitMultiplayerResult,
     }}>
       {children}
     </EconomyContext.Provider>
