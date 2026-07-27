@@ -5,10 +5,23 @@ import { BOUNTY_POOL, STORE_ITEMS } from "@/lib/economy"
 
 describe("versioned economy configuration", () => {
   it("enables only the v1 MCQ earning families and daily login", () => {
-    expect(ECONOMY_CONFIG.economyVersion).toBe("1.0.0")
+    expect(ECONOMY_CONFIG.economyVersion).toBe("1.1.0")
     expect(Object.values(ECONOMY_CONFIG.enabledEarningModes).every(Boolean)).toBe(true)
     expect(ECONOMY_CONFIG.modeIds.trialTutor).toEqual(["trial", "tutor"])
     expect(ECONOMY_CONFIG.modeIds.exam).toEqual(["exam"])
+  })
+
+  it("defines the finite daily-login reward program", () => {
+    expect(ECONOMY_CONFIG.dailyLogin).toEqual({
+      base: 10,
+      milestones: [
+        { day: 3, bonus: 20, name: "3-Day Streak" },
+        { day: 7, bonus: 50, name: "7-Day Streak" },
+        { day: 14, bonus: 100, name: "14-Day Streak" },
+        { day: 30, bonus: 250, name: "30-Day Streak" },
+      ],
+    })
+    expect(ECONOMY_CONFIG.dailyLogin.milestones.every((milestone) => !("repeatsEveryDays" in milestone))).toBe(true)
   })
 
   it("drives public bounty rewards and store prices", () => {

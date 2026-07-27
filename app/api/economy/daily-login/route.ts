@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     // Guests never receive daily login NP
     if (!uid || typeof uid !== "string" || uid.startsWith("guest")) {
-      return NextResponse.json({ alreadyDone: true, earned: 0, newStreak: 0, longestStreak: 0, milestoneName: null, breakdown: [] })
+      return NextResponse.json({ alreadyDone: true, earned: 0, newStreak: 0, longestStreak: 0, milestoneName: null, nextMilestone: null, breakdown: [] })
     }
 
     const result = await processDailyLogin(uid)
