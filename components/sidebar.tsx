@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import { User } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
-import { ChevronLeftIcon, ChevronRightIcon, LogOutIcon, StethoscopeIcon, LayoutDashboardIcon } from "@/components/icons"
+import { ChevronLeftIcon, ChevronRightIcon, LogOutIcon, PaletteIcon, StethoscopeIcon, LayoutDashboardIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
 import { StudyHubDropdown, StudyHubDropdownIcon } from "@/components/navigation/study-hub-dropdown"
@@ -40,7 +40,7 @@ function UserAvatar({ name, size = "md" }: { name?: string; size?: "sm" | "md" }
 }
 
 /** Desktop projection of the learner shell navigation. */
-export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collapsed, onCollapse, onExpand }: SidebarProps) {
+export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseMobile, collapsed, onCollapse, onExpand }: SidebarProps) {
   const { user, signOutUser } = useApp()
   const { isGlassEnabled } = useTheme()
   const { activeStudyHub, setActiveStudyHub } = useApplicationShell()
@@ -106,6 +106,16 @@ export function Sidebar({ screen, onNavigate, mobileOpen, onCloseMobile, collaps
               />
             )
           })}
+        </div>
+
+        <div className="mt-4 border-t border-sidebar-border pt-4 md:hidden">
+          <NavButton
+            glass={isGlassEnabled}
+            active={false}
+            onClick={() => { onCloseMobile(); onOpenThemes() }}
+            icon={<PaletteIcon size={17} className="text-primary" />}
+            label="Appearance"
+          />
         </div>
 
       </div>
