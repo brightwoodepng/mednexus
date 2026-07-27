@@ -1149,3 +1149,59 @@
 .np-float-toast {
   animation: np-float 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
+/* ── Leaderboard podium motion ─────────────────────────────────────────────── */
+@keyframes leaderboard-rise {
+  from { opacity: 0; transform: translateY(28px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes leaderboard-row-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes leaderboard-orbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes leaderboard-sparkle {
+  0%, 100% { opacity: 0.45; transform: scale(0.85) rotate(-8deg); }
+  50% { opacity: 1; transform: scale(1.12) rotate(8deg); }
+}
+.leaderboard-podium-entry {
+  opacity: 0;
+  animation: leaderboard-rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.leaderboard-row {
+  opacity: 0;
+  animation: leaderboard-row-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.leaderboard-viewer {
+  animation: leaderboard-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.leaderboard-orbit {
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+  animation: leaderboard-orbit 9s linear infinite;
+}
+.leaderboard-orbit-dot {
+  transform-origin: calc(-50% - 2.5rem) 50%;
+  animation: leaderboard-orbit 7s linear infinite reverse;
+}
+.leaderboard-sparkle {
+  animation: leaderboard-sparkle 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .leaderboard-podium-entry,
+  .leaderboard-row,
+  .leaderboard-viewer {
+    opacity: 1;
+    animation: none;
+  }
+  .leaderboard-orbit,
+  .leaderboard-orbit-dot,
+  .leaderboard-sparkle {
+    animation: none;
+  }
+  .leaderboard-pedestal {
+    transition: none;
+  }
+}
