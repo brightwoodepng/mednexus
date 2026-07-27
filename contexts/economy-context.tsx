@@ -49,7 +49,7 @@ export interface EconomyContextValue {
   refresh: () => Promise<void>
   claimBounty: (bountyId: string) => Promise<{ ok: boolean; earned?: number; error?: string }>
   purchase: (itemId: string) => Promise<{ ok: boolean; error?: string }>
-  useItem: (itemId: string) => Promise<boolean>
+  useItem: (itemId: string, usage: { sessionId: string; questionId: string }) => Promise<boolean>
   equipCosmetic: (type: "title" | "frame" | "highlight" | "avatar", itemId: string | null) => Promise<{ ok: boolean; error?: string }>
   grantDevNP: () => Promise<{ ok: boolean; error?: string }>
   startScoredActivity: (mode: string, questionIds: string[]) => Promise<string | null>
@@ -207,14 +207,14 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid, lifetimeEarned, rankPoints, refresh])
 
-  const useItem = useCallback(async (itemId: string) => {
+  const useItem = useCallback(async (itemId: string, usage: { sessionId: string; questionId: string }) => {
     const uid = user?.uid
     if (!uid) return false
     try {
       const res = await fetch("/api/economy/inventory", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...economyHeaders() },
-        body: JSON.stringify({ uid, itemId }),
+        body: JSON.stringify({ uid, itemId, ...usage }),
       })
       if (!res.ok) return false
       setInventory(prev => {
