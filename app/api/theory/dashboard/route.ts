@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getRequestAuth } from "@/lib/request-auth"
-import { theoryDatabaseAvailable, theoryPool } from "@/lib/theory-server"
+import { theoryDatabaseAvailable, theoryPool, theorySetDisplayProjection } from "@/lib/theory-server"
 
 export async function GET(request: NextRequest) {
   if (!theoryDatabaseAvailable()) {
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN mednexus_theory_reading_progress rp ON rp.question_id=q.id AND rp.user_id=$1
         WHERE c.status='published' GROUP BY c.id ORDER BY c.sort_order,c.title`, [userId]),
       pool.query(`SELECT q.id,q.prompt,s.id AS "setId",s.name AS "setTitle",
+        ${theorySetDisplayProjection("s")},
         c.title AS collection,COALESCE(m.name,d.name,'Unassigned') AS "groupName",
         rp.last_read_at AS "lastStudiedAt",
         (SELECT COUNT(*)::int FROM mednexus_theory_questions sq WHERE sq.set_id=q.set_id AND sq.status='published') AS "setTotal",
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
         (SELECT COUNT(*)::int FROM mednexus_theory_notes WHERE user_id=$1 AND body<>'') AS notes,
         (SELECT COUNT(*)::int FROM mednexus_theory_attempts WHERE user_id=$1 AND status='draft') AS drafts`, [userId]),
       pool.query(`SELECT DISTINCT ON (q.set_id) q.id,q.set_id AS "setId",s.name AS "setTitle",
+        ${theorySetDisplayProjection("s")},
         c.title AS collection,COALESCE(m.name,d.name,'Unassigned') AS "groupName",
         rp.last_read_at AS "lastStudiedAt",
         (SELECT COUNT(*)::int FROM mednexus_theory_questions sq WHERE sq.set_id=q.set_id AND sq.status='published') AS total,
