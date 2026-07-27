@@ -9,15 +9,28 @@ export async function PATCH(req: Request) {
   try {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
-    const { itemId } = await req.json() as { itemId: string }
+    const { itemId, sessionId, questionId } = await req.json() as {
+      itemId: string; sessionId?: string; questionId?: string
+    }
     const uid = auth.uid
-    if (!itemId) return NextResponse.json({ error: "Missing uid or itemId" }, { status: 400 })
+    if (!itemId || !sessionId || !questionId) {
+      return NextResponse.json({ error: "itemId, sessionId, and questionId are required" }, { status: 400 })
+    }
     const item = STORE_ITEMS.find(candidate => candidate.id === itemId)
     if (!item || item.category !== "lifeline") {
       return NextResponse.json({ error: "Item is not an implemented consumable" }, { status: 400 })
     }
 
     await client.query("BEGIN")
+    const session = await client.query(
+      `SELECT question_ids FROM mednexus_exam_sessions
+       WHERE id = $1 AND user_id = $2 AND status = 'active' FOR UPDATE`,
+      [sessionId, uid],
+    )
+    if (!session.rows[0] || !(session.rows[0].question_ids as unknown[]).includes(questionId)) {
+      await client.query("ROLLBACK")
+      return NextResponse.json({ error: "Active session question not found" }, { status: 409 })
+    }
     const res = await client.query(
       "SELECT quantity FROM mednexus_user_inventory WHERE uid=$1 AND item_id=$2 FOR UPDATE",
       [uid, itemId]
@@ -32,6 +45,12 @@ export async function PATCH(req: Request) {
     } else {
       await client.query("UPDATE mednexus_user_inventory SET quantity=$1 WHERE uid=$2 AND item_id=$3", [newQty, uid, itemId])
     }
+    await client.query(
+      `INSERT INTO mednexus_session_consumable_events
+        (id, user_id, session_id, item_id, question_id, used_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [`consume-${crypto.randomUUID()}`, uid, sessionId, itemId, questionId],
+    )
     await client.query("COMMIT")
     return NextResponse.json({ ok: true, newQty })
   } catch (err) {
