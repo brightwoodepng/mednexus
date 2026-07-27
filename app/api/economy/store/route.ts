@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
             catalogPrice: item.price,
             economyVersion: ECONOMY_CONFIG.economyVersion,
             catalogVersion: ECONOMY_CONFIG.catalogVersion,
+            storeCategory: (ECONOMY_CONFIG.store.catalog as Record<string, { productGroup: string }>)[item.id]?.productGroup ?? "uncategorized",
           }),
         ],
       )
