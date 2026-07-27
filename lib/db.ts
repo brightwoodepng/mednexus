@@ -431,6 +431,17 @@ export async function ensureSchema() {
       claimed     BOOLEAN NOT NULL DEFAULT FALSE,
       PRIMARY KEY (uid, bounty_id, bounty_date)
     );
+    CREATE TABLE IF NOT EXISTS mednexus_weekly_goal_progress (
+      uid                 TEXT        NOT NULL,
+      week_id             TEXT        NOT NULL,
+      eligible_answered   INTEGER     NOT NULL DEFAULT 0,
+      eligible_correct    INTEGER     NOT NULL DEFAULT 0,
+      qualifying_exams    INTEGER     NOT NULL DEFAULT 0,
+      distinct_exam_dates JSONB       NOT NULL DEFAULT '[]',
+      credited_goal_ids   JSONB       NOT NULL DEFAULT '[]',
+      updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (uid, week_id)
+    );
     CREATE TABLE IF NOT EXISTS mednexus_user_inventory (
       uid      TEXT    NOT NULL,
       item_id  TEXT    NOT NULL,
