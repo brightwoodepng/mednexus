@@ -9,6 +9,8 @@ export interface NPCredit {
   metadata?: Record<string, unknown>
   /** Rank-up rewards increase lifetime earnings, but must not recursively earn another rank. */
   countsTowardClinicalRank?: boolean
+  /** Repeatable MCQ rewards share the global daily ceiling. Exceptional grants must opt out. */
+  ceilingPolicy?: "repeatable_mcq" | "exempt"
 }
 
 export interface NPCreditResult {
@@ -18,6 +20,20 @@ export interface NPCreditResult {
   rankPoints: number
   rankBonus: number
   rankBreakdown: { label: string; amount: number }[]
+  suppressed: number
+  dailyCeiling: number
+  dailyRepeatableCredited: number
+}
+
+const REPEATABLE_MCQ_SOURCES = new Set([
+  "trial_tutor_question", "trial_tutor_streak", "trial_tutor_completion",
+  "exam_reward", "question_reward", "game_completion", "game_achievement",
+  "multiplayer_reward", "first_multiplayer_win", "bounty", "weekly_goal",
+])
+
+function isRepeatable(credit: NPCredit) {
+  return credit.ceilingPolicy === "repeatable_mcq"
+    || (credit.ceilingPolicy !== "exempt" && REPEATABLE_MCQ_SOURCES.has(credit.source))
 }
 
 /**
@@ -32,10 +48,32 @@ export async function applyNPCredits(
   credits: NPCredit[],
 ): Promise<NPCreditResult> {
   const inserted: NPCredit[] = []
+  const economyDate = TODAY_DATE()
+  // Serialize all credits for this user/date, including calls made more than once
+  // in a payout transaction. Rank bonuses are deliberately exempt: they are rare,
+  // one-time progression awards rather than repeatable MCQ earnings.
+  const hasRepeatableCredit = credits.some(isRepeatable)
+  let dailyRepeatableCredited = 0
+  if (hasRepeatableCredit) {
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:repeatable-np:${userId}:${economyDate}`])
+    const daily = await client.query(
+      `SELECT COALESCE(SUM(amount), 0)::int AS total
+         FROM mednexus_np_transactions
+        WHERE user_id = $1 AND metadata->>'ceilingPolicy' = 'repeatable_mcq'
+          AND created_at >= $2::date AND created_at < $2::date + INTERVAL '1 day'`,
+      [userId, economyDate],
+    )
+    dailyRepeatableCredited = Number(daily.rows[0]?.total ?? 0)
+  }
+  let suppressed = 0
 
   for (const credit of credits) {
-    const amount = Math.max(0, Math.floor(credit.amount))
-    if (!amount) continue
+    const requestedAmount = Math.max(0, Math.floor(credit.amount))
+    if (!requestedAmount) continue
+    const repeatable = isRepeatable(credit)
+    const remaining = Math.max(0, ECONOMY_CONFIG.repeatableDailyCeiling - dailyRepeatableCredited)
+    const amount = repeatable ? Math.min(requestedAmount, remaining) : requestedAmount
+    const suppressedAmount = requestedAmount - amount
     const result = await client.query(
       `INSERT INTO mednexus_np_transactions
          (id, user_id, source, source_id, amount, metadata)
@@ -48,10 +86,22 @@ export async function applyNPCredits(
         credit.source,
         credit.sourceId,
         amount,
-        JSON.stringify({ ...credit.metadata, economyVersion: ECONOMY_CONFIG.economyVersion }),
+        JSON.stringify({
+          ...credit.metadata,
+          economyVersion: ECONOMY_CONFIG.economyVersion,
+          economyDate,
+          ceilingPolicy: repeatable ? "repeatable_mcq" : "exempt",
+          requestedAmount,
+          suppressedAmount,
+          dailyCeiling: repeatable ? ECONOMY_CONFIG.repeatableDailyCeiling : undefined,
+        }),
       ],
     )
-    if (result.rowCount) inserted.push({ ...credit, amount })
+    if (result.rowCount) {
+      inserted.push({ ...credit, amount })
+      if (repeatable) dailyRepeatableCredited += amount
+      suppressed += suppressedAmount
+    }
   }
 
   const balanceCredit = inserted.reduce((sum, credit) => sum + credit.amount, 0)
@@ -123,6 +173,9 @@ export async function applyNPCredits(
     rankPoints,
     rankBonus,
     rankBreakdown,
+    suppressed,
+    dailyCeiling: ECONOMY_CONFIG.repeatableDailyCeiling,
+    dailyRepeatableCredited,
   }
 }
 
