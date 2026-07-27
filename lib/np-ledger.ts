@@ -144,7 +144,15 @@ export async function applyNPCredits(
         userId,
         sourceId,
         RANK_UP_BONUS_NP,
-        JSON.stringify({ tierName, economyVersion: ECONOMY_CONFIG.economyVersion }),
+        JSON.stringify({
+          tierName,
+          rewardCategory: "rank_bonus",
+          economyVersion: ECONOMY_CONFIG.economyVersion,
+          economyDate,
+          ceilingPolicy: "exempt",
+          requestedAmount: RANK_UP_BONUS_NP,
+          suppressedAmount: 0,
+        }),
       ],
     )
     if (!bonus.rowCount) continue
@@ -231,8 +239,11 @@ export async function dailyRewardRemaining(
   const result = await client.query(
     `SELECT COALESCE(SUM(amount), 0)::int AS total FROM mednexus_np_transactions
      WHERE user_id = $1 AND source = ANY($2::text[])
+       AND CASE WHEN source = 'game_completion'
+         THEN COALESCE((metadata->>'multiplayer')::boolean, FALSE) = $4
+         ELSE TRUE END
        AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
-    [userId, sources, TODAY_DATE()],
+    [userId, sources, TODAY_DATE(), family === "multiplayer"],
   )
   const cap = family === "solo" ? ECONOMY_CONFIG.gameRewards.solo.dailyCap : ECONOMY_CONFIG.gameRewards.multiplayer.dailyCap
   return Math.max(0, cap - Number(result.rows[0]?.total ?? 0))

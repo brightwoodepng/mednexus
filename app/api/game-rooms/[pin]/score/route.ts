@@ -248,7 +248,7 @@ export async function POST(
           source: "game_completion",
           sourceId: `${pin}:${playerId}`,
           amount: completionNP,
-          metadata: { mode: room.mode, multiplayer: true, memberSet, economyDate: TODAY_DATE() },
+          metadata: { mode: room.mode, multiplayer: true, memberSet, economyDate: TODAY_DATE(), rewardCategory: "multiplayer_participation" },
         })
       }
       if (achievementNP > 0) {
@@ -256,7 +256,7 @@ export async function POST(
           source: "multiplayer_reward",
           sourceId: `${pin}:${playerId}`,
           amount: achievementNP,
-          metadata: { mode: room.mode, score: inGameScore, accuracy, bestStreak, memberSet, economyDate: TODAY_DATE() },
+          metadata: { mode: room.mode, score: inGameScore, accuracy, bestStreak, memberSet, economyDate: TODAY_DATE(), rewardCategory: "multiplayer_placement" },
         })
       }
 
@@ -271,7 +271,7 @@ export async function POST(
             source: "first_multiplayer_win",
             sourceId: `${TODAY_DATE()}:${playerId}`,
             amount: ECONOMY_CONFIG.gameRewards.multiplayer.firstDailyWin,
-            metadata: { roomPin: pin, mode: room.mode },
+            metadata: { roomPin: pin, mode: room.mode, rewardCategory: "first_multiplayer_win" },
           })
           extraBreakdown.push({ label: "🌅 First Win of the Day!", amount: ECONOMY_CONFIG.gameRewards.multiplayer.firstDailyWin })
         }

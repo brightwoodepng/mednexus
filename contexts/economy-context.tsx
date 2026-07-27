@@ -190,11 +190,15 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       setLifetimeEarned(data.lifetimeEarned ?? lifetimeEarned)
       setRankPoints(data.rankPoints ?? rankPoints)
       setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] ?? 0) + 1 }))
+      // Reconcile every economy surface with the committed transaction. This
+      // also corrects optimistic inventory state if another tab purchased or
+      // consumed the same item concurrently.
+      void refresh()
       return { ok: true }
     } catch {
       return { ok: false, error: "Network error" }
     }
-  }, [user?.uid, lifetimeEarned, rankPoints])
+  }, [user?.uid, lifetimeEarned, rankPoints, refresh])
 
   const useItem = useCallback(async (itemId: string) => {
     const uid = user?.uid
