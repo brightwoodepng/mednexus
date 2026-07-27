@@ -1,0 +1,96 @@
+/**
+ * Versioned, server-authoritative Nexus Point economy.
+ *
+ * Change `economyVersion` whenever any value or eligibility rule changes. The
+ * ledger attaches this value to every transaction, making historical payouts
+ * reproducible and auditable.
+ */
+export type EarningMode =
+  | "mcq_trial_tutor"
+  | "mcq_exam"
+  | "mcq_solo_game"
+  | "mcq_multiplayer_game"
+  | "mcq_bounty"
+  | "daily_login"
+
+export type EconomyConfig = {
+  economyVersion: string
+  enabledEarningModes: Readonly<Record<EarningMode, boolean>>
+  modeIds: {
+    trialTutor: readonly string[]
+    exam: readonly string[]
+    soloGames: readonly string[]
+    multiplayerGames: readonly string[]
+  }
+  dailyLogin: {
+    base: number
+    milestones: readonly { day: number; bonus: number; repeatsEveryDays?: number }[]
+  }
+  questionRewards: { trialTutor: { correct: number; streakThresholds: readonly { minimum: number; bonus: number }[] } }
+  examRewards: { completion: number; accuracyThresholds: readonly { above: number; bonus: number }[] }
+  gameRewards: {
+    solo: { participation: number; accuracy80: number; accuracy90: number; perfect: number; perfectMinimumQuestions: number; streakEvery: number; streakUnit: number; streakMaximum: number; personalBest: number; flawlessMultiplier: number; dailyCompletionLimit: number }
+    multiplayer: { participation: number; clashPlaces: readonly number[]; cohortPlaces: readonly number[]; cohortTopTen: number; firstDailyWin: number; studyGroupPerPlayer: number }
+  }
+  earningCaps: { daily: number; weekly: number }
+  bounties: readonly { id: string; reward: number; target: number; type: string; mode?: string }[]
+  rankUp: { reward: number; thresholds: readonly { name: string; minPoints: number }[] }
+  storePrices: Readonly<Record<string, number>>
+  antiFarming: { repeatCorrectLimit: number; disciplineNPWindowLimit: number; disciplineWindowDays: number; abandonedExamMinutes: number }
+}
+
+export const ECONOMY_CONFIG = {
+  economyVersion: "1.0.0",
+  enabledEarningModes: {
+    mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
+    mcq_multiplayer_game: true, mcq_bounty: true, daily_login: true,
+  },
+  modeIds: {
+    trialTutor: ["trial", "tutor"], exam: ["exam"],
+    soloGames: ["rapid", "sudden", "timeatk", "double", "streak"],
+    multiplayerGames: ["clash", "cohort", "wager", "djmulti"],
+  },
+  dailyLogin: { base: 25, milestones: [
+    { day: 3, bonus: 50 }, { day: 7, bonus: 150 }, { day: 14, bonus: 300 },
+    { day: 30, bonus: 1_000, repeatsEveryDays: 30 },
+  ] },
+  questionRewards: { trialTutor: { correct: 10, streakThresholds: [{ minimum: 4, bonus: 5 }, { minimum: 11, bonus: 10 }] } },
+  examRewards: { completion: 50, accuracyThresholds: [{ above: 50, bonus: 100 }, { above: 75, bonus: 250 }, { above: 90, bonus: 500 }] },
+  gameRewards: {
+    solo: { participation: 25, accuracy80: 50, accuracy90: 50, perfect: 100, perfectMinimumQuestions: 3, streakEvery: 5, streakUnit: 25, streakMaximum: 150, personalBest: 75, flawlessMultiplier: 2, dailyCompletionLimit: 5 },
+    multiplayer: { participation: 25, clashPlaces: [150, 100, 50], cohortPlaces: [500, 350, 200], cohortTopTen: 75, firstDailyWin: 250, studyGroupPerPlayer: 20 },
+  },
+  earningCaps: { daily: 5_000, weekly: 20_000 },
+  bounties: [
+    { id: "rapid_5correct", target: 5, reward: 200, type: "mode_correct", mode: "rapid" },
+    { id: "timeatk_score800", target: 800, reward: 250, type: "mode_score", mode: "timeatk" },
+    { id: "streak_8", target: 8, reward: 200, type: "mode_streak", mode: "streak" },
+    { id: "sudden_survive15", target: 15, reward: 300, type: "mode_survive", mode: "sudden" },
+    { id: "any_accuracy80", target: 1, reward: 175, type: "accuracy_game" },
+    { id: "any_play3", target: 3, reward: 150, type: "any_play" },
+    { id: "double_correct3", target: 3, reward: 200, type: "mode_correct", mode: "double" },
+    { id: "streak_cashout5", target: 5, reward: 175, type: "streak_cashout", mode: "streak" },
+    { id: "rapid_newbest", target: 1, reward: 250, type: "mode_correct", mode: "rapid" },
+    { id: "timeatk_play2", target: 2, reward: 150, type: "any_play", mode: "timeatk" },
+  ],
+  rankUp: { reward: 1_000, thresholds: [
+    { name: "Medical Student", minPoints: 0 }, { name: "Clerkship", minPoints: 500 },
+    { name: "Intern", minPoints: 1_500 }, { name: "Resident", minPoints: 3_500 },
+    { name: "Fellow", minPoints: 7_000 }, { name: "Attending", minPoints: 12_000 },
+  ] },
+  storePrices: {
+    lifeline_50_50:150,lifeline_freeze:100,lifeline_second_opinion:200,lifeline_beeper_page:250,lifeline_bolus_dose:125,lifeline_chart_review:75,
+    vault_sepsis_cascade:800,vault_stemi_2am:750,vault_dka_peds:700,vault_bacterial_meningitis:650,vault_hepatic_failure:900,
+    title_pre_med:50,title_intern:75,title_fellow:200,title_attending:300,title_chief_resident:500,title_the_gunner:750,title_department_chair:1500,title_chief_of_surgery:3500,title_dean_of_medicine:10000,title_caffeine_dependent:100,
+    frame_gold:400,frame_neon:600,frame_fire:2500,frame_legendary_diamond:1500,frame_legendary_biohazard:1800,frame_mythic_nebula:3000,frame_mythic_heartbeat:4000,frame_lightning:3500,frame_toxic_drip:3000,
+    highlight_neon:300,highlight_gold:350,highlight_amethyst:800,highlight_legendary_crimson:1500,highlight_legendary_emerald:1800,highlight_mythic_lightning:3000,highlight_mythic_void_walker:5000,
+    avatar_scrub_tech:500,avatar_coffee_drip:500,avatar_lab_rat:800,avatar_night_shift:800,avatar_gold_steth:2000,avatar_plague_doctor:2500,avatar_cyber_surgeon:2500,avatar_ascended:5000,avatar_marble:5000,avatar_vital_sign:7500,
+  },
+  antiFarming: { repeatCorrectLimit: 3, disciplineNPWindowLimit: 1_000, disciplineWindowDays: 7, abandonedExamMinutes: 480 },
+} as const satisfies EconomyConfig
+
+export const economyVersion = ECONOMY_CONFIG.economyVersion
+
+export function isEarningModeEnabled(mode: EarningMode): boolean {
+  return ECONOMY_CONFIG.enabledEarningModes[mode]
+}
