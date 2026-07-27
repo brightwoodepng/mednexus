@@ -115,6 +115,15 @@ export async function calculateSessionNP(
       || (isEarningModeEnabled("mcq_solo_game") && (ECONOMY_CONFIG.modeIds.soloGames as readonly string[]).includes(mode))
   if (!enabled) throw new Error(`Economy rewards are disabled for mode: ${mode}`)
 
+  // Serialize the complete anti-farming read/modify/write cycle. Row locks are
+  // insufficient here because a question or discipline progress row might not
+  // exist yet; two first-time sessions could otherwise both observe zero and
+  // bypass repeat and discipline limits before either upsert becomes visible.
+  await client.query(
+    "SELECT pg_advisory_xact_lock(hashtext($1))",
+    [`mednexus:activity-integrity:${userId}`],
+  )
+
   const today   = todayStr()
   const window7 = last7DaysStrings()
 
