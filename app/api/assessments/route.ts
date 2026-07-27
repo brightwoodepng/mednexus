@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
+import { auditAdmin, getPlatformSettings } from "@/lib/platform-settings"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -39,7 +40,16 @@ export async function GET(req: NextRequest) {
       ? await pool.query("SELECT * FROM mednexus_assessments ORDER BY created_at DESC")
       : await pool.query("SELECT * FROM mednexus_assessments WHERE status = 'live' ORDER BY created_at DESC")
 
-    return NextResponse.json({ assessments: rows.map(rowToAssessment) })
+    const defaults = canManageAssessments ? await getPlatformSettings(pool) : null
+    return NextResponse.json({
+      assessments: rows.map(rowToAssessment),
+      ...(defaults ? { defaults: {
+        questionCount: defaults.assessmentDefaultQuestionCount,
+        timeLimitMins: defaults.assessmentDefaultTimeLimitMins,
+        triesAllowed: defaults.assessmentDefaultTriesAllowed,
+        passMark: defaults.assessmentDefaultPassMark,
+      } } : {}),
+    })
   } catch (err) {
     console.error("[assessments GET]", err)
     return NextResponse.json({ assessments: [] })
@@ -50,7 +60,8 @@ export async function GET(req: NextRequest) {
 // body: { title, moduleName, questionCount, timeLimitMins, triesAllowed, passMark }
 export async function POST(req: NextRequest) {
   try {
-    if (!await requireAdminRequest(req, "manage_assessments")) return await adminAccessDenied(req)
+    const admin = await requireAdminRequest(req, "manage_assessments")
+    if (!admin) return await adminAccessDenied(req)
 
     const pool = await getPool()
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
@@ -62,7 +73,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "title and moduleName are required" }, { status: 400 })
     }
 
-    const qCount = Math.max(1, Number(questionCount) || 10)
+    const settings = await getPlatformSettings(pool)
+    const qCount = Math.max(1, Number(questionCount) || settings.assessmentDefaultQuestionCount)
 
     // Fetch questions from DB to pick IDs for this module
     const qRes = await pool.query("SELECT data FROM mednexus_questions WHERE id = 1")
@@ -91,12 +103,30 @@ export async function POST(req: NextRequest) {
     const id = `asmt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const shareToken = `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
 
-    await pool.query(
+    const client = await pool.connect()
+    try {
+      await client.query("BEGIN")
+      await client.query(
       `INSERT INTO mednexus_assessments
-         (id, title, module_name, question_ids, question_count, time_limit_mins, tries_allowed, pass_mark, status, share_token)
-       VALUES ($1,$2,$3,$4::jsonb,$5,$6,$7,$8,'offline',$9)`,
-      [id, title.trim(), moduleName, JSON.stringify(questionIds), questionIds.length, Number(timeLimitMins) || 30, Number(triesAllowed) || 1, Number(passMark) || 50, shareToken]
-    )
+         (id,title,module_name,question_ids,question_snapshot,question_count,time_limit_mins,tries_allowed,pass_mark,status,share_token)
+       VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7,$8,$9,'offline',$10)`,
+        [
+          id, title.trim(), moduleName, JSON.stringify(questionIds), JSON.stringify(selected),
+          questionIds.length,
+          Number(timeLimitMins) || settings.assessmentDefaultTimeLimitMins,
+          Number(triesAllowed) || settings.assessmentDefaultTriesAllowed,
+          Number(passMark) || settings.assessmentDefaultPassMark,
+          shareToken,
+        ],
+      )
+      await auditAdmin(client, admin.uid, "create", "assessment", id, { title: title.trim(), moduleName, questionCount: questionIds.length })
+      await client.query("COMMIT")
+    } catch (error) {
+      await client.query("ROLLBACK")
+      throw error
+    } finally {
+      client.release()
+    }
 
     return NextResponse.json({ success: true, id, shareToken })
   } catch (err) {

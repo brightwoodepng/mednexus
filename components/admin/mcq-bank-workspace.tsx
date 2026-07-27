@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { QuestionEditor } from "@/components/question-editor"
 import { UniversalImporter } from "@/components/universal-importer"
 import type { Question } from "@/lib/types"
@@ -12,6 +13,8 @@ import type { Question } from "@/lib/types"
 export function McqBankWorkspace() {
   const [importerOpen, setImporterOpen] = useState(false)
   const [pendingImport, setPendingImport] = useState<Question[] | null>(null)
+  const searchParams = useSearchParams()
+  useEffect(() => { if (searchParams.get("import") === "true") setImporterOpen(true) }, [searchParams])
 
   return (
     <>
@@ -23,6 +26,10 @@ export function McqBankWorkspace() {
       {importerOpen && (
         <UniversalImporter
           onImport={(questions) => {
+            void fetch("/api/admin/content/imports", {
+              method: "POST", headers: { "content-type": "application/json" },
+              body: JSON.stringify({ bank: "mcq", sourceName: "MCQ universal importer", drafts: questions }),
+            })
             setPendingImport(questions)
             setImporterOpen(false)
           }}

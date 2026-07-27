@@ -5,8 +5,8 @@ import {
   ArrowLeft, BarChart3, Bell, BookOpen, ClipboardCheck, Database, FileOutput,
   LayoutDashboard, Menu, Palette, Search, Settings, ShieldCheck, Users, Waypoints,
 } from "lucide-react"
-import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
 import { StethoscopeIcon } from "@/components/icons"
 import { SidebarCollapsedRail, SidebarFrame, SidebarGroup, SidebarNavLink } from "@/components/navigation/sidebar-primitives"
 import { ThemeModal } from "@/components/theme-modal"
@@ -48,8 +48,41 @@ function AdminHeader({
   onOpenMobile: () => void
 }) {
   const { activeTheme, isGlassEnabled } = useTheme()
+  const router = useRouter()
   const [themeModalOpen, setThemeModalOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState<Array<{ type: string; id: string; title: string; subtitle: string; href: string }>>([])
+  const [searching, setSearching] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+        setPaletteOpen(true)
+      } else if (event.key === "Escape") setPaletteOpen(false)
+    }
+    window.addEventListener("keydown", listener)
+    return () => window.removeEventListener("keydown", listener)
+  }, [])
+  useEffect(() => {
+    if (paletteOpen) window.setTimeout(() => searchRef.current?.focus(), 0)
+  }, [paletteOpen])
+  useEffect(() => {
+    if (query.trim().length < 2) { setResults([]); return }
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setSearching(true)
+      try {
+        const response = await fetch(`/api/admin/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+        const body = await response.json()
+        if (response.ok) setResults(body.results ?? [])
+      } finally { if (!controller.signal.aborted) setSearching(false) }
+    }, 220)
+    return () => { window.clearTimeout(timer); controller.abort() }
+  }, [query])
 
   return (
     <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5">
@@ -69,8 +102,10 @@ function AdminHeader({
         <input
           type="search"
           placeholder="Search questions, users, modules…"
-          className="h-9 w-full rounded-lg border border-border bg-muted/50 pl-8 pr-16 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+          className="h-9 w-full cursor-pointer rounded-lg border border-border bg-muted/50 pl-8 pr-16 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
           aria-label="Admin search"
+          onFocus={() => setPaletteOpen(true)}
+          readOnly
         />
         <kbd className="pointer-events-none absolute right-3 hidden select-none rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground sm:block">
           Ctrl K
@@ -104,6 +139,24 @@ function AdminHeader({
         </div>
       </div>
       <ThemeModal open={themeModalOpen} onClose={() => setThemeModalOpen(false)} />
+      {paletteOpen && <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/45 px-3 pt-[12vh]" onMouseDown={(event) => { if (event.currentTarget === event.target) setPaletteOpen(false) }}>
+        <div role="dialog" aria-modal="true" aria-label="Admin command palette" className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+          <div className="relative border-b border-border p-3">
+            <Search size={18} className="absolute left-6 top-6 text-muted-foreground" />
+            <input ref={searchRef} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search permitted content and records…" className="h-12 w-full rounded-xl bg-muted/50 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/50" />
+          </div>
+          <div className="max-h-[55vh] overflow-y-auto p-2">
+            {searching && <p className="p-5 text-center text-sm text-muted-foreground">Searching…</p>}
+            {!searching && query.trim().length < 2 && <p className="p-5 text-center text-sm text-muted-foreground">Type at least two characters. Results are filtered by your permissions.</p>}
+            {!searching && query.trim().length >= 2 && results.length === 0 && <p className="p-5 text-center text-sm text-muted-foreground">No matching records.</p>}
+            {results.map((result) => <button key={`${result.type}-${result.id}`} type="button" onClick={() => { setPaletteOpen(false); setQuery(""); router.push(result.href) }} className="flex w-full items-start gap-3 rounded-xl p-3 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <span className="mt-0.5 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">{result.type}</span>
+              <span className="min-w-0"><span className="block truncate text-sm font-semibold">{result.title}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{result.subtitle}</span></span>
+            </button>)}
+          </div>
+          <div className="flex justify-between border-t border-border px-4 py-2 text-[11px] text-muted-foreground"><span>Server-filtered results</span><span>Esc to close</span></div>
+        </div>
+      </div>}
     </header>
   )
 }

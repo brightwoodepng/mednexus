@@ -103,7 +103,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (tries >= asmt.tries_allowed) { await client.query("ROLLBACK"); return NextResponse.json({ error: "No tries remaining" }, { status: 403 }) }
 
     const qRes = await client.query("SELECT data FROM mednexus_questions WHERE id = 1")
-    const allQuestions: Array<{ id: string; correctAnswer: string }> = qRes.rows[0]?.data ?? []
+    const snapshot = Array.isArray(asmt.question_snapshot) ? asmt.question_snapshot as Array<{ id: string; correctAnswer: string }> : []
+    const allQuestions: Array<{ id: string; correctAnswer: string }> = snapshot.length ? snapshot : (qRes.rows[0]?.data ?? [])
     const qMap = new Map(allQuestions.map((q) => [q.id, q]))
     const questionIds = asmt.question_ids as string[]
     const score = questionIds.reduce((sum, qId) => sum + (qMap.get(qId)?.correctAnswer === answers[qId] ? 1 : 0), 0)
