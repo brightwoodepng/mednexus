@@ -333,10 +333,15 @@ export async function POST(req: NextRequest) {
         ...weekly.credited.rankBreakdown,
         ...bountyCredit.rankBreakdown,
       ]
+      const suppressed = credit.suppressed + bountyCredit.suppressed + weekly.credited.suppressed
+      if (suppressed > 0) breakdown.push({ label: "Daily repeatable NP ceiling", amount: -suppressed })
       const payload = {
         earned: credit.credited + bountyCredit.credited + weekly.credited.credited,
         newBalance: bountyCredit.credited > 0 ? bountyCredit.newBalance : weekly.credited.newBalance,
         breakdown,
+        suppressed,
+        dailyCeiling: credit.dailyCeiling,
+        dailyRepeatableCredited: Math.max(credit.dailyRepeatableCredited, bountyCredit.dailyRepeatableCredited, weekly.credited.dailyRepeatableCredited),
         examRewardBreakdown: anti.examRewardBreakdown,
         bountyUpdates,
         score,
