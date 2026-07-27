@@ -51,6 +51,8 @@ export interface EconomyContextValue {
   claimBounty: (bountyId: string) => Promise<{ ok: boolean; earned?: number; error?: string }>
   purchase: (itemId: string) => Promise<{ ok: boolean; error?: string }>
   useItem: (itemId: string, usage: { sessionId: string; questionId: string }) => Promise<boolean>
+  isItemUsePending: (itemId: string, questionId: string) => boolean
+  isItemUsed: (itemId: string, questionId: string) => boolean
   equipCosmetic: (type: "title" | "frame" | "highlight" | "avatar", itemId: string | null) => Promise<{ ok: boolean; error?: string }>
   grantDevNP: () => Promise<{ ok: boolean; error?: string }>
   startScoredActivity: (mode: string, questionIds: string[]) => Promise<string | null>
@@ -102,6 +104,9 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const [bounties, setBounties]                     = useState<BountyWithProgress[]>([])
   const [weeklyGoals, setWeeklyGoals]               = useState<WeeklyGoal[]>([])
   const [inventory, setInventory]                   = useState<Record<string, number>>({})
+  const [pendingItemUses, setPendingItemUses]       = useState<Set<string>>(new Set())
+  const [successfulItemUses, setSuccessfulItemUses] = useState<Set<string>>(new Set())
+  const pendingItemUsesRef = useRef<Set<string>>(new Set())
   const [equippedCosmetics, setEquippedCosmetics]   = useState<EquippedCosmetics>(DEFAULT_COSMETICS)
   const [loading, setLoading]                       = useState(false)
   const [dailyLoginReward, setDailyLoginReward]     = useState<DailyLoginResult | null>(null)
@@ -211,27 +216,58 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const useItem = useCallback(async (itemId: string, usage: { sessionId: string; questionId: string }) => {
     const uid = user?.uid
     if (!uid) return false
+    const usageKey = `${itemId}:${usage.questionId}`
+    if (pendingItemUsesRef.current.has(usageKey)) return false
+    const usageId = crypto.randomUUID()
+    pendingItemUsesRef.current.add(usageKey)
+    setPendingItemUses(previous => new Set(previous).add(usageKey))
     try {
-      const res = await fetch("/api/economy/inventory", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...economyHeaders() },
-        body: JSON.stringify({ uid, itemId, ...usage }),
-      })
-      if (!res.ok) return false
+      const request = () => fetch("/api/economy/inventory", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...economyHeaders() },
+          body: JSON.stringify({ uid, itemId, usageId, ...usage }),
+        })
+      // A transport-level retry reuses this activation's usageId, allowing the
+      // server to replay its committed result without another decrement.
+      let res: Response
+      try { res = await request() } catch { res = await request() }
+      const data = await res.json()
+      if (!res.ok) {
+        if (data.usageStatus === "already_used") {
+          setSuccessfulItemUses(previous => new Set(previous).add(usageKey))
+          if (typeof data.quantity === "number") {
+            setInventory(previous => ({ ...previous, [itemId]: data.quantity }))
+          }
+        }
+        return false
+      }
       setInventory(prev => {
-        const newQty = (prev[itemId] ?? 0) - 1
-        if (newQty <= 0) {
+        const quantity = data.quantity
+        if (quantity <= 0) {
           const next = { ...prev }
           delete next[itemId]
           return next
         }
-        return { ...prev, [itemId]: newQty }
+        return { ...prev, [itemId]: quantity }
       })
+      setSuccessfulItemUses(previous => new Set(previous).add(usageKey))
       return true
     } catch {
       return false
+    } finally {
+      pendingItemUsesRef.current.delete(usageKey)
+      setPendingItemUses(previous => {
+        const next = new Set(previous)
+        next.delete(usageKey)
+        return next
+      })
     }
   }, [user?.uid])
+
+  const isItemUsePending = useCallback((itemId: string, questionId: string) =>
+    pendingItemUses.has(`${itemId}:${questionId}`), [pendingItemUses])
+  const isItemUsed = useCallback((itemId: string, questionId: string) =>
+    successfulItemUses.has(`${itemId}:${questionId}`), [successfulItemUses])
 
   const equipCosmetic = useCallback(async (
     type: "title" | "frame" | "highlight" | "avatar",
@@ -291,7 +327,14 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     if (!user?.uid) return null
     try {
       const res = await fetch("/api/economy/session", { method: "POST", headers: { "Content-Type": "application/json", ...economyHeaders() }, body: JSON.stringify({ uid: user.uid, mode, questionIds }) })
-      return res.ok ? (await res.json()).sessionId ?? null : null
+      if (!res.ok) return null
+      const sessionId = (await res.json()).sessionId ?? null
+      if (sessionId) {
+        pendingItemUsesRef.current.clear()
+        setPendingItemUses(new Set())
+        setSuccessfulItemUses(new Set())
+      }
+      return sessionId
     } catch { return null }
   }, [user?.uid])
 
@@ -394,6 +437,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   return (
     <EconomyContext.Provider value={{
       balance, lifetimeEarned, rankPoints, bounties, weeklyGoals, inventory, equippedCosmetics, loading,
+      isItemUsePending, isItemUsed,
       dailyLoginReward, clearDailyLoginReward,
       refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP,
       startScoredActivity, submitGameResult, submitMultiplayerResult,
