@@ -5,7 +5,7 @@ import { BOUNTY_POOL, STORE_ITEMS } from "@/lib/economy"
 
 describe("versioned economy configuration", () => {
   it("enables only the v1 MCQ earning families and daily login", () => {
-    expect(ECONOMY_CONFIG.economyVersion).toBe("1.2.0")
+    expect(ECONOMY_CONFIG.economyVersion).toBe("1.3.0")
     expect(Object.values(ECONOMY_CONFIG.enabledEarningModes).every(Boolean)).toBe(true)
     expect(ECONOMY_CONFIG.modeIds.trialTutor).toEqual(["trial", "tutor"])
     expect(ECONOMY_CONFIG.modeIds.exam).toEqual(["exam"])
@@ -20,6 +20,21 @@ describe("versioned economy configuration", () => {
     })
     expect(ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers).toEqual([1, 1, 0.5])
     expect(ECONOMY_CONFIG.antiFarming.masteryResetDays).toBeNull()
+  })
+
+  it("configures the exam minimum, base cap, daily cap, and accuracy bands", () => {
+    expect(ECONOMY_CONFIG.examRewards).toEqual({
+      minimumAnswered: 10,
+      baseCap: 50,
+      dailyCap: 250,
+      accuracyMultipliers: [
+        { minimumAccuracy: 0, band: "below 50%", multiplier: 1 },
+        { minimumAccuracy: 50, band: "50%–69%", multiplier: 1.25 },
+        { minimumAccuracy: 70, band: "70%–84%", multiplier: 1.5 },
+        { minimumAccuracy: 85, band: "85%–94%", multiplier: 1.75 },
+        { minimumAccuracy: 95, band: "95%–100%", multiplier: 2 },
+      ],
+    })
   })
 
   it("defines the finite daily-login reward program", () => {
