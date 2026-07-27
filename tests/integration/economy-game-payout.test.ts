@@ -16,15 +16,17 @@ const result = (overrides: Partial<GameResult> = {}): GameResult => ({
 })
 
 describe("verified NP rewards", () => {
-  it("keeps the completion component at exactly 25 NP even for a flawless result", () => {
+  it("uses one non-stacking accuracy band with the configured completion reward", () => {
     const payout = calculatePayout(result({
       correct: 5,
       total: 5,
       bestStreak: 5,
       accuracy: 100,
     }))
-    expect(payout.breakdown.find((item) => item.label === "Participation")?.amount).toBe(25)
-    expect(payout.breakdown.find((item) => item.label.includes("Flawless"))?.amount).toBeGreaterThan(0)
+    expect(payout.breakdown.find((item) => item.label === "Valid Completion")?.amount).toBe(10)
+    expect(payout.breakdown.filter((item) => item.label.includes("Accuracy"))).toEqual([
+      { label: "Accuracy Bonus (95%+)", amount: 30 },
+    ])
   })
 
   it("matches time-attack and generic play bounties against server mode data", () => {

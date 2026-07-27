@@ -150,8 +150,7 @@ export async function recordDailyActivity(
 }
 
 export async function completionBonusAvailable(client: PoolClient, userId: string) {
-  // Serialize the per-user daily cap check inside the caller's transaction so
-  // simultaneous game completions cannot both claim the fifth bonus.
+  // Serialize the first-completion check inside the caller's transaction.
   await client.query(
     "SELECT pg_advisory_xact_lock(hashtext($1))",
     [`mednexus:game-completion:${userId}`],
@@ -164,6 +163,25 @@ export async function completionBonusAvailable(client: PoolClient, userId: strin
        AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
     [userId],
   )
-  return Number(result.rows[0]?.count ?? 0) < ECONOMY_CONFIG.gameRewards.solo.dailyCompletionLimit
+  return Number(result.rows[0]?.count ?? 0) === 0
+}
+
+export async function dailyRewardRemaining(
+  client: PoolClient,
+  userId: string,
+  family: "solo" | "multiplayer",
+) {
+  const sources = family === "solo"
+    ? ["question_reward", "game_completion", "game_achievement"]
+    : ["game_completion", "multiplayer_reward", "first_multiplayer_win"]
+  await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:${family}-cap:${userId}:${TODAY_DATE()}`])
+  const result = await client.query(
+    `SELECT COALESCE(SUM(amount), 0)::int AS total FROM mednexus_np_transactions
+     WHERE user_id = $1 AND source = ANY($2::text[])
+       AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
+    [userId, sources, TODAY_DATE()],
+  )
+  const cap = family === "solo" ? ECONOMY_CONFIG.gameRewards.solo.dailyCap : ECONOMY_CONFIG.gameRewards.multiplayer.dailyCap
+  return Math.max(0, cap - Number(result.rows[0]?.total ?? 0))
 }
 

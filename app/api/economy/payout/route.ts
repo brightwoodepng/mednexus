@@ -14,6 +14,7 @@ import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import {
   applyNPCredits,
   completionBonusAvailable,
+  dailyRewardRemaining,
   recordDailyActivity,
   type NPCredit,
 } from "@/lib/np-ledger"
@@ -171,8 +172,22 @@ export async function POST(req: NextRequest) {
       const total = sessionData.length
       const correctCount = sessionData.filter((question) => question.isCorrect).length
       const accuracy = total ? Math.round(correctCount * 100 / total) : 0
+      const isSoloGame = SOLO_GAME_MODES.has(session.mode)
+      const minimumAnswers = session.mode === "sudden"
+        ? ECONOMY_CONFIG.gameRewards.solo.suddenDeathMinimumAnswers
+        : ECONOMY_CONFIG.gameRewards.solo.minimumAnswers
+      const meaningfulSoloCompletion = isSoloGame
+        && total >= minimumAnswers
+        && keys.length > 0
+        && sessionData.every((answer) => keyById.has(answer.questionId))
+      if (isSoloGame && !meaningfulSoloCompletion) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: "Game does not meet the reward eligibility policy" }, { status: 422 })
+      }
       const score = calculateServerScore(session.mode, sessionData, bestStreak)
-      const isNewHigh = await updatePersonalBest(auth.uid, session.mode, score, client)
+      const isNewHigh = meaningfulSoloCompletion
+        ? await updatePersonalBest(auth.uid, session.mode, score, client)
+        : false
       const result: GameResult = {
         mode: session.mode,
         score,
@@ -202,12 +217,10 @@ export async function POST(req: NextRequest) {
       )
 
       const gross = calculatePayout(result)
-      const isSoloGame = SOLO_GAME_MODES.has(session.mode)
-      const canAwardCompletion = isSoloGame
-        && total > 0
+      const canAwardFirstCompletion = meaningfulSoloCompletion
         && await completionBonusAvailable(client, auth.uid)
       const achievementBreakdown = isSoloGame
-        ? gross.breakdown.filter((item) => item.label !== "Participation")
+        ? gross.breakdown.filter((item) => item.label !== "Valid Completion")
         : []
       const achievementNP = achievementBreakdown.reduce((sum, item) => sum + item.amount, 0)
       const credits: NPCredit[] = []
@@ -223,14 +236,20 @@ export async function POST(req: NextRequest) {
       } else if (anti.totalNP > 0) {
         credits.push({ source: session.mode === "exam" ? "exam_reward" : "question_reward", sourceId: sessionId, amount: anti.totalNP, metadata: { mode: session.mode } })
       }
-      if (canAwardCompletion) {
+      if (meaningfulSoloCompletion) {
         credits.push({
           source: "game_completion",
           sourceId: sessionId,
-          amount: ECONOMY_CONFIG.gameRewards.solo.participation,
+          amount: ECONOMY_CONFIG.gameRewards.solo.completion,
           metadata: { mode: session.mode },
         })
       }
+      if (canAwardFirstCompletion) credits.push({
+        source: "game_achievement",
+        sourceId: `${sessionId}:first-daily-completion`,
+        amount: ECONOMY_CONFIG.gameRewards.solo.firstDailyCompletion,
+        metadata: { mode: session.mode, economyDate: TODAY_DATE(), reward: "first_daily_completion" },
+      })
       if (achievementNP > 0) {
         credits.push({
           source: "game_achievement",
@@ -240,6 +259,13 @@ export async function POST(req: NextRequest) {
         })
       }
 
+      if (isSoloGame) {
+        let remaining = await dailyRewardRemaining(client, auth.uid, "solo")
+        for (const entry of credits) {
+          entry.amount = Math.min(entry.amount, remaining)
+          remaining -= entry.amount
+        }
+      }
       const credit = await applyNPCredits(client, auth.uid, credits)
       await recordDailyActivity(client, auth.uid, total, correctCount)
 
@@ -281,7 +307,8 @@ export async function POST(req: NextRequest) {
 
       const breakdown = [
         ...anti.breakdown,
-        ...(canAwardCompletion ? [{ label: "Participation", amount: ECONOMY_CONFIG.gameRewards.solo.participation }] : []),
+        ...(meaningfulSoloCompletion ? [{ label: "Valid Completion", amount: ECONOMY_CONFIG.gameRewards.solo.completion }] : []),
+        ...(canAwardFirstCompletion ? [{ label: "First Solo Completion", amount: ECONOMY_CONFIG.gameRewards.solo.firstDailyCompletion }] : []),
         ...achievementBreakdown,
         ...credit.rankBreakdown,
       ]
