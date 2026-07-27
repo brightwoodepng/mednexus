@@ -259,6 +259,8 @@ export interface TheoryQuestionDetail extends TheoryQuestion {
   moduleName: string | null
   disciplineName: string | null
   setTitle: string | null
+  setNumber: number | null
+  setLabel: string | null
   position: number
   setTotal: number
   previousId: string | null
