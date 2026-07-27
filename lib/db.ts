@@ -75,6 +75,19 @@ export async function ensureSchema() {
       data       JSONB NOT NULL DEFAULT '[]',
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS mednexus_mcq_media_assets (
+      id TEXT PRIMARY KEY,
+      question_id TEXT,
+      mime_type TEXT NOT NULL,
+      data BYTEA NOT NULL,
+      caption TEXT NOT NULL DEFAULT '',
+      alt_text TEXT NOT NULL DEFAULT 'Clinical question image',
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_mcq_media_question_idx ON mednexus_mcq_media_assets(question_id);
+
     CREATE TABLE IF NOT EXISTS mednexus_question_bank_audit_log (
       id BIGSERIAL PRIMARY KEY,
       admin_id TEXT NOT NULL,
