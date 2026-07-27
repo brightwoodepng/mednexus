@@ -243,7 +243,7 @@ export async function POST(req: NextRequest) {
           source: "game_completion",
           sourceId: sessionId,
           amount: ECONOMY_CONFIG.gameRewards.solo.completion,
-          metadata: { mode: session.mode },
+          metadata: { mode: session.mode, multiplayer: false, rewardCategory: "solo_completion" },
         })
       }
       if (canAwardFirstCompletion) credits.push({
@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
           source: "game_achievement",
           sourceId: sessionId,
           amount: achievementNP,
-          metadata: { mode: session.mode, score, accuracy, bestStreak },
+          metadata: { mode: session.mode, score, accuracy, bestStreak, rewardCategory: "solo_achievement" },
         })
       }
 
