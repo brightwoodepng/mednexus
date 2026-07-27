@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
+import { analyzeStoreEconomy } from "@/lib/economy-analysis"
 
 /** Aggregate, privacy-conscious economy telemetry for rate reviews. */
 export async function buildEconomyReport(client: PoolClient, days = 30) {
@@ -56,6 +57,13 @@ export async function buildEconomyReport(client: PoolClient, days = 30) {
     topRepeatedQuestions: questions.rows,
     topSessions: sessions.rows,
     bountyCompletionRates: bounties.rows,
+    storePurchaseTimes: analyzeStoreEconomy(ECONOMY_CONFIG.store).map(item => ({
+      itemId: item.id,
+      price: item.price,
+      casualDays: item.casualDays,
+      activeDays: item.activeDays,
+      flags: item.flags,
+    })),
     guidance: "Observe at least one complete reporting period before revising versioned rates; use these aggregates rather than anecdotal reports alone.",
   }
 }
