@@ -719,29 +719,12 @@ export function calculatePayout(result: GameResult): { total: number; breakdown:
   const breakdown: PayoutBreakdown[] = []
 
   const rewards = ECONOMY_CONFIG.gameRewards.solo
-  breakdown.push({ label: "Participation", amount: rewards.participation })
-
-  if (result.accuracy >= 80) breakdown.push({ label: "Accuracy Bonus (80%+)", amount: rewards.accuracy80 })
-  if (result.accuracy >= 90) breakdown.push({ label: "Accuracy Bonus (90%+)", amount: rewards.accuracy90 })
-  if (result.accuracy === 100 && result.total >= rewards.perfectMinimumQuestions) breakdown.push({ label: "Perfect Round!", amount: rewards.perfect })
-
-  if (result.bestStreak >= rewards.streakEvery)  breakdown.push({ label: `Streak Bonus (${result.bestStreak}×)`, amount: Math.min(Math.floor(result.bestStreak / rewards.streakEvery) * rewards.streakUnit, rewards.streakMaximum) })
-  if (result.isNewHigh)        breakdown.push({ label: "New Personal Best!", amount: rewards.personalBest })
-
-  let subtotal = breakdown.reduce((s, b) => s + b.amount, 0)
-
-  // ── Flawless Execution (solo only) ────────────────────────────────────────
-  // Double achievement rewards, while the capped participation component stays 25 NP.
-  const isSoloMode = !["clash", "cohort", "wager", "djmulti"].includes(result.mode)
-  if (isSoloMode && result.accuracy === 100 && result.total >= rewards.perfectMinimumQuestions && !result.lifelineUsed) {
-    const achievementSubtotal = Math.max(0, subtotal - rewards.participation)
-    if (achievementSubtotal > 0) {
-      breakdown.push({ label: "⚡ Flawless Execution (2×)", amount: achievementSubtotal })
-      subtotal += achievementSubtotal
-    }
-  }
-
-  return { total: subtotal, breakdown }
+  breakdown.push({ label: "Valid Completion", amount: rewards.completion })
+  const accuracyBonus = [...rewards.accuracyBonuses]
+    .reverse().find((band) => result.accuracy >= band.minimumAccuracy)
+  if (accuracyBonus) breakdown.push({ label: `Accuracy Bonus (${accuracyBonus.minimumAccuracy}%+)`, amount: accuracyBonus.bonus })
+  if (result.isNewHigh) breakdown.push({ label: "New Personal Best!", amount: rewards.personalBest })
+  return { total: breakdown.reduce((sum, item) => sum + item.amount, 0), breakdown }
 }
 
 /** Compute bounty progress delta for a completed game */

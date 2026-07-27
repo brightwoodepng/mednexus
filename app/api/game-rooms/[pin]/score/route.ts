@@ -17,7 +17,6 @@ import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized, identityMismatch } from "@/lib/request-auth"
 import {
-  calculatePayout,
   getTodaysBounties,
   computeBountyProgress,
   TODAY_DATE,
@@ -25,14 +24,11 @@ import {
 } from "@/lib/economy"
 import {
   applyNPCredits,
-  completionBonusAvailable,
+  dailyRewardRemaining,
   recordDailyActivity,
   type NPCredit,
 } from "@/lib/np-ledger"
 import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
-
-const FIRST_WIN_BONUS_NP = ECONOMY_CONFIG.gameRewards.multiplayer.firstDailyWin
-const STUDY_GROUP_BONUS_PER_PLAYER = ECONOMY_CONFIG.gameRewards.multiplayer.studyGroupPerPlayer
 
 interface AnswerEntry {
   /** Index into the room's question_pool */
@@ -155,9 +151,9 @@ export async function POST(
       // repeat the same correct question index to inflate correct/total/streak.
       const seen = new Set<number>()
       const deduped: AnswerEntry[] = []
-      const authoritativeAnswers = room.answer_history?.[playerId]?.length
-        ? room.answer_history[playerId]
-        : user_answers_array
+      // Rewards require server-recorded answer history; the request body is
+      // transport compatibility only and is never a payout source of truth.
+      const authoritativeAnswers = room.answer_history?.[playerId] ?? []
       for (const entry of authoritativeAnswers) {
         if (typeof entry.qi !== "number" || typeof entry.answer !== "string") continue
         if (seen.has(entry.qi)) continue
@@ -202,79 +198,55 @@ export async function POST(
         accuracy,
       }
 
-      // ── Payout calculation ─────────────────────────────────────────────────
-      // Clash and Cohort use rank-based fixed payouts; all other modes use the
-      // generic accuracy/streak/participation calculator.
-      const isClashOrCohort = room.mode === "clash" || room.mode === "cohort"
-      const isCohortHost = room.mode === "cohort" && room.host_id === playerId
-
-      let earned: number
-      let breakdown: { label: string; amount: number }[]
-
-      if (isClashOrCohort) {
-        // Rank players: non-spectators only; cohort host is presenter — excluded
-        const rankedPlayers = [...room.players]
-          .filter(p => !p.isSpectator && !(room.mode === "cohort" && p.id === room.host_id))
-          .sort((a, b) => b.score - a.score)
-        const playerRankIndex = rankedPlayers.findIndex(p => p.id === playerId)
-        const playerRank  = playerRankIndex + 1  // 1-indexed; 0 = not in ranked list
-        const totalRanked = rankedPlayers.length
-
-        let rankNP    = 0
-        let rankLabel = "🎯 Participation Bonus"
-
-        if (isCohortHost) {
-          rankNP    = 0
-          rankLabel = "📋 Host (Presenter)"
-        } else if (room.mode === "clash") {
-          if      (playerRank === 1)                       { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.clashPlaces[0]; rankLabel = "🥇 1st Place"           }
-          else if (playerRank === 2 && totalRanked >= 2)   { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.clashPlaces[1]; rankLabel = "🥈 2nd Place"           }
-          else if (playerRank === 3 && totalRanked >= 3)   { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.clashPlaces[2];  rankLabel = "🥉 3rd Place"           }
-          else                                             { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.participation;  rankLabel = "🎯 Participation Bonus"  }
-        } else {
-          // Cohort — Top 10 tier payouts
-          if      (playerRank === 1)              { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.cohortPlaces[0]; rankLabel = "🥇 1st Place"                    }
-          else if (playerRank === 2)              { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.cohortPlaces[1]; rankLabel = "🥈 2nd Place"                    }
-          else if (playerRank === 3)              { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.cohortPlaces[2]; rankLabel = "🥉 3rd Place"                    }
-          else if (playerRank <= 10)              { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.cohortTopTen;  rankLabel = `🏅 Top 10 (Rank #${playerRank})` }
-          else                                    { rankNP = ECONOMY_CONFIG.gameRewards.multiplayer.participation;  rankLabel = "🎯 Participation Bonus"          }
-        }
-
-        earned    = rankNP
-        breakdown = rankNP > 0 ? [{ label: rankLabel, amount: rankNP }] : []
-      } else {
-        const payout = calculatePayout(result)
-        earned   = payout.total
-        breakdown = payout.breakdown
+      const eligiblePlayers = room.players
+        .filter(p => p.id !== room.host_id && !p.isSpectator && p.status !== "disconnected")
+      const memberSet = eligiblePlayers.map(p => p.id).sort().join(":")
+      const playerRank = [...eligiblePlayers].sort((a, b) => b.score - a.score)
+        .findIndex(p => p.id === playerId) + 1
+      const hasMeaningfulServerHistory = eligiblePlayers.every((player) => {
+        const validQuestions = new Set((room.answer_history?.[player.id] ?? [])
+          .map(entry => entry.qi)
+          .filter(qi => Number.isInteger(qi) && room.question_pool[qi]))
+        return validQuestions.size >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers
+      })
+      const meaningfulMatch = room.question_pool.length >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers
+        && eligiblePlayers.length >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumPlayers
+        && playerRank > 0
+        && total >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers
+        && hasMeaningfulServerHistory
+      if (!meaningfulMatch) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: "Match does not meet the reward eligibility policy" }, { status: 422 })
+      }
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`multiplayer-members:${memberSet}:${TODAY_DATE()}`])
+      const priorMemberMatch = await client.query(
+        `SELECT 1 FROM mednexus_np_transactions
+         WHERE source = ANY(ARRAY['game_completion', 'multiplayer_reward']) AND metadata->>'memberSet' = $1
+           AND source_id NOT LIKE $2
+           AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'
+         LIMIT 1`,
+        [memberSet, `${pin}:%`, TODAY_DATE()],
+      )
+      if (priorMemberMatch.rowCount) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: "This member set has already earned from a match today" }, { status: 422 })
       }
 
-      const canAwardCompletion = total > 0
-        && await completionBonusAvailable(client, playerId)
-      const completionNP = canAwardCompletion ? Math.min(ECONOMY_CONFIG.gameRewards.multiplayer.participation, earned) : 0
-      const achievementNP = total > 0 ? Math.max(0, earned - ECONOMY_CONFIG.gameRewards.multiplayer.participation) : 0
-      const achievementBreakdown = total > 0
-        ? breakdown
-            .filter(item => item.label !== "Participation")
-            .map(item => ({ ...item, amount: Math.max(0, item.amount - (item.amount === earned ? 25 : 0)) }))
-            .filter(item => item.amount > 0)
+      const completionNP = ECONOMY_CONFIG.gameRewards.multiplayer.participation
+      const achievementNP = ECONOMY_CONFIG.gameRewards.multiplayer.placeBonuses[playerRank - 1] ?? 0
+      const achievementBreakdown = achievementNP > 0
+        ? [{ label: `${playerRank === 1 ? "🥇" : playerRank === 2 ? "🥈" : "🥉"} Place Bonus`, amount: achievementNP }]
         : []
       const extraBreakdown: { label: string; amount: number }[] = []
 
-      const isHost = room.host_id === playerId
-      const activePlayers = room.players.filter(player =>
-        player.status === undefined || player.status !== "disconnected",
-      )
-      const rankedPlayers = activePlayers
-        .filter(player => !player.isSpectator && !(room.mode === "cohort" && player.id === room.host_id))
-        .sort((a, b) => b.score - a.score)
-      const playerRank1 = rankedPlayers[0]?.id === playerId
+      const playerRank1 = playerRank === 1
       const credits: NPCredit[] = []
       if (completionNP > 0) {
         credits.push({
           source: "game_completion",
           sourceId: `${pin}:${playerId}`,
           amount: completionNP,
-          metadata: { mode: room.mode, multiplayer: true },
+          metadata: { mode: room.mode, multiplayer: true, memberSet, economyDate: TODAY_DATE() },
         })
       }
       if (achievementNP > 0) {
@@ -282,48 +254,32 @@ export async function POST(
           source: "multiplayer_reward",
           sourceId: `${pin}:${playerId}`,
           amount: achievementNP,
-          metadata: { mode: room.mode, score: inGameScore, accuracy, bestStreak },
-        })
-      }
-
-      if (isHost && activePlayers.length > 1) {
-        const dividendBonus = (activePlayers.length - 1) * STUDY_GROUP_BONUS_PER_PLAYER
-        credits.push({
-          source: "study_group_dividend",
-          sourceId: `${pin}:${playerId}`,
-          amount: dividendBonus,
-          metadata: { playerCount: activePlayers.length },
-        })
-        extraBreakdown.push({
-          label: `📚 Study Group Dividend (${activePlayers.length - 1} players)`,
-          amount: dividendBonus,
+          metadata: { mode: room.mode, score: inGameScore, accuracy, bestStreak, memberSet, economyDate: TODAY_DATE() },
         })
       }
 
       if (playerRank1) {
-        const walletState = await client.query(
-          "SELECT last_multiplayer_win_at FROM mednexus_wallet WHERE uid = $1 FOR UPDATE",
-          [playerId],
+        const firstWin = await client.query(
+          `SELECT 1 FROM mednexus_np_transactions WHERE user_id = $1
+             AND source = 'first_multiplayer_win' AND source_id = $2 LIMIT 1`,
+          [playerId, `${TODAY_DATE()}:${playerId}`],
         )
-        const lastWin: Date | null = walletState.rows[0]?.last_multiplayer_win_at ?? null
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-        if (!lastWin || lastWin < twentyFourHoursAgo) {
+        if (!firstWin.rowCount) {
           credits.push({
             source: "first_multiplayer_win",
             sourceId: `${TODAY_DATE()}:${playerId}`,
-            amount: FIRST_WIN_BONUS_NP,
+            amount: ECONOMY_CONFIG.gameRewards.multiplayer.firstDailyWin,
             metadata: { roomPin: pin, mode: room.mode },
           })
-          await client.query(
-            `INSERT INTO mednexus_wallet (uid, last_multiplayer_win_at)
-             VALUES ($1, NOW())
-             ON CONFLICT (uid) DO UPDATE SET last_multiplayer_win_at = NOW()`,
-            [playerId],
-          )
-          extraBreakdown.push({ label: "🌅 First Win of the Day!", amount: FIRST_WIN_BONUS_NP })
+          extraBreakdown.push({ label: "🌅 First Win of the Day!", amount: ECONOMY_CONFIG.gameRewards.multiplayer.firstDailyWin })
         }
       }
 
+      let remaining = await dailyRewardRemaining(client, playerId, "multiplayer")
+      for (const entry of credits) {
+        entry.amount = Math.min(entry.amount, remaining)
+        remaining -= entry.amount
+      }
       const credit = await applyNPCredits(client, playerId, credits)
       await recordDailyActivity(client, playerId, total, correct)
 

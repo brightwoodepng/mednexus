@@ -319,6 +319,7 @@ export async function calculateSessionNP(
     }
   } else {
     // ── Trial: per-question NP with streak bonus ──────────────────────────
+    const isSoloGame = (ECONOMY_CONFIG.modeIds.soloGames as readonly string[]).includes(mode)
     let repeatCappedCount = 0
     let fatiguedCount     = 0
 
@@ -329,11 +330,14 @@ export async function calculateSessionNP(
       }
 
       const streak      = q.currentStreak ?? 0
-      const streakBonus = [...ECONOMY_CONFIG.questionRewards.trialTutor.streakThresholds]
+      const streakBonus = isSoloGame ? 0 : [...ECONOMY_CONFIG.questionRewards.trialTutor.streakThresholds]
         .reverse().find((threshold) => streak >= threshold.minimum)?.bonus ?? 0
       const correctCount = correctCountMap.get(q.questionId) ?? 0
       const multiplier = REPEAT_MULTIPLIERS[correctCount] ?? 0
-      const questionNP = Math.floor(ECONOMY_CONFIG.questionRewards.trialTutor.correct * multiplier)
+      const correctReward = isSoloGame
+        ? ECONOMY_CONFIG.gameRewards.solo.correctAnswer
+        : ECONOMY_CONFIG.questionRewards.trialTutor.correct
+      const questionNP = Math.floor(correctReward * multiplier)
       const streakNP = Math.floor(streakBonus * multiplier)
       const baseNP = questionNP + streakNP
 
@@ -365,23 +369,25 @@ export async function calculateSessionNP(
     }
 
     const answeredCount = sessionData.length
-    rewardComponents.completion = ECONOMY_CONFIG.questionRewards.trialTutor.completionThresholds
-      .filter(({ minimumAnswered }) => answeredCount >= minimumAnswered)
-      .reduce((sum, threshold) => sum + threshold.bonus, 0)
+    if (!isSoloGame) {
+      rewardComponents.completion = ECONOMY_CONFIG.questionRewards.trialTutor.completionThresholds
+        .filter(({ minimumAnswered }) => answeredCount >= minimumAnswered)
+        .reduce((sum, threshold) => sum + threshold.bonus, 0)
 
-    // The three sources share one economy-date cap. The surrounding payout
-    // transaction and locked session make this calculation atomic per session.
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`trial-tutor-cap:${userId}:${today}`])
-    const capRows = await client.query<{ total: string }>(
-      `SELECT COALESCE(SUM(amount), 0)::text AS total FROM mednexus_np_transactions
-        WHERE user_id = $1 AND source = ANY($2::text[])
-          AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
-      [userId, ["trial_tutor_question", "trial_tutor_streak", "trial_tutor_completion"], today],
-    )
-    let remaining = Math.max(0, ECONOMY_CONFIG.questionRewards.trialTutor.dailyCap - Number(capRows.rows[0]?.total ?? 0))
-    for (const category of ["questions", "streaks", "completion"] as const) {
-      rewardComponents[category] = Math.min(rewardComponents[category], remaining)
-      remaining -= rewardComponents[category]
+      // Trial/Tutor categories share their own economy-date cap. Solo rewards
+      // are capped with the other solo components by the payout route.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`trial-tutor-cap:${userId}:${today}`])
+      const capRows = await client.query<{ total: string }>(
+        `SELECT COALESCE(SUM(amount), 0)::text AS total FROM mednexus_np_transactions
+          WHERE user_id = $1 AND source = ANY($2::text[])
+            AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
+        [userId, ["trial_tutor_question", "trial_tutor_streak", "trial_tutor_completion"], today],
+      )
+      let remaining = Math.max(0, ECONOMY_CONFIG.questionRewards.trialTutor.dailyCap - Number(capRows.rows[0]?.total ?? 0))
+      for (const category of ["questions", "streaks", "completion"] as const) {
+        rewardComponents[category] = Math.min(rewardComponents[category], remaining)
+        remaining -= rewardComponents[category]
+      }
     }
     totalNP = rewardComponents.questions + rewardComponents.streaks + rewardComponents.completion
     if (rewardComponents.questions) breakdown.push({ label: `📚 Correct Answers (${answeredCount} answered)`, amount: rewardComponents.questions })
