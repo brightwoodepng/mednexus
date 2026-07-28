@@ -111,7 +111,7 @@ const MULTI_MODES: MultiModeCard[] = [
   },
   {
     id: "cohort", name: "Cohort Review", badge: "Kahoot Style",
-    badgeColor: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+    badgeColor: "bg-teal-100 text-white dark:bg-teal-900/30",
     icon: "🎓", gradient: "from-teal-500 to-cyan-500", shadow: "shadow-teal-500/20",
     desc: "Lecture hall mode — unlimited players, host controls the pace.",
     rules: ["No NP entry fee", "Unlimited players · Players buzz in via phone", ...getMultiplayerRewardRules()],
