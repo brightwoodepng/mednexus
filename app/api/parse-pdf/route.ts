@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateWithFallback } from "@/lib/gemini"
-import { boundedJson, guardImportRequest, IMPORT_LIMITS } from "@/lib/import-guard"
+import { boundedJson, guardImportRequest, IMPORT_LIMITS, validateImportText } from "@/lib/import-guard"
 
 export const maxDuration = 45
 
@@ -374,7 +374,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "text is required" }, { status: 400 })
     }
     const text: string = body.text
-    if (text.length > IMPORT_LIMITS.textChars) return NextResponse.json({ error: "Text exceeds the allowed import size.", code: "PAYLOAD_TOO_LARGE" }, { status: 413 })
+    const textLimitError = validateImportText(text)
+    if (textLimitError) return NextResponse.json({ error: textLimitError, code: "PAYLOAD_TOO_LARGE" }, { status: 413 })
     // Accept fallbackModule (new) or moduleName (legacy) — null/empty → "Uncategorized"
     const fallbackModule: string =
       (body.fallbackModule ?? body.moduleName ?? "").trim() || "Uncategorized"

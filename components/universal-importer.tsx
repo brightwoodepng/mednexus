@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import type { Question, QuestionOption } from "@/lib/types"
+import type { ImportExtractionSummary } from "@/lib/import-types"
 import { findImportQuestionDuplicates } from "@/lib/game-question-pool"
 import { importAuthHeaders, importError } from "@/lib/import-client"
 import {
@@ -34,12 +35,20 @@ function Spinner({ size = 20 }: { size?: number }) {
 }
 
 // ── Question-block splitter + 25-question batcher ────────────────────────────
+const QUESTION_BOUNDARY = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
+
+function countNumberedQuestions(text: string): number {
+  return text
+    .split(/\r?\n/)
+    .filter((line) => QUESTION_BOUNDARY.test(line.trimStart()))
+    .length
+}
+
 // Splits a document into individual question blocks (one per numbered question),
 // then groups them into batches of `batchSize`. Any preamble text (MODULE:,
 // DISCIPLINE: tags before the first question) is prepended to the first batch.
 // Returns [] if no numbered questions are detected (caller falls back to word-chunking).
 function splitIntoQuestionBatches(text: string, batchSize = 25): string[] {
-  const Q_BOUNDARY = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
   const lines = text.split(/\r?\n/)
   const questionBlocks: string[] = []
   let preamble = ""
@@ -47,7 +56,7 @@ function splitIntoQuestionBatches(text: string, batchSize = 25): string[] {
   let inQuestion = false
 
   for (const line of lines) {
-    if (Q_BOUNDARY.test(line.trimStart())) {
+    if (QUESTION_BOUNDARY.test(line.trimStart())) {
       if (current.trim()) questionBlocks.push(current)
       // Prepend preamble (MODULE/DISCIPLINE tags before Q1) into the first block
       current = (!inQuestion && preamble ? preamble : "") + line + "\n"
@@ -255,7 +264,6 @@ function PreviewCard({ q, index, onRemove }: { q: Question; index: number; onRem
           {/* Image */}
           {q.mediaBase64 && (
             <div className="overflow-hidden rounded-lg border border-border">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={q.mediaBase64}
                 alt="Embedded diagram"
@@ -283,6 +291,56 @@ function PreviewCard({ q, index, onRemove }: { q: Question; index: number; onRem
   )
 }
 
+interface ImportReviewSummary extends ImportExtractionSummary {
+  detectedQuestions: number | null
+  processingBatches: number
+}
+
+function ImportSummaryPanel({ summary }: { summary: ImportReviewSummary }) {
+  const metrics = [
+    {
+      label: "Questions detected",
+      value: summary.detectedQuestions === null ? "Not numbered" : summary.detectedQuestions.toLocaleString("en-US"),
+      icon: <ListChecksIcon size={13} />,
+    },
+    {
+      label: "Images detected",
+      value: summary.imageCount.toLocaleString("en-US"),
+      icon: <ImageIcon size={13} />,
+    },
+    {
+      label: "Processing batches",
+      value: summary.processingBatches.toLocaleString("en-US"),
+      icon: <ClipboardListIcon size={13} />,
+    },
+    {
+      label: "Import capacity",
+      value: summary.withinLimits ? "Within limits" : "Exceeds limits",
+      icon: summary.withinLimits ? <CheckIcon size={13} /> : <AlertTriangleIcon size={13} />,
+    },
+  ]
+
+  return (
+    <div className="rounded-xl border border-emerald-300/70 bg-emerald-50/70 p-3 dark:border-emerald-800/50 dark:bg-emerald-950/20">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="rounded-lg border border-emerald-200/70 bg-background/70 px-2.5 py-2 dark:border-emerald-900/50">
+            <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+              {metric.icon}
+              <span className="text-[10px] font-semibold uppercase tracking-wide">{metric.label}</span>
+            </div>
+            <p className="mt-1 text-sm font-bold text-foreground">{metric.value}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[11px] text-emerald-800/80 dark:text-emerald-300/80">
+        {summary.textChars.toLocaleString("en-US")} of {summary.limits.textChars.toLocaleString("en-US")} characters ·{" "}
+        {summary.imageCount.toLocaleString("en-US")} of {summary.limits.imageCount.toLocaleString("en-US")} images
+      </p>
+    </div>
+  )
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface UniversalImporterProps {
   onImport: (questions: Question[]) => void
@@ -302,6 +360,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   const [pendingImport, setPendingImport] = useState<Question[]>([])
   const [parseSource, setParseSource] = useState<"ai" | "regex" | "json" | null>(null)
   const [partialImportWarning, setPartialImportWarning] = useState("")
+  const [importSummary, setImportSummary] = useState<ImportReviewSummary | null>(null)
 
   // ── Categorization gate ──────────────────────────────────────────────────────
   const [rawMaster, setRawMaster] = useState<Question[]>([])
@@ -345,6 +404,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
 
   // ── JSON file handler ───────────────────────────────────────────────────────
   function processJsonFile(file: File) {
+    setImportSummary(null)
     const reader = new FileReader()
     reader.onload = (ev) => {
       try {
@@ -369,6 +429,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   // ── DOCX handler — sequential image-aware 25-question batch processor ────────
   async function processDocxFile(file: File) {
     setError("")
+    setImportSummary(null)
     setIsProcessing(true)
     setProgressMessage("Extracting document text and images…")
 
@@ -379,9 +440,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       if (!extractRes.ok) {
         throw new Error(await importError(extractRes))
       }
-      const { text, images = [] } = await extractRes.json() as {
+      const { text, images = [], summary } = await extractRes.json() as {
         text: string
         images: { id: string; dataUri: string }[]
+        summary?: ImportExtractionSummary
       }
       if (!text?.trim()) throw new Error("The document appears to be empty or could not be read.")
 
@@ -396,6 +458,14 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
 
       if (finalBatches.length === 0) throw new Error("No content found in the document.")
       if (finalBatches.length > 80) throw new Error("This import has too many chunks. Split the document into smaller imports.")
+
+      if (summary) {
+        setImportSummary({
+          ...summary,
+          detectedQuestions: usingQuestionBatches ? countNumberedQuestions(text) : null,
+          processingBatches: finalBatches.length,
+        })
+      }
 
       const batchLabel = usingQuestionBatches
         ? `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""} of up to 25 questions`
@@ -552,6 +622,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   // through the same 25-question batch pipeline with image assignment.
   async function processPdfFile(file: File) {
     setError("")
+    setImportSummary(null)
     setIsProcessing(true)
     setProgressMessage("Extracting PDF text and images…")
 
@@ -562,9 +633,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       if (!extractRes.ok) {
         throw new Error(await importError(extractRes))
       }
-      const { text, images = [] } = await extractRes.json() as {
+      const { text, images = [], summary } = await extractRes.json() as {
         text: string
         images: { id: string; dataUri: string }[]
+        summary?: ImportExtractionSummary
       }
       if (!text?.trim()) throw new Error("The document appears to be empty or could not be read.")
 
@@ -579,6 +651,14 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
 
       if (finalBatches.length === 0) throw new Error("No content found in the document.")
       if (finalBatches.length > 80) throw new Error("This import has too many chunks. Split the document into smaller imports.")
+
+      if (summary) {
+        setImportSummary({
+          ...summary,
+          detectedQuestions: usingQuestionBatches ? countNumberedQuestions(text) : null,
+          processingBatches: finalBatches.length,
+        })
+      }
 
       const batchLabel = usingQuestionBatches
         ? `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""} of up to 25 questions`
@@ -712,6 +792,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     if (!text) { setError("Paste some text first."); return }
 
     setError("")
+    setImportSummary(null)
     setIsProcessing(true)
     setProgressMessage("Parsing text with AI…")
 
@@ -1023,6 +1104,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                     rules: [
                       { good: "Embed the image directly in your Word document at the correct position within the question block (after the stem, before or between the options)" },
                       { good: "The system counts question boundaries to assign images — one image per question, first image wins" },
+                      { good: "A document can contain up to 50 embedded images, with a combined decoded-image limit of 8 MB" },
                       { bad: "Image placed between two question numbers — it will be attached to the preceding question" },
                       { note: "Do NOT type [IMAGE_1] or any placeholder manually — those are internal markers generated by the extractor. Embedding the image in Word at the right place is all that is needed." },
                     ],
@@ -1118,6 +1200,7 @@ Use these rules to pre-format raw MCQ compilations before importing.
 --------------------------------
   ✓  Embed the image directly in your Word document at the correct position within the question block (after the stem, before or between the options)
   ✓  The system counts question boundaries to assign images — one image per question, first image wins
+  ✓  Maximum 50 embedded images per document; combined decoded-image data must remain within 8 MB
   ✗  Image placed between two question numbers — it will be attached to the preceding question
   ℹ  Do NOT type [IMAGE_1] or any placeholder manually — those are internal markers generated by the extractor. Embedding the image in Word at the right place is all that is needed.
 
@@ -1267,6 +1350,8 @@ giving pH = 5.`
 
             /* ── Categorization gate ─────────────────────────────────────── */
             <div className="space-y-4 p-6">
+              {importSummary && <ImportSummaryPanel summary={importSummary} />}
+
               <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800/40 dark:bg-amber-900/20">
                 <AlertTriangleIcon size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
                 <div>
@@ -1318,6 +1403,8 @@ giving pH = 5.`
           ) : (
             /* Preview staging area */
             <div className="space-y-2 p-6">
+              {importSummary && <ImportSummaryPanel summary={importSummary} />}
+
               {partialImportWarning && (
                 <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
                   <AlertTriangleIcon size={14} className="mt-0.5 shrink-0" />
@@ -1330,7 +1417,7 @@ giving pH = 5.`
                   <p className="font-semibold">All questions removed</p>
                   <button
                     type="button"
-                    onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning("") }}
+                    onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning(""); setImportSummary(null) }}
                     className="text-sm text-primary hover:underline"
                   >
                     Go back to import
@@ -1356,7 +1443,7 @@ giving pH = 5.`
             <>
               <button
                 type="button"
-                onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning("") }}
+                onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning(""); setImportSummary(null) }}
                 className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
               >
                 <RefreshCwIcon size={13} /> Try another file
@@ -1375,7 +1462,7 @@ giving pH = 5.`
             <>
               <button
                 type="button"
-                onClick={() => { setView("input"); setRawMaster([]); setError("") }}
+                onClick={() => { setView("input"); setRawMaster([]); setError(""); setImportSummary(null) }}
                 className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
               >
                 <RefreshCwIcon size={13} /> Start Over
