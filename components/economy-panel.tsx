@@ -10,7 +10,7 @@ export function WalletBadge({ onOpenStore }: { onOpenStore: () => void }) {
   return (
     <button
       type="button" onClick={onOpenStore}
-      className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-3 py-1.5 shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+      className="flex h-8 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-3 shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
     >
       <span className="text-sm">🪙</span>
       <span className="text-sm font-extrabold tabular-nums text-white">{balance.toLocaleString()}</span>
