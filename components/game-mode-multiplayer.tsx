@@ -10,7 +10,7 @@ import { useEconomy, type PayoutResponse } from "@/contexts/economy-context"
 import { PayoutResult } from "@/components/economy-panel"
 import { TITLE_LABELS, STORE_ITEMS, getCosmeticAccessibleLabel } from "@/lib/economy"
 import { getMultiplayerRewardRules } from "@/lib/multiplayer-reward-presentation"
-import { getCosmeticPresentation } from "@/components/cosmetics"
+import { CosmeticHighlight, getCosmeticPresentation } from "@/components/cosmetics"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MultiMode = "clash" | "cohort" | "wager" | "djmulti"
@@ -201,11 +201,10 @@ function PlayerAvatarBubble({
 }
 
 function PlayerRow({ player, rank, showScore }: { player: RoomPlayer; rank?: number; showScore?: boolean }) {
-  const rowClass   = player.equippedHighlight ? (getCosmeticPresentation(player.equippedHighlight).className ?? "") : ""
   const titleLabel = player.equippedTitle     ? (TITLE_LABELS[player.equippedTitle]              ?? null) : null
   const highlightLabel = getCosmeticAccessibleLabel(player.equippedHighlight)
   return (
-    <div role={highlightLabel ? "group" : undefined} aria-label={highlightLabel ? `${player.name}, ${highlightLabel} highlight` : undefined} className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-all ${rowClass || "border-border bg-card"}`}>
+    <CosmeticHighlight cosmeticId={player.equippedHighlight} size="lobby" playerScore={player.score} playerRank={rank} wrapperProps={{ role: highlightLabel ? "group" : undefined, "aria-label": highlightLabel ? `${player.name}, ${highlightLabel} highlight` : undefined }} className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 transition-all">
       {rank !== undefined && (
         <PlayerAvatarBubble
           player={player}
@@ -227,7 +226,7 @@ function PlayerRow({ player, rank, showScore }: { player: RoomPlayer; rank?: num
       )}
       {showScore && <span className="tabular-nums text-sm font-bold text-primary">{player.score.toLocaleString()}</span>}
       {player.isHost && !rank && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">Host</span>}
-    </div>
+    </CosmeticHighlight>
   )
 }
 
@@ -307,7 +306,6 @@ function Leaderboard({ players, highlight, knockoutWinnerId }: {
         const isMe       = p.id === highlight
         const isBankrupt = !!p.isSpectator && p.score === 0
         const isWinner   = knockoutWinnerId && p.id === knockoutWinnerId
-        const rowClass   = p.equippedHighlight ? (getCosmeticPresentation(p.equippedHighlight).className  ?? "") : ""
         const titleLabel = p.equippedTitle     ? (TITLE_LABELS[p.equippedTitle]               ?? null) : null
         // Priority: knockout winner > "You" > bankrupt > cosmetic
         const rowStyle = isWinner
@@ -316,9 +314,9 @@ function Leaderboard({ players, highlight, knockoutWinnerId }: {
           ? "border-primary bg-primary/5"
           : isBankrupt
           ? "border-rose-200 dark:border-rose-800/30 bg-rose-50/50 dark:bg-rose-950/10 opacity-70"
-          : (rowClass || "border-border bg-card")
+          : "border-border bg-card"
         return (
-          <div key={p.id} className={`rounded-2xl border p-3 transition-all ${rowStyle}`}>
+          <CosmeticHighlight key={p.id} cosmeticId={isWinner || isMe || isBankrupt ? null : p.equippedHighlight} size="leaderboard" playerScore={p.score} playerRank={i + 1} className={`rounded-2xl border p-3 transition-all ${rowStyle}`}>
             <div className="mb-1.5 flex items-center gap-2">
               <PlayerAvatarBubble
                 player={p}
@@ -348,7 +346,7 @@ function Leaderboard({ players, highlight, knockoutWinnerId }: {
               <div className={`h-full rounded-full transition-all duration-700 ${isBankrupt ? "bg-rose-400" : i === 0 ? "bg-amber-400" : "bg-primary"}`}
                 style={{ width: `${pct}%` }} />
             </div>
-          </div>
+          </CosmeticHighlight>
         )
       })}
     </div>

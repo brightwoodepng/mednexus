@@ -1,0 +1,57 @@
+.clinical-highlight {
+  --highlight-edge: #087f5b;
+  --highlight-edge-soft: color-mix(in srgb, var(--highlight-edge) 18%, transparent);
+  --highlight-surface: color-mix(in srgb, var(--highlight-edge) 7%, var(--card, #fff));
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+  border-color: color-mix(in srgb, var(--highlight-edge) 48%, var(--border, #cbd5e1)) !important;
+  background: var(--highlight-surface) !important;
+  box-shadow: inset 4px 0 var(--highlight-edge), inset 0 1px color-mix(in srgb, var(--highlight-edge) 28%, transparent);
+}
+.clinical-highlight__surface,
+.clinical-highlight__edge,
+.clinical-highlight__signal { inset: 0; pointer-events: none; position: absolute; z-index: 0; }
+.clinical-highlight__surface { background: linear-gradient(100deg, var(--highlight-edge-soft), transparent 36%, transparent 82%, var(--highlight-edge-soft)); }
+.clinical-highlight__edge { border: 1px solid color-mix(in srgb, var(--highlight-edge) 36%, transparent); border-radius: inherit; }
+.clinical-highlight__signal { left: 4px; right: auto; width: 7px; background: linear-gradient(180deg, transparent, var(--highlight-edge), transparent); opacity: .72; }
+.clinical-highlight__content { display: contents; position: relative; z-index: 2; }
+.clinical-highlight > :not(.clinical-highlight__surface, .clinical-highlight__edge, .clinical-highlight__signal, .clinical-highlight__content, .clinical-highlight__compact-mark) { position: relative; z-index: 2; }
+.clinical-highlight__compact-mark { position: absolute; z-index: 1; inset: 5px 5px auto auto; width: 8px; height: 8px; border: 2px solid var(--highlight-edge); border-radius: 999px; }
+
+.clinical-highlight--monitor { --highlight-edge: #00a878; }
+.clinical-highlight--radiology { --highlight-edge: #2563eb; --highlight-surface: color-mix(in srgb, #dbeafe 16%, var(--card, #fff)); }
+.clinical-highlight--triage { --highlight-edge: #dc2626; }
+.clinical-highlight--prescription { --highlight-edge: #0e7490; }
+.clinical-highlight--anatomy { --highlight-edge: #a855f7; }
+.clinical-highlight--blood { --highlight-edge: #e11d48; }
+.clinical-highlight--neural { --highlight-edge: #7c3aed; }
+.clinical-highlight--sterile { --highlight-edge: #0891b2; }
+
+/* Full interaction is opt-in. The narrow edge moves; the text surface does not. */
+.clinical-highlight[data-motion-state="focused"] .clinical-highlight__signal,
+[data-preview-context] .clinical-highlight[data-motion-state="ambient"] .clinical-highlight__signal,
+[data-preview-context] .clinical-highlight[data-motion-state="celebrating"] .clinical-highlight__signal {
+  animation: clinical-highlight-edge-scan 1.8s ease-in-out infinite;
+}
+.clinical-highlight--radiology[data-motion-state="focused"] .clinical-highlight__edge,
+[data-preview-context] .clinical-highlight--radiology[data-motion-state="ambient"] .clinical-highlight__edge { animation: clinical-highlight-exposure 2.4s ease-in-out infinite; }
+
+@keyframes clinical-highlight-edge-scan { 0%, 100% { transform: translateY(-72%); } 50% { transform: translateY(72%); } }
+@keyframes clinical-highlight-exposure { 50% { border-color: color-mix(in srgb, var(--highlight-edge) 80%, white); } }
+
+[data-cosmetic-size="compact"].clinical-highlight { box-shadow: inset 3px 0 var(--highlight-edge); }
+[data-cosmetic-size="compact"].clinical-highlight .clinical-highlight__signal { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  .clinical-highlight { --highlight-surface: color-mix(in srgb, var(--highlight-edge) 10%, var(--card, #111827)); }
+}
+[data-theme='classic-dark'] .clinical-highlight, [data-theme='midnight-purple'] .clinical-highlight,
+[data-theme='forest-night'] .clinical-highlight, [data-theme='nebula'] .clinical-highlight,
+[data-theme='liquid-glass-dark'] .clinical-highlight { --highlight-surface: color-mix(in srgb, var(--highlight-edge) 10%, var(--card, #111827)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .clinical-highlight *, .clinical-highlight::before, .clinical-highlight::after { animation: none !important; transition: none !important; }
+  .clinical-highlight__signal { transform: none !important; opacity: .55; }
+}
+.clinical-highlight[data-motion-state="reduced"] .clinical-highlight__signal { animation: none !important; transform: none; opacity: .55; }
