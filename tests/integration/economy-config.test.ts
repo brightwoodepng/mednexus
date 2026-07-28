@@ -109,8 +109,8 @@ describe("versioned economy configuration", () => {
       effectAmount: 10,
       effectUnit: "seconds",
     })
-    expect(consult?.stackLimit).toBe(ECONOMY_CONFIG.store.inventoryQuantityLimit)
-    expect(labs?.stackLimit).toBe(ECONOMY_CONFIG.store.inventoryQuantityLimit)
+    expect(consult?.stackLimit).toBe(10)
+    expect(labs?.stackLimit).toBe(10)
   })
 
   it("adds the economy version to all current ledger insertion paths", () => {

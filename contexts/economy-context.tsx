@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react"
-import type { BountyDef, StoreItem } from "@/lib/economy"
+import { STORE_ITEMS, type BountyDef, type StoreItem } from "@/lib/economy"
 import type { DailyLoginResult } from "@/lib/anti-farming"
 import { useApp } from "@/contexts/app-context"
 
@@ -49,7 +49,7 @@ export interface EconomyContextValue {
   clearDailyLoginReward: () => void
   refresh: () => Promise<void>
   claimBounty: (bountyId: string) => Promise<{ ok: boolean; earned?: number; error?: string }>
-  purchase: (itemId: string) => Promise<{ ok: boolean; error?: string }>
+  purchase: (itemId: string, selection?: { quantity?: number; bundleId?: string }) => Promise<{ ok: boolean; error?: string }>
   useItem: (itemId: string, usage: { sessionId: string; questionId: string }) => Promise<boolean>
   isItemUsePending: (itemId: string, questionId: string) => boolean
   isItemUsed: (itemId: string, questionId: string) => boolean
@@ -188,21 +188,24 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.uid, refresh])
 
-  const purchase = useCallback(async (itemId: string) => {
+  const purchase = useCallback(async (itemId: string, selection: { quantity?: number; bundleId?: string } = {}) => {
     const uid = user?.uid
     if (!uid) return { ok: false, error: "Not logged in" }
     try {
       const res = await fetch("/api/economy/store", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...economyHeaders() },
-        body: JSON.stringify({ uid, itemId }),
+        body: JSON.stringify({ uid, itemId, ...selection }),
       })
       const data = await res.json()
       if (!res.ok) return { ok: false, error: data.error }
       setBalance(data.balance ?? data.newBalance)
       setLifetimeEarned(data.lifetimeEarned ?? lifetimeEarned)
       setRankPoints(data.rankPoints ?? rankPoints)
-      setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] ?? 0) + 1 }))
+      const purchasedQuantity = selection.quantity
+        ?? STORE_ITEMS.find(item => item.id === itemId)?.purchaseOptions?.find(option => option.id === selection.bundleId)?.quantity
+        ?? 1
+      setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] ?? 0) + purchasedQuantity }))
       // Reconcile every economy surface with the committed transaction. This
       // also corrects optimistic inventory state if another tab purchased or
       // consumed the same item concurrently.
