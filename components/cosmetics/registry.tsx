@@ -6,9 +6,16 @@ import {
   SurgicalSteelFrame, TheResuscitatorFrame, VitalRingFrame,
 } from "./frames"
 import { AnatomyPlate, BloodFlow, MonitorSweep, NeuralField, PrescriptionLabel, RadiologyLightbox, SterileField, TriagePriority } from "./highlights"
+import { AvatarImage } from "@/components/avatar-image"
 
 function PresentationRenderer({ children, avatarImage }: CosmeticRendererProps) {
   return <>{avatarImage ?? children}</>
+}
+
+/** The registry is the only cosmetic-ID dispatch point; asset details stay in the manifest. */
+function AvatarRenderer({ cosmeticId, children }: CosmeticRendererProps) {
+  if (!cosmeticId) return <>{children}</>
+  return <AvatarImage avatarId={cosmeticId} className="h-full w-full object-cover" fallback={typeof children === "string" ? children : undefined} />
 }
 
 type RegistryEntry = CosmeticPresentationMetadata & { Renderer: ComponentType<CosmeticRendererProps> }
@@ -66,16 +73,16 @@ export const COSMETIC_RENDERER_REGISTRY: Readonly<Record<string, RegistryEntry>>
   highlight_blood_flow: renderedEntry({ kind: "highlight", label: "Blood Flow", className: "clinical-highlight clinical-highlight--blood" }, BloodFlow),
   highlight_neural_field: renderedEntry({ kind: "highlight", label: "Neural Field", className: "clinical-highlight clinical-highlight--neural" }, NeuralField),
   highlight_sterile_field: renderedEntry({ kind: "highlight", label: "Sterile Field", className: "clinical-highlight clinical-highlight--sterile" }, SterileField),
-  avatar_scrub_tech: entry({ kind: "avatar", label: "Scrub Tech avatar" }),
-  avatar_coffee_drip: entry({ kind: "avatar", label: "Coffee Drip avatar" }),
-  avatar_lab_rat: entry({ kind: "avatar", label: "Lab Rat avatar" }),
-  avatar_night_shift: entry({ kind: "avatar", label: "Night Shift avatar" }),
-  avatar_gold_steth: entry({ kind: "avatar", label: "Golden Stethoscope avatar" }),
-  avatar_plague_doctor: entry({ kind: "avatar", label: "Plague Doctor avatar" }),
-  avatar_cyber_surgeon: entry({ kind: "avatar", label: "Cyber Surgeon avatar" }),
-  avatar_ascended: entry({ kind: "avatar", label: "Ascended avatar" }),
-  avatar_marble: entry({ kind: "avatar", label: "Marble avatar" }),
-  avatar_vital_sign: entry({ kind: "avatar", label: "Vital Sign avatar" }),
+  avatar_scrub_tech: renderedEntry({ kind: "avatar", label: "Scrub Tech avatar" }, AvatarRenderer),
+  avatar_coffee_drip: renderedEntry({ kind: "avatar", label: "Coffee Drip avatar" }, AvatarRenderer),
+  avatar_lab_rat: renderedEntry({ kind: "avatar", label: "Lab Rat avatar" }, AvatarRenderer),
+  avatar_night_shift: renderedEntry({ kind: "avatar", label: "Night Shift avatar" }, AvatarRenderer),
+  avatar_gold_steth: renderedEntry({ kind: "avatar", label: "Golden Stethoscope avatar" }, AvatarRenderer),
+  avatar_plague_doctor: renderedEntry({ kind: "avatar", label: "Plague Doctor avatar" }, AvatarRenderer),
+  avatar_cyber_surgeon: renderedEntry({ kind: "avatar", label: "Cyber Surgeon avatar" }, AvatarRenderer),
+  avatar_ascended: renderedEntry({ kind: "avatar", label: "Ascended avatar" }, AvatarRenderer),
+  avatar_marble: renderedEntry({ kind: "avatar", label: "Marble avatar" }, AvatarRenderer),
+  avatar_vital_sign: renderedEntry({ kind: "avatar", label: "Vital Sign avatar" }, AvatarRenderer),
 }
 
 export function getCosmeticPresentation(id?: string | null, kind?: CosmeticPresentationMetadata["kind"]): RegistryEntry {

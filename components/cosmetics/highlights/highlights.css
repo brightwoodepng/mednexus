@@ -30,15 +30,20 @@
 
 /* Full interaction is opt-in. The narrow edge moves; the text surface does not. */
 .clinical-highlight[data-motion-state="focused"] .clinical-highlight__signal,
-[data-preview-context] .clinical-highlight[data-motion-state="ambient"] .clinical-highlight__signal,
-[data-preview-context] .clinical-highlight[data-motion-state="celebrating"] .clinical-highlight__signal {
+.clinical-highlight[data-motion-state="ambient"] .clinical-highlight__signal,
+.clinical-highlight[data-motion-state="celebrating"] .clinical-highlight__signal {
   animation: clinical-highlight-edge-scan 1.8s ease-in-out infinite;
 }
+.clinical-highlight[data-motion-state="ambient"] .clinical-highlight__signal { animation-duration: 4.8s; opacity: .48; }
+.clinical-highlight[data-motion-state="celebrating"] .clinical-highlight__signal { animation-duration: .72s; width: 10px; }
+.clinical-highlight[data-motion-state="focused"] .clinical-highlight__edge { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--highlight-edge) 45%, transparent); }
+.clinical-highlight[data-motion-state="celebrating"] .clinical-highlight__surface { animation: clinical-highlight-celebrate 900ms ease-in-out infinite; }
 .clinical-highlight--radiology[data-motion-state="focused"] .clinical-highlight__edge,
-[data-preview-context] .clinical-highlight--radiology[data-motion-state="ambient"] .clinical-highlight__edge { animation: clinical-highlight-exposure 2.4s ease-in-out infinite; }
+.clinical-highlight--radiology[data-motion-state="ambient"] .clinical-highlight__edge { animation: clinical-highlight-exposure 2.4s ease-in-out infinite; }
 
 @keyframes clinical-highlight-edge-scan { 0%, 100% { transform: translateY(-72%); } 50% { transform: translateY(72%); } }
 @keyframes clinical-highlight-exposure { 50% { border-color: color-mix(in srgb, var(--highlight-edge) 80%, white); } }
+@keyframes clinical-highlight-celebrate { 50% { opacity: .92; filter: saturate(1.35) brightness(1.08); } }
 
 [data-cosmetic-size="compact"].clinical-highlight { box-shadow: inset 3px 0 var(--highlight-edge); }
 [data-cosmetic-size="compact"].clinical-highlight .clinical-highlight__signal { display: none; }
@@ -55,3 +60,5 @@
   .clinical-highlight__signal { transform: none !important; opacity: .55; }
 }
 .clinical-highlight[data-motion-state="reduced"] .clinical-highlight__signal { animation: none !important; transform: none; opacity: .55; }
+.clinical-highlight[data-motion-state="static"] :is(.clinical-highlight__signal, .clinical-highlight__surface),
+.clinical-highlight[data-motion-state="reduced"] :is(.clinical-highlight__signal, .clinical-highlight__surface) { animation: none; transform: none; }
