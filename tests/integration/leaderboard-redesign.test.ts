@@ -33,13 +33,23 @@ describe("MCQ leaderboard redesign", () => {
   it("uses tapered podiums, framed rank badges, and layered reduced-motion-safe decoration", async () => {
     const [component, styles] = await Promise.all([readFile(componentPath, "utf8"), readFile(stylesPath, "utf8")])
     expect(component).toContain("leaderboard-pedestal")
+    expect(component).toContain("leaderboard-pedestal-surface")
     expect(component).toContain("leaderboard-particle")
     expect(component).toContain("leaderboard-star")
+    expect(component).toContain("leaderboard-crown")
     expect(component).not.toContain(">#{entry.rank}</span>")
     expect(styles).toContain("clip-path: polygon")
+    expect(styles).toContain("@keyframes leaderboard-crown-float")
     expect(styles).toContain("@keyframes leaderboard-orbit-reverse")
     expect(styles).toContain("@keyframes leaderboard-twinkle")
     expect(styles).toContain("@media (prefers-reduced-motion: reduce)")
+  })
+
+  it("keeps the signed-in learner ranking visible for every rank", async () => {
+    const component = await readFile(componentPath, "utf8")
+    expect(component).toContain("const showViewer = viewerEntry && !loading && !error")
+    expect(component).not.toContain("viewerEntry.rank > 10")
+    expect(component).toContain("Your ranking")
   })
 
   it("ranks timed periods from the ledger and all-time from lifetime earnings", async () => {
