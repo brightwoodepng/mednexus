@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
-import { STORE_ITEMS } from "@/lib/economy"
+import { SELLABLE_STORE_ITEMS, STORE_ITEMS } from "@/lib/economy"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 
 type PurchaseSelection = { quantity?: unknown; bundleId?: unknown }
@@ -22,14 +22,14 @@ export async function GET(req: NextRequest) {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
     const uid = auth.uid
-    if (!uid) return NextResponse.json({ items: STORE_ITEMS, inventory: {} })
+    if (!uid) return NextResponse.json({ items: SELLABLE_STORE_ITEMS, inventory: {} })
 
     const { rows } = await pool.query(
       "SELECT item_id, quantity FROM mednexus_user_inventory WHERE uid = $1",
       [uid]
     )
     const inventory = Object.fromEntries(rows.map(r => [r.item_id, r.quantity]))
-    return NextResponse.json({ items: STORE_ITEMS, inventory })
+    return NextResponse.json({ items: SELLABLE_STORE_ITEMS, inventory })
   } catch (e) {
     console.error("store GET", e)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
 
     const item = STORE_ITEMS.find(i => i.id === itemId)
     if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 })
+    if (item.sellable === false) {
+      return NextResponse.json({ error: "Item is not available for purchase" }, { status: 409 })
+    }
     const purchase = resolvePurchase(item, { quantity, bundleId })
     if (!purchase) return NextResponse.json({ error: "Invalid purchase quantity or bundle" }, { status: 400 })
     const maxInventory = item.maxInventory ?? (item.maxQuantity === 1 ? 1 : ECONOMY_CONFIG.store.inventoryQuantityLimit)

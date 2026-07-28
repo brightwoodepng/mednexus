@@ -24,6 +24,10 @@ export type StoreProductGroup =
 export type StoreCatalogEntry = {
   price: number
   productGroup: StoreProductGroup
+  /** Server-authoritative purchase availability. Omitted entries are sellable. */
+  sellable?: boolean
+  /** Registered in-app route for permanent content after ownership is verified. */
+  contentDestination?: string
   /** Maximum copies that may be held at once. Defaults to the global limit. */
   maxInventory?: number
   /** Server-priced purchase choices. The base price remains the one-unit display price. */
@@ -87,8 +91,8 @@ export type EconomyConfig = {
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.8.0",
-  catalogVersion: "2.1.0",
+  economyVersion: "1.9.0",
+  catalogVersion: "2.2.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
@@ -183,11 +187,13 @@ export const ECONOMY_CONFIG = {
         price: 100, productGroup: "basic_consumable", maxInventory: 10,
         purchaseOptions: [{ id: "single", quantity: 1, price: 100 }, { id: "bundle_3", quantity: 3, price: 270 }],
       },
-      vault_sepsis_cascade: { price: 2_000, productGroup: "permanent_premium_mcq" },
-      vault_stemi_2am: { price: 1_750, productGroup: "permanent_premium_mcq" },
-      vault_dka_peds: { price: 2_500, productGroup: "permanent_premium_mcq" },
-      vault_bacterial_meningitis: { price: 1_500, productGroup: "permanent_premium_mcq" },
-      vault_hepatic_failure: { price: 3_000, productGroup: "permanent_premium_mcq" },
+      // Vault simulations remain unavailable until their content, launch route,
+      // ownership checks, resume/completion flow, and member-facing entry exist.
+      vault_sepsis_cascade: { price: 2_000, productGroup: "permanent_premium_mcq", sellable: false },
+      vault_stemi_2am: { price: 1_750, productGroup: "permanent_premium_mcq", sellable: false },
+      vault_dka_peds: { price: 2_500, productGroup: "permanent_premium_mcq", sellable: false },
+      vault_bacterial_meningitis: { price: 1_500, productGroup: "permanent_premium_mcq", sellable: false },
+      vault_hepatic_failure: { price: 3_000, productGroup: "permanent_premium_mcq", sellable: false },
       title_pre_med: { price: 300, productGroup: "basic_cosmetic" }, title_intern: { price: 350, productGroup: "basic_cosmetic" },
       title_fellow: { price: 400, productGroup: "basic_cosmetic" }, title_attending: { price: 500, productGroup: "basic_cosmetic" },
       title_chief_resident: { price: 600, productGroup: "basic_cosmetic" }, title_the_gunner: { price: 1_000, productGroup: "premium_cosmetic" },
