@@ -80,7 +80,7 @@ const MODES: ModeConfig[] = [
   },
   {
     id: "streak", name: "Streak Master", badge: "Endurance",
-    badgeColor: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    badgeColor: "bg-amber-100 text-white dark:bg-amber-900/30",
     icon: "🔥", gradient: "from-amber-400 to-rose-500", shadow: "shadow-amber-500/20",
     desc: "No game over. Build the longest streak you can, finish whenever you're ready.",
     rules: ["Wrong answer resets streak — game continues", "No timer, no pressure", "Finish anytime to bank your best streak", "Selected questions appear once per round"],
