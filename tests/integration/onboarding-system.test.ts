@@ -44,6 +44,13 @@ describe("coordinated onboarding contract", () => {
     expect(provider).toContain("The local checkpoint keeps the tutorial usable offline")
   })
 
+  it("keeps a paused tutorial closed for the rest of the current session", () => {
+    const provider = read("components/onboarding/TutorialProvider.tsx")
+    expect(provider).toContain("sessionStorage.getItem(pausedKey)")
+    expect(provider).toContain("pauseForSession(activeTutorial)")
+    expect(provider).toContain("resumeForSession(id)")
+  })
+
   it("sequences Welcome, blocks unsafe activity, and provides safe target fallback", () => {
     const app = read("components/mednexus-app.tsx")
     const overlay = read("components/onboarding/TutorialOverlay.tsx")
@@ -55,7 +62,7 @@ describe("coordinated onboarding contract", () => {
     expect(overlay).toContain("prefers-reduced-motion")
     expect(overlay).toContain('event.key === "Escape"')
     expect(mobileSheet).toContain("safe-area-inset-bottom")
-    expect(mobileSheet).toContain("72dvh")
+    expect(mobileSheet).toContain("48dvh")
     expect(overlay).toContain("visualViewport")
     expect(overlay).toContain("ResizeObserver")
   })
