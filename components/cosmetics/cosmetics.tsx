@@ -16,6 +16,7 @@ function CosmeticWrapper({ as = "div", kind, ...props }: WrapperProps & { kind: 
   const motionState = useCosmeticMotion(ref, props.reducedMotion ? "reduced" : (props.motionState ?? "static"))
   const className = ["cosmetic-surface", SIZE_CLASSES[props.size], presentation.className, props.className].filter(Boolean).join(" ")
   return createElement(as, {
+    ...props.wrapperProps,
     ref,
     className,
     "data-cosmetic-id": stable ? "default" : props.cosmeticId,
