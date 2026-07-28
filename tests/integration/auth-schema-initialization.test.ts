@@ -170,7 +170,7 @@ describe("account entry schema initialization", () => {
     await expect(duplicate.json()).resolves.toEqual({ error: "An account with this index number already exists" })
   })
 
-  it("initializes the schema before login and guest entry", async () => {
+  it("authenticates against a migrated schema without running migrations from login", async () => {
     const { POST: register } = await import("@/app/api/auth/register/route")
     const registration = await register(post("/api/auth/register", {
       name: "Approved Learner", classLevel: "Level 400", indexNumber: "SM/SMS/22/0001", password: "secure-password",
@@ -178,7 +178,7 @@ describe("account entry schema initialization", () => {
     expect(registration.status).toBe(200)
     registeredUsers[0].status = "approved"
 
-    schemaInitialized = false
+    schemaInitialized = true
     const { POST: login } = await import("@/app/api/auth/login/route")
     const loginResponse = await login(post("/api/auth/login", { indexNumber: "sm/sms/22/0001", password: "secure-password" }) as never)
     expect(loginResponse.status).toBe(200)
@@ -189,6 +189,6 @@ describe("account entry schema initialization", () => {
     const guestResponse = await guest(post("/api/auth/guest", { name: "Guest Learner", classLevel: "Level 300" }) as never)
     expect(guestResponse.status).toBe(201)
     expect(guestUsers).toHaveLength(1)
-    expect(ensureSchema).toHaveBeenCalledTimes(3)
+    expect(ensureSchema).toHaveBeenCalledTimes(2)
   })
 })
