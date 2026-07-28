@@ -199,7 +199,7 @@ export function TheoryVault({ initialView = "Dashboard", externalQuery, onExtern
     if (setId) await openSet(setId)
   }
 
-  return <div className="mx-auto max-w-7xl space-y-5">
+  return <div data-tutorial-anchor="theory-home" className="mx-auto max-w-7xl space-y-5">
 
     {error && <div role="alert" className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
     {loading ? <div className={`${card} py-14 text-center text-sm text-muted-foreground`}>Opening Theory Vault…</div>
