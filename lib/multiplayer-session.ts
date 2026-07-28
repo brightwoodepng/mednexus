@@ -11,7 +11,8 @@ const KEY = "mednexus-active-room"
 
 export interface ActiveRoomSession {
   pin: string
-  myId: string
+  /** Authenticated account UID; reconnection metadata, never a security credential. */
+  uid: string
   mode: "clash" | "cohort" | "wager" | "djmulti"
   isHost: boolean
   isCohortHost: boolean
@@ -32,7 +33,7 @@ export function loadActiveRoomSession(): ActiveRoomSession | null {
     const raw = sessionStorage.getItem(KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed.pin !== "string" || typeof parsed.myId !== "string") return null
+    if (!parsed || typeof parsed.pin !== "string" || typeof parsed.uid !== "string") return null
     return parsed as ActiveRoomSession
   } catch {
     return null

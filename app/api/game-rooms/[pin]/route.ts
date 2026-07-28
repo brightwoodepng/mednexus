@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import pool from "@/lib/db"
-import { authenticateRequest, authError } from "@/lib/request-auth"
+import { requireAuthenticatedUser } from "@/lib/request-auth"
+import { getAuthoritativeCosmetics, roomError } from "@/lib/multiplayer-server"
 
 type RoomPhase = "lobby" | "wager" | "question" | "reveal" | "done"
 
@@ -57,6 +58,11 @@ function getTimeLimitMs(mode: string): number {
 }
 
 const REVEAL_DURATION_MS = 3_000
+const ROOM_TTL_MS = 24 * 60 * 60 * 1000
+
+function isExpired(room: RawRoom) {
+  return Date.now() - new Date(room.created_at).getTime() > ROOM_TTL_MS
+}
 
 function activePlayers(players: RoomPlayer[]): RoomPlayer[] {
   return players.filter(p => p.status !== "disconnected" && !p.isSpectator)
@@ -192,12 +198,11 @@ export async function GET(
   { params }: { params: Promise<{ pin: string }> }
 ) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
+    const auth = await requireAuthenticatedUser(req)
+    if (!auth) return NextResponse.json(roomError("AUTHENTICATION_REQUIRED", "Authentication required", 401), { status: 401 })
     const { pin } = await params
-    const myId = new URL(req.url).searchParams.get("playerId") ?? undefined
-
-    if (myId && myId !== auth.uid) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const suppliedId = new URL(req.url).searchParams.get("playerId")
+    if (suppliedId && suppliedId !== auth.uid) return NextResponse.json(roomError("IDENTITY_MISMATCH", "Authenticated identity mismatch", 403), { status: 403 })
 
     // Every poll is a pacing "tick" — self-drives reveal/next-question
     // transitions without any host click, using elapsed phase_started_at time
@@ -205,7 +210,11 @@ export async function GET(
     await autoTick(pin)
 
     const res = await pool.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1", [pin])
-    if (res.rows.length === 0) return NextResponse.json({ error: "Room not found" }, { status: 404 })
+    if (res.rows.length === 0) return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
+    if (isExpired(res.rows[0] as RawRoom)) {
+      await pool.query("DELETE FROM mednexus_game_rooms WHERE pin = $1", [pin])
+      return NextResponse.json(roomError("ROOM_EXPIRED", "Room has expired", 410), { status: 410 })
+    }
     if (!(res.rows[0] as RawRoom).players.some((player) => player.id === auth.uid)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     return NextResponse.json(buildResponse(res.rows[0] as RawRoom, auth.uid))
@@ -220,8 +229,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ pin: string }> }
 ) {
-  const auth = authenticateRequest(req.headers)
-  if (!auth) return authError()
+  const auth = await requireAuthenticatedUser(req)
+  if (!auth) return NextResponse.json(roomError("AUTHENTICATION_REQUIRED", "Authentication required", 401), { status: 401 })
   const client = await pool.connect()
   try {
     const { pin } = await params
@@ -246,39 +255,51 @@ export async function PATCH(
     }
 
     if ((body.playerId && body.playerId !== auth.uid) || (body.requesterId && body.requesterId !== auth.uid)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    // During migration mismatches are rejected; all authorization below uses server identity.
+    body.playerId = auth.uid
+    body.requesterId = auth.uid
     await client.query("BEGIN")
     const res = await client.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE", [pin])
     if (res.rows.length === 0) {
       await client.query("ROLLBACK")
-      return NextResponse.json({ error: "Room not found" }, { status: 404 })
+      return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
     }
 
     const row = res.rows[0] as RawRoom
+    if (isExpired(row)) {
+      await client.query("DELETE FROM mednexus_game_rooms WHERE pin = $1", [pin])
+      await client.query("COMMIT")
+      return NextResponse.json(roomError("ROOM_EXPIRED", "Room has expired", 410), { status: 410 })
+    }
     let players = [...row.players]
 
     // ── Host-only action guard ────────────────────────────────────────────────
     const HOST_ACTIONS = ["start", "advance", "finish"]
     if (HOST_ACTIONS.includes(body.action)) {
-      if (!body.requesterId || body.requesterId !== row.host_id) {
+      if (auth.uid !== row.host_id) {
         await client.query("ROLLBACK")
-        return NextResponse.json({ error: "Forbidden: host-only action" }, { status: 403 })
+        return NextResponse.json(roomError("HOST_ONLY_ACTION", "Only the host can perform this action", 403), { status: 403 })
       }
     }
 
     switch (body.action) {
       case "join": {
-        if (!body.playerId || !body.playerName) {
+        if (!body.playerName) {
           await client.query("ROLLBACK")
-          return NextResponse.json({ error: "Missing playerId or playerName" }, { status: 400 })
+          return NextResponse.json({ error: "Player name is required" }, { status: 400 })
         }
         // Idempotent rejoin
-        if (players.find(p => p.id === body.playerId)) break
+        if (players.find(p => p.id === auth.uid)) {
+          players = players.map(p => p.id === auth.uid ? { ...p, status: "active" } : p)
+          await client.query("UPDATE mednexus_game_rooms SET players = $1, version = COALESCE(version, 0) + 1 WHERE pin = $2", [JSON.stringify(players), pin])
+          break
+        }
 
         if (row.phase !== "lobby") {
           // Allow late join in cohort only
           if (row.mode !== "cohort") {
             await client.query("ROLLBACK")
-            return NextResponse.json({ error: "Game already started" }, { status: 409 })
+            return NextResponse.json(roomError("ROOM_ALREADY_STARTED", "Room already started", 409), { status: 409 })
           }
         }
 
@@ -296,14 +317,12 @@ export async function PATCH(
         const startBal = row.mode === "wager" ? 1000 : row.mode === "djmulti" ? 500 : undefined
         const isWagerLike = row.mode === "wager" || row.mode === "djmulti"
 
+        const cosmetics = await getAuthoritativeCosmetics(auth)
         const newPlayer: RoomPlayer = {
-          id: body.playerId, name: body.playerName,
+          id: auth.uid, name: body.playerName.slice(0, 24),
           score: 0, streak: 0, answer: null, answeredAt: null, isHost: false,
           ...(isWagerLike ? { balance: startBal, wagerAmount: null, isSpectator: false } : {}),
-          equippedTitle:     (body.equippedTitle     as string | null) ?? null,
-          equippedFrame:     (body.equippedFrame     as string | null) ?? null,
-          equippedHighlight: (body.equippedHighlight as string | null) ?? null,
-          equippedAvatar:    (body.equippedAvatar    as string | null) ?? null,
+          ...cosmetics,
         }
         players.push(newPlayer)
 
@@ -317,7 +336,7 @@ export async function PATCH(
       case "start": {
         if (row.phase !== "lobby") {
           await client.query("ROLLBACK")
-          return NextResponse.json({ error: "Already started" }, { status: 409 })
+          return NextResponse.json(roomError("ROOM_ALREADY_STARTED", "Room already started", 409), { status: 409 })
         }
         const isWagerLikeStart = row.mode === "wager" || row.mode === "djmulti"
         const startPhase: RoomPhase = isWagerLikeStart ? "wager" : "question"
@@ -634,7 +653,7 @@ export async function PATCH(
     await client.query("COMMIT")
 
     const updated = await client.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1", [pin])
-    return NextResponse.json(buildResponse(updated.rows[0] as RawRoom, body.playerId ?? body.requesterId))
+    return NextResponse.json(buildResponse(updated.rows[0] as RawRoom, auth.uid))
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {})
     console.error("[game-rooms PATCH]", err)
@@ -650,18 +669,13 @@ export async function DELETE(
   { params }: { params: Promise<{ pin: string }> }
 ) {
   try {
-    const auth = authenticateRequest(req.headers)
-    if (!auth) return authError()
+    const auth = await requireAuthenticatedUser(req)
+    if (!auth) return NextResponse.json(roomError("AUTHENTICATION_REQUIRED", "Authentication required", 401), { status: 401 })
     const { pin } = await params
-    const requesterId = new URL(req.url).searchParams.get("requesterId")
-
-    if (!requesterId) return NextResponse.json({ error: "Missing requesterId" }, { status: 400 })
-    if (requesterId !== auth.uid) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
     const check = await pool.query("SELECT host_id FROM mednexus_game_rooms WHERE pin = $1", [pin])
     if (check.rows.length === 0) return NextResponse.json({ ok: true }) // already gone
-    if (check.rows[0].host_id !== requesterId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (check.rows[0].host_id !== auth.uid) {
+      return NextResponse.json(roomError("HOST_ONLY_ACTION", "Only the host can delete this room", 403), { status: 403 })
     }
 
     await pool.query("DELETE FROM mednexus_game_rooms WHERE pin = $1", [pin])

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
+import { useApp } from "@/contexts/app-context"
+import { multiplayerApi } from "@/lib/multiplayer-api"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
 import { useErrorFeedback } from "@/hooks/use-error-feedback"
@@ -17,7 +19,7 @@ type MultiMode = "clash" | "cohort" | "wager" | "djmulti"
 type RoomPhase = "lobby" | "wager" | "question" | "reveal" | "done"
 type FilterScope = "all" | "module" | "subject"
 
-interface GameFilter { scope: FilterScope; value: string | null }
+interface GameFilter { scope: FilterScope; value: string | null; module?: string | null }
 const DEFAULT_FILTER: GameFilter = { scope: "all", value: null }
 
 interface RoomPlayer {
@@ -67,13 +69,6 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function getOrCreatePlayerId(): string {
-  try {
-    let id = sessionStorage.getItem("mednexus-game-pid")
-    if (!id) { id = `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; sessionStorage.setItem("mednexus-game-pid", id) }
-    return id
-  } catch { return `p-${Date.now()}` }
-}
 
 /** Returns true when a question has multiple correct answers (SATA).
  *  Single-item arrays ["A"] are treated as single-answer (normalised on save).
@@ -84,65 +79,38 @@ function isSATA(q: Question): boolean {
 
 function filterQuestions(allQ: Question[], filter: GameFilter): Question[] {
   let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
-  if (base.length < 5) base = allQ.filter(q => !isSATA(q))
   if (filter.scope === "module" && filter.value) {
     const f = base.filter(q => q.module === filter.value)
-    if (f.length >= 3) base = f
+    base = f
   } else if (filter.scope === "subject" && filter.value) {
-    const f = base.filter(q => q.subject === filter.value)
-    if (f.length >= 3) base = f
+    const f = base.filter(q => q.subject === filter.value && (!filter.module || q.module === filter.module))
+    base = f
   }
   return shuffle(base)
 }
 
 function countFilter(allQ: Question[], filter: GameFilter): number {
   let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
-  if (base.length < 5) base = allQ.filter(q => !isSATA(q))
   if (filter.scope === "module" && filter.value) return base.filter(q => q.module === filter.value).length
-  if (filter.scope === "subject" && filter.value) return base.filter(q => q.subject === filter.value).length
+  if (filter.scope === "subject" && filter.value) return base.filter(q => q.subject === filter.value && (!filter.module || q.module === filter.module)).length
   return base.length
 }
 
 // ── API helpers ───────────────────────────────────────────────────────────────
-async function apiCreateRoom(
-  mode: MultiMode,
-  hostId: string,
-  hostName: string,
-  pool: Question[],
-  cosmetics?: { equippedTitle?: string | null; equippedFrame?: string | null; equippedHighlight?: string | null; equippedAvatar?: string | null }
-): Promise<string> {
-  const res = await fetch("/api/game-rooms", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode, hostId, hostName, questionPool: pool, ...cosmetics }),
-  })
-  if (!res.ok) throw new Error(await res.text())
-  const data = await res.json()
-  return data.pin as string
+async function apiCreateRoom(mode: MultiMode, hostName: string, questionIds: string[]): Promise<{ pin: string; playerId: string }> {
+  return multiplayerApi("/api/game-rooms", { method: "POST", body: JSON.stringify({ mode, hostName, questionIds }) })
 }
 
-async function apiPollRoom(pin: string, myId: string): Promise<RoomState | null> {
-  const res = await fetch(`/api/game-rooms/${pin}?playerId=${encodeURIComponent(myId)}`)
-  if (!res.ok) return null
-  return res.json()
+async function apiPollRoom(pin: string): Promise<RoomState> {
+  return multiplayerApi(`/api/game-rooms/${pin}`)
 }
 
-async function apiAction(pin: string, payload: Record<string, unknown>): Promise<RoomState | null> {
-  const res = await fetch(`/api/game-rooms/${pin}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  })
-  if (!res.ok) {
-    const msg = await res.text().catch(() => "")
-    console.warn("[game-room action error]", res.status, msg)
-    return null
-  }
-  return res.json()
+async function apiAction(pin: string, payload: Record<string, unknown>): Promise<RoomState> {
+  return multiplayerApi(`/api/game-rooms/${pin}`, { method: "PATCH", body: JSON.stringify(payload) })
 }
 
-async function apiDeleteRoom(pin: string, requesterId: string) {
-  await fetch(`/api/game-rooms/${pin}?requesterId=${encodeURIComponent(requesterId)}`, { method: "DELETE" })
+async function apiDeleteRoom(pin: string) {
+  return multiplayerApi<{ ok: boolean }>(`/api/game-rooms/${pin}`, { method: "DELETE" })
 }
 
 // ── Shared small components ───────────────────────────────────────────────────
@@ -370,17 +338,11 @@ function AnswerProgress({ players, total }: { players: RoomPlayer[]; total: numb
 
 // ── Filter Picker (reused from game-mode) ─────────────────────────────────────
 function FilterPicker({ allQ, filter, onChange }: { allQ: Question[]; filter: GameFilter; onChange: (f: GameFilter) => void }) {
-  const [tab, setTab] = useState<FilterScope>(filter.scope === "all" ? "all" : filter.scope)
   const modules = [...new Set(allQ.map(q => q.module).filter(Boolean) as string[])].sort()
-  const subjects = [...new Set(allQ.map(q => q.subject).filter(Boolean) as string[])].sort()
+  const selectedModule = filter.module ?? (filter.scope === "module" ? filter.value : null)
+  const subjects = [...new Set(allQ.filter(q => q.module === selectedModule).map(q => q.subject).filter(Boolean))].sort()
   const count = countFilter(allQ, filter)
   const hasFilter = filter.scope !== "all" && filter.value !== null
-
-  function selectTab(t: FilterScope) { setTab(t); if (t === "all") onChange(DEFAULT_FILTER) }
-  function pick(scope: FilterScope, value: string) {
-    if (filter.scope === scope && filter.value === value) { onChange(DEFAULT_FILTER); setTab("all") }
-    else onChange({ scope, value })
-  }
 
   return (
     <div className="mb-4 rounded-3xl border border-border bg-card p-4">
@@ -388,39 +350,32 @@ function FilterPicker({ allQ, filter, onChange }: { allQ: Question[]; filter: Ga
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Question Scope</p>
         {hasFilter && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">{count} questions</span>}
       </div>
-      <div className="mb-3 flex gap-1 rounded-2xl bg-muted p-1">
-        {(["all", "module", "subject"] as FilterScope[]).map(t => (
-          <button key={t} type="button" onClick={() => selectTab(t)}
-            className={`flex-1 rounded-xl py-1.5 text-xs font-semibold capitalize transition-all ${tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-            {t === "all" ? "All" : t === "module" ? "Module" : "Discipline"}
-          </button>
-        ))}
-      </div>
-      {tab === "module" && (
-        <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">
+      <p className="mb-2 text-xs font-semibold text-foreground">Module</p>
+      <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">
+          <button type="button" onClick={() => onChange(DEFAULT_FILTER)} className={`rounded-full px-3 py-1.5 text-xs font-medium ${!selectedModule ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>All modules</button>
           {modules.map(m => (
-            <button key={m} type="button" onClick={() => pick("module", m)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${filter.scope === "module" && filter.value === m ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
+            <button key={m} type="button" onClick={() => onChange({ scope: "module", value: m, module: m })}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${selectedModule === m ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
               {m}
             </button>
           ))}
-        </div>
-      )}
-      {tab === "subject" && (
-        <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">
+      </div>
+      {selectedModule && <><p className="mb-2 mt-4 text-xs font-semibold text-foreground">Discipline</p>
+        <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto" role="group" aria-label="Discipline within selected module">
+          <button type="button" onClick={() => onChange({ scope: "module", value: selectedModule, module: selectedModule })} className={`rounded-full px-3 py-1.5 text-xs font-medium ${filter.scope === "module" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>Whole Module</button>
           {subjects.map(s => (
-            <button key={s} type="button" onClick={() => pick("subject", s)}
+            <button key={s} type="button" onClick={() => onChange({ scope: "subject", value: s, module: selectedModule })}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${filter.scope === "subject" && filter.value === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
               {s}
             </button>
           ))}
         </div>
-      )}
-      {tab === "all" && <p className="text-center text-xs text-muted-foreground py-1">All {countFilter(allQ, DEFAULT_FILTER)} available questions</p>}
+      </>}
+      {!selectedModule && <p className="text-center text-xs text-muted-foreground py-2">All {countFilter(allQ, DEFAULT_FILTER)} eligible questions</p>}
       {hasFilter && (
         <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-primary/8 px-3 py-2">
           <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-primary">{filter.value}</span>
-          <button type="button" onClick={() => { onChange(DEFAULT_FILTER); setTab("all") }} className="text-[11px] text-muted-foreground hover:text-foreground shrink-0">✕ Clear</button>
+          <button type="button" onClick={() => onChange(DEFAULT_FILTER)} className="text-[11px] text-muted-foreground hover:text-foreground shrink-0">✕ Clear</button>
         </div>
       )}
     </div>
@@ -1049,7 +1004,7 @@ function JoinScreen({ onJoined, onBack }: {
   onJoined: (pin: string, playerId: string) => void
   onBack: () => void
 }) {
-  const { equippedCosmetics } = useEconomy()
+  const { user } = useApp()
   const [pin, setPin] = useState("")
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
@@ -1059,20 +1014,11 @@ function JoinScreen({ onJoined, onBack }: {
     if (!pin.trim() || !name.trim()) { setError("Please enter both the PIN and your name."); return }
     setLoading(true); setError("")
     try {
-      const pid = getOrCreatePlayerId()
-      const res = await apiAction(pin.trim(), {
-        action: "join",
-        playerId: pid,
-        playerName: name.trim(),
-        equippedTitle:     equippedCosmetics.title,
-        equippedFrame:     equippedCosmetics.frame,
-        equippedHighlight: equippedCosmetics.highlight,
-        equippedAvatar:    equippedCosmetics.avatar,
-      })
-      if (!res) { setError("Room not found or already started."); setLoading(false); return }
-      onJoined(pin.trim(), pid)
-    } catch {
-      setError("Failed to join room. Check the PIN and try again.")
+      if (!user) throw new Error("Authentication required")
+      await apiAction(pin.trim(), { action: "join", playerName: name.trim() })
+      onJoined(pin.trim(), user.uid)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to join room")
     } finally {
       setLoading(false)
     }
@@ -1115,7 +1061,7 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
   mode: MultiMode; onCreated: (pin: string, hostId: string) => void; onBack: () => void
 }) {
   const { questions: allQ } = useQuestions()
-  const { equippedCosmetics } = useEconomy()
+  const { user } = useApp()
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
   const [qCount, setQCount] = useState(10)
   const [hostName, setHostName] = useState("")
@@ -1134,16 +1080,11 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
     try {
       const pool = filterQuestions(allQ, filter).slice(0, clampedCount)
       if (pool.length === 0) { setError("No questions found for the selected filter."); setLoading(false); return }
-      const hostId = getOrCreatePlayerId()
-      const pin = await apiCreateRoom(mode, hostId, hostName.trim(), pool, {
-        equippedTitle:     equippedCosmetics.title,
-        equippedFrame:     equippedCosmetics.frame,
-        equippedHighlight: equippedCosmetics.highlight,
-        equippedAvatar:    equippedCosmetics.avatar,
-      })
-      onCreated(pin, hostId)
-    } catch {
-      setError("Failed to create room. Please try again.")
+      if (!user) throw new Error("Authentication required")
+      const created = await apiCreateRoom(mode, hostName.trim(), pool.map(question => question.id))
+      onCreated(created.pin, created.playerId)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to create room")
     } finally {
       setLoading(false)
     }
@@ -1695,7 +1636,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   const questionKeyRef = useRef<string>("")
 
   const poll = useCallback(async () => {
-    const state = await apiPollRoom(pin, myId)
+    const state = await apiPollRoom(pin).catch(() => null)
     if (state) {
       // Ignore stale poll responses that have an older version than what we have
       if (state.version >= lastVersionRef.current) {
@@ -1740,7 +1681,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
     }
 
     if (room.phase !== "done") {
-      saveActiveRoomSession({ pin, myId, mode, isHost, isCohortHost, questionId: currentQuestionId })
+      saveActiveRoomSession({ pin, uid: myId, mode, isHost, isCohortHost, questionId: currentQuestionId })
     } else {
       clearActiveRoomSession()
     }
@@ -1782,7 +1723,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
     && answeredActivePl === activePl.length - 1
 
   async function doAction(payload: Record<string, unknown>) {
-    const updated = await apiAction(pin, { ...payload, requesterId: myId })
+    const updated = await apiAction(pin, payload).catch((cause) => { setError(cause instanceof Error ? cause.message : "Room action failed"); return null })
     if (updated) {
       lastVersionRef.current = updated.version
       setRoom(updated)
@@ -1794,7 +1735,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   // Wager Wars: lock in a chip wager before options are revealed.
   // The server clamps the amount to [10, player.balance].
   async function handleWager(amount: number) {
-    await doAction({ action: "place_wager", playerId: myId, wagerAmount: amount })
+    await doAction({ action: "place_wager", wagerAmount: amount })
   }
 
   // Send both the option ID (answer) and its full display text (answerText).
@@ -1809,7 +1750,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
     // the review drawer even if the room state advances before we store it.
     const currentQ = room?.questionPool[room.currentQi] ?? null
     const updated = await apiAction(pin, {
-      action: "answer", playerId: myId, requesterId: myId,
+      action: "answer",
       answer, answerText, reactionTimeMs,
     })
     if (updated) {
@@ -1843,8 +1784,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
     // that host-migration during the match triggers the correct exit path.
     const amCurrentHost = room?.hostId === myId
     try {
-      if (amCurrentHost) await apiDeleteRoom(pin, myId)
-      else await doAction({ action: "disconnect", playerId: myId })
+      if (amCurrentHost) await apiDeleteRoom(pin)
+      else await doAction({ action: "disconnect" })
     } catch {
       // Proceed to exit even if the network call fails — local session is
       // already cleared and the server will auto-expire the room.
@@ -1969,7 +1910,7 @@ export function MultiplayerClash({ onExit }: { onExit: () => void }) {
   const canResume = resumed.current?.mode === "clash"
   const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
   const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
-  const [myId, setMyId] = useState(canResume ? resumed.current!.myId : "")
+  const [myId, setMyId] = useState(canResume ? resumed.current!.uid : "")
   const [isHost, setIsHost] = useState(canResume ? resumed.current!.isHost : false)
 
   if (view === "select") {
@@ -2023,7 +1964,7 @@ export function CohortReview({ onExit }: { onExit: () => void }) {
   const canResume = resumed.current?.mode === "cohort"
   const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
   const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
-  const [myId, setMyId] = useState(canResume ? resumed.current!.myId : "")
+  const [myId, setMyId] = useState(canResume ? resumed.current!.uid : "")
   const [isHost, setIsHost] = useState(canResume ? resumed.current!.isHost : false)
 
   if (view === "select") {
@@ -2078,7 +2019,7 @@ export function DoubleJeopardyMulti({ onExit }: { onExit: () => void }) {
   const canResume = resumed.current?.mode === "djmulti"
   const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
   const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
-  const [myId, setMyId] = useState(canResume ? resumed.current!.myId : "")
+  const [myId, setMyId] = useState(canResume ? resumed.current!.uid : "")
   const [isHost, setIsHost] = useState(canResume ? resumed.current!.isHost : false)
 
   if (view === "select") {
@@ -2133,7 +2074,7 @@ export function WagerWars({ onExit }: { onExit: () => void }) {
   const canResume = resumed.current?.mode === "wager"
   const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
   const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
-  const [myId, setMyId] = useState(canResume ? resumed.current!.myId : "")
+  const [myId, setMyId] = useState(canResume ? resumed.current!.uid : "")
   const [isHost, setIsHost] = useState(canResume ? resumed.current!.isHost : false)
 
   if (view === "select") {

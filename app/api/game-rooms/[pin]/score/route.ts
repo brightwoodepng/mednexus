@@ -53,13 +53,14 @@ export async function POST(
       user_answers_array?: AnswerEntry[]
     }
 
-    const { match_id, playerId, user_answers_array } = body
+    const { match_id, user_answers_array } = body
+    const playerId = auth.uid
 
     // ── Basic validation ────────────────────────────────────────────────────
-    if (identityMismatch(playerId, auth)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    if (!match_id || !playerId || !Array.isArray(user_answers_array)) {
+    if (identityMismatch(body.playerId, auth)) return NextResponse.json({ error: "Authenticated identity mismatch" }, { status: 403 })
+    if (!match_id || !Array.isArray(user_answers_array)) {
       return NextResponse.json(
-        { error: "Missing match_id, playerId, or user_answers_array" },
+        { error: "Missing match_id or user_answers_array" },
         { status: 400 }
       )
     }
