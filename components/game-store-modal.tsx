@@ -10,6 +10,7 @@ import {
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import { CosmeticHighlight, getCosmeticPresentation } from "@/components/cosmetics"
+import { AvatarImage } from "@/components/avatar-image"
 
 type CosmeticSection = "title" | "frame" | "highlight" | "avatar"
 
@@ -240,12 +241,7 @@ function AvatarCard({
       <div className="flex items-center gap-3">
         <div className={`relative h-11 w-11 shrink-0 rounded-xl overflow-hidden bg-gradient-to-br ${item.gradient} shadow-sm`}>
           {item.imagePath && (
-            <img
-              src={item.imagePath}
-              alt={item.name}
-              className="h-full w-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
-            />
+            <AvatarImage avatarId={item.id} fallback={item.icon} className="h-full w-full object-cover" />
           )}
           {!item.imagePath && (
             <span className="absolute inset-0 flex items-center justify-center text-xl">{item.icon}</span>
@@ -453,11 +449,7 @@ function CosmeticGridCard({
         {item.cosmeticType === "avatar" ? (
           <div className={`relative h-16 w-16 overflow-hidden rounded-2xl bg-gradient-to-br ${item.gradient} shadow-md`}>
             {item.imagePath ? (
-              <img
-                src={item.imagePath} alt={item.name}
-                className="h-full w-full object-cover"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
-              />
+              <AvatarImage avatarId={item.id} fallback={item.icon} className="h-full w-full object-cover" />
             ) : (
               <span className="absolute inset-0 flex items-center justify-center text-3xl">{item.icon}</span>
             )}
@@ -873,7 +865,7 @@ function CosmeticsPreviewPanel({
           <div className="flex items-center gap-3">
             <span className="w-6 text-center text-lg font-black text-amber-300">1</span>
             <div className={`relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${avatar?.gradient ?? "from-cyan-500 to-violet-600"} text-2xl shadow-lg ${frameClass}`}>
-              {avatar?.imagePath ? <img src={avatar.imagePath} alt={`${avatar.name} preview`} className="h-full w-full object-cover" /> : <span>{avatar?.icon ?? "🧑‍⚕️"}</span>}
+              {avatar?.imagePath ? <AvatarImage avatarId={avatar.id} fallback={avatar.icon} eager className="h-full w-full object-cover" /> : <span>{avatar?.icon ?? "🧑‍⚕️"}</span>}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
