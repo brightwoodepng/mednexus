@@ -5,6 +5,7 @@ const tables = [
   "mednexus_economy_seasons", "mednexus_season_wallets", "mednexus_economy_season_archives",
   "mednexus_economy_cutovers", "mednexus_wallet_adjustments",
 ]
+const onboardingTables = ["mednexus_user_onboarding", "mednexus_onboarding_events"]
 const seasonalTables = [
   "mednexus_np_transactions", "mednexus_daily_activity", "mednexus_bounty_progress",
   "mednexus_weekly_goal_progress", "mednexus_game_personal_bests", "mednexus_multiplayer_payouts",
@@ -14,7 +15,7 @@ const seasonalTables = [
 async function main() {
   const objects = await pool.query(`
     SELECT requested.name, to_regclass('public.' || requested.name) IS NOT NULL AS exists
-    FROM unnest($1::text[]) requested(name) ORDER BY requested.name`, [tables])
+    FROM unnest($1::text[]) requested(name) ORDER BY requested.name`, [[...tables, ...onboardingTables]])
   const columns = await pool.query(`
     SELECT requested.name AS table_name, EXISTS (
       SELECT 1 FROM information_schema.columns
@@ -43,7 +44,21 @@ async function main() {
       (SELECT COUNT(*)::int FROM mednexus_np_transactions WHERE amount=0 AND source<>'season_opening_grant') inconsistent_ledger_records,
       EXISTS(SELECT 1 FROM mednexus_economy_cutovers WHERE migration_id='economy-season-1-cutover-v1') cutover_record_exists,
       (SELECT version FROM mednexus_schema_migrations ORDER BY applied_at DESC LIMIT 1) migration_version`)
-  console.log(JSON.stringify({ ...base, schemaReady: true, ...readiness.rows[0] }, null, 2))
+  const nulls = await Promise.all(seasonalTables.map(async tableName => ({ table_name: tableName,
+    null_count: Number((await pool.query(`SELECT count(*)::int AS count FROM ${tableName} WHERE season_id IS NULL`)).rows[0].count) })))
+  const keys = await pool.query(`SELECT conrelid::regclass::text AS table_name, conname, contype,
+    pg_get_constraintdef(oid) AS definition FROM pg_constraint
+    WHERE conrelid::regclass::text = ANY($1::text[]) AND contype IN ('p','f') ORDER BY 1,2`, [seasonalTables])
+  const constraints = await pool.query(`SELECT conrelid::regclass::text AS table_name, conname,
+    pg_get_constraintdef(oid) AS definition FROM pg_constraint
+    WHERE conrelid::regclass::text = ANY($1::text[]) AND contype='c' ORDER BY 1,2`, [onboardingTables])
+  const privileges = await pool.query(`SELECT current_user AS account,
+    has_schema_privilege(current_user,'public','CREATE') AS create_privilege,
+    (SELECT rolsuper FROM pg_roles WHERE rolname=current_user) OR bool_and(pg_get_userbyid(c.relowner)=current_user) AS alter_privilege,
+    has_schema_privilege(current_user,'public','CREATE') AS create_index_privilege
+    FROM unnest($1::text[]) t JOIN pg_class c ON c.oid=to_regclass(t)`, [tables])
+  console.log(JSON.stringify({ ...base, schemaReady: true, seasonIdNulls: nulls, keys: keys.rows,
+    onboardingConstraints: constraints.rows, privileges: privileges.rows[0], ...readiness.rows[0] }, null, 2))
 }
 
 main().catch(error => {
