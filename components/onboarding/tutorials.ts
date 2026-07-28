@@ -1,4 +1,5 @@
 import type { TutorialId } from "@/lib/onboarding"
+import type { Screen } from "@/lib/view"
 import { STUDY_HUB_NAVIGATION } from "@/components/navigation/study-hub-navigation"
 
 export type TutorialNavigationAction =
@@ -6,7 +7,7 @@ export type TutorialNavigationAction =
   | { type: "open-workspace-switcher" } | { type: "close-workspace-switcher" }
   | { type: "open-account-menu" } | { type: "close-account-menu" }
   | { type: "open-appearance" } | { type: "close-appearance" }
-  | { type: "navigate-preview"; anchorId: string }
+  | { type: "navigate-preview"; screen: Screen }
   | { type: "none" }
 
 export type TutorialStep = {
@@ -26,9 +27,9 @@ export type TutorialStep = {
 export type TutorialDefinition = { id: TutorialId; name: string; finishLabel: string; steps: TutorialStep[] }
 
 const nav = (hub: "mcq-qbank" | "theory-vault", id: string) => STUDY_HUB_NAVIGATION[hub].find(item => item.id === id)!
-const destination = (hub: "mcq-qbank" | "theory-vault", id: string, body: string, drawer = false): TutorialStep => {
+const destination = (hub: "mcq-qbank" | "theory-vault", id: string, body: string, drawer = false, previewScreen?: Screen): TutorialStep => {
   const item = nav(hub, id)
-  return { id: `${hub}-${id}`, title: item.label, body, desktopTargetAnchorId: `desktop-nav-${id}`, mobileTargetAnchorId: item.bottomNav ? `mobile-bottom-nav-${id}` : undefined, mobileDrawerTargetAnchorId: drawer ? `drawer-nav-${id}` : undefined, preferredPlacement: "right", desktopPresentation: "coachmark", mobilePresentation: "sheet", navigationAction: drawer ? { type: "open-mobile-drawer" } : { type: "none" }, restoreUiAfterStep: drawer }
+  return { id: `${hub}-${id}`, title: item.label, body, desktopTargetAnchorId: `desktop-nav-${id}`, mobileTargetAnchorId: item.bottomNav ? `mobile-bottom-nav-${id}` : undefined, mobileDrawerTargetAnchorId: drawer ? `drawer-nav-${id}` : undefined, preferredPlacement: "right", desktopPresentation: "coachmark", mobilePresentation: "sheet", navigationAction: previewScreen ? { type: "navigate-preview", screen: previewScreen } : drawer ? { type: "open-mobile-drawer" } : { type: "none" }, restoreUiAfterStep: drawer }
 }
 const shared = (hub: string): TutorialStep[] => [
   { id: `${hub}-workspace`, title: "Switch study workspaces", body: "Move between MCQ Q-Bank and Theory Vault here. Each workspace keeps its own tutorial progress, so switching never completes the other tour.", desktopTargetAnchorId: "desktop-workspace-switcher", mobileTargetAnchorId: "mobile-menu-button", preferredPlacement: "right", desktopPresentation: "coachmark", mobilePresentation: "sheet", navigationAction: { type: "open-workspace-switcher" }, restoreUiAfterStep: true },
@@ -41,7 +42,7 @@ const shared = (hub: string): TutorialStep[] => [
 export const tutorials: Record<TutorialId, TutorialDefinition> = {
   mcq_qbank_intro: { id: "mcq_qbank_intro", name: "MCQ Q-Bank", finishLabel: "Start practicing", steps: [
     ...shared("mcq"),
-    destination("mcq-qbank", "dashboard", "See your overview, current activity, recent results, and the next useful place to study."),
+    destination("mcq-qbank", "dashboard", "This is your dashboard. See your overview, current activity, recent results, and the next useful place to study.", false, "dashboard"),
     destination("mcq-qbank", "modules", "Choose a module, discipline, and question count, then choose Trial for guided feedback or Exam for results at the end."),
     destination("mcq-qbank", "game", "Play safe solo MCQ games or join a multiplayer room. This tour never starts a game."),
     destination("mcq-qbank", "leaderboard", "Follow seasonal ranking and the rank points earned from eligible activity."),
@@ -51,7 +52,7 @@ export const tutorials: Record<TutorialId, TutorialDefinition> = {
   ]},
   theory_vault_intro: { id: "theory_vault_intro", name: "Theory Vault", finishLabel: "Explore Theory Vault", steps: [
     ...shared("theory"),
-    destination("theory-vault", "theory-dashboard", "See a Theory-specific overview and your recent study activity."),
+    destination("theory-vault", "theory-dashboard", "This is your Theory dashboard. See its overview and your recent study activity.", false, "theory-dashboard"),
     destination("theory-vault", "theory-browse", "Browse the module → discipline → set → question hierarchy."),
     destination("theory-vault", "theory-bookmarks", "Return to theory questions you intentionally saved."),
     destination("theory-vault", "theory-notes", "Keep and revisit learner-created notes."),
