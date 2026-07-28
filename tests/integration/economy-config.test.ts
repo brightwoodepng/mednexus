@@ -5,7 +5,7 @@ import { BOUNTY_POOL, STORE_ITEMS } from "@/lib/economy"
 
 describe("versioned economy configuration", () => {
   it("enables only the v1 MCQ earning families and daily login", () => {
-    expect(ECONOMY_CONFIG.economyVersion).toBe("1.8.0")
+    expect(ECONOMY_CONFIG.economyVersion).toBe("1.9.0")
     expect(Object.values(ECONOMY_CONFIG.enabledEarningModes).every(Boolean)).toBe(true)
     expect(ECONOMY_CONFIG.modeIds.trialTutor).toEqual(["trial", "tutor"])
     expect(ECONOMY_CONFIG.modeIds.exam).toEqual(["exam"])
@@ -111,6 +111,15 @@ describe("versioned economy configuration", () => {
     })
     expect(consult?.stackLimit).toBe(10)
     expect(labs?.stackLimit).toBe(10)
+  })
+
+  it("registers a content destination for every sellable permanent-content item", () => {
+    const permanentContent = STORE_ITEMS.filter(item => item.productGroup === "permanent_premium_mcq")
+
+    expect(permanentContent.filter(item => item.sellable !== false).every(item =>
+      typeof item.contentDestination === "string" && item.contentDestination.startsWith("/"),
+    )).toBe(true)
+    expect(permanentContent.filter(item => item.id.startsWith("vault_")).every(item => item.sellable === false)).toBe(true)
   })
 
   it("defines complete, price-aligned presentation metadata for cosmetics", () => {
