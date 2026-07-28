@@ -112,7 +112,7 @@ describe("store purchase concurrency", () => {
       unitPrice: 90,
       totalPrice: 270,
       bundleId: "bundle_3",
-      catalogVersion: "2.2.0",
+      catalogVersion: "2.3.0",
       resultingInventoryQuantity: 3,
     })
   })

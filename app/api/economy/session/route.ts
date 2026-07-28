@@ -26,7 +26,14 @@ const COMPLETION_REASONS: Record<string, ReadonlySet<string>> = {
 }
 
 type AcceptedAnswer = string | string[] | null
-type OrderedAnswer = { questionId: string; answer: AcceptedAnswer }
+type OrderedAnswer = {
+  questionId: string
+  /** Final answer retained for backwards compatibility. */
+  answer: AcceptedAnswer
+  firstAnswer?: AcceptedAnswer
+  secondAnswer?: AcceptedAnswer
+  assisted?: boolean
+}
 type SnapshotQuestion = {
   id: string
   discipline: string
@@ -37,6 +44,14 @@ function validAnswer(value: unknown): value is AcceptedAnswer {
   return value === null
     || typeof value === "string"
     || (Array.isArray(value) && value.every((item) => typeof item === "string"))
+}
+
+function answersMatch(answer: AcceptedAnswer, expected: AcceptedAnswer) {
+  if (Array.isArray(answer) && Array.isArray(expected)) {
+    return answer.length === expected.length
+      && [...answer].sort().every((value, index) => value === [...expected].sort()[index])
+  }
+  return answer === expected
 }
 
 type SnapshotResult = {
@@ -143,7 +158,7 @@ export async function PATCH(req: NextRequest) {
     }
     const { sessionId } = body
     const answers = body.answers ?? {}
-    const orderedAnswers = body.orderedAnswers ?? Object.entries(answers)
+    const orderedAnswers: OrderedAnswer[] = body.orderedAnswers ?? Object.entries(answers)
       .map(([questionId, answer]) => ({ questionId, answer }))
 
     if (
@@ -157,7 +172,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const session = await pool.query(
-      "SELECT question_ids, status, mode FROM mednexus_exam_sessions WHERE id = $1 AND user_id = $2",
+      "SELECT question_ids, answer_key, status, mode FROM mednexus_exam_sessions WHERE id = $1 AND user_id = $2",
       [sessionId, auth.uid],
     )
     if (!session.rows[0]) return NextResponse.json({ error: "Session not found" }, { status: 404 })
@@ -166,7 +181,12 @@ export async function PATCH(req: NextRequest) {
       !entry
       || typeof entry.questionId !== "string"
       || !allowedIds.has(entry.questionId)
-      || !validAnswer(entry.answer),
+      || !validAnswer(entry.answer)
+      || (entry.firstAnswer !== undefined && !validAnswer(entry.firstAnswer))
+      || (entry.secondAnswer !== undefined && !validAnswer(entry.secondAnswer))
+      || (entry.assisted !== undefined && typeof entry.assisted !== "boolean")
+      || (entry.assisted === true && (entry.firstAnswer === undefined || entry.secondAnswer === undefined))
+      || (entry.assisted !== true && entry.secondAnswer !== undefined),
     )
     const invalidAnswerMap = Object.entries(answers)
       .some(([id, answer]) => !allowedIds.has(id) || !validAnswer(answer))
@@ -174,6 +194,32 @@ export async function PATCH(req: NextRequest) {
     const duplicateOrderedAnswer = new Set(orderedIds).size !== orderedIds.length
     if (invalidOrderedAnswer || invalidAnswerMap || duplicateOrderedAnswer) {
       return NextResponse.json({ error: "Answers include an invalid question or option value" }, { status: 400 })
+    }
+
+    const activationResult = await pool.query(
+      `SELECT question_id FROM mednexus_session_consumable_events
+       WHERE user_id = $1 AND session_id = $2
+         AND item_id = 'lifeline_second_opinion' AND usage_status = 'committed'`,
+      [auth.uid, sessionId],
+    )
+    const secondOpinionActivations = new Set(activationResult.rows.map((row) => row.question_id as string))
+    const assistedAnswers = orderedAnswers.filter((entry) => entry.assisted === true)
+    if (assistedAnswers.length) {
+      const keyById = new Map<string, AcceptedAnswer>((session.rows[0].answer_key ?? [])
+        .map((entry: SnapshotQuestion) => [entry.id, entry.correctAnswer]))
+      const malformedAssistedAnswer = assistedAnswers.some((entry) => {
+        const expected = keyById.get(entry.questionId)
+        return expected === undefined
+          || answersMatch(entry.firstAnswer!, expected)
+          || !answersMatch(entry.answer, entry.secondAnswer!)
+      })
+      if (malformedAssistedAnswer) {
+        return NextResponse.json({ error: "Second Opinion requires a wrong first answer and an exact recorded second attempt" }, { status: 400 })
+      }
+      const assistedIds = assistedAnswers.map((entry) => entry.questionId)
+      if (assistedIds.some((id) => !secondOpinionActivations.has(id))) {
+        return NextResponse.json({ error: "Second Opinion attempts require a committed pre-answer activation" }, { status: 409 })
+      }
     }
 
     const meta = body.resultMeta
