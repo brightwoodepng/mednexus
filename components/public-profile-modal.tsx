@@ -2,13 +2,13 @@
 
 import { useEffect, useRef } from "react"
 import {
-  FRAME_RING_CLASSES,
   TITLE_LABELS,
   STORE_ITEMS,
   CLINICAL_TIERS,
   getClinicalTierIndex,
 } from "@/lib/economy"
 import { XIcon } from "@/components/icons"
+import { CosmeticFrame } from "@/components/cosmetics"
 
 export interface LeaderboardEntry {
   rank: number
@@ -54,7 +54,6 @@ export function PublicProfileModal({ entry, npLabel = "Lifetime NP", onClose }: 
     return () => window.removeEventListener("keydown", handleKey)
   }, [onClose])
 
-  const frameClasses = entry.equippedFrame ? (FRAME_RING_CLASSES[entry.equippedFrame] ?? "") : ""
   const avatarItem   = entry.equippedAvatar ? STORE_ITEMS.find(i => i.id === entry.equippedAvatar) : null
   const titleLabel   = entry.equippedTitle  ? (TITLE_LABELS[entry.equippedTitle] ?? null) : null
 
@@ -96,7 +95,7 @@ export function PublicProfileModal({ entry, npLabel = "Lifetime NP", onClose }: 
 
         {/* Avatar — overlaps the header */}
         <div className="relative -mt-12 flex justify-center">
-          <div className={`rounded-full p-0.5 bg-card ${frameClasses}`}>
+          <CosmeticFrame cosmeticId={entry.equippedFrame} size="profile" className="rounded-full p-0.5 bg-card">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-4xl font-bold text-primary overflow-hidden shadow-lg">
               {avatarItem?.imagePath ? (
                 <img src={avatarItem.imagePath} alt="Avatar" className="h-full w-full object-cover" />
@@ -104,7 +103,7 @@ export function PublicProfileModal({ entry, npLabel = "Lifetime NP", onClose }: 
                 (entry.name[0] ?? "?").toUpperCase()
               )}
             </div>
-          </div>
+          </CosmeticFrame>
         </div>
 
         {/* Body */}
