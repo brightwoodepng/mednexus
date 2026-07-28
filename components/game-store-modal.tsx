@@ -346,22 +346,22 @@ function SubPageShell({
 // ── Supply Closet — vertical grid card ────────────────────────────────────────
 
 function SupplyGridCard({
-  item, owned, buying, didBuy, canAfford, onBuy,
+  item, owned, balance, buying, didBuy, selectedBundleId, onSelectBundle, onBuy,
 }: {
-  item: StoreItem; owned: number; buying: boolean; didBuy: boolean; canAfford: boolean; onBuy: () => void
+  item: StoreItem; owned: number; balance: number; buying: boolean; didBuy: boolean; selectedBundleId: string
+  onSelectBundle: (bundleId: string) => void; onBuy: () => void
 }) {
+  const options = item.purchaseOptions ?? [{ id: "single", quantity: 1, price: item.price }]
+  const selected = options.find(option => option.id === selectedBundleId) ?? options[0]
+  const maxInventory = item.maxInventory ?? item.supply?.stackLimit ?? 0
+  const exceedsCap = owned + selected.quantity > maxInventory
+  const canAfford = balance >= selected.price
   return (
     <div className="flex flex-col items-center text-center p-6 h-full rounded-2xl border border-border bg-card transition-all hover:shadow-md">
 
       {/* Icon */}
       <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} text-3xl shadow-md mb-4`}>
         {item.icon}
-      </div>
-
-      {/* Price badge */}
-      <div className="flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1 mb-3">
-        <span className="text-[10px]">🪙</span>
-        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">{item.price.toLocaleString()}</span>
       </div>
 
       {/* Name */}
@@ -383,25 +383,34 @@ function SupplyGridCard({
         </div>
       )}
 
-      {/* Owned count */}
-      {owned > 0 && (
-        <span className="mt-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-          You have: {owned}×
-        </span>
-      )}
+      <div className="mt-4 grid w-full grid-cols-2 gap-2" aria-label={`Purchase quantity for ${item.name}`}>
+        {options.map(option => (
+          <button key={option.id} type="button" onClick={() => onSelectBundle(option.id)} disabled={buying || owned + option.quantity > maxInventory}
+            aria-pressed={selected.id === option.id}
+            className={`min-h-11 rounded-xl border px-2 py-1.5 text-xs font-bold transition-colors ${selected.id === option.id ? "border-cyan-500 bg-cyan-50 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-200" : "border-border bg-background text-muted-foreground"} disabled:cursor-not-allowed disabled:opacity-40`}>
+            {option.quantity} unit{option.quantity === 1 ? "" : "s"}
+            <span className="block text-[10px] font-semibold">{option.price.toLocaleString()} NP</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="my-3 flex w-full items-center justify-between text-[11px] font-semibold">
+        <span className="text-emerald-600 dark:text-emerald-400">Owned {owned}/{maxInventory}</span>
+        <span className="text-amber-700 dark:text-amber-300">Total {selected.price.toLocaleString()} NP</span>
+      </div>
 
       {/* Buy button — anchored to bottom */}
       <button
         type="button"
-        disabled={buying || !canAfford}
+        disabled={buying || exceedsCap || canAfford === false}
         onClick={onBuy}
         className={`mt-auto w-full rounded-full py-2.5 text-xs font-bold transition-all ${
           didBuy        ? "bg-emerald-500 text-white" :
-          canAfford     ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
+          !exceedsCap && canAfford !== false ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
                           "bg-muted text-muted-foreground cursor-not-allowed"
         }`}
       >
-        {buying ? "…" : didBuy ? "Purchased!" : canAfford ? "Buy" : "Need NP"}
+        {buying ? "…" : didBuy ? "Purchased!" : exceedsCap ? "Inventory cap" : canAfford === false ? "Need NP" : `Buy ${selected.quantity}`}
       </button>
     </div>
   )
@@ -623,16 +632,18 @@ export function NexusStoreSupplyPage({ onBack }: { onBack: () => void }) {
   const [buying, setBuying] = useState<string | null>(null)
   const [flash,  setFlash]  = useState<string | null>(null)
   const [error,  setError]  = useState<string | null>(null)
+  const [selectedBundles, setSelectedBundles] = useState<Record<string, string>>({})
 
   const supplyItems = STORE_ITEMS.filter(i => i.category === "lifeline")
 
-  async function handleBuy(itemId: string) {
+  async function handleBuy(item: StoreItem) {
     setError(null)
-    setBuying(itemId)
-    const result = await purchase(itemId)
+    setBuying(item.id)
+    const bundleId = selectedBundles[item.id] ?? item.purchaseOptions?.[0]?.id ?? "single"
+    const result = await purchase(item.id, { bundleId })
     setBuying(null)
     if (result.ok) {
-      setFlash(itemId)
+      setFlash(item.id)
       setTimeout(() => setFlash(null), 2500)
     } else {
       setError(result.error ?? "Purchase failed")
@@ -656,10 +667,12 @@ export function NexusStoreSupplyPage({ onBack }: { onBack: () => void }) {
             key={item.id}
             item={item}
             owned={inventory[item.id] ?? 0}
+            balance={balance}
             buying={buying === item.id}
             didBuy={flash === item.id}
-            canAfford={balance >= item.price}
-            onBuy={() => handleBuy(item.id)}
+            selectedBundleId={selectedBundles[item.id] ?? item.purchaseOptions?.[0]?.id ?? "single"}
+            onSelectBundle={bundleId => setSelectedBundles(current => ({ ...current, [item.id]: bundleId }))}
+            onBuy={() => handleBuy(item)}
           />
         ))}
       </div>

@@ -72,6 +72,8 @@ export interface StoreItem {
   icon: string
   price: number
   productGroup: StoreProductGroup
+  maxInventory?: number
+  purchaseOptions?: readonly { id: string; quantity: number; price: number }[]
   category: "lifeline" | "cosmetic" | "vault"
   maxQuantity?: number // undefined = unlimited stacking; 1 = one-time purchase
   gradient: string
@@ -182,7 +184,7 @@ const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [
       effectType: "eliminate_wrong_answers",
       supportedModes: ["rapid", "sudden", "timeatk", "streak", "double"],
       perQuestionUsageLimit: 1,
-      stackLimit: ECONOMY_CONFIG.store.inventoryQuantityLimit,
+      stackLimit: ECONOMY_CONFIG.store.catalog.lifeline_50_50.maxInventory,
       effectAmount: 2,
       effectUnit: "answer_choices",
     },
@@ -198,7 +200,7 @@ const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [
       effectType: "add_time",
       supportedModes: ["rapid", "sudden", "timeatk"],
       perQuestionUsageLimit: 1,
-      stackLimit: ECONOMY_CONFIG.store.inventoryQuantityLimit,
+      stackLimit: ECONOMY_CONFIG.store.catalog.lifeline_freeze.maxInventory,
       effectAmount: 10,
       effectUnit: "seconds",
     },
