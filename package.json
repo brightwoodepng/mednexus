@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
+    "db:audit-economy": "tsx scripts/audit-economy-readiness.ts",
     "seed:theory-demo": "tsx scripts/seed-theory-demo.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "economy:analyze": "tsx scripts/analyze-economy.ts",

@@ -35,6 +35,10 @@ export async function ensureSchema() {
   // DO block that silently skips if the type already exists.
   // Note: $$ dollar-quoting is required — single $ is not valid syntax.
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS mednexus_schema_migrations (
+      version TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
     DO $$ BEGIN
       CREATE TYPE question_context_type AS ENUM ('TEXT', 'TABLE', 'IMAGE', 'MIXED');
     EXCEPTION WHEN duplicate_object THEN NULL;
@@ -685,6 +689,8 @@ export async function ensureSchema() {
     ALTER TABLE mednexus_multiplayer_payouts ALTER COLUMN season_id SET NOT NULL;
     ALTER TABLE mednexus_user_question_progress ALTER COLUMN season_id SET NOT NULL;
     ALTER TABLE mednexus_discipline_np_log ALTER COLUMN season_id SET NOT NULL;
+    INSERT INTO mednexus_schema_migrations(version)
+      VALUES ('2026-07-28-economy-seasons-v1') ON CONFLICT (version) DO NOTHING;
     ALTER TABLE mednexus_daily_activity DROP CONSTRAINT IF EXISTS mednexus_daily_activity_pkey;
     ALTER TABLE mednexus_daily_activity ADD CONSTRAINT mednexus_daily_activity_pkey PRIMARY KEY (season_id,user_id,activity_date);
     ALTER TABLE mednexus_bounty_progress DROP CONSTRAINT IF EXISTS mednexus_bounty_progress_pkey;
