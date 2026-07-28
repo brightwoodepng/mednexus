@@ -1,9 +1,13 @@
 import { execFileSync } from "node:child_process"
 import { describe, expect, it } from "vitest"
 
-import { deploymentBuildSteps } from "../../scripts/vercel-build.mjs"
+import { deploymentBuildSteps, validateDeploymentEnvironment } from "../../scripts/vercel-build.mjs"
 
 describe("deployment migration policy", () => {
+  it("rejects production builds that cannot issue session tokens", () => {
+    expect(() => validateDeploymentEnvironment({ VERCEL_ENV: "production" })).toThrow("SESSION_SECRET")
+    expect(() => validateDeploymentEnvironment({ VERCEL_ENV: "production", SESSION_SECRET: "test-secret" })).not.toThrow()
+  })
   it("keeps database migration as a required production gate", () => {
     expect(deploymentBuildSteps({ VERCEL_ENV: "production" })).toEqual(["db:migrate", "build"])
   })
