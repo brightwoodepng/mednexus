@@ -8,7 +8,7 @@ import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy, type PayoutResponse } from "@/contexts/economy-context"
 import { PayoutResult } from "@/components/economy-panel"
-import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS } from "@/lib/economy"
+import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS, getCosmeticAccessibleLabel } from "@/lib/economy"
 import { getMultiplayerRewardRules } from "@/lib/multiplayer-reward-presentation"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -189,8 +189,9 @@ function PlayerAvatarBubble({
     ? STORE_ITEMS.find(i => i.id === player.equippedAvatar)
     : null
   const frameClass = player.equippedFrame ? (FRAME_RING_CLASSES[player.equippedFrame] ?? "") : ""
+  const frameLabel = getCosmeticAccessibleLabel(player.equippedFrame)
   return (
-    <span className={`flex ${sizeCls} shrink-0 items-center justify-center rounded-full overflow-hidden text-xs font-extrabold ${frameClass} ${avatarItem?.imagePath ? "" : fallbackBgCls}`}>
+    <span role="img" aria-label={`${player.name}'s avatar${frameLabel ? ` with ${frameLabel} frame` : ""}`} className={`flex ${sizeCls} shrink-0 items-center justify-center rounded-full overflow-hidden text-xs font-extrabold ${frameClass} ${avatarItem?.imagePath ? "" : fallbackBgCls}`}>
       {avatarItem?.imagePath
         ? <img src={avatarItem.imagePath} alt="" className="h-full w-full object-cover" />
         : fallback}
@@ -201,8 +202,9 @@ function PlayerAvatarBubble({
 function PlayerRow({ player, rank, showScore }: { player: RoomPlayer; rank?: number; showScore?: boolean }) {
   const rowClass   = player.equippedHighlight ? (HIGHLIGHT_ROW_CLASSES[player.equippedHighlight] ?? "") : ""
   const titleLabel = player.equippedTitle     ? (TITLE_LABELS[player.equippedTitle]              ?? null) : null
+  const highlightLabel = getCosmeticAccessibleLabel(player.equippedHighlight)
   return (
-    <div className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-all ${rowClass || "border-border bg-card"}`}>
+    <div role={highlightLabel ? "group" : undefined} aria-label={highlightLabel ? `${player.name}, ${highlightLabel} highlight` : undefined} className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-all ${rowClass || "border-border bg-card"}`}>
       {rank !== undefined && (
         <PlayerAvatarBubble
           player={player}
