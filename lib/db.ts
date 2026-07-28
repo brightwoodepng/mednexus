@@ -86,6 +86,7 @@ export async function ensureSchema() {
       tutorial_version INTEGER NOT NULL CHECK (tutorial_version > 0),
       status TEXT NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'in_progress', 'completed', 'dismissed')),
       current_step INTEGER NOT NULL DEFAULT 0 CHECK (current_step >= 0),
+      current_step_id TEXT,
       started_at TIMESTAMPTZ,
       completed_at TIMESTAMPTZ,
       dismissed_at TIMESTAMPTZ,
@@ -612,6 +613,7 @@ export async function ensureSchema() {
   // ALTER TABLE … ADD COLUMN IF NOT EXISTS is safe to re-run; it no-ops when
   // the column already exists (e.g. when the CREATE TABLE above already added it).
   await client.query(`
+    ALTER TABLE mednexus_user_onboarding ADD COLUMN IF NOT EXISTS current_step_id TEXT;
     -- CREATE TABLE IF NOT EXISTS cannot repair constraints from an older
     -- onboarding release. Replace the checks explicitly and idempotently.
     DO $$ DECLARE c record; BEGIN
