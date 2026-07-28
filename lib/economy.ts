@@ -65,6 +65,16 @@ export function economyWeekId(date = new Date()): string {
 
 // ── Store catalog ──────────────────────────────────────────────────────────────
 
+export type CosmeticRarity = "common" | "rare" | "epic" | "legendary" | "mythic"
+
+export interface CosmeticCatalogMetadata {
+  rarity: CosmeticRarity
+  sortOrder: number
+  previewTheme: string
+  limitedUntil?: string
+  featured?: boolean
+}
+
 export interface StoreItem {
   id: string
   name: string
@@ -78,6 +88,12 @@ export interface StoreItem {
   maxQuantity?: number // undefined = unlimited stacking; 1 = one-time purchase
   gradient: string
   cosmeticType?: "title" | "frame" | "highlight" | "avatar"
+  /** Display-only cosmetic metadata. Purchase authorization remains server-side. */
+  rarity?: CosmeticRarity
+  sortOrder?: number
+  previewTheme?: string
+  limitedUntil?: string
+  featured?: boolean
   imagePath?: string
   /** Server-authoritative behavior and availability for Supply Closet items. */
   supply?: {
@@ -89,6 +105,50 @@ export interface StoreItem {
     effectUnit: "answer_choices" | "seconds"
   }
 }
+
+/**
+ * Presentation metadata for every cosmetic in the sellable catalog. Rarity
+ * follows configured price bands and must never be used as an ownership or
+ * purchase-permission signal.
+ */
+export const COSMETIC_CATALOG_METADATA = {
+  title_pre_med: { rarity: "common", sortOrder: 10, previewTheme: "clinical-slate" },
+  title_intern: { rarity: "common", sortOrder: 20, previewTheme: "clinical-blue" },
+  title_fellow: { rarity: "rare", sortOrder: 30, previewTheme: "research-fuchsia" },
+  title_attending: { rarity: "rare", sortOrder: 40, previewTheme: "academic-violet" },
+  title_chief_resident: { rarity: "epic", sortOrder: 50, previewTheme: "leadership-amber" },
+  title_the_gunner: { rarity: "legendary", sortOrder: 60, previewTheme: "library-fire" },
+  title_department_chair: { rarity: "legendary", sortOrder: 70, previewTheme: "executive-indigo" },
+  title_chief_of_surgery: { rarity: "mythic", sortOrder: 80, previewTheme: "surgical-flare", featured: true },
+  title_dean_of_medicine: { rarity: "mythic", sortOrder: 90, previewTheme: "dean-gold", featured: true },
+  title_caffeine_dependent: { rarity: "common", sortOrder: 15, previewTheme: "coffee-amber" },
+  frame_gold: { rarity: "rare", sortOrder: 10, previewTheme: "gold-ring" },
+  frame_neon: { rarity: "epic", sortOrder: 20, previewTheme: "neon-pulse" },
+  frame_fire: { rarity: "legendary", sortOrder: 30, previewTheme: "live-hellfire" },
+  frame_legendary_diamond: { rarity: "legendary", sortOrder: 40, previewTheme: "diamond-ice" },
+  frame_legendary_biohazard: { rarity: "legendary", sortOrder: 50, previewTheme: "biohazard" },
+  frame_mythic_nebula: { rarity: "mythic", sortOrder: 60, previewTheme: "deep-nebula", featured: true },
+  frame_mythic_heartbeat: { rarity: "mythic", sortOrder: 70, previewTheme: "heartbeat", featured: true },
+  frame_lightning: { rarity: "mythic", sortOrder: 80, previewTheme: "high-voltage" },
+  frame_toxic_drip: { rarity: "mythic", sortOrder: 90, previewTheme: "toxic-ooze" },
+  highlight_neon: { rarity: "common", sortOrder: 10, previewTheme: "neon-row" },
+  highlight_gold: { rarity: "common", sortOrder: 20, previewTheme: "gold-row" },
+  highlight_amethyst: { rarity: "epic", sortOrder: 30, previewTheme: "amethyst-row" },
+  highlight_legendary_crimson: { rarity: "legendary", sortOrder: 40, previewTheme: "crimson-surge" },
+  highlight_legendary_emerald: { rarity: "legendary", sortOrder: 50, previewTheme: "emerald-force" },
+  highlight_mythic_lightning: { rarity: "mythic", sortOrder: 60, previewTheme: "electric-row", featured: true },
+  highlight_mythic_void_walker: { rarity: "mythic", sortOrder: 70, previewTheme: "void-row", featured: true },
+  avatar_scrub_tech: { rarity: "rare", sortOrder: 10, previewTheme: "blue-scrubs" },
+  avatar_coffee_drip: { rarity: "rare", sortOrder: 20, previewTheme: "coffee-iv" },
+  avatar_lab_rat: { rarity: "epic", sortOrder: 30, previewTheme: "research-lab" },
+  avatar_night_shift: { rarity: "epic", sortOrder: 40, previewTheme: "night-shift" },
+  avatar_gold_steth: { rarity: "legendary", sortOrder: 50, previewTheme: "gold-stethoscope" },
+  avatar_plague_doctor: { rarity: "legendary", sortOrder: 60, previewTheme: "plague-mask" },
+  avatar_cyber_surgeon: { rarity: "legendary", sortOrder: 70, previewTheme: "cyber-surgeon" },
+  avatar_ascended: { rarity: "mythic", sortOrder: 80, previewTheme: "ascended-healer", featured: true },
+  avatar_marble: { rarity: "mythic", sortOrder: 90, previewTheme: "marble-statue" },
+  avatar_vital_sign: { rarity: "mythic", sortOrder: 100, previewTheme: "living-ekg", featured: true },
+} as const satisfies Record<string, CosmeticCatalogMetadata>
 
 export type SoloSupplyMode = "rapid" | "sudden" | "timeatk" | "streak" | "double"
 
@@ -636,7 +696,13 @@ const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [
 export const STORE_ITEMS: StoreItem[] = STORE_ITEM_DEFINITIONS.map((item) => {
   const catalogEntry = ECONOMY_CONFIG.store.catalog[item.id as keyof typeof ECONOMY_CONFIG.store.catalog]
   if (!catalogEntry) throw new Error(`Missing store catalog configuration: ${item.id}`)
-  return { ...item, ...catalogEntry }
+  const cosmeticMetadata = item.category === "cosmetic"
+    ? COSMETIC_CATALOG_METADATA[item.id as keyof typeof COSMETIC_CATALOG_METADATA]
+    : undefined
+  if (item.category === "cosmetic" && !cosmeticMetadata) {
+    throw new Error(`Missing cosmetic catalog metadata: ${item.id}`)
+  }
+  return { ...item, ...catalogEntry, ...cosmeticMetadata }
 })
 
 // ── Clinical Ladder ──────────────────────────────────────────────────────────
