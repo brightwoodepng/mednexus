@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react"
 import { ArrowRight, RefreshCw, Trophy } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
-import { FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS, TITLE_LABELS, getCosmeticAccessibleLabel } from "@/lib/economy"
+import { STORE_ITEMS, TITLE_LABELS, getCosmeticAccessibleLabel } from "@/lib/economy"
 import { PublicProfileModal } from "@/components/public-profile-modal"
 import type { LeaderboardEntry } from "@/components/public-profile-modal"
 import type { Screen } from "@/lib/view"
+import { getCosmeticPresentation } from "@/components/cosmetics"
 
 type RankingTab = "weekly" | "monthly" | "alltime"
 type LeaderboardScreenProps = { onNavigate?: (screen: Screen) => void }
@@ -39,7 +40,7 @@ function Avatar({ entry, size, orbit = false, rank }: {
   orbit?: boolean
   rank?: 1 | 2 | 3
 }) {
-  const frame = entry.equippedFrame ? FRAME_RING_CLASSES[entry.equippedFrame] ?? "" : ""
+  const frame = entry.equippedFrame ? getCosmeticPresentation(entry.equippedFrame).className ?? "" : ""
   const frameLabel = getCosmeticAccessibleLabel(entry.equippedFrame)
   const avatar = entry.equippedAvatar ? STORE_ITEMS.find((item) => item.id === entry.equippedAvatar) : null
   const medal = rank === 1
@@ -110,7 +111,7 @@ function PodiumPlace({ entry, onSelect }: { entry: LeaderboardEntry; onSelect: (
 }
 
 function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardEntry; viewer: boolean; index: number; onSelect: () => void }) {
-  const highlight = entry.equippedHighlight ? HIGHLIGHT_ROW_CLASSES[entry.equippedHighlight] ?? "" : ""
+  const highlight = entry.equippedHighlight ? getCosmeticPresentation(entry.equippedHighlight).className ?? "" : ""
   const cosmeticLabel = getCosmeticAccessibleLabel(entry.equippedHighlight)
   return (
     <button
