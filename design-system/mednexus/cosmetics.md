@@ -91,7 +91,7 @@ Every new avatar must begin as transparent **1024×1024 master artwork**. Keep a
 
 Masters must contain **no embedded text**, **no baked-in rarity border**, and **no baked-in background glow**. Frames, rarity treatments, and glow belong to the interface so they can respond correctly to theme, equipment, accessibility preferences, and product changes. The silhouette and important clinical details must remain highly readable at **40×40, 64×64, and 128×128** pixels.
 
-Publish at least one optimized **WebP or AVIF derivative** alongside the lossless master; provide multiple sizes when doing so avoids downloading an oversized image. Every avatar also requires an accessible fallback icon or initials for missing, disabled, or failed artwork.
+The application publishes optimized **WebP or AVIF derivatives** from the lossless master through Next.js Image. Every avatar also requires an accessible fallback icon or initials for missing, disabled, or failed artwork.
 
 ### Avatar manifest
 
@@ -99,13 +99,13 @@ Publish at least one optimized **WebP or AVIF derivative** alongside the lossles
 
 - a stable **ID** matching the store/equipment ID;
 - the lossless **source asset** path;
-- all **optimized asset variants**, including format and pixel size;
+- the source asset's intrinsic **width and height**, plus its image quality preference;
 - normalized **focal-point coordinates**;
 - a concise, meaningful **alt label**;
 - the avatar's **rarity**; and
 - its **preview background preference** (`light`, `dark`, or `neutral`).
 
-Do not add an avatar to the store until its manifest entry and optimized derivative are present. Derivative entries may point to the framework image optimizer, which negotiates WebP or AVIF at request time; generated binary output must not be checked into this repository. Renderers must declare intrinsic `width` and `height` to prevent layout shift, lazy-load artwork in store grids, and eagerly load only the currently selected preview.
+Do not add an avatar to the store until its manifest entry and lossless source are present. Renderers pass that canonical path and metadata to `next/image`, which negotiates WebP or AVIF at request time; neither private optimizer URLs nor generated binary output belong in the manifest. Renderers must declare intrinsic `width` and `height` to prevent layout shift, lazy-load artwork in store grids, and eagerly load only the currently selected preview.
 
 ### Pre-publication inspection
 
