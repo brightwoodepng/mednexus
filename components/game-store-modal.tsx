@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useEconomy } from "@/contexts/economy-context"
+import { useApp } from "@/contexts/app-context"
 import {
   STORE_ITEMS, VAULT_META, TITLE_LABELS, SOLO_SUPPLY_MODE_LABELS,
   FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES,
@@ -421,11 +422,11 @@ function SupplyGridCard({
 // ── Cosmetics — vertical grid card ───────────────────────────────────────────
 
 function CosmeticGridCard({
-  item, owned, equipped, buying, equipping, didBuy, canAfford, onBuy, onEquip,
+  item, owned, equipped, previewed, buying, equipping, didBuy, canAfford, onBuy, onEquip, onPreview,
 }: {
-  item: StoreItem; owned: boolean; equipped: boolean
+  item: StoreItem; owned: boolean; equipped: boolean; previewed: boolean
   buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
-  onBuy: () => void; onEquip: () => void
+  onBuy: () => void; onEquip: () => void; onPreview: () => void
 }) {
   const frameClass   = item.cosmeticType === "frame"     ? (FRAME_RING_CLASSES[item.id]    ?? "") : ""
   const highlightCls = item.cosmeticType === "highlight" ? (HIGHLIGHT_ROW_CLASSES[item.id] ?? "") : ""
@@ -509,26 +510,37 @@ function CosmeticGridCard({
         )}
       </div>
 
-      {/* CTA button — anchored to bottom */}
+      <button
+        type="button"
+        aria-pressed={previewed}
+        onClick={onPreview}
+        className={`mt-auto mb-2 min-h-11 w-full rounded-full border text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          previewed ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:bg-muted"
+        }`}
+      >
+        {previewed ? "✓ In Preview" : "Preview"}
+      </button>
+
+      {/* Purchase/equip action */}
       {owned ? (
         <button
           type="button"
           disabled={equipping}
           onClick={onEquip}
-          className={`mt-auto w-full rounded-full py-2.5 text-xs font-bold transition-all ${
+          className={`w-full rounded-full py-2.5 text-xs font-bold transition-all ${
             equipped
               ? "bg-muted text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400"
               : `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90`
           }`}
         >
-          {equipping ? "…" : equipped ? "Unequip" : "Equip"}
+          {equipping ? "…" : equipped ? "Unequip" : didBuy ? "Equip Now" : "Equip"}
         </button>
       ) : (
         <button
           type="button"
           disabled={buying || !canAfford}
           onClick={onBuy}
-          className={`mt-auto w-full rounded-full py-2.5 text-xs font-bold transition-all ${
+          className={`w-full rounded-full py-2.5 text-xs font-bold transition-all ${
             didBuy    ? "bg-emerald-500 text-white" :
             canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
                         "bg-muted text-muted-foreground cursor-not-allowed"
@@ -820,13 +832,92 @@ export function NexusStoreVaultPage({ onBack }: { onBack: () => void }) {
 
 // ── NexusStoreCosmeticsPage ───────────────────────────────────────────────────
 
+type CosmeticPreview = Record<CosmeticSection, string | null>
+
+function CosmeticsPreviewPanel({
+  preview, inventory, displayName, onReset,
+}: {
+  preview: CosmeticPreview
+  inventory: Record<string, number>
+  displayName: string
+  onReset: () => void
+}) {
+  const selected = (Object.keys(preview) as CosmeticSection[]).map(type => ({
+    type,
+    item: preview[type] ? STORE_ITEMS.find(item => item.id === preview[type]) : undefined,
+  }))
+  const title = selected.find(entry => entry.type === "title")?.item
+  const frame = selected.find(entry => entry.type === "frame")?.item
+  const highlight = selected.find(entry => entry.type === "highlight")?.item
+  const avatar = selected.find(entry => entry.type === "avatar")?.item
+  const frameClass = frame ? (FRAME_RING_CLASSES[frame.id] ?? "") : ""
+  const highlightClass = highlight ? (HIGHLIGHT_ROW_CLASSES[highlight.id] ?? "") : ""
+  const hasPreview = selected.some(entry => entry.item)
+
+  return (
+    <section className="mb-6 overflow-hidden rounded-3xl border border-violet-200/70 bg-gradient-to-br from-slate-950 via-violet-950 to-slate-950 text-white shadow-xl dark:border-violet-700/50" aria-labelledby="cosmetics-preview-heading">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+        <div>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-violet-300">Multiplayer look lab</p>
+          <h2 id="cosmetics-preview-heading" className="mt-1 text-lg font-extrabold">Preview your leaderboard look</h2>
+          <p className="mt-1 text-xs text-slate-300">Try any combination. Nothing here is purchased or equipped.</p>
+        </div>
+        <button type="button" onClick={onReset} disabled={!hasPreview} className="min-h-11 rounded-full border border-white/20 px-4 text-xs font-bold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+          Reset Preview
+        </button>
+      </div>
+
+      <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_1fr]">
+        <div className={`relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-4 ${highlightClass}`}>
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-300">Simulated leaderboard · Rank 1</p>
+          <div className="flex items-center gap-3">
+            <span className="w-6 text-center text-lg font-black text-amber-300">1</span>
+            <div className={`relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${avatar?.gradient ?? "from-cyan-500 to-violet-600"} text-2xl shadow-lg ${frameClass}`}>
+              {avatar?.imagePath ? <img src={avatar.imagePath} alt={`${avatar.name} preview`} className="h-full w-full object-cover" /> : <span>{avatar?.icon ?? "🧑‍⚕️"}</span>}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-sm font-extrabold">{displayName}</span>
+                {title && <span className={`rounded-full bg-gradient-to-r ${title.gradient} px-2.5 py-1 text-[10px] font-extrabold text-white`}>{TITLE_LABELS[title.id] ?? title.name}</span>}
+              </div>
+              <p className="mt-1 text-xs text-slate-300">9,840 points</p>
+            </div>
+            <span className="text-sm font-black text-emerald-300">+720</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {selected.map(({ type, item }) => {
+            const owned = item ? (inventory[item.id] ?? 0) >= 1 : false
+            return (
+              <div key={type} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{type}</p>
+                {item ? <>
+                  <p className="mt-1 truncate text-xs font-bold text-white">{item.name}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <RarityBadge rarity={item.rarity} />
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${owned ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/15 text-amber-200"}`}>{owned ? `Owned · ${item.price.toLocaleString()} NP` : `Unowned · ${item.price.toLocaleString()} NP`}</span>
+                  </div>
+                </> : <p className="mt-2 text-xs text-slate-500">Not selected</p>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
   const { balance, inventory, purchase, equippedCosmetics, equipCosmetic } = useEconomy()
+  const { user } = useApp()
   const [cosSection, setCosSection] = useState<CosmeticSection>("title")
   const [buying,     setBuying]     = useState<string | null>(null)
   const [equipping,  setEquipping]  = useState<string | null>(null)
   const [flash,      setFlash]      = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
+  const [success,    setSuccess]    = useState<string | null>(null)
+  const [preview, setPreview] = useState<CosmeticPreview>({ title: null, frame: null, highlight: null, avatar: null })
   const [rarityFilter, setRarityFilter] = useState<CosmeticRarity | "all">("all")
 
   const cosItems = STORE_ITEMS
@@ -846,6 +937,7 @@ export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
 
   async function handleBuy(itemId: string) {
     setError(null)
+    setSuccess(null)
     setBuying(itemId)
     const result = await purchase(itemId)
     setBuying(null)
@@ -860,18 +952,29 @@ export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
 
   async function handleEquip(type: CosmeticSection, itemId: string) {
     const isEquipped = equippedCosmetics[type] === itemId
+    setError(null)
+    setSuccess(null)
     setEquipping(itemId)
-    await equipCosmetic(type, isEquipped ? null : itemId)
+    const result = await equipCosmetic(type, isEquipped ? null : itemId)
     setEquipping(null)
+    if (!result.ok) {
+      setError(result.error ?? `Could not ${isEquipped ? "unequip" : "equip"} this cosmetic.`)
+      return
+    }
+    const item = STORE_ITEMS.find(candidate => candidate.id === itemId)
+    setSuccess(isEquipped ? `${item?.name ?? "Cosmetic"} unequipped.` : `${item?.name ?? "Cosmetic"} equipped successfully.`)
   }
 
   return (
     <SubPageShell title="Cosmetics" emoji="✨" onBack={onBack} balance={balance}>
       {error && (
-        <div className="mb-4 rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400">
+        <div role="alert" className="mb-4 rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400">
           {error}
         </div>
       )}
+      {success && <div role="status" className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-300">✓ {success}</div>}
+
+      <CosmeticsPreviewPanel preview={preview} inventory={inventory} displayName={user?.name || "Your Name"} onReset={() => setPreview({ title: null, frame: null, highlight: null, avatar: null })} />
 
       {/* Sub-section pill tabs */}
       <div className="mb-6 flex gap-1 rounded-2xl bg-muted p-1 overflow-x-auto no-scrollbar">
@@ -925,12 +1028,14 @@ export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
               item={item}
               owned={owned}
               equipped={equipped}
+              previewed={preview[cosSection] === item.id}
               buying={buying === item.id}
               equipping={equipping === item.id}
               didBuy={flash === item.id}
               canAfford={balance >= item.price}
               onBuy={() => handleBuy(item.id)}
               onEquip={() => item.cosmeticType && handleEquip(item.cosmeticType as CosmeticSection, item.id)}
+              onPreview={() => item.cosmeticType && setPreview(current => ({ ...current, [item.cosmeticType as CosmeticSection]: item.id }))}
             />
           )
         })}
