@@ -20,7 +20,7 @@ type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash"
 type AppView = "hero" | "solo" | "multi" | "quickjoin" | GameModeId
 type Phase = "menu" | "playing" | "over"
 type Feedback = "correct" | "wrong" | null
-interface AnswerHistoryEntry { question: Question; selected: string | null; wager?: number }
+interface AnswerHistoryEntry { question: Question; selected: string | null; secondAttempt?: string | null; assisted?: boolean; wager?: number }
 type SoloCompletionReason = "lives_exhausted" | "incorrect_answer" | "timeout" | "pool_completed" | "bank_depleted" | "player_finished"
 
 interface GameFilter {
@@ -411,7 +411,12 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
       const seenQuestionIds = new Set<string>()
       const orderedAnswers = answerHistory
         .filter(entry => !seenQuestionIds.has(entry.question.id) && !!seenQuestionIds.add(entry.question.id))
-        .map((entry) => ({ questionId: entry.question.id, answer: entry.selected }))
+        .map((entry) => ({
+          questionId: entry.question.id,
+          answer: entry.secondAttempt ?? entry.selected,
+          firstAnswer: entry.selected,
+          ...(entry.assisted ? { secondAnswer: entry.secondAttempt ?? null, assisted: true } : {}),
+        }))
       const answers = Object.fromEntries(
         orderedAnswers.map((entry) => [entry.questionId, entry.answer]),
       )
@@ -847,13 +852,14 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
 }
 
 // ── Lifeline Bar ─────────────────────────────────────────────────────────────
-function LifelineBar({ onUse50_50, onUseFreeze, qty5050, qtyFreeze, disabled5050, disabledFreeze, freezeActivated = false }: {
+function LifelineBar({ onUse50_50, onUseFreeze, onUseSecondOpinion, qty5050, qtyFreeze, qtySecondOpinion = 0, disabled5050, disabledFreeze, disabledSecondOpinion = true, freezeActivated = false, secondOpinionActivated = false }: {
   onUse50_50: () => void; onUseFreeze: () => void
-  qty5050: number; qtyFreeze: number
-  disabled5050: boolean; disabledFreeze: boolean
-  freezeActivated?: boolean
+  onUseSecondOpinion?: () => void
+  qty5050: number; qtyFreeze: number; qtySecondOpinion?: number
+  disabled5050: boolean; disabledFreeze: boolean; disabledSecondOpinion?: boolean
+  freezeActivated?: boolean; secondOpinionActivated?: boolean
 }) {
-  if (qty5050 <= 0 && qtyFreeze <= 0 && !freezeActivated) return null
+  if (qty5050 <= 0 && qtyFreeze <= 0 && qtySecondOpinion <= 0 && !freezeActivated && !secondOpinionActivated) return null
   return (
     <div className="flex items-center justify-center gap-2 py-0.5">
       {qty5050 > 0 && (
@@ -869,6 +875,14 @@ function LifelineBar({ onUse50_50, onUseFreeze, qty5050, qtyFreeze, disabled5050
           className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${disabledFreeze ? "opacity-40 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-cyan-200 dark:border-cyan-800/40 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 hover:opacity-80 active:scale-95"}`}>
           {freezeActivated ? <span aria-live="polite">✓ +10s added</span> : <>🧪 Stat Labs</>}
           {!freezeActivated && <span className="rounded-full bg-cyan-200 dark:bg-cyan-800 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:text-cyan-200">×{qtyFreeze}</span>}
+        </button>
+      )}
+      {(qtySecondOpinion > 0 || secondOpinionActivated) && (
+        <button type="button" onClick={onUseSecondOpinion} disabled={disabledSecondOpinion}
+          title="Activate before answering. A corrected retry continues play but earns no accuracy or NP credit."
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${disabledSecondOpinion ? "opacity-40 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-amber-200 bg-amber-50 text-amber-700 hover:opacity-80 active:scale-95 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400"}`}>
+          {secondOpinionActivated ? "✓ Second Opinion ready" : "👥 Second Opinion"}
+          {!secondOpinionActivated && <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-800 dark:bg-amber-800 dark:text-amber-200">×{qtySecondOpinion}</span>}
         </button>
       )}
     </div>
@@ -1139,6 +1153,8 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   const [eliminated, setEliminated] = useState<string[]>([])
   const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
   const [lifelineUsed, setLifelineUsed] = useState(false)
+  const [secondOpinionActive, setSecondOpinionActive] = useState(false)
+  const [firstAttempt, setFirstAttempt] = useState<string | null | undefined>(undefined)
 
   const round = useSoloGameRound(cfg.id, () => {
     const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, r.current.score)
@@ -1159,6 +1175,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
     }
     if (!round.advanceOrFinalize()) return
     setFb(null); r.current.fb = null; setPicked(null); setEliminated([])
+    setSecondOpinionActive(false); setFirstAttempt(undefined)
     expiryRef.current = Date.now() + RAPID_TIME * 1000
     setTimeLeft(RAPID_TIME)
   }
@@ -1167,15 +1184,24 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
     if (r.current.fb !== null || r.current.phase !== "playing") return
     const q = r.current.pool[r.current.qi]; if (!q) return
     const right = c !== null && c === q.correctAnswer
+    if (!right && secondOpinionActive && firstAttempt === undefined) {
+      setFirstAttempt(c); setPicked(c)
+      return
+    }
+    const assisted = firstAttempt !== undefined
+    const continuationRight = right && assisted
     const nfb: Feedback = right ? "correct" : "wrong"
     setFb(nfb); r.current.fb = nfb; setPicked(c)
     round.markAnswered(q.id)
-    setAnswerHistory(prev => [...prev, { question: q, selected: c }])
-    const ns = right ? r.current.streak + 1 : 0
+    setAnswerHistory(prev => [...prev, assisted
+      ? { question: q, selected: firstAttempt ?? null, secondAttempt: c, assisted: true }
+      : { question: q, selected: c }])
+    const rewardRight = right && !assisted
+    const ns = rewardRight ? r.current.streak + 1 : continuationRight ? r.current.streak : 0
     const nb = Math.max(r.current.bestStreak, ns)
-    const nsc = right ? r.current.score + BASE_PTS + rapidBonus(ns) : r.current.score
+    const nsc = rewardRight ? r.current.score + BASE_PTS + rapidBonus(ns) : r.current.score
     const nl = right ? r.current.lives : r.current.lives - 1
-    const ntq = r.current.totalQ + 1; const ntr = right ? r.current.totalRight + 1 : r.current.totalRight
+    const ntq = r.current.totalQ + 1; const ntr = rewardRight ? r.current.totalRight + 1 : r.current.totalRight
     setLives(nl); setScore(nsc); setStreak(ns); setBestStreak(nb); setTotalQ(ntq); setTotalRight(ntr)
     r.current.lives = nl; r.current.score = nsc; r.current.streak = ns; r.current.bestStreak = nb; r.current.totalQ = ntq; r.current.totalRight = ntr
     round.schedule(() => advance(nl, nsc), 1100)
@@ -1218,6 +1244,13 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
     expiryRef.current += 10000
   }
 
+  async function useSecondOpinion() {
+    const q = pool[qi]; if (!q || fb !== null || firstAttempt !== undefined) return
+    const sessionId = await scoring.sessionPromise.current; if (!sessionId) return
+    if (!await consumeItem("lifeline_second_opinion", { sessionId, questionId: q.id })) return
+    setLifelineUsed(true); setSecondOpinionActive(true)
+  }
+
   function start(qty?: number | null) {
     const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
     const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
@@ -1231,6 +1264,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
     setTotalQ(0); r.current.totalQ = 0; setTotalRight(0); r.current.totalRight = 0
     setIsNewHigh(false); setEliminated([]); setAnswerHistory([])
     setLifelineUsed(false)
+    setSecondOpinionActive(false); setFirstAttempt(undefined)
     setPhase("playing"); r.current.phase = "playing"
     expiryRef.current = Date.now() + RAPID_TIME * 1000
   }
@@ -1246,6 +1280,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   const msg = streakMsg(streak); const bonus = rapidBonus(streak + 1)
   const qty5050 = inventory["lifeline_50_50"] ?? 0
   const qtyFreeze = inventory["lifeline_freeze"] ?? 0
+  const qtySecondOpinion = inventory["lifeline_second_opinion"] ?? 0
   // High-alert mode: streak ≥ 5 — glowing HUD border + fire timer bar
   const isHighAlert = streak >= 5
 
@@ -1290,10 +1325,11 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
             <span className={`text-xs font-bold tabular-nums ${timeLeft <= 5 ? "text-rose-500" : isHighAlert ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{timeLeft}s</span>
             {msg ? <span className={`text-xs font-bold ${isHighAlert ? "text-rose-500 animate-pulse" : "text-amber-600 dark:text-amber-400"}`}>{msg}</span> : bonus > 0 && fb === null ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">+{BASE_PTS + bonus} if correct</span> : null}
           </div>
-          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} onUse50_50={use50_50} onUseFreeze={useFreeze}
+          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} qtySecondOpinion={qtySecondOpinion} onUse50_50={use50_50} onUseFreeze={useFreeze} onUseSecondOpinion={useSecondOpinion}
             disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
             disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
-            freezeActivated={isItemUsed("lifeline_freeze", q.id)} />
+            disabledSecondOpinion={fb !== null || firstAttempt !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
+            freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionActive} />
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
@@ -1321,6 +1357,8 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   const [eliminated, setEliminated] = useState<string[]>([])
   const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
   const [lifelineUsedSD, setLifelineUsedSD] = useState(false)
+  const [secondOpinionSD, setSecondOpinionSD] = useState(false)
+  const [firstAttemptSD, setFirstAttemptSD] = useState<string | null | undefined>(undefined)
 
   const round = useSoloGameRound(cfg.id, () => endGame(r.current.survived))
   const { pool, qi } = round
@@ -1341,15 +1379,18 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
     if (r.current.fb !== null || r.current.phase !== "playing") return
     const q = r.current.pool[r.current.qi]; if (!q) return
     const right = c !== null && c === q.correctAnswer
+    if (!right && secondOpinionSD && firstAttemptSD === undefined) { setFirstAttemptSD(c); setPicked(c); return }
+    const assisted = firstAttemptSD !== undefined
     const nfb: Feedback = right ? "correct" : "wrong"
     setFb(nfb); r.current.fb = nfb; setPicked(c)
     round.markAnswered(q.id)
-    setAnswerHistory(prev => [...prev, { question: q, selected: c }])
+    setAnswerHistory(prev => [...prev, assisted ? { question: q, selected: firstAttemptSD ?? null, secondAttempt: c, assisted: true } : { question: q, selected: c }])
     if (right) {
-      const ns = r.current.survived + 1; setSurvived(ns); r.current.survived = ns
+      const ns = assisted ? r.current.survived : r.current.survived + 1; setSurvived(ns); r.current.survived = ns
       round.schedule(() => {
         if (!round.advanceOrFinalize()) return
         setFb(null); r.current.fb = null; setPicked(null); setEliminated([])
+        setSecondOpinionSD(false); setFirstAttemptSD(undefined)
         expiryRef.current = Date.now() + SUDDEN_TIME * 1000
         setTimeLeft(SUDDEN_TIME)
       }, 900)
@@ -1394,6 +1435,12 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
     setLifelineUsedSD(true)
     expiryRef.current += 10000
   }
+  async function useSecondOpinionSD() {
+    const q = pool[qi]; if (!q || fb !== null || firstAttemptSD !== undefined) return
+    const sessionId = await scoring.sessionPromise.current; if (!sessionId) return
+    if (!await consumeItem("lifeline_second_opinion", { sessionId, questionId: q.id })) return
+    setLifelineUsedSD(true); setSecondOpinionSD(true)
+  }
 
   function start(qty?: number | null) {
     const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
@@ -1405,6 +1452,7 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
     setFb(null); r.current.fb = null; setPicked(null)
     setIsNewHigh(false); setEliminated([]); setAnswerHistory([])
     setLifelineUsedSD(false)
+    setSecondOpinionSD(false); setFirstAttemptSD(undefined)
     setPhase("playing"); r.current.phase = "playing"
     expiryRef.current = Date.now() + SUDDEN_TIME * 1000
   }
@@ -1420,6 +1468,7 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
   const tc = timeLeft <= 5 ? "bg-rose-500" : timeLeft <= 10 ? "bg-amber-500" : "bg-rose-400"
   const qty5050 = inventory["lifeline_50_50"] ?? 0
   const qtyFreeze = inventory["lifeline_freeze"] ?? 0
+  const qtySecondOpinionSD = inventory["lifeline_second_opinion"] ?? 0
 
   return (
     <QuestionView question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
@@ -1440,10 +1489,11 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
             <span className={`text-xs font-bold tabular-nums ${timeLeft <= 5 ? "text-rose-600" : "text-muted-foreground"}`}>{timeLeft}s</span>
             <span className="text-[11px] font-semibold text-rose-500/70">One wrong = game over</span>
           </div>
-          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} onUse50_50={use50_50} onUseFreeze={useFreeze}
+          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} qtySecondOpinion={qtySecondOpinionSD} onUse50_50={use50_50} onUseFreeze={useFreeze} onUseSecondOpinion={useSecondOpinionSD}
             disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
             disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
-            freezeActivated={isItemUsed("lifeline_freeze", q.id)} />
+            disabledSecondOpinion={fb !== null || firstAttemptSD !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
+            freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionSD} />
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
@@ -1474,6 +1524,8 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
   const [lifelineUsedTA, setLifelineUsedTA] = useState(false)
   const [freezeCountTA, setFreezeCountTA] = useState(0)
+  const [secondOpinionTA, setSecondOpinionTA] = useState(false)
+  const [firstAttemptTA, setFirstAttemptTA] = useState<string | null | undefined>(undefined)
 
   const round = useSoloGameRound(cfg.id, () => endGame(r.current.score))
   const { pool, qi } = round
@@ -1493,13 +1545,16 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     if (r.current.fb !== null || r.current.phase !== "playing") return
     const q = r.current.pool[r.current.qi]; if (!q) return
     const right = c !== null && c === q.correctAnswer
+    if (!right && secondOpinionTA && firstAttemptTA === undefined) { setFirstAttemptTA(c); setPicked(c); return }
+    const assisted = firstAttemptTA !== undefined
     const nfb: Feedback = right ? "correct" : "wrong"
     setFb(nfb); r.current.fb = nfb; setPicked(c)
     round.markAnswered(q.id)
-    setAnswerHistory(prev => [...prev, { question: q, selected: c }])
-    const ns = right ? r.current.score + BASE_PTS : r.current.score
-    const ntq = r.current.totalQ + 1; const ntr = right ? r.current.totalRight + 1 : r.current.totalRight
-    if (right) expiryRef.current += 3000; else expiryRef.current -= 5000
+    setAnswerHistory(prev => [...prev, assisted ? { question: q, selected: firstAttemptTA ?? null, secondAttempt: c, assisted: true } : { question: q, selected: c }])
+    const rewardRight = right && !assisted
+    const ns = rewardRight ? r.current.score + BASE_PTS : r.current.score
+    const ntq = r.current.totalQ + 1; const ntr = rewardRight ? r.current.totalRight + 1 : r.current.totalRight
+    if (rewardRight) expiryRef.current += 3000; else if (!right) expiryRef.current -= 5000
     const nt = Math.max(0, Math.ceil((expiryRef.current - Date.now()) / 1000))
     setScore(ns); setTimeLeft(nt); setTotalQ(ntq); setTotalRight(ntr)
     r.current.score = ns; r.current.timeLeft = nt; r.current.totalQ = ntq; r.current.totalRight = ntr
@@ -1507,6 +1562,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     round.schedule(() => {
       if (!round.advanceOrFinalize()) return
       setFb(null); r.current.fb = null; setPicked(null); setEliminated([])
+      setSecondOpinionTA(false); setFirstAttemptTA(undefined)
     }, 700)
   }
 
@@ -1547,6 +1603,12 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     setFreezeCountTA(count => count + 1)
     expiryRef.current += 10000
   }
+  async function useSecondOpinionTA() {
+    const q = pool[qi]; if (!q || fb !== null || firstAttemptTA !== undefined) return
+    const sessionId = await scoring.sessionPromise.current; if (!sessionId) return
+    if (!await consumeItem("lifeline_second_opinion", { sessionId, questionId: q.id })) return
+    setLifelineUsedTA(true); setSecondOpinionTA(true)
+  }
 
   function start(qty?: number | null) {
     const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
@@ -1559,6 +1621,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     setTotalQ(0); r.current.totalQ = 0; setTotalRight(0); r.current.totalRight = 0
     setIsNewHigh(false); setEliminated([]); setAnswerHistory([])
     setLifelineUsedTA(false); setFreezeCountTA(0)
+    setSecondOpinionTA(false); setFirstAttemptTA(undefined)
     setPhase("playing"); r.current.phase = "playing"
     expiryRef.current = Date.now() + TIMEATK_START * 1000
   }
@@ -1571,6 +1634,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
   const q = pool[qi]; if (!q) return null
   const qty5050 = inventory["lifeline_50_50"] ?? 0
   const qtyFreeze = inventory["lifeline_freeze"] ?? 0
+  const qtySecondOpinionTA = inventory["lifeline_second_opinion"] ?? 0
   const pct = Math.min((timeLeft / TIMEATK_START) * 100, 100)
   const tc = timeLeft <= 10 ? "bg-rose-500" : timeLeft <= 25 ? "bg-amber-500" : "bg-cyan-500"
 
@@ -1595,10 +1659,11 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">✓ +100 pts +3s</span>
             <span className="text-xs text-rose-500 font-semibold">✗ −5s</span>
           </div>
-          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} onUse50_50={use50_50} onUseFreeze={useFreeze}
+          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} qtySecondOpinion={qtySecondOpinionTA} onUse50_50={use50_50} onUseFreeze={useFreeze} onUseSecondOpinion={useSecondOpinionTA}
             disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
             disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
-            freezeActivated={isItemUsed("lifeline_freeze", q.id)} />
+            disabledSecondOpinion={fb !== null || firstAttemptTA !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
+            freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionTA} />
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
@@ -1824,7 +1889,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
 function StreakMasterMode({ onExit }: { onExit: () => void }) {
   const { questions: allQ } = useQuestions()
   const scoring = useSoloScoring("streak")
-  const { inventory, useItem: consumeItem } = useEconomy()
+  const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[3]
 
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
@@ -1840,6 +1905,8 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
   const [eliminated, setEliminated] = useState<string[]>([])
   const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
   const [lifelineUsedSM, setLifelineUsedSM] = useState(false)
+  const [secondOpinionSM, setSecondOpinionSM] = useState(false)
+  const [firstAttemptSM, setFirstAttemptSM] = useState<string | undefined>(undefined)
 
   const round = useSoloGameRound(cfg.id, () => finishGameStats())
   const { pool, qi } = round
@@ -1848,23 +1915,27 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
   r.current = { pool, qi, streak, bestStreak, totalQ, totalRight, hs, fb }
 
   const qty5050sm = inventory["lifeline_50_50"] ?? 0
+  const qtySecondOpinionSM = inventory["lifeline_second_opinion"] ?? 0
 
   function doAnswer(c: string) {
     if (r.current.fb !== null) return
     const q = r.current.pool[r.current.qi]; if (!q) return
     const right = c === q.correctAnswer
+    if (!right && secondOpinionSM && firstAttemptSM === undefined) { setFirstAttemptSM(c); setPicked(c); return }
+    const assisted = firstAttemptSM !== undefined
     const nfb: Feedback = right ? "correct" : "wrong"
     setFb(nfb); r.current.fb = nfb; setPicked(c)
     round.markAnswered(q.id)
-    setAnswerHistory(prev => [...prev, { question: q, selected: c }])
-    const ns = right ? r.current.streak + 1 : 0
+    setAnswerHistory(prev => [...prev, assisted ? { question: q, selected: firstAttemptSM!, secondAttempt: c, assisted: true } : { question: q, selected: c }])
+    const ns = right && !assisted ? r.current.streak + 1 : right ? r.current.streak : 0
     const nb = Math.max(r.current.bestStreak, ns)
-    const ntq = r.current.totalQ + 1; const ntr = right ? r.current.totalRight + 1 : r.current.totalRight
+    const ntq = r.current.totalQ + 1; const ntr = right && !assisted ? r.current.totalRight + 1 : r.current.totalRight
     setStreak(ns); setBestStreak(nb); setTotalQ(ntq); setTotalRight(ntr)
     r.current.streak = ns; r.current.bestStreak = nb; r.current.totalQ = ntq; r.current.totalRight = ntr
     round.schedule(() => {
       if (!round.advanceOrFinalize()) return
       setFb(null); r.current.fb = null; setPicked(null); setEliminated([])
+      setSecondOpinionSM(false); setFirstAttemptSM(undefined)
     }, 900)
   }
 
@@ -1878,6 +1949,12 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
     const wrongs = q.options.filter(o => o.id !== q.correctAnswer).map(o => o.id)
     const toElim = wrongs.sort(() => Math.random() - 0.5).slice(0, Math.max(0, wrongs.length - 1))
     setEliminated(toElim)
+  }
+  async function useSecondOpinionSM() {
+    const q = pool[qi]; if (!q || fb !== null || firstAttemptSM !== undefined) return
+    const sessionId = await scoring.sessionPromise.current; if (!sessionId) return
+    if (!await consumeItem("lifeline_second_opinion", { sessionId, questionId: q.id })) return
+    setLifelineUsedSM(true); setSecondOpinionSM(true)
   }
 
   function finishGameStats() {
@@ -1899,6 +1976,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
     setFb(null); r.current.fb = null; setPicked(null)
     setIsNewHigh(false); setEliminated([]); setAnswerHistory([])
     setLifelineUsedSM(false)
+    setSecondOpinionSM(false); setFirstAttemptSM(undefined)
     setPhase("playing")
   }
 
@@ -1950,13 +2028,21 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
         </div>
       }
       footer={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2">
+          <LifelineBar qty5050={qty5050sm} qtyFreeze={0} qtySecondOpinion={qtySecondOpinionSM}
+            onUse50_50={use50_50sm} onUseFreeze={() => {}} onUseSecondOpinion={useSecondOpinionSM}
+            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
+            disabledFreeze={true}
+            disabledSecondOpinion={fb !== null || firstAttemptSM !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
+            secondOpinionActivated={secondOpinionSM} />
+          <div className="flex items-center gap-2">
           <button type="button" onClick={finishGame} disabled={fb !== null} className="flex-1 rounded-2xl bg-gradient-to-r from-amber-400 to-rose-500 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-50">
             Finish Game
           </button>
           <button type="button" onClick={onExit} className="rounded-2xl border border-border py-2.5 px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
             Quit
           </button>
+          </div>
         </div>
       }
     />
