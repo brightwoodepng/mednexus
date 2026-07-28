@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, ty
 import { STORE_ITEMS, type BountyDef, type StoreItem } from "@/lib/economy"
 import type { DailyLoginResult } from "@/lib/anti-farming"
 import { useApp } from "@/contexts/app-context"
+import { multiplayerApi } from "@/lib/multiplayer-api"
 
 export interface BountyWithProgress extends BountyDef {
   progress: number
@@ -412,17 +413,13 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   ): Promise<PayoutResponse | null> => {
     if (!user?.uid || user.uid !== playerId) return null
     try {
-      const response = await fetch(`/api/game-rooms/${encodeURIComponent(pin)}/score`, {
+      const data = await multiplayerApi<PayoutResponse>(`/api/game-rooms/${encodeURIComponent(pin)}/score`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...economyHeaders() },
         body: JSON.stringify({
           match_id: pin,
-          playerId,
           user_answers_array: answers,
         }),
       })
-      const data = await response.json()
-      if (!response.ok) return null
       setBalance(data.newBalance)
       void refresh()
       if (data.bountyUpdates?.length) {
