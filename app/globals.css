@@ -1119,7 +1119,7 @@
   border-radius: inherit;
   box-shadow: 0 0 14px var(--cosmetic-frame-glow);
   pointer-events: none;
-  animation: cosmetic-frame-breathe 2.8s ease-in-out infinite;
+  /* Motion is enabled only by the common cosmetic motion state API below. */
 }
 .cosmetic-frame--gold::before,
 .cosmetic-frame--biohazard::before { animation: none; }
@@ -1130,7 +1130,7 @@
 .cosmetic-frame--nebula { --cosmetic-frame-color: #c026d3; --cosmetic-frame-glow: rgb(217 70 239 / 0.6); }
 .cosmetic-frame--heartbeat { --cosmetic-frame-color: #dc2626; --cosmetic-frame-glow: rgb(220 38 38 / 0.58); }
 .cosmetic-frame--lightning { --cosmetic-frame-color: #0284c7; --cosmetic-frame-glow: rgb(14 165 233 / 0.65); }
-.cosmetic-frame--lightning::before { border-style: dashed; animation: cosmetic-frame-drift 8s linear infinite; }
+.cosmetic-frame--lightning::before { border-style: dashed; }
 .cosmetic-frame--toxic { --cosmetic-frame-color: #22c55e; --cosmetic-frame-glow: rgb(57 255 20 / 0.5); }
 
 .cosmetic-highlight {
@@ -1151,7 +1151,38 @@
   pointer-events: none;
   background: linear-gradient(105deg, transparent 25%, rgb(255 255 255 / 0.24) 48%, transparent 72%);
   background-size: 200% 100%;
-  animation: cosmetic-highlight-drift 7s linear infinite;
+}
+
+/* Static/reduced compositions retain borders, material gradients and contrast.
+ * At most the ::before and ::after layers may animate; geometry is fixed. */
+.cosmetic-surface[data-motion-state="ambient"]::before {
+  animation: cosmetic-frame-breathe 4.8s ease-in-out infinite;
+}
+.cosmetic-highlight[data-motion-state="ambient"]::before {
+  animation-name: cosmetic-highlight-drift;
+  animation-duration: 10s;
+  animation-timing-function: linear;
+}
+.cosmetic-surface[data-motion-state="focused"]::before {
+  animation: cosmetic-frame-breathe 2.8s ease-in-out infinite;
+}
+.cosmetic-highlight[data-motion-state="focused"]::before,
+.cosmetic-surface[data-motion-state="celebrating"]::before {
+  animation: cosmetic-highlight-drift 2.2s linear infinite;
+}
+.cosmetic-frame--lightning[data-motion-state="focused"]::before,
+.cosmetic-frame--lightning[data-motion-state="celebrating"]::before {
+  animation-name: cosmetic-frame-drift;
+  animation-duration: 8s;
+  animation-timing-function: linear;
+}
+.cosmetic-surface[data-motion-state="static"]::before,
+.cosmetic-surface[data-motion-state="reduced"]::before,
+.cosmetic-surface[data-motion-state="static"]::after,
+.cosmetic-surface[data-motion-state="reduced"]::after {
+  animation: none !important;
+  transform: none;
+  opacity: 1;
 }
 .cosmetic-highlight--gold { --cosmetic-highlight-edge: #a16207; --cosmetic-highlight-from: rgb(254 249 195 / 0.9); --cosmetic-highlight-to: rgb(255 251 235 / 0.78); }
 .cosmetic-highlight--amethyst { --cosmetic-highlight-edge: #7e22ce; --cosmetic-highlight-from: rgb(243 232 255 / 0.9); --cosmetic-highlight-to: rgb(250 245 255 / 0.76); }

@@ -95,7 +95,7 @@ export function PublicProfileModal({ entry, npLabel = "Lifetime NP", onClose }: 
 
         {/* Avatar — overlaps the header */}
         <div className="relative -mt-12 flex justify-center">
-          <CosmeticFrame cosmeticId={entry.equippedFrame} size="profile" className="rounded-full p-0.5 bg-card">
+          <CosmeticFrame cosmeticId={entry.equippedFrame} size="profile" motionState="focused" className="rounded-full p-0.5 bg-card">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-4xl font-bold text-primary overflow-hidden shadow-lg">
               {avatarItem?.imagePath ? (
                 <img src={avatarItem.imagePath} alt="Avatar" className="h-full w-full object-cover" />

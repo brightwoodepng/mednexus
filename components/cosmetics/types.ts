@@ -2,6 +2,8 @@ import type { ReactNode } from "react"
 
 export type CosmeticSize = "store-preview" | "profile" | "lobby" | "leaderboard" | "compact"
 export type CosmeticInteractionState = "idle" | "hovered" | "focused" | "selected" | "disabled"
+/** Shared cosmetic motion vocabulary. `focused` is the full interactive treatment. */
+export type CosmeticMotionState = "static" | "ambient" | "focused" | "celebrating" | "reduced"
 export type CosmeticKind = "avatar" | "frame" | "highlight" | "title"
 
 export interface CosmeticRendererProps {
@@ -9,6 +11,8 @@ export interface CosmeticRendererProps {
   size: CosmeticSize
   interactionState?: CosmeticInteractionState
   reducedMotion?: boolean
+  /** Call sites must opt into motion; cosmetics are static by default. */
+  motionState?: CosmeticMotionState
   active?: boolean
   playerScore?: number
   playerRank?: number | string

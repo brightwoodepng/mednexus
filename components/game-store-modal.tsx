@@ -9,7 +9,7 @@ import {
 } from "@/lib/economy"
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
-import { getCosmeticPresentation } from "@/components/cosmetics"
+import { CosmeticHighlight, getCosmeticPresentation } from "@/components/cosmetics"
 
 type CosmeticSection = "title" | "frame" | "highlight" | "avatar"
 
@@ -868,7 +868,7 @@ function CosmeticsPreviewPanel({
       </div>
 
       <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_1fr]">
-        <div className={`relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-4 ${highlightClass}`}>
+        <CosmeticHighlight cosmeticId={highlight?.id} size="store-preview" motionState="focused" className={`relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-4 ${highlightClass}`}>
           <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-300">Simulated leaderboard · Rank 1</p>
           <div className="flex items-center gap-3">
             <span className="w-6 text-center text-lg font-black text-amber-300">1</span>
@@ -884,7 +884,7 @@ function CosmeticsPreviewPanel({
             </div>
             <span className="text-sm font-black text-emerald-300">+720</span>
           </div>
-        </div>
+        </CosmeticHighlight>
 
         <div className="grid grid-cols-2 gap-2">
           {selected.map(({ type, item }) => {
