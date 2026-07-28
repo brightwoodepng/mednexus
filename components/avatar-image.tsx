@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { getAvatarManifestEntry } from "@/lib/avatar-manifest"
 
 interface AvatarImageProps {
@@ -20,18 +21,14 @@ export function AvatarImage({ avatarId, className, eager = false, fallback }: Av
     return <span role="img" aria-label={avatar?.altLabel ?? "Avatar"}>{fallbackLabel}</span>
   }
 
-  const [small, large] = avatar.optimizedAssets
-
   return (
-    <img
-      src={small.src}
-      srcSet={`${small.src} ${small.width}w, ${large.src} ${large.width}w`}
+    <Image
+      src={avatar.sourceAsset}
       sizes="128px"
-      width={128}
-      height={128}
-      loading={eager ? "eager" : "lazy"}
-      fetchPriority={eager ? "high" : "auto"}
-      decoding="async"
+      width={avatar.width}
+      height={avatar.height}
+      quality={avatar.quality}
+      priority={eager}
       alt={avatar.altLabel}
       className={className}
       style={{ objectPosition: `${avatar.focalPoint.x * 100}% ${avatar.focalPoint.y * 100}%` }}
