@@ -108,7 +108,7 @@ export interface StoreItem {
   imagePath?: string
   /** Server-authoritative behavior and availability for Supply Closet items. */
   supply?: {
-    effectType: "eliminate_wrong_answers" | "add_time"
+    effectType: "eliminate_wrong_answers" | "add_time" | "second_attempt"
     supportedModes: readonly SoloSupplyMode[]
     perQuestionUsageLimit: number
     stackLimit: number
@@ -283,6 +283,22 @@ const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [
       stackLimit: ECONOMY_CONFIG.store.catalog.lifeline_freeze.maxInventory,
       effectAmount: 10,
       effectUnit: "seconds",
+    },
+  },
+  {
+    id: "lifeline_second_opinion",
+    name: "Second Opinion",
+    desc: "Activate before answering to get one retry after a wrong first answer. Assisted corrections continue the game but earn no accuracy or NP credit.",
+    icon: "👥",
+    category: "lifeline",
+    gradient: "from-amber-500 to-orange-600",
+    supply: {
+      effectType: "second_attempt",
+      supportedModes: ["rapid", "sudden", "timeatk", "streak"],
+      perQuestionUsageLimit: 1,
+      stackLimit: ECONOMY_CONFIG.store.catalog.lifeline_second_opinion.maxInventory,
+      effectAmount: 1,
+      effectUnit: "answer_choices",
     },
   },
 

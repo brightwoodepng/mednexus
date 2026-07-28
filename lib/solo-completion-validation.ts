@@ -1,4 +1,4 @@
-export type CompletionAttempt = { questionId: string; isCorrect: boolean }
+export type CompletionAttempt = { questionId: string; isCorrect: boolean; assisted?: boolean }
 
 export type CompletionMetadata = {
   completionReason?: unknown
@@ -75,8 +75,8 @@ export function hasConsistentSoloCompletion(
   if (mode === "timeatk" && reason === "timeout") {
     const freezes = serverTiming.verifiedFreezeCount ?? 0
     if (!Number.isInteger(freezes) || freezes < 0) return false
-    const correct = attempts.filter((attempt) => attempt.isCorrect).length
-    const wrong = attempts.length - correct
+    const correct = attempts.filter((attempt) => attempt.isCorrect && !attempt.assisted).length
+    const wrong = attempts.filter((attempt) => !attempt.isCorrect).length
     const expectedDuration = Math.max(0,
       TIME_ATTACK_START_SECONDS
       + correct * TIME_ATTACK_CORRECT_EXTENSION_SECONDS
