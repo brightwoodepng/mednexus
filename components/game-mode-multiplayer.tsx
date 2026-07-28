@@ -8,8 +8,9 @@ import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy, type PayoutResponse } from "@/contexts/economy-context"
 import { PayoutResult } from "@/components/economy-panel"
-import { TITLE_LABELS, FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS, getCosmeticAccessibleLabel } from "@/lib/economy"
+import { TITLE_LABELS, STORE_ITEMS, getCosmeticAccessibleLabel } from "@/lib/economy"
 import { getMultiplayerRewardRules } from "@/lib/multiplayer-reward-presentation"
+import { getCosmeticPresentation } from "@/components/cosmetics"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MultiMode = "clash" | "cohort" | "wager" | "djmulti"
@@ -188,7 +189,7 @@ function PlayerAvatarBubble({
   const avatarItem = player.equippedAvatar
     ? STORE_ITEMS.find(i => i.id === player.equippedAvatar)
     : null
-  const frameClass = player.equippedFrame ? (FRAME_RING_CLASSES[player.equippedFrame] ?? "") : ""
+  const frameClass = player.equippedFrame ? (getCosmeticPresentation(player.equippedFrame).className ?? "") : ""
   const frameLabel = getCosmeticAccessibleLabel(player.equippedFrame)
   return (
     <span role="img" aria-label={`${player.name}'s avatar${frameLabel ? ` with ${frameLabel} frame` : ""}`} className={`flex ${sizeCls} shrink-0 items-center justify-center rounded-full overflow-hidden text-xs font-extrabold ${frameClass} ${avatarItem?.imagePath ? "" : fallbackBgCls}`}>
@@ -200,7 +201,7 @@ function PlayerAvatarBubble({
 }
 
 function PlayerRow({ player, rank, showScore }: { player: RoomPlayer; rank?: number; showScore?: boolean }) {
-  const rowClass   = player.equippedHighlight ? (HIGHLIGHT_ROW_CLASSES[player.equippedHighlight] ?? "") : ""
+  const rowClass   = player.equippedHighlight ? (getCosmeticPresentation(player.equippedHighlight).className ?? "") : ""
   const titleLabel = player.equippedTitle     ? (TITLE_LABELS[player.equippedTitle]              ?? null) : null
   const highlightLabel = getCosmeticAccessibleLabel(player.equippedHighlight)
   return (
@@ -306,7 +307,7 @@ function Leaderboard({ players, highlight, knockoutWinnerId }: {
         const isMe       = p.id === highlight
         const isBankrupt = !!p.isSpectator && p.score === 0
         const isWinner   = knockoutWinnerId && p.id === knockoutWinnerId
-        const rowClass   = p.equippedHighlight ? (HIGHLIGHT_ROW_CLASSES[p.equippedHighlight]  ?? "") : ""
+        const rowClass   = p.equippedHighlight ? (getCosmeticPresentation(p.equippedHighlight).className  ?? "") : ""
         const titleLabel = p.equippedTitle     ? (TITLE_LABELS[p.equippedTitle]               ?? null) : null
         // Priority: knockout winner > "You" > bankrupt > cosmetic
         const rowStyle = isWinner
