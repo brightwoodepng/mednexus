@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useEconomy } from "@/contexts/economy-context"
 import { useApp } from "@/contexts/app-context"
 import {
-  STORE_ITEMS, VAULT_META, TITLE_LABELS, SOLO_SUPPLY_MODE_LABELS,
+  SELLABLE_STORE_ITEMS, STORE_ITEMS, VAULT_META, TITLE_LABELS, SOLO_SUPPLY_MODE_LABELS,
   type CosmeticRarity, type StoreItem, type VaultMeta,
 } from "@/lib/economy"
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons"
@@ -472,6 +472,8 @@ function CosmeticGridCard({
 
       <div className="mb-2 flex flex-wrap justify-center gap-1.5">
         <RarityBadge rarity={item.rarity} />
+        {item.status === "retired" && <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-bold">Retired · owned</span>}
+        {item.status === "remastered" && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">Remastered</span>}
         {item.featured && <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-bold text-background">★ Featured</span>}
         {item.limitedUntil && <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-bold">Limited until {item.limitedUntil}</span>}
       </div>
@@ -481,6 +483,11 @@ function CosmeticGridCard({
 
       {/* Description — single short sentence */}
       <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.desc}</p>
+      {item.upgradeAnnouncement && (
+        <p role="status" className="mt-2 rounded-xl bg-violet-50 px-2.5 py-2 text-[11px] font-medium leading-relaxed text-violet-700 dark:bg-violet-950/30 dark:text-violet-300">
+          ✨ {item.upgradeAnnouncement}
+        </p>
+      )}
 
       {/* Price — only when not owned */}
       {!owned && (
@@ -552,7 +559,7 @@ export function NexusStoreHub({ onNavigate }: { onNavigate: (screen: Screen) => 
 
   const vaultItems      = STORE_ITEMS.filter(i => i.category === "vault")
   const supplyItems     = STORE_ITEMS.filter(i => i.category === "lifeline")
-  const cosmeticItems   = STORE_ITEMS.filter(i => i.category === "cosmetic")
+  const cosmeticItems   = SELLABLE_STORE_ITEMS.filter(i => i.category === "cosmetic")
 
   const BANNERS = [
     {
@@ -914,6 +921,8 @@ export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
 
   const cosItems = STORE_ITEMS
     .filter(i => i.category === "cosmetic" && i.cosmeticType === cosSection)
+    // Delisted products remain in the wardrobe only for learners who own them.
+    .filter(i => (i.status !== "retired" && i.status !== "legacy") || (inventory[i.id] ?? 0) >= 1)
     .filter(i => rarityFilter === "all" || i.rarity === rarityFilter)
     .sort((a, b) => {
       const stateRank = (item: StoreItem) => {

@@ -66,6 +66,7 @@ export function economyWeekId(date = new Date()): string {
 // ── Store catalog ──────────────────────────────────────────────────────────────
 
 export type CosmeticRarity = "common" | "rare" | "epic" | "legendary" | "mythic"
+export type CosmeticCatalogStatus = "active" | "remastered" | "retired" | "legacy"
 
 /** Human-readable rarity names for visible badges and assistive descriptions. */
 export const COSMETIC_RARITY_LABELS: Readonly<Record<CosmeticRarity, string>> = {
@@ -77,11 +78,20 @@ export const COSMETIC_RARITY_LABELS: Readonly<Record<CosmeticRarity, string>> = 
 }
 
 export interface CosmeticCatalogMetadata {
+  /** Lifecycle state. Retired and legacy IDs remain resolvable for their owners. */
+  status: CosmeticCatalogStatus
   rarity: CosmeticRarity
   sortOrder: number
   previewTheme: string
   limitedUntil?: string
   featured?: boolean
+  replacedBy?: string
+  /** Renderer registry key retained for an owner of an older product. */
+  legacyRenderer?: string
+  releasedAt?: string
+  collection?: string
+  /** Customer-facing copy required when a stable ID receives new visuals. */
+  upgradeAnnouncement?: string
 }
 
 export interface StoreItem {
@@ -105,6 +115,12 @@ export interface StoreItem {
   previewTheme?: string
   limitedUntil?: string
   featured?: boolean
+  status?: CosmeticCatalogStatus
+  replacedBy?: string
+  legacyRenderer?: string
+  releasedAt?: string
+  collection?: string
+  upgradeAnnouncement?: string
   imagePath?: string
   /** Server-authoritative behavior and availability for Supply Closet items. */
   supply?: {
@@ -123,42 +139,42 @@ export interface StoreItem {
  * purchase-permission signal.
  */
 export const COSMETIC_CATALOG_METADATA = {
-  title_pre_med: { rarity: "common", sortOrder: 10, previewTheme: "clinical-slate" },
-  title_intern: { rarity: "common", sortOrder: 20, previewTheme: "clinical-blue" },
-  title_fellow: { rarity: "rare", sortOrder: 30, previewTheme: "research-fuchsia" },
-  title_attending: { rarity: "rare", sortOrder: 40, previewTheme: "academic-violet" },
-  title_chief_resident: { rarity: "epic", sortOrder: 50, previewTheme: "leadership-amber" },
-  title_the_gunner: { rarity: "legendary", sortOrder: 60, previewTheme: "library-fire" },
-  title_department_chair: { rarity: "legendary", sortOrder: 70, previewTheme: "executive-indigo" },
-  title_chief_of_surgery: { rarity: "mythic", sortOrder: 80, previewTheme: "surgical-flare", featured: true },
-  title_dean_of_medicine: { rarity: "mythic", sortOrder: 90, previewTheme: "dean-gold", featured: true },
-  title_caffeine_dependent: { rarity: "common", sortOrder: 15, previewTheme: "coffee-amber" },
-  frame_gold: { rarity: "rare", sortOrder: 10, previewTheme: "gold-ring" },
-  frame_neon: { rarity: "epic", sortOrder: 20, previewTheme: "neon-pulse" },
-  frame_fire: { rarity: "legendary", sortOrder: 30, previewTheme: "live-hellfire" },
-  frame_legendary_diamond: { rarity: "legendary", sortOrder: 40, previewTheme: "diamond-ice" },
-  frame_legendary_biohazard: { rarity: "legendary", sortOrder: 50, previewTheme: "biohazard" },
-  frame_mythic_nebula: { rarity: "mythic", sortOrder: 60, previewTheme: "deep-nebula", featured: true },
-  frame_mythic_heartbeat: { rarity: "mythic", sortOrder: 70, previewTheme: "heartbeat", featured: true },
-  frame_lightning: { rarity: "mythic", sortOrder: 80, previewTheme: "high-voltage" },
-  frame_toxic_drip: { rarity: "mythic", sortOrder: 90, previewTheme: "toxic-ooze" },
-  highlight_neon: { rarity: "common", sortOrder: 10, previewTheme: "neon-row" },
-  highlight_gold: { rarity: "common", sortOrder: 20, previewTheme: "gold-row" },
-  highlight_amethyst: { rarity: "epic", sortOrder: 30, previewTheme: "amethyst-row" },
-  highlight_legendary_crimson: { rarity: "legendary", sortOrder: 40, previewTheme: "crimson-surge" },
-  highlight_legendary_emerald: { rarity: "legendary", sortOrder: 50, previewTheme: "emerald-force" },
-  highlight_mythic_lightning: { rarity: "mythic", sortOrder: 60, previewTheme: "electric-row", featured: true },
-  highlight_mythic_void_walker: { rarity: "mythic", sortOrder: 70, previewTheme: "void-row", featured: true },
-  avatar_scrub_tech: { rarity: "rare", sortOrder: 10, previewTheme: "blue-scrubs" },
-  avatar_coffee_drip: { rarity: "rare", sortOrder: 20, previewTheme: "coffee-iv" },
-  avatar_lab_rat: { rarity: "epic", sortOrder: 30, previewTheme: "research-lab" },
-  avatar_night_shift: { rarity: "epic", sortOrder: 40, previewTheme: "night-shift" },
-  avatar_gold_steth: { rarity: "legendary", sortOrder: 50, previewTheme: "gold-stethoscope" },
-  avatar_plague_doctor: { rarity: "legendary", sortOrder: 60, previewTheme: "plague-mask" },
-  avatar_cyber_surgeon: { rarity: "legendary", sortOrder: 70, previewTheme: "cyber-surgeon" },
-  avatar_ascended: { rarity: "mythic", sortOrder: 80, previewTheme: "ascended-healer", featured: true },
-  avatar_marble: { rarity: "mythic", sortOrder: 90, previewTheme: "marble-statue" },
-  avatar_vital_sign: { rarity: "mythic", sortOrder: 100, previewTheme: "living-ekg", featured: true },
+  title_pre_med: { status: "active", rarity: "common", sortOrder: 10, previewTheme: "clinical-slate" },
+  title_intern: { status: "active", rarity: "common", sortOrder: 20, previewTheme: "clinical-blue" },
+  title_fellow: { status: "active", rarity: "rare", sortOrder: 30, previewTheme: "research-fuchsia" },
+  title_attending: { status: "active", rarity: "rare", sortOrder: 40, previewTheme: "academic-violet" },
+  title_chief_resident: { status: "active", rarity: "epic", sortOrder: 50, previewTheme: "leadership-amber" },
+  title_the_gunner: { status: "active", rarity: "legendary", sortOrder: 60, previewTheme: "library-fire" },
+  title_department_chair: { status: "active", rarity: "legendary", sortOrder: 70, previewTheme: "executive-indigo" },
+  title_chief_of_surgery: { status: "active", rarity: "mythic", sortOrder: 80, previewTheme: "surgical-flare", featured: true },
+  title_dean_of_medicine: { status: "active", rarity: "mythic", sortOrder: 90, previewTheme: "dean-gold", featured: true },
+  title_caffeine_dependent: { status: "active", rarity: "common", sortOrder: 15, previewTheme: "coffee-amber" },
+  frame_gold: { status: "retired", rarity: "rare", sortOrder: 10, previewTheme: "gold-ring", legacyRenderer: "frame_gold", releasedAt: "2025-01-15", collection: "Founders Wardrobe" },
+  frame_neon: { status: "remastered", rarity: "epic", sortOrder: 20, previewTheme: "neon-pulse", releasedAt: "2025-02-01", collection: "Night Shift", upgradeAnnouncement: "Neon Frame has been visually upgraded with a sharper clinical glow while preserving its signature neon ring." },
+  frame_fire: { status: "active", rarity: "legendary", sortOrder: 30, previewTheme: "live-hellfire" },
+  frame_legendary_diamond: { status: "active", rarity: "legendary", sortOrder: 40, previewTheme: "diamond-ice" },
+  frame_legendary_biohazard: { status: "active", rarity: "legendary", sortOrder: 50, previewTheme: "biohazard" },
+  frame_mythic_nebula: { status: "active", rarity: "mythic", sortOrder: 60, previewTheme: "deep-nebula", featured: true },
+  frame_mythic_heartbeat: { status: "active", rarity: "mythic", sortOrder: 70, previewTheme: "heartbeat", featured: true },
+  frame_lightning: { status: "active", rarity: "mythic", sortOrder: 80, previewTheme: "high-voltage" },
+  frame_toxic_drip: { status: "active", rarity: "mythic", sortOrder: 90, previewTheme: "toxic-ooze" },
+  highlight_neon: { status: "active", rarity: "common", sortOrder: 10, previewTheme: "neon-row" },
+  highlight_gold: { status: "active", rarity: "common", sortOrder: 20, previewTheme: "gold-row" },
+  highlight_amethyst: { status: "active", rarity: "epic", sortOrder: 30, previewTheme: "amethyst-row" },
+  highlight_legendary_crimson: { status: "active", rarity: "legendary", sortOrder: 40, previewTheme: "crimson-surge" },
+  highlight_legendary_emerald: { status: "active", rarity: "legendary", sortOrder: 50, previewTheme: "emerald-force" },
+  highlight_mythic_lightning: { status: "active", rarity: "mythic", sortOrder: 60, previewTheme: "electric-row", featured: true },
+  highlight_mythic_void_walker: { status: "active", rarity: "mythic", sortOrder: 70, previewTheme: "void-row", featured: true },
+  avatar_scrub_tech: { status: "active", rarity: "rare", sortOrder: 10, previewTheme: "blue-scrubs" },
+  avatar_coffee_drip: { status: "active", rarity: "rare", sortOrder: 20, previewTheme: "coffee-iv" },
+  avatar_lab_rat: { status: "active", rarity: "epic", sortOrder: 30, previewTheme: "research-lab" },
+  avatar_night_shift: { status: "active", rarity: "epic", sortOrder: 40, previewTheme: "night-shift" },
+  avatar_gold_steth: { status: "active", rarity: "legendary", sortOrder: 50, previewTheme: "gold-stethoscope" },
+  avatar_plague_doctor: { status: "active", rarity: "legendary", sortOrder: 60, previewTheme: "plague-mask" },
+  avatar_cyber_surgeon: { status: "active", rarity: "legendary", sortOrder: 70, previewTheme: "cyber-surgeon" },
+  avatar_ascended: { status: "active", rarity: "mythic", sortOrder: 80, previewTheme: "ascended-healer", featured: true },
+  avatar_marble: { status: "active", rarity: "mythic", sortOrder: 90, previewTheme: "marble-statue" },
+  avatar_vital_sign: { status: "active", rarity: "mythic", sortOrder: 100, previewTheme: "living-ekg", featured: true },
 } as const satisfies Record<string, CosmeticCatalogMetadata>
 
 export type SoloSupplyMode = "rapid" | "sudden" | "timeatk" | "streak" | "double"
@@ -741,8 +757,14 @@ export const STORE_ITEMS: StoreItem[] = STORE_ITEM_DEFINITIONS.map((item) => {
   return { ...item, ...catalogEntry, ...cosmeticMetadata }
 })
 
+/** Lifecycle-aware purchase policy; ownership and rendering are intentionally separate. */
+export function isStoreItemPurchasable(item: StoreItem): boolean {
+  return item.sellable !== false
+    && (item.category !== "cosmetic" || (item.status !== "retired" && item.status !== "legacy"))
+}
+
 /** Publicly listed products whose purchase is authorized by the server catalog. */
-export const SELLABLE_STORE_ITEMS = STORE_ITEMS.filter(item => item.sellable !== false)
+export const SELLABLE_STORE_ITEMS = STORE_ITEMS.filter(isStoreItemPurchasable)
 
 // ── Clinical Ladder ──────────────────────────────────────────────────────────
 // Rank points accumulate from every NP payout. Crossing a tier boundary
