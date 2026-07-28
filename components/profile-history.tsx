@@ -13,10 +13,11 @@ import {
 } from "@/components/icons"
 import type { HistoryEntry, ExamScore, Question } from "@/lib/types"
 import { useEconomy } from "@/contexts/economy-context"
-import { STORE_ITEMS, TITLE_LABELS, FRAME_RING_CLASSES, CLINICAL_TIERS, getClinicalTierIndex } from "@/lib/economy"
+import { STORE_ITEMS, TITLE_LABELS, CLINICAL_TIERS, getClinicalTierIndex } from "@/lib/economy"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
 import type { StudyHubId } from "@/components/study-hub-switcher"
 import type { Screen } from "@/lib/view"
+import { CosmeticFrame, CosmeticTitle } from "@/components/cosmetics"
 
 // ── Exam Scores ──────────────────────────────────────────────────────────────
 
@@ -85,10 +86,6 @@ function ProfileHeader() {
     : null
   const avatarImagePath = equippedAvatarItem?.imagePath ?? null
 
-  const frameClasses = equippedCosmetics.frame
-    ? (FRAME_RING_CLASSES[equippedCosmetics.frame] ?? null)
-    : null
-
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:p-6">
@@ -103,7 +100,7 @@ function ProfileHeader() {
             title="Edit display name"
           >
             {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
-            <div className={`rounded-full ${frameClasses ? `${frameClasses} ring-offset-2 ring-offset-card` : ""}`}>
+            <CosmeticFrame cosmeticId={equippedCosmetics.frame} size="profile" interactionState="hovered" className="rounded-full ring-offset-2 ring-offset-card">
               {/* Avatar circle */}
               <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm text-2xl font-bold select-none overflow-hidden">
                 {avatarImagePath ? (
@@ -120,7 +117,7 @@ function ProfileHeader() {
                   <PencilIcon size={16} className="text-white" />
                 </div>
               </div>
-            </div>
+            </CosmeticFrame>
           </div>
 
           {/* Identity column */}
@@ -163,7 +160,7 @@ function ProfileHeader() {
 
           {/* Equipped title */}
           {equippedTitleLabel
-            ? <p className="text-sm text-purple-400 italic font-semibold">{equippedTitleLabel}</p>
+            ? <p className="text-sm text-purple-400 italic font-semibold"><CosmeticTitle cosmeticId={equippedCosmetics.title} size="profile">{equippedTitleLabel}</CosmeticTitle></p>
             : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
           }
 

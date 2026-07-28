@@ -5,11 +5,11 @@ import { useEconomy } from "@/contexts/economy-context"
 import { useApp } from "@/contexts/app-context"
 import {
   STORE_ITEMS, VAULT_META, TITLE_LABELS, SOLO_SUPPLY_MODE_LABELS,
-  FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES,
   type CosmeticRarity, type StoreItem, type VaultMeta,
 } from "@/lib/economy"
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
+import { getCosmeticPresentation } from "@/components/cosmetics"
 
 type CosmeticSection = "title" | "frame" | "highlight" | "avatar"
 
@@ -167,8 +167,8 @@ function CosmeticCard({
   buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
   onBuy: () => void; onEquip: () => void
 }) {
-  const frameClass   = item.cosmeticType === "frame"     ? FRAME_RING_CLASSES[item.id]    : ""
-  const highlightCls = item.cosmeticType === "highlight" ? HIGHLIGHT_ROW_CLASSES[item.id] : ""
+  const frameClass   = item.cosmeticType === "frame"     ? getCosmeticPresentation(item.id).className    : ""
+  const highlightCls = item.cosmeticType === "highlight" ? getCosmeticPresentation(item.id).className : ""
 
   return (
     <div className={`rounded-2xl border p-3 transition-all ${
@@ -428,8 +428,8 @@ function CosmeticGridCard({
   buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
   onBuy: () => void; onEquip: () => void; onPreview: () => void
 }) {
-  const frameClass   = item.cosmeticType === "frame"     ? (FRAME_RING_CLASSES[item.id]    ?? "") : ""
-  const highlightCls = item.cosmeticType === "highlight" ? (HIGHLIGHT_ROW_CLASSES[item.id] ?? "") : ""
+  const frameClass   = item.cosmeticType === "frame"     ? (getCosmeticPresentation(item.id).className    ?? "") : ""
+  const highlightCls = item.cosmeticType === "highlight" ? (getCosmeticPresentation(item.id).className ?? "") : ""
   const prestigeClass = item.rarity === "mythic"
     ? "ring-2 ring-fuchsia-400/70 border-double border-4"
     : item.rarity === "legendary"
@@ -850,8 +850,8 @@ function CosmeticsPreviewPanel({
   const frame = selected.find(entry => entry.type === "frame")?.item
   const highlight = selected.find(entry => entry.type === "highlight")?.item
   const avatar = selected.find(entry => entry.type === "avatar")?.item
-  const frameClass = frame ? (FRAME_RING_CLASSES[frame.id] ?? "") : ""
-  const highlightClass = highlight ? (HIGHLIGHT_ROW_CLASSES[highlight.id] ?? "") : ""
+  const frameClass = frame ? (getCosmeticPresentation(frame.id).className ?? "") : ""
+  const highlightClass = highlight ? (getCosmeticPresentation(highlight.id).className ?? "") : ""
   const hasPreview = selected.some(entry => entry.item)
 
   return (
