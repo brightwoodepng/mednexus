@@ -58,7 +58,12 @@ function createClient() {
   }
 }
 
-vi.mock("@/lib/db", () => ({ default: { connect: vi.fn(async () => createClient()) } }))
+vi.mock("@/lib/db", () => ({
+  default: {
+    connect: vi.fn(async () => createClient()),
+    query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+  },
+}))
 vi.mock("@/lib/request-auth", () => ({
   requireRegisteredUser: vi.fn(async () => ({ uid: "learner-1" })),
   unauthorized: vi.fn(),
@@ -107,7 +112,7 @@ describe("store purchase concurrency", () => {
       unitPrice: 90,
       totalPrice: 270,
       bundleId: "bundle_3",
-      catalogVersion: "2.1.0",
+      catalogVersion: "2.2.0",
       resultingInventoryQuantity: 3,
     })
   })
@@ -125,6 +130,32 @@ describe("store purchase concurrency", () => {
     expect(await response.json()).toEqual({ error: "Inventory limit reached" })
     expect(state.balance).toBe(1_000)
     expect(state.inventory.get("learner-1:lifeline_freeze")).toBe(9)
+    expect(state.ledger).toHaveLength(0)
+  })
+
+  it("filters unavailable products from the store response", async () => {
+    const { GET } = await import("@/app/api/economy/store/route")
+    const response = await GET(new Request("http://mednexus.test/api/economy/store") as never)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.items).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: expect.stringMatching(/^vault_/) }),
+    ]))
+  })
+
+  it("rejects a direct purchase attempt for an unavailable product before charging", async () => {
+    const { POST } = await import("@/app/api/economy/store/route")
+    const response = await POST(new Request("http://mednexus.test/api/economy/store", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ itemId: "vault_sepsis_cascade" }),
+    }) as never)
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: "Item is not available for purchase" })
+    expect(state.balance).toBe(1_000)
+    expect(state.inventory.size).toBe(0)
     expect(state.ledger).toHaveLength(0)
   })
 })

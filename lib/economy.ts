@@ -91,6 +91,8 @@ export interface StoreItem {
   icon: string
   price: number
   productGroup: StoreProductGroup
+  sellable?: boolean
+  contentDestination?: string
   maxInventory?: number
   purchaseOptions?: readonly { id: string; quantity: number; price: number }[]
   category: "lifeline" | "cosmetic" | "vault"
@@ -722,6 +724,9 @@ export const STORE_ITEMS: StoreItem[] = STORE_ITEM_DEFINITIONS.map((item) => {
   }
   return { ...item, ...catalogEntry, ...cosmeticMetadata }
 })
+
+/** Publicly listed products whose purchase is authorized by the server catalog. */
+export const SELLABLE_STORE_ITEMS = STORE_ITEMS.filter(item => item.sellable !== false)
 
 // ── Clinical Ladder ──────────────────────────────────────────────────────────
 // Rank points accumulate from every NP payout. Crossing a tier boundary
