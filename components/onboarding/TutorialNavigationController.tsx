@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { useTheme } from "@/contexts/theme-context"
+import type { Screen } from "@/lib/view"
 import type { TutorialDefinition, TutorialNavigationAction, TutorialStep } from "./tutorials"
 import { TutorialOverlay } from "./TutorialOverlay"
 
 const phoneQuery = "(max-width: 767px)"
 
-export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCheckpoint, onPause, onDismiss, onComplete }: {
+export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCheckpoint, onNavigate, onPause, onDismiss, onComplete }: {
   tutorial: TutorialDefinition; stepIndex: number; onStep: (step: number) => void; onCheckpoint: () => void
+  onNavigate: (screen: Screen) => void
   onPause: () => void; onDismiss: () => void; onComplete: () => void
 }) {
   const shell = useApplicationShell()
@@ -38,7 +40,8 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
   }, [shell])
 
   const apply = useCallback((action: TutorialNavigationAction | undefined, current: TutorialStep) => {
-    if (!action || action.type === "none" || action.type === "navigate-preview") return
+    if (!action || action.type === "none") return
+    if (action.type === "navigate-preview") { onNavigate(action.screen); return }
     if (action.type === "open-mobile-drawer" && isPhone) { shell.setMobileNavigationOpen(true); changed.current.drawer = true }
     if (action.type === "close-mobile-drawer") shell.setMobileNavigationOpen(false)
     if (action.type === "open-workspace-switcher") { shell.setWorkspaceSwitcherOpen(true); changed.current.workspace = true }
@@ -51,7 +54,7 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
     if (!isPhone && shell.sidebarCollapsed && current.desktopTargetAnchorId?.startsWith("desktop-")) {
       shell.setSidebarCollapsed(false); changed.current.sidebar = true
     }
-  }, [isPhone, shell])
+  }, [isPhone, onNavigate, shell])
 
   useEffect(() => {
     setInteractionComplete(!step.interaction || (!isPhone && step.interaction.expectedAction === "open-mobile-drawer"))
