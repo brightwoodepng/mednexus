@@ -1240,6 +1240,10 @@
   0%, 100% { opacity: 0.35; transform: translateY(0) scale(0.8); }
   50% { opacity: 0.9; transform: translateY(-9px) scale(1.12); }
 }
+@keyframes leaderboard-crown-float {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-5px) rotate(4deg); }
+}
 .leaderboard-podium-entry {
   opacity: 0;
   animation: leaderboard-rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -1286,19 +1290,42 @@
   animation: leaderboard-field-float 3.2s ease-in-out infinite;
 }
 .leaderboard-field-star-delay { animation-delay: -1.4s; }
+.leaderboard-crown {
+  animation: leaderboard-crown-float 2.8s ease-in-out infinite;
+}
+.leaderboard-stage {
+  isolation: isolate;
+}
+.leaderboard-stage::before {
+  content: "";
+  position: absolute;
+  inset: 18% 7% 1.25rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 72%, hsl(var(--primary) / 0.12), transparent 67%);
+  pointer-events: none;
+}
 .leaderboard-pedestal {
   position: relative;
   clip-path: polygon(15% 0, 85% 0, 100% 100%, 0 100%);
-  border-radius: 1.65rem 1.65rem 0.35rem 0.35rem;
+  border-radius: 1.35rem 1.35rem 0.45rem 0.45rem;
 }
 .leaderboard-pedestal::before {
   content: "";
   position: absolute;
-  inset: 0 15% auto;
-  height: 1rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.28);
-  filter: blur(0.5px);
+  inset: 0;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.3), transparent 32%, transparent 68%, rgba(15, 23, 42, 0.14));
+  pointer-events: none;
+}
+.leaderboard-pedestal-shell {
+  filter: drop-shadow(0 16px 15px hsl(222 47% 11% / 0.16));
+}
+.leaderboard-pedestal-surface {
+  transform: perspective(100px) rotateX(54deg);
+  transform-origin: center;
+  z-index: 2;
+}
+.leaderboard-pedestal-shine {
+  z-index: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .cosmetic-frame::before,
@@ -1321,6 +1348,7 @@
   .leaderboard-orbit,
   .leaderboard-particle,
   .leaderboard-star,
+  .leaderboard-crown,
   .leaderboard-field-star,
   .leaderboard-field-dot {
     animation: none;
