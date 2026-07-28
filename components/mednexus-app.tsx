@@ -35,6 +35,7 @@ import {
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { LearnerWorkspaceShell } from "@/components/learner-workspace-shell"
 import { TheoryVault } from "@/components/theory-vault"
+import { TutorialProvider } from "@/components/onboarding"
 
 interface PendingQuiz {
   questions: Question[]
@@ -331,7 +332,7 @@ function RejectedScreen() {
 // ── Study Mode Toggle ─────────────────────────────────────────────────────────
 function StudyModeToggle({ globalMode, setGlobalMode }: { globalMode: QuizMode; setGlobalMode: (mode: QuizMode) => void }) {
   return (
-    <div className="flex items-center rounded-xl border border-border bg-muted p-0.5">
+    <div data-tutorial-anchor="mcq-mode" className="flex items-center rounded-xl border border-border bg-muted p-0.5">
       <button
         type="button"
         onClick={() => setGlobalMode("trial")}
@@ -616,7 +617,7 @@ export function MedNexusApp() {
   }
 
   return (
-    <>
+    <TutorialProvider activeHub={activeStudyHub} welcomeOpen={showWelcome} blocked={Boolean(pendingQuiz || activeQuiz || isExamActive || theoryQuestionOpen || themeOpen || importerOpen || creditsOpen || loadActiveRoomSession())}>
     <LearnerWorkspaceShell
       screen={safeScreen}
       onNavigate={handleScreenNavigation}
@@ -686,6 +687,6 @@ export function MedNexusApp() {
       )}
       <CreditsModal open={creditsOpen} onClose={() => setCreditsOpen(false)} />
       {showWelcome && user && <WelcomeModal name={user.name} onClose={() => setShowWelcome(false)} />}
-    </>
+    </TutorialProvider>
   )
 }
