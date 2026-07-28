@@ -79,6 +79,7 @@ describe("verified NP rewards", () => {
     expect(ledger).toContain("pg_advisory_xact_lock")
     expect(schema).toContain("lifetime_earned")
     expect(schema).toContain("mednexus_np_transactions")
+    expect(schema).toMatch(/INSERT INTO mednexus_np_transactions\s+\(id, user_id, season_id, source, source_id, amount, metadata, created_at\)\s+SELECT\s+'np-legacy-'[\s\S]+?user_id,\s+'legacy',\s+'legacy_discipline'/)
     expect(store).toContain("balance = balance - $2")
     expect(store).not.toContain("lifetime_earned = lifetime_earned -")
     expect(store).toContain("'store_purchase'")
