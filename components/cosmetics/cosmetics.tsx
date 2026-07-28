@@ -1,21 +1,28 @@
-import { createElement, type ElementType } from "react"
+"use client"
+
+import { createElement, useRef, type ElementType } from "react"
 import { getCosmeticPresentation } from "./registry"
+import { useCosmeticMotion } from "./motion"
 import type { CosmeticKind, CosmeticRendererProps } from "./types"
 
 type WrapperProps = CosmeticRendererProps & { as?: ElementType }
 const SIZE_CLASSES = { "store-preview": "", profile: "", lobby: "", leaderboard: "", compact: "" } as const
 
 function CosmeticWrapper({ as = "div", kind, ...props }: WrapperProps & { kind: CosmeticKind }) {
+  const ref = useRef<HTMLElement>(null)
   const presentation = getCosmeticPresentation(props.cosmeticId, kind)
   const Renderer = presentation.Renderer
   const stable = !props.cosmeticId || presentation.label === "Default cosmetic"
-  const className = [SIZE_CLASSES[props.size], presentation.className, props.className, (props.reducedMotion || stable) && "[&::before]:!animate-none [&::after]:!animate-none"].filter(Boolean).join(" ")
+  const motionState = useCosmeticMotion(ref, props.reducedMotion ? "reduced" : (props.motionState ?? "static"))
+  const className = ["cosmetic-surface", SIZE_CLASSES[props.size], presentation.className, props.className].filter(Boolean).join(" ")
   return createElement(as, {
+    ref,
     className,
     "data-cosmetic-id": stable ? "default" : props.cosmeticId,
     "data-cosmetic-size": props.size,
     "data-interaction-state": props.interactionState ?? "idle",
     "data-active": props.active !== false,
+    "data-motion-state": stable ? "static" : motionState,
     "data-player-score": props.playerScore,
     "data-player-rank": props.playerRank,
   }, <Renderer {...props}>{props.avatarImage ?? props.children}</Renderer>)
