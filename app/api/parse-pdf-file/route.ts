@@ -4,7 +4,14 @@ import { promisify } from "util"
 import { writeFile, unlink } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
-import { boundedJson, guardImportRequest, IMPORT_LIMITS, isPdf, validateImages } from "@/lib/import-guard"
+import {
+  boundedJson,
+  guardImportRequest,
+  IMPORT_LIMITS,
+  isPdf,
+  summarizeExtractedImport,
+  validateExtractedImport,
+} from "@/lib/import-guard"
 
 export const maxDuration = 60
 
@@ -62,9 +69,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "The document appears to be empty or could not be read." }, { status: 422 })
     }
 
-    const imageError = validateImages(result.images ?? [])
-    if (result.text.length > IMPORT_LIMITS.textChars || (result.images?.length ?? 0) > IMPORT_LIMITS.imageCount || imageError) return NextResponse.json({ error: imageError ?? "Document exceeds import limits.", code: "PAYLOAD_TOO_LARGE" }, { status: 413 })
-    return boundedJson({ text: result.text, images: result.images ?? [] })
+    const images = result.images ?? []
+    const limitError = validateExtractedImport(result.text, images)
+    if (limitError) return NextResponse.json({ error: limitError, code: "PAYLOAD_TOO_LARGE" }, { status: 413 })
+    return boundedJson({ text: result.text, images, summary: summarizeExtractedImport(result.text, images) })
   } catch (err) {
     console.error("[parse-pdf-file]", err)
     return NextResponse.json(

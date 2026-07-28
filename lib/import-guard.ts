@@ -4,15 +4,16 @@ import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { authenticateRequest, type RequestAuth } from "@/lib/request-auth"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
+import type { ImportExtractionSummary } from "@/lib/import-types"
 
 export const IMPORT_LIMITS = {
   // Multipart overhead needs room above the file ceiling; JSON endpoints have
   // tighter semantic limits below (chunk text and decoded image bytes).
   requestBytes: 30 * 1024 * 1024,
   fileBytes: 25 * 1024 * 1024,
-  textChars: 120_000,
+  textChars: 200_000,
   chunkChars: 24_000,
-  imageCount: 20,
+  imageCount: 50,
   imageBytes: 8 * 1024 * 1024,
   responseBytes: 4 * 1024 * 1024,
   chunksPerImport: 80,
@@ -65,7 +66,10 @@ export async function guardImportRequest(req: NextRequest, endpoint: keyof typeo
 
 export function validateImages(images: unknown): string | null {
   if (images === undefined) return null
-  if (!Array.isArray(images) || images.length > IMPORT_LIMITS.imageCount) return "Too many decoded images were supplied."
+  if (!Array.isArray(images)) return "Invalid image payload."
+  if (images.length > IMPORT_LIMITS.imageCount) {
+    return `Document contains ${images.length.toLocaleString("en-US")} images; the limit is ${IMPORT_LIMITS.imageCount.toLocaleString("en-US")}.`
+  }
   let bytes = 0
   for (const image of images) {
     if (!image || typeof image !== "object" || typeof (image as { id?: unknown }).id !== "string" || typeof (image as { dataUri?: unknown }).dataUri !== "string") return "Invalid image payload."
@@ -73,9 +77,32 @@ export function validateImages(images: unknown): string | null {
     const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(uri)
     if (!match) return "Unsupported image type or malformed image data."
     bytes += Buffer.byteLength(match[2], "base64")
-    if (bytes > IMPORT_LIMITS.imageBytes) return "Decoded images exceed the allowed size."
+    if (bytes > IMPORT_LIMITS.imageBytes) {
+      return `Decoded image data exceeds the ${IMPORT_LIMITS.imageBytes / 1024 / 1024} MB combined limit.`
+    }
   }
   return null
+}
+
+export function validateImportText(text: string): string | null {
+  if (text.length <= IMPORT_LIMITS.textChars) return null
+  return `Document contains ${text.length.toLocaleString("en-US")} characters; the limit is ${IMPORT_LIMITS.textChars.toLocaleString("en-US")}.`
+}
+
+export function validateExtractedImport(text: string, images: unknown): string | null {
+  return validateImportText(text) ?? validateImages(images)
+}
+
+export function summarizeExtractedImport(text: string, images: unknown[]): ImportExtractionSummary {
+  return {
+    textChars: text.length,
+    imageCount: images.length,
+    limits: {
+      textChars: IMPORT_LIMITS.textChars,
+      imageCount: IMPORT_LIMITS.imageCount,
+    },
+    withinLimits: validateExtractedImport(text, images) === null,
+  }
 }
 
 export function boundedJson(payload: unknown, status = 200): NextResponse {

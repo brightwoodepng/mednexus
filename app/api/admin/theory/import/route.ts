@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import type { PoolClient } from "pg"
 import { requireAdminPermission, unauthorized } from "@/lib/request-auth"
 import { generateWithFallback } from "@/lib/gemini"
-import { guardImportRequest, IMPORT_LIMITS, validateImages } from "@/lib/import-guard"
+import { guardImportRequest, validateImages, validateImportText } from "@/lib/import-guard"
 import { normalizeTheoryImport, type TheoryImportItem, type TheoryImportImage } from "@/lib/theory-import"
 import { auditTheory, theoryId, theoryPool, withTransaction } from "@/lib/theory-server"
 
@@ -148,7 +148,8 @@ export async function POST(request: NextRequest) {
       if ("response" in guarded) return guarded.response
       const source = typeof body.text === "string" ? body.text.trim() : ""
       if (!source) return NextResponse.json({ error: "Document text is required." }, { status: 400 })
-      if (source.length > IMPORT_LIMITS.textChars) return NextResponse.json({ error: "Document text exceeds the import limit." }, { status: 413 })
+      const textLimitError = validateImportText(source)
+      if (textLimitError) return NextResponse.json({ error: textLimitError }, { status: 413 })
       const imageError = validateImages(body.images)
       if (imageError) return NextResponse.json({ error: imageError }, { status: 415 })
       const raw = await generateWithFallback(systemInstruction, `Theory document:\n${source}`)

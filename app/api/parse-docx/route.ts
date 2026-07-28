@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import mammoth from "mammoth"
-import { boundedJson, guardImportRequest, IMPORT_LIMITS, isDocx, validateImages } from "@/lib/import-guard"
+import {
+  boundedJson,
+  guardImportRequest,
+  IMPORT_LIMITS,
+  isDocx,
+  summarizeExtractedImport,
+  validateExtractedImport,
+} from "@/lib/import-guard"
 
 // Extracts raw text AND embedded images from a .docx file.
 // Images are returned as base64 data URIs; their positions in the text are
@@ -83,9 +90,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "The document appears to be empty" }, { status: 422 })
     }
 
-    const imageError = validateImages(images)
-    if (text.length > IMPORT_LIMITS.textChars || images.length > IMPORT_LIMITS.imageCount || imageError) return NextResponse.json({ error: imageError ?? "Document exceeds import limits.", code: "PAYLOAD_TOO_LARGE" }, { status: 413 })
-    return boundedJson({ text, images })
+    const limitError = validateExtractedImport(text, images)
+    if (limitError) return NextResponse.json({ error: limitError, code: "PAYLOAD_TOO_LARGE" }, { status: 413 })
+    return boundedJson({ text, images, summary: summarizeExtractedImport(text, images) })
   } catch (err) {
     console.error("[parse-docx]", err)
     return NextResponse.json({ error: "Failed to process document" }, { status: 500 })
