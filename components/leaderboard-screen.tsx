@@ -10,6 +10,7 @@ import type { Screen } from "@/lib/view"
 import { CosmeticHighlight, getCosmeticPresentation } from "@/components/cosmetics"
 
 type RankingTab = "weekly" | "monthly" | "alltime"
+type LeaderboardErrorCode = "ECONOMY_SEASON_MISSING" | "ECONOMY_SCHEMA_NOT_READY" | "LEADERBOARD_DATA_INVALID"
 type LeaderboardScreenProps = { onNavigate?: (screen: Screen) => void }
 
 const ranges: Array<{ id: RankingTab; label: string; description: string }> = [
@@ -213,12 +214,22 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
       if (sessionToken) headers["x-session-token"] = sessionToken
       else if (guestToken) headers["x-guest-token"] = guestToken
       const response = await fetch(`/api/leaderboard?tab=${range}`, { headers })
-      if (!response.ok) throw new Error("Failed to load")
-      const body = await response.json()
+      const body = await response.json().catch(() => ({})) as { entries?: LeaderboardEntry[]; viewerEntry?: LeaderboardEntry | null; code?: LeaderboardErrorCode }
+      if (!response.ok) {
+        if (response.status === 401) throw new Error("AUTH_EXPIRED")
+        throw new Error(body.code ?? "UNKNOWN")
+      }
       setEntries(body.entries ?? [])
       setViewerEntry(body.viewerEntry ?? null)
-    } catch {
-      setError("Could not load the rankings. Please try again.")
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : "UNKNOWN"
+      setError(code === "ECONOMY_SEASON_MISSING" || code === "ECONOMY_SCHEMA_NOT_READY"
+        ? "Season setup is underway. Rankings will be available shortly."
+        : code === "LEADERBOARD_DATA_INVALID"
+          ? "Rankings are temporarily unavailable while we verify the data."
+          : code === "AUTH_EXPIRED"
+            ? "Your authentication has expired. Please sign in again, then retry."
+            : "Could not load the rankings. Please try again.")
     } finally {
       setLoading(false)
     }

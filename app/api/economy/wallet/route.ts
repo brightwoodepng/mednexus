@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { forbidden, requireAdminPermission, requireRegisteredUser, unauthorized } from "@/lib/request-auth"
-import { getActiveSeason } from "@/lib/economy-seasons"
+import { getActiveSeason, provisionActiveSeasonWallet } from "@/lib/economy-seasons"
 
 // Admin-only, additive and fully audited. Direct balance overwrites are forbidden.
 export async function PATCH(req: NextRequest) {
@@ -46,11 +46,23 @@ export async function GET(req: NextRequest) {
     if (!auth) return unauthorized()
     const uid = auth.uid
     if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 })
-    const season = await getActiveSeason(pool)
-    const { rows } = await pool.query(
-      "SELECT balance, lifetime_earned, rank_points FROM mednexus_season_wallets WHERE user_id = $1 AND season_id = $2",
-      [uid, season.id]
-    )
+    const client = await pool.connect()
+    let season
+    let rows
+    try {
+      await client.query("BEGIN")
+      ;({ season } = await provisionActiveSeasonWallet(client, uid, "wallet-read-fallback-v1"))
+      ;({ rows } = await client.query(
+        "SELECT balance, lifetime_earned, rank_points FROM mednexus_season_wallets WHERE user_id = $1 AND season_id = $2",
+        [uid, season.id],
+      ))
+      await client.query("COMMIT")
+    } catch (error) {
+      await client.query("ROLLBACK")
+      throw error
+    } finally {
+      client.release()
+    }
     return NextResponse.json({
       balance: Number(rows[0]?.balance ?? 0),
       lifetimeEarned: Number(rows[0]?.lifetime_earned ?? 0),

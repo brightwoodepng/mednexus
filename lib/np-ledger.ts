@@ -1,7 +1,7 @@
 import type { PoolClient } from "pg"
 import { computeRankUpBonus, RANK_UP_BONUS_NP, TODAY_DATE } from "@/lib/economy"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
-import { getActiveSeason } from "@/lib/economy-seasons"
+import { getActiveSeason, provisionActiveSeasonWallet } from "@/lib/economy-seasons"
 
 export interface NPCredit {
   source: string
@@ -49,7 +49,9 @@ export async function applyNPCredits(
   credits: NPCredit[],
 ): Promise<NPCreditResult> {
   const inserted: NPCredit[] = []
-  const season = await getActiveSeason(client, true)
+  // Credits are an authenticated/controlled operation, so this is the safe
+  // fallback for approved accounts missed by a cutover or approval hook.
+  const { season } = await provisionActiveSeasonWallet(client, userId, "wallet-credit-fallback-v1")
   const economyDate = TODAY_DATE()
   // Serialize all credits for this user/date, including calls made more than once
   // in a payout transaction. Rank bonuses are deliberately exempt: they are rare,
