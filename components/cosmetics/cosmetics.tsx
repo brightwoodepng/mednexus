@@ -48,7 +48,3 @@ export function CosmeticLoadout({ avatarId, frameId, highlightId, titleId, child
     {titleId && <CosmeticTitle cosmeticId={titleId} {...props} />}
   </CosmeticHighlight>
 }
-
-export function CosmeticPreviewStage(props: WrapperProps) {
-  return <CosmeticWrapper {...props} kind="highlight" className={`relative isolate overflow-hidden ${props.className ?? ""}`} />
-}
