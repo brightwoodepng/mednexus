@@ -113,6 +113,22 @@ describe("versioned economy configuration", () => {
     expect(labs?.stackLimit).toBe(10)
   })
 
+  it("defines complete, price-aligned presentation metadata for cosmetics", () => {
+    const expectedRarity = (price: number) => {
+      if (price >= 4_000) return "mythic"
+      if (price >= 1_000) return "legendary"
+      if (price >= 600) return "epic"
+      if (price >= 400) return "rare"
+      return "common"
+    }
+
+    for (const item of STORE_ITEMS.filter(candidate => candidate.category === "cosmetic")) {
+      expect(item.rarity, item.id).toBe(expectedRarity(item.price))
+      expect(item.sortOrder, item.id).toEqual(expect.any(Number))
+      expect(item.previewTheme, item.id).toEqual(expect.any(String))
+    }
+  })
+
   it("adds the economy version to all current ledger insertion paths", () => {
     const ledger = readFileSync("lib/np-ledger.ts", "utf8")
     const store = readFileSync("app/api/economy/store/route.ts", "utf8")

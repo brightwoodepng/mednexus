@@ -5,7 +5,7 @@ import { useEconomy } from "@/contexts/economy-context"
 import {
   STORE_ITEMS, VAULT_META, TITLE_LABELS, SOLO_SUPPLY_MODE_LABELS,
   FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES,
-  type StoreItem, type VaultMeta,
+  type CosmeticRarity, type StoreItem, type VaultMeta,
 } from "@/lib/economy"
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
@@ -141,10 +141,22 @@ function VaultCard({
   )
 }
 
-function tierBadge(price: number) {
-  if (price >= 5000) return { label: "Mythic",    cls: "bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white" }
-  if (price >= 1500) return { label: "Legendary", cls: "bg-gradient-to-r from-amber-400 to-orange-500 text-white" }
-  return null
+const RARITY_PRESENTATION: Record<CosmeticRarity, { label: string; symbol: string; cls: string }> = {
+  common: { label: "Common", symbol: "●", cls: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" },
+  rare: { label: "Rare", symbol: "◆", cls: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300" },
+  epic: { label: "Epic", symbol: "✦", cls: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300" },
+  legendary: { label: "Legendary", symbol: "♛", cls: "bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-400 dark:bg-amber-950/50 dark:text-amber-200" },
+  mythic: { label: "Mythic", symbol: "✺", cls: "bg-fuchsia-100 text-fuchsia-800 ring-2 ring-inset ring-fuchsia-400 dark:bg-fuchsia-950/50 dark:text-fuchsia-200" },
+}
+
+function RarityBadge({ rarity }: { rarity?: CosmeticRarity }) {
+  if (!rarity) return null
+  const presentation = RARITY_PRESENTATION[rarity]
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${presentation.cls}`}>
+      <span aria-hidden="true">{presentation.symbol}</span>{presentation.label}
+    </span>
+  )
 }
 
 function CosmeticCard({
@@ -156,7 +168,6 @@ function CosmeticCard({
 }) {
   const frameClass   = item.cosmeticType === "frame"     ? FRAME_RING_CLASSES[item.id]    : ""
   const highlightCls = item.cosmeticType === "highlight" ? HIGHLIGHT_ROW_CLASSES[item.id] : ""
-  const tier = tierBadge(item.price)
 
   return (
     <div className={`rounded-2xl border p-3 transition-all ${
@@ -170,11 +181,7 @@ function CosmeticCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
             <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
-            {tier && (
-              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
-                {tier.label}
-              </span>
-            )}
+            <RarityBadge rarity={item.rarity} />
           </div>
           <p className="text-[11px] text-muted-foreground leading-tight mb-2">{item.desc}</p>
 
@@ -224,7 +231,6 @@ function AvatarCard({
   buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
   onBuy: () => void; onEquip: () => void
 }) {
-  const tier = tierBadge(item.price)
 
   return (
     <div className={`rounded-2xl border p-3 transition-all ${
@@ -248,11 +254,7 @@ function AvatarCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
             <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
-            {tier && (
-              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
-                {tier.label}
-              </span>
-            )}
+            <RarityBadge rarity={item.rarity} />
           </div>
           <p className="text-[11px] text-muted-foreground leading-tight mb-2">{item.desc}</p>
 
@@ -427,10 +429,14 @@ function CosmeticGridCard({
 }) {
   const frameClass   = item.cosmeticType === "frame"     ? (FRAME_RING_CLASSES[item.id]    ?? "") : ""
   const highlightCls = item.cosmeticType === "highlight" ? (HIGHLIGHT_ROW_CLASSES[item.id] ?? "") : ""
-  const tier = tierBadge(item.price)
+  const prestigeClass = item.rarity === "mythic"
+    ? "ring-2 ring-fuchsia-400/70 border-double border-4"
+    : item.rarity === "legendary"
+      ? "ring-1 ring-amber-400/70 border-dashed"
+      : ""
 
   return (
-    <div className={`flex flex-col items-center text-center p-6 h-full rounded-2xl border transition-all hover:shadow-md ${
+    <div data-preview-theme={item.previewTheme} className={`relative flex flex-col items-center text-center p-6 h-full rounded-2xl border transition-all hover:shadow-md ${prestigeClass} ${
       equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
     }`}>
 
@@ -471,12 +477,11 @@ function CosmeticGridCard({
         )}
       </div>
 
-      {/* Tier badge */}
-      {tier && (
-        <span className={`mb-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${tier.cls}`}>
-          {tier.label}
-        </span>
-      )}
+      <div className="mb-2 flex flex-wrap justify-center gap-1.5">
+        <RarityBadge rarity={item.rarity} />
+        {item.featured && <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-bold text-background">★ Featured</span>}
+        {item.limitedUntil && <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-bold">Limited until {item.limitedUntil}</span>}
+      </div>
 
       {/* Name */}
       <h3 className="text-sm font-bold text-foreground leading-snug">{item.name}</h3>
@@ -491,6 +496,18 @@ function CosmeticGridCard({
           <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">{item.price.toLocaleString()}</span>
         </div>
       )}
+
+      <div className="mt-2 min-h-5" aria-live="polite">
+        {equipped ? (
+          <span className="text-[11px] font-bold text-primary">✓ Equipped</span>
+        ) : owned ? (
+          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Owned</span>
+        ) : canAfford ? (
+          <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400">Available to buy</span>
+        ) : (
+          <span className="text-[11px] font-bold text-muted-foreground">🔒 Locked · Not enough NP</span>
+        )}
+      </div>
 
       {/* CTA button — anchored to bottom */}
       {owned ? (
@@ -810,8 +827,22 @@ export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
   const [equipping,  setEquipping]  = useState<string | null>(null)
   const [flash,      setFlash]      = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
+  const [rarityFilter, setRarityFilter] = useState<CosmeticRarity | "all">("all")
 
-  const cosItems = STORE_ITEMS.filter(i => i.category === "cosmetic" && i.cosmeticType === cosSection)
+  const cosItems = STORE_ITEMS
+    .filter(i => i.category === "cosmetic" && i.cosmeticType === cosSection)
+    .filter(i => rarityFilter === "all" || i.rarity === rarityFilter)
+    .sort((a, b) => {
+      const stateRank = (item: StoreItem) => {
+        if (equippedCosmetics[cosSection] === item.id) return 0
+        if ((inventory[item.id] ?? 0) >= 1) return 1
+        if (balance >= item.price) return 2
+        return 3
+      }
+      return stateRank(a) - stateRank(b)
+        || (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER)
+        || a.id.localeCompare(b.id)
+    })
 
   async function handleBuy(itemId: string) {
     setError(null)
@@ -858,6 +889,25 @@ export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
         ))}
       </div>
 
+      <div className="mb-6 flex flex-wrap items-center gap-2" aria-label="Filter cosmetics by rarity">
+        <span className="mr-1 text-xs font-bold text-muted-foreground">Rarity</span>
+        {(["all", "common", "rare", "epic", "legendary", "mythic"] as const).map(rarity => (
+          <button
+            key={rarity}
+            type="button"
+            aria-pressed={rarityFilter === rarity}
+            onClick={() => setRarityFilter(rarity)}
+            className={`min-h-9 rounded-full px-3 text-xs font-bold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+              rarityFilter === rarity
+                ? "bg-foreground text-background"
+                : "bg-card text-muted-foreground ring-1 ring-inset ring-border hover:text-foreground"
+            }`}
+          >
+            {rarity === "all" ? "All rarities" : rarity}
+          </button>
+        ))}
+      </div>
+
       <p className="mb-6 text-sm text-muted-foreground">
         {cosSection === "title"     && "Displayed as a badge next to your name during multiplayer leaderboard reveals."}
         {cosSection === "frame"     && "Animated ring shown around your player avatar badge during multiplayer pauses."}
@@ -885,6 +935,11 @@ export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
           )
         })}
       </div>
+      {cosItems.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+          No {rarityFilter} {cosSection} cosmetics are available.
+        </div>
+      )}
     </SubPageShell>
   )
 }
