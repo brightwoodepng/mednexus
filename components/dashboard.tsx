@@ -136,7 +136,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const bestExamScore = examsTaken ? Math.max(...examScores.map((e) => e.score)) : 0
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
+    <div data-tutorial-anchor="mcq-home" className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
 
       {!questionsLoading && questions.length === 0 && <section className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-6 text-center"><h2 className="text-lg font-bold">Question bank is currently empty</h2><p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">Practice questions are temporarily unavailable because the live question bank has been intentionally cleared. Please check back after an administrator publishes a reviewed bank.</p></section>}
 

@@ -18,6 +18,7 @@ import { TrialReviewPanel } from "@/components/trial-review-panel"
 import type { StudyHubId } from "@/components/study-hub-switcher"
 import type { Screen } from "@/lib/view"
 import { CosmeticFrame, CosmeticTitle } from "@/components/cosmetics"
+import { TutorialSettings } from "@/components/onboarding/TutorialSettings"
 
 // ── Exam Scores ──────────────────────────────────────────────────────────────
 
@@ -471,6 +472,7 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <ProfileHeader />
+      <TutorialSettings />
       {activeHub === "theory-vault" ? <TheoryProfilePanel onNavigate={onNavigate} /> : <><CosmeticLoadout />
       <PrivacySettings />
       <ModuleReviewSection />
