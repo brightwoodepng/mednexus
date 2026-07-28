@@ -20,6 +20,7 @@ function createClient() {
         releaseInventoryLock = undefined
         return { rows: [], rowCount: 0 }
       }
+      if (sql.includes("FROM mednexus_economy_seasons")) return { rows: [{ id: "season-1", name: "Season 1", economy_version: "2.0", starts_at: "2026-01-01", opening_grant: 500 }], rowCount: 1 }
 
       if (sql.includes("INSERT INTO mednexus_user_inventory")) {
         const previousLock = inventoryLock
@@ -39,10 +40,10 @@ function createClient() {
         state.inventory.set(`${params[0]}:${params[1]}`, Number(params[2]))
         return { rows: [], rowCount: 1 }
       }
-      if (sql.includes("SELECT balance FROM mednexus_wallet")) {
+      if (sql.includes("SELECT balance FROM mednexus_season_wallets")) {
         return { rows: [{ balance: state.balance }], rowCount: 1 }
       }
-      if (sql.includes("UPDATE mednexus_wallet")) {
+      if (sql.includes("UPDATE mednexus_season_wallets")) {
         state.balance -= Number(params[1])
         return { rows: [], rowCount: 1 }
       }

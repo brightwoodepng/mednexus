@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
+import { provisionActiveSeasonWallet } from "@/lib/economy-seasons"
 
 async function getPool() {
   const { default: pool } = await import("@/lib/db")
@@ -26,11 +27,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ui
 
   try {
     if (action === "approve") {
-      await pool.query(
-        `UPDATE mednexus_registered_users SET status = 'approved' WHERE uid = $1`,
-        [uid]
-      )
-      await auditAdmin(pool, admin.uid, "approve", "user", uid)
+      const client = await pool.connect()
+      try {
+        await client.query("BEGIN")
+        await client.query(`UPDATE mednexus_registered_users SET status = 'approved' WHERE uid = $1`, [uid])
+        await provisionActiveSeasonWallet(client, uid, "approval-v2")
+        await client.query("COMMIT")
+      } catch (error) {
+        await client.query("ROLLBACK")
+        throw error
+      } finally {
+        client.release()
+      }
+      await auditAdmin(pool, admin.uid, "approve", "user", uid, { seasonGrant: 500 })
       return NextResponse.json({ success: true })
     }
 
