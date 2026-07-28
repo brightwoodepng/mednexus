@@ -12,6 +12,7 @@
     "seed:theory-demo": "tsx scripts/seed-theory-demo.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "economy:analyze": "tsx scripts/analyze-economy.ts",
+    "economy:cutover": "tsx scripts/cutover-economy-season.ts",
     "test": "vitest run",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test"

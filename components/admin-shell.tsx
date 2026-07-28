@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import {
-  ArrowLeft, BarChart3, Bell, BookOpen, ClipboardCheck, Database, FileOutput,
+  ArrowLeft, BarChart3, Bell, BookOpen, ClipboardCheck, Database, FileOutput, Coins,
   LayoutDashboard, Menu, Palette, Search, Settings, ShieldCheck, Users, Waypoints,
 } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
@@ -32,6 +32,7 @@ const groups: Array<{ label?: string; items: NavigationItem[] }> = [
     { href: "/admin/roles", label: "Roles & Permissions", icon: ShieldCheck, capability: "system" },
   ] },
   { label: "System", items: [
+    { href: "/admin/economy-seasons", label: "Economy Seasons", icon: Coins, capability: "system" },
     { href: "/admin/modules", label: "Modules & Disciplines", icon: Waypoints, capability: "mcq" },
     { href: "/admin/imports-exports", label: "Imports & Exports", icon: FileOutput, capability: "mcq" },
     { href: "/admin/notifications", label: "Notifications", icon: Bell, capability: "broadcasts" },

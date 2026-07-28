@@ -15,7 +15,7 @@ type LeaderboardScreenProps = { onNavigate?: (screen: Screen) => void }
 const ranges: Array<{ id: RankingTab; label: string; description: string }> = [
   { id: "weekly", label: "Weekly", description: "Nexus Points earned in the last 7 days" },
   { id: "monthly", label: "Monthly", description: "Nexus Points earned in the last 30 days" },
-  { id: "alltime", label: "All Time", description: "Lifetime NP earned — spending does not lower your place" },
+  { id: "alltime", label: "Season", description: "NP earned in the active season — spending does not lower your place" },
 ]
 
 const podium = {

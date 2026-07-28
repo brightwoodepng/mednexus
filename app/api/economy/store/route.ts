@@ -3,6 +3,7 @@ import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { isStoreItemPurchasable, SELLABLE_STORE_ITEMS, STORE_ITEMS } from "@/lib/economy"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 type PurchaseSelection = { quantity?: unknown; bundleId?: unknown }
 
@@ -56,10 +57,11 @@ export async function POST(req: NextRequest) {
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
+      const season = await getActiveSeason(client, true)
 
       const { rows: walletRows } = await client.query(
-        "SELECT balance FROM mednexus_wallet WHERE uid = $1 FOR UPDATE",
-        [uid]
+        "SELECT balance FROM mednexus_season_wallets WHERE user_id = $1 AND season_id = $2 FOR UPDATE",
+        [uid, season.id]
       )
       const balance = walletRows[0]?.balance ?? 0
       if (balance < purchase.price) {
@@ -70,9 +72,9 @@ export async function POST(req: NextRequest) {
       // Materialize the row so even a first purchase has a row-level lock. The
       // wallet and inventory remain locked until the ledger entry commits.
       await client.query(
-        `INSERT INTO mednexus_user_inventory (uid, item_id, quantity)
-         VALUES ($1, $2, 0) ON CONFLICT (uid, item_id) DO NOTHING`,
-        [uid, itemId],
+        `INSERT INTO mednexus_user_inventory (uid, item_id, quantity, acquired_season_id)
+         VALUES ($1, $2, 0, $3) ON CONFLICT (uid, item_id) DO NOTHING`,
+        [uid, itemId, season.id],
       )
       const { rows: inventoryRows } = await client.query(
         "SELECT quantity FROM mednexus_user_inventory WHERE uid = $1 AND item_id = $2 FOR UPDATE",
@@ -91,13 +93,14 @@ export async function POST(req: NextRequest) {
       )
 
       await client.query(
-        `UPDATE mednexus_wallet SET balance = balance - $2, updated_at = NOW() WHERE uid = $1`,
-        [uid, purchase.price]
+        `UPDATE mednexus_season_wallets SET balance = balance - $2, updated_at = NOW()
+          WHERE user_id = $1 AND season_id = $3`,
+        [uid, purchase.price, season.id]
       )
       await client.query(
         `INSERT INTO mednexus_np_transactions
-           (id, user_id, source, source_id, amount, metadata)
-         VALUES ($1, $2, 'store_purchase', $3, $4, $5::jsonb)`,
+           (id, user_id, season_id, source, source_id, amount, metadata)
+         VALUES ($1, $2, $6, 'store_purchase', $3, $4, $5::jsonb)`,
         [
           `np-${crypto.randomUUID()}`,
           uid,
@@ -115,12 +118,14 @@ export async function POST(req: NextRequest) {
             economyVersion: ECONOMY_CONFIG.economyVersion,
             catalogVersion: ECONOMY_CONFIG.catalogVersion,
             storeCategory: (ECONOMY_CONFIG.store.catalog as Record<string, { productGroup: string }>)[item.id]?.productGroup ?? "uncategorized",
+            seasonId: season.id,
           }),
+          season.id,
         ],
       )
       const { rows: newWallet } = await client.query(
-        "SELECT balance, lifetime_earned, rank_points FROM mednexus_wallet WHERE uid = $1",
-        [uid]
+        "SELECT balance, lifetime_earned, rank_points FROM mednexus_season_wallets WHERE user_id = $1 AND season_id = $2",
+        [uid, season.id]
       )
       await client.query("COMMIT")
       return NextResponse.json({

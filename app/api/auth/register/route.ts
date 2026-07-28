@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { isValidLevel } from "@/lib/levels"
 import { defaultPlatformSettings, getPlatformSettings } from "@/lib/platform-settings"
-import { applyNPCredits } from "@/lib/np-ledger"
+import { provisionActiveSeasonWallet } from "@/lib/economy-seasons"
 
 function formatIndexNumber(raw: string): { formatted: string; autoApprove: boolean } {
   const cleaned = raw.toLowerCase().replace(/[^a-z0-9]/g, "")
@@ -118,15 +118,9 @@ export async function POST(req: NextRequest) {
         [uid, name.trim()],
       )
 
-      // Grant the 500 NP welcome bonus through the same append-only accounting
-      // path as every other credit. The deterministic source ID keeps retries safe.
-      await applyNPCredits(client, uid, [{
-        source: "registration_bonus",
-        sourceId: uid,
-        amount: 500,
-        metadata: { autoApproved: autoApprove },
-        countsTowardClinicalRank: false,
-      }])
+      // Pending accounts receive no currency. Approval provisions exactly one
+      // deterministic opening grant in the currently active season.
+      if (autoApprove) await provisionActiveSeasonWallet(client, uid, "registration-v2")
 
       if (!autoApprove) {
         const notifId = `notif-reg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
