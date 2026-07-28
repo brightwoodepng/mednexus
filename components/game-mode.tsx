@@ -1087,7 +1087,7 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
               >
                 🏪 Store
               </button>
-              <button type="button" onClick={() => setQuestsOpen(true)} className="relative flex h-8 items-center gap-1.5 rounded-full border border-white bg-white px-3 text-sm font-extrabold text-violet-700 shadow-sm transition-all hover:bg-white/90 active:scale-[0.98]">
+              <button type="button" onClick={() => setQuestsOpen(true)} className="relative flex h-8 items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 text-sm font-extrabold text-violet-700 dark:border-violet-800/40 dark:bg-violet-950/30 dark:text-violet-300">
                 📋 Quests
                 {questBadgeCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] text-white">{questBadgeCount}</span>}
               </button>
