@@ -26,6 +26,12 @@ function requireSchema() {
 const query = vi.fn(async (sql: string, params: unknown[] = []) => {
   requireSchema()
 
+  if (sql.includes("FROM mednexus_economy_seasons")) return { rows: [{ id: "season-1", name: "Season 1", economy_version: "2.0", starts_at: "2026-01-01", opening_grant: 500 }], rowCount: 1 }
+  if (sql.includes("SELECT 1 FROM mednexus_registered_users")) {
+    const user = registeredUsers.find(({ uid, status }) => uid === params[0] && status === "approved")
+    return { rows: user ? [{ "?column?": 1 }] : [], rowCount: user ? 1 : 0 }
+  }
+
   if (sql.includes("SELECT uid FROM mednexus_registered_users")) {
     const user = registeredUsers.find(({ index_number }) => index_number === params[0])
     return { rows: user ? [{ uid: user.uid }] : [], rowCount: user ? 1 : 0 }
@@ -59,19 +65,14 @@ const query = vi.fn(async (sql: string, params: unknown[] = []) => {
   if (sql.includes("INSERT INTO mednexus_np_transactions")) {
     return { rows: [{ id: params[0] }], rowCount: 1 }
   }
-  if (sql.includes("INSERT INTO mednexus_wallet")) {
-    const balance = Number(params[1] ?? 500)
-    const rankPoints = Number(params[2] ?? 0)
-    wallets.push({ uid: params[0] as string, balance })
-    return {
-      rows: [{
-        balance,
-        rank_points: rankPoints,
-        lifetime_earned: balance,
-        old_rank_points: 0,
-      }],
-      rowCount: 1,
-    }
+  if (sql.includes("INSERT INTO mednexus_season_wallets")) {
+    wallets.push({ uid: params[1] as string, balance: 0 })
+    return { rows: [], rowCount: 1 }
+  }
+  if (sql.includes("UPDATE mednexus_season_wallets")) {
+    const wallet = wallets.find(({ uid }) => uid === params[1])!
+    wallet.balance += Number(params[2])
+    return { rows: [], rowCount: 1 }
   }
   if (sql.includes("INSERT INTO mednexus_notifications")) {
     notifications.push({ title: params[1] as string, body: params[2] as string })
@@ -127,7 +128,7 @@ describe("account entry schema initialization", () => {
     expect(ensureSchema).toHaveBeenCalledTimes(1)
     expect(registeredUsers).toHaveLength(1)
     expect(registeredUsers[0]).toMatchObject({ name: "Pending Learner", class_level: "Level 400", status: "pending" })
-    expect(wallets).toEqual([{ uid: registeredUsers[0].uid, balance: 500 }])
+    expect(wallets).toEqual([])
     expect(notifications).toHaveLength(1)
 
     const duplicate = await POST(post("/api/auth/register", {

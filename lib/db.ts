@@ -579,6 +579,104 @@ export async function ensureSchema() {
   // ALTER TABLE … ADD COLUMN IF NOT EXISTS is safe to re-run; it no-ops when
   // the column already exists (e.g. when the CREATE TABLE above already added it).
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS mednexus_economy_seasons (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      economy_version TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('planned','active','closed')),
+      starts_at TIMESTAMPTZ NOT NULL,
+      ends_at TIMESTAMPTZ,
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      activated_by TEXT,
+      activated_at TIMESTAMPTZ,
+      activation_migration_id TEXT UNIQUE,
+      opening_grant INTEGER NOT NULL DEFAULT 500
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS mednexus_one_active_economy_season
+      ON mednexus_economy_seasons ((status)) WHERE status = 'active';
+    INSERT INTO mednexus_economy_seasons
+      (id, name, economy_version, status, starts_at, ends_at, activation_migration_id, opening_grant)
+    VALUES ('legacy', 'Legacy Economy', 'legacy', 'closed', '-infinity', NOW(), 'bootstrap-legacy-v1', 0)
+    ON CONFLICT (id) DO NOTHING;
+    INSERT INTO mednexus_economy_seasons
+      (id, name, economy_version, status, starts_at, activated_at, activation_migration_id, opening_grant)
+    SELECT 'season-1', 'Season 1', '2.0', 'active', NOW(), NOW(), 'economy-season-1-cutover-v1', 500
+    WHERE NOT EXISTS (SELECT 1 FROM mednexus_economy_seasons WHERE status='active')
+    ON CONFLICT (id) DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS mednexus_season_wallets (
+      season_id TEXT NOT NULL REFERENCES mednexus_economy_seasons(id),
+      user_id TEXT NOT NULL,
+      balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+      lifetime_earned INTEGER NOT NULL DEFAULT 0 CHECK (lifetime_earned >= 0),
+      rank_points INTEGER NOT NULL DEFAULT 0 CHECK (rank_points >= 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (season_id, user_id)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_economy_season_archives (
+      season_id TEXT NOT NULL REFERENCES mednexus_economy_seasons(id), user_id TEXT NOT NULL,
+      closing_balance INTEGER NOT NULL, lifetime_np INTEGER NOT NULL, rank_points INTEGER NOT NULL,
+      login_streak INTEGER NOT NULL, longest_streak INTEGER NOT NULL, mcq_activity JSONB NOT NULL DEFAULT '{}',
+      game_personal_bests JSONB NOT NULL DEFAULT '[]', bounty_progress JSONB NOT NULL DEFAULT '[]',
+      weekly_goal_progress JSONB NOT NULL DEFAULT '[]', inventory_value INTEGER NOT NULL DEFAULT 0,
+      closing_leaderboard_position INTEGER, archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      migration_id TEXT NOT NULL, PRIMARY KEY (season_id, user_id)
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_wallet_adjustments (
+      id TEXT PRIMARY KEY, season_id TEXT NOT NULL REFERENCES mednexus_economy_seasons(id),
+      target_user_id TEXT NOT NULL, acting_administrator TEXT NOT NULL, reason TEXT NOT NULL CHECK (length(trim(reason)) >= 8),
+      amount INTEGER NOT NULL CHECK (amount <> 0), before_balance INTEGER NOT NULL, after_balance INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS mednexus_economy_cutovers (
+      migration_id TEXT PRIMARY KEY, from_season_id TEXT NOT NULL, to_season_id TEXT NOT NULL,
+      affected_users INTEGER NOT NULL, before_total BIGINT NOT NULL, after_total BIGINT NOT NULL,
+      executed_by TEXT NOT NULL, executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    ALTER TABLE mednexus_np_transactions ADD COLUMN IF NOT EXISTS season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    ALTER TABLE mednexus_daily_activity ADD COLUMN IF NOT EXISTS season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    ALTER TABLE mednexus_bounty_progress ADD COLUMN IF NOT EXISTS season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    ALTER TABLE mednexus_weekly_goal_progress ADD COLUMN IF NOT EXISTS season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    ALTER TABLE mednexus_game_personal_bests ADD COLUMN IF NOT EXISTS season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    ALTER TABLE mednexus_multiplayer_payouts ADD COLUMN IF NOT EXISTS season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    ALTER TABLE mednexus_exam_sessions ADD COLUMN IF NOT EXISTS season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    ALTER TABLE mednexus_user_question_progress ADD COLUMN IF NOT EXISTS season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    ALTER TABLE mednexus_discipline_np_log ADD COLUMN IF NOT EXISTS season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    ALTER TABLE mednexus_user_inventory ADD COLUMN IF NOT EXISTS acquired_season_id TEXT REFERENCES mednexus_economy_seasons(id);
+    UPDATE mednexus_np_transactions SET season_id = 'legacy' WHERE season_id IS NULL;
+    UPDATE mednexus_daily_activity SET season_id = 'legacy' WHERE season_id IS NULL;
+    UPDATE mednexus_bounty_progress SET season_id = 'legacy' WHERE season_id IS NULL;
+    UPDATE mednexus_weekly_goal_progress SET season_id = 'legacy' WHERE season_id IS NULL;
+    UPDATE mednexus_game_personal_bests SET season_id = 'legacy' WHERE season_id IS NULL;
+    UPDATE mednexus_multiplayer_payouts SET season_id = 'legacy' WHERE season_id IS NULL;
+    UPDATE mednexus_exam_sessions SET season_id = 'legacy' WHERE season_id IS NULL;
+    UPDATE mednexus_user_question_progress SET season_id = 'legacy' WHERE season_id IS NULL;
+    UPDATE mednexus_discipline_np_log SET season_id = 'legacy' WHERE season_id IS NULL;
+    ALTER TABLE mednexus_np_transactions ALTER COLUMN season_id SET NOT NULL;
+    ALTER TABLE mednexus_daily_activity ALTER COLUMN season_id SET NOT NULL;
+    ALTER TABLE mednexus_bounty_progress ALTER COLUMN season_id SET NOT NULL;
+    ALTER TABLE mednexus_weekly_goal_progress ALTER COLUMN season_id SET NOT NULL;
+    ALTER TABLE mednexus_game_personal_bests ALTER COLUMN season_id SET NOT NULL;
+    ALTER TABLE mednexus_multiplayer_payouts ALTER COLUMN season_id SET NOT NULL;
+    ALTER TABLE mednexus_user_question_progress ALTER COLUMN season_id SET NOT NULL;
+    ALTER TABLE mednexus_discipline_np_log ALTER COLUMN season_id SET NOT NULL;
+    ALTER TABLE mednexus_daily_activity DROP CONSTRAINT IF EXISTS mednexus_daily_activity_pkey;
+    ALTER TABLE mednexus_daily_activity ADD CONSTRAINT mednexus_daily_activity_pkey PRIMARY KEY (season_id,user_id,activity_date);
+    ALTER TABLE mednexus_bounty_progress DROP CONSTRAINT IF EXISTS mednexus_bounty_progress_pkey;
+    ALTER TABLE mednexus_bounty_progress ADD CONSTRAINT mednexus_bounty_progress_pkey PRIMARY KEY (season_id,uid,bounty_id,bounty_date);
+    ALTER TABLE mednexus_weekly_goal_progress DROP CONSTRAINT IF EXISTS mednexus_weekly_goal_progress_pkey;
+    ALTER TABLE mednexus_weekly_goal_progress ADD CONSTRAINT mednexus_weekly_goal_progress_pkey PRIMARY KEY (season_id,uid,week_id);
+    ALTER TABLE mednexus_game_personal_bests DROP CONSTRAINT IF EXISTS mednexus_game_personal_bests_pkey;
+    ALTER TABLE mednexus_game_personal_bests ADD CONSTRAINT mednexus_game_personal_bests_pkey PRIMARY KEY (season_id,user_id,mode);
+    ALTER TABLE mednexus_multiplayer_payouts DROP CONSTRAINT IF EXISTS mednexus_multiplayer_payouts_pkey;
+    ALTER TABLE mednexus_multiplayer_payouts ADD CONSTRAINT mednexus_multiplayer_payouts_pkey PRIMARY KEY (season_id,room_pin,user_id);
+    ALTER TABLE mednexus_user_question_progress DROP CONSTRAINT IF EXISTS mednexus_user_question_progress_pkey;
+    ALTER TABLE mednexus_user_question_progress ADD CONSTRAINT mednexus_user_question_progress_pkey PRIMARY KEY (season_id,user_id,question_id);
+    ALTER TABLE mednexus_discipline_np_log DROP CONSTRAINT IF EXISTS mednexus_discipline_np_log_pkey;
+    ALTER TABLE mednexus_discipline_np_log ADD CONSTRAINT mednexus_discipline_np_log_pkey PRIMARY KEY (season_id,user_id,discipline,earned_date);
+
     -- Backfill new columns for databases that existed before this migration.
     ALTER TABLE mednexus_notifications
       ADD COLUMN IF NOT EXISTS admin_only BOOLEAN NOT NULL DEFAULT FALSE;

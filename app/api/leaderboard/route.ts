@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { authenticateRequest, authError } from "@/lib/request-auth"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 type RankingTab = "weekly" | "monthly" | "alltime"
 
@@ -44,13 +45,14 @@ function allTimeEntry(row: Record<string, unknown>) {
 }
 
 async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | null) {
+  const season = await getActiveSeason(pool)
   const periodDays = tab === "weekly" ? 7 : 30
   const cutoff = new Date(Date.now() - periodDays * 86_400_000).toISOString()
   const commonCtes = `
     WITH np AS (
       SELECT user_id, SUM(amount) AS period_np
       FROM mednexus_np_transactions
-      WHERE amount > 0
+      WHERE amount > 0 AND season_id = $2
         AND created_at >= $1::timestamptz
       GROUP BY user_id
     ), da AS (
@@ -58,7 +60,7 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
              SUM(questions_answered) AS period_questions,
              SUM(correct_answers) AS period_correct
       FROM mednexus_daily_activity
-      WHERE activity_date >= LEFT($1::text, 10)
+      WHERE activity_date >= LEFT($1::text, 10) AND season_id = $2
       GROUP BY user_id
     )
   `
@@ -85,7 +87,7 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
         AND r.status = 'approved'
         AND COALESCE(np.period_np, 0) > 0
     )
-    SELECT * FROM ranked WHERE public_rank <= 50 ORDER BY public_rank`, [cutoff])
+    SELECT * FROM ranked WHERE public_rank <= 50 ORDER BY public_rank`, [cutoff, season.id])
 
   const entries = publicResult.rows.map(timedEntry)
   let viewerEntry = viewerUid ? entries.find((entry) => entry.uid === viewerUid) ?? null : null
@@ -101,7 +103,7 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
       LEFT JOIN np ON np.user_id = r.uid
       LEFT JOIN da ON da.user_id = r.uid
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
-      WHERE r.uid = $2`, [cutoff, viewerUid])
+      WHERE r.uid = $3`, [cutoff, season.id, viewerUid])
 
     const viewer = viewerResult.rows[0]
     if (viewer) {
@@ -117,16 +119,16 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
           AND r.status = 'approved'
           AND COALESCE(np.period_np, 0) > 0
           AND (
-            COALESCE(np.period_np, 0) > $2 OR
-            (COALESCE(np.period_np, 0) = $2 AND
+            COALESCE(np.period_np, 0) > $3 OR
+            (COALESCE(np.period_np, 0) = $3 AND
               CASE WHEN COALESCE(da.period_questions, 0) >= 50
                 THEN COALESCE(da.period_correct, 0)::numeric / NULLIF(da.period_questions, 0)
-                ELSE 0 END > $3) OR
-            (COALESCE(np.period_np, 0) = $2 AND
+                ELSE 0 END > $4) OR
+            (COALESCE(np.period_np, 0) = $3 AND
               CASE WHEN COALESCE(da.period_questions, 0) >= 50
                 THEN COALESCE(da.period_correct, 0)::numeric / NULLIF(da.period_questions, 0)
-                ELSE 0 END = $3 AND r.uid < $4)
-          )`, [cutoff, Number(viewer.period_np ?? 0), viewerAccuracy, viewerUid])
+                ELSE 0 END = $4 AND r.uid < $5)
+          )`, [cutoff, season.id, Number(viewer.period_np ?? 0), viewerAccuracy, viewerUid])
       viewer.public_rank = Number(rankResult.rows[0]?.exact_rank ?? 1)
       viewerEntry = timedEntry(viewer)
     }
@@ -136,6 +138,7 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
 }
 
 async function allTimeLeaderboard(viewerUid: string | null) {
+  const season = await getActiveSeason(pool)
   const accuracySql = `
     CASE
       WHEN p.data IS NULL OR jsonb_array_length(COALESCE(p.data->'history', '[]'::jsonb)) = 0 THEN 0
@@ -156,13 +159,13 @@ async function allTimeLeaderboard(viewerUid: string | null) {
                ORDER BY COALESCE(w.lifetime_earned, 0) DESC, ${accuracySql} DESC, r.uid ASC
              ) AS public_rank
       FROM mednexus_registered_users r
-      LEFT JOIN mednexus_wallet w ON w.uid = r.uid
+      LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
       LEFT JOIN mednexus_progress p ON p.uid = r.uid
       WHERE r.is_private = FALSE AND r.status = 'approved'
     )
     SELECT * FROM ranked WHERE public_rank <= 50 ORDER BY public_rank
-  `)
+  `, [season.id])
   const entries = publicResult.rows.map(allTimeEntry)
   let viewerEntry = viewerUid ? entries.find((entry) => entry.uid === viewerUid) ?? null : null
 
@@ -174,11 +177,11 @@ async function allTimeLeaderboard(viewerUid: string | null) {
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
              ${accuracySql} AS accuracy
       FROM mednexus_registered_users r
-      LEFT JOIN mednexus_wallet w ON w.uid = r.uid
+      LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
       LEFT JOIN mednexus_progress p ON p.uid = r.uid
-      WHERE r.uid = $1
-    `, [viewerUid])
+      WHERE r.uid = $2
+    `, [season.id, viewerUid])
     const viewer = viewerResult.rows[0]
     if (viewer) {
       const rankResult = await pool.query(`
@@ -186,14 +189,14 @@ async function allTimeLeaderboard(viewerUid: string | null) {
         FROM (
           SELECT r.uid, COALESCE(w.lifetime_earned, 0) AS total_np, ${accuracySql} AS accuracy
           FROM mednexus_registered_users r
-          LEFT JOIN mednexus_wallet w ON w.uid = r.uid
+          LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
           LEFT JOIN mednexus_progress p ON p.uid = r.uid
           WHERE r.is_private = FALSE AND r.status = 'approved'
         ) public
-        WHERE public.total_np > $1
-           OR (public.total_np = $1 AND public.accuracy > $2)
-           OR (public.total_np = $1 AND public.accuracy = $2 AND public.uid < $3)
-      `, [Number(viewer.total_np ?? 0), Number(viewer.accuracy ?? 0), viewerUid])
+        WHERE public.total_np > $2
+           OR (public.total_np = $2 AND public.accuracy > $3)
+           OR (public.total_np = $2 AND public.accuracy = $3 AND public.uid < $4)
+      `, [season.id, Number(viewer.total_np ?? 0), Number(viewer.accuracy ?? 0), viewerUid])
       viewer.public_rank = Number(rankResult.rows[0]?.exact_rank ?? 1)
       viewerEntry = allTimeEntry(viewer)
     }
@@ -226,7 +229,8 @@ export async function GET(req: NextRequest) {
         })
       }
     }
-    return NextResponse.json(data)
+    const season = await getActiveSeason(pool)
+    return NextResponse.json({ ...data, season })
   } catch (error) {
     console.error("[leaderboard GET]", error)
     return NextResponse.json({ error: "Server error" }, { status: 500 })

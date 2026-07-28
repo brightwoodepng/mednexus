@@ -1,86 +1,43 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { forbidden, requireAdminPermission, requireRegisteredUser, unauthorized } from "@/lib/request-auth"
-import { applyNPCredits } from "@/lib/np-ledger"
-import { ECONOMY_CONFIG } from "@/lib/economy-config"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
-// Admin-only: forcefully overwrite a wallet balance. Database provisioning is performed by db:migrate.
+// Admin-only, additive and fully audited. Direct balance overwrites are forbidden.
 export async function PATCH(req: NextRequest) {
   try {
-    if (!await requireAdminPermission(req, "manage_system")) {
-      return await requireRegisteredUser(req) ? forbidden() : unauthorized()
-    }
-    const { uid, balance } = await req.json()
-    if (
-      typeof uid !== "string"
-      || !uid
-      || !Number.isSafeInteger(balance)
-      || balance < 0
-      || balance > 1_000_000_000
-    ) {
-      return NextResponse.json({ error: "A valid uid and non-negative integer balance are required" }, { status: 400 })
+    const actor = await requireRegisteredUser(req)
+    if (!actor) return unauthorized()
+    if (!await requireAdminPermission(req, "manage_system")) return forbidden()
+    const { uid, amount, reason } = await req.json()
+    if (typeof uid !== "string" || !uid || !Number.isSafeInteger(amount) || amount === 0
+      || Math.abs(amount) > 1_000_000_000 || typeof reason !== "string" || reason.trim().length < 8) {
+      return NextResponse.json({ error: "uid, a non-zero integer amount, and a reason of at least 8 characters are required" }, { status: 400 })
     }
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
-      const current = await client.query(
-        "SELECT balance FROM mednexus_wallet WHERE uid = $1 FOR UPDATE",
-        [uid],
-      )
-      const previous = Number(current.rows[0]?.balance ?? 0)
-      let finalBalance = balance
-      if (balance > previous) {
-        const award = await applyNPCredits(client, uid, [{
-          source: "admin_award",
-          sourceId: crypto.randomUUID(),
-          amount: balance - previous,
-          metadata: { targetBalance: balance },
-        }])
-        finalBalance = award.newBalance
-      } else {
-        await client.query(
-          `INSERT INTO mednexus_wallet (uid, balance, updated_at)
-           VALUES ($1, $2, NOW())
-           ON CONFLICT (uid) DO UPDATE
-             SET balance = EXCLUDED.balance, updated_at = NOW()`,
-          [uid, balance],
-        )
-        if (balance < previous) {
-          await client.query(
-            `INSERT INTO mednexus_np_transactions
-               (id, user_id, source, source_id, amount, metadata)
-             VALUES ($1, $2, 'admin_adjustment', $3, $4, $5::jsonb)`,
-            [
-              `np-${crypto.randomUUID()}`,
-              uid,
-              crypto.randomUUID(),
-              balance - previous,
-              JSON.stringify({ targetBalance: balance, economyVersion: ECONOMY_CONFIG.economyVersion }),
-            ],
-          )
-        }
-      }
-      await client.query("COMMIT")
+      const season = await getActiveSeason(client, true)
       const wallet = await client.query(
-        "SELECT balance, lifetime_earned, rank_points FROM mednexus_wallet WHERE uid = $1",
-        [uid],
-      )
-      return NextResponse.json({
-        ok: true,
-        balance: Number(wallet.rows[0]?.balance ?? finalBalance),
-        lifetimeEarned: Number(wallet.rows[0]?.lifetime_earned ?? 0),
-        rankPoints: Number(wallet.rows[0]?.rank_points ?? 0),
-      })
-    } catch (error) {
-      await client.query("ROLLBACK")
-      throw error
-    } finally {
-      client.release()
-    }
-  } catch (e) {
-    console.error("wallet PATCH", e)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
-  }
+        "SELECT balance FROM mednexus_season_wallets WHERE season_id=$1 AND user_id=$2 FOR UPDATE", [season.id, uid])
+      if (!wallet.rowCount) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Active-season wallet not found" }, { status: 404 }) }
+      const before = Number(wallet.rows[0].balance)
+      const after = before + amount
+      if (after < 0) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Adjustment would make balance negative" }, { status: 409 }) }
+      const id = crypto.randomUUID()
+      await client.query(`UPDATE mednexus_season_wallets SET balance=$3,
+        lifetime_earned=lifetime_earned + GREATEST($4, 0), updated_at=NOW() WHERE season_id=$1 AND user_id=$2`,
+        [season.id, uid, after, amount])
+      await client.query(`INSERT INTO mednexus_np_transactions
+        (id,user_id,season_id,source,source_id,amount,metadata) VALUES ($1,$2,$3,'admin_adjustment',$1,$4,$5::jsonb)`,
+        [`adjustment-${id}`, uid, season.id, amount, JSON.stringify({ reason: reason.trim(), actingAdministrator: actor.uid, beforeBalance: before, afterBalance: after, seasonId: season.id, economyVersion: season.economyVersion })])
+      await client.query(`INSERT INTO mednexus_wallet_adjustments
+        (id,season_id,target_user_id,acting_administrator,reason,amount,before_balance,after_balance) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [id, season.id, uid, actor.uid, reason.trim(), amount, before, after])
+      await client.query("COMMIT")
+      return NextResponse.json({ ok: true, seasonId: season.id, beforeBalance: before, balance: after, adjustmentId: id })
+    } catch (error) { await client.query("ROLLBACK"); throw error } finally { client.release() }
+  } catch (error) { console.error("wallet PATCH", error); return NextResponse.json({ error: "Server error" }, { status: 500 }) }
 }
 
 export async function GET(req: NextRequest) {
@@ -89,14 +46,16 @@ export async function GET(req: NextRequest) {
     if (!auth) return unauthorized()
     const uid = auth.uid
     if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 })
+    const season = await getActiveSeason(pool)
     const { rows } = await pool.query(
-      "SELECT balance, lifetime_earned, rank_points FROM mednexus_wallet WHERE uid = $1",
-      [uid]
+      "SELECT balance, lifetime_earned, rank_points FROM mednexus_season_wallets WHERE user_id = $1 AND season_id = $2",
+      [uid, season.id]
     )
     return NextResponse.json({
       balance: Number(rows[0]?.balance ?? 0),
       lifetimeEarned: Number(rows[0]?.lifetime_earned ?? 0),
       rankPoints: Number(rows[0]?.rank_points ?? 0),
+      season,
     })
   } catch (e) {
     console.error("wallet GET", e)
