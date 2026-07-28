@@ -1081,35 +1081,17 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-3 flex justify-end gap-2">
           <div className="flex items-center gap-2">
-            {false && <div className="hidden" aria-hidden="true">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 shadow-lg shadow-violet-500/20 md:h-14 md:w-14">
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={22} height={22} className="md:hidden" aria-hidden="true">
-                  <line x1="6" x2="10" y1="12" y2="12" /><line x1="8" x2="8" y1="10" y2="14" />
-                  <line x1="15" x2="17" y1="11" y2="11" /><line x1="15" x2="17" y1="13" y2="13" />
-                  <rect width="20" height="12" x="2" y="6" rx="2" />
-                </svg>
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={28} height={28} className="hidden md:block" aria-hidden="true">
-                  <line x1="6" x2="10" y1="12" y2="12" /><line x1="8" x2="8" y1="10" y2="14" />
-                  <line x1="15" x2="17" y1="11" y2="11" /><line x1="15" x2="17" y1="13" y2="13" />
-                  <rect width="20" height="12" x="2" y="6" rx="2" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-lg font-extrabold tracking-tight text-foreground md:text-xl">Game Mode</h1>
-                <p className="hidden text-xs text-muted-foreground md:block">Pick a game type and start playing</p>
-              </div>
-            </div>}
-              <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
-              <button type="button" onClick={() => setQuestsOpen(true)} className="relative flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-extrabold text-violet-700 dark:border-violet-800/40 dark:bg-violet-950/30 dark:text-violet-300">
-                📋 <span className="hidden sm:inline">Quests</span>
-                {questBadgeCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] text-white">{questBadgeCount}</span>}
-              </button>
               <button
                 type="button" onClick={onOpenStore}
                 className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1.5 shadow-sm text-sm font-extrabold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
               >
-                🏪 <span>Store</span>
+                🏪 Store
               </button>
+              <button type="button" onClick={() => setQuestsOpen(true)} className="relative flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-extrabold text-violet-700 dark:border-violet-800/40 dark:bg-violet-950/30 dark:text-violet-300">
+                📋 Quests
+                {questBadgeCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] text-white">{questBadgeCount}</span>}
+              </button>
+              <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
           </div>
         </div>
 
