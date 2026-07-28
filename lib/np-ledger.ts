@@ -1,6 +1,7 @@
 import type { PoolClient } from "pg"
 import { computeRankUpBonus, RANK_UP_BONUS_NP, TODAY_DATE } from "@/lib/economy"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 export interface NPCredit {
   source: string
@@ -48,6 +49,7 @@ export async function applyNPCredits(
   credits: NPCredit[],
 ): Promise<NPCreditResult> {
   const inserted: NPCredit[] = []
+  const season = await getActiveSeason(client, true)
   const economyDate = TODAY_DATE()
   // Serialize all credits for this user/date, including calls made more than once
   // in a payout transaction. Rank bonuses are deliberately exempt: they are rare,
@@ -59,9 +61,9 @@ export async function applyNPCredits(
     const daily = await client.query(
       `SELECT COALESCE(SUM(amount), 0)::int AS total
          FROM mednexus_np_transactions
-        WHERE user_id = $1 AND metadata->>'ceilingPolicy' = 'repeatable_mcq'
+        WHERE user_id = $1 AND season_id = $3 AND metadata->>'ceilingPolicy' = 'repeatable_mcq'
           AND created_at >= $2::date AND created_at < $2::date + INTERVAL '1 day'`,
-      [userId, economyDate],
+      [userId, economyDate, season.id],
     )
     dailyRepeatableCredited = Number(daily.rows[0]?.total ?? 0)
   }
@@ -76,19 +78,21 @@ export async function applyNPCredits(
     const suppressedAmount = requestedAmount - amount
     const result = await client.query(
       `INSERT INTO mednexus_np_transactions
-         (id, user_id, source, source_id, amount, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+         (id, user_id, season_id, source, source_id, amount, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
        ON CONFLICT (user_id, source, source_id) DO NOTHING
        RETURNING id`,
       [
         `np-${crypto.randomUUID()}`,
         userId,
+        season.id,
         credit.source,
         credit.sourceId,
         amount,
         JSON.stringify({
           ...credit.metadata,
-          economyVersion: ECONOMY_CONFIG.economyVersion,
+          economyVersion: season.economyVersion,
+          seasonId: season.id,
           economyDate,
           ceilingPolicy: repeatable ? "repeatable_mcq" : "exempt",
           requestedAmount,
@@ -110,17 +114,17 @@ export async function applyNPCredits(
     .reduce((sum, credit) => sum + credit.amount, 0)
 
   const walletResult = await client.query(
-    `INSERT INTO mednexus_wallet
-       (uid, balance, rank_points, lifetime_earned, updated_at)
-     VALUES ($1, $2, $3, $2, NOW())
-     ON CONFLICT (uid) DO UPDATE
-       SET balance = mednexus_wallet.balance + $2,
-           rank_points = mednexus_wallet.rank_points + $3,
-           lifetime_earned = mednexus_wallet.lifetime_earned + $2,
+    `INSERT INTO mednexus_season_wallets
+       (user_id, season_id, balance, rank_points, lifetime_earned, updated_at)
+     VALUES ($1, $4, $2, $3, $2, NOW())
+     ON CONFLICT (season_id, user_id) DO UPDATE
+       SET balance = mednexus_season_wallets.balance + $2,
+           rank_points = mednexus_season_wallets.rank_points + $3,
+           lifetime_earned = mednexus_season_wallets.lifetime_earned + $2,
            updated_at = NOW()
      RETURNING balance, rank_points, lifetime_earned,
        rank_points - $3 AS old_rank_points`,
-    [userId, balanceCredit, rankCredit],
+    [userId, balanceCredit, rankCredit, season.id],
   )
 
   let newBalance = Number(walletResult.rows[0]?.balance ?? 0)
@@ -135,8 +139,8 @@ export async function applyNPCredits(
     const sourceId = `${oldRankPoints}-${rankPoints}-${tierName}`
     const bonus = await client.query(
       `INSERT INTO mednexus_np_transactions
-         (id, user_id, source, source_id, amount, metadata)
-       VALUES ($1, $2, 'rank_bonus', $3, $4, $5::jsonb)
+         (id, user_id, season_id, source, source_id, amount, metadata)
+       VALUES ($1, $2, $6, 'rank_bonus', $3, $4, $5::jsonb)
        ON CONFLICT (user_id, source, source_id) DO NOTHING
        RETURNING amount`,
       [
@@ -152,7 +156,9 @@ export async function applyNPCredits(
           ceilingPolicy: "exempt",
           requestedAmount: RANK_UP_BONUS_NP,
           suppressedAmount: 0,
+          seasonId: season.id,
         }),
+        season.id,
       ],
     )
     if (!bonus.rowCount) continue
@@ -162,13 +168,13 @@ export async function applyNPCredits(
 
   if (rankBonus) {
     const bonusWallet = await client.query(
-      `UPDATE mednexus_wallet
+      `UPDATE mednexus_season_wallets
        SET balance = balance + $1,
            lifetime_earned = lifetime_earned + $1,
            updated_at = NOW()
-       WHERE uid = $2
+       WHERE user_id = $2 AND season_id = $3
        RETURNING balance, lifetime_earned`,
-      [rankBonus, userId],
+      [rankBonus, userId, season.id],
     )
     newBalance = Number(bonusWallet.rows[0]?.balance ?? newBalance)
     lifetimeEarned = Number(bonusWallet.rows[0]?.lifetime_earned ?? lifetimeEarned)
@@ -194,11 +200,12 @@ export async function recordDailyActivity(
   correctAnswers: number,
 ) {
   if (questionsAnswered <= 0) return
+  const season = await getActiveSeason(client)
   await client.query(
     `INSERT INTO mednexus_daily_activity
-       (user_id, activity_date, questions_answered, correct_answers)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (user_id, activity_date) DO UPDATE
+       (user_id, season_id, activity_date, questions_answered, correct_answers)
+     VALUES ($1, $5, $2, $3, $4)
+     ON CONFLICT (season_id, user_id, activity_date) DO UPDATE
        SET questions_answered = mednexus_daily_activity.questions_answered + EXCLUDED.questions_answered,
            correct_answers = mednexus_daily_activity.correct_answers + EXCLUDED.correct_answers`,
     [
@@ -206,6 +213,7 @@ export async function recordDailyActivity(
       TODAY_DATE(),
       Math.max(0, Math.floor(questionsAnswered)),
       Math.max(0, Math.floor(correctAnswers)),
+      season.id,
     ],
   )
 }
@@ -248,4 +256,3 @@ export async function dailyRewardRemaining(
   const cap = family === "solo" ? ECONOMY_CONFIG.gameRewards.solo.dailyCap : ECONOMY_CONFIG.gameRewards.multiplayer.dailyCap
   return Math.max(0, cap - Number(result.rows[0]?.total ?? 0))
 }
-

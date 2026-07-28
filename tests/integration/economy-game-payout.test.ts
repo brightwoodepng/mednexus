@@ -82,6 +82,7 @@ describe("verified NP rewards", () => {
     expect(store).toContain("balance = balance - $2")
     expect(store).not.toContain("lifetime_earned = lifetime_earned -")
     expect(store).toContain("'store_purchase'")
-    expect(registration).toContain('source: "registration_bonus"')
+    expect(registration).toContain("provisionActiveSeasonWallet")
+    expect(registration).not.toContain('source: "registration_bonus"')
   })
 })
