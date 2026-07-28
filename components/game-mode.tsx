@@ -989,11 +989,11 @@ function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules
   return (
     <button
       type="button" onClick={onSelect}
-      className="group relative overflow-hidden rounded-3xl border border-border bg-card p-5 text-left transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/8 hover:scale-[1.01] active:scale-[0.99]"
+      className="group relative overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-left transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/8 hover:scale-[1.01] active:scale-[0.99] sm:p-4"
     >
       <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
-      <div className="flex items-start gap-4">
-        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} shadow-md ${shadow} text-2xl`}>
+      <div className="flex items-start gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gradient} shadow-md ${shadow} text-lg sm:h-11 sm:w-11`}>
           {icon}
         </div>
         <div className="min-w-0 flex-1">
@@ -1004,10 +1004,10 @@ function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules
           <p className="text-xs leading-relaxed text-muted-foreground">{desc}</p>
         </div>
       </div>
-      <div className="mt-3.5 space-y-1.5">
+      <div className="mt-2.5 space-y-1">
         {rules.map(rule => (
-          <div key={rule} className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />
+          <div key={rule} className="flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground">
+            <span className="h-1 w-1 shrink-0 rounded-full bg-primary/40" />
             {rule}
           </div>
         ))}
@@ -1019,7 +1019,7 @@ function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules
           <span className="text-xs font-bold text-foreground">{hs.toLocaleString()}</span>
         </div>
       )}
-      <div className={`mt-4 flex items-center justify-center gap-1.5 rounded-2xl bg-gradient-to-r ${gradient} py-2.5 text-sm font-bold text-white shadow-sm transition-opacity group-hover:opacity-90`}>
+      <div className={`mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r ${gradient} py-2 text-xs font-bold text-white shadow-sm transition-opacity group-hover:opacity-90`}>
         Play
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}>
           <path d="m9 18 6-6-6-6" />
@@ -1031,17 +1031,57 @@ function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules
 
 type ModeCategory = "solo" | "multi"
 
+function QuestsDrawer({ onClose }: { onClose: () => void }) {
+  const { bounties, weeklyGoals } = useEconomy()
+  const pendingCount = bounties.filter(b => b.progress >= b.target && !b.claimed).length
+    + weeklyGoals.filter(goal => goal.completed && !goal.credited).length
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", onKeyDown)
+    return () => document.removeEventListener("keydown", onKeyDown)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="quests-title">
+      <button type="button" aria-label="Close quests" onClick={onClose} className="absolute inset-0 cursor-default bg-black/35 backdrop-blur-[2px]" />
+      <aside className="relative h-full w-full max-w-md overflow-y-auto border-l border-border bg-background p-4 shadow-2xl sm:p-6">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-400">Progress & rewards</p>
+            <h2 id="quests-title" className="mt-1 text-xl font-extrabold text-foreground">Quests & Bounties</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Complete challenges to earn Nexus Points.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close quests" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">×</button>
+        </div>
+        {pendingCount > 0 && (
+          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-400">
+            ✓ {pendingCount} reward{pendingCount === 1 ? "" : "s"} ready to claim
+          </div>
+        )}
+        <DailyBountiesPanel />
+      </aside>
+    </div>
+  )
+}
+
 function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
   onSelect: (id: GameModeId) => void; onBack: () => void; onOpenStore?: () => void
 }) {
   const [category, setCategory] = useState<ModeCategory>("solo")
+  const [questsOpen, setQuestsOpen] = useState(false)
+  const { bounties, weeklyGoals } = useEconomy()
+  const questBadgeCount = bounties.filter(b => b.progress >= b.target && !b.claimed).length
+    + weeklyGoals.filter(goal => goal.completed && !goal.credited).length
 
   return (
-    <div className="flex min-h-full flex-col p-4 sm:p-6 lg:p-8">
+    <div className="flex min-h-full flex-col p-3 sm:p-5 lg:p-6">
       <div className="mx-auto w-full max-w-2xl">
-        <div className="mb-7">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
+        <div className="mb-3 flex justify-end gap-2">
+          <div className="flex items-center gap-2">
+            {false && <div className="hidden" aria-hidden="true">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 shadow-lg shadow-violet-500/20 md:h-14 md:w-14">
                 <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={22} height={22} className="md:hidden" aria-hidden="true">
                   <line x1="6" x2="10" y1="12" y2="12" /><line x1="8" x2="8" y1="10" y2="14" />
@@ -1058,26 +1098,23 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
                 <h1 className="text-lg font-extrabold tracking-tight text-foreground md:text-xl">Game Mode</h1>
                 <p className="hidden text-xs text-muted-foreground md:block">Pick a game type and start playing</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
+            </div>}
               <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
+              <button type="button" onClick={() => setQuestsOpen(true)} className="relative flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-extrabold text-violet-700 dark:border-violet-800/40 dark:bg-violet-950/30 dark:text-violet-300">
+                📋 <span className="hidden sm:inline">Quests</span>
+                {questBadgeCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] text-white">{questBadgeCount}</span>}
+              </button>
               <button
                 type="button" onClick={onOpenStore}
                 className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1.5 shadow-sm text-sm font-extrabold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
               >
                 🏪 <span>Store</span>
               </button>
-            </div>
           </div>
         </div>
 
-        {/* Daily Bounties */}
-        <div className="mb-6">
-          <DailyBountiesPanel />
-        </div>
-
         {/* Category tabs — Solo vs Multiplayer */}
-        <div className="mb-5 flex gap-1 rounded-2xl bg-muted p-1">
+        <div className="mb-3 flex gap-1 rounded-2xl bg-muted p-1">
           <button
             type="button" onClick={() => setCategory("solo")}
             className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-all ${category === "solo" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
@@ -1118,10 +1155,11 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
           </div>
         )}
 
-        <button type="button" onClick={onBack} className="mt-6 w-full rounded-2xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+        <button type="button" onClick={onBack} className="mt-4 w-full rounded-2xl py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
           Back to Dashboard
         </button>
       </div>
+      {questsOpen && <QuestsDrawer onClose={() => setQuestsOpen(false)} />}
     </div>
   )
 }
