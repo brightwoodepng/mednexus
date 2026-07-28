@@ -30,6 +30,9 @@ type Key = {
 type OrderedAnswer = {
   questionId: string
   answer: string | string[] | null
+  firstAnswer?: string | string[] | null
+  secondAnswer?: string | string[] | null
+  assisted?: boolean
 }
 
 const SOLO_GAME_MODES = new Set<string>(ECONOMY_CONFIG.modeIds.soloGames)
@@ -145,7 +148,7 @@ export async function POST(req: NextRequest) {
       const storedOrder: OrderedAnswer[] = Array.isArray(session.answer_order)
         ? session.answer_order
         : []
-      const orderedAnswers = storedOrder.length
+      const orderedAnswers: OrderedAnswer[] = storedOrder.length
         ? storedOrder
         : keys
             .filter((key) => Object.prototype.hasOwnProperty.call(answerMap, key.id))
@@ -156,20 +159,40 @@ export async function POST(req: NextRequest) {
       let survivedCount = 0
       let suddenAlive = true
       const sessionData: Array<SessionQuestionInput & { currentStreak: number }> = []
+      const continuationData: Array<SessionQuestionInput & { currentStreak: number; assisted?: boolean }> = []
+      let continuationStreak = 0
+      let hasAssistedAttempt = false
 
       for (const attempt of orderedAnswers) {
         const key = keyById.get(attempt.questionId)
         if (!key) continue
-        const correct = isCorrect(attempt.answer, key.correctAnswer)
+        const assisted = attempt.assisted === true
+        const firstAnswer = attempt.firstAnswer ?? attempt.answer
+        const firstCorrect = isCorrect(firstAnswer, key.correctAnswer)
+        const secondCorrect = assisted && isCorrect(attempt.secondAnswer, key.correctAnswer)
+        // An assisted record is valid only for a wrong first attempt. Corrected
+        // retries continue play, but deliberately remain incorrect for rewards.
+        if (assisted && firstCorrect) continue
+        hasAssistedAttempt ||= assisted
+        const correct = firstCorrect
+        const continuationCorrect = firstCorrect || secondCorrect
         currentStreak = correct ? currentStreak + 1 : 0
+        continuationStreak = continuationCorrect ? continuationStreak + 1 : 0
         bestStreak = Math.max(bestStreak, currentStreak)
-        if (suddenAlive && correct) survivedCount++
-        else if (!correct) suddenAlive = false
+        if (suddenAlive && continuationCorrect) survivedCount++
+        else if (!continuationCorrect) suddenAlive = false
         sessionData.push({
           questionId: key.id,
           discipline: key.discipline,
           isCorrect: correct,
           currentStreak,
+        })
+        continuationData.push({
+          questionId: key.id,
+          discipline: key.discipline,
+          isCorrect: continuationCorrect,
+          currentStreak: continuationStreak,
+          assisted,
         })
       }
 
@@ -184,7 +207,7 @@ export async function POST(req: NextRequest) {
           )
         : null
       const completionMetadataConsistent = SOLO_GAME_MODES.has(session.mode)
-        ? hasConsistentSoloCompletion(session.mode, snapshotIds, sessionData, session.result_meta ?? {}, {
+        ? hasConsistentSoloCompletion(session.mode, snapshotIds, continuationData, session.result_meta ?? {}, {
             startedAt: session.started_at,
             finishedAt: session.submitted_at,
             verifiedFreezeCount: Number(verifiedFreezeResult?.rows[0]?.count ?? 0),
@@ -211,7 +234,7 @@ export async function POST(req: NextRequest) {
       const personalBestScore = isSoloGame
         ? personalBestValue({ mode: session.mode, score, bestStreak, survivedCount } as SoloPersonalBestResult)
         : score
-      const isNewHigh = meaningfulSoloCompletion
+      const isNewHigh = meaningfulSoloCompletion && !hasAssistedAttempt
         ? await updatePersonalBest(auth.uid, session.mode, personalBestScore, client)
         : false
       const result: GameResult = {

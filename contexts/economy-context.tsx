@@ -69,7 +69,7 @@ export interface EconomyContextValue {
     examMeta?: { accuracy: number; correct: number; total: number; primaryDiscipline?: string }
     sessionId?: string
     answers?: Record<string, string | string[] | null>
-    orderedAnswers?: Array<{ questionId: string; answer: string | string[] | null }>
+    orderedAnswers?: Array<{ questionId: string; answer: string | string[] | null; firstAnswer?: string | string[] | null; secondAnswer?: string | string[] | null; assisted?: boolean }>
     completionReason?: string | null
     clientRoundStartedAt?: string
     clientRoundFinishedAt?: string
@@ -351,7 +351,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     examMeta?: { accuracy: number; correct: number; total: number; primaryDiscipline?: string }
     sessionId?: string
     answers?: Record<string, string | string[] | null>
-    orderedAnswers?: Array<{ questionId: string; answer: string | string[] | null }>
+    orderedAnswers?: Array<{ questionId: string; answer: string | string[] | null; firstAnswer?: string | string[] | null; secondAnswer?: string | string[] | null; assisted?: boolean }>
     completionReason?: string | null
     clientRoundStartedAt?: string
     clientRoundFinishedAt?: string

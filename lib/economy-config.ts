@@ -91,8 +91,8 @@ export type EconomyConfig = {
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "1.9.0",
-  catalogVersion: "2.2.0",
+  economyVersion: "2.0.0",
+  catalogVersion: "2.3.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
@@ -166,6 +166,7 @@ export const ECONOMY_CONFIG = {
     perQuestionLimits: {
       lifeline_50_50: 1,
       lifeline_freeze: 1,
+      lifeline_second_opinion: 1,
     },
     dailyIncome: { casual: 100, active: 400 },
     priceBands: {
@@ -186,6 +187,10 @@ export const ECONOMY_CONFIG = {
       lifeline_freeze: {
         price: 100, productGroup: "basic_consumable", maxInventory: 10,
         purchaseOptions: [{ id: "single", quantity: 1, price: 100 }, { id: "bundle_3", quantity: 3, price: 270 }],
+      },
+      lifeline_second_opinion: {
+        price: 200, productGroup: "strong_consumable", maxInventory: 5,
+        purchaseOptions: [{ id: "single", quantity: 1, price: 200 }],
       },
       // Vault simulations remain unavailable until their content, launch route,
       // ownership checks, resume/completion flow, and member-facing entry exist.
