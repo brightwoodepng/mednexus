@@ -84,3 +84,38 @@ Every future cosmetic proposal and implementation must document all of the follo
 5. **Readable contexts** — the backgrounds, themes, component sizes, interaction states, and placements where the cosmetic remains recognizable and content remains legible.
 
 A proposal missing any field is incomplete. Review cosmetics at their smallest supported size, on both light and dark surfaces when applicable, at rest and in every interactive state. If the medical source cannot be recognized without explanatory copy, revise the visual treatment rather than relying on the name alone.
+
+## Avatar asset contract
+
+Every new avatar must begin as transparent **1024×1024 master artwork**. Keep all meaningful artwork inside a consistent **12% outer safe area** on every edge, and use a consistent focal-point position so that the subject does not jump when users switch avatars. The focal point is recorded as normalized `x` and `y` coordinates from `0` (top/left) to `1` (bottom/right).
+
+Masters must contain **no embedded text**, **no baked-in rarity border**, and **no baked-in background glow**. Frames, rarity treatments, and glow belong to the interface so they can respond correctly to theme, equipment, accessibility preferences, and product changes. The silhouette and important clinical details must remain highly readable at **40×40, 64×64, and 128×128** pixels.
+
+Publish at least one optimized **WebP or AVIF derivative** alongside the lossless master; provide multiple sizes when doing so avoids downloading an oversized image. Every avatar also requires an accessible fallback icon or initials for missing, disabled, or failed artwork.
+
+### Avatar manifest
+
+`lib/avatar-manifest.ts` is the canonical inventory for avatar presentation. Each entry must contain:
+
+- a stable **ID** matching the store/equipment ID;
+- the lossless **source asset** path;
+- all **optimized asset variants**, including format and pixel size;
+- normalized **focal-point coordinates**;
+- a concise, meaningful **alt label**;
+- the avatar's **rarity**; and
+- its **preview background preference** (`light`, `dark`, or `neutral`).
+
+Do not add an avatar to the store until its manifest entry and optimized derivative are present. Derivative entries may point to the framework image optimizer, which negotiates WebP or AVIF at request time; generated binary output must not be checked into this repository. Renderers must declare intrinsic `width` and `height` to prevent layout shift, lazy-load artwork in store grids, and eagerly load only the currently selected preview.
+
+### Pre-publication inspection
+
+Before publishing any new avatar, inspect the production derivatives—not only the master—against every context below:
+
+- light surfaces;
+- dark surfaces;
+- an equipped avatar frame;
+- leaderboard rows and podiums;
+- multiplayer lobbies; and
+- small-mobile layouts, including the 40×40 minimum rendering.
+
+Approval requires a clean crop, stable focal point, recognizable silhouette, sufficient foreground contrast, an unobscured frame, and a working accessible fallback in every context.
