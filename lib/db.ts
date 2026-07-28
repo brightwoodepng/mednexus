@@ -30,11 +30,17 @@ let initialized = false
 export async function ensureSchema() {
   if (initialized) return
 
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    // Serialize deploys/cold starts without leaving a session-level lock behind.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus-schema-migrations'))")
+
   // ── Step 1: Enums ─────────────────────────────────────────────────────────
   // PostgreSQL does not support CREATE TYPE IF NOT EXISTS, so we guard with a
   // DO block that silently skips if the type already exists.
   // Note: $$ dollar-quoting is required — single $ is not valid syntax.
-  await pool.query(`
+  await client.query(`
     CREATE TABLE IF NOT EXISTS mednexus_schema_migrations (
       version TEXT PRIMARY KEY,
       applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -54,7 +60,7 @@ export async function ensureSchema() {
   // CREATE TABLE IF NOT EXISTS is idempotent — safe to re-run on every cold start.
   // New columns (role, class_level, etc.) are included here so fresh databases
   // get the full schema in one shot.
-  await pool.query(`
+  await client.query(`
     -- ── Context (parent) table ──────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS mednexus_question_contexts (
       id          TEXT                  PRIMARY KEY,
@@ -605,7 +611,30 @@ export async function ensureSchema() {
   // ── Step 3: Idempotent migrations for existing databases ───────────────────
   // ALTER TABLE … ADD COLUMN IF NOT EXISTS is safe to re-run; it no-ops when
   // the column already exists (e.g. when the CREATE TABLE above already added it).
-  await pool.query(`
+  await client.query(`
+    -- CREATE TABLE IF NOT EXISTS cannot repair constraints from an older
+    -- onboarding release. Replace the checks explicitly and idempotently.
+    DO $$ DECLARE c record; BEGIN
+      FOR c IN SELECT conname FROM pg_constraint
+        WHERE conrelid='mednexus_user_onboarding'::regclass AND contype='c'
+      LOOP EXECUTE format('ALTER TABLE mednexus_user_onboarding DROP CONSTRAINT %I', c.conname); END LOOP;
+    END $$;
+    ALTER TABLE mednexus_user_onboarding
+      ADD CONSTRAINT mednexus_user_onboarding_tutorial_id_check CHECK (tutorial_id IN ('mcq_qbank_intro','theory_vault_intro')),
+      ADD CONSTRAINT mednexus_user_onboarding_version_check CHECK (tutorial_version > 0),
+      ADD CONSTRAINT mednexus_user_onboarding_status_check CHECK (status IN ('not_started','in_progress','completed','dismissed')),
+      ADD CONSTRAINT mednexus_user_onboarding_step_check CHECK (current_step >= 0);
+    DO $$ DECLARE c record; BEGIN
+      FOR c IN SELECT conname FROM pg_constraint
+        WHERE conrelid='mednexus_onboarding_events'::regclass AND contype='c'
+      LOOP EXECUTE format('ALTER TABLE mednexus_onboarding_events DROP CONSTRAINT %I', c.conname); END LOOP;
+    END $$;
+    ALTER TABLE mednexus_onboarding_events
+      ADD CONSTRAINT mednexus_onboarding_events_tutorial_id_check CHECK (tutorial_id IN ('mcq_qbank_intro','theory_vault_intro')),
+      ADD CONSTRAINT mednexus_onboarding_events_version_check CHECK (tutorial_version > 0),
+      ADD CONSTRAINT mednexus_onboarding_events_event_type_check CHECK (event_type IN ('tutorial_started','step_viewed','tutorial_completed','tutorial_dismissed','resumed_from_step','replayed_from_help')),
+      ADD CONSTRAINT mednexus_onboarding_events_step_check CHECK (step IS NULL OR step >= 0);
+
     CREATE TABLE IF NOT EXISTS mednexus_economy_seasons (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -832,7 +861,7 @@ export async function ensureSchema() {
 
   // Existing assessment scores remain intact. This snapshot only preserves
   // the question metadata needed for reliable future result reporting.
-  await pool.query(`
+  await client.query(`
     UPDATE mednexus_assessments assessment
     SET question_snapshot = COALESCE((
       SELECT jsonb_agg(question.value ORDER BY requested.ordinality)
@@ -852,7 +881,7 @@ export async function ensureSchema() {
 
   // ── Step 3.5: Complete Theory Vault study model ──────────────────────────
   // Additive migration: preserve existing Theory content and learner records.
-  await pool.query(`
+  await client.query(`
     CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
     ALTER TABLE mednexus_theory_collections
@@ -1099,7 +1128,7 @@ export async function ensureSchema() {
   // player (first non-disconnected, non-spectator entry in the players array)
   // to be the new host — updating host_id, host_name, isHost flags, and
   // bumping version so pollers notice the change immediately.
-  await pool.query(`
+  await client.query(`
     CREATE OR REPLACE FUNCTION mednexus_migrate_host()
     RETURNS TRIGGER AS $func$
     DECLARE
@@ -1158,7 +1187,14 @@ export async function ensureSchema() {
       EXECUTE FUNCTION mednexus_migrate_host();
   `)
 
-  initialized = true
+    await client.query("COMMIT")
+    initialized = true
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export default pool
