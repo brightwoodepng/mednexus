@@ -13,7 +13,8 @@ if (replitDevDomain) allowedDevOrigins.push(replitDevDomain)
 
 const nextConfig = {
   images: {
-    unoptimized: true,
+    formats: ["image/avif", "image/webp"],
+    qualities: [82],
   },
   devIndicators: false,
   allowedDevOrigins,

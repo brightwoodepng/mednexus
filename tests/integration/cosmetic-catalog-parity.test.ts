@@ -1,5 +1,6 @@
 import { access } from "node:fs/promises"
 import { describe, expect, it } from "vitest"
+import nextConfig from "../../next.config.mjs"
 import { COSMETIC_RENDERER_REGISTRY, getCosmeticPresentation } from "@/components/cosmetics/registry"
 import { AVATAR_MANIFEST } from "@/lib/avatar-manifest"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
@@ -38,20 +39,21 @@ describe("cosmetic catalog contract", () => {
     expect(getCosmeticPresentation("frame_vital_ring", "avatar").label).toBe("Default cosmetic")
   })
 
-  it("backs every active avatar with both optimized assets and stable dimensions", async () => {
+  it("backs every active avatar with canonical source metadata for Next Image", async () => {
+    expect(nextConfig.images).toMatchObject({
+      formats: ["image/avif", "image/webp"],
+      qualities: [82],
+    })
+    expect(nextConfig.images).not.toHaveProperty("unoptimized")
+
     const activeAvatars = STORE_ITEMS.filter(item => item.cosmeticType === "avatar" && item.status === "active")
     for (const item of activeAvatars) {
       const manifest = AVATAR_MANIFEST[item.id as keyof typeof AVATAR_MANIFEST]
       expect(manifest).toBeTruthy()
-      expect(manifest.optimizedAssets.map(asset => [asset.width, asset.height])).toEqual([[128, 128], [256, 256]])
+      expect([manifest.width, manifest.height]).toEqual([1024, 1024])
+      expect(manifest.quality).toBe(82)
       expect(manifest.altLabel.length).toBeGreaterThan(8)
       await expect(access(`public${manifest.sourceAsset}`)).resolves.toBeUndefined()
-      for (const asset of manifest.optimizedAssets) {
-        const optimizedUrl = new URL(asset.src, "http://mednexus.test")
-        expect(optimizedUrl.pathname).toBe("/_next/image")
-        expect(optimizedUrl.searchParams.get("url")).toBe(manifest.sourceAsset)
-        expect(optimizedUrl.searchParams.get("w")).toBe(String(asset.width))
-      }
     }
   })
 

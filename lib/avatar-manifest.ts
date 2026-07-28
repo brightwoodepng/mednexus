@@ -5,13 +5,9 @@ export type AvatarPreviewBackground = "light" | "dark" | "neutral"
 export interface AvatarManifestEntry {
   id: string
   sourceAsset: string
-  optimizedAssets: ReadonlyArray<{
-    width: 128 | 256
-    height: 128 | 256
-    src: string
-    format: "webp-or-avif"
-    quality: number
-  }>
+  width: number
+  height: number
+  quality: number
   focalPoint: Readonly<{ x: number; y: number }>
   altLabel: string
   rarity: CosmeticRarity
@@ -28,20 +24,13 @@ const avatar = (
   fallbackIcon: string,
 ): AvatarManifestEntry => {
   const sourceAsset = `/avatars/${file}.png`
-  const optimizedAsset = (size: 128 | 256) => ({
-    width: size,
-    height: size,
-    // Next's image pipeline negotiates AVIF/WebP and caches this derivative;
-    // only the existing source portrait belongs in Git.
-    src: `/_next/image?url=${encodeURIComponent(sourceAsset)}&w=${size}&q=82`,
-    format: "webp-or-avif" as const,
-    quality: 82,
-  })
 
   return {
     id,
     sourceAsset,
-    optimizedAssets: [optimizedAsset(128), optimizedAsset(256)],
+    width: 1024,
+    height: 1024,
+    quality: 82,
     focalPoint: { x: 0.5, y: file === "gold-steth" || file === "vital-sign" ? 0.5 : 0.42 },
     altLabel,
     rarity,
