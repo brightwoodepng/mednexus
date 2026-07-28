@@ -14,7 +14,7 @@ export function WalletBadge({ onOpenStore }: { onOpenStore: () => void }) {
     >
       <span className="text-sm">🪙</span>
       <span className="text-sm font-extrabold tabular-nums text-white">{balance.toLocaleString()}</span>
-      <span className="text-[10px] font-bold text-white/80">NP Balance</span>
+      <span className="text-[10px] font-bold text-white/80">NP</span>
     </button>
   )
 }
