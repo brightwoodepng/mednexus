@@ -28,8 +28,16 @@ function createClient() {
 
         const key = `${params[0]}:${params[1]}`
         if (state.inventory.has(key)) return { rows: [], rowCount: 0 }
-        state.inventory.set(key, 1)
-        return { rows: [{ quantity: 1 }], rowCount: 1 }
+        state.inventory.set(key, 0)
+        return { rows: [], rowCount: 1 }
+      }
+      if (sql.includes("SELECT quantity FROM mednexus_user_inventory")) {
+        const key = `${params[0]}:${params[1]}`
+        return { rows: [{ quantity: state.inventory.get(key) ?? 0 }], rowCount: 1 }
+      }
+      if (sql.includes("UPDATE mednexus_user_inventory")) {
+        state.inventory.set(`${params[0]}:${params[1]}`, Number(params[2]))
+        return { rows: [], rowCount: 1 }
       }
       if (sql.includes("SELECT balance FROM mednexus_wallet")) {
         return { rows: [{ balance: state.balance }], rowCount: 1 }
@@ -81,5 +89,42 @@ describe("store purchase concurrency", () => {
     expect(state.balance).toBe(700)
     expect(state.ledger).toHaveLength(1)
     expect(state.inventory.get("learner-1:title_pre_med")).toBe(1)
+  })
+
+  it("uses the configured bundle price and records complete purchase metadata", async () => {
+    const { POST } = await import("@/app/api/economy/store/route")
+    const response = await POST(new Request("http://mednexus.test/api/economy/store", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ itemId: "lifeline_freeze", bundleId: "bundle_3" }),
+    }) as never)
+
+    expect(response.status).toBe(200)
+    expect(state.balance).toBe(730)
+    expect(state.inventory.get("learner-1:lifeline_freeze")).toBe(3)
+    expect(JSON.parse(String(state.ledger[0][4]))).toMatchObject({
+      unitQuantity: 3,
+      unitPrice: 90,
+      totalPrice: 270,
+      bundleId: "bundle_3",
+      catalogVersion: "2.1.0",
+      resultingInventoryQuantity: 3,
+    })
+  })
+
+  it("rejects a bundle that would exceed the configured inventory cap", async () => {
+    state.inventory.set("learner-1:lifeline_freeze", 9)
+    const { POST } = await import("@/app/api/economy/store/route")
+    const response = await POST(new Request("http://mednexus.test/api/economy/store", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ itemId: "lifeline_freeze", quantity: 3 }),
+    }) as never)
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ error: "Inventory limit reached" })
+    expect(state.balance).toBe(1_000)
+    expect(state.inventory.get("learner-1:lifeline_freeze")).toBe(9)
+    expect(state.ledger).toHaveLength(0)
   })
 })

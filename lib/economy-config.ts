@@ -24,6 +24,10 @@ export type StoreProductGroup =
 export type StoreCatalogEntry = {
   price: number
   productGroup: StoreProductGroup
+  /** Maximum copies that may be held at once. Defaults to the global limit. */
+  maxInventory?: number
+  /** Server-priced purchase choices. The base price remains the one-unit display price. */
+  purchaseOptions?: readonly { id: string; quantity: number; price: number }[]
 }
 
 export type EconomyConfig = {
@@ -84,7 +88,7 @@ export type EconomyConfig = {
 
 export const ECONOMY_CONFIG = {
   economyVersion: "1.8.0",
-  catalogVersion: "2.0.0",
+  catalogVersion: "2.1.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
@@ -171,8 +175,14 @@ export const ECONOMY_CONFIG = {
     // Only consumables with authenticated inventory consumption and implemented
     // gameplay behavior belong in this sellable catalog.
     catalog: {
-      lifeline_50_50: { price: 150, productGroup: "strong_consumable" },
-      lifeline_freeze: { price: 100, productGroup: "basic_consumable" },
+      lifeline_50_50: {
+        price: 150, productGroup: "strong_consumable", maxInventory: 10,
+        purchaseOptions: [{ id: "single", quantity: 1, price: 150 }, { id: "bundle_3", quantity: 3, price: 405 }],
+      },
+      lifeline_freeze: {
+        price: 100, productGroup: "basic_consumable", maxInventory: 10,
+        purchaseOptions: [{ id: "single", quantity: 1, price: 100 }, { id: "bundle_3", quantity: 3, price: 270 }],
+      },
       vault_sepsis_cascade: { price: 2_000, productGroup: "permanent_premium_mcq" },
       vault_stemi_2am: { price: 1_750, productGroup: "permanent_premium_mcq" },
       vault_dka_peds: { price: 2_500, productGroup: "permanent_premium_mcq" },
