@@ -100,7 +100,7 @@ function ProfileHeader() {
             title="Edit display name"
           >
             {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
-            <CosmeticFrame cosmeticId={equippedCosmetics.frame} size="profile" interactionState="hovered" className="rounded-full ring-offset-2 ring-offset-card">
+            <CosmeticFrame cosmeticId={equippedCosmetics.frame} size="profile" motionState="focused" interactionState="focused" className="rounded-full ring-offset-2 ring-offset-card">
               {/* Avatar circle */}
               <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm text-2xl font-bold select-none overflow-hidden">
                 {avatarImagePath ? (

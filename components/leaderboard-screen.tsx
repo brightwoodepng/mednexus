@@ -1,13 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowRight, RefreshCw, Trophy } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { STORE_ITEMS, TITLE_LABELS, getCosmeticAccessibleLabel } from "@/lib/economy"
 import { PublicProfileModal } from "@/components/public-profile-modal"
 import type { LeaderboardEntry } from "@/components/public-profile-modal"
 import type { Screen } from "@/lib/view"
-import { getCosmeticPresentation } from "@/components/cosmetics"
+import { getCosmeticPresentation, useCosmeticMotion } from "@/components/cosmetics"
 
 type RankingTab = "weekly" | "monthly" | "alltime"
 type LeaderboardScreenProps = { onNavigate?: (screen: Screen) => void }
@@ -111,14 +111,23 @@ function PodiumPlace({ entry, onSelect }: { entry: LeaderboardEntry; onSelect: (
 }
 
 function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardEntry; viewer: boolean; index: number; onSelect: () => void }) {
+  const rowRef = useRef<HTMLButtonElement>(null)
+  const [engaged, setEngaged] = useState(false)
+  const motionState = useCosmeticMotion(rowRef, engaged ? "focused" : "static")
   const highlight = entry.equippedHighlight ? getCosmeticPresentation(entry.equippedHighlight).className ?? "" : ""
   const cosmeticLabel = getCosmeticAccessibleLabel(entry.equippedHighlight)
   return (
     <button
+      ref={rowRef}
       type="button"
       onClick={onSelect}
       aria-label={`Open ${entry.name}'s profile, rank ${entry.rank}${cosmeticLabel ? `, ${cosmeticLabel} highlight` : ""}`}
       style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}
+      data-motion-state={motionState}
+      onPointerEnter={() => setEngaged(true)}
+      onPointerLeave={() => setEngaged(false)}
+      onFocus={() => setEngaged(true)}
+      onBlur={() => setEngaged(false)}
       className={"leaderboard-row flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-4 " + (viewer ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20 " : "") + highlight}
     >
       <span className="w-8 shrink-0 text-center text-sm font-bold tabular-nums text-muted-foreground">{entry.rank}</span>
@@ -134,6 +143,31 @@ function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardE
       <span className="shrink-0 text-sm font-black tabular-nums text-foreground sm:text-base">{formatNP(entry.np)} <span className="text-[10px] font-bold text-muted-foreground">NP</span></span>
     </button>
   )
+}
+
+const DIAGNOSTIC_COSMETICS = ["highlight_gold", "highlight_amethyst", "highlight_legendary_crimson", "highlight_legendary_emerald", "highlight_mythic_lightning"]
+const DIAGNOSTIC_FRAMES = ["frame_neon", "frame_fire", "frame_legendary_diamond", "frame_mythic_nebula", "frame_lightning"]
+
+function CosmeticPerformanceDiagnostic() {
+  const entries: LeaderboardEntry[] = Array.from({ length: 50 }, (_, index) => ({
+    rank: index + 1,
+    uid: `cosmetic-diagnostic-${index}`,
+    name: `Equipped learner ${String(index + 1).padStart(2, "0")}`,
+    level: "Performance diagnostic",
+    classLevel: "Performance diagnostic",
+    np: 100_000 - index * 731,
+    accuracy: 75 + index % 24,
+    equippedTitle: "title_attending",
+    equippedFrame: DIAGNOSTIC_FRAMES[index % DIAGNOSTIC_FRAMES.length],
+    equippedHighlight: DIAGNOSTIC_COSMETICS[index % DIAGNOSTIC_COSMETICS.length],
+    equippedAvatar: null,
+  }))
+  return <section aria-label="Cosmetic performance diagnostic" className="space-y-2">
+    <div className="sticky top-0 z-20 rounded-2xl border border-amber-400/50 bg-amber-50 p-3 text-xs font-medium text-amber-950 shadow-sm">
+      Development diagnostic: 50 equipped entries. Hover or keyboard-focus a row to enable its full cosmetic motion.
+    </div>
+    {entries.map((entry, index) => <CompetitorRow key={entry.uid} entry={entry} viewer={false} index={index} onSelect={() => undefined} />)}
+  </section>
 }
 
 function ViewerCard({ entry, onProfile, onStudy }: { entry: LeaderboardEntry; onProfile: () => void; onStudy: () => void }) {
@@ -163,6 +197,13 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
   const [selected, setSelected] = useState<LeaderboardEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showDiagnostic, setShowDiagnostic] = useState(false)
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      setShowDiagnostic(new URLSearchParams(window.location.search).get("cosmeticPerf") === "1")
+    }
+  }, [])
 
   const fetchData = useCallback(async (range: RankingTab) => {
     setLoading(true)
@@ -195,6 +236,8 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 overflow-x-hidden pb-44 md:pb-10">
+      {showDiagnostic && <CosmeticPerformanceDiagnostic />}
+      {!showDiagnostic && <>
       <header className="relative text-center">
         <div className="mx-auto flex items-center justify-center gap-2">
           <Trophy className="text-primary" size={22} aria-hidden />
@@ -242,6 +285,7 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
 
       {showViewer && viewerEntry && <ViewerCard entry={viewerEntry} onProfile={() => setSelected(viewerEntry)} onStudy={() => onNavigate?.("modules")} />}
       {selected && <PublicProfileModal entry={selected} npLabel={tab === "alltime" ? "Lifetime NP" : "NP Earned This Period"} onClose={() => setSelected(null)} />}
+      </>}
     </div>
   )
 }
