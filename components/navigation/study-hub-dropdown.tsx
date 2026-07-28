@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { BookOpenIcon, ChevronDownIcon, LockKeyholeIcon, ScrollTextIcon, StethoscopeIcon } from "lucide-react"
 import { STUDY_HUBS, type StudyHubId } from "@/components/study-hub-switcher"
 import { useTheme } from "@/contexts/theme-context"
@@ -27,12 +27,22 @@ export function StudyHubDropdown({
   activeHub,
   onSelect,
   onAfterSelect,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   activeHub: StudyHubId
   onSelect: (hub: StudyHubId) => void
   onAfterSelect?: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = useCallback((value: boolean | ((old: boolean) => boolean)) => {
+    const next = typeof value === "function" ? value(open) : value
+    if (controlledOpen === undefined) setInternalOpen(next)
+    onOpenChange?.(next)
+  }, [controlledOpen, onOpenChange, open])
   const ref = useRef<HTMLDivElement>(null)
   const { isGlassEnabled } = useTheme()
 
@@ -45,7 +55,7 @@ export function StudyHubDropdown({
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
-  }, [open])
+  }, [open, setOpen])
 
   useEffect(() => {
     if (!open) return
@@ -54,7 +64,7 @@ export function StudyHubDropdown({
     }
     document.addEventListener("keydown", handler)
     return () => document.removeEventListener("keydown", handler)
-  }, [open])
+  }, [open, setOpen])
 
   function handleSelect(id: StudyHubId) {
     onSelect(id)

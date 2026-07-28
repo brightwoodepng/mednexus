@@ -409,9 +409,8 @@ export function MedNexusApp() {
 
 
 
-  const { activeStudyHub, setActiveStudyHub } = useApplicationShell()
+  const { activeStudyHub, setActiveStudyHub, appearanceOpen: themeOpen, setAppearanceOpen: setThemeOpen } = useApplicationShell()
   const [isExamActive, setIsExamActive] = useState(false)
-  const [themeOpen, setThemeOpen] = useState(false)
   const [theorySearchQuery, setTheorySearchQuery] = useState("")
   const [theoryQuestionOpen, setTheoryQuestionOpen] = useState(false)
   const [importerOpen, setImporterOpen] = useState(false)
