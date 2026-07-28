@@ -70,6 +70,29 @@ export async function ensureSchema() {
       data       JSONB NOT NULL DEFAULT '{}',
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS mednexus_user_onboarding (
+      user_id TEXT NOT NULL,
+      tutorial_id TEXT NOT NULL CHECK (tutorial_id IN ('mcq_qbank_intro', 'theory_vault_intro')),
+      tutorial_version INTEGER NOT NULL CHECK (tutorial_version > 0),
+      status TEXT NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'in_progress', 'completed', 'dismissed')),
+      current_step INTEGER NOT NULL DEFAULT 0 CHECK (current_step >= 0),
+      started_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ,
+      dismissed_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, tutorial_id, tutorial_version)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_user_onboarding_status_idx
+      ON mednexus_user_onboarding (tutorial_id, tutorial_version, status);
+    CREATE TABLE IF NOT EXISTS mednexus_onboarding_events (
+      id BIGSERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      tutorial_id TEXT NOT NULL,
+      tutorial_version INTEGER NOT NULL,
+      event_type TEXT NOT NULL CHECK (event_type IN ('tutorial_started','step_viewed','tutorial_completed','tutorial_dismissed','resumed_from_step','replayed_from_help')),
+      step INTEGER,
+      occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
     CREATE TABLE IF NOT EXISTS mednexus_questions (
       id         INTEGER PRIMARY KEY DEFAULT 1,
       data       JSONB NOT NULL DEFAULT '[]',
