@@ -43,7 +43,7 @@ function UserAvatar({ name, size = "md" }: { name?: string; size?: "sm" | "md" }
 export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseMobile, collapsed, onCollapse, onExpand }: SidebarProps) {
   const { user, signOutUser } = useApp()
   const { isGlassEnabled } = useTheme()
-  const { activeStudyHub, setActiveStudyHub } = useApplicationShell()
+  const { activeStudyHub, setActiveStudyHub, workspaceSwitcherOpen, setWorkspaceSwitcherOpen } = useApplicationShell()
   const navigation = useMemo(() => getHubNavigation(activeStudyHub), [activeStudyHub])
   const nav = (next: Screen) => { onNavigate(next); onCloseMobile() }
 
@@ -82,40 +82,42 @@ export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseM
         <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
           Workspace
         </p>
-        <StudyHubDropdown
+        <div data-tutorial-anchor={mobileOpen ? "drawer-workspace-switcher" : "desktop-workspace-switcher"}><StudyHubDropdown
           activeHub={activeStudyHub}
           onSelect={setActiveStudyHub}
           onAfterSelect={onCloseMobile}
-        />
+          open={workspaceSwitcherOpen}
+          onOpenChange={setWorkspaceSwitcherOpen}
+        /></div>
 
         {/* Navigation items */}
         <p className="mb-1.5 mt-5 px-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
           Navigation
         </p>
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0.5" data-tutorial-anchor={mobileOpen ? "drawer-navigation" : "desktop-navigation"}>
           {navigation.map((item) => {
             const Icon = item.id === "profile" ? User : item.icon
             return (
-              <NavButton
+              <div data-tutorial-anchor={`${mobileOpen ? "drawer" : "desktop"}-nav-${item.id}`}><NavButton
                 key={item.id}
                 glass={isGlassEnabled}
                 active={screen === item.screen}
                 onClick={() => nav(item.screen)}
                 icon={<Icon size={17} className={item.iconColor} />}
                 label={item.label}
-              />
+              /></div>
             )
           })}
         </div>
 
         <div className="mt-4 border-t border-sidebar-border pt-4 md:hidden">
-          <NavButton
+          <div data-tutorial-anchor="drawer-appearance"><NavButton
             glass={isGlassEnabled}
             active={false}
             onClick={() => { onCloseMobile(); onOpenThemes() }}
             icon={<PaletteIcon size={17} className="text-primary" />}
             label="Appearance"
-          />
+          /></div>
         </div>
 
       </div>
@@ -123,7 +125,7 @@ export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseM
       {/* ── User profile footer ── */}
       <div className="shrink-0 border-t border-sidebar-border p-3 space-y-1">
         {/* Profile card */}
-        <div className="flex items-center gap-3 rounded-xl px-2.5 py-2 bg-sidebar-accent/50">
+        <div className="flex items-center gap-3 rounded-xl px-2.5 py-2 bg-sidebar-accent/50" data-tutorial-anchor={mobileOpen ? "drawer-profile" : "desktop-profile"}>
           <UserAvatar name={user?.name} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold leading-tight text-sidebar-foreground">{firstName}</p>
@@ -131,14 +133,14 @@ export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseM
               {roleLabel(user?.role)}
             </span>
           </div>
-          <button
+          <span data-tutorial-anchor={mobileOpen ? "drawer-sign-out-explanation" : "desktop-sign-out-explanation"}><button
             type="button"
             onClick={signOutUser}
             aria-label="Sign out"
             className="shrink-0 rounded-lg p-1.5 text-sidebar-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive"
           >
             <LogOutIcon size={15} />
-          </button>
+          </button></span>
         </div>
 
         {/* Admin console link */}

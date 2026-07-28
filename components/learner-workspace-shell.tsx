@@ -1,6 +1,6 @@
 "use client"
 
-import { type ReactNode, useEffect, useRef, useState } from "react"
+import { type ReactNode, useEffect, useRef } from "react"
 import { LayoutDashboardIcon, LogOutIcon, MenuIcon, PaletteIcon, StethoscopeIcon, UserIcon } from "@/components/icons"
 import Link from "next/link"
 import { NotificationBell } from "@/components/notification-bell"
@@ -40,8 +40,9 @@ export function LearnerWorkspaceShell({
     setMobileNavigationOpen,
     activeStudyHub,
     setActiveStudyHub,
+    accountMenuOpen: accountOpen,
+    setAccountMenuOpen: setAccountOpen,
   } = useApplicationShell()
-  const [accountOpen, setAccountOpen] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export function LearnerWorkspaceShell({
     }
     document.addEventListener("mousedown", close)
     return () => document.removeEventListener("mousedown", close)
-  }, [accountOpen])
+  }, [accountOpen, setAccountOpen])
 
   const navigate = (next: Screen) => {
     onNavigate(next)
@@ -76,15 +77,15 @@ export function LearnerWorkspaceShell({
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex min-h-14 items-center justify-between border-b border-border bg-card px-3 py-2 sm:px-4">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <button type="button" onClick={() => setMobileNavigationOpen(true)} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:hidden" aria-label="Open navigation menu"><MenuIcon size={20} /></button>
-            {headerSlot}
+            <button data-tutorial-anchor="mobile-menu-button" type="button" onClick={() => setMobileNavigationOpen(true)} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:hidden" aria-label="Open navigation menu"><MenuIcon size={20} /></button>
+            <div className="min-w-0 flex-1" data-tutorial-anchor="header-workspace-identity">{headerSlot}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {modeControl}
-            <button type="button" onClick={onOpenAppearance} className="hidden items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:flex" aria-label="Appearance"><PaletteIcon size={19} /></button>
-            <NotificationBell />
-            <div ref={accountRef} className="relative">
-              <button type="button" onClick={() => setAccountOpen((open) => !open)} aria-expanded={accountOpen} aria-haspopup="menu" aria-label="Open account menu" className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/15">
+            <button data-tutorial-anchor="header-appearance" type="button" onClick={onOpenAppearance} className="hidden items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:flex" aria-label="Appearance"><PaletteIcon size={19} /></button>
+            <div data-tutorial-anchor="header-notifications"><NotificationBell /></div>
+            <div ref={accountRef} className="relative" data-tutorial-anchor="header-account-menu">
+              <button type="button" onClick={() => setAccountOpen(!accountOpen)} aria-expanded={accountOpen} aria-haspopup="menu" aria-label="Open account menu" className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/15">
                 <UserIcon size={18} />
               </button>
               {accountOpen && <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-border bg-card p-1.5 shadow-xl">

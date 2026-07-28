@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
-import { emptyOnboardingRecord, TUTORIAL_IDS } from "../../lib/onboarding"
+import { emptyOnboardingRecord, TUTORIAL_IDS, TUTORIAL_VERSION } from "../../lib/onboarding"
 import { tutorials } from "../../components/onboarding/tutorials"
 
 const root = path.resolve(__dirname, "../..")
@@ -9,9 +9,10 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8")
 
 describe("coordinated onboarding contract", () => {
   it("keeps independent, versioned MCQ and Theory definitions", () => {
+    expect(TUTORIAL_VERSION).toBe(2)
     expect(TUTORIAL_IDS).toEqual(["mcq_qbank_intro", "theory_vault_intro"])
-    expect(tutorials.mcq_qbank_intro.steps).toHaveLength(6)
-    expect(tutorials.theory_vault_intro.steps).toHaveLength(6)
+    expect(tutorials.mcq_qbank_intro.steps).toHaveLength(12)
+    expect(tutorials.theory_vault_intro.steps).toHaveLength(13)
     expect(emptyOnboardingRecord("mcq_qbank_intro").status).toBe("not_started")
     expect(emptyOnboardingRecord("theory_vault_intro").status).toBe("not_started")
   })
@@ -54,5 +55,8 @@ describe("coordinated onboarding contract", () => {
     expect(overlay).toContain("prefers-reduced-motion")
     expect(overlay).toContain('event.key === "Escape"')
     expect(mobileSheet).toContain("safe-area-inset-bottom")
+    expect(mobileSheet).toContain("72dvh")
+    expect(overlay).toContain("visualViewport")
+    expect(overlay).toContain("ResizeObserver")
   })
 })
