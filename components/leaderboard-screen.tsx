@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { ArrowRight, RefreshCw, Trophy } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
-import { FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS, TITLE_LABELS } from "@/lib/economy"
+import { FRAME_RING_CLASSES, HIGHLIGHT_ROW_CLASSES, STORE_ITEMS, TITLE_LABELS, getCosmeticAccessibleLabel } from "@/lib/economy"
 import { PublicProfileModal } from "@/components/public-profile-modal"
 import type { LeaderboardEntry } from "@/components/public-profile-modal"
 import type { Screen } from "@/lib/view"
@@ -40,6 +40,7 @@ function Avatar({ entry, size, orbit = false, rank }: {
   rank?: 1 | 2 | 3
 }) {
   const frame = entry.equippedFrame ? FRAME_RING_CLASSES[entry.equippedFrame] ?? "" : ""
+  const frameLabel = getCosmeticAccessibleLabel(entry.equippedFrame)
   const avatar = entry.equippedAvatar ? STORE_ITEMS.find((item) => item.id === entry.equippedAvatar) : null
   const medal = rank === 1
     ? "border-amber-300 bg-amber-400 text-amber-950"
@@ -62,7 +63,7 @@ function Avatar({ entry, size, orbit = false, rank }: {
       ? "bg-slate-300"
       : "bg-orange-400"
   return (
-    <div className={"leaderboard-avatar-stage relative shrink-0 " + size}>
+    <div role="img" aria-label={`${entry.name}'s avatar${frameLabel ? ` with ${frameLabel} frame` : ""}`} className={"leaderboard-avatar-stage relative shrink-0 " + size}>
       {orbit && <>
         <span className={"leaderboard-orbit leaderboard-orbit-a absolute -inset-3 rounded-full border-2 border-dashed " + orbitStrong} />
         <span className={"leaderboard-orbit leaderboard-orbit-b absolute -inset-5 rounded-full border " + orbitSoft} />
@@ -110,10 +111,12 @@ function PodiumPlace({ entry, onSelect }: { entry: LeaderboardEntry; onSelect: (
 
 function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardEntry; viewer: boolean; index: number; onSelect: () => void }) {
   const highlight = entry.equippedHighlight ? HIGHLIGHT_ROW_CLASSES[entry.equippedHighlight] ?? "" : ""
+  const cosmeticLabel = getCosmeticAccessibleLabel(entry.equippedHighlight)
   return (
     <button
       type="button"
       onClick={onSelect}
+      aria-label={`Open ${entry.name}'s profile, rank ${entry.rank}${cosmeticLabel ? `, ${cosmeticLabel} highlight` : ""}`}
       style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}
       className={"leaderboard-row flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-4 " + (viewer ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20 " : "") + highlight}
     >
