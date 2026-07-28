@@ -14,8 +14,9 @@ function formatIndexNumber(raw: string): string {
 }
 
 async function getPool() {
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  // Schema changes are a deployment concern. Running ensureSchema here made a
+  // perfectly valid credential check depend on every unrelated DDL statement.
+  const { default: pool } = await import("@/lib/db")
   return pool
 }
 
@@ -77,7 +78,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: "Invalid index number or password" }, { status: 401 })
   } catch (err) {
-    console.error("[auth/login]", err)
+    const pg = err as { code?: string; table?: string; column?: string; constraint?: string }
+    console.error("[auth/login]", { code: pg?.code, table: pg?.table, column: pg?.column, constraint: pg?.constraint, error: err })
     return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 }
