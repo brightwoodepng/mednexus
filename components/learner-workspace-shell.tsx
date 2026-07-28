@@ -97,7 +97,7 @@ export function LearnerWorkspaceShell({
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-3 pb-24 md:p-5 md:pb-5 lg:p-8 lg:pb-8">{children}</main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:p-5 md:pb-5 lg:p-8 lg:pb-8">{children}</main>
       </div>
 
       <BottomNav screen={screen} activeHub={activeStudyHub} onNavigate={navigate} hidden={hideBottomNavigation || mobileNavigationOpen} />

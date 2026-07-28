@@ -50,7 +50,7 @@ export interface EconomyContextValue {
   clearDailyLoginReward: () => void
   refresh: () => Promise<void>
   claimBounty: (bountyId: string) => Promise<{ ok: boolean; earned?: number; error?: string }>
-  purchase: (itemId: string, selection?: { quantity?: number; bundleId?: string }) => Promise<{ ok: boolean; error?: string }>
+  purchase: (itemId: string, selection?: { quantity?: number; bundleId?: string }) => Promise<{ ok: boolean; error?: string; quantity?: number; balance?: number }>
   useItem: (itemId: string, usage: { sessionId: string; questionId: string }) => Promise<boolean>
   isItemUsePending: (itemId: string, questionId: string) => boolean
   isItemUsed: (itemId: string, questionId: string) => boolean
@@ -206,12 +206,13 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       const purchasedQuantity = selection.quantity
         ?? STORE_ITEMS.find(item => item.id === itemId)?.purchaseOptions?.find(option => option.id === selection.bundleId)?.quantity
         ?? 1
-      setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] ?? 0) + purchasedQuantity }))
+      const authoritativeQuantity = data.inventory?.[itemId] ?? data.quantity ?? data.ownedQuantity
+      setInventory(prev => ({ ...prev, [itemId]: authoritativeQuantity ?? (prev[itemId] ?? 0) + purchasedQuantity }))
       // Reconcile every economy surface with the committed transaction. This
       // also corrects optimistic inventory state if another tab purchased or
       // consumed the same item concurrently.
       void refresh()
-      return { ok: true }
+      return { ok: true, quantity: authoritativeQuantity, balance: data.balance ?? data.newBalance }
     } catch {
       return { ok: false, error: "Network error" }
     }
