@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
-import { SELLABLE_STORE_ITEMS, STORE_ITEMS } from "@/lib/economy"
+import { isStoreItemPurchasable, SELLABLE_STORE_ITEMS, STORE_ITEMS } from "@/lib/economy"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 
 type PurchaseSelection = { quantity?: unknown; bundleId?: unknown }
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     const item = STORE_ITEMS.find(i => i.id === itemId)
     if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 })
-    if (item.sellable === false) {
+    if (!isStoreItemPurchasable(item)) {
       return NextResponse.json({ error: "Item is not available for purchase" }, { status: 409 })
     }
     const purchase = resolvePurchase(item, { quantity, bundleId })

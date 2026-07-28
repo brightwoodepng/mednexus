@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useEconomy } from "@/contexts/economy-context"
-import { STORE_ITEMS, BOUNTY_POOL } from "@/lib/economy"
+import { SELLABLE_STORE_ITEMS, BOUNTY_POOL } from "@/lib/economy"
 
 // ── Wallet Badge ───────────────────────────────────────────────────────────────
 export function WalletBadge({ onOpenStore }: { onOpenStore: () => void }) {
@@ -223,7 +223,7 @@ export function StoreModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const items = STORE_ITEMS.filter(i => i.category === tab)
+  const items = SELLABLE_STORE_ITEMS.filter(i => i.category === tab)
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
