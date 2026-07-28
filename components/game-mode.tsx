@@ -1116,7 +1116,6 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
         {/* Solo modes window */}
         {category === "solo" && (
           <div className="mb-3">
-            <p className="mb-3 hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 md:block">Play by yourself — practice at your own pace</p>
             <div className="grid gap-4 sm:grid-cols-2">
               {MODES.map(m => (
                 <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
@@ -1128,7 +1127,6 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
         {/* Multiplayer modes window */}
         {category === "multi" && (
           <div className="mb-3">
-            <p className="mb-3 hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 md:block">Compete live with classmates via a shared room PIN</p>
             <div className="grid gap-4 sm:grid-cols-2">
               {MULTI_MODES.map(m => (
                 <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
