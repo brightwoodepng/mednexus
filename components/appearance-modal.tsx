@@ -65,6 +65,7 @@ export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
 
   return (
     <div
+      data-tutorial-anchor="appearance-modal"
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"

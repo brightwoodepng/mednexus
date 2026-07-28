@@ -14,6 +14,12 @@ type ShellState = {
   setSidebarCollapsed: (value: boolean) => void
   mobileNavigationOpen: boolean
   setMobileNavigationOpen: (value: boolean) => void
+  workspaceSwitcherOpen: boolean
+  setWorkspaceSwitcherOpen: (value: boolean) => void
+  accountMenuOpen: boolean
+  setAccountMenuOpen: (value: boolean) => void
+  appearanceOpen: boolean
+  setAppearanceOpen: (value: boolean) => void
   notificationOpen: boolean
   setNotificationOpen: (value: boolean) => void
   notificationUnreadCount: number
@@ -30,6 +36,9 @@ export function AuthenticatedApplicationShell({ children }: { children: ReactNod
   // presentation leaking into wider layouts.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
+  const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [appearanceOpen, setAppearanceOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
   // This state is product navigation, not MCQ quiz mode.
@@ -39,7 +48,7 @@ export function AuthenticatedApplicationShell({ children }: { children: ReactNod
     // Hub context is URL-backed so shared tools survive refreshes, deep links and new tabs.
     window.history.replaceState(window.history.state, "", withHubContext(window.location.pathname, hub))
   }, [])
-  return <ShellContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed, mobileNavigationOpen, setMobileNavigationOpen, notificationOpen, setNotificationOpen, notificationUnreadCount, setNotificationUnreadCount, activeStudyHub, setActiveStudyHub }}>{children}</ShellContext.Provider>
+  return <ShellContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed, mobileNavigationOpen, setMobileNavigationOpen, workspaceSwitcherOpen, setWorkspaceSwitcherOpen, accountMenuOpen, setAccountMenuOpen, appearanceOpen, setAppearanceOpen, notificationOpen, setNotificationOpen, notificationUnreadCount, setNotificationUnreadCount, activeStudyHub, setActiveStudyHub }}>{children}</ShellContext.Provider>
 }
 
 /** Shared responsive navigation state, intentionally retained across hub routes. */

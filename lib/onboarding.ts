@@ -1,4 +1,4 @@
-export const TUTORIAL_VERSION = 1 as const
+export const TUTORIAL_VERSION = 2 as const
 export const TUTORIAL_IDS = ["mcq_qbank_intro", "theory_vault_intro"] as const
 export type TutorialId = typeof TUTORIAL_IDS[number]
 export type TutorialStatus = "not_started" | "in_progress" | "completed" | "dismissed"
@@ -8,6 +8,7 @@ export interface OnboardingRecord {
   tutorialVersion: number
   status: TutorialStatus
   currentStep: number
+  currentStepId: string | null
   startedAt: string | null
   completedAt: string | null
   dismissedAt: string | null
@@ -15,6 +16,6 @@ export interface OnboardingRecord {
 }
 
 export const emptyOnboardingRecord = (tutorialId: TutorialId): OnboardingRecord => ({
-  tutorialId, tutorialVersion: TUTORIAL_VERSION, status: "not_started", currentStep: 0,
+  tutorialId, tutorialVersion: TUTORIAL_VERSION, status: "not_started", currentStep: 0, currentStepId: null,
   startedAt: null, completedAt: null, dismissedAt: null, updatedAt: null,
 })
