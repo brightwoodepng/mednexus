@@ -811,10 +811,11 @@ export async function ensureSchema() {
 
     -- Seed dated question earnings for Weekly and Monthly continuity.
     INSERT INTO mednexus_np_transactions
-      (id, user_id, source, source_id, amount, metadata, created_at)
+      (id, user_id, season_id, source, source_id, amount, metadata, created_at)
     SELECT
       'np-legacy-' || md5(user_id || ':' || discipline || ':' || earned_date),
       user_id,
+      'legacy',
       'legacy_discipline',
       discipline || ':' || earned_date,
       np_earned,
