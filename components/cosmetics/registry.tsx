@@ -5,6 +5,7 @@ import {
   MicroscopeIrisFrame, NeuralSynapseFrame, OperatingTheatreFrame, RadiologyContrastFrame,
   SurgicalSteelFrame, TheResuscitatorFrame, VitalRingFrame,
 } from "./frames"
+import { AnatomyPlate, BloodFlow, MonitorSweep, NeuralField, PrescriptionLabel, RadiologyLightbox, SterileField, TriagePriority } from "./highlights"
 
 function PresentationRenderer({ children, avatarImage }: CosmeticRendererProps) {
   return <>{avatarImage ?? children}</>
@@ -50,13 +51,21 @@ export const COSMETIC_RENDERER_REGISTRY: Readonly<Record<string, RegistryEntry>>
   frame_cardiac_conduction: renderedEntry({ kind: "frame", label: "Cardiac Conduction", className: "clinical-frame clinical-frame--cardiac" }, CardiacConductionFrame),
   frame_radiology_contrast: renderedEntry({ kind: "frame", label: "Radiology Contrast", className: "clinical-frame clinical-frame--contrast" }, RadiologyContrastFrame),
   frame_the_resuscitator: renderedEntry({ kind: "frame", label: "The Resuscitator", className: "clinical-frame clinical-frame--resuscitator" }, TheResuscitatorFrame),
-  highlight_neon: entry({ kind: "highlight", label: "Neon highlight", className: "cosmetic-highlight cosmetic-highlight--neon", legacy: true }),
-  highlight_gold: entry({ kind: "highlight", label: "Gold highlight", className: "cosmetic-highlight cosmetic-highlight--gold", legacy: true }),
-  highlight_amethyst: entry({ kind: "highlight", label: "Amethyst highlight", className: "cosmetic-highlight cosmetic-highlight--amethyst", legacy: true }),
-  highlight_legendary_crimson: entry({ kind: "highlight", label: "Crimson highlight", className: "cosmetic-highlight cosmetic-highlight--crimson", legacy: true }),
-  highlight_legendary_emerald: entry({ kind: "highlight", label: "Emerald highlight", className: "cosmetic-highlight cosmetic-highlight--emerald", legacy: true }),
-  highlight_mythic_lightning: entry({ kind: "highlight", label: "Lightning highlight", className: "cosmetic-highlight cosmetic-highlight--lightning", legacy: true }),
-  highlight_mythic_void_walker: entry({ kind: "highlight", label: "Void Walker highlight", className: "cosmetic-highlight cosmetic-highlight--void", legacy: true }),
+  highlight_neon: renderedEntry({ kind: "highlight", label: "Monitor Sweep", className: "clinical-highlight clinical-highlight--monitor", legacy: true }, MonitorSweep),
+  highlight_gold: renderedEntry({ kind: "highlight", label: "Prescription Label", className: "clinical-highlight clinical-highlight--prescription", legacy: true }, PrescriptionLabel),
+  highlight_amethyst: renderedEntry({ kind: "highlight", label: "Anatomy Plate", className: "clinical-highlight clinical-highlight--anatomy", legacy: true }, AnatomyPlate),
+  highlight_legendary_crimson: renderedEntry({ kind: "highlight", label: "Triage Priority", className: "clinical-highlight clinical-highlight--triage", legacy: true }, TriagePriority),
+  highlight_legendary_emerald: renderedEntry({ kind: "highlight", label: "Sterile Field", className: "clinical-highlight clinical-highlight--sterile", legacy: true }, SterileField),
+  highlight_mythic_lightning: renderedEntry({ kind: "highlight", label: "Neural Field", className: "clinical-highlight clinical-highlight--neural", legacy: true }, NeuralField),
+  highlight_mythic_void_walker: renderedEntry({ kind: "highlight", label: "Radiology Lightbox", className: "clinical-highlight clinical-highlight--radiology", legacy: true }, RadiologyLightbox),
+  highlight_monitor_sweep: renderedEntry({ kind: "highlight", label: "Monitor Sweep", className: "clinical-highlight clinical-highlight--monitor" }, MonitorSweep),
+  highlight_radiology_lightbox: renderedEntry({ kind: "highlight", label: "Radiology Lightbox", className: "clinical-highlight clinical-highlight--radiology" }, RadiologyLightbox),
+  highlight_triage_priority: renderedEntry({ kind: "highlight", label: "Triage Priority", className: "clinical-highlight clinical-highlight--triage" }, TriagePriority),
+  highlight_prescription_label: renderedEntry({ kind: "highlight", label: "Prescription Label", className: "clinical-highlight clinical-highlight--prescription" }, PrescriptionLabel),
+  highlight_anatomy_plate: renderedEntry({ kind: "highlight", label: "Anatomy Plate", className: "clinical-highlight clinical-highlight--anatomy" }, AnatomyPlate),
+  highlight_blood_flow: renderedEntry({ kind: "highlight", label: "Blood Flow", className: "clinical-highlight clinical-highlight--blood" }, BloodFlow),
+  highlight_neural_field: renderedEntry({ kind: "highlight", label: "Neural Field", className: "clinical-highlight clinical-highlight--neural" }, NeuralField),
+  highlight_sterile_field: renderedEntry({ kind: "highlight", label: "Sterile Field", className: "clinical-highlight clinical-highlight--sterile" }, SterileField),
   avatar_scrub_tech: entry({ kind: "avatar", label: "Scrub Tech avatar" }),
   avatar_coffee_drip: entry({ kind: "avatar", label: "Coffee Drip avatar" }),
   avatar_lab_rat: entry({ kind: "avatar", label: "Lab Rat avatar" }),

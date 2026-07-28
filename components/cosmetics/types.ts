@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import type { HTMLAttributes, ReactNode } from "react"
 
 export type CosmeticSize = "store-preview" | "profile" | "lobby" | "leaderboard" | "compact"
 export type CosmeticInteractionState = "idle" | "hovered" | "focused" | "selected" | "disabled"
@@ -19,6 +19,8 @@ export interface CosmeticRendererProps {
   children?: ReactNode
   avatarImage?: ReactNode
   className?: string
+  /** Native attributes belong to the cosmetic's outer semantic element. */
+  wrapperProps?: HTMLAttributes<HTMLElement> & { type?: "button" | "submit" | "reset" }
 }
 
 export interface CosmeticPresentationMetadata {

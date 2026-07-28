@@ -7,7 +7,7 @@ import { STORE_ITEMS, TITLE_LABELS, getCosmeticAccessibleLabel } from "@/lib/eco
 import { PublicProfileModal } from "@/components/public-profile-modal"
 import type { LeaderboardEntry } from "@/components/public-profile-modal"
 import type { Screen } from "@/lib/view"
-import { getCosmeticPresentation, useCosmeticMotion } from "@/components/cosmetics"
+import { CosmeticHighlight, getCosmeticPresentation } from "@/components/cosmetics"
 
 type RankingTab = "weekly" | "monthly" | "alltime"
 type LeaderboardScreenProps = { onNavigate?: (screen: Screen) => void }
@@ -111,25 +111,12 @@ function PodiumPlace({ entry, onSelect }: { entry: LeaderboardEntry; onSelect: (
 }
 
 function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardEntry; viewer: boolean; index: number; onSelect: () => void }) {
-  const rowRef = useRef<HTMLButtonElement>(null)
   const [engaged, setEngaged] = useState(false)
-  const motionState = useCosmeticMotion(rowRef, engaged ? "focused" : "static")
-  const highlight = entry.equippedHighlight ? getCosmeticPresentation(entry.equippedHighlight).className ?? "" : ""
   const cosmeticLabel = getCosmeticAccessibleLabel(entry.equippedHighlight)
   return (
-    <button
-      ref={rowRef}
-      type="button"
-      onClick={onSelect}
-      aria-label={`Open ${entry.name}'s profile, rank ${entry.rank}${cosmeticLabel ? `, ${cosmeticLabel} highlight` : ""}`}
-      style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}
-      data-motion-state={motionState}
-      onPointerEnter={() => setEngaged(true)}
-      onPointerLeave={() => setEngaged(false)}
-      onFocus={() => setEngaged(true)}
-      onBlur={() => setEngaged(false)}
-      className={"leaderboard-row flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-4 " + (viewer ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20 " : "") + highlight}
-    >
+    <CosmeticHighlight as="button" cosmeticId={entry.equippedHighlight} size="leaderboard" motionState={engaged ? "focused" : "static"} playerRank={entry.rank}
+      wrapperProps={{ type: "button", onClick: onSelect, "aria-label": `Open ${entry.name}'s profile, rank ${entry.rank}${cosmeticLabel ? `, ${cosmeticLabel} highlight` : ""}`, style: { animationDelay: `${Math.min(index, 10) * 45}ms` }, onPointerEnter: () => setEngaged(true), onPointerLeave: () => setEngaged(false), onFocus: () => setEngaged(true), onBlur: () => setEngaged(false) }}
+      className={"leaderboard-row flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-4 " + (viewer ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20" : "")}>
       <span className="w-8 shrink-0 text-center text-sm font-bold tabular-nums text-muted-foreground">{entry.rank}</span>
       <Avatar entry={entry} size="h-11 w-11 sm:h-12 sm:w-12" />
       <span className="min-w-0 flex-1">
@@ -141,7 +128,7 @@ function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardE
       </span>
       {entry.accuracy > 0 && !entry.accuracySuppressed && <span className="hidden text-xs font-medium text-muted-foreground min-[390px]:inline">🎯 {entry.accuracy}%</span>}
       <span className="shrink-0 text-sm font-black tabular-nums text-foreground sm:text-base">{formatNP(entry.np)} <span className="text-[10px] font-bold text-muted-foreground">NP</span></span>
-    </button>
+    </CosmeticHighlight>
   )
 }
 
