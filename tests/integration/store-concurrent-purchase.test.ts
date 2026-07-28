@@ -61,7 +61,14 @@ function createClient() {
 vi.mock("@/lib/db", () => ({
   default: {
     connect: vi.fn(async () => createClient()),
-    query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+    query: vi.fn(async (sql: string, params: unknown[] = []) => {
+      if (sql.includes("SELECT quantity FROM mednexus_user_inventory")) {
+        const quantity = state.inventory.get(`${params[0]}:${params[1]}`)
+        return { rows: quantity === undefined ? [] : [{ quantity }], rowCount: quantity === undefined ? 0 : 1 }
+      }
+      if (sql.includes("INSERT INTO mednexus_user_cosmetics")) return { rows: [], rowCount: 1 }
+      return { rows: [], rowCount: 0 }
+    }),
   },
 }))
 vi.mock("@/lib/request-auth", () => ({
@@ -112,7 +119,7 @@ describe("store purchase concurrency", () => {
       unitPrice: 90,
       totalPrice: 270,
       bundleId: "bundle_3",
-      catalogVersion: "2.3.0",
+      catalogVersion: "2.4.0",
       resultingInventoryQuantity: 3,
     })
   })
@@ -141,6 +148,7 @@ describe("store purchase concurrency", () => {
     expect(response.status).toBe(200)
     expect(body.items).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ id: expect.stringMatching(/^vault_/) }),
+      expect.objectContaining({ id: "frame_gold" }),
     ]))
   })
 
@@ -156,6 +164,30 @@ describe("store purchase concurrency", () => {
     expect(await response.json()).toEqual({ error: "Item is not available for purchase" })
     expect(state.balance).toBe(1_000)
     expect(state.inventory.size).toBe(0)
+    expect(state.ledger).toHaveLength(0)
+  })
+
+  it("keeps a retired cosmetic equipable by its owner but rejects a new purchase", async () => {
+    state.inventory.set("learner-1:frame_gold", 1)
+    const { POST } = await import("@/app/api/economy/store/route")
+    const { PATCH } = await import("@/app/api/economy/cosmetics/route")
+
+    const purchaseResponse = await POST(new Request("http://mednexus.test/api/economy/store", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ itemId: "frame_gold" }),
+    }) as never)
+    const equipResponse = await PATCH(new Request("http://mednexus.test/api/economy/cosmetics", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "frame", itemId: "frame_gold" }),
+    }) as never)
+
+    expect(purchaseResponse.status).toBe(409)
+    expect(await purchaseResponse.json()).toEqual({ error: "Item is not available for purchase" })
+    expect(equipResponse.status).toBe(200)
+    expect(await equipResponse.json()).toEqual({ ok: true })
+    expect(state.balance).toBe(1_000)
     expect(state.ledger).toHaveLength(0)
   })
 })
