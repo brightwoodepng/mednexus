@@ -1,9 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { authenticateRequest, authError } from "@/lib/request-auth"
-import { getActiveSeason } from "@/lib/economy-seasons"
+import { getActiveSeason, type EconomySeason } from "@/lib/economy-seasons"
 
 type RankingTab = "weekly" | "monthly" | "alltime"
+
+type LeaderboardDiagnostic = "ECONOMY_SEASON_MISSING" | "ECONOMY_SCHEMA_NOT_READY" | "LEADERBOARD_DATA_INVALID"
+
+function databaseErrorCode(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code ?? "UNKNOWN")
+    : "UNKNOWN"
+}
+
+function diagnosticFor(error: unknown): LeaderboardDiagnostic {
+  const code = databaseErrorCode(error)
+  const message = error instanceof Error ? error.message : ""
+  if (message.includes("No active economy season")) return "ECONOMY_SEASON_MISSING"
+  if (code === "42P01" || code === "42703" || code === "42883") return "ECONOMY_SCHEMA_NOT_READY"
+  return "LEADERBOARD_DATA_INVALID"
+}
 
 function timedEntry(row: Record<string, unknown>) {
   const questions = Number(row.period_questions ?? 0)
@@ -44,8 +60,7 @@ function allTimeEntry(row: Record<string, unknown>) {
   }
 }
 
-async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | null) {
-  const season = await getActiveSeason(pool)
+async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | null, season: EconomySeason) {
   const periodDays = tab === "weekly" ? 7 : 30
   const cutoff = new Date(Date.now() - periodDays * 86_400_000).toISOString()
   const commonCtes = `
@@ -137,14 +152,16 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
   return { entries, viewerEntry, tab }
 }
 
-async function allTimeLeaderboard(viewerUid: string | null) {
-  const season = await getActiveSeason(pool)
+async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeason) {
   const accuracySql = `
     CASE
-      WHEN p.data IS NULL OR jsonb_array_length(COALESCE(p.data->'history', '[]'::jsonb)) = 0 THEN 0
+      WHEN p.data IS NULL OR COALESCE(jsonb_typeof(p.data->'history'), 'null') <> 'array'
+        OR jsonb_array_length(p.data->'history') = 0 THEN 0
       ELSE ROUND(100.0 *
         (SELECT COUNT(*) FROM jsonb_array_elements(p.data->'history') h
-         WHERE (h->>'isCorrect')::boolean = TRUE)
+         WHERE jsonb_typeof(h) = 'object'
+           AND jsonb_typeof(h->'isCorrect') = 'boolean'
+           AND h->'isCorrect' = 'true'::jsonb)
         / NULLIF(jsonb_array_length(p.data->'history'), 0))
     END
   `
@@ -206,16 +223,21 @@ async function allTimeLeaderboard(viewerUid: string | null) {
 }
 
 export async function GET(req: NextRequest) {
+  let tab: RankingTab = "alltime"
+  let viewerUid: string | null = null
+  let seasonId: string | null = null
   try {
     const requested = req.nextUrl.searchParams.get("tab")
-    const tab: RankingTab = requested === "weekly" || requested === "monthly" ? requested : "alltime"
+    tab = requested === "weekly" || requested === "monthly" ? requested : "alltime"
     const hasCredential = Boolean(req.headers.get("x-session-token") || req.headers.get("x-guest-token"))
     const auth = authenticateRequest(req.headers)
     if (hasCredential && !auth) return authError()
-    const viewerUid = auth?.uid ?? null
+    viewerUid = auth?.uid ?? null
+    const season = await getActiveSeason(pool)
+    seasonId = season.id
     const data = tab === "alltime"
-      ? await allTimeLeaderboard(viewerUid)
-      : await timedLeaderboard(tab, viewerUid)
+      ? await allTimeLeaderboard(viewerUid, season)
+      : await timedLeaderboard(tab, viewerUid, season)
 
     if (viewerUid) {
       const viewerPrivacy = await pool.query(
@@ -229,10 +251,17 @@ export async function GET(req: NextRequest) {
         })
       }
     }
-    const season = await getActiveSeason(pool)
     return NextResponse.json({ ...data, season })
   } catch (error) {
-    console.error("[leaderboard GET]", error)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    const code = diagnosticFor(error)
+    console.error("[leaderboard GET]", {
+      tab,
+      seasonId,
+      viewerUid,
+      databaseErrorCode: databaseErrorCode(error),
+      deploymentVersion: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.DEPLOYMENT_VERSION ?? process.env.REPL_SLUG ?? "unknown",
+      error,
+    })
+    return NextResponse.json({ error: "Rankings are temporarily unavailable", code }, { status: 500 })
   }
 }
