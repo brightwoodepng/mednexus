@@ -16,27 +16,31 @@ export function TutorialProvider({ activeHub, blocked, welcomeOpen, children }: 
   const [activeTutorial, setActiveTutorial] = useState<TutorialId | null>(null)
   const priorHub = useRef(activeHub)
   const registered = user?.role === "user" && user.sessionVerified
-  const guestKey = user?.role === "guest" ? `mednexus:onboarding:guest:${user.uid}:v${TUTORIAL_VERSION}` : null
+  const localKey = user ? `mednexus:onboarding:${user.role}:${user.uid}:v${TUTORIAL_VERSION}` : null
 
-  const persistLocal = useCallback((next: Record<TutorialId, OnboardingRecord>) => { if (guestKey) localStorage.setItem(guestKey, JSON.stringify(next)) }, [guestKey])
+  const persistLocal = useCallback((next: Record<TutorialId, OnboardingRecord>) => { if (localKey) localStorage.setItem(localKey, JSON.stringify(next)) }, [localKey])
   const update = useCallback(async (id: TutorialId, action: "start"|"step"|"complete"|"dismiss"|"restart", currentStep: number) => {
-    let record: OnboardingRecord
-    if (registered) {
+    // Navigation must never wait on storage. A missing onboarding table or a
+    // temporary network error previously left the overlay open on the same step.
+    setRecords(current => {
+      const now = new Date().toISOString(); const old = current[id]
+      const record: OnboardingRecord = { ...old, status: action === "complete" ? "completed" : action === "dismiss" ? "dismissed" : "in_progress", currentStep: action === "restart" ? 0 : currentStep, startedAt: old.startedAt ?? now, completedAt: action === "complete" ? (old.completedAt ?? now) : null, dismissedAt: action === "dismiss" ? (old.dismissedAt ?? now) : null, updatedAt: now }
+      const next = { ...current, [id]: record }; persistLocal(next); return next
+    })
+    if (!registered) return
+    try {
       const response = await fetch("/api/onboarding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tutorialId: id, tutorialVersion: TUTORIAL_VERSION, action, currentStep }) })
       if (!response.ok) return
-      record = (await response.json()).tutorial
-    } else {
-      const now = new Date().toISOString(); const old = records[id]
-      record = { ...old, status: action === "complete" ? "completed" : action === "dismiss" ? "dismissed" : "in_progress", currentStep: action === "restart" ? 0 : currentStep, startedAt: old.startedAt ?? now, completedAt: action === "complete" ? now : null, dismissedAt: action === "dismiss" ? now : null, updatedAt: now }
-    }
-    setRecords(current => { const next = { ...current, [id]: record }; if (!registered) persistLocal(next); return next })
-  }, [persistLocal, records, registered])
+      const record = (await response.json()).tutorial as OnboardingRecord
+      setRecords(current => { const next = { ...current, [id]: record }; persistLocal(next); return next })
+    } catch { /* The local checkpoint keeps the tutorial usable offline. */ }
+  }, [persistLocal, registered])
 
   useEffect(() => {
     if (!authReady || !user) return
-    if (registered) fetch("/api/onboarding", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(data => { if (!data) return; setRecords(current => { const next = { ...current }; for (const row of data.tutorials) next[row.tutorialId as TutorialId] = row; return next }) }).catch(() => undefined)
-    else if (guestKey) { try { const saved = localStorage.getItem(guestKey); if (saved) setRecords(JSON.parse(saved)) } catch {} }
-  }, [authReady, guestKey, registered, user])
+    if (localKey) { try { const saved = localStorage.getItem(localKey); if (saved) setRecords(JSON.parse(saved)) } catch {} }
+    if (registered) fetch("/api/onboarding", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(data => { if (!data) return; setRecords(current => { const next = { ...current }; for (const row of data.tutorials) { const id = row.tutorialId as TutorialId; const localUpdated = next[id]?.updatedAt; if (!localUpdated || !row.updatedAt || new Date(row.updatedAt) >= new Date(localUpdated)) next[id] = row } persistLocal(next); return next }) }).catch(() => undefined)
+  }, [authReady, localKey, persistLocal, registered, user])
 
   useEffect(() => {
     if (priorHub.current !== activeHub && activeTutorial) { void update(activeTutorial, "step", records[activeTutorial].currentStep); setActiveTutorial(null) }

@@ -24,7 +24,7 @@ pnpm install
 cp .env.example .env.local
 ```
 
-Open `.env.local` and set your `DATABASE_URL`.
+Open `.env.local` and set your `DATABASE_URL` and `SESSION_SECRET`.
 
 **Free option:** Create a free Postgres database at https://neon.tech, copy the
 connection string, and paste it as the value of `DATABASE_URL`.
@@ -37,6 +37,11 @@ connection string, and paste it as the value of `DATABASE_URL`.
 Production deployments always run `pnpm run db:migrate` as a required build
 gate and therefore require `DATABASE_URL` or `POSTGRES_URL` in Vercel's
 **Production** environment.
+
+Production also requires `SESSION_SECRET` to sign login sessions. Generate it
+with `openssl rand -hex 32`, add it to Vercel's **Production** environment, and
+redeploy. The build fails early when this secret is absent instead of deploying
+an application that returns a generic server error after valid credentials.
 
 Preview deployments do not run migrations by default. To use persistent
 features in Preview safely, provision a non-production preview database, scope

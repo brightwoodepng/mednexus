@@ -18,7 +18,14 @@ export function deploymentBuildSteps(env = process.env) {
     : ["build"]
 }
 
+export function validateDeploymentEnvironment(env = process.env) {
+  if (env.VERCEL_ENV === "production" && !env.SESSION_SECRET?.trim()) {
+    throw new Error("SESSION_SECRET is not configured for the Vercel Production environment")
+  }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  validateDeploymentEnvironment()
   for (const script of deploymentBuildSteps()) {
     const result = spawnSync("pnpm", ["run", script], { stdio: "inherit" })
     if (result.error) throw result.error
