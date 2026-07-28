@@ -132,10 +132,17 @@ describe("versioned economy configuration", () => {
     }
 
     for (const item of STORE_ITEMS.filter(candidate => candidate.category === "cosmetic")) {
+      expect(["active", "remastered", "retired", "legacy"], item.id).toContain(item.status)
       expect(item.rarity, item.id).toBe(expectedRarity(item.price))
       expect(item.sortOrder, item.id).toEqual(expect.any(Number))
       expect(item.previewTheme, item.id).toEqual(expect.any(String))
     }
+    expect(STORE_ITEMS.find(item => item.id === "frame_gold")).toMatchObject({
+      status: "retired", legacyRenderer: "frame_gold",
+    })
+    expect(STORE_ITEMS.find(item => item.id === "frame_neon")).toMatchObject({
+      status: "remastered", upgradeAnnouncement: expect.any(String),
+    })
   })
 
   it("adds the economy version to all current ledger insertion paths", () => {

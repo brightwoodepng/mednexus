@@ -92,7 +92,7 @@ export type EconomyConfig = {
 
 export const ECONOMY_CONFIG = {
   economyVersion: "2.0.0",
-  catalogVersion: "2.3.0",
+  catalogVersion: "2.4.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
