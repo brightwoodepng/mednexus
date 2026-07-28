@@ -9,7 +9,7 @@ import {
 } from "@/lib/economy"
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
-import { CosmeticHighlight, getCosmeticPresentation } from "@/components/cosmetics"
+import { CosmeticPreviewStage, getCosmeticPresentation } from "@/components/cosmetics"
 import { AvatarImage } from "@/components/avatar-image"
 
 type CosmeticSection = "title" | "frame" | "highlight" | "avatar"
@@ -849,8 +849,6 @@ function CosmeticsPreviewPanel({
   const frame = selected.find(entry => entry.type === "frame")?.item
   const highlight = selected.find(entry => entry.type === "highlight")?.item
   const avatar = selected.find(entry => entry.type === "avatar")?.item
-  const frameClass = frame ? (getCosmeticPresentation(frame.id).className ?? "") : ""
-  const highlightClass = highlight ? (getCosmeticPresentation(highlight.id).className ?? "") : ""
   const hasPreview = selected.some(entry => entry.item)
 
   return (
@@ -858,34 +856,18 @@ function CosmeticsPreviewPanel({
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
         <div>
           <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-violet-300">Multiplayer look lab</p>
-          <h2 id="cosmetics-preview-heading" className="mt-1 text-lg font-extrabold">Preview your leaderboard look</h2>
-          <p className="mt-1 text-xs text-slate-300">Try any combination. Nothing here is purchased or equipped.</p>
+          <h2 id="cosmetics-preview-heading" className="mt-1 text-lg font-extrabold">Dressing room</h2>
+          <p className="mt-1 text-xs text-slate-300">Combine a full loadout, then test how it behaves everywhere you appear.</p>
         </div>
         <button type="button" onClick={onReset} disabled={!hasPreview} className="min-h-11 rounded-full border border-white/20 px-4 text-xs font-bold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
           Reset Preview
         </button>
       </div>
 
-      <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_1fr]">
-        <CosmeticHighlight cosmeticId={highlight?.id} size="store-preview" motionState="focused" className={`relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-4 ${highlightClass}`}>
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-300">Simulated leaderboard · Rank 1</p>
-          <div className="flex items-center gap-3">
-            <span className="w-6 text-center text-lg font-black text-amber-300">1</span>
-            <div className={`relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${avatar?.gradient ?? "from-cyan-500 to-violet-600"} text-2xl shadow-lg ${frameClass}`}>
-              {avatar?.imagePath ? <AvatarImage avatarId={avatar.id} fallback={avatar.icon} eager className="h-full w-full object-cover" /> : <span>{avatar?.icon ?? "🧑‍⚕️"}</span>}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="truncate text-sm font-extrabold">{displayName}</span>
-                {title && <span className={`rounded-full bg-gradient-to-r ${title.gradient} px-2.5 py-1 text-[10px] font-extrabold text-white`}>{TITLE_LABELS[title.id] ?? title.name}</span>}
-              </div>
-              <p className="mt-1 text-xs text-slate-300">9,840 points</p>
-            </div>
-            <span className="text-sm font-black text-emerald-300">+720</span>
-          </div>
-        </CosmeticHighlight>
+      <div className="p-5">
+        <CosmeticPreviewStage avatarId={avatar?.id} frameId={frame?.id} highlightId={highlight?.id} titleId={title?.id} displayName={displayName} />
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Combined preview loadout">
           {selected.map(({ type, item }) => {
             const owned = item ? (inventory[item.id] ?? 0) >= 1 : false
             return (
