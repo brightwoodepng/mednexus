@@ -31,6 +31,8 @@ const avatar = (
   const optimizedAsset = (size: 128 | 256) => ({
     width: size,
     height: size,
+    // Next's image pipeline negotiates AVIF/WebP and caches this derivative;
+    // only the existing source portrait belongs in Git.
     src: `/_next/image?url=${encodeURIComponent(sourceAsset)}&w=${size}&q=82`,
     format: "webp-or-avif" as const,
     quality: 82,
@@ -40,7 +42,7 @@ const avatar = (
     id,
     sourceAsset,
     optimizedAssets: [optimizedAsset(128), optimizedAsset(256)],
-    focalPoint: { x: 0.5, y: 0.5 },
+    focalPoint: { x: 0.5, y: file === "gold-steth" || file === "vital-sign" ? 0.5 : 0.42 },
     altLabel,
     rarity,
     previewBackgroundPreference,

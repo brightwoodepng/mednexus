@@ -92,7 +92,7 @@ export type EconomyConfig = {
 
 export const ECONOMY_CONFIG = {
   economyVersion: "2.0.0",
-  catalogVersion: "2.4.0",
+  catalogVersion: "2.5.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
@@ -218,6 +218,10 @@ export const ECONOMY_CONFIG = {
       highlight_gold: { price: 350, productGroup: "basic_cosmetic" }, highlight_amethyst: { price: 600, productGroup: "basic_cosmetic" },
       highlight_legendary_crimson: { price: 1_500, productGroup: "premium_cosmetic" }, highlight_legendary_emerald: { price: 1_800, productGroup: "premium_cosmetic" },
       highlight_mythic_lightning: { price: 4_000, productGroup: "prestige_cosmetic" }, highlight_mythic_void_walker: { price: 5_000, productGroup: "prestige_cosmetic" },
+      highlight_monitor_sweep: { price: 450, productGroup: "basic_cosmetic" }, highlight_prescription_label: { price: 500, productGroup: "basic_cosmetic" },
+      highlight_anatomy_plate: { price: 600, productGroup: "basic_cosmetic" }, highlight_triage_priority: { price: 1_400, productGroup: "premium_cosmetic" },
+      highlight_sterile_field: { price: 1_600, productGroup: "premium_cosmetic" }, highlight_blood_flow: { price: 1_900, productGroup: "premium_cosmetic" },
+      highlight_neural_field: { price: 4_200, productGroup: "prestige_cosmetic" }, highlight_radiology_lightbox: { price: 4_600, productGroup: "prestige_cosmetic" },
       avatar_scrub_tech: { price: 500, productGroup: "basic_cosmetic" }, avatar_coffee_drip: { price: 500, productGroup: "basic_cosmetic" },
       avatar_lab_rat: { price: 600, productGroup: "basic_cosmetic" }, avatar_night_shift: { price: 600, productGroup: "basic_cosmetic" },
       avatar_gold_steth: { price: 2_000, productGroup: "premium_cosmetic" }, avatar_plague_doctor: { price: 2_500, productGroup: "premium_cosmetic" },
