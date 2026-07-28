@@ -32,6 +32,19 @@ connection string, and paste it as the value of `DATABASE_URL`.
 > **No database?** The app still works — progress is saved in your browser's
 > localStorage only (no cloud sync). Just leave `DATABASE_URL` blank.
 
+### Vercel database environments
+
+Production deployments always run `pnpm run db:migrate` as a required build
+gate and therefore require `DATABASE_URL` or `POSTGRES_URL` in Vercel's
+**Production** environment.
+
+Preview deployments do not run migrations by default. To use persistent
+features in Preview safely, provision a non-production preview database, scope
+its `DATABASE_URL` or `POSTGRES_URL` to Vercel's **Preview** environment, and
+set `VERCEL_PREVIEW_DATABASE_APPROVED=true` in that same environment. Never
+scope the production database credential to Preview: arbitrary preview branches
+must not migrate or use production data.
+
 ---
 
 ## 3 — Run the development server
