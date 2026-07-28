@@ -330,7 +330,7 @@ function SubPageShell({
             <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
               {balance.toLocaleString()}
             </span>
-            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP Balance</span>
+            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP</span>
           </div>
         </div>
 
@@ -606,7 +606,6 @@ export function NexusStoreHub({ onNavigate }: { onNavigate: (screen: Screen) => 
             </div>
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-foreground">Nexus Store</h1>
-              <p className="text-sm text-muted-foreground">Spend your Nexus Points</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-2">
@@ -614,7 +613,7 @@ export function NexusStoreHub({ onNavigate }: { onNavigate: (screen: Screen) => 
             <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
               {balance.toLocaleString()}
             </span>
-            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP Balance</span>
+            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">NP</span>
           </div>
         </div>
 
