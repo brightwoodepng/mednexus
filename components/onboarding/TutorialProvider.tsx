@@ -14,6 +14,10 @@ export function TutorialProvider({ activeHub, blocked, welcomeOpen, children }: 
   const { user, authReady } = useApp()
   const [records, setRecords] = useState<Record<TutorialId, OnboardingRecord>>(() => ({ mcq_qbank_intro: emptyOnboardingRecord("mcq_qbank_intro"), theory_vault_intro: emptyOnboardingRecord("theory_vault_intro") }))
   const [activeTutorial, setActiveTutorial] = useState<TutorialId | null>(null)
+  // Pausing is a session-level choice. The persisted `in_progress` status is what
+  // lets a later visit resume, but it must not immediately reopen the tour in
+  // the same mounted provider.
+  const pausedTutorials = useRef(new Set<TutorialId>())
   const priorHub = useRef(activeHub)
   const registered = user?.role === "user" && user.sessionVerified
   const localKey = user ? `mednexus:onboarding:${user.role}:${user.uid}:v${TUTORIAL_VERSION}` : null
@@ -47,18 +51,18 @@ export function TutorialProvider({ activeHub, blocked, welcomeOpen, children }: 
     priorHub.current = activeHub
     if (!authReady || !user || blocked || welcomeOpen || activeTutorial) return
     const id = idForHub(activeHub); if (!id) return
-    const record = records[id]; if (record.status === "completed" || record.status === "dismissed") return
+    const record = records[id]; if (record.status === "completed" || record.status === "dismissed" || pausedTutorials.current.has(id)) return
     const timer = window.setTimeout(() => { setActiveTutorial(id); void update(id, record.status === "in_progress" ? "step" : "start", record.currentStep) }, 350)
     return () => clearTimeout(timer)
   }, [activeHub, activeTutorial, authReady, blocked, records, update, user, welcomeOpen])
 
-  const replay = useCallback(async (id: TutorialId) => { await update(id, "restart", 0); setActiveTutorial(id) }, [update])
+  const replay = useCallback(async (id: TutorialId) => { pausedTutorials.current.delete(id); await update(id, "restart", 0); setActiveTutorial(id) }, [update])
   const reset = useCallback(async () => { for (const id of TUTORIAL_IDS) await update(id, "restart", 0); setActiveTutorial(null) }, [update])
   const value = useMemo(() => ({ replay, reset, records, activeTutorial }), [activeTutorial, records, replay, reset])
   const active = activeTutorial ? records[activeTutorial] : null
   const definition = activeTutorial ? tutorials[activeTutorial] : null
   const resolvedStep = active && definition ? Math.max(0, active.currentStepId ? definition.steps.findIndex(step => step.id === active.currentStepId) : Math.min(active.currentStep, definition.steps.length - 1)) : 0
-  return <TutorialContext.Provider value={value}>{children}{activeTutorial && active && definition && <TutorialNavigationController tutorial={definition} stepIndex={resolvedStep} onCheckpoint={() => void update(activeTutorial, "step", resolvedStep, definition.steps[resolvedStep].id)} onStep={step => void update(activeTutorial, "step", step, definition.steps[step].id)} onPause={() => { void update(activeTutorial, "step", resolvedStep, definition.steps[resolvedStep].id); setActiveTutorial(null) }} onDismiss={() => { void update(activeTutorial, "dismiss", resolvedStep, definition.steps[resolvedStep].id); setActiveTutorial(null) }} onComplete={() => { void update(activeTutorial, "complete", definition.steps.length - 1, definition.steps.at(-1)?.id); setActiveTutorial(null) }}/>}</TutorialContext.Provider>
+  return <TutorialContext.Provider value={value}>{children}{activeTutorial && active && definition && <TutorialNavigationController tutorial={definition} stepIndex={resolvedStep} onCheckpoint={() => void update(activeTutorial, "step", resolvedStep, definition.steps[resolvedStep].id)} onStep={step => void update(activeTutorial, "step", step, definition.steps[step].id)} onPause={() => { pausedTutorials.current.add(activeTutorial); void update(activeTutorial, "step", resolvedStep, definition.steps[resolvedStep].id); setActiveTutorial(null) }} onDismiss={() => { pausedTutorials.current.add(activeTutorial); void update(activeTutorial, "dismiss", resolvedStep, definition.steps[resolvedStep].id); setActiveTutorial(null) }} onComplete={() => { pausedTutorials.current.add(activeTutorial); void update(activeTutorial, "complete", definition.steps.length - 1, definition.steps.at(-1)?.id); setActiveTutorial(null) }}/>}</TutorialContext.Provider>
 }
 
 export function useTutorials() { const context = useContext(TutorialContext); if (!context) throw new Error("useTutorials must be used within TutorialProvider"); return context }
