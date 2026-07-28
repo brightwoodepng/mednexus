@@ -1,1032 +1,147 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { ChevronDown, CircleUserRound, Filter, Frame, PackageOpen, ShieldCheck, ShoppingBag, Sparkles, Tag, X } from "lucide-react"
 import { useEconomy } from "@/contexts/economy-context"
 import { useApp } from "@/contexts/app-context"
-import {
-  SELLABLE_STORE_ITEMS, STORE_ITEMS, VAULT_META, TITLE_LABELS, SOLO_SUPPLY_MODE_LABELS,
-  type CosmeticRarity, type StoreItem, type VaultMeta,
-} from "@/lib/economy"
+import { SELLABLE_STORE_ITEMS, SOLO_SUPPLY_MODE_LABELS, STORE_ITEMS, TITLE_LABELS, type CosmeticRarity, type StoreItem } from "@/lib/economy"
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import { CosmeticPreviewStage, getCosmeticPresentation } from "@/components/cosmetics"
 import { AvatarImage } from "@/components/avatar-image"
 
 type CosmeticSection = "title" | "frame" | "highlight" | "avatar"
+type CosmeticPreview = Record<CosmeticSection, string | null>
+const rarities = ["all", "common", "rare", "epic", "legendary", "mythic"] as const
+const emptyPreview: CosmeticPreview = { title: null, frame: null, highlight: null, avatar: null }
 
-// ── Small shared atoms ────────────────────────────────────────────────────────
+function BalancePill({ balance }: { balance: number }) {
+  return <div aria-label={`${balance.toLocaleString()} Nexus Points`} className="flex min-w-0 shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1.5 text-amber-800 dark:bg-amber-950/70 dark:text-amber-200 sm:px-4 sm:py-2">
+    <span aria-hidden="true">●</span><span className="max-w-[5.5rem] truncate text-xs font-extrabold tabular-nums sm:max-w-none sm:text-base">{balance.toLocaleString()}</span><span className="text-[10px] font-black sm:text-xs">NP</span>
+  </div>
+}
 
 function PriceTag({ price }: { price: number }) {
-  return (
-    <div className="flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 shrink-0">
-      <span className="text-[10px]">🪙</span>
-      <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">{price.toLocaleString()}</span>
+  return <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-bold tabular-nums text-amber-800 dark:bg-amber-950/60 dark:text-amber-200"><span aria-hidden="true">●</span>{price.toLocaleString()} NP</span>
+}
+
+function useFocusTrap(open: boolean, onClose: () => void) {
+  const ref = useRef<HTMLDivElement>(null)
+  const returnFocus = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!open) return
+    returnFocus.current = document.activeElement as HTMLElement
+    const node = ref.current
+    const focusable = () => Array.from(node?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])
+    focusable()[0]?.focus()
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); onClose(); return }
+      if (event.key !== "Tab") return
+      const controls = focusable(); if (!controls.length) return
+      const first = controls[0], last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener("keydown", keydown)
+    return () => { document.removeEventListener("keydown", keydown); returnFocus.current?.focus() }
+  }, [open, onClose])
+  return ref
+}
+
+function BottomSheet({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
+  const ref = useFocusTrap(open, onClose)
+  if (!open) return null
+  return <div className="fixed inset-0 z-[90] sm:hidden" role="presentation">
+    <button aria-label={`Close ${title}`} className="absolute inset-0 h-full w-full bg-black/55" onClick={onClose} />
+    <div ref={ref} role="dialog" aria-modal="true" aria-labelledby="store-sheet-title" className="absolute inset-x-0 bottom-0 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-3xl border border-border bg-background shadow-2xl">
+      <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between border-b border-border bg-background px-4"><h2 id="store-sheet-title" className="min-w-0 truncate text-base font-extrabold">{title}</h2><button type="button" onClick={onClose} aria-label={`Close ${title}`} className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-muted"><X size={20} /></button></header>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+      {footer && <footer className="sticky bottom-0 border-t border-border bg-background p-3 pb-[calc(.75rem+env(safe-area-inset-bottom,0px))]">{footer}</footer>}
     </div>
-  )
+  </div>
 }
 
-function DifficultyBadge({ difficulty }: { difficulty: VaultMeta["difficulty"] }) {
-  const cls =
-    difficulty === "Intermediate" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400" :
-    difficulty === "Advanced"     ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" :
-                                    "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400"
-  return (
-    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${cls}`}>
-      {difficulty}
-    </span>
-  )
-}
-
-// ── Item cards ────────────────────────────────────────────────────────────────
-
-function ConsumableCard({
-  item, owned, buying, didBuy, canAfford, onBuy,
-}: {
-  item: StoreItem; owned: number; buying: boolean; didBuy: boolean; canAfford: boolean; onBuy: () => void
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex items-start gap-3">
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} text-2xl shadow-sm`}>
-          {item.icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2 mb-0.5">
-            <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
-            <PriceTag price={item.price} />
-          </div>
-          <p className="text-xs text-muted-foreground mb-2.5">{item.desc}</p>
-          <div className="flex items-center justify-between">
-            {owned > 0 && (
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">You have: {owned}×</span>
-            )}
-            <button
-              type="button" disabled={buying || !canAfford} onClick={onBuy}
-              className={`ml-auto rounded-full px-4 py-1.5 text-[11px] font-bold transition-all ${
-                didBuy        ? "bg-emerald-500 text-white" :
-                canAfford     ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
-                                "bg-muted text-muted-foreground cursor-not-allowed"
-              }`}
-            >
-              {buying ? "…" : didBuy ? "Purchased!" : canAfford ? "Buy" : "Need more NP"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function VaultCard({
-  item, unlocked, buying, didBuy, canAfford, onBuy,
-}: {
-  item: StoreItem; unlocked: boolean; buying: boolean; didBuy: boolean; canAfford: boolean; onBuy: () => void
-}) {
-  const meta = VAULT_META[item.id]
-  return (
-    <div className={`relative overflow-hidden rounded-2xl border p-4 transition-all ${
-      unlocked
-        ? "border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/20 dark:to-teal-950/10"
-        : "border-border bg-card hover:border-primary/30"
-    }`}>
-      {/* colour bar */}
-      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.gradient} ${unlocked ? "opacity-50" : ""}`} />
-
-      <div className="flex items-start gap-3 mt-0.5">
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} text-2xl shadow-sm ${!unlocked ? "opacity-70" : ""}`}>
-          {unlocked ? item.icon : "🔒"}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-foreground">{item.name}</p>
-              {meta && (
-                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                  <DifficultyBadge difficulty={meta.difficulty} />
-                  <span className="text-[10px] text-muted-foreground">{meta.discipline}</span>
-                  <span className="text-[10px] text-muted-foreground">· {meta.steps} steps</span>
-                </div>
-              )}
-            </div>
-            {!unlocked && <PriceTag price={item.price} />}
-          </div>
-
-          {meta && !unlocked && (
-            <p className="text-[11px] italic text-muted-foreground/70 mb-2 truncate">
-              &ldquo;{meta.preview}&rdquo;
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground mb-2.5">{item.desc}</p>
-
-          {unlocked ? (
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                ✓ Unlocked
-              </span>
-              <span className="text-[11px] text-muted-foreground">Ready to play in your profile</span>
-            </div>
-          ) : (
-            <button
-              type="button" disabled={buying || !canAfford} onClick={onBuy}
-              className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-all ${
-                didBuy    ? "bg-emerald-500 text-white" :
-                canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
-                            "bg-muted text-muted-foreground cursor-not-allowed"
-              }`}
-            >
-              {buying ? "…" : didBuy ? "Unlocked!" : canAfford ? "🔓 Unlock" : "Need more NP"}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const RARITY_PRESENTATION: Record<CosmeticRarity, { label: string; symbol: string; cls: string }> = {
-  common: { label: "Common", symbol: "●", cls: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" },
-  rare: { label: "Rare", symbol: "◆", cls: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300" },
-  epic: { label: "Epic", symbol: "✦", cls: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300" },
-  legendary: { label: "Legendary", symbol: "♛", cls: "bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-400 dark:bg-amber-950/50 dark:text-amber-200" },
-  mythic: { label: "Mythic", symbol: "✺", cls: "bg-fuchsia-100 text-fuchsia-800 ring-2 ring-inset ring-fuchsia-400 dark:bg-fuchsia-950/50 dark:text-fuchsia-200" },
-}
-
-function RarityBadge({ rarity }: { rarity?: CosmeticRarity }) {
-  if (!rarity) return null
-  const presentation = RARITY_PRESENTATION[rarity]
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${presentation.cls}`}>
-      <span aria-hidden="true">{presentation.symbol}</span>{presentation.label}
-    </span>
-  )
-}
-
-function CosmeticCard({
-  item, owned, equipped, buying, equipping, didBuy, canAfford, onBuy, onEquip,
-}: {
-  item: StoreItem; owned: boolean; equipped: boolean
-  buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
-  onBuy: () => void; onEquip: () => void
-}) {
-  const frameClass   = item.cosmeticType === "frame"     ? getCosmeticPresentation(item.id).className    : ""
-  const highlightCls = item.cosmeticType === "highlight" ? getCosmeticPresentation(item.id).className : ""
-
-  return (
-    <div className={`rounded-2xl border p-3 transition-all ${
-      equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
-    }`}>
-      <div className="flex items-center gap-3">
-        <div className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${highlightCls || `bg-gradient-to-br ${item.gradient}`} ${frameClass} text-xl shadow-sm`}>
-          {item.icon}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
-            <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
-            <RarityBadge rarity={item.rarity} />
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-tight mb-2">{item.desc}</p>
-
-          <div className="flex items-center justify-between gap-2">
-            <div className="shrink-0">
-              {equipped && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                  ● Equipped
-                </span>
-              )}
-              {!owned && !equipped && <PriceTag price={item.price} />}
-            </div>
-            {owned ? (
-              <button
-                type="button" disabled={equipping} onClick={onEquip}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all ${
-                  equipped
-                    ? "bg-muted text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400"
-                    : `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90`
-                }`}
-              >
-                {equipping ? "…" : equipped ? "Unequip" : "Equip"}
-              </button>
-            ) : (
-              <button
-                type="button" disabled={buying || !canAfford} onClick={onBuy}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all ${
-                  didBuy    ? "bg-emerald-500 text-white" :
-                  canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
-                              "bg-muted text-muted-foreground cursor-not-allowed"
-                }`}
-              >
-                {buying ? "…" : didBuy ? "Bought!" : canAfford ? "Buy" : "Need NP"}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AvatarCard({
-  item, owned, equipped, buying, equipping, didBuy, canAfford, onBuy, onEquip,
-}: {
-  item: StoreItem; owned: boolean; equipped: boolean
-  buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
-  onBuy: () => void; onEquip: () => void
-}) {
-
-  return (
-    <div className={`rounded-2xl border p-3 transition-all ${
-      equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
-    }`}>
-      <div className="flex items-center gap-3">
-        <div className={`relative h-11 w-11 shrink-0 rounded-xl overflow-hidden bg-gradient-to-br ${item.gradient} shadow-sm`}>
-          {item.imagePath && (
-            <AvatarImage avatarId={item.id} fallback={item.icon} className="h-full w-full object-cover" />
-          )}
-          {!item.imagePath && (
-            <span className="absolute inset-0 flex items-center justify-center text-xl">{item.icon}</span>
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
-            <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
-            <RarityBadge rarity={item.rarity} />
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-tight mb-2">{item.desc}</p>
-
-          <div className="flex items-center justify-between gap-2">
-            <div className="shrink-0">
-              {equipped && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                  ● Equipped
-                </span>
-              )}
-              {!owned && !equipped && <PriceTag price={item.price} />}
-            </div>
-            {owned ? (
-              <button
-                type="button" disabled={equipping} onClick={onEquip}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all ${
-                  equipped
-                    ? "bg-muted text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400"
-                    : `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90`
-                }`}
-              >
-                {equipping ? "…" : equipped ? "Unequip" : "Equip"}
-              </button>
-            ) : (
-              <button
-                type="button" disabled={buying || !canAfford} onClick={onBuy}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all ${
-                  didBuy    ? "bg-emerald-500 text-white" :
-                  canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
-                              "bg-muted text-muted-foreground cursor-not-allowed"
-                }`}
-              >
-                {buying ? "…" : didBuy ? "Bought!" : canAfford ? "Buy" : "Need NP"}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Shared sub-page shell ─────────────────────────────────────────────────────
-
-function SubPageShell({
-  title, emoji, onBack, balance, children,
-}: {
-  title: string
-  emoji: string
-  onBack: () => void
-  balance: number
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex min-h-full flex-col">
-      <div className="mx-auto w-full max-w-6xl flex flex-col flex-1">
-
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={onBack}
-              className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
-            >
-              <ChevronLeftIcon size={15} />
-              Back to Store
-            </button>
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span className="text-2xl">{emoji}</span>
-              <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground">{title}</h1>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-2">
-            <span className="text-base">🪙</span>
-            <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
-              {balance.toLocaleString()}
-            </span>
-            <span className="text-xs font-bold text-white">NP</span>
-          </div>
-        </div>
-
-        <div className="flex-1">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Supply Closet — vertical grid card ────────────────────────────────────────
-
-function SupplyGridCard({
-  item, owned, balance, buying, didBuy, selectedBundleId, onSelectBundle, onBuy,
-}: {
-  item: StoreItem; owned: number; balance: number; buying: boolean; didBuy: boolean; selectedBundleId: string
-  onSelectBundle: (bundleId: string) => void; onBuy: () => void
-}) {
-  const options = item.purchaseOptions ?? [{ id: "single", quantity: 1, price: item.price }]
-  const selected = options.find(option => option.id === selectedBundleId) ?? options[0]
-  const maxInventory = item.maxInventory ?? item.supply?.stackLimit ?? 0
-  const exceedsCap = owned + selected.quantity > maxInventory
-  const canAfford = balance >= selected.price
-  return (
-    <div className="flex flex-col items-center text-center p-6 h-full rounded-2xl border border-border bg-card transition-all hover:shadow-md">
-
-      {/* Icon */}
-      <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} text-3xl shadow-md mb-4`}>
-        {item.icon}
-      </div>
-
-      {/* Name */}
-      <h3 className="text-sm font-bold text-foreground leading-snug">{item.name}</h3>
-
-      {/* Description — single short sentence */}
-      <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.desc}</p>
-
-      {item.supply && (
-        <div className="mt-3 w-full" aria-label={`Works in ${item.supply.supportedModes.map(mode => SOLO_SUPPLY_MODE_LABELS[mode]).join(", ")}`}>
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Works in</p>
-          <div className="flex flex-wrap justify-center gap-1">
-            {item.supply.supportedModes.map(mode => (
-              <span key={mode} className="rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 ring-1 ring-inset ring-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-300 dark:ring-cyan-800/60">
-                {SOLO_SUPPLY_MODE_LABELS[mode]}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="mt-4 grid w-full grid-cols-2 gap-2" aria-label={`Purchase quantity for ${item.name}`}>
-        {options.map(option => (
-          <button key={option.id} type="button" onClick={() => onSelectBundle(option.id)} disabled={buying || owned + option.quantity > maxInventory}
-            aria-pressed={selected.id === option.id}
-            className={`min-h-11 rounded-xl border px-2 py-1.5 text-xs font-bold transition-colors ${selected.id === option.id ? "border-cyan-500 bg-cyan-50 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-200" : "border-border bg-background text-muted-foreground"} disabled:cursor-not-allowed disabled:opacity-40`}>
-            {option.quantity} unit{option.quantity === 1 ? "" : "s"}
-            <span className="block text-[10px] font-semibold">{option.price.toLocaleString()} NP</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="my-3 flex w-full items-center justify-between text-[11px] font-semibold">
-        <span className="text-emerald-600 dark:text-emerald-400">Owned {owned}/{maxInventory}</span>
-        <span className="text-amber-700 dark:text-amber-300">Total {selected.price.toLocaleString()} NP</span>
-      </div>
-
-      {/* Buy button — anchored to bottom */}
-      <button
-        type="button"
-        disabled={buying || exceedsCap || canAfford === false}
-        onClick={onBuy}
-        className={`mt-auto w-full rounded-full py-2.5 text-xs font-bold transition-all ${
-          didBuy        ? "bg-emerald-500 text-white" :
-          !exceedsCap && canAfford !== false ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
-                          "bg-muted text-muted-foreground cursor-not-allowed"
-        }`}
-      >
-        {buying ? "…" : didBuy ? "Purchased!" : exceedsCap ? "Inventory cap" : canAfford === false ? "Need NP" : `Buy ${selected.quantity}`}
-      </button>
-    </div>
-  )
-}
-
-// ── Cosmetics — vertical grid card ───────────────────────────────────────────
-
-function CosmeticGridCard({
-  item, owned, equipped, previewed, buying, equipping, didBuy, canAfford, onBuy, onEquip, onPreview,
-}: {
-  item: StoreItem; owned: boolean; equipped: boolean; previewed: boolean
-  buying: boolean; equipping: boolean; didBuy: boolean; canAfford: boolean
-  onBuy: () => void; onEquip: () => void; onPreview: () => void
-}) {
-  const frameClass   = item.cosmeticType === "frame"     ? (getCosmeticPresentation(item.id).className    ?? "") : ""
-  const highlightCls = item.cosmeticType === "highlight" ? (getCosmeticPresentation(item.id).className ?? "") : ""
-  const prestigeClass = item.rarity === "mythic"
-    ? "ring-2 ring-fuchsia-400/70 border-double border-4"
-    : item.rarity === "legendary"
-      ? "ring-1 ring-amber-400/70 border-dashed"
-      : ""
-
-  return (
-    <div data-preview-theme={item.previewTheme} className={`relative flex flex-col items-center text-center p-6 h-full rounded-2xl border transition-all hover:shadow-md ${prestigeClass} ${
-      equipped ? "border-primary/40 bg-primary/5 dark:bg-primary/10" : "border-border bg-card"
-    }`}>
-
-      {/* Equipped badge */}
-      {equipped && (
-        <span className="mb-3 self-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
-          ● Equipped
-        </span>
-      )}
-
-      {/* Visual preview */}
-      <div className="mb-4 flex items-center justify-center">
-        {item.cosmeticType === "avatar" ? (
-          <div className={`relative h-16 w-16 overflow-hidden rounded-2xl bg-gradient-to-br ${item.gradient} shadow-md`}>
-            {item.imagePath ? (
-              <AvatarImage avatarId={item.id} fallback={item.icon} className="h-full w-full object-cover" />
-            ) : (
-              <span className="absolute inset-0 flex items-center justify-center text-3xl">{item.icon}</span>
-            )}
-          </div>
-        ) : item.cosmeticType === "frame" ? (
-          <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} text-3xl shadow-md ${frameClass}`}>
-            {item.icon}
-          </div>
-        ) : item.cosmeticType === "highlight" ? (
-          <div className={`w-full rounded-xl px-3 py-2.5 text-sm font-bold ${highlightCls}`}>
-            Your Name
-          </div>
-        ) : (
-          /* title */
-          <div className={`rounded-full bg-gradient-to-r ${item.gradient} px-4 py-2 text-sm font-bold text-white shadow-md`}>
-            {TITLE_LABELS[item.id] ?? item.name}
-          </div>
-        )}
-      </div>
-
-      <div className="mb-2 flex flex-wrap justify-center gap-1.5">
-        <RarityBadge rarity={item.rarity} />
-        {item.status === "retired" && <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-bold">Retired · owned</span>}
-        {item.status === "remastered" && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">Remastered</span>}
-        {item.featured && <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-bold text-background">★ Featured</span>}
-        {item.limitedUntil && <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-bold">Limited until {item.limitedUntil}</span>}
-      </div>
-
-      {/* Name */}
-      <h3 className="text-sm font-bold text-foreground leading-snug">{item.name}</h3>
-
-      {/* Description — single short sentence */}
-      <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.desc}</p>
-      {item.upgradeAnnouncement && (
-        <p role="status" className="mt-2 rounded-xl bg-violet-50 px-2.5 py-2 text-[11px] font-medium leading-relaxed text-violet-700 dark:bg-violet-950/30 dark:text-violet-300">
-          ✨ {item.upgradeAnnouncement}
-        </p>
-      )}
-
-      {/* Price — only when not owned */}
-      {!owned && (
-        <div className="mt-3 flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-1">
-          <span className="text-[10px]">🪙</span>
-          <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">{item.price.toLocaleString()}</span>
-        </div>
-      )}
-
-      <div className="mt-2 min-h-5" aria-live="polite">
-        {equipped ? (
-          <span className="text-[11px] font-bold text-primary">✓ Equipped</span>
-        ) : owned ? (
-          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Owned</span>
-        ) : canAfford ? (
-          <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400">Available to buy</span>
-        ) : (
-          <span className="text-[11px] font-bold text-muted-foreground">🔒 Locked · Not enough NP</span>
-        )}
-      </div>
-
-      <button
-        type="button"
-        aria-pressed={previewed}
-        onClick={onPreview}
-        className={`mt-auto mb-2 min-h-11 w-full rounded-full border text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-          previewed ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:bg-muted"
-        }`}
-      >
-        {previewed ? "✓ In Preview" : "Preview"}
-      </button>
-
-      {/* Purchase/equip action */}
-      {owned ? (
-        <button
-          type="button"
-          disabled={equipping}
-          onClick={onEquip}
-          className={`w-full rounded-full py-2.5 text-xs font-bold transition-all ${
-            equipped
-              ? "bg-muted text-muted-foreground hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400"
-              : `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90`
-          }`}
-        >
-          {equipping ? "…" : equipped ? "Unequip" : didBuy ? "Equip Now" : "Equip"}
+function SubPageShell({ title, description, onBack, balance, toolbar, children }: { title: string; description?: ReactNode; onBack: () => void; balance: number; toolbar?: ReactNode; children: ReactNode }) {
+  return <div className="mx-auto flex min-h-full w-full max-w-6xl min-w-0 flex-col overflow-x-clip pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-6">
+    <header data-testid="store-header" className="sticky top-0 z-50 -mx-3 mb-4 border-b border-border/80 bg-background/95 px-3 pb-3 pt-[max(.5rem,env(safe-area-inset-top,0px))] backdrop-blur-md sm:static sm:mx-0 sm:mb-6 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+      <div className="flex min-h-11 min-w-0 items-center gap-2 sm:gap-3">
+        <button type="button" onClick={onBack} aria-label="Back to Nexus Store" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted sm:h-10 sm:w-auto sm:gap-1.5 sm:px-3">
+          <ChevronLeftIcon size={16} /><span className="hidden text-sm font-semibold sm:inline">Back to Store</span>
         </button>
-      ) : (
-        <button
-          type="button"
-          disabled={buying || !canAfford}
-          onClick={onBuy}
-          className={`w-full rounded-full py-2.5 text-xs font-bold transition-all ${
-            didBuy    ? "bg-emerald-500 text-white" :
-            canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
-                        "bg-muted text-muted-foreground cursor-not-allowed"
-          }`}
-        >
-          {buying ? "…" : didBuy ? "Bought!" : canAfford ? "Buy" : "Need NP"}
-        </button>
-      )}
-    </div>
-  )
+        <h1 className="min-w-0 flex-1 truncate text-lg font-extrabold tracking-tight sm:text-xl">{title}</h1><BalancePill balance={balance} />
+      </div>
+      {(description || toolbar) && <div className="mt-2 min-w-0 sm:ml-0">{description}{toolbar}</div>}
+    </header>
+    <div className="min-w-0 flex-1">{children}</div>
+  </div>
 }
-
-// ── NexusStoreHub — main store landing page ───────────────────────────────────
 
 export function NexusStoreHub({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
   const { balance } = useEconomy()
-
-  const vaultItems      = STORE_ITEMS.filter(i => i.category === "vault")
-  const supplyItems     = STORE_ITEMS.filter(i => i.category === "lifeline")
-  const cosmeticItems   = SELLABLE_STORE_ITEMS.filter(i => i.category === "cosmetic")
-
-  const BANNERS = [
-    {
-      screen:      "store-supply" as Screen,
-      emoji:       "⚗️",
-      title:       "Supply Closet",
-      description: "Consumable lifelines for solo MCQ games. Stock up and use them when you need an edge.",
-      gradient:    "from-cyan-500 to-teal-600",
-      bg:          "bg-cyan-50/60 dark:bg-cyan-950/20 border-cyan-200/60 dark:border-cyan-800/40",
-      chevronColor:"text-cyan-600 dark:text-cyan-400",
-      count:       `${supplyItems.length} items`,
-    },
-    {
-      screen:      "store-cosmetics" as Screen,
-      emoji:       "✨",
-      title:       "Cosmetics",
-      description: "Titles, frames, highlights, and avatars. Customize how you appear in multiplayer games.",
-      gradient:    "from-violet-500 to-fuchsia-600",
-      bg:          "bg-violet-50/60 dark:bg-violet-950/20 border-violet-200/60 dark:border-violet-800/40",
-      chevronColor:"text-violet-600 dark:text-violet-400",
-      count:       `${cosmeticItems.length} items`,
-    },
-    {
-      screen:      "store-vault" as Screen,
-      emoji:       "🔐",
-      title:       "The Vault",
-      description: "Premium clinical simulations — complex multi-step cases you unlock permanently with Nexus Points.",
-      gradient:    "from-amber-500 to-orange-600",
-      bg:          "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40",
-      chevronColor:"text-amber-600 dark:text-amber-400",
-      count:       `${vaultItems.length} cases`,
-    },
+  useEffect(() => { const main = document.querySelector("main"); const saved = Number(sessionStorage.getItem("nexus-store-scroll") || 0); if (main && saved) requestAnimationFrame(() => { main.scrollTop = saved }) }, [])
+  const navigate = (screen: Screen) => { const main = document.querySelector("main"); sessionStorage.setItem("nexus-store-scroll", String(main?.scrollTop ?? 0)); onNavigate(screen) }
+  const departments = [
+    { screen: "store-supply" as Screen, title: "Supply Closet", description: "Consumable lifelines for solo MCQ games.", count: `${STORE_ITEMS.filter(i => i.category === "lifeline").length} items`, Icon: PackageOpen, style: "border-cyan-200/70 bg-cyan-50/70 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-300" },
+    { screen: "store-cosmetics" as Screen, title: "Cosmetics", description: "Titles, frames, highlights, and avatars for multiplayer.", count: `${SELLABLE_STORE_ITEMS.filter(i => i.category === "cosmetic").length} items`, Icon: Sparkles, style: "border-violet-200/70 bg-violet-50/70 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-300" },
   ]
-
-  return (
-    <div className="flex min-h-full flex-col">
-      <div className="mx-auto w-full max-w-2xl flex flex-col flex-1">
-
-        {/* Page header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-2xl shadow-sm">
-              🏪
-            </div>
-            <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-foreground">Nexus Store</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-2">
-            <span className="text-base">🪙</span>
-            <span className="text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-300">
-              {balance.toLocaleString()}
-            </span>
-            <span className="text-xs font-bold text-white">NP</span>
-          </div>
-        </div>
-
-        {/* Banner cards */}
-        <div className="flex flex-col gap-4">
-          {BANNERS.map((banner) => (
-            <button
-              key={banner.screen}
-              type="button"
-              onClick={() => onNavigate(banner.screen)}
-              className={`flex flex-row items-center justify-between p-6 rounded-2xl border cursor-pointer transition-all hover:shadow-md active:scale-[0.99] text-left w-full ${banner.bg}`}
-            >
-              {/* Left: icon + text stack */}
-              <div className="flex items-center gap-5 min-w-0">
-                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${banner.gradient} text-3xl shadow-sm`}>
-                  {banner.emoji}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-base font-extrabold text-foreground">{banner.title}</p>
-                    <span className="rounded-full bg-foreground/8 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                      {banner.count}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-snug">{banner.description}</p>
-                </div>
-              </div>
-
-              {/* Right: chevron */}
-              <ChevronRightIcon size={20} className={`shrink-0 ml-4 ${banner.chevronColor}`} />
-            </button>
-          ))}
-        </div>
-      </div>
+  const vaultSellable = SELLABLE_STORE_ITEMS.some(i => i.category === "vault")
+  return <div className="mx-auto min-h-full w-full max-w-2xl min-w-0 overflow-x-clip pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-6">
+    <header className="sticky top-0 z-50 -mx-3 mb-4 flex min-h-16 items-center justify-between gap-3 border-b border-border/80 bg-background/95 px-3 py-2 pt-[max(.5rem,env(safe-area-inset-top,0px))] backdrop-blur-md sm:static sm:mx-0 sm:mb-6 sm:border-0 sm:bg-transparent sm:p-0">
+      <div className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white"><ShoppingBag size={23} /></span><h1 className="truncate text-lg font-extrabold sm:text-xl">Nexus Store</h1></div><BalancePill balance={balance} />
+    </header>
+    <div className="flex flex-col gap-3 sm:gap-4">
+      {departments.map(({ Icon, ...department }) => <button key={department.screen} type="button" onClick={() => navigate(department.screen)} className={`flex min-h-[72px] w-full min-w-0 items-center gap-3 rounded-2xl border p-4 text-left transition hover:shadow-md sm:gap-5 sm:p-6 ${department.style}`}>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-current/10"><Icon size={23} /></span><span className="min-w-0 flex-1"><span className="flex min-w-0 items-center gap-2"><strong className="truncate text-sm text-foreground sm:text-base">{department.title}</strong><span className="shrink-0 rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] text-muted-foreground">{department.count}</span></span><span className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground sm:text-sm">{department.description}</span></span><ChevronRightIcon className="shrink-0" size={20} />
+      </button>)}
+      {!vaultSellable && <div aria-disabled="true" className="flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/35 p-4 opacity-75 sm:gap-5 sm:p-6"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted"><ShieldCheck size={23} /></span><span className="min-w-0 flex-1"><span className="flex items-center gap-2"><strong className="truncate text-sm sm:text-base">The Vault</strong><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold">Coming soon</span></span><span className="mt-1 block line-clamp-2 text-xs text-muted-foreground sm:text-sm">New clinical simulations are being prepared.</span></span></div>}
     </div>
-  )
+  </div>
 }
 
-// ── NexusStoreSupplyPage ──────────────────────────────────────────────────────
+function SupplyCard({ item, owned, balance, buying, selectedBundleId, error, onSelectBundle, onBuy }: { item: StoreItem; owned: number; balance: number; buying: boolean; selectedBundleId: string; error?: string; onSelectBundle: (id: string) => void; onBuy: () => void }) {
+  const options = item.purchaseOptions ?? [{ id: "single", quantity: 1, price: item.price }], selected = options.find(o => o.id === selectedBundleId) ?? options[0]
+  const cap = item.maxInventory ?? item.supply?.stackLimit ?? 0, capped = owned + selected.quantity > cap
+  return <article id={`store-item-${item.id}`} className="min-w-0 rounded-2xl border border-border bg-card p-4 sm:flex sm:h-full sm:flex-col sm:p-6">
+    <div className="flex min-w-0 items-center gap-3"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${item.gradient} text-xl`}>{item.icon}</span><div className="min-w-0 flex-1"><h2 className="truncate text-sm font-bold">{item.name}</h2><p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">Owned {owned}/{cap}</p></div></div>
+    <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{item.desc}</p>
+    {item.supply && <details className="mt-2 text-xs text-muted-foreground"><summary className="flex min-h-11 cursor-pointer items-center justify-between font-semibold">Supported modes <ChevronDown size={16} /></summary><p className="pb-2">{item.supply.supportedModes.map(m => SOLO_SUPPLY_MODE_LABELS[m]).join(", ")}</p></details>}
+    <div aria-label={`Purchase quantity for ${item.name}`} className={`mt-3 grid gap-1 rounded-xl bg-muted p-1 ${options.length > 2 ? "grid-cols-1 min-[360px]:grid-cols-3" : "grid-cols-2"}`}>{options.map(option => <button key={option.id} type="button" disabled={buying || owned + option.quantity > cap} aria-pressed={selected.id === option.id} onClick={() => onSelectBundle(option.id)} className={`min-h-11 rounded-lg px-2 text-xs font-bold ${selected.id === option.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>{option.quantity}× <span className="block text-[10px]">{option.price.toLocaleString()} NP</span></button>)}</div>
+    {error && <p role="alert" className="mt-2 rounded-xl bg-rose-50 p-2 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">{error}</p>}
+    <div className="mt-3 flex items-center gap-2 sm:mt-auto sm:pt-4"><PriceTag price={selected.price} /><button type="button" disabled={buying || capped || balance < selected.price} onClick={onBuy} className="min-h-11 min-w-0 flex-1 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">{buying ? "Purchasing…" : capped ? "Inventory cap" : balance < selected.price ? "Need NP" : `Buy ${selected.quantity}`}</button></div>
+  </article>
+}
 
 export function NexusStoreSupplyPage({ onBack }: { onBack: () => void }) {
-  const { balance, inventory, purchase } = useEconomy()
-  const [buying, setBuying] = useState<string | null>(null)
-  const [flash,  setFlash]  = useState<string | null>(null)
-  const [error,  setError]  = useState<string | null>(null)
-  const [selectedBundles, setSelectedBundles] = useState<Record<string, string>>({})
-
-  const supplyItems = STORE_ITEMS.filter(i => i.category === "lifeline")
-
-  async function handleBuy(item: StoreItem) {
-    setError(null)
-    setBuying(item.id)
-    const bundleId = selectedBundles[item.id] ?? item.purchaseOptions?.[0]?.id ?? "single"
-    const result = await purchase(item.id, { bundleId })
-    setBuying(null)
-    if (result.ok) {
-      setFlash(item.id)
-      setTimeout(() => setFlash(null), 2500)
-    } else {
-      setError(result.error ?? "Purchase failed")
-      setTimeout(() => setError(null), 4000)
-    }
-  }
-
-  return (
-    <SubPageShell title="Supply Closet" emoji="⚗️" onBack={onBack} balance={balance}>
-      {error && (
-        <div className="mb-4 rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400">
-          {error}
-        </div>
-      )}
-      <p className="mb-6 text-sm text-muted-foreground">
-        Consumable lifelines for solo MCQ games. Stack them in your inventory and use them when you need an edge.
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
-        {supplyItems.map(item => (
-          <SupplyGridCard
-            key={item.id}
-            item={item}
-            owned={inventory[item.id] ?? 0}
-            balance={balance}
-            buying={buying === item.id}
-            didBuy={flash === item.id}
-            selectedBundleId={selectedBundles[item.id] ?? item.purchaseOptions?.[0]?.id ?? "single"}
-            onSelectBundle={bundleId => setSelectedBundles(current => ({ ...current, [item.id]: bundleId }))}
-            onBuy={() => handleBuy(item)}
-          />
-        ))}
-      </div>
-    </SubPageShell>
-  )
+  const { balance, inventory, purchase } = useEconomy(); const [buying, setBuying] = useState<string | null>(null); const [bundles, setBundles] = useState<Record<string,string>>({}); const [errors, setErrors] = useState<Record<string,string>>({}); const [status, setStatus] = useState("")
+  const items = STORE_ITEMS.filter(i => i.category === "lifeline")
+  async function buy(item: StoreItem) { if (buying) return; setBuying(item.id); setErrors(e => ({ ...e, [item.id]: "" })); const bundleId = bundles[item.id] ?? item.purchaseOptions?.[0]?.id ?? "single"; const option = item.purchaseOptions?.find(o => o.id === bundleId) ?? { quantity: 1 }; const result = await purchase(item.id, { bundleId }); setBuying(null); if (result.ok) setStatus(`Purchased ${option.quantity} ${item.name}. You now have ${result.quantity ?? (inventory[item.id] ?? 0) + option.quantity}. ${result.balance ?? balance} NP remaining.`); else setErrors(e => ({ ...e, [item.id]: result.error ?? "Purchase failed. Try again." })) }
+  return <SubPageShell title="Supply Closet" description={<p className="line-clamp-2 text-xs text-muted-foreground sm:text-sm">Stock lifelines for solo MCQ games.</p>} onBack={onBack} balance={balance}><div aria-live="polite" className="pointer-events-none fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] z-[70] flex justify-center sm:bottom-6">{status && <p className="pointer-events-auto max-w-lg rounded-2xl bg-foreground px-4 py-3 text-sm font-semibold text-background shadow-xl">{status}</p>}</div><div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">{items.map(item => <SupplyCard key={item.id} item={item} owned={inventory[item.id] ?? 0} balance={balance} buying={buying === item.id} selectedBundleId={bundles[item.id] ?? item.purchaseOptions?.[0]?.id ?? "single"} error={errors[item.id]} onSelectBundle={id => setBundles(b => ({...b,[item.id]:id}))} onBuy={() => buy(item)} />)}</div></SubPageShell>
 }
 
-// ── Vault — vertical grid card ────────────────────────────────────────────────
-
-function VaultGridCard({
-  item, unlocked, buying, didBuy, canAfford, onBuy,
-}: {
-  item: StoreItem; unlocked: boolean; buying: boolean; didBuy: boolean; canAfford: boolean; onBuy: () => void
-}) {
-  const meta = VAULT_META[item.id]
-
-  return (
-    <div className={`relative overflow-hidden flex flex-col p-6 h-full rounded-2xl border transition-all hover:shadow-md ${
-      unlocked
-        ? "border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-emerald-950/20 dark:to-teal-950/10"
-        : "border-border bg-card hover:border-primary/30"
-    }`}>
-      {/* Colour bar */}
-      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${item.gradient} ${unlocked ? "opacity-50" : ""}`} />
-
-      {/* Icon + title + meta row */}
-      <div className="flex items-start gap-4 mb-4">
-        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient} text-3xl shadow-md ${!unlocked ? "opacity-70" : ""}`}>
-          {unlocked ? item.icon : "🔒"}
-        </div>
-        <div className="min-w-0 flex-1 pt-0.5">
-          <h3 className="text-base font-extrabold text-foreground leading-snug">{item.name}</h3>
-          {meta && (
-            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              <DifficultyBadge difficulty={meta.difficulty} />
-              <span className="text-[11px] text-muted-foreground">{meta.discipline}</span>
-              <span className="text-[11px] text-muted-foreground">· {meta.steps} steps</span>
-            </div>
-          )}
-        </div>
-        {!unlocked && <PriceTag price={item.price} />}
-      </div>
-
-      {/* Description — no dialogue quote */}
-      <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-
-      {/* CTA — anchored bottom-right */}
-      {unlocked ? (
-        <div className="mt-auto pt-5 self-end">
-          <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-            ✓ Unlocked — Available in your profile
-          </span>
-        </div>
-      ) : (
-        <button
-          type="button"
-          disabled={buying || !canAfford}
-          onClick={onBuy}
-          className={`mt-auto self-end rounded-full px-5 py-2 text-xs font-bold transition-all ${
-            didBuy    ? "bg-emerald-500 text-white" :
-            canAfford ? `bg-gradient-to-r ${item.gradient} text-white hover:opacity-90` :
-                        "bg-muted text-muted-foreground cursor-not-allowed"
-          }`}
-        >
-          {buying ? "…" : didBuy ? "Unlocked!" : canAfford ? "🔓 Unlock" : "Need more NP"}
-        </button>
-      )}
-    </div>
-  )
+function RarityBadge({ rarity }: { rarity?: CosmeticRarity }) { return rarity ? <span className="truncate rounded-full bg-muted px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">{rarity}</span> : null }
+function CosmeticVisual({ item }: { item: StoreItem }) { const cls = item.cosmeticType === "frame" || item.cosmeticType === "highlight" ? getCosmeticPresentation(item.id).className ?? "" : ""; return <div className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${item.gradient} ${cls} text-2xl`}>{item.cosmeticType === "avatar" && item.imagePath ? <AvatarImage avatarId={item.id} fallback={item.icon} className="h-full w-full object-cover" /> : item.cosmeticType === "title" ? <span className="px-1 text-center text-[10px] font-bold text-white">{TITLE_LABELS[item.id] ?? item.name}</span> : item.icon}</div> }
+function CosmeticCard({ item, owned, equipped, previewed, buying, equipping, canAfford, error, onBuy, onEquip, onPreview }: { item: StoreItem; owned: boolean; equipped: boolean; previewed: boolean; buying: boolean; equipping: boolean; canAfford: boolean; error?: string; onBuy: () => void; onEquip: () => void; onPreview: () => void }) {
+  return <article id={`store-item-${item.id}`} className={`min-w-0 rounded-2xl border bg-card p-3 ${equipped ? "border-primary bg-primary/5" : "border-border"}`}><div className="flex min-w-0 gap-3"><CosmeticVisual item={item}/><div className="min-w-0 flex-1"><h2 className="line-clamp-2 text-sm font-bold leading-tight">{item.name}</h2><div className="mt-1 flex min-w-0 flex-wrap items-center gap-1"><RarityBadge rarity={item.rarity}/><span className="text-[10px] font-bold text-muted-foreground">{equipped ? "Equipped" : owned ? "Owned" : previewed ? "Previewing" : canAfford ? "Available" : "Locked"}</span></div>{!owned && <div className="mt-2"><PriceTag price={item.price}/></div>}</div></div><p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{item.desc}</p>{error && <p role="alert" className="mt-2 rounded-xl bg-rose-50 p-2 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">{error}</p>}<div className="mt-3 grid grid-cols-2 gap-2"><button type="button" aria-pressed={previewed} onClick={onPreview} className="min-h-11 rounded-xl border border-border text-xs font-bold">{previewed ? "Previewing" : "Preview"}</button><button type="button" disabled={buying || equipping || (!owned && !canAfford)} onClick={owned ? onEquip : onBuy} className="min-h-11 rounded-xl bg-primary px-2 text-xs font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">{buying ? "Buying…" : equipping ? "Saving…" : owned ? equipped ? "Unequip" : "Equip" : "Buy"}</button></div></article>
 }
 
-// ── NexusStoreVaultPage ───────────────────────────────────────────────────────
-
-export function NexusStoreVaultPage({ onBack }: { onBack: () => void }) {
-  const { balance, inventory, purchase } = useEconomy()
-  const [buying, setBuying] = useState<string | null>(null)
-  const [flash,  setFlash]  = useState<string | null>(null)
-  const [error,  setError]  = useState<string | null>(null)
-
-  const vaultItems      = STORE_ITEMS.filter(i => i.category === "vault")
-  const ownedVaultCount = vaultItems.filter(i => (inventory[i.id] ?? 0) >= 1).length
-
-  async function handleBuy(itemId: string) {
-    setError(null)
-    setBuying(itemId)
-    const result = await purchase(itemId)
-    setBuying(null)
-    if (result.ok) {
-      setFlash(itemId)
-      setTimeout(() => setFlash(null), 2500)
-    } else {
-      setError(result.error ?? "Purchase failed")
-      setTimeout(() => setError(null), 4000)
-    }
-  }
-
-  return (
-    <SubPageShell title="The Vault" emoji="🔐" onBack={onBack} balance={balance}>
-      {error && (
-        <div className="mb-4 rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400">
-          {error}
-        </div>
-      )}
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Complex multi-step clinical simulations. Unlock permanently with Nexus Points — available in your profile forever.
-        </p>
-        <span className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-sm font-bold text-muted-foreground">
-          {ownedVaultCount}/{vaultItems.length}
-        </span>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-        {vaultItems.map(item => (
-          <VaultGridCard
-            key={item.id}
-            item={item}
-            unlocked={(inventory[item.id] ?? 0) >= 1}
-            buying={buying === item.id}
-            didBuy={flash === item.id}
-            canAfford={balance >= item.price}
-            onBuy={() => handleBuy(item.id)}
-          />
-        ))}
-      </div>
-    </SubPageShell>
-  )
-}
-
-// ── NexusStoreCosmeticsPage ───────────────────────────────────────────────────
-
-type CosmeticPreview = Record<CosmeticSection, string | null>
-
-function CosmeticsPreviewPanel({
-  preview, inventory, displayName, onReset,
-}: {
-  preview: CosmeticPreview
-  inventory: Record<string, number>
-  displayName: string
-  onReset: () => void
-}) {
-  const selected = (Object.keys(preview) as CosmeticSection[]).map(type => ({
-    type,
-    item: preview[type] ? STORE_ITEMS.find(item => item.id === preview[type]) : undefined,
-  }))
-  const title = selected.find(entry => entry.type === "title")?.item
-  const frame = selected.find(entry => entry.type === "frame")?.item
-  const highlight = selected.find(entry => entry.type === "highlight")?.item
-  const avatar = selected.find(entry => entry.type === "avatar")?.item
-  const hasPreview = selected.some(entry => entry.item)
-
-  return (
-    <section className="mb-6 overflow-hidden rounded-3xl border border-violet-200/70 bg-gradient-to-br from-slate-950 via-violet-950 to-slate-950 text-white shadow-xl dark:border-violet-700/50" aria-labelledby="cosmetics-preview-heading">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
-        <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-violet-300">Multiplayer look lab</p>
-          <h2 id="cosmetics-preview-heading" className="mt-1 text-lg font-extrabold">Dressing room</h2>
-          <p className="mt-1 text-xs text-slate-300">Combine a full loadout, then test how it behaves everywhere you appear.</p>
-        </div>
-        <button type="button" onClick={onReset} disabled={!hasPreview} className="min-h-11 rounded-full border border-white/20 px-4 text-xs font-bold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
-          Reset Preview
-        </button>
-      </div>
-
-      <div className="p-5">
-        <CosmeticPreviewStage avatarId={avatar?.id} frameId={frame?.id} highlightId={highlight?.id} titleId={title?.id} displayName={displayName} />
-
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Combined preview loadout">
-          {selected.map(({ type, item }) => {
-            const owned = item ? (inventory[item.id] ?? 0) >= 1 : false
-            return (
-              <div key={type} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{type}</p>
-                {item ? <>
-                  <p className="mt-1 truncate text-xs font-bold text-white">{item.name}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <RarityBadge rarity={item.rarity} />
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${owned ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/15 text-amber-200"}`}>{owned ? `Owned · ${item.price.toLocaleString()} NP` : `Unowned · ${item.price.toLocaleString()} NP`}</span>
-                  </div>
-                </> : <p className="mt-2 text-xs text-slate-500">Not selected</p>}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </section>
-  )
-}
+function PreviewContent({ preview, inventory, displayName }: { preview: CosmeticPreview; inventory: Record<string,number>; displayName: string }) { const find = (type: CosmeticSection) => STORE_ITEMS.find(i => i.id === preview[type]); const title=find("title"), frame=find("frame"), highlight=find("highlight"), avatar=find("avatar"); return <><CosmeticPreviewStage avatarId={avatar?.id} frameId={frame?.id} highlightId={highlight?.id} titleId={title?.id} displayName={displayName}/><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{(["title","frame","highlight","avatar"] as CosmeticSection[]).map(type => { const item=find(type); return <div key={type} className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">{type}</p><p className="mt-1 truncate text-xs font-bold">{item?.name ?? "Not selected"}</p>{item && <p className="mt-1 text-[10px] text-slate-300">{inventory[item.id] ? "Owned" : `${item.price.toLocaleString()} NP`}</p>}</div>})}</div></> }
 
 export function NexusStoreCosmeticsPage({ onBack }: { onBack: () => void }) {
-  const { balance, inventory, purchase, equippedCosmetics, equipCosmetic } = useEconomy()
-  const { user } = useApp()
-  const [cosSection, setCosSection] = useState<CosmeticSection>("title")
-  const [buying,     setBuying]     = useState<string | null>(null)
-  const [equipping,  setEquipping]  = useState<string | null>(null)
-  const [flash,      setFlash]      = useState<string | null>(null)
-  const [error,      setError]      = useState<string | null>(null)
-  const [success,    setSuccess]    = useState<string | null>(null)
-  const [preview, setPreview] = useState<CosmeticPreview>({ title: null, frame: null, highlight: null, avatar: null })
-  const [rarityFilter, setRarityFilter] = useState<CosmeticRarity | "all">("all")
-
-  const cosItems = STORE_ITEMS
-    .filter(i => i.category === "cosmetic" && i.cosmeticType === cosSection)
-    // Delisted products remain in the wardrobe only for learners who own them.
-    .filter(i => (i.status !== "retired" && i.status !== "legacy") || (inventory[i.id] ?? 0) >= 1)
-    .filter(i => rarityFilter === "all" || i.rarity === rarityFilter)
-    .sort((a, b) => {
-      const stateRank = (item: StoreItem) => {
-        if (equippedCosmetics[cosSection] === item.id) return 0
-        if ((inventory[item.id] ?? 0) >= 1) return 1
-        if (balance >= item.price) return 2
-        return 3
-      }
-      return stateRank(a) - stateRank(b)
-        || (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER)
-        || a.id.localeCompare(b.id)
-    })
-
-  async function handleBuy(itemId: string) {
-    setError(null)
-    setSuccess(null)
-    setBuying(itemId)
-    const result = await purchase(itemId)
-    setBuying(null)
-    if (result.ok) {
-      setFlash(itemId)
-      setTimeout(() => setFlash(null), 2500)
-    } else {
-      setError(result.error ?? "Purchase failed")
-      setTimeout(() => setError(null), 4000)
-    }
-  }
-
-  async function handleEquip(type: CosmeticSection, itemId: string) {
-    const isEquipped = equippedCosmetics[type] === itemId
-    setError(null)
-    setSuccess(null)
-    setEquipping(itemId)
-    const result = await equipCosmetic(type, isEquipped ? null : itemId)
-    setEquipping(null)
-    if (!result.ok) {
-      setError(result.error ?? `Could not ${isEquipped ? "unequip" : "equip"} this cosmetic.`)
-      return
-    }
-    const item = STORE_ITEMS.find(candidate => candidate.id === itemId)
-    setSuccess(isEquipped ? `${item?.name ?? "Cosmetic"} unequipped.` : `${item?.name ?? "Cosmetic"} equipped successfully.`)
-  }
-
-  return (
-    <SubPageShell title="Cosmetics" emoji="✨" onBack={onBack} balance={balance}>
-      {error && (
-        <div role="alert" className="mb-4 rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400">
-          {error}
-        </div>
-      )}
-      {success && <div role="status" className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-300">✓ {success}</div>}
-
-      <CosmeticsPreviewPanel preview={preview} inventory={inventory} displayName={user?.name || "Your Name"} onReset={() => setPreview({ title: null, frame: null, highlight: null, avatar: null })} />
-
-      {/* Sub-section pill tabs */}
-      <div className="mb-6 flex gap-1 rounded-2xl bg-muted p-1 overflow-x-auto no-scrollbar">
-        {(["title", "frame", "highlight", "avatar"] as CosmeticSection[]).map(s => (
-          <button
-            key={s} type="button" onClick={() => setCosSection(s)}
-            className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-all whitespace-nowrap ${
-              cosSection === s
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {s === "title" ? "🏷️ Titles" : s === "frame" ? "🖼️ Frames" : s === "highlight" ? "🌟 Highlights" : "🧑‍⚕️ Avatars"}
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-6 flex flex-wrap items-center gap-2" aria-label="Filter cosmetics by rarity">
-        <span className="mr-1 text-xs font-bold text-muted-foreground">Rarity</span>
-        {(["all", "common", "rare", "epic", "legendary", "mythic"] as const).map(rarity => (
-          <button
-            key={rarity}
-            type="button"
-            aria-pressed={rarityFilter === rarity}
-            onClick={() => setRarityFilter(rarity)}
-            className={`min-h-9 rounded-full px-3 text-xs font-bold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-              rarityFilter === rarity
-                ? "bg-foreground text-background"
-                : "bg-card text-muted-foreground ring-1 ring-inset ring-border hover:text-foreground"
-            }`}
-          >
-            {rarity === "all" ? "All rarities" : rarity}
-          </button>
-        ))}
-      </div>
-
-      <p className="mb-6 text-sm text-muted-foreground">
-        {cosSection === "title"     && "Displayed as a badge next to your name during multiplayer leaderboard reveals."}
-        {cosSection === "frame"     && "Animated ring shown around your player avatar badge during multiplayer pauses."}
-        {cosSection === "highlight" && "Your row glows on the leaderboard when scores are revealed to everyone."}
-        {cosSection === "avatar"    && "Your personal avatar displayed in multiplayer lobbies and leaderboards."}
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
-        {cosItems.map(item => {
-          const owned    = (inventory[item.id] ?? 0) >= 1
-          const equipped = equippedCosmetics[cosSection] === item.id
-          return (
-            <CosmeticGridCard
-              key={item.id}
-              item={item}
-              owned={owned}
-              equipped={equipped}
-              previewed={preview[cosSection] === item.id}
-              buying={buying === item.id}
-              equipping={equipping === item.id}
-              didBuy={flash === item.id}
-              canAfford={balance >= item.price}
-              onBuy={() => handleBuy(item.id)}
-              onEquip={() => item.cosmeticType && handleEquip(item.cosmeticType as CosmeticSection, item.id)}
-              onPreview={() => item.cosmeticType && setPreview(current => ({ ...current, [item.cosmeticType as CosmeticSection]: item.id }))}
-            />
-          )
-        })}
-      </div>
-      {cosItems.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No {rarityFilter} {cosSection} cosmetics are available.
-        </div>
-      )}
-    </SubPageShell>
-  )
+  const { balance, inventory, purchase, equippedCosmetics, equipCosmetic } = useEconomy(); const { user } = useApp(); const [section,setSection]=useState<CosmeticSection>("title"), [rarity,setRarity]=useState<typeof rarities[number]>("all"), [filterOpen,setFilterOpen]=useState(false), [roomOpen,setRoomOpen]=useState(false), [preview,setPreview]=useState<CosmeticPreview>(emptyPreview), [buying,setBuying]=useState<string|null>(null), [equipping,setEquipping]=useState<string|null>(null), [errors,setErrors]=useState<Record<string,string>>({}), [status,setStatus]=useState(""); const productsRef=useRef<HTMLDivElement>(null)
+  const items=useMemo(()=>STORE_ITEMS.filter(i=>i.category==="cosmetic"&&i.cosmeticType===section&&((i.status!=="retired"&&i.status!=="legacy")||(inventory[i.id]??0)>0)&&(rarity==="all"||i.rarity===rarity)),[section,rarity,inventory]); const count=Object.values(preview).filter(Boolean).length
+  const showProducts=()=>requestAnimationFrame(()=>productsRef.current?.scrollIntoView({behavior:"smooth",block:"start"})); const changeSection=(value:CosmeticSection)=>{setSection(value);showProducts()}; const changeRarity=(value:typeof rarities[number])=>{setRarity(value);showProducts()}
+  async function buy(item:StoreItem){if(buying)return;setBuying(item.id);setErrors(e=>({...e,[item.id]:""}));const result=await purchase(item.id);setBuying(null);if(result.ok)setStatus(`Purchased ${item.name}. ${result.balance??balance} NP remaining.`);else setErrors(e=>({...e,[item.id]:result.error??"Purchase failed. Try again."}))}
+  async function equip(item:StoreItem){if(equipping)return;setEquipping(item.id);const equipped=equippedCosmetics[section]===item.id,result=await equipCosmetic(section,equipped?null:item.id);setEquipping(null);if(result.ok)setStatus(`${item.name} ${equipped?"unequipped":"equipped"}.`);else setErrors(e=>({...e,[item.id]:result.error??"Could not update this item."}))}
+  const tabs=[{id:"title" as const,label:"Titles",Icon:Tag},{id:"frame" as const,label:"Frames",Icon:Frame},{id:"highlight" as const,label:"Highlights",Icon:Sparkles},{id:"avatar" as const,label:"Avatars",Icon:CircleUserRound}]
+  const toolbar=<div className="mt-2 rounded-2xl border border-border bg-background p-1 shadow-sm sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"><div className="grid grid-cols-4 gap-1 rounded-xl bg-muted p-1">{tabs.map(({id,label,Icon})=><button key={id} type="button" aria-pressed={section===id} onClick={()=>changeSection(id)} className={`flex min-h-11 min-w-0 flex-col items-center justify-center rounded-lg px-0.5 text-[9px] font-bold min-[360px]:text-[10px] sm:flex-row sm:gap-1.5 sm:text-xs ${section===id?"bg-card text-foreground shadow-sm":"text-muted-foreground"}`}><Icon size={15}/><span className="truncate">{label}</span></button>)}</div><div className="mt-2 flex items-center justify-between sm:hidden"><button type="button" onClick={()=>setFilterOpen(true)} className="flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-xs font-bold"><Filter size={16}/>Filter{rarity!=="all"?` · 1`:""}</button><span className="truncate px-2 text-xs text-muted-foreground">{rarity==="all"?"All rarities":rarity}</span></div><div className="mt-2 hidden flex-wrap gap-2 sm:flex" aria-label="Filter cosmetics by rarity">{rarities.map(r=><button key={r} type="button" aria-pressed={rarity===r} onClick={()=>changeRarity(r)} className={`min-h-11 rounded-full px-4 text-xs font-bold capitalize ${rarity===r?"bg-foreground text-background":"border border-border bg-card"}`}>{r==="all"?"All rarities":r}</button>)}</div></div>
+  return <SubPageShell title="Cosmetics" onBack={onBack} balance={balance} toolbar={toolbar}>
+    <div aria-live="polite" className="pointer-events-none fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] z-[70] flex justify-center sm:bottom-6">{status&&<div className="pointer-events-auto flex max-w-lg items-center gap-3 rounded-2xl bg-foreground px-4 py-3 text-sm font-semibold text-background shadow-xl"><span className="min-w-0 flex-1">{status}</span>{status.startsWith("Purchased")&&<button type="button" onClick={()=>{const item=STORE_ITEMS.find(i=>status.includes(i.name));if(item)void equip(item)}} className="min-h-11 shrink-0 rounded-xl bg-background px-3 text-foreground">Equip now</button>}</div>}</div>
+    <section className="mb-4 rounded-2xl border border-violet-300/40 bg-gradient-to-br from-slate-950 to-violet-950 p-3 text-white sm:hidden"><div className="flex items-center gap-3"><div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-white/10">{preview.avatar?<AvatarImage avatarId={preview.avatar} fallback="" className="h-full w-full object-cover"/>:<CircleUserRound className="m-3 text-violet-200"/>}</div><div className="min-w-0 flex-1"><h2 className="text-sm font-bold">Dressing room</h2><p className="text-xs text-slate-300">{count} item{count===1?"":"s"} selected</p></div><button type="button" onClick={()=>setRoomOpen(true)} className="min-h-11 rounded-xl bg-white px-3 text-xs font-bold text-slate-950">Open dressing room</button></div></section>
+    <section className="mb-6 hidden rounded-3xl border border-violet-700/40 bg-gradient-to-br from-slate-950 to-violet-950 p-5 text-white sm:block"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-violet-300">Multiplayer look lab</p><h2 className="text-lg font-extrabold">Dressing room</h2></div><button type="button" onClick={()=>setPreview(emptyPreview)} className="min-h-11 rounded-full border border-white/20 px-4 text-xs font-bold">Reset preview</button></div><PreviewContent preview={preview} inventory={inventory} displayName={user?.name||"Your Name"}/></section>
+    <div ref={productsRef} className="scroll-mt-52"><p className="mb-3 text-sm text-muted-foreground">{items.length} {rarity==="all"?"":rarity} {section} option{items.length===1?"":"s"}</p><div className="grid min-w-0 grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">{items.map(item=><CosmeticCard key={item.id} item={item} owned={(inventory[item.id]??0)>0} equipped={equippedCosmetics[section]===item.id} previewed={preview[section]===item.id} buying={buying===item.id} equipping={equipping===item.id} canAfford={balance>=item.price} error={errors[item.id]} onBuy={()=>buy(item)} onEquip={()=>equip(item)} onPreview={()=>setPreview(p=>({...p,[section]:item.id}))}/>)}</div></div>
+    <BottomSheet open={filterOpen} title="Filter by rarity" onClose={()=>setFilterOpen(false)} footer={<div className="flex gap-2"><button type="button" onClick={()=>changeRarity("all")} className="min-h-11 flex-1 rounded-xl border border-border font-bold">Clear filters</button><button type="button" onClick={()=>setFilterOpen(false)} className="min-h-11 flex-1 rounded-xl bg-primary font-bold text-primary-foreground">Show items</button></div>}><div className="grid gap-2">{rarities.map(r=><button key={r} type="button" aria-pressed={rarity===r} onClick={()=>changeRarity(r)} className={`min-h-11 rounded-xl border px-4 text-left text-sm font-bold capitalize ${rarity===r?"border-primary bg-primary/10 text-primary":"border-border"}`}>{r==="all"?"All rarities":r}</button>)}</div></BottomSheet>
+    <BottomSheet open={roomOpen} title="Dressing room" onClose={()=>setRoomOpen(false)} footer={<button type="button" onClick={()=>setRoomOpen(false)} className="min-h-11 w-full rounded-xl bg-primary font-bold text-primary-foreground">Close and shop</button>}><div className="-m-4 min-h-full bg-gradient-to-br from-slate-950 to-violet-950 p-4 text-white"><div className="mb-3 flex justify-end"><button type="button" onClick={()=>setPreview(emptyPreview)} disabled={!count} className="min-h-11 rounded-xl border border-white/20 px-4 text-xs font-bold disabled:opacity-40">Reset</button></div><PreviewContent preview={preview} inventory={inventory} displayName={user?.name||"Your Name"}/></div></BottomSheet>
+  </SubPageShell>
 }
+
+export function NexusStoreVaultPage({ onBack }: { onBack: () => void }) { const { balance }=useEconomy(); return <SubPageShell title="The Vault" description={<p className="text-xs text-muted-foreground">New clinical simulations are being prepared.</p>} onBack={onBack} balance={balance}><div className="rounded-2xl border border-dashed border-border p-8 text-center"><ShieldCheck className="mx-auto text-muted-foreground"/><h2 className="mt-3 font-bold">Coming soon</h2><p className="mt-1 text-sm text-muted-foreground">There is currently no purchasable Vault content.</p></div></SubPageShell> }
