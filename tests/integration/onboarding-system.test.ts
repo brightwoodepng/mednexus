@@ -32,9 +32,15 @@ describe("coordinated onboarding contract", () => {
 
   it("namespaces expiring guest state and never promotes it into account state", () => {
     const provider = read("components/onboarding/TutorialProvider.tsx")
-    expect(provider).toContain("mednexus:onboarding:guest:${user.uid}")
+    expect(provider).toContain("mednexus:onboarding:${user.role}:${user.uid}")
     expect(provider).toContain('fetch("/api/onboarding"')
     expect(provider).not.toContain("mergeGuest")
+  })
+
+  it("advances locally before persistence so storage failures cannot trap the learner", () => {
+    const provider = read("components/onboarding/TutorialProvider.tsx")
+    expect(provider.indexOf("setRecords(current =>")).toBeLessThan(provider.indexOf('fetch("/api/onboarding", { method: "POST"'))
+    expect(provider).toContain("The local checkpoint keeps the tutorial usable offline")
   })
 
   it("sequences Welcome, blocks unsafe activity, and provides safe target fallback", () => {
