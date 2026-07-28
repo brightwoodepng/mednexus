@@ -67,6 +67,15 @@ export function economyWeekId(date = new Date()): string {
 
 export type CosmeticRarity = "common" | "rare" | "epic" | "legendary" | "mythic"
 
+/** Human-readable rarity names for visible badges and assistive descriptions. */
+export const COSMETIC_RARITY_LABELS: Readonly<Record<CosmeticRarity, string>> = {
+  common: "Common",
+  rare: "Rare",
+  epic: "Epic",
+  legendary: "Legendary",
+  mythic: "Mythic",
+}
+
 export interface CosmeticCatalogMetadata {
   rarity: CosmeticRarity
   sortOrder: number
@@ -207,28 +216,37 @@ export const TITLE_LABELS: Record<string, string> = {
   title_dean_of_medicine:  "Dean of Medicine",
 }
 
-/** Tailwind ring classes for avatar frame cosmetics */
+/** Dedicated frame classes keep motion on decorative pseudo-elements. */
 export const FRAME_RING_CLASSES: Record<string, string> = {
-  frame_gold:               "ring-4 ring-yellow-400",
-  frame_neon:               "ring-4 ring-cyan-400 animate-pulse",
-  frame_fire:               "animate-[live-fire_0.4s_ease-in-out_infinite]",
-  frame_legendary_diamond:  "ring-4 ring-white animate-pulse shadow-[0_0_20px_rgba(255,255,255,1)]",
-  frame_legendary_biohazard:"ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.9)]",
-  frame_mythic_nebula:      "ring-4 ring-fuchsia-500 animate-pulse shadow-[0_0_25px_rgba(217,70,239,0.9)]",
-  frame_mythic_heartbeat:   "ring-4 ring-red-600 animate-ping shadow-[0_0_25px_rgba(220,38,38,1)]",
-  frame_lightning:          "animate-[lightning-strike_4s_linear_infinite]",
-  frame_toxic_drip:         "animate-[ooze-drip_3s_linear_infinite]",
+  frame_gold:               "cosmetic-frame cosmetic-frame--gold",
+  frame_neon:               "cosmetic-frame cosmetic-frame--neon",
+  frame_fire:               "cosmetic-frame cosmetic-frame--fire",
+  frame_legendary_diamond:  "cosmetic-frame cosmetic-frame--diamond",
+  frame_legendary_biohazard:"cosmetic-frame cosmetic-frame--biohazard",
+  frame_mythic_nebula:      "cosmetic-frame cosmetic-frame--nebula",
+  frame_mythic_heartbeat:   "cosmetic-frame cosmetic-frame--heartbeat",
+  frame_lightning:          "cosmetic-frame cosmetic-frame--lightning",
+  frame_toxic_drip:         "cosmetic-frame cosmetic-frame--toxic",
 }
 
-/** Tailwind border+bg classes for leaderboard highlight cosmetics */
+/** Theme-aware leaderboard treatments with stable, high-contrast content. */
 export const HIGHLIGHT_ROW_CLASSES: Record<string, string> = {
-  highlight_neon:                    "bg-green-900/40 border-l-4 border-green-400",
-  highlight_gold:                    "bg-yellow-900/40 border-l-4 border-yellow-400",
-  highlight_amethyst:                "bg-purple-900/50 border-l-4 border-purple-400",
-  highlight_legendary_crimson:       "bg-gradient-to-r from-red-950 to-red-900 border-l-4 border-red-500 animate-pulse",
-  highlight_legendary_emerald:       "bg-gradient-to-r from-emerald-950 to-green-900 border-l-4 border-emerald-400 shadow-[inset_0_0_10px_rgba(52,211,153,0.5)]",
-  highlight_mythic_lightning:        "bg-gradient-to-r from-blue-950 via-cyan-900 to-blue-950 border-l-4 border-cyan-400 animate-pulse",
-  highlight_mythic_void_walker:      "bg-black border-l-4 border-gray-100 shadow-[inset_0_0_20px_rgba(255,255,255,0.2)]",
+  highlight_neon:                    "cosmetic-highlight cosmetic-highlight--neon",
+  highlight_gold:                    "cosmetic-highlight cosmetic-highlight--gold",
+  highlight_amethyst:                "cosmetic-highlight cosmetic-highlight--amethyst",
+  highlight_legendary_crimson:       "cosmetic-highlight cosmetic-highlight--crimson",
+  highlight_legendary_emerald:       "cosmetic-highlight cosmetic-highlight--emerald",
+  highlight_mythic_lightning:        "cosmetic-highlight cosmetic-highlight--lightning",
+  highlight_mythic_void_walker:      "cosmetic-highlight cosmetic-highlight--void",
+}
+
+/** Accessible description so prestige is never communicated by styling alone. */
+export function getCosmeticAccessibleLabel(id?: string | null): string | null {
+  if (!id) return null
+  const item = STORE_ITEMS.find(candidate => candidate.id === id)
+  if (!item) return null
+  const rarity = item.rarity ? `${COSMETIC_RARITY_LABELS[item.rarity]} ` : ""
+  return `${rarity}${item.name}`
 }
 
 const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [

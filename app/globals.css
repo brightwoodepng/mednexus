@@ -1090,53 +1090,83 @@
   will-change: transform, opacity;
 }
 
-/* ── Avatar Frame: Live Hellfire ─────────────────────────────────────────────
- * Rapidly cycles multi-layered box-shadow through intense reds, oranges, and
- * yellows at varying blur radii / spread to simulate flickering living flames.
- * Run at 0.4 s so each "flicker" is perceptibly different.
- * ─────────────────────────────────────────────────────────────────────────── */
-@keyframes live-fire {
-  0%   { box-shadow: 0 0 8px 3px #ff3200cc, 0 0 20px 7px #ff7800aa, 0 0 36px 12px #ffc80066; }
-  12%  { box-shadow: 0 0 14px 5px #ff1400ff, 0 0 28px 10px #ff5000cc, 0 0 48px 16px #ffaa0077; }
-  25%  { box-shadow: 0 0 6px 2px #ff4800bb, 0 0 16px 5px #ff8c00aa, 0 0 30px 9px #ffe00055; }
-  40%  { box-shadow: 0 0 18px 6px #ff0a00ff, 0 0 34px 12px #ff6000dd, 0 0 56px 18px #ffcc0066; }
-  55%  { box-shadow: 0 0 10px 4px #ff3c00cc, 0 0 24px 8px #ff7200bb, 0 0 42px 14px #ffb40055; }
-  68%  { box-shadow: 0 0 16px 5px #ff0800ff, 0 0 30px 10px #ff5800cc, 0 0 52px 17px #ffc40066; }
-  80%  { box-shadow: 0 0 7px 2px #ff5000aa, 0 0 18px 6px #ff9400aa, 0 0 32px 10px #ffd80044; }
-  92%  { box-shadow: 0 0 20px 7px #ff1200ff, 0 0 36px 12px #ff6800ee, 0 0 60px 20px #ffbe0077; }
-  100% { box-shadow: 0 0 8px 3px #ff3200cc, 0 0 20px 7px #ff7800aa, 0 0 36px 12px #ffc80066; }
+/* ── Cosmetic frames and leaderboard highlights ─────────────────────────────
+ * Motion belongs to non-interactive pseudo-elements: portraits and row content
+ * never scale, fade, or move. Every treatment also has a static visual state. */
+@keyframes cosmetic-frame-breathe {
+  50% { opacity: 0.72; transform: rotate(4deg) scale(1.035); }
+}
+@keyframes cosmetic-frame-drift {
+  to { transform: rotate(360deg); }
+}
+@keyframes cosmetic-highlight-drift {
+  to { background-position: 200% 50%; }
 }
 
-/* ── Avatar Frame: High-Voltage Lightning ────────────────────────────────────
- * Stays dark/invisible for most of the cycle, then erupts in rapid-fire triple
- * arcs of cyan/white at 88 – 98 % to simulate erratic electrical discharge.
- * ─────────────────────────────────────────────────────────────────────────── */
-@keyframes lightning-strike {
-  0%   { box-shadow: 0 0 2px 1px rgba(100,210,255,0.08); }
-  80%  { box-shadow: 0 0 2px 1px rgba(100,210,255,0.08); }
-  88%  { box-shadow: 0 0 4px 1px rgba(100,210,255,0.20); }
-  90%  { box-shadow: 0 0 30px 10px #00d4ffff, 0 0 60px 22px #ffffffee, 0 0 90px 32px #0090ffbb; }
-  91%  { box-shadow: 0 0 2px 1px rgba(100,210,255,0.10); }
-  93%  { box-shadow: 0 0 3px 1px rgba(100,210,255,0.15); }
-  94%  { box-shadow: 0 0 26px 8px #00d4ffff, 0 0 52px 18px #ffffffdd, 0 0 78px 28px #0090ffaa; }
-  95%  { box-shadow: 0 0 2px 1px rgba(100,210,255,0.10); }
-  97%  { box-shadow: 0 0 3px 1px rgba(100,210,255,0.18); }
-  98%  { box-shadow: 0 0 22px 7px #00d4ffee, 0 0 44px 14px #ffffffcc, 0 0 66px 22px #0090ff99; }
-  100% { box-shadow: 0 0 2px 1px rgba(100,210,255,0.08); }
+.cosmetic-frame {
+  --cosmetic-frame-color: #eab308;
+  --cosmetic-frame-glow: rgb(234 179 8 / 0.45);
+  position: relative;
+  isolation: isolate;
+  box-shadow: 0 0 0 3px var(--cosmetic-frame-color), 0 0 16px var(--cosmetic-frame-glow);
 }
+.cosmetic-frame::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 1px;
+  border: 2px solid var(--cosmetic-frame-color);
+  border-radius: inherit;
+  box-shadow: 0 0 14px var(--cosmetic-frame-glow);
+  pointer-events: none;
+  animation: cosmetic-frame-breathe 2.8s ease-in-out infinite;
+}
+.cosmetic-frame--gold::before,
+.cosmetic-frame--biohazard::before { animation: none; }
+.cosmetic-frame--neon { --cosmetic-frame-color: #0891b2; --cosmetic-frame-glow: rgb(6 182 212 / 0.55); }
+.cosmetic-frame--fire { --cosmetic-frame-color: #ea580c; --cosmetic-frame-glow: rgb(249 115 22 / 0.65); }
+.cosmetic-frame--diamond { --cosmetic-frame-color: #cbd5e1; --cosmetic-frame-glow: rgb(148 163 184 / 0.65); }
+.cosmetic-frame--biohazard { --cosmetic-frame-color: #16a34a; --cosmetic-frame-glow: rgb(34 197 94 / 0.55); }
+.cosmetic-frame--nebula { --cosmetic-frame-color: #c026d3; --cosmetic-frame-glow: rgb(217 70 239 / 0.6); }
+.cosmetic-frame--heartbeat { --cosmetic-frame-color: #dc2626; --cosmetic-frame-glow: rgb(220 38 38 / 0.58); }
+.cosmetic-frame--lightning { --cosmetic-frame-color: #0284c7; --cosmetic-frame-glow: rgb(14 165 233 / 0.65); }
+.cosmetic-frame--lightning::before { border-style: dashed; animation: cosmetic-frame-drift 8s linear infinite; }
+.cosmetic-frame--toxic { --cosmetic-frame-color: #22c55e; --cosmetic-frame-glow: rgb(57 255 20 / 0.5); }
 
-/* ── Avatar Frame: Toxic Drip ────────────────────────────────────────────────
- * Neon-green glow with an asymmetric vertical shift in the shadow's Y offset
- * that amplifies downward to mimic viscous ooze slowly dripping south.
- * ─────────────────────────────────────────────────────────────────────────── */
-@keyframes ooze-drip {
-  0%   { box-shadow: 0 0 10px 3px #39ff1499, 0  2px 14px 5px #39ff1466, 0 -2px 8px  2px #39ff1433; }
-  20%  { box-shadow: 0 0 12px 4px #39ff14bb, 0  6px 20px 7px #39ff1477, 0 -1px 7px  2px #39ff1422; }
-  40%  { box-shadow: 0 0 8px  2px #39ff1488, 0 12px 26px 9px #39ff1499, 0  0px 5px  1px #39ff1411; }
-  55%  { box-shadow: 0 0 14px 5px #39ff14cc, 0 16px 30px 11px #39ff14aa, 0  1px 6px 1px #39ff1422; }
-  70%  { box-shadow: 0 0 10px 3px #39ff14aa, 0 10px 22px 8px #39ff1488, 0 -1px 7px  2px #39ff1433; }
-  85%  { box-shadow: 0 0 12px 4px #39ff14bb, 0  5px 18px 6px #39ff1466, 0 -2px 9px  3px #39ff1444; }
-  100% { box-shadow: 0 0 10px 3px #39ff1499, 0  2px 14px 5px #39ff1466, 0 -2px 8px  2px #39ff1433; }
+.cosmetic-highlight {
+  --cosmetic-highlight-edge: #15803d;
+  --cosmetic-highlight-from: rgb(220 252 231 / 0.88);
+  --cosmetic-highlight-to: rgb(240 253 244 / 0.72);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-left: 4px solid var(--cosmetic-highlight-edge) !important;
+  background: linear-gradient(110deg, var(--cosmetic-highlight-from), var(--cosmetic-highlight-to)) !important;
+}
+.cosmetic-highlight::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 25%, rgb(255 255 255 / 0.24) 48%, transparent 72%);
+  background-size: 200% 100%;
+  animation: cosmetic-highlight-drift 7s linear infinite;
+}
+.cosmetic-highlight--gold { --cosmetic-highlight-edge: #a16207; --cosmetic-highlight-from: rgb(254 249 195 / 0.9); --cosmetic-highlight-to: rgb(255 251 235 / 0.78); }
+.cosmetic-highlight--amethyst { --cosmetic-highlight-edge: #7e22ce; --cosmetic-highlight-from: rgb(243 232 255 / 0.9); --cosmetic-highlight-to: rgb(250 245 255 / 0.76); }
+.cosmetic-highlight--crimson { --cosmetic-highlight-edge: #be123c; --cosmetic-highlight-from: rgb(255 228 230 / 0.92); --cosmetic-highlight-to: rgb(255 241 242 / 0.76); }
+.cosmetic-highlight--emerald { --cosmetic-highlight-edge: #047857; --cosmetic-highlight-from: rgb(209 250 229 / 0.92); --cosmetic-highlight-to: rgb(236 253 245 / 0.76); }
+.cosmetic-highlight--lightning { --cosmetic-highlight-edge: #0369a1; --cosmetic-highlight-from: rgb(224 242 254 / 0.94); --cosmetic-highlight-to: rgb(236 254 255 / 0.78); }
+.cosmetic-highlight--void { --cosmetic-highlight-edge: #475569; --cosmetic-highlight-from: rgb(226 232 240 / 0.94); --cosmetic-highlight-to: rgb(248 250 252 / 0.8); }
+
+[data-theme='classic-dark'] .cosmetic-highlight,
+[data-theme='midnight-purple'] .cosmetic-highlight,
+[data-theme='forest-night'] .cosmetic-highlight,
+[data-theme='nebula'] .cosmetic-highlight,
+[data-theme='liquid-glass-dark'] .cosmetic-highlight {
+  --cosmetic-highlight-from: rgb(15 23 42 / 0.96);
+  --cosmetic-highlight-to: rgb(30 41 59 / 0.9);
 }
 
 /* ── NP float toast animation ───────────────────────────────────────────────── */
@@ -1240,6 +1270,17 @@
   filter: blur(0.5px);
 }
 @media (prefers-reduced-motion: reduce) {
+  .cosmetic-frame::before,
+  .cosmetic-highlight::before {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+  .cosmetic-highlight::before {
+    /* Preserve the treatment without a moving shine or luminance sweep. */
+    background-position: 50% 50%;
+    opacity: 0.35;
+  }
   .leaderboard-podium-entry,
   .leaderboard-row,
   .leaderboard-viewer {
