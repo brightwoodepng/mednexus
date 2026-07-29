@@ -201,22 +201,26 @@ export async function POST(
         disciplines: [...new Set(deduped.map(answer => pool_questions[answer.qi]?.discipline).filter((value): value is string => Boolean(value)))],
       }
 
+      // The host is a presenter only in Cohort Review. In every competitive
+      // mode the host answers questions and must be ranked/rewarded like the
+      // other players.
       const eligiblePlayers = room.players
-        .filter(p => p.id !== room.host_id && !p.isSpectator && p.status !== "disconnected")
+        .filter(p => !(room.mode === "cohort" && p.id === room.host_id)
+          && !p.isSpectator
+          && p.status !== "disconnected")
       const memberSet = eligiblePlayers.map(p => p.id).sort().join(":")
       const playerRank = [...eligiblePlayers].sort((a, b) => b.score - a.score)
         .findIndex(p => p.id === playerId) + 1
-      const hasMeaningfulServerHistory = eligiblePlayers.every((player) => {
+      const meaningfulParticipants = eligiblePlayers.filter((player) => {
         const validQuestions = new Set((room.answer_history?.[player.id] ?? [])
           .map(entry => entry.qi)
           .filter(qi => Number.isInteger(qi) && room.question_pool[qi]))
         return validQuestions.size >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers
       })
       const meaningfulMatch = room.question_pool.length >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers
-        && eligiblePlayers.length >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumPlayers
+        && meaningfulParticipants.length >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumPlayers
         && playerRank > 0
         && total >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers
-        && hasMeaningfulServerHistory
       if (!meaningfulMatch) {
         await client.query("ROLLBACK")
         return NextResponse.json({ error: "Match does not meet the reward eligibility policy" }, { status: 422 })

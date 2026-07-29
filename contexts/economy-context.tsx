@@ -111,7 +111,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const [equippedCosmetics, setEquippedCosmetics]   = useState<EquippedCosmetics>(DEFAULT_COSMETICS)
   const [loading, setLoading]                       = useState(false)
   const [dailyLoginReward, setDailyLoginReward]     = useState<DailyLoginResult | null>(null)
-  const initialized = useRef(false)
+  const initializedUserId = useRef<string | null>(null)
 
   const clearDailyLoginReward = useCallback(() => setDailyLoginReward(null), [])
 
@@ -142,8 +142,8 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   }, [user?.uid])
 
   useEffect(() => {
-    if (user?.uid && !initialized.current) {
-      initialized.current = true
+    if (user?.uid && initializedUserId.current !== user.uid) {
+      initializedUserId.current = user.uid
       refresh()
 
       // Fire daily login for registered users (not guests).
@@ -166,6 +166,8 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
           })
           .catch(() => { /* silent — non-critical */ })
       }
+    } else if (!user?.uid) {
+      initializedUserId.current = null
     }
   }, [user?.uid, refresh])
 
