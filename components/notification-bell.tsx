@@ -1,11 +1,14 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useRef } from "react"
 import { BellIcon } from "@/components/icons"
 import { NotificationOverlay } from "@/components/notification-overlay"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 
-const POLL_INTERVAL = 300_000
+// Mutations in the overlay update the badge optimistically, so polling is only a
+// fallback for notifications created outside this browser session.
+const POLL_INTERVAL = 900_000
+const UNREAD_STALE_TIME = 15_000
 
 /** Read the stored auth token from localStorage (same keys as app-context). */
 function getStoredAuthHeader(): { key: string; value: string } | null {
@@ -21,22 +24,17 @@ function getStoredAuthHeader(): { key: string; value: string } | null {
 
 async function fetchUnreadCount(): Promise<number> {
   try {
-    const broadcastHeaders: Record<string, string> = {}
+    const headers: Record<string, string> = {}
     const authHeader = getStoredAuthHeader()
-    if (authHeader) broadcastHeaders[authHeader.key] = authHeader.value
+    if (authHeader) headers[authHeader.key] = authHeader.value
 
-
-    const personalHeaders: Record<string, string> = {}
-    if (authHeader) personalHeaders[authHeader.key] = authHeader.value
-
-    const [broadcastRes, personalRes] = await Promise.all([
-      fetch("/api/notifications?view=count", { cache: "no-store", headers: broadcastHeaders }),
-      fetch("/api/user-notifications?view=count", { cache: "no-store", headers: personalHeaders }),
-    ])
-
-    const broadcastData = broadcastRes.ok ? await broadcastRes.json() : { unread: 0 }
-    const personalData  = personalRes.ok  ? await personalRes.json()  : { unread: 0 }
-    return Number(broadcastData.unread ?? 0) + Number(personalData.unread ?? 0)
+    const response = await fetch("/api/notifications/unread-summary", {
+      cache: "no-store",
+      headers,
+    })
+    if (!response.ok) return 0
+    const data = await response.json()
+    return Number(data.total ?? 0)
   } catch {
     return 0
   }
@@ -45,17 +43,27 @@ async function fetchUnreadCount(): Promise<number> {
 export function NotificationBell() {
   const { notificationOpen: isOpen, setNotificationOpen: setIsOpen, notificationUnreadCount: unreadCount, setNotificationUnreadCount: setUnreadCount } = useApplicationShell()
 
-  const refresh = useCallback(async () => {
-    const count = await fetchUnreadCount()
-    setUnreadCount(count)
+  const lastRefreshAt = useRef(0)
+  const refreshInFlight = useRef<Promise<void> | null>(null)
+
+  const refresh = useCallback(async (force = false) => {
+    if (!force && Date.now() - lastRefreshAt.current < UNREAD_STALE_TIME) return
+    if (refreshInFlight.current) return refreshInFlight.current
+
+    const request = fetchUnreadCount().then((count) => {
+      lastRefreshAt.current = Date.now()
+      setUnreadCount(count)
+    }).finally(() => {
+      refreshInFlight.current = null
+    })
+    refreshInFlight.current = request
+    return request
   }, [setUnreadCount])
 
   useEffect(() => {
-    let running = false
     const check = async () => {
-      if (running || document.visibilityState !== "visible") return
-      running = true
-      try { await refresh() } finally { running = false }
+      if (document.visibilityState !== "visible") return
+      await refresh()
     }
     void check()
     const timer = setInterval(() => { void check() }, POLL_INTERVAL)
@@ -74,7 +82,7 @@ export function NotificationBell() {
 
   function handleClose() {
     setIsOpen(false)
-    refresh() // reconcile badge with actual server state
+    void refresh() // reconcile unless a visibility/interval refresh just did so
   }
 
   return (

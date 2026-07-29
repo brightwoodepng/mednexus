@@ -14,19 +14,6 @@ export async function GET(req: NextRequest) {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
     const pool = await getPool(); if (!pool) return NextResponse.json({ notifications: [] })
-    if (req.nextUrl.searchParams.get("view") === "count") {
-      const count = await pool.query(
-        `SELECT COUNT(*) FILTER (WHERE is_read = FALSE)::int AS unread
-         FROM mednexus_user_notifications WHERE user_id = $1`,
-        [auth.uid],
-      )
-      return measuredJson({
-        route: "GET /api/user-notifications?view=count",
-        queryStartedAt,
-        rowCount: 1,
-        payload: { unread: Number(count.rows[0]?.unread ?? 0) },
-      })
-    }
     const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
     const res = await pool.query(
       `SELECT id, type, message, is_read, created_at, COUNT(*) OVER()::int AS total_count
