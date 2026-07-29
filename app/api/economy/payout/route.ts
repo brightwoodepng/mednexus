@@ -5,6 +5,7 @@ import {
   calculatePayout,
   getTodaysBounties,
   computeBountyProgress,
+  mergeBountyProgress,
   TODAY_DATE,
   type GameResult,
 } from "@/lib/economy"
@@ -352,7 +353,7 @@ export async function POST(req: NextRequest) {
         )
         if (old.rows[0]?.claimed) continue
         const oldProgress = Number(old.rows[0]?.progress ?? 0)
-        const progress = Math.min(oldProgress + delta, bounty.target)
+        const progress = mergeBountyProgress(bounty, oldProgress, delta)
         const newlyComplete = progress === bounty.target && oldProgress < bounty.target
         await client.query(
           `INSERT INTO mednexus_bounty_progress
