@@ -2,10 +2,13 @@ import { NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { STORE_ITEMS } from "@/lib/economy"
+import { countEconomyQueries, economyJson, economyMetrics } from "@/lib/economy-api"
 
 // PATCH /api/economy/inventory — use (consume) one item from inventory
 export async function PATCH(req: Request) {
-  const client = await pool.connect()
+  const metrics = economyMetrics()
+  const connectedClient = await pool.connect()
+  const client = countEconomyQueries(connectedClient, metrics)
   try {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
@@ -97,12 +100,12 @@ export async function PATCH(req: Request) {
       [newQty, uid, usageId],
     )
     await client.query("COMMIT")
-    return NextResponse.json({ ok: true, quantity: newQty, usageStatus: "committed" })
+    return economyJson("economy.inventory-use", { ok: true, quantity: newQty, usageStatus: "committed" }, metrics)
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {})
     console.error("[inventory PATCH]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
   } finally {
-    client.release()
+    connectedClient.release()
   }
 }

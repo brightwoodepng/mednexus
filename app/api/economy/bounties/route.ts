@@ -4,6 +4,7 @@ import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { getTodaysBounties, TODAY_DATE } from "@/lib/economy"
 import { applyNPCredits } from "@/lib/np-ledger"
 import { getActiveSeason } from "@/lib/economy-seasons"
+import { countEconomyQueries, economyJson, economyMetrics } from "@/lib/economy-api"
 
 export async function GET(req: NextRequest) {
   try {
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const metrics = economyMetrics()
   try {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
@@ -50,7 +52,8 @@ export async function POST(req: NextRequest) {
     const bounty = bounties.find(b => b.id === bountyId)
     if (!bounty) return NextResponse.json({ error: "Bounty not active today" }, { status: 400 })
 
-    const client = await pool.connect()
+    const connectedClient = await pool.connect()
+    const client = countEconomyQueries(connectedClient, metrics)
     try {
       await client.query("BEGIN")
       const season = await getActiveSeason(client, true)
@@ -82,7 +85,11 @@ export async function POST(req: NextRequest) {
         metadata: { bountyId: bounty.id },
       }])
       await client.query("COMMIT")
-      return NextResponse.json({
+      const progressRows = await countEconomyQueries(pool, metrics).query(
+        `SELECT bounty_id,progress,claimed FROM mednexus_bounty_progress
+         WHERE season_id=$1 AND uid=$2 AND bounty_date=$3`, [season.id, uid, today])
+      const progressMap = Object.fromEntries(progressRows.rows.map(item => [item.bounty_id, item]))
+      return economyJson("economy.bounty-claim", {
         ok: true,
         newBalance: credit.newBalance,
         earned: credit.credited,
@@ -93,12 +100,14 @@ export async function POST(req: NextRequest) {
         ],
         suppressed: credit.suppressed,
         dailyCeiling: credit.dailyCeiling,
-      })
+        wallet: { balance: credit.newBalance, lifetimeEarned: credit.lifetimeEarned, rankPoints: credit.rankPoints },
+        bounties: bounties.map(item => ({ ...item, progress: Number(progressMap[item.id]?.progress ?? 0), claimed: progressMap[item.id]?.claimed ?? false })),
+      }, metrics)
     } catch (e) {
       await client.query("ROLLBACK")
       throw e
     } finally {
-      client.release()
+      connectedClient.release()
     }
   } catch (e) {
     console.error("bounties POST", e)
