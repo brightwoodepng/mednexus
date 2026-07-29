@@ -6,19 +6,16 @@ const LS_KEY = "mednexus-custom-questions"
 let _cache: Question[] | null = null
 
 export function getActiveQuestions(): Question[] {
-  if (typeof window === "undefined") return questionsDatabase
+  // The bundled bank is an explicit development/admin fallback, not a safe
+  // client-side loading state. Starting with it here briefly exposes demo
+  // questions whenever the authenticated runtime request is still in flight
+  // (most noticeably after sign-up and refresh).
+  if (typeof window === "undefined") return []
   if (_cache !== null) return _cache
-  try {
-    const raw = localStorage.getItem(LS_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Question[]
-      if (Array.isArray(parsed)) {
-        _cache = parsed
-        return _cache
-      }
-    }
-  } catch {}
-  _cache = [...questionsDatabase]
+  // Do not hydrate from localStorage here. It may contain the demo bank saved
+  // by an older client after a transient 401, or simply be stale. The
+  // authenticated runtime API repopulates the in-memory cache after sign-in.
+  _cache = []
   return _cache
 }
 

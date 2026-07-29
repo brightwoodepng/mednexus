@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 import { adminScreenFromUrl, studyHubFromUrl, withHubContext } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
+import { useQuestions } from "@/contexts/questions-context"
 import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
 import { sortByUrgency } from "@/lib/srs"
 import type { Screen } from "@/lib/view"
@@ -402,6 +403,7 @@ function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
+  const { loadQuestionSet } = useQuestions()
   const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
@@ -435,6 +437,15 @@ export function MedNexusApp() {
   useEffect(() => {
     fetch("/api/platform/config").then((response) => response.json()).then((body) => setPlatformConfig(body.config ?? body ?? null)).catch(() => setPlatformConfig(null))
   }, [])
+
+  // Populate the client cache only after authentication is established. The
+  // dashboard's module helpers read this cache, so loading here prevents both
+  // a demo-bank flash and an empty dashboard that never requests its bank.
+  useEffect(() => {
+    if (!authReady || !user || requiresPasswordUpdate) return
+    if (user.role === "user" && user.status !== "approved") return
+    void loadQuestionSet()
+  }, [authReady, loadQuestionSet, requiresPasswordUpdate, user])
 
   useEffect(() => {
     const restoreFromLocation = () => {
