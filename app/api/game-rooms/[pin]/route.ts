@@ -222,10 +222,11 @@ export async function GET(
     const { pin } = await params
     const searchParams = new URL(req.url).searchParams
     const suppliedId = searchParams.get("playerId")
-    const knownVersion = Number(searchParams.get("version"))
+    const versionParam = searchParams.get("version")
+    const knownVersion = versionParam === null ? null : Number(versionParam)
     if (suppliedId && suppliedId !== auth.uid) return NextResponse.json(roomError("IDENTITY_MISMATCH", "Authenticated identity mismatch", 403), { status: 403 })
 
-    if (Number.isInteger(knownVersion) && knownVersion >= 0) {
+    if (knownVersion !== null && Number.isInteger(knownVersion) && knownVersion >= 0) {
       const current = await pool.query(
         `SELECT version,players,created_at,host_id,mode,phase,phase_started_at
            FROM mednexus_game_rooms WHERE pin=$1`,
