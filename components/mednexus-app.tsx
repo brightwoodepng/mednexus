@@ -616,7 +616,7 @@ export function MedNexusApp() {
   }
 
   return (
-    <TutorialProvider activeHub={activeStudyHub} welcomeOpen={showWelcome} onNavigate={handleScreenNavigation} blocked={Boolean(pendingQuiz || activeQuiz || isExamActive || theoryQuestionOpen || themeOpen || importerOpen || creditsOpen || loadActiveRoomSession())}>
+    <TutorialProvider activeHub={activeStudyHub} currentScreen={safeScreen} welcomeOpen={showWelcome} onNavigate={handleScreenNavigation} blocked={Boolean(pendingQuiz || activeQuiz || isExamActive || theoryQuestionOpen || themeOpen || importerOpen || creditsOpen || loadActiveRoomSession())}>
     <LearnerWorkspaceShell
       screen={safeScreen}
       onNavigate={handleScreenNavigation}
