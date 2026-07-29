@@ -18,6 +18,7 @@ const registeredUsers: RegisteredUser[] = []
 const wallets: Array<{ uid: string; balance: number }> = []
 const notifications: Array<{ title: string; body: string }> = []
 const guestUsers: Array<{ uid: string; name: string; class_level: string; role: string }> = []
+let registrationApprovalMode: "verified_index" | "manual" = "verified_index"
 
 function requireSchema() {
   if (!schemaInitialized) throw new Error("relation does not exist: schema was not initialized")
@@ -26,6 +27,9 @@ function requireSchema() {
 const query = vi.fn(async (sql: string, params: unknown[] = []) => {
   requireSchema()
 
+  if (sql.includes("FROM mednexus_system_settings")) {
+    return { rows: [{ registrationApprovalMode }], rowCount: 1 }
+  }
   if (sql.includes("FROM mednexus_economy_seasons")) return { rows: [{ id: "season-1", name: "Season 1", economy_version: "2.0", starts_at: "2026-01-01", opening_grant: 500 }], rowCount: 1 }
   if (sql.includes("SELECT 1 FROM mednexus_registered_users")) {
     const user = registeredUsers.find(({ uid, status }) => uid === params[0] && status === "approved")
@@ -116,6 +120,55 @@ describe("account entry schema initialization", () => {
     ensureSchema.mockClear()
     query.mockClear()
     process.env.SESSION_SECRET = "auth-schema-integration-secret"
+    registrationApprovalMode = "verified_index"
+  })
+
+  it.each([
+    ["sm/sms/22/0092", "sm/sms/22/0092"],
+    ["SM/SMS/31/8472", "sm/sms/31/8472"],
+    ["sm/gem/22/0093", "sm/gem/22/0093"],
+    ["smsms220092", "sm/sms/22/0092"],
+    ["smgem318472", "sm/gem/31/8472"],
+  ])("auto-approves and normalizes verified institutional index %s", async (input, normalized) => {
+    const { POST } = await import("@/app/api/auth/register/route")
+    const response = await POST(post("/api/auth/register", {
+      name: "Verified Learner", classLevel: "Level 400", indexNumber: input, password: "secure-password",
+    }) as never)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({ status: "approved", indexNumber: normalized })
+    expect(registeredUsers).toHaveLength(1)
+    expect(registeredUsers[0]).toMatchObject({ status: "approved", index_number: normalized })
+  })
+
+  it.each([
+    ["wrong prefix", "mx/sms/22/0092"],
+    ["unsupported program code", "sm/med/22/0092"],
+    ["incorrect year length", "sm/sms/2/0092"],
+    ["incorrect sequence length", "sm/gem/22/009"],
+    ["misplaced alphanumeric characters", "sm/sm2/22/00a2"],
+  ])("leaves an index with %s pending", async (_reason, input) => {
+    const { POST } = await import("@/app/api/auth/register/route")
+    const response = await POST(post("/api/auth/register", {
+      name: "Unverified Learner", classLevel: "Level 400", indexNumber: input, password: "secure-password",
+    }) as never)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({ status: "pending" })
+    expect(registeredUsers).toHaveLength(1)
+    expect(registeredUsers[0].status).toBe("pending")
+  })
+
+  it("keeps a valid institutional index pending when registration approval is manual", async () => {
+    registrationApprovalMode = "manual"
+    const { POST } = await import("@/app/api/auth/register/route")
+    const response = await POST(post("/api/auth/register", {
+      name: "Manually Reviewed Learner", classLevel: "Level 400", indexNumber: "SM/SMS/31/8472", password: "secure-password",
+    }) as never)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({ status: "pending", indexNumber: "sm/sms/31/8472" })
+    expect(registeredUsers[0]).toMatchObject({ status: "pending", index_number: "sm/sms/31/8472" })
   })
 
   it("registers against an uninitialized database and provisions all account records", async () => {
