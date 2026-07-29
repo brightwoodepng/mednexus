@@ -19,6 +19,7 @@ import { requireRegisteredUser, unauthorized, identityMismatch } from "@/lib/req
 import {
   getTodaysBounties,
   computeBountyProgress,
+  mergeBountyProgress,
   TODAY_DATE,
   type GameResult,
 } from "@/lib/economy"
@@ -312,7 +313,7 @@ export async function POST(
         if (current?.claimed) continue
 
         const oldProgress = Number(current?.progress ?? 0)
-        const newProgress = Math.min(oldProgress + delta, bounty.target)
+        const newProgress = mergeBountyProgress(bounty, oldProgress, delta)
 
         const newlyComplete = oldProgress < bounty.target && newProgress >= bounty.target
         await client.query(
