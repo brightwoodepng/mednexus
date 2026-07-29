@@ -39,13 +39,17 @@ interface RawRoom {
   knockout_winner_id: string | null
 }
 
+type CompactRoom = Omit<RawRoom, "question_pool"> & {
+  question_pool?: SlimQuestion[]
+  current_question?: SlimQuestion | null
+}
+
 // ── Self-driven match pacing ────────────────────────────────────────────────
 // This app has no push/realtime infra (no Supabase, no websockets) — clients
-// poll GET every 1.5s. Rather than requiring the host to click through every
-// step, we treat each GET/PATCH as a "tick": if enough time has elapsed since
-// the last phase change (or every active player has already answered), the
-// server advances the match itself. This removes the host as a bottleneck
-// while staying entirely inside the existing Postgres + polling architecture.
+// poll with a bounded cadence. The host is the sole authoritative timer tick;
+// participant GETs are read-only and answer PATCHes handle all-answered
+// transitions immediately. This avoids a locking transaction per poll while
+// staying entirely inside the existing Postgres + polling architecture.
 
 // Per-mode strict question time limits
 const CLASH_TIME_LIMIT_MS  = 45_000  // Multiplayer Clash: 45 seconds
@@ -156,17 +160,19 @@ async function autoTick(pin: string): Promise<void> {
   }
 }
 
-function buildResponse(row: RawRoom, myId?: string) {
-  const isRevealedPhase = row.phase === "reveal" || row.phase === "done"
-  const isWagerPhase = row.phase === "wager"
-
-  const safePool = row.question_pool.map((q) => ({
+function safeQuestion(q: SlimQuestion, phase: RoomPhase) {
+  return {
     ...q,
-    // Hide options during wager phase (show vignette only)
-    options: isWagerPhase ? [] : q.options,
-    // Hide correct answer until reveal
-    correctAnswer: isRevealedPhase ? q.correctAnswer : undefined,
-  }))
+    options: phase === "wager" ? [] : q.options,
+    correctAnswer: phase === "reveal" || phase === "done" ? q.correctAnswer : undefined,
+  }
+}
+
+function buildResponse(row: CompactRoom, myId?: string, includePool = true) {
+  const safePool = includePool ? (row.question_pool ?? []).map(q => safeQuestion(q, row.phase)) : undefined
+  const currentQuestion = !includePool && row.current_question
+    ? safeQuestion(row.current_question, row.phase)
+    : undefined
 
   const sorted = [...row.players].sort((a, b) => b.score - a.score)
   const leaderboard = sorted.slice(0, 5)
@@ -178,7 +184,7 @@ function buildResponse(row: RawRoom, myId?: string) {
     mode: row.mode,
     hostId: row.host_id,
     hostName: row.host_name,
-    questionPool: safePool,
+    ...(includePool ? { questionPool: safePool } : { currentQuestion }),
     currentQi: row.current_qi,
     phase: row.phase,
     players: row.players,
@@ -198,6 +204,13 @@ function buildResponse(row: RawRoom, myId?: string) {
   }
 }
 
+function instrument(response: NextResponse, queryCount: number, kind: "unchanged" | "delta" | "initial") {
+  response.headers.set("Server-Timing", `game_room_db;desc=\"${kind}\";dur=0`)
+  response.headers.set("X-Game-Room-Query-Count", String(queryCount))
+  response.headers.set("X-Game-Room-Payload", kind)
+  return response
+}
+
 // GET /api/game-rooms/[pin] — poll room state
 export async function GET(
   req: Request,
@@ -212,29 +225,45 @@ export async function GET(
     const knownVersion = Number(searchParams.get("version"))
     if (suppliedId && suppliedId !== auth.uid) return NextResponse.json(roomError("IDENTITY_MISMATCH", "Authenticated identity mismatch", 403), { status: 403 })
 
-    // Every poll is a pacing "tick" — self-drives reveal/next-question
-    // transitions without any host click, using elapsed phase_started_at time
-    // or "all active players answered" as the trigger.
-    await autoTick(pin)
-
     if (Number.isInteger(knownVersion) && knownVersion >= 0) {
       const current = await pool.query(
-        "SELECT version,players,created_at FROM mednexus_game_rooms WHERE pin=$1",
+        `SELECT version,players,created_at,host_id,mode,phase,phase_started_at
+           FROM mednexus_game_rooms WHERE pin=$1`,
         [pin],
       )
-      const row = current.rows[0] as Pick<RawRoom, "version" | "players" | "created_at"> | undefined
+      const row = current.rows[0] as RawRoom | undefined
       if (!row) return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
       if (isExpired(row as RawRoom)) {
         await pool.query("DELETE FROM mednexus_game_rooms WHERE pin=$1", [pin])
         return NextResponse.json(roomError("ROOM_EXPIRED", "Room has expired", 410), { status: 410 })
       }
       if (!row.players.some(player => player.id === auth.uid)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      if (Number(row.version ?? 0) === knownVersion) {
-        return NextResponse.json({ unchanged: true, version: knownVersion })
+      // Only the host is an authoritative clock. A normal participant poll is
+      // always one cheap metadata query; the locking transaction is attempted
+      // only after the host observes that a timed transition is actually due.
+      const hostTick = searchParams.get("tick") === "1" && auth.uid === row.host_id
+      const elapsed = Date.now() - new Date(row.phase_started_at).getTime()
+      const transitionDue = hostTick && row.mode !== "wager" && row.mode !== "djmulti" && (
+        (row.phase === "question" && elapsed >= getTimeLimitMs(row.mode)) ||
+        (row.phase === "reveal" && elapsed >= REVEAL_DURATION_MS)
+      )
+      if (transitionDue) await autoTick(pin)
+      else if (Number(row.version ?? 0) === knownVersion) {
+        return instrument(NextResponse.json({ unchanged: true, version: knownVersion }), 1, "unchanged")
       }
+
+      const delta = await pool.query(
+        `SELECT pin,mode,host_id,host_name,current_qi,phase,players,version,created_at,
+                phase_started_at,knockout_winner_id,
+                question_pool -> current_qi AS current_question
+           FROM mednexus_game_rooms WHERE pin=$1`,
+        [pin],
+      )
+      if (!delta.rows[0]) return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
+      return instrument(NextResponse.json(buildResponse(delta.rows[0] as CompactRoom, auth.uid, false)), transitionDue ? 6 : 2, "delta")
     }
 
-    const res = await pool.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at FROM mednexus_game_rooms WHERE pin = $1", [pin])
+    const res = await pool.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at,phase_started_at,knockout_winner_id FROM mednexus_game_rooms WHERE pin = $1", [pin])
     if (res.rows.length === 0) return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
     if (isExpired(res.rows[0] as RawRoom)) {
       await pool.query("DELETE FROM mednexus_game_rooms WHERE pin = $1", [pin])
@@ -242,7 +271,7 @@ export async function GET(
     }
     if (!(res.rows[0] as RawRoom).players.some((player) => player.id === auth.uid)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    return NextResponse.json(buildResponse(res.rows[0] as RawRoom, auth.uid))
+    return instrument(NextResponse.json(buildResponse(res.rows[0] as RawRoom, auth.uid)), 1, "initial")
   } catch (err) {
     console.error("[game-rooms GET]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
@@ -284,7 +313,7 @@ export async function PATCH(
     body.playerId = auth.uid
     body.requesterId = auth.uid
     await client.query("BEGIN")
-    const res = await client.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE", [pin])
+    const res = await client.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at,phase_started_at,knockout_winner_id FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE", [pin])
     if (res.rows.length === 0) {
       await client.query("ROLLBACK")
       return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
@@ -677,7 +706,7 @@ export async function PATCH(
 
     await client.query("COMMIT")
 
-    const updated = await client.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at FROM mednexus_game_rooms WHERE pin = $1", [pin])
+    const updated = await client.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at,phase_started_at,knockout_winner_id FROM mednexus_game_rooms WHERE pin = $1", [pin])
     return NextResponse.json(buildResponse(updated.rows[0] as RawRoom, auth.uid))
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {})
