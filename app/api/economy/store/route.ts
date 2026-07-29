@@ -4,6 +4,7 @@ import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { isStoreItemPurchasable, SELLABLE_STORE_ITEMS, STORE_ITEMS } from "@/lib/economy"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getActiveSeason } from "@/lib/economy-seasons"
+import { countEconomyQueries, economyJson, economyMetrics } from "@/lib/economy-api"
 
 type PurchaseSelection = { quantity?: unknown; bundleId?: unknown }
 
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const metrics = economyMetrics()
   try {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
@@ -54,7 +56,8 @@ export async function POST(req: NextRequest) {
     if (!purchase) return NextResponse.json({ error: "Invalid purchase quantity or bundle" }, { status: 400 })
     const maxInventory = item.maxInventory ?? (item.maxQuantity === 1 ? 1 : ECONOMY_CONFIG.store.inventoryQuantityLimit)
 
-    const client = await pool.connect()
+    const connectedClient = await pool.connect()
+    const client = countEconomyQueries(connectedClient, metrics)
     try {
       await client.query("BEGIN")
       const season = await getActiveSeason(client, true)
@@ -128,19 +131,19 @@ export async function POST(req: NextRequest) {
         [uid, season.id]
       )
       await client.query("COMMIT")
-      return NextResponse.json({
+      return economyJson("economy.purchase", {
         ok: true,
+        wallet: { balance: Number(newWallet[0].balance), lifetimeEarned: Number(newWallet[0].lifetime_earned), rankPoints: Number(newWallet[0].rank_points) },
+        inventory: { [itemId]: resultingQuantity },
         balance: Number(newWallet[0].balance),
-        lifetimeEarned: Number(newWallet[0].lifetime_earned),
-        rankPoints: Number(newWallet[0].rank_points),
         // Kept for compatibility with clients deployed before the wallet response was expanded.
         newBalance: Number(newWallet[0].balance),
-      })
+      }, metrics)
     } catch (e) {
       await client.query("ROLLBACK")
       throw e
     } finally {
-      client.release()
+      connectedClient.release()
     }
   } catch (e) {
     console.error("store POST", e)
