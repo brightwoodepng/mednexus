@@ -8,6 +8,7 @@ import {
   AlertTriangleIcon, FlagIcon, CalculatorIcon, PaletteIcon,
 } from "@/components/icons"
 import { RichText } from "@/components/rich-text"
+import { useQuestionKeyboardNavigation } from "@/hooks/use-question-keyboard-navigation"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Props {
@@ -298,6 +299,19 @@ export function AssessmentExamRunner({
   const submittedRef = useRef(false)
   // Store startedAt so saveSession doesn't need to re-read localStorage
   const startedAtRef = useRef<number>(0)
+
+  const goToPreviousQuestion = useCallback(() => {
+    setCurrentIdx((index) => Math.max(0, index - 1))
+  }, [])
+  const goToNextQuestion = useCallback(() => {
+    setCurrentIdx((index) => Math.min(questions.length - 1, index + 1))
+  }, [questions.length])
+
+  useQuestionKeyboardNavigation({
+    enabled: !submitted && !submitting && !showNav && !showConfirm && !showCalc && !showThemePicker,
+    onPrevious: goToPreviousQuestion,
+    onNext: goToNextQuestion,
+  })
 
   // ── Load persisted theme ──────────────────────────────────────────────────
   useEffect(() => {

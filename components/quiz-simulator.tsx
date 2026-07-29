@@ -27,6 +27,7 @@ import {
 import { AppearanceModal } from "@/components/appearance-modal"
 import { useEconomy } from "@/contexts/economy-context"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
+import { useQuestionKeyboardNavigation } from "@/hooks/use-question-keyboard-navigation"
 
 function QuestionMediaGallery({ items, className = "" }: { items: QuestionMedia[]; className?: string }) {
   if (!items.length) return null
@@ -128,6 +129,19 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const isFlagged = current ? progress.flaggedQuestionIds.includes(current.id) : false
   const struckSet = current ? struck[current.id] ?? new Set<string>() : new Set<string>()
   const revealed = mode === "trial" && (isSATA ? isLocked : selected !== null)
+
+  const goToPreviousQuestion = useCallback(() => {
+    setIndex((currentIndex) => Math.max(0, currentIndex - 1))
+  }, [])
+  const goToNextQuestion = useCallback(() => {
+    setIndex((currentIndex) => Math.min(questions.length - 1, currentIndex + 1))
+  }, [questions.length])
+
+  useQuestionKeyboardNavigation({
+    enabled: !calcOpen && !labsOpen && !focusNavOpen && !showGrandFinale && !themeOpen,
+    onPrevious: goToPreviousQuestion,
+    onNext: goToNextQuestion,
+  })
 
   // Repeat-cap estimate for NP toast (uses persisted history as proxy)
   const repeatCapMap = useMemo(() => {
