@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { measuredJson } from "@/lib/api-efficiency"
+import { requireAuthenticatedUser } from "@/lib/request-auth"
 
 function sameAnswer(actual: unknown, expected: unknown) {
   if (Array.isArray(actual) && Array.isArray(expected)) {
@@ -17,6 +18,9 @@ function sameAnswer(actual: unknown, expected: unknown) {
 export async function POST(req: NextRequest) {
   const queryStartedAt = performance.now()
   try {
+    if (!await requireAuthenticatedUser(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     const body = await req.json() as { questionId?: unknown; answer?: unknown }
     if (typeof body.questionId !== "string" || !body.questionId.trim()) {
       return NextResponse.json({ error: "questionId is required." }, { status: 400 })

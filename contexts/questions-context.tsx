@@ -22,11 +22,21 @@ import {
 import { saveActiveQuestions } from "@/lib/custom-questions"
 
 const PAGE_SIZE = 50
+export type QuestionSetFilter = { module?: string | null; discipline?: string | null }
+
+function storedAuthHeaders(): HeadersInit {
+  if (typeof window === "undefined") return {}
+  const session = localStorage.getItem("mednexus-user-token")
+  const guest = localStorage.getItem("mednexus-guest-token")
+  return session ? { "x-session-token": session } : guest ? { "x-guest-token": guest } : {}
+}
 
 interface QuestionsContextValue {
   questions: Question[]
   lastUpdated: Date | null
   isLoading: boolean
+  questionCount: number | null
+  loadQuestionSet: (filter?: QuestionSetFilter) => Promise<Question[]>
   addQuestion: (q: Question) => Promise<void>
   updateQuestion: (q: Question) => Promise<void>
   deleteQuestion: (id: string) => Promise<void>
@@ -52,21 +62,22 @@ interface QuestionsContextValue {
 const QuestionsContext = createContext<QuestionsContextValue | undefined>(undefined)
 
 /** Fetch questions from DB. Returns null if none saved yet. */
-async function fetchFromDb(): Promise<{ questions: Question[] | null; updatedAt: string | null }> {
+async function fetchFromDb(filter: QuestionSetFilter = {}): Promise<{ questions: Question[] | null; updatedAt: string | null }> {
   try {
+    const params = new URLSearchParams({ view: "runtime", page: "1", pageSize: String(PAGE_SIZE) })
+    if (filter.module) params.set("module", filter.module)
+    if (filter.discipline) params.set("discipline", filter.discipline)
     const firstResponse = await fetch(
-      `/api/questions?view=runtime&page=1&pageSize=${PAGE_SIZE}`,
-      { cache: "no-store" },
+      `/api/questions?${params}`,
+      { cache: "no-store", headers: storedAuthHeaders() },
     )
     if (!firstResponse.ok) return { questions: null, updatedAt: null }
     const first = await firstResponse.json()
     const questions: Question[] = Array.isArray(first.questions) ? first.questions : []
     const pages = Math.max(1, Number(first.pagination?.pages ?? 1))
     for (let page = 2; page <= pages; page++) {
-      const response = await fetch(
-        `/api/questions?view=runtime&page=${page}&pageSize=${PAGE_SIZE}`,
-        { cache: "no-store" },
-      )
+      params.set("page", String(page))
+      const response = await fetch(`/api/questions?${params}`, { cache: "no-store", headers: storedAuthHeaders() })
       if (!response.ok) return { questions: null, updatedAt: null }
       const data = await response.json()
       if (Array.isArray(data.questions)) questions.push(...data.questions)
@@ -123,6 +134,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const [questions, setQuestions] = useState<Question[]>([])
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [questionCount, setQuestionCount] = useState<number | null>(null)
   const questionsRef = useRef(questions)
   questionsRef.current = questions
   const suppressNextAutoSave = useRef(false)
@@ -138,34 +150,46 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     questionsRef.current = qs
   }
 
-  // Initial load only. The old 30-second poll downloaded the full bank even
-  // when it had not changed. Admin writes still trigger an explicit refresh.
+  // Fetch metadata only at startup. Content is loaded lazily by the workspace
+  // that needs it, preventing every route from transferring the entire bank.
   useEffect(() => {
     let cancelled = false
-    let inFlight: Promise<void> | null = null
-
-    async function load() {
-      const { questions: dbQuestions, updatedAt } = await fetchFromDb()
-      if (cancelled) return
-      if (dbQuestions !== null) {
-        persist(dbQuestions, true)
-        if (updatedAt) setLastUpdated(new Date(updatedAt))
+    async function loadMetadata() {
+      try {
+        const response = await fetch("/api/questions?view=meta")
+        if (!response.ok) throw new Error("metadata unavailable")
+        const metadata = await response.json() as { count?: number; updatedAt?: string | null }
+        if (!cancelled) {
+          setQuestionCount(Number(metadata.count ?? 0))
+          if (metadata.updatedAt) setLastUpdated(new Date(metadata.updatedAt))
+        }
+      } catch {
+        if (!cancelled) setQuestionCount(questionsDatabase.length)
+      } finally {
+        if (!cancelled) setIsLoading(false)
       }
-      setIsLoading(false)
     }
-
-    function refresh() {
-      if (inFlight) return
-      inFlight = load().finally(() => { inFlight = null })
-    }
-
-    refresh()
-    window.addEventListener("mednexus:questions-invalidated", refresh)
+    void loadMetadata()
+    window.addEventListener("mednexus:questions-invalidated", loadMetadata)
 
     return () => {
       cancelled = true
-      window.removeEventListener("mednexus:questions-invalidated", refresh)
+      window.removeEventListener("mednexus:questions-invalidated", loadMetadata)
     }
+  }, [])
+
+  const loadQuestionSet = useCallback(async (filter: QuestionSetFilter = {}) => {
+    setIsLoading(true)
+    const result = await fetchFromDb(filter)
+    const fallback = questionsDatabase.filter(question =>
+      (!filter.module || (question.module?.trim() || question.subject) === filter.module)
+      && (!filter.discipline || question.subject === filter.discipline))
+    const loaded = result.questions ?? fallback
+    persist(loaded, result.questions !== null)
+    if (!filter.module && !filter.discipline) setQuestionCount(loaded.length)
+    if (result.updatedAt) setLastUpdated(new Date(result.updatedAt))
+    setIsLoading(false)
+    return loaded
   }, [])
 
   const saveToDb = useCallback(async (qs: Question[]) => {
@@ -242,6 +266,8 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         questions,
         lastUpdated,
         isLoading,
+        questionCount,
+        loadQuestionSet,
         addQuestion,
         updateQuestion,
         deleteQuestion,
