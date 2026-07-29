@@ -46,14 +46,27 @@ function slugify(str: string): string {
     .slice(0, 80)
 }
 
-/** Fetch all questions from the DB.  Returns [] if the table is empty. */
+let questionSummaryCache: { expiresAt: number; questions: QuestionSummary[] } | null = null
+
+/** Fetch compact taxonomy fields only; never transfer answer or media payloads. */
 async function getQuestions(pool: Pool): Promise<QuestionSummary[]> {
+  if (questionSummaryCache && questionSummaryCache.expiresAt > Date.now()) {
+    return questionSummaryCache.questions
+  }
   try {
     const res = await pool.query(
-      "SELECT data FROM mednexus_questions WHERE id = 1",
+      `SELECT jsonb_build_object(
+         'id', question.value->'id',
+         'module', question.value->'module',
+         'subject', question.value->'subject'
+       ) AS question
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
+       WHERE source.id=1`,
     )
-    const all = res.rows[0]?.data as QuestionSummary[] | undefined
-    if (Array.isArray(all) && all.length > 0) return all
+    const questions = res.rows.map(row => row.question as QuestionSummary)
+    questionSummaryCache = { questions, expiresAt: Date.now() + 5 * 60_000 }
+    return questions
   } catch {
     // fall through
   }

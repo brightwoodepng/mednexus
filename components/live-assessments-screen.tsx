@@ -99,36 +99,16 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
     if (!user) return
     setLoading(true)
     try {
-      const res = await fetch("/api/assessments")
+      const authHeader = getStoredAuthHeader()
+      const res = await fetch("/api/assessments", {
+        headers: authHeader ? { [authHeader.key]: authHeader.value } : {},
+      })
       const data = await res.json()
-      const list: LiveAssessment[] = data.assessments ?? []
-
-      const withMeta: AssessmentWithMeta[] = await Promise.all(
-        list.map(async (asmt) => {
-          try {
-            const authHeader = getStoredAuthHeader()
-            if (!authHeader) return { ...asmt, attemptsUsed: 0 }
-            const attRes = await fetch(`/api/assessments/${asmt.id}/attempt`, { headers: { [authHeader.key]: authHeader.value } })
-            if (!attRes.ok) return { ...asmt, attemptsUsed: 0 }
-            const attData = await attRes.json()
-            const attempts: Array<{ score: number; total: number; submittedAt: string }> = attData.attempts ?? []
-            const lastAttempt = attempts[0]
-            return {
-              ...asmt,
-              attemptsUsed: attData.count ?? 0,
-              lastAttempt: lastAttempt
-                ? {
-                    score: lastAttempt.score,
-                    total: lastAttempt.total,
-                    percentage: lastAttempt.total > 0 ? Math.round((lastAttempt.score / lastAttempt.total) * 100) : 0,
-                    submittedAt: lastAttempt.submittedAt,
-                  }
-                : undefined,
-            }
-          } catch {
-            return { ...asmt, attemptsUsed: 0 }
-          }
-        })
+      const withMeta: AssessmentWithMeta[] = (data.assessments ?? []).map(
+        (assessment: AssessmentWithMeta) => ({
+          ...assessment,
+          attemptsUsed: assessment.attemptsUsed ?? 0,
+        }),
       )
       setAssessments(withMeta)
 

@@ -1,24 +1,43 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
+import { measuredJson } from "@/lib/api-efficiency"
 
 type Mcq = { id: string; module?: string; subject?: string; [key: string]: unknown }
 
 export async function GET(req: NextRequest) {
+  const queryStartedAt = performance.now()
   if (!await requireAdminRequest(req, "manage_mcq_content")) return adminAccessDenied(req)
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
-  const result = await pool.query("SELECT data FROM mednexus_questions WHERE id=1")
-  const questions: Mcq[] = result.rows[0]?.data ?? []
-  const modules = new Map<string, Map<string, number>>()
-  for (const question of questions) {
-    const moduleName = question.module?.trim() || "Unassigned"
-    const discipline = question.subject?.trim() || "Unassigned"
-    const disciplines = modules.get(moduleName) ?? new Map<string, number>()
-    disciplines.set(discipline, (disciplines.get(discipline) ?? 0) + 1)
-    modules.set(moduleName, disciplines)
+  const result = await pool.query<{ module_name: string; discipline: string; question_count: number }>(
+    `SELECT
+       COALESCE(NULLIF(BTRIM(question.value->>'module'), ''), 'Unassigned') AS module_name,
+       COALESCE(NULLIF(BTRIM(question.value->>'subject'), ''), 'Unassigned') AS discipline,
+       COUNT(*)::int AS question_count
+     FROM mednexus_questions source
+     CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
+     WHERE source.id=1
+     GROUP BY 1,2
+     ORDER BY 1,2`,
+  )
+  const grouped = new Map<string, Array<{ name: string; questionCount: number }>>()
+  for (const row of result.rows) {
+    const disciplines = grouped.get(row.module_name) ?? []
+    disciplines.push({ name: row.discipline, questionCount: Number(row.question_count) })
+    grouped.set(row.module_name, disciplines)
   }
-  return NextResponse.json({ modules: [...modules].map(([name, disciplines]) => ({ name, questionCount: [...disciplines.values()].reduce((a, b) => a + b, 0), disciplines: [...disciplines].map(([disciplineName, questionCount]) => ({ name: disciplineName, questionCount })).sort((a, b) => a.name.localeCompare(b.name)) })).sort((a, b) => a.name.localeCompare(b.name)) })
+  const modules = [...grouped].map(([name, disciplines]) => ({
+    name,
+    questionCount: disciplines.reduce((sum, item) => sum + item.questionCount, 0),
+    disciplines,
+  }))
+  return measuredJson({
+    route: "GET /api/admin/taxonomy",
+    queryStartedAt,
+    rowCount: result.rows.length,
+    payload: { modules },
+  }, { headers: { "Cache-Control": "private, max-age=60" } })
 }
 
 export async function PATCH(req: NextRequest) {

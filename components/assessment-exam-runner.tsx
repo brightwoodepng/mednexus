@@ -362,13 +362,11 @@ export function AssessmentExamRunner({
     const timeTaken = Math.floor((Date.now() - startedAtRef.current) / 1000)
 
     let score = 0
-    for (const q of questions) {
-      if (finalAnswers[q.id] === q.correctAnswer) score++
-    }
     let total = questions.length
     let percentage = total ? Math.round((score / total) * 100) : 0
     let passed = percentage >= passMark
     let attemptsUsed = 0
+    let completedQuestions = questions
 
     try {
       // The attempt API derives identity and scoring from the authenticated
@@ -386,6 +384,9 @@ export function AssessmentExamRunner({
       percentage = total ? Math.round((score / total) * 100) : 0
       passed = percentage >= passMark
       attemptsUsed = Number(payload.attemptsUsed ?? 0)
+      if (Array.isArray(payload.reviewQuestions)) {
+        completedQuestions = payload.reviewQuestions
+      }
     } catch (error) {
       submittedRef.current = false
       setSubmitting(false)
@@ -396,7 +397,7 @@ export function AssessmentExamRunner({
     clearSession(sessionKey)
     setSubmitted(true)
     setSubmitting(false)
-    onComplete({ score, total, percentage, passed, answers: finalAnswers, questions, timeTaken, attemptsUsed })
+    onComplete({ score, total, percentage, passed, answers: finalAnswers, questions: completedQuestions, timeTaken, attemptsUsed })
   }, [assessmentId, questions, passMark, onComplete, sessionKey, authHeader])
 
   // ── NO visibilitychange / beforeunload auto-submit ────────────────────────

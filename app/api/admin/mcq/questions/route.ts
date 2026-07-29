@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
 import type { Question } from "@/lib/types"
+import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 
 export const dynamic = "force-dynamic"
 
@@ -36,31 +37,79 @@ function summary(question: Question) {
 
 export async function GET(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_mcq_content")) return adminAccessDenied(req)
+  const queryStartedAt = performance.now()
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
-  const result = await pool.query("SELECT data,updated_at FROM mednexus_questions WHERE id=1")
-  const all: Question[] = result.rows[0]?.data ?? []
-  const search = (req.nextUrl.searchParams.get("search") ?? "").trim().toLowerCase()
+  const search = (req.nextUrl.searchParams.get("search") ?? "").trim().slice(0, 200)
   const moduleName = req.nextUrl.searchParams.get("module") ?? ""
   const subject = req.nextUrl.searchParams.get("subject") ?? ""
   const status = req.nextUrl.searchParams.get("status") ?? ""
   const media = req.nextUrl.searchParams.get("media") ?? ""
-  const page = Math.max(1, Number(req.nextUrl.searchParams.get("page") ?? 1) || 1)
-  const pageSize = Math.min(48, Math.max(6, Number(req.nextUrl.searchParams.get("pageSize") ?? 18) || 18))
-  const filtered = all.filter((question) => {
-    const searchable = [question.id, question.module, question.subject, question.vignette, ...(question.options ?? []).map((option) => option.text), ...(question.tags ?? [])].join(" ").toLowerCase()
-    const hasMedia = Boolean(question.mediaBase64 || question.media?.length || question.options?.some((option) => option.media?.length))
-    return (!search || searchable.includes(search))
-      && (!moduleName || (question.module ?? "") === moduleName)
-      && (!subject || question.subject === subject)
-      && (!status || statusOf(question) === status)
-      && (!media || (media === "with" ? hasMedia : !hasMedia))
+  const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
+  const statusExpression = `COALESCE(NULLIF(question.value->>'status',''),
+    CASE question.value->>'moduleStatus' WHEN 'draft' THEN 'draft'
+      WHEN 'offline' THEN 'offline' ELSE 'live' END)`
+  const hasMediaExpression = `(COALESCE(question.value->>'mediaBase64','') <> ''
+    OR jsonb_array_length(CASE WHEN jsonb_typeof(question.value->'media')='array'
+      THEN question.value->'media' ELSE '[]'::jsonb END) > 0
+    OR EXISTS (
+      SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(question.value->'options')='array'
+        THEN question.value->'options' ELSE '[]'::jsonb END) option
+      WHERE jsonb_array_length(CASE WHEN jsonb_typeof(option->'media')='array'
+        THEN option->'media' ELSE '[]'::jsonb END) > 0
+    ))`
+  const [result, taxonomy, statusCounts] = await Promise.all([
+    pool.query(
+      `SELECT question.value AS question, source.updated_at,
+              COUNT(*) OVER()::int AS total_count
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) question(value)
+       WHERE source.id=1
+         AND ($1='' OR COALESCE(question.value->>'module','')=$1)
+         AND ($2='' OR COALESCE(question.value->>'subject','')=$2)
+         AND ($3='' OR ${statusExpression}=$3)
+         AND ($4='' OR ($4='with')=${hasMediaExpression})
+         AND ($5='' OR question.value->>'id' ILIKE '%'||$5||'%'
+           OR question.value->>'module' ILIKE '%'||$5||'%'
+           OR question.value->>'subject' ILIKE '%'||$5||'%'
+           OR question.value->>'vignette' ILIKE '%'||$5||'%'
+           OR question.value->'options'::text ILIKE '%'||$5||'%'
+           OR question.value->'tags'::text ILIKE '%'||$5||'%')
+       ORDER BY question.value->>'id'
+       LIMIT $6 OFFSET $7`,
+      [moduleName, subject, status, media, search, pageSize, offset],
+    ),
+    pool.query(
+      `SELECT DISTINCT question.value->>'module' AS module, question.value->>'subject' AS subject
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) question(value)
+       WHERE source.id=1`,
+    ),
+    pool.query(
+      `SELECT ${statusExpression} AS status, COUNT(*)::int AS count
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) question(value)
+       WHERE source.id=1 GROUP BY 1`,
+    ),
+  ])
+  const questions = result.rows.map(row => summary(row.question as Question))
+  const modules = [...new Set(taxonomy.rows.map(row => row.module).filter(Boolean))].sort()
+  const subjects = [...new Set(taxonomy.rows.map(row => row.subject).filter(Boolean))].sort()
+  const counts = Object.fromEntries(statusCounts.rows.map(row => [row.status, Number(row.count)]))
+  const total = Number(result.rows[0]?.total_count ?? 0)
+  const payload = {
+    questions,
+    pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) },
+    filters: { modules, subjects },
+    counts,
+    updatedAt: result.rows[0]?.updated_at ?? null,
+  }
+  return measuredJson({
+    route: "GET /api/admin/mcq/questions",
+    queryStartedAt,
+    rowCount: questions.length,
+    payload,
   })
-  const start = (page - 1) * pageSize
-  const modules = [...new Set(all.map((question) => question.module).filter(Boolean))].sort()
-  const subjects = [...new Set(all.map((question) => question.subject).filter(Boolean))].sort()
-  const counts = all.reduce<Record<string, number>>((acc, question) => { const key = statusOf(question); acc[key] = (acc[key] ?? 0) + 1; return acc }, {})
-  return NextResponse.json({ questions: filtered.slice(start, start + pageSize).map(summary), pagination: { page, pageSize, total: filtered.length, pages: Math.max(1, Math.ceil(filtered.length / pageSize)) }, filters: { modules, subjects }, counts, updatedAt: result.rows[0]?.updated_at ?? null })
 }
 
 export async function POST(req: NextRequest) {
@@ -73,10 +122,19 @@ export async function POST(req: NextRequest) {
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const current = await client.query("SELECT data FROM mednexus_questions WHERE id=1 FOR UPDATE")
-    const bank: Question[] = current.rows[0]?.data ?? []
-    if (bank.some((item) => item.id === question.id)) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Question ID already exists." }, { status: 409 }) }
-    await client.query("UPDATE mednexus_questions SET data=$1::jsonb,updated_at=NOW() WHERE id=1", [JSON.stringify([...bank, question])])
+    const exists = await client.query(
+      `SELECT 1 FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) item(value)
+       WHERE source.id=1 AND item.value->>'id'=$1 LIMIT 1`,
+      [question.id],
+    )
+    if (exists.rows.length) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Question ID already exists." }, { status: 409 }) }
+    await client.query(
+      `UPDATE mednexus_questions
+       SET data=COALESCE(data,'[]'::jsonb)||jsonb_build_array($1::jsonb),updated_at=NOW()
+       WHERE id=1`,
+      [JSON.stringify(question)],
+    )
     await auditAdmin(client, admin.uid, "create", "mcq_question", question.id, { status: "draft" })
     await client.query("COMMIT")
     return NextResponse.json({ question: summary(question) }, { status: 201 })

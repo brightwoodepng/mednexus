@@ -2,10 +2,24 @@ import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { authenticateRequest, authError } from "@/lib/request-auth"
 import { getActiveSeason, type EconomySeason } from "@/lib/economy-seasons"
+import { measuredJson } from "@/lib/api-efficiency"
 
 type RankingTab = "weekly" | "monthly" | "alltime"
 
 type LeaderboardDiagnostic = "ECONOMY_SEASON_MISSING" | "ECONOMY_SCHEMA_NOT_READY" | "LEADERBOARD_DATA_INVALID"
+
+const publicCache = new Map<string, { expiresAt: number; entries: unknown[] }>()
+
+async function cachedPublicEntries<T>(
+  key: string,
+  load: () => Promise<T[]>,
+): Promise<T[]> {
+  const cached = publicCache.get(key)
+  if (cached && cached.expiresAt > Date.now()) return cached.entries as T[]
+  const entries = await load()
+  publicCache.set(key, { entries, expiresAt: Date.now() + 60_000 })
+  return entries
+}
 
 function databaseErrorCode(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error
@@ -80,8 +94,9 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
     )
   `
 
-  const publicResult = await pool.query(`${commonCtes},
-    ranked AS (
+  const entries = await cachedPublicEntries(`${season.id}:${tab}`, async () => {
+    const publicResult = await pool.query(`${commonCtes},
+      ranked AS (
       SELECT r.uid, r.name, r.level, r.class_level,
              COALESCE(np.period_np, 0) AS period_np,
              COALESCE(da.period_questions, 0) AS period_questions,
@@ -101,10 +116,13 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
       WHERE r.is_private = FALSE
         AND r.status = 'approved'
         AND COALESCE(np.period_np, 0) > 0
-    )
-    SELECT * FROM ranked WHERE public_rank <= 50 ORDER BY public_rank`, [cutoff, season.id])
-
-  const entries = publicResult.rows.map(timedEntry)
+      )
+      SELECT uid,name,level,class_level,period_np,period_questions,period_correct,
+             equipped_title,equipped_frame,equipped_highlight,equipped_avatar,public_rank
+      FROM ranked WHERE public_rank <= 50 ORDER BY public_rank
+      LIMIT 50`, [cutoff, season.id])
+    return publicResult.rows.map(timedEntry)
+  })
   let viewerEntry = viewerUid ? entries.find((entry) => entry.uid === viewerUid) ?? null : null
 
   if (viewerUid && !viewerEntry) {
@@ -155,18 +173,19 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
 async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeason) {
   const accuracySql = `
     CASE
-      WHEN p.data IS NULL OR COALESCE(jsonb_typeof(p.data->'history'), 'null') <> 'array'
-        OR jsonb_array_length(p.data->'history') = 0 THEN 0
-      ELSE ROUND(100.0 *
-        (SELECT COUNT(*) FROM jsonb_array_elements(p.data->'history') h
-         WHERE jsonb_typeof(h) = 'object'
-           AND jsonb_typeof(h->'isCorrect') = 'boolean'
-           AND h->'isCorrect' = 'true'::jsonb)
-        / NULLIF(jsonb_array_length(p.data->'history'), 0))
+      WHEN COALESCE(activity.questions, 0) = 0 THEN 0
+      ELSE ROUND(100.0 * activity.correct / NULLIF(activity.questions, 0))
     END
   `
-  const publicResult = await pool.query(`
-    WITH ranked AS (
+  const activityCte = `WITH activity AS (
+    SELECT user_id, SUM(questions_answered)::bigint AS questions,
+           SUM(correct_answers)::bigint AS correct
+    FROM mednexus_daily_activity
+    GROUP BY user_id
+  )`
+  const entries = await cachedPublicEntries(`${season.id}:alltime`, async () => {
+    const publicResult = await pool.query(`
+      ${activityCte}, ranked AS (
       SELECT r.uid, r.name, r.level, r.class_level,
              COALESCE(w.lifetime_earned, 0) AS total_np,
              COALESCE(w.rank_points, 0) AS rank_points,
@@ -178,16 +197,21 @@ async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeaso
       FROM mednexus_registered_users r
       LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
-      LEFT JOIN mednexus_progress p ON p.uid = r.uid
+      LEFT JOIN activity ON activity.user_id = r.uid
       WHERE r.is_private = FALSE AND r.status = 'approved'
     )
-    SELECT * FROM ranked WHERE public_rank <= 50 ORDER BY public_rank
-  `, [season.id])
-  const entries = publicResult.rows.map(allTimeEntry)
+      SELECT uid,name,level,class_level,total_np,rank_points,accuracy,
+             equipped_title,equipped_frame,equipped_highlight,equipped_avatar,public_rank
+      FROM ranked WHERE public_rank <= 50 ORDER BY public_rank
+      LIMIT 50
+    `, [season.id])
+    return publicResult.rows.map(allTimeEntry)
+  })
   let viewerEntry = viewerUid ? entries.find((entry) => entry.uid === viewerUid) ?? null : null
 
   if (viewerUid && !viewerEntry) {
     const viewerResult = await pool.query(`
+      ${activityCte}
       SELECT r.uid, r.name, r.level, r.class_level,
              COALESCE(w.lifetime_earned, 0) AS total_np,
              COALESCE(w.rank_points, 0) AS rank_points,
@@ -196,18 +220,19 @@ async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeaso
       FROM mednexus_registered_users r
       LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
-      LEFT JOIN mednexus_progress p ON p.uid = r.uid
+      LEFT JOIN activity ON activity.user_id = r.uid
       WHERE r.uid = $2
     `, [season.id, viewerUid])
     const viewer = viewerResult.rows[0]
     if (viewer) {
       const rankResult = await pool.query(`
+        ${activityCte}
         SELECT 1 + COUNT(*)::int AS exact_rank
         FROM (
           SELECT r.uid, COALESCE(w.lifetime_earned, 0) AS total_np, ${accuracySql} AS accuracy
           FROM mednexus_registered_users r
           LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
-          LEFT JOIN mednexus_progress p ON p.uid = r.uid
+          LEFT JOIN activity ON activity.user_id = r.uid
           WHERE r.is_private = FALSE AND r.status = 'approved'
         ) public
         WHERE public.total_np > $2
@@ -223,6 +248,7 @@ async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeaso
 }
 
 export async function GET(req: NextRequest) {
+  const queryStartedAt = performance.now()
   let tab: RankingTab = "alltime"
   let viewerUid: string | null = null
   let seasonId: string | null = null
@@ -251,7 +277,15 @@ export async function GET(req: NextRequest) {
         })
       }
     }
-    return NextResponse.json({ ...data, season })
+    const payload = { ...data, season }
+    const response = measuredJson({
+      route: "GET /api/leaderboard",
+      queryStartedAt,
+      rowCount: data.entries.length,
+      payload,
+    })
+    response.headers.set("Cache-Control", "private, max-age=60, stale-while-revalidate=120")
+    return response
   } catch (error) {
     const code = diagnosticFor(error)
     console.error("[leaderboard GET]", {

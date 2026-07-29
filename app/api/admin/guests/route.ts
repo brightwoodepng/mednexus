@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
+import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 
 async function getPool() {
   const { default: pool } = await import("@/lib/db")
@@ -12,8 +13,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const queryStartedAt = performance.now()
     const { searchParams } = req.nextUrl
-    const search = searchParams.get("search") ?? ""
+    const search = (searchParams.get("search") ?? "").slice(0, 200)
     const sort = searchParams.get("sort") ?? "created_at"
     const order = searchParams.get("order") === "asc" ? "ASC" : "DESC"
 
@@ -23,6 +25,7 @@ export async function GET(req: NextRequest) {
       : "g.created_at"
 
     const pool = await getPool()
+    const { page, pageSize, offset } = boundedPagination(searchParams)
 
     let query = `
       SELECT
@@ -32,7 +35,8 @@ export async function GET(req: NextRequest) {
         g.role,
         g.created_at,
         g.expires_at,
-        COALESCE(p.updated_at, g.created_at) AS last_active
+        COALESCE(p.updated_at, g.created_at) AS last_active,
+        COUNT(*) OVER()::int AS total_count
       FROM mednexus_guest_users g
       LEFT JOIN mednexus_progress p ON p.uid = g.uid
       WHERE g.expires_at > NOW()
@@ -44,16 +48,18 @@ export async function GET(req: NextRequest) {
       query += ` AND g.name ILIKE $${params.length}`
     }
 
-    query += ` ORDER BY ${sortCol} ${order}`
+    params.push(pageSize, offset)
+    query += ` ORDER BY ${sortCol} ${order} LIMIT $${params.length - 1} OFFSET $${params.length}`
 
     const result = await pool.query(query, params)
-
-    const countRes = await pool.query(
-      `SELECT COUNT(*) FROM mednexus_guest_users WHERE expires_at > NOW()`
-    )
-    const total = parseInt(countRes.rows[0].count, 10)
-
-    return NextResponse.json({ guests: result.rows, total })
+    const total = Number(result.rows[0]?.total_count ?? 0)
+    const guests = result.rows.map(({ total_count: _totalCount, ...guest }) => guest)
+    return measuredJson({
+      route: "GET /api/admin/guests",
+      queryStartedAt,
+      rowCount: guests.length,
+      payload: { guests, total, page, pageSize },
+    })
   } catch (err) {
     console.error("[admin/guests GET]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })

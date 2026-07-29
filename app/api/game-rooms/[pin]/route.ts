@@ -32,6 +32,7 @@ interface SlimQuestion {
 interface RawRoom {
   pin: string; mode: "clash" | "cohort" | "wager" | "djmulti"; host_id: string; host_name: string
   question_pool: SlimQuestion[]; current_qi: number; phase: RoomPhase
+  question_count?: number
   players: RoomPlayer[]; version: number; created_at: Date
   scored_uids: string[]; phase_started_at: Date
   answer_history: Record<string, Array<{ qi: number; answer: string }>>
@@ -104,7 +105,12 @@ async function autoTick(pin: string): Promise<void> {
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const res = await client.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE", [pin])
+    const res = await client.query(
+      `SELECT pin,mode,current_qi,phase,players,version,phase_started_at,
+        jsonb_array_length(question_pool)::int AS question_count
+       FROM mednexus_game_rooms WHERE pin=$1 FOR UPDATE`,
+      [pin],
+    )
     if (res.rows.length === 0) { await client.query("ROLLBACK"); return }
 
     const row = res.rows[0] as RawRoom
@@ -126,7 +132,7 @@ async function autoTick(pin: string): Promise<void> {
     } else if (row.phase === "reveal") {
       if (elapsedMs >= REVEAL_DURATION_MS) {
         const nextQi = row.current_qi + 1
-        if (nextQi >= row.question_pool.length) {
+        if (nextQi >= Number(row.question_count ?? 0)) {
           await client.query(
             "UPDATE mednexus_game_rooms SET phase = 'done', phase_started_at = NOW(), version = COALESCE(version, 0) + 1 WHERE pin = $1 AND phase = 'reveal'",
             [pin]
@@ -201,7 +207,9 @@ export async function GET(
     const auth = await requireAuthenticatedUser(req)
     if (!auth) return NextResponse.json(roomError("AUTHENTICATION_REQUIRED", "Authentication required", 401), { status: 401 })
     const { pin } = await params
-    const suppliedId = new URL(req.url).searchParams.get("playerId")
+    const searchParams = new URL(req.url).searchParams
+    const suppliedId = searchParams.get("playerId")
+    const knownVersion = Number(searchParams.get("version"))
     if (suppliedId && suppliedId !== auth.uid) return NextResponse.json(roomError("IDENTITY_MISMATCH", "Authenticated identity mismatch", 403), { status: 403 })
 
     // Every poll is a pacing "tick" — self-drives reveal/next-question
@@ -209,7 +217,24 @@ export async function GET(
     // or "all active players answered" as the trigger.
     await autoTick(pin)
 
-    const res = await pool.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1", [pin])
+    if (Number.isInteger(knownVersion) && knownVersion >= 0) {
+      const current = await pool.query(
+        "SELECT version,players,created_at FROM mednexus_game_rooms WHERE pin=$1",
+        [pin],
+      )
+      const row = current.rows[0] as Pick<RawRoom, "version" | "players" | "created_at"> | undefined
+      if (!row) return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
+      if (isExpired(row as RawRoom)) {
+        await pool.query("DELETE FROM mednexus_game_rooms WHERE pin=$1", [pin])
+        return NextResponse.json(roomError("ROOM_EXPIRED", "Room has expired", 410), { status: 410 })
+      }
+      if (!row.players.some(player => player.id === auth.uid)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      if (Number(row.version ?? 0) === knownVersion) {
+        return NextResponse.json({ unchanged: true, version: knownVersion })
+      }
+    }
+
+    const res = await pool.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at FROM mednexus_game_rooms WHERE pin = $1", [pin])
     if (res.rows.length === 0) return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
     if (isExpired(res.rows[0] as RawRoom)) {
       await pool.query("DELETE FROM mednexus_game_rooms WHERE pin = $1", [pin])
@@ -259,7 +284,7 @@ export async function PATCH(
     body.playerId = auth.uid
     body.requesterId = auth.uid
     await client.query("BEGIN")
-    const res = await client.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE", [pin])
+    const res = await client.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at FROM mednexus_game_rooms WHERE pin = $1 FOR UPDATE", [pin])
     if (res.rows.length === 0) {
       await client.query("ROLLBACK")
       return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
@@ -652,7 +677,7 @@ export async function PATCH(
 
     await client.query("COMMIT")
 
-    const updated = await client.query("SELECT * FROM mednexus_game_rooms WHERE pin = $1", [pin])
+    const updated = await client.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at FROM mednexus_game_rooms WHERE pin = $1", [pin])
     return NextResponse.json(buildResponse(updated.rows[0] as RawRoom, auth.uid))
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {})

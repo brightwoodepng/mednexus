@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
-import { getQuestionBankStatus } from "@/lib/question-bank-server"
+import { getQuestionBankDiagnostics, getQuestionBankStatus } from "@/lib/question-bank-server"
+import { measuredJson } from "@/lib/api-efficiency"
 import { questionsDatabase } from "@/lib/questions-database"
 import type { Pool } from "pg"
 
@@ -17,10 +18,16 @@ async function audit(pool: Pool, adminId: string, action: string, source: string
 }
 
 export async function GET(req: NextRequest) {
+  const queryStartedAt = performance.now()
   const admin = await requireAdminRequest(req, "manage_system")
   if (!admin || admin.role !== "SUPER_ADMIN") return await adminAccessDenied(req)
-  const status = await getQuestionBankStatus()
-  return NextResponse.json({ ...status, confirmation })
+  const status = await getQuestionBankDiagnostics()
+  return measuredJson({
+    route: "GET /api/admin/question-bank",
+    queryStartedAt,
+    rowCount: 1,
+    payload: { ...status, confirmation },
+  })
 }
 
 export async function POST(req: NextRequest) {
@@ -30,9 +37,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as { action?: Action; confirmation?: string; questions?: unknown[] }
     const action = body.action
     if (!action || !["export", "replace", "clear-postgres", "restore-demo", "clear-firestore", "refresh"].includes(action)) return NextResponse.json({ error: "Unknown action" }, { status: 400 })
+    if (action === "refresh") return NextResponse.json({ success: true, message: "Question caches marked stale. Clients will refetch on their next request." }, { headers: { "Cache-Control": "no-store" } })
     const status = await getQuestionBankStatus()
     if (action === "export") return NextResponse.json({ questions: status.questions, source: status.source, updatedAt: status.updatedAt, count: status.questions.length })
-    if (action === "refresh") return NextResponse.json({ success: true, message: "Question caches marked stale. Clients will refetch on their next request." }, { headers: { "Cache-Control": "no-store" } })
     if (body.confirmation !== confirmation) return NextResponse.json({ error: `Type ${confirmation} to confirm.` }, { status: 400 })
     if (action === "replace" && !Array.isArray(body.questions)) return NextResponse.json({ error: "Reviewed import questions are required." }, { status: 400 })
 

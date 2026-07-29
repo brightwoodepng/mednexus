@@ -6,7 +6,8 @@ export async function GET(req: NextRequest) {
   const user = await requireRegisteredUser(req)
   if (!user) return unauthorized()
   if (!await requireAdminPermission(req, "manage_system")) return forbidden()
-  const seasons = await pool.query(`SELECT s.*,
+  const seasons = await pool.query(`SELECT s.id,s.name,s.economy_version,s.status,
+    s.starts_at,s.ends_at,s.created_at,s.activated_at,s.opening_grant,
     COUNT(w.user_id)::int member_count, COALESCE(SUM(w.lifetime_earned),0)::bigint currency_created,
     c.executed_at cutover_completed_at
     FROM mednexus_economy_seasons s LEFT JOIN mednexus_season_wallets w ON w.season_id=s.id
