@@ -59,6 +59,8 @@ interface RoomState {
   knockoutWinnerId?: string | null
 }
 
+type RoomDelta = Omit<RoomState, "questionPool"> & { currentQuestion?: SlimQuestion }
+
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -101,9 +103,12 @@ async function apiCreateRoom(mode: MultiMode, hostName: string, questionIds: str
   return multiplayerApi("/api/game-rooms", { method: "POST", body: JSON.stringify({ mode, hostName, questionIds }) })
 }
 
-async function apiPollRoom(pin: string, version: number): Promise<RoomState | null> {
-  const payload = await multiplayerApi<RoomState | { unchanged: true }>(
-    `/api/game-rooms/${pin}${version >= 0 ? `?version=${version}` : ""}`,
+async function apiPollRoom(pin: string, version: number, authoritativeTick: boolean): Promise<RoomState | RoomDelta | null> {
+  const query = new URLSearchParams()
+  if (version >= 0) query.set("version", String(version))
+  if (authoritativeTick) query.set("tick", "1")
+  const payload = await multiplayerApi<RoomState | RoomDelta | { unchanged: true }>(
+    `/api/game-rooms/${pin}${query.size ? `?${query}` : ""}`,
   )
   return "unchanged" in payload ? null : payload
 }
@@ -1625,12 +1630,9 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   const [answerHistory, setAnswerHistory] = useState<MultiAnswerEntry[]>([])
   const [timeLeftMs, setTimeLeftMs] = useState<number | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
-  // Fast-poll interval fired after a player submits their answer while others
-  // still haven't answered. Ticks at 300 ms so the reveal (which the server
-  // writes atomically the instant the last answer arrives) is visible within
-  // ~300 ms for every player — not up to 1.5 s later. Cleared as soon as the
-  // room leaves the question phase, or when the component unmounts.
-  const fastPollRef = useRef<NodeJS.Timeout | null>(null)
+  const pollInFlightRef = useRef(false)
+  const retryDelayRef = useRef(1500)
+  const authoritativeHostRef = useRef(isHost)
   const lastVersionRef = useRef<number>(-1)
   // Absolute timestamp when the current question rendered — used to compute
   // reactionTimeMs for the server-side speed bonus. Never trusted for
@@ -1638,31 +1640,44 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   const questionStartRef = useRef<number>(Date.now())
   const questionKeyRef = useRef<string>("")
 
+  const mergeRoom = useCallback((state: RoomState | RoomDelta) => {
+    setRoom(previous => {
+      if ("questionPool" in state) return state
+      if (!previous) return null
+      const questionPool = [...previous.questionPool]
+      if (state.currentQuestion) questionPool[state.currentQi] = state.currentQuestion
+      return { ...previous, ...state, questionPool }
+    })
+    authoritativeHostRef.current = state.hostId === myId
+  }, [myId])
+
   const poll = useCallback(async () => {
-    const state = await apiPollRoom(pin, lastVersionRef.current).catch(() => undefined)
+    if (pollInFlightRef.current) return
+    pollInFlightRef.current = true
+    const state = await apiPollRoom(pin, lastVersionRef.current, authoritativeHostRef.current).catch(() => undefined)
+    pollInFlightRef.current = false
     if (state) {
       // Ignore stale poll responses that have an older version than what we have
       if (state.version >= lastVersionRef.current) {
         lastVersionRef.current = state.version
-        setRoom(state)
-        // Stop fast-polling the moment we leave the question phase — the reveal
-        // (or next question) is now visible and we don't need the extra cadence.
-        if (state.phase !== "question" && fastPollRef.current) {
-          clearInterval(fastPollRef.current)
-          fastPollRef.current = null
-        }
+        mergeRoom(state)
+        retryDelayRef.current = 1500
       }
     } else if (state === undefined) {
-      setError("Lost connection to room.")
+      retryDelayRef.current = Math.min(retryDelayRef.current * 2, 12_000)
     }
-  }, [pin, myId])
+  }, [pin, mergeRoom])
 
   useEffect(() => {
-    poll()
-    pollRef.current = setInterval(poll, 1500)
+    let cancelled = false
+    const schedule = async () => {
+      await poll()
+      if (!cancelled) pollRef.current = setTimeout(schedule, retryDelayRef.current)
+    }
+    schedule()
     return () => {
+      cancelled = true
       if (pollRef.current) clearInterval(pollRef.current)
-      if (fastPollRef.current) clearInterval(fastPollRef.current)
     }
   }, [poll])
 
@@ -1765,16 +1780,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
       if (currentQ) {
         setAnswerHistory(prev => [...prev, { question: currentQ, selected: answer }])
       }
-      // ── Smart auto-advance: fast-poll after answering ──────────────────────
-      // If this player was NOT the last to answer (phase is still "question"),
-      // switch to a 300 ms fast-poll so we detect the server-side reveal
-      // (written atomically when the last answer arrives) within ~300 ms
-      // instead of waiting up to 1.5 s for the regular poll tick.
-      // Safe to restart: clears any pre-existing fast-poll before setting a new one.
-      if (updated.phase === "question" && (mode === "clash" || mode === "cohort")) {
-        if (fastPollRef.current) clearInterval(fastPollRef.current)
-        fastPollRef.current = setInterval(poll, 300)
-      }
+      // The normal bounded poll loop observes the last-answer transition. It
+      // deliberately avoids the former unbounded 300 ms fast-poll storm.
     }
   }
 
