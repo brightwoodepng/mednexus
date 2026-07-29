@@ -6,6 +6,7 @@ import type { Question, QuestionOption } from "@/lib/types"
 import type { ImportExtractionSummary } from "@/lib/import-types"
 import { findImportQuestionDuplicates } from "@/lib/game-question-pool"
 import { importAuthHeaders, importError } from "@/lib/import-client"
+import { parseMednexusText } from "@/lib/mednexus-text-parser"
 import {
   createResumableBatches,
   deleteImportSession,
@@ -126,66 +127,19 @@ interface RawQuestion {
   explanation: string
 }
 
-function parseTextFallback(raw: string): RawQuestion[] {
-  const lines = raw.replace(/--- Page Break ---/gi, "\n").split(/\r?\n/).map((l) => l.trim())
-  const results: RawQuestion[] = []
-  let currentModule = ""
-  let currentDiscipline = ""
-  let pending: Partial<RawQuestion> | null = null
-  let pendingOptions: QuestionOption[] = []
-  let collectingExplanation = false
-  let inOptions = false
-
-  const flush = () => {
-    if (pending?.vignette && pendingOptions.length >= 2) {
-      results.push({
-        module: pending.module ?? currentModule,
-        discipline: pending.discipline ?? currentDiscipline,
-        vignette: pending.vignette,
-        options: [...pendingOptions],
-        correctAnswer: pending.correctAnswer ?? pendingOptions[0]?.id ?? "A",
-        explanation: pending.explanation ?? "",
-      })
-    }
-    pending = null; pendingOptions = []; collectingExplanation = false; inOptions = false
-  }
-
-  const optPattern = /^(?:\(([A-Ea-e])\)|([A-Ea-e])[.):\-])[ \t]*(.+)$/
-  const ansPattern = /^(?:correct[\s_]?answer|answer|ans(?:wer)?|key)[\s.:—-]*([A-Ea-e])\b/i
-  const explPattern = /^(?:explanation|rationale|discussion|reason|solution)[.:\s—-]/i
-
-  for (const line of lines) {
-    if (!line) continue
-    const modM = /^MODULE\s*[:.-]\s*(.+)/i.exec(line)
-    if (modM) { flush(); currentModule = modM[1].trim(); continue }
-    const discM = /^(?:DISCIPLINE|SUBJECT|TOPIC)\s*[:.-]\s*(.+)/i.exec(line)
-    if (discM) { flush(); currentDiscipline = discM[1].trim(); continue }
-    const ansM = ansPattern.exec(line)
-    if (ansM && pending) { pending.correctAnswer = ansM[1].toUpperCase(); collectingExplanation = false; continue }
-    const expM = explPattern.exec(line)
-    if (expM && pending) { collectingExplanation = true; pending.explanation = line.replace(explPattern, "").trim(); continue }
-    const optM = optPattern.exec(line)
-    if (optM && (pending || inOptions)) {
-      inOptions = true
-      const id = (optM[1] ?? optM[2]).toUpperCase()
-      const text = optM[3].trim()
-      if (!pendingOptions.find((o) => o.id === id)) pendingOptions.push({ id, text })
-      collectingExplanation = false; continue
-    }
-    if (inOptions && pendingOptions.length > 0 && pending && !collectingExplanation) {
-      if (!/^(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]/.test(line)) {
-        pendingOptions[pendingOptions.length - 1].text += " " + line; continue
-      }
-    }
-    const qM = /^(?:Question\s+|Q\.?\s*)?(\d{1,4})[.):\s]+(.+)/.exec(line)
-    if (qM) { flush(); pending = { module: currentModule, discipline: currentDiscipline, vignette: qM[2].trim(), correctAnswer: "A", explanation: "" }; continue }
-    if (pending) {
-      if (collectingExplanation) pending.explanation = (pending.explanation ?? "") + " " + line
-      else if (!inOptions) pending.vignette = (pending.vignette ?? "") + " " + line
-    }
-  }
-  flush()
-  return results
+function parseTextFallback(
+  raw: string,
+  fallbackModule: string | null = null,
+  fallbackDiscipline: string | null = null,
+): RawQuestion[] {
+  return parseMednexusText(raw, fallbackModule, fallbackDiscipline).map((question) => ({
+    module: question.module,
+    discipline: question.discipline,
+    vignette: question.vignette,
+    options: question.options,
+    correctAnswer: question.correctAnswer ?? "",
+    explanation: question.explanation ?? "",
+  }))
 }
 
 // ── Question builders ─────────────────────────────────────────────────────────
@@ -593,36 +547,67 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     for (const batchIndex of batchIndexes) {
       const batch = working.batches[batchIndex]
       const batchImages = working.images.filter((image) => batch.text.includes(`[${image.id}]`))
+      const expectedQuestions = working.usingQuestionBatches
+        ? countNumberedQuestions(batch.text)
+        : 0
+      const structuredQuestions = parseMednexusText(
+        batch.text,
+        batch.fallbackModule,
+        batch.fallbackDiscipline,
+      )
 
       try {
-        const chunkQuestions = await runWithImportRetry(
-          async () => {
-            const response = await fetch("/api/extract-single-chunk", {
-              method: "POST",
-              headers: importAuthHeaders(true),
-              body: JSON.stringify({
-                textChunk: batch.text,
-                fallbackModule: batch.fallbackModule,
-                fallbackDiscipline: batch.fallbackDiscipline,
-                images: batchImages,
-              }),
-            })
-            if (!response.ok) throw new Error(await importError(response))
-            const data = await response.json() as { questions?: ChunkQuestion[] }
-            if (!data.questions?.length) throw new Error("No questions were returned for this batch.")
-            return data.questions
-          },
-          (attempt) => {
-            batch.status = attempt === 1 ? "processing" : "retrying"
-            batch.attempts = attempt
-            batch.error = null
-            setProgressMessage(
-              `${attempt === 1 ? "Processing" : `Retrying (attempt ${attempt} of 3)`} batch ${batch.index + 1} of ${working.batches.length}` +
-              (working.usingQuestionBatches ? ` (questions ${batch.startQuestion}–${batch.endQuestion})…` : "…")
-            )
-            setImportSession({ ...working, batches: working.batches.map((item) => ({ ...item })) })
-          },
-        )
+        let chunkQuestions: ChunkQuestion[]
+        if (expectedQuestions > 0 && structuredQuestions.length === expectedQuestions) {
+          batch.status = "processing"
+          batch.attempts = 1
+          batch.error = null
+          batch.source = "structured"
+          setProgressMessage(
+            `Reading formatted batch ${batch.index + 1} of ${working.batches.length}` +
+            ` (questions ${batch.startQuestion}–${batch.endQuestion})…`
+          )
+          setImportSession({ ...working, batches: working.batches.map((item) => ({ ...item })) })
+          chunkQuestions = structuredQuestions.map((question) => ({
+            module: question.module,
+            discipline: question.discipline,
+            vignette: question.vignette,
+            options: question.options,
+            correctAnswer: question.correctAnswer,
+            explanation: question.explanation,
+            mediaBase64: null,
+          }))
+        } else {
+          batch.source = "ai"
+          chunkQuestions = await runWithImportRetry(
+            async () => {
+              const response = await fetch("/api/extract-single-chunk", {
+                method: "POST",
+                headers: importAuthHeaders(true),
+                body: JSON.stringify({
+                  textChunk: batch.text,
+                  fallbackModule: batch.fallbackModule,
+                  fallbackDiscipline: batch.fallbackDiscipline,
+                  images: batchImages,
+                }),
+              })
+              if (!response.ok) throw new Error(await importError(response))
+              const data = await response.json() as { questions?: ChunkQuestion[] }
+              if (!data.questions?.length) throw new Error("No questions were returned for this batch.")
+              return data.questions
+            },
+            (attempt) => {
+              batch.status = attempt === 1 ? "processing" : "retrying"
+              batch.attempts = attempt
+              batch.error = null
+              setProgressMessage(
+                `${attempt === 1 ? "Processing" : `Retrying (attempt ${attempt} of 3)`} batch ${batch.index + 1} of ${working.batches.length}` +
+                (working.usingQuestionBatches ? ` (questions ${batch.startQuestion}–${batch.endQuestion})…` : "…")
+              )
+              setImportSession({ ...working, batches: working.batches.map((item) => ({ ...item })) })
+            },
+          )
+        }
 
         const questionImageMap = new Map<number, string>()
         const questionBoundaryGlobal = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
