@@ -12,6 +12,11 @@ import {
 } from "react"
 import { questionsDatabase } from "@/lib/questions-database"
 import type { Question } from "@/lib/types"
+import {
+  saveQuestionChunks,
+  type QuestionSaveProgress,
+  type QuestionSaveResult,
+} from "@/lib/question-save-chunks"
 
 // Invalidate the local cache so modules.ts picks up fresh questions
 import { saveActiveQuestions } from "@/lib/custom-questions"
@@ -31,6 +36,10 @@ interface QuestionsContextValue {
   resetToDefault: () => Promise<void>
   saveToDb: (qs: Question[]) => Promise<boolean>
   appendQuestions: (qs: Question[]) => Promise<boolean>
+  appendQuestionsInChunks: (
+    qs: Question[],
+    onProgress?: (progress: QuestionSaveProgress) => void,
+  ) => Promise<QuestionSaveResult>
   /**
    * Ref flag consumers (e.g. the admin editor's own auto-save effect) can
    * check to know the most recent `questions` state change was already
@@ -74,16 +83,25 @@ async function pushToDb(questions: Question[]): Promise<boolean> {
  * PDF/Word import) fast and avoids multi-minute PUT requests that can time
  * out through the browser/proxy as the bank grows.
  */
-async function appendToDb(questions: Question[]): Promise<boolean> {
+async function appendToDb(questions: Question[]): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch("/api/questions/append", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ questions }),
     })
-    return res.ok
-  } catch {
-    return false
+    if (res.ok) return { ok: true }
+
+    const body = await res.json().catch(() => null) as { error?: string } | null
+    return {
+      ok: false,
+      error: body?.error || `Save request was rejected (HTTP ${res.status}).`,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "The save request could not reach the server.",
+    }
   }
 }
 
@@ -154,12 +172,29 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
    */
   const appendQuestions = useCallback(async (qs: Question[]) => {
     if (qs.length === 0) return true
-    const ok = await appendToDb(qs)
-    if (ok) {
+    const result = await appendToDb(qs)
+    if (result.ok) {
       persist([...questionsRef.current, ...qs], true)
       setLastUpdated(new Date())
     }
-    return ok
+    return result.ok
+  }, [])
+
+  const appendQuestionsInChunks = useCallback(async (
+    qs: Question[],
+    onProgress?: (progress: QuestionSaveProgress) => void,
+  ) => {
+    const result = await saveQuestionChunks(qs, async (chunk) => {
+      const saved = await appendToDb(chunk)
+      if (saved.ok) {
+        const existingIds = new Set(questionsRef.current.map((question) => question.id))
+        const fresh = chunk.filter((question) => !existingIds.has(question.id))
+        if (fresh.length > 0) persist([...questionsRef.current, ...fresh], true)
+        setLastUpdated(new Date())
+      }
+      return saved
+    }, onProgress)
+    return result
   }, [])
 
   // ── Mutation helpers (update local state; the editor persists through cookie-authenticated APIs) ──
@@ -207,6 +242,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         resetToDefault,
         saveToDb,
         appendQuestions,
+        appendQuestionsInChunks,
         suppressNextAutoSave,
       }}
     >
