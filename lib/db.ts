@@ -148,8 +148,12 @@ export async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS mednexus_mcq_media_assets (
       id TEXT PRIMARY KEY,
       question_id TEXT,
+      object_key TEXT NOT NULL,
       mime_type TEXT NOT NULL,
-      data BYTEA NOT NULL,
+      byte_size INTEGER NOT NULL CHECK (byte_size > 0),
+      checksum_sha256 TEXT NOT NULL CHECK (checksum_sha256 ~ '^[0-9a-f]{64}$'),
+      width INTEGER NOT NULL CHECK (width > 0),
+      height INTEGER NOT NULL CHECK (height > 0),
       caption TEXT NOT NULL DEFAULT '',
       alt_text TEXT NOT NULL DEFAULT 'Clinical question image',
       created_by TEXT,
@@ -649,6 +653,19 @@ export async function ensureSchema() {
   // ALTER TABLE … ADD COLUMN IF NOT EXISTS is safe to re-run; it no-ops when
   // the column already exists (e.g. when the CREATE TABLE above already added it).
   await client.query(`
+    -- Keep legacy data nullable until the explicit storage backfill verifies
+    -- every object. That deployment migration is responsible for dropping it.
+    ALTER TABLE mednexus_mcq_media_assets ADD COLUMN IF NOT EXISTS object_key TEXT;
+    ALTER TABLE mednexus_mcq_media_assets ADD COLUMN IF NOT EXISTS byte_size INTEGER;
+    ALTER TABLE mednexus_mcq_media_assets ADD COLUMN IF NOT EXISTS checksum_sha256 TEXT;
+    ALTER TABLE mednexus_mcq_media_assets ADD COLUMN IF NOT EXISTS width INTEGER;
+    ALTER TABLE mednexus_mcq_media_assets ADD COLUMN IF NOT EXISTS height INTEGER;
+    DO $$ BEGIN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='mednexus_mcq_media_assets' AND column_name='data') THEN
+        ALTER TABLE mednexus_mcq_media_assets ALTER COLUMN data DROP NOT NULL;
+      END IF;
+    END $$;
+
     ALTER TABLE mednexus_user_onboarding ADD COLUMN IF NOT EXISTS current_step_id TEXT;
     -- CREATE TABLE IF NOT EXISTS cannot repair constraints from an older
     -- onboarding release. Replace the checks explicitly and idempotently.

@@ -81,6 +81,11 @@ export interface QuestionMedia {
   caption?: string
   alt: string
   sortOrder: number
+  mimeType?: string
+  byteSize?: number
+  checksum?: string
+  width?: number
+  height?: number
 }
 
 /** The structured explanation shown after answering. */
