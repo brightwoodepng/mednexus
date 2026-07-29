@@ -363,6 +363,8 @@ export async function ensureSchema() {
     );
     CREATE INDEX IF NOT EXISTS mednexus_notification_states_user_idx
       ON mednexus_notification_states (user_id, notification_id);
+    CREATE INDEX IF NOT EXISTS mednexus_notification_states_user_read_idx
+      ON mednexus_notification_states (user_id, is_read, notification_id);
     CREATE TABLE IF NOT EXISTS mednexus_assessments (
       id              TEXT    PRIMARY KEY,
       title           TEXT    NOT NULL,
@@ -611,6 +613,8 @@ export async function ensureSchema() {
       is_read    BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    CREATE INDEX IF NOT EXISTS mednexus_user_notifications_user_read_created_idx
+      ON mednexus_user_notifications (user_id, is_read, created_at DESC);
 
     -- ── Daily activity log (leaderboard + weekly stats) ──────────────────────
     -- One row per user per calendar day. Accumulates questions answered and
