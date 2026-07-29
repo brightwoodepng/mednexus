@@ -101,6 +101,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   // Guard: ensure payout is called at most once per session
   const payoutCalledRef  = useRef(false)
   const scoredSessionPromiseRef = useRef<Promise<string | null> | null>(null)
+  const payoutPromiseRef = useRef<Promise<unknown> | null>(null)
   // Local streak tracking (for NP bonus calc; separate from streak engine state)
   const currentStreakRef = useRef(0)
   // Synced copy of streakEngine.bestStreak for use inside callbacks
@@ -316,7 +317,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           }
         }
         const acc = Math.round((correctCount / questions.length) * 100)
-        void scoredSessionPromiseRef.current?.then((sessionId) => submitGameResult({
+        payoutPromiseRef.current = (scoredSessionPromiseRef.current ?? Promise.resolve(null)).then((sessionId) => submitGameResult({
             mode: "trial",
             score: acc,
             correct: correctCount,
@@ -332,7 +333,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             clientRoundFinishedAt: new Date().toISOString(),
             selectedQuestionCount: questions.length,
             answeredQuestionCount: questions.length,
-          })).catch(() => {/* balance refreshes on next load */})
+          })).catch(() => null)
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -476,11 +477,17 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
   // ── Grand Finale retry handler ────────────────────────────────────────────
   // Resets all quiz state so the user can replay the same question pool.
-  function handleRetry() {
+  async function waitForPendingPayout() {
+    await payoutPromiseRef.current
+  }
+
+  async function handleRetry() {
+    await waitForPendingPayout()
     setShowGrandFinale(false)
     finaleTriggeredRef.current  = false
     historyRecordedRef.current  = false
     payoutCalledRef.current     = false
+    payoutPromiseRef.current    = null
     beginScoredSession()
     sessionDataRef.current      = []
     currentStreakRef.current    = 0
@@ -515,8 +522,8 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           timeTakenSeconds={finaleTimeTaken}
           questions={questions}
           answers={answers}
-          onReturnToMenu={onExit}
-          onRetry={handleRetry}
+          onReturnToMenu={() => { void waitForPendingPayout().then(onExit) }}
+          onRetry={() => { void handleRetry() }}
         />
       )}
 
