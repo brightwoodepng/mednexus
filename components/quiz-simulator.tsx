@@ -26,6 +26,7 @@ import {
 } from "@/components/icons"
 import { AppearanceModal } from "@/components/appearance-modal"
 import { useEconomy } from "@/contexts/economy-context"
+import { ECONOMY_CONFIG } from "@/lib/economy-config"
 
 function QuestionMediaGallery({ items, className = "" }: { items: QuestionMedia[]; className?: string }) {
   if (!items.length) return null
@@ -42,7 +43,7 @@ interface QuizSimulatorProps {
   /** Whether the user opted into gamification for this Trial Mode session */
   gamificationEnabled?: boolean
   onExit: () => void
-  onComplete: (result: BlockResult, history: HistoryEntry[], earnedNP?: number) => void
+  onComplete: (result: BlockResult, history: HistoryEntry[], earnedNP?: number, payoutError?: string) => void
 }
 
 const SECONDS_PER_QUESTION = 90
@@ -137,6 +138,18 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     return counts
   }, [progress.history])
 
+  function estimateTrialQuestionNP(repeatCount: number, streak: number) {
+    const multiplier = ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers[repeatCount] ?? 0
+    const streakBonus = [...ECONOMY_CONFIG.questionRewards.trialTutor.streakThresholds]
+      .reverse()
+      .find((threshold) => streak >= threshold.minimum)?.bonus ?? 0
+    return {
+      amount: Math.floor(ECONOMY_CONFIG.questionRewards.trialTutor.correct * multiplier)
+        + Math.floor(streakBonus * multiplier),
+      capped: multiplier <= 0,
+    }
+  }
+
   // Keep bestStreakRef current so the Grand Finale payout sees the final value
   useEffect(() => { bestStreakRef.current = streakEngine.bestStreak }, [streakEngine.bestStreak])
 
@@ -188,11 +201,15 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
     // ── NP payout ──────────────────────────────────────────────────────────
     let earnedNP: number | undefined
+    let payoutError: string | undefined
     if (!payoutCalledRef.current && user?.uid && !user.uid.startsWith("guest-")) {
       payoutCalledRef.current = true
       const sessionId = await scoredSessionPromiseRef.current
+      if (!sessionId) {
+        payoutError = "Nexus Points could not be verified because the scoring session did not start."
+      }
 
-      if (mode === "exam") {
+      if (mode === "exam" && sessionId) {
         // Build session data from final submitted answers for anti-farming check
         const examSessionData = questions.map((q) => ({
           questionId: q.id,
@@ -225,9 +242,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
               primaryDiscipline,
             },
           })
-          earnedNP = data?.earned ?? 0
-        } catch { /* ignore — balance refreshes on next load */ }
-      } else if (mode === "trial" && !gamificationEnabled) {
+          if (data) earnedNP = data.earned
+          else payoutError = "Nexus Points could not be verified. Your quiz result was still saved."
+        } catch {
+          payoutError = "Nexus Points could not be verified. Your quiz result was still saved."
+        }
+      } else if (mode === "trial" && !gamificationEnabled && sessionId) {
         // Focus-mode Trial sessions complete through Submit Block.
         // Await the committed payout before leaving the quiz so wallet state and
         // the results screen both receive the authoritative award.
@@ -249,13 +269,15 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           selectedQuestionCount: questions.length,
           answeredQuestionCount: questions.length,
           })
-          earnedNP = data?.earned ?? 0
-        } catch { /* balance refreshes on next load */ }
+          if (data) earnedNP = data.earned
+          else payoutError = "Nexus Points could not be verified. Your quiz result was still saved."
+        } catch {
+          payoutError = "Nexus Points could not be verified. Your quiz result was still saved."
+        }
       }
     }
 
-    onComplete(result, history, earnedNP)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    onComplete(result, history, earnedNP, payoutError)
   }, [questions, answers, mode, gamificationEnabled, recordHistory, onComplete, submitGameResult, user])
 
   // Exam timer
@@ -382,9 +404,8 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         // NP toast on correct answer
         if (isCorrect) {
           const capCount = repeatCapMap.get(current.id) ?? 0
-          const isCapped = capCount >= 3
-          const bonus    = !isCapped && newStreak > 10 ? 10 : !isCapped && newStreak > 3 ? 5 : 0
-          setNpToast({ id: Date.now(), amount: isCapped ? 0 : 10 + bonus, capped: isCapped })
+          const estimate = estimateTrialQuestionNP(capCount, newStreak)
+          setNpToast({ id: Date.now(), ...estimate })
         }
       }
     }
@@ -414,9 +435,8 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         streakEngine.recordAnswer(correct)
         if (correct) {
           const capCount = repeatCapMap.get(current.id) ?? 0
-          const isCapped = capCount >= 3
-          const bonus    = !isCapped && newStreak > 10 ? 10 : !isCapped && newStreak > 3 ? 5 : 0
-          setNpToast({ id: Date.now(), amount: isCapped ? 0 : 10 + bonus, capped: isCapped })
+          const estimate = estimateTrialQuestionNP(capCount, newStreak)
+          setNpToast({ id: Date.now(), ...estimate })
         }
       }
     }

@@ -3,6 +3,7 @@ import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { getTodaysBounties, TODAY_DATE } from "@/lib/economy"
 import { applyNPCredits } from "@/lib/np-ledger"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,12 +14,13 @@ export async function GET(req: NextRequest) {
 
     const bounties = getTodaysBounties()
     const today = TODAY_DATE()
+    const season = await getActiveSeason(pool)
 
     const { rows } = await pool.query(
       `SELECT bounty_id, progress, claimed
        FROM mednexus_bounty_progress
-       WHERE uid = $1 AND bounty_date = $2`,
-      [uid, today]
+       WHERE season_id = $1 AND uid = $2 AND bounty_date = $3`,
+      [season.id, uid, today]
     )
     const progressMap = Object.fromEntries(rows.map(r => [r.bounty_id, { progress: r.progress, claimed: r.claimed }]))
 
@@ -51,11 +53,12 @@ export async function POST(req: NextRequest) {
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
+      const season = await getActiveSeason(client, true)
 
       const { rows } = await client.query(
         `SELECT progress, claimed FROM mednexus_bounty_progress
-         WHERE uid = $1 AND bounty_id = $2 AND bounty_date = $3 FOR UPDATE`,
-        [uid, bountyId, today]
+         WHERE season_id = $1 AND uid = $2 AND bounty_id = $3 AND bounty_date = $4 FOR UPDATE`,
+        [season.id, uid, bountyId, today]
       )
       const row = rows[0]
       if (!row || row.claimed) {
@@ -69,8 +72,8 @@ export async function POST(req: NextRequest) {
 
       await client.query(
         `UPDATE mednexus_bounty_progress SET claimed = TRUE
-         WHERE uid = $1 AND bounty_id = $2 AND bounty_date = $3`,
-        [uid, bountyId, today]
+         WHERE season_id = $1 AND uid = $2 AND bounty_id = $3 AND bounty_date = $4`,
+        [season.id, uid, bountyId, today]
       )
       const credit = await applyNPCredits(client, uid, [{
         source: "bounty",

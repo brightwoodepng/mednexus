@@ -709,6 +709,15 @@ export async function ensureSchema() {
     UPDATE mednexus_weekly_goal_progress SET season_id = 'legacy' WHERE season_id IS NULL;
     UPDATE mednexus_game_personal_bests SET season_id = 'legacy' WHERE season_id IS NULL;
     UPDATE mednexus_multiplayer_payouts SET season_id = 'legacy' WHERE season_id IS NULL;
+    -- Sessions opened after the active season began belong to that season. A
+    -- previous client omitted season_id and earlier schema runs could then mark
+    -- those rows as legacy, so recover both states before enforcing the invariant.
+    UPDATE mednexus_exam_sessions session
+       SET season_id = active.id
+      FROM mednexus_economy_seasons active
+     WHERE (session.season_id IS NULL OR session.season_id = 'legacy')
+       AND active.status = 'active'
+       AND session.started_at >= active.starts_at;
     UPDATE mednexus_exam_sessions SET season_id = 'legacy' WHERE season_id IS NULL;
     UPDATE mednexus_user_question_progress SET season_id = 'legacy' WHERE season_id IS NULL;
     UPDATE mednexus_discipline_np_log SET season_id = 'legacy' WHERE season_id IS NULL;
@@ -718,6 +727,7 @@ export async function ensureSchema() {
     ALTER TABLE mednexus_weekly_goal_progress ALTER COLUMN season_id SET NOT NULL;
     ALTER TABLE mednexus_game_personal_bests ALTER COLUMN season_id SET NOT NULL;
     ALTER TABLE mednexus_multiplayer_payouts ALTER COLUMN season_id SET NOT NULL;
+    ALTER TABLE mednexus_exam_sessions ALTER COLUMN season_id SET NOT NULL;
     ALTER TABLE mednexus_user_question_progress ALTER COLUMN season_id SET NOT NULL;
     ALTER TABLE mednexus_discipline_np_log ALTER COLUMN season_id SET NOT NULL;
     INSERT INTO mednexus_schema_migrations(version)

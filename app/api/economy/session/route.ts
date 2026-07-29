@@ -5,6 +5,7 @@ import { abandonStaleSessions } from "@/lib/anti-farming"
 import { questionsDatabase } from "@/lib/questions-database"
 import type { Question } from "@/lib/types"
 import { buildGameQuestionPool } from "@/lib/game-question-pool"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 const SCORABLE_MODES = new Set([
   "tutor", "exam", "trial",
@@ -128,12 +129,13 @@ export async function POST(req: NextRequest) {
     }
 
     await abandonStaleSessions(auth.uid)
+    const season = await getActiveSeason(pool)
     const sessionId = `esess-${crypto.randomUUID()}`
     await pool.query(
       `INSERT INTO mednexus_exam_sessions
-        (id, user_id, mode, question_ids, answer_key, status)
-       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, 'active')`,
-      [sessionId, auth.uid, mode, JSON.stringify(questionIds), JSON.stringify(loaded.snapshot)],
+        (id, user_id, season_id, mode, question_ids, answer_key, status)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, 'active')`,
+      [sessionId, auth.uid, season.id, mode, JSON.stringify(questionIds), JSON.stringify(loaded.snapshot)],
     )
     return NextResponse.json({ sessionId, duplicateCounts: loaded.duplicateCounts })
   } catch (error) {
