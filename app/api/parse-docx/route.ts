@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import mammoth from "mammoth"
+import { createHash } from "node:crypto"
 import {
   boundedJson,
   guardImportRequest,
@@ -42,22 +43,32 @@ export async function POST(req: NextRequest) {
     // Collect images as they are encountered during conversion
     const images: { id: string; dataUri: string }[] = []
     let imageCounter = 0
+    const imageIdsByHash = new Map<string, string>()
 
     const result = await mammoth.convertToHtml(
       { buffer },
       {
         convertImage: mammoth.images.imgElement(async (image) => {
           try {
-            imageCounter++
-            const id = `IMAGE_${imageCounter}`
             const base64 = await image.read("base64")
             // Default to image/png if mammoth can't determine the MIME type —
             // an invalid content-type produces a broken data URI.
             const mime = image.contentType && image.contentType !== "undefined"
               ? image.contentType
               : "image/png"
+            const hash = createHash("sha256")
+              .update(mime)
+              .update(":")
+              .update(base64)
+              .digest("hex")
+            const existingId = imageIdsByHash.get(hash)
+            if (existingId) return { src: existingId, alt: existingId }
+
+            imageCounter++
+            const id = `IMAGE_${imageCounter}`
             const dataUri = `data:${mime};base64,${base64}`
             images.push({ id, dataUri })
+            imageIdsByHash.set(hash, id)
             // Embed placeholder in the HTML so we can locate it in the text
             return { src: id, alt: id }
           } catch (imgErr) {
