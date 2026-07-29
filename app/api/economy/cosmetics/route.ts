@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { STORE_ITEMS } from "@/lib/economy"
+import { countEconomyQueries, economyJson, economyMetrics } from "@/lib/economy-api"
 
 // GET /api/economy/cosmetics?uid=xxx
 // Returns the currently equipped title, frame, and highlight for a user.
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
 // - itemId null → unequip that slot
 // - itemId set  → verify ownership, then equip
 export async function PATCH(req: NextRequest) {
+  const metrics = economyMetrics()
   try {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
@@ -55,7 +57,7 @@ export async function PATCH(req: NextRequest) {
       if (!item || item.cosmeticType !== type) {
         return NextResponse.json({ error: "Invalid item for this slot" }, { status: 400 })
       }
-      const { rows } = await pool.query(
+      const { rows } = await countEconomyQueries(pool, metrics).query(
         "SELECT quantity FROM mednexus_user_inventory WHERE uid = $1 AND item_id = $2",
         [uid, itemId]
       )
@@ -70,14 +72,20 @@ export async function PATCH(req: NextRequest) {
       type === "highlight" ? "equipped_highlight"  :
                              "equipped_avatar"
 
-    await pool.query(
+    await countEconomyQueries(pool, metrics).query(
       `INSERT INTO mednexus_user_cosmetics (uid, ${col}, updated_at)
        VALUES ($1, $2, NOW())
        ON CONFLICT (uid) DO UPDATE SET ${col} = $2, updated_at = NOW()`,
       [uid, itemId ?? null]
     )
 
-    return NextResponse.json({ ok: true })
+    const { rows } = await countEconomyQueries(pool, metrics).query(
+      "SELECT equipped_title,equipped_frame,equipped_highlight,equipped_avatar FROM mednexus_user_cosmetics WHERE uid=$1", [uid])
+    const equipped = rows[0] ?? {}
+    return economyJson("economy.cosmetic", { ok: true, equippedCosmetics: {
+      title: equipped.equipped_title ?? null, frame: equipped.equipped_frame ?? null,
+      highlight: equipped.equipped_highlight ?? null, avatar: equipped.equipped_avatar ?? null,
+    } }, metrics)
   } catch (e) {
     console.error("cosmetics PATCH", e)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
