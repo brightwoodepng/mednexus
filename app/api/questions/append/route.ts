@@ -40,21 +40,41 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       )
     }
+    if (questions.some((question) => !question || typeof question.id !== "string" || !question.id.trim())) {
+      return NextResponse.json(
+        { error: "Every question must have a stable ID before it can be saved." },
+        { status: 400 },
+      )
+    }
 
     const pool = await getPgPool()
     if (pool) {
+      // Filter by stable ID inside the same atomic upsert. A retry after a
+      // response timeout therefore cannot append the same question twice,
+      // and the full existing bank never has to travel through the server.
       const result = await pool.query(
-        `INSERT INTO mednexus_questions (id, data, updated_at)
+        `INSERT INTO mednexus_questions AS target (id, data, updated_at)
          VALUES (1, $1::jsonb, NOW())
          ON CONFLICT (id) DO UPDATE
-           SET data = COALESCE(mednexus_questions.data, '[]'::jsonb) || EXCLUDED.data,
+           SET data = COALESCE(target.data, '[]'::jsonb) || COALESCE(
+                 (
+                   SELECT jsonb_agg(incoming_question.value)
+                   FROM jsonb_array_elements(EXCLUDED.data) AS incoming_question(value)
+                   WHERE NOT EXISTS (
+                     SELECT 1
+                     FROM jsonb_array_elements(COALESCE(target.data, '[]'::jsonb)) AS existing_question(value)
+                     WHERE existing_question.value->>'id' = incoming_question.value->>'id'
+                   )
+                 ),
+                 '[]'::jsonb
+               ),
                updated_at = NOW()
          RETURNING jsonb_array_length(data) AS total`,
         [JSON.stringify(questions)],
       )
       return NextResponse.json({
         success: true,
-        appended: questions.length,
+        accepted: questions.length,
         total: result.rows[0]?.total ?? null,
       })
     }
@@ -66,16 +86,28 @@ export async function POST(req: NextRequest) {
     if (db) {
       const { FieldValue } = await import("firebase-admin/firestore")
       const docRef = db.collection("mednexus").doc("questions")
-      const snap = await docRef.get()
-      const existing: unknown[] = snap.exists ? (snap.data()!.data ?? []) : []
-      const merged = [...existing, ...questions]
-      await docRef.set({ data: merged, updatedAt: FieldValue.serverTimestamp() })
-      return NextResponse.json({ success: true, appended: questions.length, total: merged.length })
+      const result = await db.runTransaction(async (transaction) => {
+        const snap = await transaction.get(docRef)
+        const existing: Array<{ id?: string }> = snap.exists ? (snap.data()!.data ?? []) : []
+        const existingIds = new Set(existing.map((question) => question.id).filter(Boolean))
+        const additions = questions.filter((question) => !existingIds.has(question.id))
+        const merged = [...existing, ...additions]
+        transaction.set(docRef, { data: merged, updatedAt: FieldValue.serverTimestamp() })
+        return { additions, merged }
+      })
+      return NextResponse.json({
+        success: true,
+        appended: result.additions.length,
+        skipped: questions.length - result.additions.length,
+        total: result.merged.length,
+      })
     }
 
     return NextResponse.json({ error: "No database configured" }, { status: 503 })
   } catch (err) {
     console.error("[questions/append POST]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return NextResponse.json({
+      error: "The server could not save this question chunk. The unsaved questions remain as drafts.",
+    }, { status: 500 })
   }
 }
