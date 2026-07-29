@@ -282,9 +282,48 @@ function useSoloGameRound(mode: ModeConfig["id"], onFinalize: (reason: SoloCompl
   return { pool, qi, answeredIds, completed, completionReason, configuration, finalizedRef, startRound, markAnswered, schedule, finalize, advanceOrFinalize }
 }
 
+// ── Question media ────────────────────────────────────────────────────────────
+function QuestionMediaGallery({ media, legacyImage, label }: {
+  media?: Question["media"]
+  legacyImage?: string | null
+  label: string
+}) {
+  const items = [
+    ...(media ?? []).map(item => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption, sortOrder: item.sortOrder })),
+    ...(legacyImage ? [{ id: "legacy-image", url: legacyImage, alt: label, caption: undefined, sortOrder: -1 }] : []),
+  ]
+    .filter(item => Boolean(item.url))
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .filter((item, index, all) => all.findIndex(candidate => candidate.url === item.url) === index)
+
+  if (items.length === 0) return null
+
+  return (
+    <div className="mt-4 grid gap-3" data-testid="game-question-media">
+      {items.map(item => (
+        <figure key={item.id} className="overflow-hidden rounded-2xl border border-border bg-background">
+          {/* Imported question media can be a data URI or a user-hosted URL, so use a native image element. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.url}
+            alt={item.alt || label}
+            className="mx-auto max-h-[min(50vh,28rem)] w-auto max-w-full object-contain"
+            loading="eager"
+          />
+          {item.caption && (
+            <figcaption className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+              {item.caption}
+            </figcaption>
+          )}
+        </figure>
+      ))}
+    </div>
+  )
+}
+
 // ── Option button ─────────────────────────────────────────────────────────────
-function OptionBtn({ id, text, sel, correct, fb, onSel, eliminated = false }: {
-  id: string; text: string; sel: boolean; correct: boolean; fb: Feedback; onSel: () => void; eliminated?: boolean
+function OptionBtn({ id, text, media, sel, correct, fb, onSel, eliminated = false }: {
+  id: string; text: string; media?: Question["media"]; sel: boolean; correct: boolean; fb: Feedback; onSel: () => void; eliminated?: boolean
 }) {
   if (eliminated) {
     return (
@@ -320,6 +359,7 @@ function OptionBtn({ id, text, sel, correct, fb, onSel, eliminated = false }: {
         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold ${lblCls}`}>{id}</span>
         <span>{text}</span>
       </span>
+      <QuestionMediaGallery media={media} label={`Option ${id} image`} />
     </button>
   )
 }
@@ -359,11 +399,20 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer, eliminated 
           )}
         </div>
         <RichText content={question.vignette} className="text-sm text-foreground sm:text-base" />
+        <QuestionMediaGallery
+          media={question.media?.filter(item => item.placement === "stem")}
+          legacyImage={question.mediaBase64}
+          label="Question image"
+        />
       </div>
       <div className="grid gap-2">
         {question.options.map(opt => (
           <OptionBtn
             key={opt.id} id={opt.id} text={opt.text}
+            media={[
+              ...(opt.media ?? []),
+              ...(question.media?.filter(item => item.placement === "option" && item.optionId === opt.id) ?? []),
+            ]}
             sel={picked === opt.id} correct={opt.id === question.correctAnswer}
             fb={fb} onSel={() => onAnswer(opt.id)}
             eliminated={eliminated?.has(opt.id) ?? false}
