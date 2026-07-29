@@ -191,6 +191,7 @@ function EditLevelModal({
 function RegisteredTable() {
   const [users, setUsers] = useState<RegisteredUser[]>([])
   const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
@@ -209,6 +210,8 @@ function RegisteredTable() {
       if (statusFilter) p.set("status", statusFilter)
       p.set("sort", sort)
       p.set("order", order)
+      p.set("page", String(page))
+      p.set("pageSize", "20")
       const res = await fetch(`/api/admin/users?${p}`)
       if (res.ok) {
         const data = await res.json()
@@ -217,12 +220,13 @@ function RegisteredTable() {
       }
     } catch {}
     setLoading(false)
-  }, [search, statusFilter, sort, order])
+  }, [search, statusFilter, sort, order, page])
 
   useEffect(() => {
     const t = setTimeout(fetchUsers, 300)
     return () => clearTimeout(t)
   }, [fetchUsers])
+  useEffect(() => { setPage(1) }, [search, statusFilter, sort, order])
 
   async function doAction(uid: string, action: string, extra?: Record<string, string>) {
     setActionLoading(uid + action)
@@ -402,6 +406,15 @@ function RegisteredTable() {
               </div>
             </div>
           ))}
+          {totalCount > 20 && (
+            <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
+              <span>Page {page} of {Math.ceil(totalCount / 20)}</span>
+              <div className="flex gap-2">
+                <button type="button" disabled={page === 1} onClick={() => setPage(value => Math.max(1, value - 1))} className="rounded-lg border border-border px-3 py-1.5 disabled:opacity-40">Previous</button>
+                <button type="button" disabled={page * 20 >= totalCount} onClick={() => setPage(value => value + 1)} className="rounded-lg border border-border px-3 py-1.5 disabled:opacity-40">Next</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -431,6 +444,7 @@ function RegisteredTable() {
 function GuestTable() {
   const [guests, setGuests] = useState<GuestUser[]>([])
   const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [sort, setSort] = useState("last_active")
@@ -445,6 +459,8 @@ function GuestTable() {
       if (search) p.set("search", search)
       p.set("sort", sort)
       p.set("order", order)
+      p.set("page", String(page))
+      p.set("pageSize", "20")
       const res = await fetch(`/api/admin/guests?${p}`)
       if (res.ok) {
         const data = await res.json()
@@ -453,12 +469,13 @@ function GuestTable() {
       }
     } catch {}
     setLoading(false)
-  }, [search, sort, order])
+  }, [search, sort, order, page])
 
   useEffect(() => {
     const t = setTimeout(fetchGuests, 300)
     return () => clearTimeout(t)
   }, [fetchGuests])
+  useEffect(() => { setPage(1) }, [search, sort, order])
 
   async function doDelete(uid: string) {
     setActionLoading(uid)
@@ -574,6 +591,15 @@ function GuestTable() {
               </div>
             </div>
           ))}
+          {totalCount > 20 && (
+            <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
+              <span>Page {page} of {Math.ceil(totalCount / 20)}</span>
+              <div className="flex gap-2">
+                <button type="button" disabled={page === 1} onClick={() => setPage(value => Math.max(1, value - 1))} className="rounded-lg border border-border px-3 py-1.5 disabled:opacity-40">Previous</button>
+                <button type="button" disabled={page * 20 >= totalCount} onClick={() => setPage(value => value + 1)} className="rounded-lg border border-border px-3 py-1.5 disabled:opacity-40">Next</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

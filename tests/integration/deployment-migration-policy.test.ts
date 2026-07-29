@@ -5,16 +5,17 @@ import { deploymentBuildSteps, validateDeploymentEnvironment } from "../../scrip
 
 describe("deployment migration policy", () => {
   it("rejects production builds that cannot issue session tokens", () => {
-    expect(() => validateDeploymentEnvironment({ VERCEL_ENV: "production" })).toThrow("SESSION_SECRET")
-    expect(() => validateDeploymentEnvironment({ VERCEL_ENV: "production", SESSION_SECRET: "test-secret" })).not.toThrow()
+    expect(() => validateDeploymentEnvironment({ NODE_ENV: "test", VERCEL_ENV: "production" })).toThrow("SESSION_SECRET")
+    expect(() => validateDeploymentEnvironment({ NODE_ENV: "test", VERCEL_ENV: "production", SESSION_SECRET: "test-secret" })).not.toThrow()
   })
   it("keeps database migration as a required production gate", () => {
-    expect(deploymentBuildSteps({ VERCEL_ENV: "production" })).toEqual(["db:migrate", "build"])
+    expect(deploymentBuildSteps({ NODE_ENV: "test", VERCEL_ENV: "production" })).toEqual(["db:migrate", "build"])
   })
 
   it("does not expose production data to arbitrary preview branches", () => {
     expect(deploymentBuildSteps({
       VERCEL_ENV: "preview",
+      NODE_ENV: "test",
       DATABASE_URL: "postgres://production.example/mednexus",
     })).toEqual(["build"])
   })
@@ -22,6 +23,7 @@ describe("deployment migration policy", () => {
   it("migrates an explicitly approved preview database", () => {
     expect(deploymentBuildSteps({
       VERCEL_ENV: "preview",
+      NODE_ENV: "test",
       POSTGRES_URL: "postgres://preview.example/mednexus",
       VERCEL_PREVIEW_DATABASE_APPROVED: "true",
     })).toEqual(["db:migrate", "build"])
@@ -30,10 +32,17 @@ describe("deployment migration policy", () => {
   it("reports a missing connection variable without attempting localhost", () => {
     let output = ""
     try {
-      execFileSync("pnpm", ["run", "db:migrate"], {
+      execFileSync(process.execPath, ["--import", "tsx", "scripts/migrate.ts"], {
         cwd: process.cwd(),
         encoding: "utf8",
-        env: { ...process.env, DATABASE_URL: "", POSTGRES_URL: "" },
+        env: {
+          ...process.env,
+          DATABASE_URL: "",
+          POSTGRES_URL: "",
+          PNPM_HOME: `${process.cwd()}/.pnpm-home`,
+          XDG_DATA_HOME: `${process.cwd()}/.pnpm-data`,
+          XDG_CACHE_HOME: `${process.cwd()}/.pnpm-cache`,
+        },
         stdio: "pipe",
       })
     } catch (error) {

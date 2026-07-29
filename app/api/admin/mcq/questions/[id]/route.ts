@@ -21,9 +21,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
-  const result = await pool.query("SELECT data,updated_at FROM mednexus_questions WHERE id=1")
-  const bank: Question[] = result.rows[0]?.data ?? []
-  const question = bank.find((item) => item.id === id)
+  const result = await pool.query(
+    `SELECT item.value AS question,source.updated_at
+     FROM mednexus_questions source
+     CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) item(value)
+     WHERE source.id=1 AND item.value->>'id'=$1 LIMIT 1`,
+    [id],
+  )
+  const question = result.rows[0]?.question as Question | undefined
   if (!question) return NextResponse.json({ error: "Question not found." }, { status: 404 })
   return NextResponse.json({ question, validationIssues: publicationIssues(question), bankUpdatedAt: result.rows[0]?.updated_at ?? null })
 }
@@ -38,19 +43,35 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const current = await client.query("SELECT data FROM mednexus_questions WHERE id=1 FOR UPDATE")
-    const bank: Question[] = current.rows[0]?.data ?? []
-    const index = bank.findIndex((item) => item.id === id)
-    if (index < 0) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Question not found." }, { status: 404 }) }
-    const existing = bank[index]
+    await client.query("SELECT updated_at FROM mednexus_questions WHERE id=1 FOR UPDATE")
+    const current = await client.query(
+      `SELECT item.value AS question
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) item(value)
+       WHERE source.id=1 AND item.value->>'id'=$1 LIMIT 1`,
+      [id],
+    )
+    const existing = current.rows[0]?.question as Question | undefined
+    if (!existing) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Question not found." }, { status: 404 }) }
     if (body.expectedUpdatedAt && existing.updatedAt && body.expectedUpdatedAt !== existing.updatedAt) { await client.query("ROLLBACK"); return NextResponse.json({ error: "This question changed in another session. Reload before saving." }, { status: 409 }) }
     const status = body.status ?? existing.status ?? (existing.moduleStatus === "draft" ? "draft" : existing.moduleStatus === "offline" ? "offline" : "live")
     const { expectedUpdatedAt: _expectedUpdatedAt, ...changes } = body
     const next: Question = { ...existing, ...changes, id, module: body.module?.trim() ?? existing.module, subject: body.subject?.trim() ?? existing.subject, vignette: body.vignette?.trim() ?? existing.vignette, options: body.options ?? existing.options, explanation: body.explanation === undefined ? existing.explanation : body.explanation, media: body.media ?? existing.media ?? [], tags: body.tags ?? existing.tags ?? [], status, moduleStatus: status === "live" ? "live" : status === "offline" || status === "archived" ? "offline" : "draft", updatedAt: new Date().toISOString() }
     const issues = publicationIssues(next)
     if (status === "live" && issues.length) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Complete the question before publishing.", validationIssues: issues }, { status: 422 }) }
-    bank[index] = next
-    await client.query("UPDATE mednexus_questions SET data=$1::jsonb,updated_at=NOW() WHERE id=1", [JSON.stringify(bank)])
+    await client.query(
+      `UPDATE mednexus_questions source
+       SET data=(
+         SELECT jsonb_agg(
+           CASE WHEN item.value->>'id'=$1 THEN $2::jsonb ELSE item.value END
+           ORDER BY item.ordinality
+         )
+         FROM jsonb_array_elements(COALESCE(source.data,'[]'::jsonb))
+           WITH ORDINALITY item(value,ordinality)
+       ),updated_at=NOW()
+       WHERE source.id=1`,
+      [id, JSON.stringify(next)],
+    )
     const mediaIds = (next.media ?? []).map((asset) => asset.id)
     if (mediaIds.length) await client.query("UPDATE mednexus_mcq_media_assets SET question_id=$1,updated_at=NOW() WHERE id = ANY($2::text[])", [id, mediaIds])
     for (const asset of next.media ?? []) await client.query("UPDATE mednexus_mcq_media_assets SET caption=$1,alt_text=$2,updated_at=NOW() WHERE id=$3 AND question_id=$4", [asset.caption ?? null, asset.alt, asset.id, id])
@@ -70,11 +91,25 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const current = await client.query("SELECT data FROM mednexus_questions WHERE id=1 FOR UPDATE")
-    const bank: Question[] = current.rows[0]?.data ?? []
-    const next = bank.filter((item) => item.id !== id)
-    if (next.length === bank.length) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Question not found." }, { status: 404 }) }
-    await client.query("UPDATE mednexus_questions SET data=$1::jsonb,updated_at=NOW() WHERE id=1", [JSON.stringify(next)])
+    await client.query("SELECT updated_at FROM mednexus_questions WHERE id=1 FOR UPDATE")
+    const exists = await client.query(
+      `SELECT 1 FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) item(value)
+       WHERE source.id=1 AND item.value->>'id'=$1 LIMIT 1`,
+      [id],
+    )
+    if (!exists.rows.length) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Question not found." }, { status: 404 }) }
+    await client.query(
+      `UPDATE mednexus_questions source
+       SET data=COALESCE((
+         SELECT jsonb_agg(item.value ORDER BY item.ordinality)
+         FROM jsonb_array_elements(COALESCE(source.data,'[]'::jsonb))
+           WITH ORDINALITY item(value,ordinality)
+         WHERE item.value->>'id'<>$1
+       ),'[]'::jsonb),updated_at=NOW()
+       WHERE source.id=1`,
+      [id],
+    )
     await auditAdmin(client, admin.uid, "delete", "mcq_question", id)
     await client.query("COMMIT")
     return NextResponse.json({ success: true })

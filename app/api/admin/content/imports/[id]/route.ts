@@ -6,7 +6,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
-  const result = await pool.query("SELECT * FROM mednexus_content_import_jobs WHERE id=$1", [id])
+  const result = await pool.query(
+    `SELECT id,bank,source_name,status,total_count,valid_count,error_count,
+      validation_errors,draft_payload,created_at
+     FROM mednexus_content_import_jobs WHERE id=$1`,
+    [id],
+  )
   const job = result.rows[0]
   if (!job) return NextResponse.json({ error: "Import job not found" }, { status: 404 })
   const permission = job.bank === "theory" ? "manage_theory_content" : "manage_mcq_content"
@@ -18,7 +23,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
-  const found = await pool.query("SELECT * FROM mednexus_content_import_jobs WHERE id=$1", [id])
+  const found = await pool.query(
+    "SELECT id,bank,status,total_count FROM mednexus_content_import_jobs WHERE id=$1",
+    [id],
+  )
   const job = found.rows[0]
   if (!job) return NextResponse.json({ error: "Import job not found" }, { status: 404 })
   const permission = job.bank === "theory" ? "manage_theory_content" : "manage_mcq_content"
@@ -36,17 +44,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ success: true, status: "committed" })
   }
   if (body.action !== "approve" || job.bank !== "mcq") return NextResponse.json({ error: "This approval action is not supported." }, { status: 400 })
+  const payloadResult = await pool.query(
+    "SELECT draft_payload FROM mednexus_content_import_jobs WHERE id=$1",
+    [id],
+  )
+  job.draft_payload = payloadResult.rows[0]?.draft_payload ?? []
   const selected = new Set((body.selectedIndexes ?? []).filter(Number.isInteger))
   const drafts = (job.draft_payload as Array<Record<string, unknown>>).filter((draft) => selected.has(Number(draft.importIndex)))
   if (!drafts.length) return NextResponse.json({ error: "Select at least one draft." }, { status: 400 })
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const bank = await client.query("SELECT data FROM mednexus_questions WHERE id=1 FOR UPDATE")
-    const existing: Array<Record<string, unknown>> = bank.rows[0]?.data ?? []
-    const ids = new Set(existing.map((question) => String(question.id)))
+    await client.query("SELECT updated_at FROM mednexus_questions WHERE id=1 FOR UPDATE")
+    const candidateIds = drafts.map(question => String(question.id ?? "")).filter(Boolean)
+    const existingResult = await client.query(
+      `SELECT question.value->>'id' AS id
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
+       WHERE source.id=1 AND question.value->>'id'=ANY($1::text[])`,
+      [candidateIds],
+    )
+    const ids = new Set(existingResult.rows.map(question => String(question.id)))
     const approved = drafts.filter((question) => question.id && !ids.has(String(question.id))).map(({ importStatus: _status, importIndex: _index, ...question }) => ({ ...question, moduleStatus: question.moduleStatus || "draft" }))
-    await client.query("UPDATE mednexus_questions SET data=$1::jsonb,updated_at=NOW() WHERE id=1", [JSON.stringify([...existing, ...approved])])
+    if (approved.length) {
+      await client.query(
+        `UPDATE mednexus_questions
+         SET data=COALESCE(data, '[]'::jsonb) || $1::jsonb,updated_at=NOW()
+         WHERE id=1`,
+        [JSON.stringify(approved)],
+      )
+    }
     const remaining = (job.draft_payload as Array<Record<string, unknown>>).filter((draft) => !selected.has(Number(draft.importIndex)))
     await client.query("UPDATE mednexus_content_import_jobs SET draft_payload=$1::jsonb,status=$2,valid_count=$3,committed_count=committed_count+$4,committed_at=CASE WHEN $2='committed' THEN NOW() ELSE committed_at END,updated_at=NOW() WHERE id=$5", [JSON.stringify(remaining), remaining.length ? "partial" : "committed", remaining.length, approved.length, id])
     await auditAdmin(client, admin.uid, "approve", "mcq_import", id, { approved: approved.length, remaining: remaining.length })

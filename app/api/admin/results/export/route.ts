@@ -16,7 +16,10 @@ export async function GET(req: NextRequest) {
   const view = req.nextUrl.searchParams.get("view") === "all" ? "all" : "best"
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
-  const result = await pool.query("SELECT * FROM mednexus_assessments WHERE id=$1", [id])
+  const result = await pool.query(
+    "SELECT id,title,pass_mark FROM mednexus_assessments WHERE id=$1",
+    [id],
+  )
   const assessment = result.rows[0]
   if (!assessment) return NextResponse.json({ error: "Assessment not found" }, { status: 404 })
   const loaded = await loadAttempts(pool, id)

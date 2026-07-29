@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { randomUUID } from "crypto"
 import type { Pool, PoolClient } from "pg"
 import { getRequestAuth, unauthorized } from "@/lib/request-auth"
+import { boundedPagination } from "@/lib/api-efficiency"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -49,19 +50,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
     const account = await getAuthenticatedAccount(pool, req)
     if (!account) return unauthorized()
+    const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
 
     const res = await pool.query(
-      `SELECT * FROM mednexus_assessment_attempts
+      `SELECT id, assessment_id, score, total, started_at, submitted_at,
+              COUNT(*) OVER()::int AS total_count
+       FROM mednexus_assessment_attempts
        WHERE assessment_id = $1 AND user_id = $2 AND submitted_at IS NOT NULL
-       ORDER BY started_at DESC`,
-      [id, account.uid],
+       ORDER BY started_at DESC
+       LIMIT $3 OFFSET $4`,
+      [id, account.uid, pageSize, offset],
     )
     const attempts = res.rows.map((row) => ({
       id: row.id, assessmentId: row.assessment_id, userId: row.user_id,
-      userName: row.user_name, isGuest: row.is_guest, answers: row.answers,
       score: row.score, total: row.total, startedAt: row.started_at, submittedAt: row.submitted_at,
     }))
-    return NextResponse.json({ count: attempts.length, attempts, userName: account.name, role: account.role, isGuest: account.isGuest })
+    return NextResponse.json({
+      count: Number(res.rows[0]?.total_count ?? 0),
+      attempts,
+      page,
+      pageSize,
+      userName: account.name,
+      role: account.role,
+      isGuest: account.isGuest,
+    })
   } catch (err) {
     console.error("[attempt GET]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
@@ -90,7 +102,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // concurrent POSTs from both observing the same remaining attempt count.
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))", [id, account.uid])
 
-    const asmtRes = await client.query("SELECT * FROM mednexus_assessments WHERE id = $1 FOR UPDATE", [id])
+    const asmtRes = await client.query(
+      `SELECT id,question_ids,question_snapshot,tries_allowed,status
+       FROM mednexus_assessments WHERE id = $1 FOR UPDATE`,
+      [id],
+    )
     const asmt = asmtRes.rows[0]
     if (!asmt) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Assessment not found" }, { status: 404 }) }
     if (asmt.status !== "live") { await client.query("ROLLBACK"); return NextResponse.json({ error: "Assessment is not live" }, { status: 403 }) }
@@ -102,9 +118,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const tries = Number(triesRes.rows[0]?.count ?? 0)
     if (tries >= asmt.tries_allowed) { await client.query("ROLLBACK"); return NextResponse.json({ error: "No tries remaining" }, { status: 403 }) }
 
-    const qRes = await client.query("SELECT data FROM mednexus_questions WHERE id = 1")
     const snapshot = Array.isArray(asmt.question_snapshot) ? asmt.question_snapshot as Array<{ id: string; correctAnswer: string }> : []
-    const allQuestions: Array<{ id: string; correctAnswer: string }> = snapshot.length ? snapshot : (qRes.rows[0]?.data ?? [])
+    const qRes = snapshot.length
+      ? null
+      : await client.query("SELECT data FROM mednexus_questions WHERE id = 1")
+    const allQuestions: Array<{ id: string; correctAnswer: string }> = snapshot.length ? snapshot : (qRes?.rows[0]?.data ?? [])
     const qMap = new Map(allQuestions.map((q) => [q.id, q]))
     const questionIds = asmt.question_ids as string[]
     const score = questionIds.reduce((sum, qId) => sum + (qMap.get(qId)?.correctAnswer === answers[qId] ? 1 : 0), 0)
@@ -123,7 +141,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       [attemptId, id, account.uid, account.name, account.isGuest, JSON.stringify(answers), score, total],
     )
     await client.query("COMMIT")
-    return NextResponse.json({ success: true, attemptId, score, total, isNewHighScore: previousBest === null || score > previousBest, attemptsUsed: tries + 1 })
+    const attemptsUsed = tries + 1
+    const reviewQuestions = attemptsUsed >= Number(asmt.tries_allowed)
+      ? allQuestions.filter(question => questionIds.includes(question.id))
+      : undefined
+    return NextResponse.json({
+      success: true,
+      attemptId,
+      score,
+      total,
+      isNewHighScore: previousBest === null || score > previousBest,
+      attemptsUsed,
+      ...(reviewQuestions ? { reviewQuestions } : {}),
+    })
   } catch (err) {
     if (client) await client.query("ROLLBACK").catch(() => undefined)
     console.error("[attempt POST]", err)

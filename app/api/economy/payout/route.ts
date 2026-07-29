@@ -113,7 +113,9 @@ export async function POST(req: NextRequest) {
     try {
       await client.query("BEGIN")
       const { rows } = await client.query(
-        `SELECT * FROM mednexus_exam_sessions
+        `SELECT id,user_id,mode,question_ids,answered_ids,answer_key,
+                accepted_answers,answer_order,result_meta,payout,status,started_at,submitted_at
+         FROM mednexus_exam_sessions
          WHERE id = $1 AND user_id = $2
          FOR UPDATE`,
         [sessionId, auth.uid],

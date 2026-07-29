@@ -50,18 +50,18 @@ interface LiveAssessment {
 function useLiveAssessments() {
   const [liveExams, setLiveExams] = useState<LiveAssessment[]>([])
   useEffect(() => {
+    let cancelled = false
     async function check() {
       try {
-        const res = await fetch("/api/assessments")
+        const res = await fetch("/api/assessments?page=1&pageSize=20")
         if (res.ok) {
           const data = await res.json()
-          setLiveExams((data.assessments ?? []).filter((a: LiveAssessment) => a.status === "live"))
+          if (!cancelled) setLiveExams((data.assessments ?? []).filter((a: LiveAssessment) => a.status === "live"))
         }
       } catch {}
     }
-    check()
-    const id = setInterval(check, 30_000)
-    return () => clearInterval(id)
+    void check()
+    return () => { cancelled = true }
   }, [])
   return liveExams
 }
@@ -83,7 +83,6 @@ function useGreeting() {
     }
     const t = scheduleNext()
     return () => clearTimeout(t)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   return greeting
 }

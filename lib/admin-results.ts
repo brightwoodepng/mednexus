@@ -51,7 +51,11 @@ export async function loadAttempts(pool: Pool, assessmentId?: string): Promise<A
   // Older guest submissions predate authenticated guest attempts. Include them
   // only when no matching modern guest submission exists.
   const legacyFilter = assessmentId ? "WHERE assessment_id=$1" : ""
-  const legacy = await pool.query(`SELECT * FROM mednexus_guest_analytics ${legacyFilter} ORDER BY submitted_at DESC`, values)
+  const legacy = await pool.query(
+    `SELECT id,assessment_id,guest_name,score,total,submitted_at
+     FROM mednexus_guest_analytics ${legacyFilter} ORDER BY submitted_at DESC`,
+    values,
+  )
   for (const row of legacy.rows) {
     const submittedAt = new Date(row.submitted_at).toISOString()
     const duplicate = attempts.some((attempt) => attempt.assessmentId === row.assessment_id

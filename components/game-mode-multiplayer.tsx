@@ -101,8 +101,11 @@ async function apiCreateRoom(mode: MultiMode, hostName: string, questionIds: str
   return multiplayerApi("/api/game-rooms", { method: "POST", body: JSON.stringify({ mode, hostName, questionIds }) })
 }
 
-async function apiPollRoom(pin: string): Promise<RoomState> {
-  return multiplayerApi(`/api/game-rooms/${pin}`)
+async function apiPollRoom(pin: string, version: number): Promise<RoomState | null> {
+  const payload = await multiplayerApi<RoomState | { unchanged: true }>(
+    `/api/game-rooms/${pin}${version >= 0 ? `?version=${version}` : ""}`,
+  )
+  return "unchanged" in payload ? null : payload
 }
 
 async function apiAction(pin: string, payload: Record<string, unknown>): Promise<RoomState> {
@@ -1636,7 +1639,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   const questionKeyRef = useRef<string>("")
 
   const poll = useCallback(async () => {
-    const state = await apiPollRoom(pin).catch(() => null)
+    const state = await apiPollRoom(pin, lastVersionRef.current).catch(() => undefined)
     if (state) {
       // Ignore stale poll responses that have an older version than what we have
       if (state.version >= lastVersionRef.current) {
@@ -1649,7 +1652,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
           fastPollRef.current = null
         }
       }
-    } else {
+    } else if (state === undefined) {
       setError("Lost connection to room.")
     }
   }, [pin, myId])

@@ -16,7 +16,7 @@ async function main() {
   try {
     await client.query("BEGIN")
     await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:economy-cutover'))")
-    const repeated = await client.query("SELECT * FROM mednexus_economy_cutovers WHERE migration_id=$1", [MIGRATION_ID])
+    const repeated = await client.query("SELECT 1 FROM mednexus_economy_cutovers WHERE migration_id=$1", [MIGRATION_ID])
     if (repeated.rowCount) {
       console.log(JSON.stringify({ dryRun, repeatRun: true, migration: repeated.rows[0] }, null, 2))
       await client.query("ROLLBACK")
