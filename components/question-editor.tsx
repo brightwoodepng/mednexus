@@ -989,7 +989,7 @@ interface QuestionEditorProps {
 }
 
 export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenImporter, onOpenAssessments }: QuestionEditorProps = {}) {
-  const { questions, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb, appendQuestions, suppressNextAutoSave } = useQuestions()
+  const { questions, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb, appendQuestionsInChunks, suppressNextAutoSave } = useQuestions()
 
   // Draft questions (imported from PDF/Word but not yet committed to DB)
   const [draftQuestions, setDraftQuestions] = useState<Question[]>([])
@@ -1007,6 +1007,7 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
   const [expandedModule, setExpandedModule] = useState<string | null>(null)
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
+  const [saveProgress, setSaveProgress] = useState<{ saved: number; total: number } | null>(null)
   const [confirm, setConfirm] = useState<{ title: string; message: string; confirmLabel: string; action: () => void; danger?: boolean } | null>(null)
   const [renameTarget, setRenameTarget] = useState<{ moduleName: string; disciplineName?: string } | null>(null)
   const [renameValue, setRenameValue] = useState("")
@@ -1152,12 +1153,14 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
     setSelectedIds((prev) => { const next = new Set(prev); toMakeLive.forEach((id) => next.delete(id)); return next })
 
     setSaveStatus("saving")
-    const ok = await appendQuestions(toSave)
-    setSaveStatus(ok ? "saved" : "error")
+    setSaveProgress({ saved: 0, total: toSave.length })
+    const result = await appendQuestionsInChunks(toSave, ({ saved, total }) => setSaveProgress({ saved, total }))
+    setSaveStatus(result.ok ? "saved" : "error")
+    setSaveProgress(null)
     setTimeout(() => setSaveStatus("idle"), 3000)
-    if (!ok) {
-      setDraftQuestions((prev) => [...prev, ...toSave])
-      alert("Failed to save the selected questions — please check your connection and try again.")
+    if (!result.ok) {
+      setDraftQuestions((prev) => [...prev, ...result.failedQuestions])
+      alert(`${result.savedQuestions.length} of ${toSave.length} questions were saved. ${result.failedQuestions.length} remain as drafts. ${result.error ?? "Please retry the remaining questions."}`)
     }
   }
 
@@ -1171,13 +1174,15 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
     // entire (potentially huge) question bank in one PUT request, which for
     // large imports could take 1-2+ minutes and time out.
     setSaveStatus("saving")
-    const ok = await appendQuestions(toApprove)
-    setSaveStatus(ok ? "saved" : "error")
+    setSaveProgress({ saved: 0, total: toApprove.length })
+    const result = await appendQuestionsInChunks(toApprove, ({ saved, total }) => setSaveProgress({ saved, total }))
+    setSaveStatus(result.ok ? "saved" : "error")
+    setSaveProgress(null)
     setTimeout(() => setSaveStatus("idle"), 3000)
-    if (!ok) {
-      // Re-stage as drafts so nothing is silently lost if the save failed.
-      setDraftQuestions(toApprove)
-      alert("Failed to save the imported questions — please check your connection and try again.")
+    if (!result.ok) {
+      // Only failed chunks return to drafts. Successfully saved chunks stay live.
+      setDraftQuestions(result.failedQuestions)
+      alert(`${result.savedQuestions.length} of ${toApprove.length} questions were saved. ${result.failedQuestions.length} remain as drafts. ${result.error ?? "Please retry the remaining questions."}`)
     }
   }
 
@@ -1387,9 +1392,11 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
 
           {/* Right: actions */}
           <div className="flex shrink-0 items-center gap-1.5">
-            <SaveStatusPill status={saveStatus} />
+            {saveProgress
+              ? <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">Saving {saveProgress.saved} of {saveProgress.total}…</span>
+              : <SaveStatusPill status={saveStatus} />}
             {totalDrafts > 0 && (
-              <button type="button" onClick={handleMakeAllLive}
+              <button type="button" onClick={handleMakeAllLive} disabled={saveStatus === "saving"}
                 className="flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:text-emerald-400"
               >
                 <CheckIcon size={13} /> Make All Live ({totalDrafts})
