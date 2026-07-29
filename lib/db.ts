@@ -78,8 +78,44 @@ export async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS mednexus_progress (
       uid        TEXT PRIMARY KEY,
       data       JSONB NOT NULL DEFAULT '{}',
+      version    BIGINT NOT NULL DEFAULT 0,
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
+    ALTER TABLE mednexus_progress ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+    -- Append-only, independently addressable activity prevents a growing JSON
+    -- document from being rewritten on every answer or exam submission.
+    CREATE TABLE IF NOT EXISTS mednexus_progress_history (
+      uid TEXT NOT NULL, event_id TEXT NOT NULL, occurred_at TIMESTAMPTZ NOT NULL,
+      mode TEXT NOT NULL, question_id TEXT NOT NULL, payload JSONB NOT NULL,
+      PRIMARY KEY (uid, event_id)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_progress_history_user_date_idx
+      ON mednexus_progress_history (uid, occurred_at DESC);
+    CREATE TABLE IF NOT EXISTS mednexus_progress_exam_scores (
+      uid TEXT NOT NULL, event_id TEXT NOT NULL, occurred_at TIMESTAMPTZ NOT NULL,
+      payload JSONB NOT NULL, PRIMARY KEY (uid, event_id)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_progress_exam_scores_user_date_idx
+      ON mednexus_progress_exam_scores (uid, occurred_at DESC);
+    -- One-time-compatible backfill from the legacy JSON arrays. Stable event
+    -- ids make this safe to execute again during concurrent cold starts.
+    INSERT INTO mednexus_progress_history (uid, event_id, occurred_at, mode, question_id, payload)
+    SELECT p.uid, md5(p.uid || ':history:' || item.ordinality || ':' || item.value::text),
+      to_timestamp(COALESCE((item.value->>'timestamp')::double precision, EXTRACT(EPOCH FROM NOW()) * 1000) / 1000),
+      COALESCE(item.value->>'mode', 'trial'), COALESCE(item.value->>'questionId', ''), item.value
+    FROM mednexus_progress p
+    CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(p.data->'history') = 'array' THEN p.data->'history' ELSE '[]'::jsonb END)
+      WITH ORDINALITY AS item(value, ordinality)
+    ON CONFLICT DO NOTHING;
+    INSERT INTO mednexus_progress_exam_scores (uid, event_id, occurred_at, payload)
+    SELECT p.uid, COALESCE(NULLIF(item.value->>'id', ''), md5(p.uid || ':exam:' || item.ordinality || ':' || item.value::text)),
+      COALESCE(NULLIF(item.value->>'date', '')::timestamptz, NOW()), item.value
+    FROM mednexus_progress p
+    CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(p.data->'examScores') = 'array' THEN p.data->'examScores' ELSE '[]'::jsonb END)
+      WITH ORDINALITY AS item(value, ordinality)
+    ON CONFLICT DO NOTHING;
+    UPDATE mednexus_progress SET data = data - 'history' - 'examScores'
+      WHERE data ? 'history' OR data ? 'examScores';
     CREATE TABLE IF NOT EXISTS mednexus_user_onboarding (
       user_id TEXT NOT NULL,
       tutorial_id TEXT NOT NULL CHECK (tutorial_id IN ('mcq_qbank_intro', 'theory_vault_intro')),

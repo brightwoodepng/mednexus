@@ -136,7 +136,7 @@ async function getSessionAccount(): Promise<SessionAccount | null> {
   }
 }
 
-async function apiGet(auth: AuthHeader): Promise<{ name: string; progress: UserProgress } | null> {
+async function apiGet(auth: AuthHeader): Promise<{ name: string; progress: UserProgress; version: number } | null> {
   try {
     const headers: Record<string, string> = {}
     if (auth) headers[auth.key] = auth.value
@@ -146,25 +146,35 @@ async function apiGet(auth: AuthHeader): Promise<{ name: string; progress: UserP
     })
     if (!res.ok) return null
     const data = await res.json()
-    return { name: data.name, progress: { ...EMPTY_PROGRESS, ...data.progress } }
+    return { name: data.name, progress: { ...EMPTY_PROGRESS, ...data.progress }, version: data.version ?? 0 }
   } catch {
     return null
   }
 }
 
-async function apiPost(name: string, progress: UserProgress, auth: AuthHeader): Promise<boolean> {
+type SyncMutation = {
+  patch?: Partial<Omit<UserProgress, "history" | "examScores" | "totalAnswered" | "totalCorrect">>
+  increments?: { totalAnswered?: number; totalCorrect?: number }
+  events?: { history?: HistoryEntry[]; examScores?: ExamScore[] }
+  deleteHistory?: { mode: "trial" | "exam"; questionIds: string[] }
+}
+
+type SyncResult = { ok: boolean; version?: number; conflict?: boolean }
+
+async function apiPost(name: string, mutation: SyncMutation, baseVersion: number, auth: AuthHeader): Promise<SyncResult> {
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" }
     if (auth) headers[auth.key] = auth.value
     const res = await fetch("/api/sync", {
       method: "POST",
       headers,
-      body: JSON.stringify({ name, progress }),
+      body: JSON.stringify({ name, baseVersion, ...mutation }),
       signal: AbortSignal.timeout(6000),
     })
-    return res.ok
+    const data = await res.json().catch(() => ({}))
+    return { ok: res.ok, version: data.version, conflict: res.status === 409 }
   } catch {
-    return false
+    return { ok: false }
   }
 }
 
@@ -183,13 +193,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Holds the auth header sent with every sync/update-password request.
   // Updated on login, enterApp, and signOut.
   const tokenRef = useRef<AuthHeader>(null)
+  const syncVersionRef = useRef(0)
+  const pendingMutations = useRef<SyncMutation[]>([])
 
-  const scheduleSync = useCallback((name: string, next: UserProgress) => {
+  const scheduleSync = useCallback((name: string, mutation: SyncMutation) => {
+    pendingMutations.current.push(mutation)
     if (syncTimer.current) clearTimeout(syncTimer.current)
-    syncTimer.current = setTimeout(() => {
-      apiPost(name, next, tokenRef.current).then((ok) => {
-        if (ok) setCloudEnabled(true)
-      })
+    syncTimer.current = setTimeout(async () => {
+      const queued = pendingMutations.current.splice(0)
+      const combined = queued.reduce<SyncMutation>((result, item) => ({
+        patch: { ...result.patch, ...item.patch },
+        increments: {
+          totalAnswered: (result.increments?.totalAnswered ?? 0) + (item.increments?.totalAnswered ?? 0),
+          totalCorrect: (result.increments?.totalCorrect ?? 0) + (item.increments?.totalCorrect ?? 0),
+        },
+        events: {
+          history: [...(result.events?.history ?? []), ...(item.events?.history ?? [])],
+          examScores: [...(result.events?.examScores ?? []), ...(item.events?.examScores ?? [])],
+        },
+        deleteHistory: item.deleteHistory ?? result.deleteHistory,
+      }), {})
+      let result = await apiPost(name, combined, syncVersionRef.current, tokenRef.current)
+      if (result.conflict) {
+        // Rebase the explicit field patch/events once. The server's compare-and-
+        // swap ensures a stale tab never silently replaces a newer summary.
+        const remote = await apiGet(tokenRef.current)
+        if (remote) {
+          syncVersionRef.current = remote.version
+          result = await apiPost(name, combined, remote.version, tokenRef.current)
+        }
+      }
+      if (result.ok && result.version !== undefined) {
+        syncVersionRef.current = result.version
+        setCloudEnabled(true)
+      } else {
+        setCloudEnabled(false)
+        pendingMutations.current.unshift(...queued)
+      }
     }, 1500)
   }, [])
 
@@ -250,6 +290,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           const remote = await apiGet(tokenRef.current)
           if (remote) {
+            syncVersionRef.current = remote.version
             setCloudEnabled(true)
             setProgress(remote.progress)
             setUser((current) => current ? { ...current, name: remote.name } : current)
@@ -266,6 +307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const remote = await apiGet(tokenRef.current)
         if (remote) {
+          syncVersionRef.current = remote.version
           setCloudEnabled(true)
           setProgress(remote.progress)
           setUser({ uid, name: remote.name, role: "guest", classLevel })
@@ -319,8 +361,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setProgress(EMPTY_PROGRESS)
     setRequiresPasswordUpdate(false)
 
-    const ok = await apiPost(trimmed, EMPTY_PROGRESS, tokenRef.current)
-    if (ok) setCloudEnabled(true)
+    const result = await apiPost(trimmed, { patch: EMPTY_PROGRESS }, 0, tokenRef.current)
+    if (result.ok) {
+      syncVersionRef.current = result.version ?? 0
+      setCloudEnabled(true)
+    }
   }, [])
 
   const loginUser = useCallback(async (indexNumber: string, password: string) => {
@@ -370,6 +415,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const remote = await apiGet(tokenRef.current)
       if (remote) {
+        syncVersionRef.current = remote.version
         setCloudEnabled(true)
         setProgress(remote.progress)
       }
@@ -448,8 +494,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(LS_NAME, trimmed) } catch {}
     const updated = { ...u, name: trimmed }
     setUser(updated)
-    await apiPost(trimmed, progressRef.current, tokenRef.current)
-  }, [])
+    scheduleSync(trimmed, {})
+  }, [scheduleSync])
 
   const toggleFlag = useCallback(
     (questionId: string) => {
@@ -460,7 +506,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : [...prev.flaggedQuestionIds, questionId]
         const next = { ...prev, flaggedQuestionIds }
         const u = userRef.current
-        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
+        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, { patch: { flaggedQuestionIds } }) }
         return next
       })
     },
@@ -489,7 +535,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         )
         const next: UserProgress = { ...prev, history }
         const u = userRef.current
-        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
+        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, { deleteHistory: { mode, questionIds: [...weakIds] } }) }
         return next
       })
     },
@@ -512,7 +558,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           srsData: updateSrsFromHistory(prev.srsData ?? {}, entries),
         }
         const u = userRef.current
-        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
+        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, {
+          patch: { streak: next.streak, lastStudyDate: next.lastStudyDate, srsData: next.srsData },
+          increments: { totalAnswered: answered.length, totalCorrect: correct },
+          events: { history: entries },
+        }) }
         return next
       })
     },
@@ -527,7 +577,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           examScores: [score, ...(prev.examScores ?? [])].slice(0, 100),
         }
         const u = userRef.current
-        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
+        if (u) { saveLocal(u.uid, next); scheduleSync(u.name, { events: { examScores: [score] } }) }
         return next
       })
     },
@@ -539,7 +589,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const now = Date.now()
       const next: UserProgress = { ...prev, notificationsLastRead: now }
       const u = userRef.current
-      if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
+      if (u) { saveLocal(u.uid, next); scheduleSync(u.name, { patch: { notificationsLastRead: now } }) }
       return next
     })
   }, [scheduleSync])
@@ -552,7 +602,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         mutedNotificationTypes: muted.includes(type) ? muted.filter((t) => t !== type) : [...muted, type],
       }
       const u = userRef.current
-      if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
+      if (u) { saveLocal(u.uid, next); scheduleSync(u.name, { patch: { mutedNotificationTypes: next.mutedNotificationTypes } }) }
       return next
     })
   }, [scheduleSync])
@@ -565,7 +615,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         favoriteModules: favs.includes(module) ? favs.filter((m) => m !== module) : [...favs, module],
       }
       const u = userRef.current
-      if (u) { saveLocal(u.uid, next); scheduleSync(u.name, next) }
+      if (u) { saveLocal(u.uid, next); scheduleSync(u.name, { patch: { favoriteModules: next.favoriteModules } }) }
       return next
     })
   }, [scheduleSync])
