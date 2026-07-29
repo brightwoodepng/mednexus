@@ -864,6 +864,11 @@ export interface PayoutBreakdown {
   amount: number
 }
 
+const BOUNTY_GAME_MODES = new Set<string>([
+  ...ECONOMY_CONFIG.modeIds.soloGames,
+  ...ECONOMY_CONFIG.modeIds.multiplayerGames,
+])
+
 export function calculatePayout(result: GameResult): { total: number; breakdown: PayoutBreakdown[] } {
   const breakdown: PayoutBreakdown[] = []
 
@@ -887,6 +892,7 @@ export function computeBountyProgress(
     case "exam":
       return result.mode === "exam" ? 1 : 0
     case "game":
+      if (!BOUNTY_GAME_MODES.has(result.mode)) return 0
       if (bounty.mode && bounty.mode !== result.mode) return 0
       if (bounty.id === "rapid_newbest") return result.isNewHigh ? 1 : 0
       return 1
@@ -902,4 +908,20 @@ export function computeBountyProgress(
     default:
       return 0
   }
+}
+
+/**
+ * Merge one verified activity into a bounty's stored progress.
+ * Session-scoped achievements retain the best single-session value; genuinely
+ * cumulative bounties add each eligible activity.
+ */
+export function mergeBountyProgress(
+  bounty: BountyDef,
+  currentProgress: number,
+  activityProgress: number,
+): number {
+  const merged = bounty.type === "streak" || bounty.type === "discipline_variety"
+    ? Math.max(currentProgress, activityProgress)
+    : currentProgress + activityProgress
+  return Math.min(merged, bounty.target)
 }
