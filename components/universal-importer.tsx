@@ -7,6 +7,20 @@ import type { ImportExtractionSummary } from "@/lib/import-types"
 import { findImportQuestionDuplicates } from "@/lib/game-question-pool"
 import { importAuthHeaders, importError } from "@/lib/import-client"
 import {
+  createResumableBatches,
+  deleteImportSession,
+  failedQuestionRanges,
+  fingerprintFile,
+  loadImportSession,
+  mergeCompletedBatchQuestions,
+  runWithImportRetry,
+  saveImportSession,
+  stableImportQuestionId,
+  type ImportSourceImage,
+  type ResumableImportBatch,
+  type ResumableImportSession,
+} from "@/lib/resumable-import"
+import {
   XIcon,
   CheckIcon,
   AlertTriangleIcon,
@@ -185,11 +199,17 @@ interface ChunkQuestion {
   mediaBase64?: string | null
 }
 
-function makeFromChunk(q: ChunkQuestion, index: number, fallbackModule: string | null): Question {
+function makeFromChunk(
+  q: ChunkQuestion,
+  index: number,
+  fallbackModule: string | null,
+  stableId?: string,
+  fallbackDiscipline?: string | null,
+): Question {
   return {
-    id: `import-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
+    id: stableId ?? `import-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
     module: q.module?.trim() || fallbackModule || undefined,
-    subject: q.discipline?.trim() || "",
+    subject: q.discipline?.trim() || fallbackDiscipline || "",
     vignette: q.vignette,
     options: q.options,
     correctAnswer: q.correctAnswer,
@@ -341,6 +361,75 @@ function ImportSummaryPanel({ summary }: { summary: ImportReviewSummary }) {
   )
 }
 
+function BatchRecoveryPanel({
+  batches,
+  isProcessing,
+  onRetryFailed,
+}: {
+  batches: ResumableImportBatch[]
+  isProcessing: boolean
+  onRetryFailed: () => void
+}) {
+  const completed = batches.filter((batch) => batch.status === "completed").length
+  const failed = batches.filter((batch) => batch.status === "failed")
+  const ranges = failedQuestionRanges(batches)
+  const statusStyle: Record<ResumableImportBatch["status"], string> = {
+    waiting: "bg-muted text-muted-foreground",
+    processing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    retrying: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
+    failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-foreground">
+            {completed} of {batches.length} batches completed
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {failed.length > 0
+              ? `Missing question range${ranges.length === 1 ? "" : "s"}: ${ranges.join(", ")}`
+              : "All recovered questions are in their original order."}
+          </p>
+        </div>
+        {failed.length > 0 && (
+          <button
+            type="button"
+            disabled={isProcessing}
+            onClick={onRetryFailed}
+            className="flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isProcessing ? <Spinner size={13} /> : <RefreshCwIcon size={13} />}
+            Retry failed batches
+          </button>
+        )}
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+        {batches.map((batch) => (
+          <div key={batch.index} className="rounded-lg border border-border bg-background px-2 py-1.5" title={batch.error ?? undefined}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-medium text-foreground">
+                Batch {batch.index + 1}
+                {batch.startQuestion !== batch.endQuestion && (
+                  <span className="ml-1 text-muted-foreground">Q{batch.startQuestion}–{batch.endQuestion}</span>
+                )}
+              </span>
+              <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${statusStyle[batch.status]}`}>
+                {batch.status}
+              </span>
+            </div>
+            {batch.status === "failed" && batch.error && (
+              <p className="mt-1 line-clamp-1 text-[9px] text-destructive">{batch.error}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface UniversalImporterProps {
   onImport: (questions: Question[]) => void
@@ -361,6 +450,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   const [parseSource, setParseSource] = useState<"ai" | "regex" | "json" | null>(null)
   const [partialImportWarning, setPartialImportWarning] = useState("")
   const [importSummary, setImportSummary] = useState<ImportReviewSummary | null>(null)
+  const [importSession, setImportSession] = useState<ResumableImportSession | null>(null)
 
   // ── Categorization gate ──────────────────────────────────────────────────────
   const [rawMaster, setRawMaster] = useState<Question[]>([])
@@ -426,178 +516,232 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     reader.readAsText(file)
   }
 
-  // ── DOCX handler — sequential image-aware 25-question batch processor ────────
-  async function processDocxFile(file: File) {
-    setError("")
-    setImportSummary(null)
+  function setSummaryFromSession(session: ResumableImportSession) {
+    if (!session.summary) {
+      setImportSummary(null)
+      return
+    }
+    setImportSummary({
+      ...session.summary,
+      detectedQuestions: session.usingQuestionBatches
+        ? session.batches.reduce((total, batch) => total + countNumberedQuestions(batch.text), 0)
+        : null,
+      processingBatches: session.batches.length,
+    })
+  }
+
+  async function persistSession(session: ResumableImportSession) {
+    try {
+      await saveImportSession(session)
+    } catch (storageError) {
+      console.warn("[mcq-import] Browser recovery state could not be saved", storageError)
+    }
+  }
+
+  function finalizeBatchSession(session: ResumableImportSession) {
+    const master = mergeCompletedBatchQuestions(session.batches)
+    const failed = session.batches.filter((batch) => batch.status === "failed")
+    setImportSession({ ...session, batches: session.batches.map((batch) => ({ ...batch })) })
+    setIsProcessing(false)
+    setProgressMessage("")
+
+    if (failed.length > 0) {
+      const ranges = failedQuestionRanges(session.batches)
+      setPartialImportWarning(
+        `${failed.length} of ${session.batches.length} batches failed after three attempts. ` +
+        `${master.length} questions were safely retained. Missing question range${ranges.length === 1 ? "" : "s"}: ${ranges.join(", ")}.`
+      )
+      stageQuestions(master, "ai")
+      return
+    }
+
+    setPartialImportWarning("")
+    if (master.length === 0) {
+      const raw = parseTextFallback(session.batches.map((batch) => batch.text).join("\n"))
+      if (raw.length === 0) {
+        setError("No questions detected. Check that questions are numbered (1., Q1.) and options are labelled (A., B., etc.).")
+        setView("input")
+        return
+      }
+      stageQuestions(raw.map((question, index) => makeFromRaw(question, index, null)), "regex")
+      return
+    }
+
+    const uncategorized = master.filter((question) => !question.module || !question.subject)
+    if (uncategorized.length > 0) {
+      setRawMaster(master)
+      setUncategorizedCount(uncategorized.length)
+      setCategorizeModule("")
+      setCategorizeDiscipline("")
+      setView("categorize")
+      return
+    }
+    stageQuestions(master, "ai")
+  }
+
+  async function runBatchSession(session: ResumableImportSession, batchIndexes: number[]) {
+    const working: ResumableImportSession = {
+      ...session,
+      batches: session.batches.map((batch) => ({ ...batch, questions: [...batch.questions] })),
+    }
+    const imageMap = new Map(working.images.map((image) => [image.id, image.dataUri]))
+    setImportSession(working)
+    setView("preview")
     setIsProcessing(true)
-    setProgressMessage("Extracting document text and images…")
+    setError("")
+
+    for (const batchIndex of batchIndexes) {
+      const batch = working.batches[batchIndex]
+      const batchImages = working.images.filter((image) => batch.text.includes(`[${image.id}]`))
+
+      try {
+        const chunkQuestions = await runWithImportRetry(
+          async () => {
+            const response = await fetch("/api/extract-single-chunk", {
+              method: "POST",
+              headers: importAuthHeaders(true),
+              body: JSON.stringify({
+                textChunk: batch.text,
+                fallbackModule: batch.fallbackModule,
+                fallbackDiscipline: batch.fallbackDiscipline,
+                images: batchImages,
+              }),
+            })
+            if (!response.ok) throw new Error(await importError(response))
+            const data = await response.json() as { questions?: ChunkQuestion[] }
+            if (!data.questions?.length) throw new Error("No questions were returned for this batch.")
+            return data.questions
+          },
+          (attempt) => {
+            batch.status = attempt === 1 ? "processing" : "retrying"
+            batch.attempts = attempt
+            batch.error = null
+            setProgressMessage(
+              `${attempt === 1 ? "Processing" : `Retrying (attempt ${attempt} of 3)`} batch ${batch.index + 1} of ${working.batches.length}` +
+              (working.usingQuestionBatches ? ` (questions ${batch.startQuestion}–${batch.endQuestion})…` : "…")
+            )
+            setImportSession({ ...working, batches: working.batches.map((item) => ({ ...item })) })
+          },
+        )
+
+        const questionImageMap = new Map<number, string>()
+        const questionBoundaryGlobal = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
+        for (const match of batch.text.matchAll(/\[IMAGE_(\d+)\]/g)) {
+          const imageDataUri = imageMap.get(`IMAGE_${match[1]}`)
+          if (!imageDataUri) continue
+          const textBefore = batch.text.slice(0, match.index ?? 0)
+          const questionIndex = Math.max(0, [...textBefore.matchAll(questionBoundaryGlobal)].length - 1)
+          if (!questionImageMap.has(questionIndex)) questionImageMap.set(questionIndex, imageDataUri)
+        }
+
+        batch.questions = chunkQuestions.map((chunkQuestion, questionIndex) => {
+          const question = makeFromChunk(
+            chunkQuestion,
+            questionIndex,
+            batch.fallbackModule,
+            stableImportQuestionId(
+              working.fingerprint,
+              batch.index,
+              questionIndex,
+              batch.startQuestion + questionIndex,
+            ),
+            batch.fallbackDiscipline,
+          )
+          question.vignette = question.vignette.replace(/\[IMAGE_\d+\]/gi, "").replace(/\s{2,}/g, " ").trim()
+          if (!question.mediaBase64) question.mediaBase64 = questionImageMap.get(questionIndex) ?? null
+          return question
+        })
+        batch.status = "completed"
+        batch.error = null
+      } catch (batchError) {
+        batch.status = "failed"
+        batch.questions = []
+        batch.error = batchError instanceof Error ? batchError.message : "Batch processing failed."
+      }
+
+      working.updatedAt = new Date().toISOString()
+      setImportSession({ ...working, batches: working.batches.map((item) => ({ ...item })) })
+      await persistSession(working)
+    }
+
+    finalizeBatchSession(working)
+  }
+
+  async function processDocumentFile(file: File, fileType: "docx" | "pdf") {
+    setError("")
+    setPartialImportWarning("")
+    setImportSummary(null)
+    setImportSession(null)
+    setIsProcessing(true)
+    setProgressMessage("Checking for an unfinished import…")
 
     try {
+      const fingerprint = await fingerprintFile(file)
+      const recovered = await loadImportSession(fingerprint).catch(() => null)
+      if (recovered?.version === 1 && recovered.batches.length > 0) {
+        const completed = recovered.batches.filter((batch) => batch.status === "completed").length
+        const shouldResume = window.confirm(
+          completed === recovered.batches.length
+            ? `A completed import session was found for "${file.name}". Restore the ${completed} processed batches without processing them again?`
+            : `An unfinished import was found for "${file.name}" (${completed} of ${recovered.batches.length} batches completed). Resume only the unfinished batches?`
+        )
+        if (shouldResume) {
+          setSummaryFromSession(recovered)
+          const unfinished = recovered.batches
+            .filter((batch) => batch.status !== "completed")
+            .map((batch) => batch.index)
+          await runBatchSession(recovered, unfinished)
+          return
+        }
+        await deleteImportSession(fingerprint).catch(() => undefined)
+      }
+
+      setProgressMessage(`Extracting ${fileType === "docx" ? "document" : "PDF"} text and images…`)
       const formData = new FormData()
       formData.append("file", file)
-      const extractRes = await fetch("/api/parse-docx", { method: "POST", body: formData, headers: importAuthHeaders() })
-      if (!extractRes.ok) {
-        throw new Error(await importError(extractRes))
-      }
-      const { text, images = [], summary } = await extractRes.json() as {
+      const route = fileType === "docx" ? "/api/parse-docx" : "/api/parse-pdf-file"
+      const extractResponse = await fetch(route, { method: "POST", body: formData, headers: importAuthHeaders() })
+      if (!extractResponse.ok) throw new Error(await importError(extractResponse))
+
+      const { text, images = [], summary } = await extractResponse.json() as {
         text: string
-        images: { id: string; dataUri: string }[]
+        images: ImportSourceImage[]
         summary?: ImportExtractionSummary
       }
       if (!text?.trim()) throw new Error("The document appears to be empty or could not be read.")
 
-      // Build IMAGE_N → data URI lookup map
-      const imageMap = new Map<string, string>(images.map((img) => [img.id, img.dataUri]))
+      const numberedBatches = splitIntoQuestionBatches(text, 25)
+      const usingQuestionBatches = numberedBatches.length > 0
+      const batchTexts = usingQuestionBatches ? numberedBatches : chunkText(text, 2000)
+      if (batchTexts.length === 0) throw new Error("No content found in the document.")
+      if (batchTexts.length > 80) throw new Error("This import has too many chunks. Split the document into smaller imports.")
 
-      // Split into strict 25-question batches; fall back to word-chunking if no
-      // numbered question boundaries are found in the document.
-      const batches = splitIntoQuestionBatches(text, 25)
-      const usingQuestionBatches = batches.length > 0
-      const finalBatches = usingQuestionBatches ? batches : chunkText(text, 2000)
-
-      if (finalBatches.length === 0) throw new Error("No content found in the document.")
-      if (finalBatches.length > 80) throw new Error("This import has too many chunks. Split the document into smaller imports.")
-
-      if (summary) {
-        setImportSummary({
-          ...summary,
-          detectedQuestions: usingQuestionBatches ? countNumberedQuestions(text) : null,
-          processingBatches: finalBatches.length,
-        })
+      const now = new Date().toISOString()
+      const session: ResumableImportSession = {
+        version: 1,
+        fingerprint,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType,
+        usingQuestionBatches,
+        images,
+        summary: summary ?? null,
+        batches: createResumableBatches(batchTexts, usingQuestionBatches, countNumberedQuestions),
+        createdAt: now,
+        updatedAt: now,
       }
-
-      const batchLabel = usingQuestionBatches
-        ? `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""} of up to 25 questions`
-        : `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""}`
-
-      if (images.length > 0) {
-        setProgressMessage(`Found ${images.length} image${images.length !== 1 ? "s" : ""} — preparing ${batchLabel}…`)
-      } else {
-        setProgressMessage(`Preparing ${batchLabel}…`)
-      }
-
-      let runningModule: string | null = null
-      let runningDiscipline: string | null = null
-      const master: Question[] = []
-      let questionIndex = 0
-      let failedBatches = 0
-
-      for (let i = 0; i < finalBatches.length; i++) {
-        const startQ = i * 25 + 1
-        const endQ = Math.min((i + 1) * 25, usingQuestionBatches ? questionIndex + 25 : (i + 1) * 25)
-        setProgressMessage(
-          usingQuestionBatches
-            ? `Processing batch ${i + 1} of ${finalBatches.length} (questions ${startQ}–${endQ})…`
-            : `Processing batch ${i + 1} of ${finalBatches.length}…`
-        )
-
-        // ── Per-batch recovery: a single failed batch is skipped, not fatal ──
-        // Pass images for this batch so the server can do marker-based
-        // reconciliation (more reliable than position counting).
-        const batchText = finalBatches[i]
-        const batchImages = images.filter((img) => batchText.includes(`[${img.id}]`))
-
-        let chunkQuestions: ChunkQuestion[] = []
-        try {
-          const chunkRes = await fetch("/api/extract-single-chunk", {
-            method: "POST",
-            headers: importAuthHeaders(true),
-            body: JSON.stringify({
-              textChunk: batchText,
-              fallbackModule: runningModule,
-              fallbackDiscipline: runningDiscipline,
-              images: batchImages,
-            }),
-          })
-          if (!chunkRes.ok) {
-            console.warn(`[import] Batch ${i + 1} failed (HTTP ${chunkRes.status}) — skipping`)
-            failedBatches++
-            continue
-          }
-          const chunkData = await chunkRes.json() as { questions?: ChunkQuestion[] }
-          chunkQuestions = chunkData.questions ?? []
-        } catch (batchErr) {
-          console.warn(`[import] Batch ${i + 1} network error — skipping`, batchErr)
-          failedBatches++
-          continue
-        }
-
-        const lastItem = chunkQuestions.at(-1)
-        if (lastItem?.module) runningModule = lastItem.module
-        if (lastItem?.discipline) runningDiscipline = lastItem.discipline
-
-        // ── Image assignment ────────────────────────────────────────────────
-        // Primary: server-side marker reconciliation already set q.mediaBase64.
-        // Fallback: position-based count for images between question boundaries
-        // (e.g. images that appear in the document before the question stem).
-        const Q_BOUNDARY_GLOBAL = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
-        const questionImageMap = new Map<number, string>()
-
-        for (const match of batchText.matchAll(/\[IMAGE_(\d+)\]/g)) {
-          const imageDataUri = imageMap.get(`IMAGE_${match[1]}`)
-          if (!imageDataUri) continue
-          const textBefore = batchText.slice(0, match.index ?? 0)
-          const qIdx = Math.max(0, [...textBefore.matchAll(Q_BOUNDARY_GLOBAL)].length - 1)
-          if (!questionImageMap.has(qIdx)) questionImageMap.set(qIdx, imageDataUri)
-        }
-
-        for (let j = 0; j < chunkQuestions.length; j++) {
-          const q = makeFromChunk(chunkQuestions[j], questionIndex++, null)
-          q.vignette = q.vignette.replace(/\[IMAGE_\d+\]/gi, "").replace(/\s{2,}/g, " ").trim()
-          // Prefer server-side reconciliation; fall back to position-based
-          if (!q.mediaBase64) {
-            const imgForQ = questionImageMap.get(j)
-            if (imgForQ) q.mediaBase64 = imgForQ
-          }
-          master.push(q)
-        }
-      }
-
-      if (master.length === 0) {
-        // AI returned nothing — regex fallback
-        setProgressMessage("AI returned no questions — using fallback parser…")
-        const raw = parseTextFallback(text)
-        if (raw.length === 0) {
-          setIsProcessing(false)
-          setProgressMessage("")
-          setError("No questions detected. Check that questions are numbered (1., Q1.) and options are labelled (A., B., etc.).")
-          return
-        }
-        setIsProcessing(false)
-        setProgressMessage("")
-        stageQuestions(raw.map((r, i) => makeFromRaw(r, i, null)), "regex")
-        return
-      }
-
-      // ── Categorization gate ─────────────────────────────────────────────────
-      // Any question missing a module OR discipline requires user input before
-      // the batch can proceed to the preview stage.
-      const uncategorized = master.filter((q) => !q.module || !q.subject)
-      if (uncategorized.length > 0) {
-        setIsProcessing(false)
-        setProgressMessage("")
-        setRawMaster(master)
-        setUncategorizedCount(uncategorized.length)
-        setCategorizeModule("")
-        setCategorizeDiscipline("")
-        setView("categorize")
-        return
-      }
-
+      setSummaryFromSession(session)
+      await persistSession(session)
+      await runBatchSession(session, session.batches.map((batch) => batch.index))
+    } catch (processingError) {
       setIsProcessing(false)
       setProgressMessage("")
-      if (failedBatches > 0) {
-        setPartialImportWarning(
-          `${failedBatches} of ${finalBatches.length} batch${failedBatches > 1 ? "es" : ""} failed (timeout or API error) — ${master.length} question${master.length !== 1 ? "s" : ""} recovered below. Re-import the document to pick up the rest.`
-        )
-      }
-      stageQuestions(master, "ai")
-    } catch (err) {
-      setIsProcessing(false)
-      setProgressMessage("")
-      setError(err instanceof Error ? err.message : "Upload failed or timed out. Connection closed safely to protect bandwidth.")
+      setError(processingError instanceof Error ? processingError.message : "Upload failed or timed out. Connection closed safely to protect bandwidth.")
     }
+  }
+
+  async function processDocxFile(file: File) {
+    await processDocumentFile(file, "docx")
   }
 
   // ── Categorization gate: apply and proceed to preview ────────────────────────
@@ -616,174 +760,8 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     stageQuestions(filled, "ai")
   }
 
-  // ── PDF handler — server-side image-aware batch processor ───────────────────
-  // Mirrors processDocxFile exactly: uploads the raw file to a server route that
-  // uses PyMuPDF to extract both text and embedded images, then feeds the result
-  // through the same 25-question batch pipeline with image assignment.
   async function processPdfFile(file: File) {
-    setError("")
-    setImportSummary(null)
-    setIsProcessing(true)
-    setProgressMessage("Extracting PDF text and images…")
-
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-      const extractRes = await fetch("/api/parse-pdf-file", { method: "POST", body: formData, headers: importAuthHeaders() })
-      if (!extractRes.ok) {
-        throw new Error(await importError(extractRes))
-      }
-      const { text, images = [], summary } = await extractRes.json() as {
-        text: string
-        images: { id: string; dataUri: string }[]
-        summary?: ImportExtractionSummary
-      }
-      if (!text?.trim()) throw new Error("The document appears to be empty or could not be read.")
-
-      // Build IMAGE_N → data URI lookup map
-      const imageMap = new Map<string, string>(images.map((img) => [img.id, img.dataUri]))
-
-      // Split into strict 25-question batches; fall back to word-chunking if no
-      // numbered question boundaries are found in the document.
-      const batches = splitIntoQuestionBatches(text, 25)
-      const usingQuestionBatches = batches.length > 0
-      const finalBatches = usingQuestionBatches ? batches : chunkText(text, 2000)
-
-      if (finalBatches.length === 0) throw new Error("No content found in the document.")
-      if (finalBatches.length > 80) throw new Error("This import has too many chunks. Split the document into smaller imports.")
-
-      if (summary) {
-        setImportSummary({
-          ...summary,
-          detectedQuestions: usingQuestionBatches ? countNumberedQuestions(text) : null,
-          processingBatches: finalBatches.length,
-        })
-      }
-
-      const batchLabel = usingQuestionBatches
-        ? `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""} of up to 25 questions`
-        : `${finalBatches.length} batch${finalBatches.length !== 1 ? "es" : ""}`
-
-      if (images.length > 0) {
-        setProgressMessage(`Found ${images.length} image${images.length !== 1 ? "s" : ""} — preparing ${batchLabel}…`)
-      } else {
-        setProgressMessage(`Preparing ${batchLabel}…`)
-      }
-
-      let runningModule: string | null = null
-      let runningDiscipline: string | null = null
-      const master: Question[] = []
-      let questionIndex = 0
-      let failedBatches = 0
-
-      for (let i = 0; i < finalBatches.length; i++) {
-        const startQ = i * 25 + 1
-        const endQ = Math.min((i + 1) * 25, usingQuestionBatches ? questionIndex + 25 : (i + 1) * 25)
-        setProgressMessage(
-          usingQuestionBatches
-            ? `Processing batch ${i + 1} of ${finalBatches.length} (questions ${startQ}–${endQ})…`
-            : `Processing batch ${i + 1} of ${finalBatches.length}…`
-        )
-
-        // ── Per-batch recovery: a single failed batch is skipped, not fatal ──
-        const batchText = finalBatches[i]
-        const batchImages = images.filter((img) => batchText.includes(`[${img.id}]`))
-
-        let chunkQuestions: ChunkQuestion[] = []
-        try {
-          const chunkRes = await fetch("/api/extract-single-chunk", {
-            method: "POST",
-            headers: importAuthHeaders(true),
-            body: JSON.stringify({
-              textChunk: batchText,
-              fallbackModule: runningModule,
-              fallbackDiscipline: runningDiscipline,
-              images: batchImages,
-            }),
-          })
-          if (!chunkRes.ok) {
-            console.warn(`[import] Batch ${i + 1} failed (HTTP ${chunkRes.status}) — skipping`)
-            failedBatches++
-            continue
-          }
-          const chunkData = await chunkRes.json() as { questions?: ChunkQuestion[] }
-          chunkQuestions = chunkData.questions ?? []
-        } catch (batchErr) {
-          console.warn(`[import] Batch ${i + 1} network error — skipping`, batchErr)
-          failedBatches++
-          continue
-        }
-
-        const lastItem = chunkQuestions.at(-1)
-        if (lastItem?.module) runningModule = lastItem.module
-        if (lastItem?.discipline) runningDiscipline = lastItem.discipline
-
-        // ── Image assignment ──────────────────────────────────────────────────
-        // Primary: server-side marker reconciliation already set q.mediaBase64.
-        // Fallback: position-based count for images not found via markers.
-        const Q_BOUNDARY_GLOBAL = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
-        const questionImageMap = new Map<number, string>()
-
-        for (const match of batchText.matchAll(/\[IMAGE_(\d+)\]/g)) {
-          const imageDataUri = imageMap.get(`IMAGE_${match[1]}`)
-          if (!imageDataUri) continue
-          const textBefore = batchText.slice(0, match.index ?? 0)
-          const qIdx = Math.max(0, [...textBefore.matchAll(Q_BOUNDARY_GLOBAL)].length - 1)
-          if (!questionImageMap.has(qIdx)) questionImageMap.set(qIdx, imageDataUri)
-        }
-
-        for (let j = 0; j < chunkQuestions.length; j++) {
-          const q = makeFromChunk(chunkQuestions[j], questionIndex++, null)
-          q.vignette = q.vignette.replace(/\[IMAGE_\d+\]/gi, "").replace(/\s{2,}/g, " ").trim()
-          if (!q.mediaBase64) {
-            const imgForQ = questionImageMap.get(j)
-            if (imgForQ) q.mediaBase64 = imgForQ
-          }
-          master.push(q)
-        }
-      }
-
-      if (master.length === 0) {
-        setProgressMessage("AI returned no questions — using fallback parser…")
-        const raw = parseTextFallback(text)
-        if (raw.length === 0) {
-          setIsProcessing(false)
-          setProgressMessage("")
-          setError("No questions detected. Check that questions are numbered (1., Q1.) and options are labelled (A., B., etc.).")
-          return
-        }
-        setIsProcessing(false)
-        setProgressMessage("")
-        stageQuestions(raw.map((r, i) => makeFromRaw(r, i, null)), "regex")
-        return
-      }
-
-      // ── Categorization gate ───────────────────────────────────────────────────
-      const uncategorized = master.filter((q) => !q.module || !q.subject)
-      if (uncategorized.length > 0) {
-        setIsProcessing(false)
-        setProgressMessage("")
-        setRawMaster(master)
-        setUncategorizedCount(uncategorized.length)
-        setCategorizeModule("")
-        setCategorizeDiscipline("")
-        setView("categorize")
-        return
-      }
-
-      setIsProcessing(false)
-      setProgressMessage("")
-      if (failedBatches > 0) {
-        setPartialImportWarning(
-          `${failedBatches} of ${finalBatches.length} batch${failedBatches > 1 ? "es" : ""} failed (timeout or API error) — ${master.length} question${master.length !== 1 ? "s" : ""} recovered below. Re-import the document to pick up the rest.`
-        )
-      }
-      stageQuestions(master, "ai")
-    } catch (err) {
-      setIsProcessing(false)
-      setProgressMessage("")
-      setError(err instanceof Error ? err.message : "Upload failed or timed out. Connection closed safely to protect bandwidth.")
-    }
+    await processDocumentFile(file, "pdf")
   }
 
   // ── Raw text handler ─────────────────────────────────────────────────────────
@@ -850,6 +828,34 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     const file = e.dataTransfer.files?.[0]
     if (file) processFile(file)
   }
+
+  async function retryFailedBatches() {
+    if (!importSession || isProcessing) return
+    const failedIndexes = importSession.batches
+      .filter((batch) => batch.status === "failed")
+      .map((batch) => batch.index)
+    if (failedIndexes.length === 0) return
+    setPartialImportWarning("")
+    await runBatchSession(importSession, failedIndexes)
+  }
+
+  async function completeImport(allowPartial: boolean) {
+    if (pendingImport.length === 0 || isProcessing) return
+    const failed = importSession?.batches.filter((batch) => batch.status === "failed") ?? []
+    if (failed.length > 0 && !allowPartial) return
+    if (failed.length > 0) {
+      const ranges = failedQuestionRanges(importSession?.batches ?? [])
+      const confirmed = window.confirm(
+        `This will import ${pendingImport.length} recovered questions without the failed range${ranges.length === 1 ? "" : "s"} ${ranges.join(", ")}. Continue with this incomplete import?`
+      )
+      if (!confirmed) return
+    }
+    onImport(pendingImport)
+    if (importSession) await deleteImportSession(importSession.fingerprint).catch(() => undefined)
+    onClose()
+  }
+
+  const failedBatchCount = importSession?.batches.filter((batch) => batch.status === "failed").length ?? 0
 
   const sourceBadge =
     parseSource === "ai"
@@ -1404,6 +1410,13 @@ giving pH = 5.`
             /* Preview staging area */
             <div className="space-y-2 p-6">
               {importSummary && <ImportSummaryPanel summary={importSummary} />}
+              {importSession && (
+                <BatchRecoveryPanel
+                  batches={importSession.batches}
+                  isProcessing={isProcessing}
+                  onRetryFailed={() => { void retryFailedBatches() }}
+                />
+              )}
 
               {partialImportWarning && (
                 <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
@@ -1414,10 +1427,12 @@ giving pH = 5.`
               {pendingImport.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-10 text-center">
                   <AlertTriangleIcon size={32} className="text-amber-500" />
-                  <p className="font-semibold">All questions removed</p>
+                  <p className="font-semibold">
+                    {failedBatchCount > 0 ? "No questions have been recovered yet" : "All questions removed"}
+                  </p>
                   <button
                     type="button"
-                    onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning(""); setImportSummary(null) }}
+                    onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning(""); setImportSummary(null); setImportSession(null) }}
                     className="text-sm text-primary hover:underline"
                   >
                     Go back to import
@@ -1443,20 +1458,33 @@ giving pH = 5.`
             <>
               <button
                 type="button"
-                onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning(""); setImportSummary(null) }}
+                disabled={isProcessing}
+                onClick={() => { setView("input"); setParseSource(null); setPartialImportWarning(""); setImportSummary(null); setImportSession(null) }}
                 className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
               >
                 <RefreshCwIcon size={13} /> Try another file
               </button>
-              <button
-                type="button"
-                disabled={pendingImport.length === 0}
-                onClick={() => { onImport(pendingImport); onClose() }}
-                className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <CheckIcon size={14} />
-                Confirm & Import {pendingImport.length} to Editor
-              </button>
+              <div className="flex flex-wrap justify-end gap-2">
+                {failedBatchCount > 0 && pendingImport.length > 0 && (
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => { void completeImport(true) }}
+                    className="rounded-xl border border-amber-400 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-300 dark:hover:bg-amber-950/20"
+                  >
+                    Continue with partial import
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={pendingImport.length === 0 || failedBatchCount > 0 || isProcessing}
+                  onClick={() => { void completeImport(false) }}
+                  className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <CheckIcon size={14} />
+                  {failedBatchCount > 0 ? "Complete all batches first" : `Confirm & Import ${pendingImport.length} to Editor`}
+                </button>
+              </div>
             </>
           ) : view === "categorize" ? (
             <>
