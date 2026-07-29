@@ -429,6 +429,7 @@ export function MedNexusApp() {
     questions: Question[]
     answers: Record<string, string | string[] | null>
     earnedNP?: number
+    payoutError?: string
   } | null>(null)
 
   useEffect(() => {
@@ -568,7 +569,7 @@ export function MedNexusApp() {
     setScreen("quiz")
   }
 
-  function handleQuizComplete(result: BlockResult, history: HistoryEntry[], earnedNP?: number) {
+  function handleQuizComplete(result: BlockResult, history: HistoryEntry[], earnedNP?: number, payoutError?: string) {
     if (!activeQuiz) return
     if (activeQuiz.mode === "exam" && result.timeTakenMs !== undefined) {
       const score: ExamScore = {
@@ -597,6 +598,7 @@ export function MedNexusApp() {
       questions: activeQuiz.questions,
       answers,
       earnedNP,
+      payoutError,
     })
     setActiveQuiz(null)
     setScreen("results")
@@ -661,7 +663,7 @@ export function MedNexusApp() {
           {safeScreen === "store-supply" && <NexusStoreSupplyPage onBack={() => setScreen("store")} />}
           {safeScreen === "store-cosmetics" && <NexusStoreCosmeticsPage onBack={() => setScreen("store")} />}
           {safeScreen === "store-vault" && <NexusStoreVaultPage onBack={() => setScreen("store")} />}
-          {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
+          {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} payoutError={lastResult.payoutError} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
     </LearnerWorkspaceShell>
       <QuantityModal
         open={pendingQuiz !== null}

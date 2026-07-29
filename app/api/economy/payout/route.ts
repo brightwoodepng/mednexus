@@ -22,6 +22,7 @@ import {
 import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
 import { calculateDoubleBank, hasConsistentSoloCompletion } from "@/lib/solo-completion-validation"
 import { getPersonalBestUpdate, personalBestValue, type SoloPersonalBestResult } from "@/lib/game-personal-best"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 type Key = {
   id: string
@@ -77,27 +78,28 @@ async function updatePersonalBest(
   mode: string,
   score: number,
   client: PoolClient,
+  seasonId: string,
 ) {
   if (!SOLO_GAME_MODES.has(mode) || score <= 0) return false
   const existing = await client.query(
     `SELECT best_score FROM mednexus_game_personal_bests
-     WHERE user_id = $1 AND mode = $2
+     WHERE season_id = $1 AND user_id = $2 AND mode = $3
      FOR UPDATE`,
-    [userId, mode],
+    [seasonId, userId, mode],
   )
   const previous = Number(existing.rows[0]?.best_score ?? 0)
   const { isNewHigh } = getPersonalBestUpdate(previous, score)
   await client.query(
     `INSERT INTO mednexus_game_personal_bests
-       (user_id, mode, best_score, updated_at)
-     VALUES ($1, $2, $3, NOW())
-     ON CONFLICT (user_id, mode) DO UPDATE
+       (season_id, user_id, mode, best_score, updated_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (season_id, user_id, mode) DO UPDATE
        SET best_score = GREATEST(mednexus_game_personal_bests.best_score, EXCLUDED.best_score),
            updated_at = CASE
              WHEN EXCLUDED.best_score > mednexus_game_personal_bests.best_score THEN NOW()
              ELSE mednexus_game_personal_bests.updated_at
            END`,
-    [userId, mode, score],
+    [seasonId, userId, mode, score],
   )
   return isNewHigh
 }
@@ -113,8 +115,9 @@ export async function POST(req: NextRequest) {
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
+      const activeSeason = await getActiveSeason(client, true)
       const { rows } = await client.query(
-        `SELECT id,user_id,mode,question_ids,answered_ids,answer_key,
+        `SELECT id,user_id,season_id,mode,question_ids,answered_ids,answer_key,
                 accepted_answers,answer_order,result_meta,payout,status,started_at,submitted_at
          FROM mednexus_exam_sessions
          WHERE id = $1 AND user_id = $2
@@ -125,6 +128,17 @@ export async function POST(req: NextRequest) {
       if (!session) {
         await client.query("ROLLBACK")
         return NextResponse.json({ error: "Session not found" }, { status: 404 })
+      }
+      if (session.season_id && session.season_id !== activeSeason.id) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: "This activity belongs to a closed economy season" }, { status: 409 })
+      }
+      const seasonId = session.season_id ?? activeSeason.id
+      if (!session.season_id) {
+        await client.query(
+          "UPDATE mednexus_exam_sessions SET season_id = $2 WHERE id = $1 AND season_id IS NULL",
+          [sessionId, seasonId],
+        )
       }
       if (session.payout) {
         await client.query("COMMIT")
@@ -238,7 +252,7 @@ export async function POST(req: NextRequest) {
         ? personalBestValue({ mode: session.mode, score, bestStreak, survivedCount } as SoloPersonalBestResult)
         : score
       const isNewHigh = meaningfulSoloCompletion && !hasAssistedAttempt
-        ? await updatePersonalBest(auth.uid, session.mode, personalBestScore, client)
+        ? await updatePersonalBest(auth.uid, session.mode, personalBestScore, client, seasonId)
         : false
       const result: GameResult = {
         mode: session.mode,
@@ -267,11 +281,12 @@ export async function POST(req: NextRequest) {
             }
           : undefined,
         sessionId,
+        seasonId,
       )
 
       const gross = calculatePayout(result)
       const canAwardFirstCompletion = meaningfulSoloCompletion
-        && await completionBonusAvailable(client, auth.uid)
+        && await completionBonusAvailable(client, auth.uid, seasonId)
       const achievementBreakdown = isSoloGame && completionMetadataConsistent
         ? gross.breakdown.filter((item) => item.label !== "Valid Completion")
         : []
@@ -313,7 +328,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (isSoloGame) {
-        let remaining = await dailyRewardRemaining(client, auth.uid, "solo")
+        let remaining = await dailyRewardRemaining(client, auth.uid, "solo", seasonId)
         for (const entry of credits) {
           entry.amount = Math.min(entry.amount, remaining)
           remaining -= entry.amount
@@ -322,7 +337,7 @@ export async function POST(req: NextRequest) {
       const credit = await applyNPCredits(client, auth.uid, credits)
       await recordDailyActivity(client, auth.uid, total, correctCount)
       const weekly = completionMetadataConsistent
-        ? await recordWeeklyGoalActivity(client, auth.uid, {
+        ? await recordWeeklyGoalActivity(client, auth.uid, seasonId, {
             answered: total,
             correct: correctCount,
             qualifyingExam: session.mode === "exam" && total >= ECONOMY_CONFIG.examRewards.minimumAnswered,
@@ -347,9 +362,9 @@ export async function POST(req: NextRequest) {
         if (!delta) continue
         const old = await client.query(
           `SELECT progress, claimed FROM mednexus_bounty_progress
-           WHERE uid = $1 AND bounty_id = $2 AND bounty_date = $3
+           WHERE season_id = $1 AND uid = $2 AND bounty_id = $3 AND bounty_date = $4
            FOR UPDATE`,
-          [auth.uid, bounty.id, TODAY_DATE()],
+          [seasonId, auth.uid, bounty.id, TODAY_DATE()],
         )
         if (old.rows[0]?.claimed) continue
         const oldProgress = Number(old.rows[0]?.progress ?? 0)
@@ -357,11 +372,11 @@ export async function POST(req: NextRequest) {
         const newlyComplete = progress === bounty.target && oldProgress < bounty.target
         await client.query(
           `INSERT INTO mednexus_bounty_progress
-             (uid, bounty_id, bounty_date, progress, claimed)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (uid, bounty_id, bounty_date) DO UPDATE
+             (season_id, uid, bounty_id, bounty_date, progress, claimed)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (season_id, uid, bounty_id, bounty_date) DO UPDATE
              SET progress = EXCLUDED.progress, claimed = EXCLUDED.claimed`,
-          [auth.uid, bounty.id, TODAY_DATE(), progress, newlyComplete],
+          [seasonId, auth.uid, bounty.id, TODAY_DATE(), progress, newlyComplete],
         )
         if (newlyComplete) bountyCredits.push({
           source: "bounty", sourceId: `${TODAY_DATE()}:${bounty.id}`, amount: bounty.reward,
@@ -406,8 +421,8 @@ export async function POST(req: NextRequest) {
         isNewHigh,
       }
       await client.query(
-        "UPDATE mednexus_exam_sessions SET payout = $2::jsonb WHERE id = $1",
-        [sessionId, JSON.stringify(payload)],
+        "UPDATE mednexus_exam_sessions SET payout = $3::jsonb WHERE id = $1 AND season_id = $2",
+        [sessionId, seasonId, JSON.stringify(payload)],
       )
       await client.query("COMMIT")
       return NextResponse.json(payload)

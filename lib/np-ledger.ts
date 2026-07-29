@@ -220,7 +220,11 @@ export async function recordDailyActivity(
   )
 }
 
-export async function completionBonusAvailable(client: PoolClient, userId: string) {
+export async function completionBonusAvailable(
+  client: PoolClient,
+  userId: string,
+  seasonId: string,
+) {
   // Serialize the first-completion check inside the caller's transaction.
   await client.query(
     "SELECT pg_advisory_xact_lock(hashtext($1))",
@@ -229,10 +233,10 @@ export async function completionBonusAvailable(client: PoolClient, userId: strin
   const result = await client.query(
     `SELECT COUNT(*)::int AS count
      FROM mednexus_np_transactions
-     WHERE user_id = $1
+     WHERE user_id = $1 AND season_id = $2
        AND source = 'game_completion'
        AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
-    [userId],
+    [userId, seasonId],
   )
   return Number(result.rows[0]?.count ?? 0) === 0
 }
@@ -241,6 +245,7 @@ export async function dailyRewardRemaining(
   client: PoolClient,
   userId: string,
   family: "solo" | "multiplayer",
+  seasonId: string,
 ) {
   const sources = family === "solo"
     ? ["question_reward", "game_completion", "game_achievement"]
@@ -248,12 +253,12 @@ export async function dailyRewardRemaining(
   await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:${family}-cap:${userId}:${TODAY_DATE()}`])
   const result = await client.query(
     `SELECT COALESCE(SUM(amount), 0)::int AS total FROM mednexus_np_transactions
-     WHERE user_id = $1 AND source = ANY($2::text[])
+     WHERE user_id = $1 AND season_id = $5 AND source = ANY($2::text[])
        AND CASE WHEN source = 'game_completion'
          THEN COALESCE((metadata->>'multiplayer')::boolean, FALSE) = $4
          ELSE TRUE END
        AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
-    [userId, sources, TODAY_DATE(), family === "multiplayer"],
+    [userId, sources, TODAY_DATE(), family === "multiplayer", seasonId],
   )
   const cap = family === "solo" ? ECONOMY_CONFIG.gameRewards.solo.dailyCap : ECONOMY_CONFIG.gameRewards.multiplayer.dailyCap
   return Math.max(0, cap - Number(result.rows[0]?.total ?? 0))
