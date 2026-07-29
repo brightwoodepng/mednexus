@@ -19,6 +19,7 @@ export interface ResumableImportBatch {
   attempts: number
   error: string | null
   questions: Question[]
+  source?: "structured" | "ai"
 }
 
 export interface ResumableImportSession {
