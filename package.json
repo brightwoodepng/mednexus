@@ -16,6 +16,7 @@
     "economy:analyze": "tsx scripts/analyze-economy.ts",
     "economy:cutover": "tsx scripts/cutover-economy-season.ts",
     "test": "vitest run",
+    "check:game-room-traffic": "vitest run tests/performance/game-room-traffic.test.ts --reporter=verbose",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test"
   },
