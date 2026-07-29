@@ -28,19 +28,20 @@ function completedGoalIds(progress: WeeklyGoalProgress): string[] {
 export async function recordWeeklyGoalActivity(
   client: PoolClient,
   uid: string,
+  seasonId: string,
   activity: { answered: number; correct: number; qualifyingExam?: boolean; occurredAt?: Date },
 ) {
   const weekId = economyWeekId(activity.occurredAt)
   const examDate = economyDate(activity.occurredAt)
   const result = await client.query(
     `INSERT INTO mednexus_weekly_goal_progress
-       (uid, week_id, eligible_answered, eligible_correct, qualifying_exams, distinct_exam_dates)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-     ON CONFLICT (uid, week_id) DO UPDATE SET
+       (season_id, uid, week_id, eligible_answered, eligible_correct, qualifying_exams, distinct_exam_dates)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+     ON CONFLICT (season_id, uid, week_id) DO UPDATE SET
        eligible_answered = mednexus_weekly_goal_progress.eligible_answered + EXCLUDED.eligible_answered,
        eligible_correct = mednexus_weekly_goal_progress.eligible_correct + EXCLUDED.eligible_correct,
        qualifying_exams = mednexus_weekly_goal_progress.qualifying_exams + EXCLUDED.qualifying_exams,
-       distinct_exam_dates = CASE WHEN $5::integer > 0 THEN
+       distinct_exam_dates = CASE WHEN $6::integer > 0 THEN
          (SELECT jsonb_agg(value ORDER BY value) FROM (
            SELECT DISTINCT value FROM jsonb_array_elements_text(
              mednexus_weekly_goal_progress.distinct_exam_dates || EXCLUDED.distinct_exam_dates
@@ -49,7 +50,7 @@ export async function recordWeeklyGoalActivity(
        ELSE mednexus_weekly_goal_progress.distinct_exam_dates END,
        updated_at = NOW()
      RETURNING *`,
-    [uid, weekId, activity.answered, activity.correct, activity.qualifyingExam ? 1 : 0, JSON.stringify(activity.qualifyingExam ? [examDate] : [])],
+    [seasonId, uid, weekId, activity.answered, activity.correct, activity.qualifyingExam ? 1 : 0, JSON.stringify(activity.qualifyingExam ? [examDate] : [])],
   )
   const row = result.rows[0]
   const progress: WeeklyGoalProgress = {
@@ -71,9 +72,9 @@ export async function recordWeeklyGoalActivity(
   if (newlyCompleted.length) {
     progress.creditedGoalIds = [...new Set([...progress.creditedGoalIds, ...newlyCompleted])]
     await client.query(
-      `UPDATE mednexus_weekly_goal_progress SET credited_goal_ids = $3::jsonb, updated_at = NOW()
-       WHERE uid = $1 AND week_id = $2`,
-      [uid, weekId, JSON.stringify(progress.creditedGoalIds)],
+      `UPDATE mednexus_weekly_goal_progress SET credited_goal_ids = $4::jsonb, updated_at = NOW()
+       WHERE season_id = $1 AND uid = $2 AND week_id = $3`,
+      [seasonId, uid, weekId, JSON.stringify(progress.creditedGoalIds)],
     )
   }
   return { progress, newlyCompleted, credited }

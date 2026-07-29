@@ -12,11 +12,12 @@ interface ResultsScreenProps {
   questions?: Question[]
   answers?: Record<string, string | string[] | null>
   earnedNP?: number
+  payoutError?: string
   onReturn: () => void
   onRetry: () => void
 }
 
-// ── Bounty counting animation (exam mode) ─────────────────────────────────────
+// ── Verified award counting animation ─────────────────────────────────────────
 function BountyCountup({ target }: { target: number }) {
   const [count, setCount] = useState(0)
   useEffect(() => {
@@ -42,7 +43,7 @@ const RANK_STYLES: Record<ProficiencyRank, { text: string; ring: string; blurb: 
   Novice: { text: "text-destructive", ring: "text-destructive", blurb: "Review the explanations and try again." },
 }
 
-export function ResultsScreen({ result, moduleName, mode, questions, answers, earnedNP, onReturn, onRetry }: ResultsScreenProps) {
+export function ResultsScreen({ result, moduleName, mode, questions, answers, earnedNP, payoutError, onReturn, onRetry }: ResultsScreenProps) {
   const [showReview, setShowReview] = useState(false)
   const rankStyle = RANK_STYLES[result.rank]
   // SVG circle geometry for the score ring.
@@ -95,15 +96,27 @@ export function ResultsScreen({ result, moduleName, mode, questions, answers, ea
 
         <p className="mb-8 text-center text-sm text-muted-foreground text-pretty">{rankStyle.blurb}</p>
 
-        {/* Exam Bounty — counting animation */}
-        {mode === "exam" && earnedNP !== undefined && earnedNP > 0 && (
+        {/* Server-confirmed NP result for both Trial and Exam completions */}
+        {earnedNP !== undefined && (
           <div className="mb-6 w-full rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-900/20 p-5 text-center">
             <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-              🏆 Verified Bounty Earned
+              Verified Nexus Points
             </p>
             <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
-              +<BountyCountup target={earnedNP} /> NP
+              {earnedNP > 0 ? "+" : ""}<BountyCountup target={earnedNP} /> NP
             </p>
+            {earnedNP === 0 && (
+              <p className="mt-2 text-xs text-emerald-700/80 dark:text-emerald-300/80">
+                No eligible NP this time. Repeated questions and daily limits can result in zero.
+              </p>
+            )}
+          </div>
+        )}
+
+        {payoutError && (
+          <div role="alert" className="mb-6 w-full rounded-2xl border border-amber-300 bg-amber-50 p-4 text-center text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
+            <p className="font-semibold">NP credit was not confirmed</p>
+            <p className="mt-1 text-xs">{payoutError} Please try again after refreshing.</p>
           </div>
         )}
 
