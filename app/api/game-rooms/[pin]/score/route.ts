@@ -31,6 +31,7 @@ import {
 } from "@/lib/np-ledger"
 import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
 import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 interface AnswerEntry {
   /** Index into the room's question_pool */
@@ -77,6 +78,7 @@ export async function POST(
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
+      const season = await getActiveSeason(client, true)
 
       // ── Load authoritative room state (with row lock) ──────────────────────
       const res = await client.query(
@@ -104,8 +106,8 @@ export async function POST(
       }
 
       const storedPayout = await client.query(
-        "SELECT payout FROM mednexus_multiplayer_payouts WHERE room_pin = $1 AND user_id = $2",
-        [pin, playerId],
+        "SELECT payout FROM mednexus_multiplayer_payouts WHERE season_id = $1 AND room_pin = $2 AND user_id = $3",
+        [season.id, pin, playerId],
       )
       if (storedPayout.rows[0]?.payout) {
         await client.query("COMMIT")
@@ -229,11 +231,12 @@ export async function POST(
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`multiplayer-members:${memberSet}:${TODAY_DATE()}`])
       const priorMemberMatch = await client.query(
         `SELECT 1 FROM mednexus_np_transactions
-         WHERE source = ANY(ARRAY['game_completion', 'multiplayer_reward']) AND metadata->>'memberSet' = $1
-           AND source_id NOT LIKE $2
-           AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'
+         WHERE season_id = $1
+           AND source = ANY(ARRAY['game_completion', 'multiplayer_reward']) AND metadata->>'memberSet' = $2
+           AND source_id NOT LIKE $3
+           AND created_at >= $4::date AND created_at < $4::date + INTERVAL '1 day'
          LIMIT 1`,
-        [memberSet, `${pin}:%`, TODAY_DATE()],
+        [season.id, memberSet, `${pin}:%`, TODAY_DATE()],
       )
       if (priorMemberMatch.rowCount) {
         await client.query("ROLLBACK")
@@ -269,8 +272,8 @@ export async function POST(
       if (playerRank1) {
         const firstWin = await client.query(
           `SELECT 1 FROM mednexus_np_transactions WHERE user_id = $1
-             AND source = 'first_multiplayer_win' AND source_id = $2 LIMIT 1`,
-          [playerId, `${TODAY_DATE()}:${playerId}`],
+             AND season_id = $2 AND source = 'first_multiplayer_win' AND source_id = $3 LIMIT 1`,
+          [playerId, season.id, `${TODAY_DATE()}:${playerId}`],
         )
         if (!firstWin.rowCount) {
           credits.push({
@@ -283,14 +286,14 @@ export async function POST(
         }
       }
 
-      let remaining = await dailyRewardRemaining(client, playerId, "multiplayer")
+      let remaining = await dailyRewardRemaining(client, playerId, "multiplayer", season.id)
       for (const entry of credits) {
         entry.amount = Math.min(entry.amount, remaining)
         remaining -= entry.amount
       }
       const credit = await applyNPCredits(client, playerId, credits)
       await recordDailyActivity(client, playerId, total, correct)
-      const weekly = await recordWeeklyGoalActivity(client, playerId, { answered: total, correct })
+      const weekly = await recordWeeklyGoalActivity(client, playerId, season.id, { answered: total, correct })
 
       const todayBounties = getTodaysBounties()
       const today = TODAY_DATE()
@@ -305,9 +308,9 @@ export async function POST(
 
         const { rows: existing } = await client.query(
           `SELECT progress, claimed FROM mednexus_bounty_progress
-           WHERE uid = $1 AND bounty_id = $2 AND bounty_date = $3
+           WHERE season_id = $1 AND uid = $2 AND bounty_id = $3 AND bounty_date = $4
            FOR UPDATE`,
-          [playerId, bounty.id, today]
+          [season.id, playerId, bounty.id, today]
         )
         const current = existing[0]
         if (current?.claimed) continue
@@ -317,11 +320,11 @@ export async function POST(
 
         const newlyComplete = oldProgress < bounty.target && newProgress >= bounty.target
         await client.query(
-          `INSERT INTO mednexus_bounty_progress (uid, bounty_id, bounty_date, progress, claimed)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (uid, bounty_id, bounty_date) DO UPDATE
+          `INSERT INTO mednexus_bounty_progress (season_id, uid, bounty_id, bounty_date, progress, claimed)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (season_id, uid, bounty_id, bounty_date) DO UPDATE
              SET progress = EXCLUDED.progress, claimed = EXCLUDED.claimed`,
-          [playerId, bounty.id, today, newProgress, newlyComplete]
+          [season.id, playerId, bounty.id, today, newProgress, newlyComplete]
         )
         if (newlyComplete) bountyCredits.push({
           source: "bounty", sourceId: `${today}:${bounty.id}`, amount: bounty.reward,
@@ -357,10 +360,10 @@ export async function POST(
       }
 
       await client.query(
-        `INSERT INTO mednexus_multiplayer_payouts (room_pin, user_id, payout)
-         VALUES ($1, $2, $3::jsonb)
-         ON CONFLICT (room_pin, user_id) DO NOTHING`,
-        [pin, playerId, JSON.stringify(payload)],
+        `INSERT INTO mednexus_multiplayer_payouts (season_id, room_pin, user_id, payout)
+         VALUES ($1, $2, $3, $4::jsonb)
+         ON CONFLICT (season_id, room_pin, user_id) DO NOTHING`,
+        [season.id, pin, playerId, JSON.stringify(payload)],
       )
       await client.query(
         `UPDATE mednexus_game_rooms

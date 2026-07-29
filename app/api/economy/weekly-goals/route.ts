@@ -3,17 +3,20 @@ import pool from "@/lib/db"
 import { economyWeekId } from "@/lib/economy"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { weeklyGoalView, type WeeklyGoalProgress } from "@/lib/weekly-goals"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
     const weekId = economyWeekId()
+    const season = await getActiveSeason(pool)
     const { rows } = await pool.query(
       `SELECT eligible_answered,eligible_correct,qualifying_exams,
               distinct_exam_dates,credited_goal_ids
-       FROM mednexus_weekly_goal_progress WHERE uid = $1 AND week_id = $2`,
-      [auth.uid, weekId],
+       FROM mednexus_weekly_goal_progress
+       WHERE season_id = $1 AND uid = $2 AND week_id = $3`,
+      [season.id, auth.uid, weekId],
     )
     const row = rows[0]
     const progress: WeeklyGoalProgress = {

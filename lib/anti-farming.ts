@@ -17,6 +17,7 @@ import type { PoolClient } from "pg"
 import pool from "@/lib/db"
 import { applyNPCredits } from "@/lib/np-ledger"
 import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -108,7 +109,9 @@ export async function calculateSessionNP(
   client:      PoolClient,
   examMeta?:   ExamMeta,
   sessionId?:  string,
+  seasonId?:   string,
 ): Promise<SessionNPResult> {
+  if (!seasonId) throw new Error("An active economy season is required for scored rewards")
   const enabled = mode === "exam"
     ? isEarningModeEnabled("mcq_exam") && (ECONOMY_CONFIG.modeIds.exam as readonly string[]).includes(mode)
     : (isEarningModeEnabled("mcq_trial_tutor") && (ECONOMY_CONFIG.modeIds.trialTutor as readonly string[]).includes(mode))
@@ -137,8 +140,9 @@ export async function calculateSessionNP(
       answer_order: Array<{ questionId: string }>
     }>(`SELECT answer_key, accepted_answers, answer_order
           FROM mednexus_exam_sessions
-         WHERE id = $1 AND user_id = $2 AND mode = $3 AND status = 'completed'`,
-      [sessionId, userId, mode])
+         WHERE id = $1 AND user_id = $2 AND mode = $3 AND season_id = $4
+           AND status = 'completed'`,
+      [sessionId, userId, mode, seasonId])
     if (!rows[0]) throw new Error("Completed Trial/Tutor session not found")
     const keys = Array.isArray(rows[0].answer_key) ? rows[0].answer_key : []
     const keyById = new Map(keys
@@ -174,8 +178,8 @@ export async function calculateSessionNP(
   }>(
     `SELECT question_id, correct_count
        FROM mednexus_user_question_progress
-      WHERE user_id = $1 AND question_id = ANY($2::text[])`,
-    [userId, questionIds],
+      WHERE user_id = $1 AND season_id = $2 AND question_id = ANY($3::text[])`,
+    [userId, seasonId, questionIds],
   )
   const correctCountMap = new Map<string, number>(
     progressRows.map((r) => [r.question_id, r.correct_count]),
@@ -191,11 +195,11 @@ export async function calculateSessionNP(
   }>(
     `SELECT discipline, COALESCE(SUM(np_earned), 0)::text AS total
        FROM mednexus_discipline_np_log
-      WHERE user_id = $1
-        AND discipline = ANY($2::text[])
-        AND earned_date = ANY($3::text[])
+      WHERE user_id = $1 AND season_id = $2
+        AND discipline = ANY($3::text[])
+        AND earned_date = ANY($4::text[])
       GROUP BY discipline`,
-    [userId, fatigueDiscs, window7],
+    [userId, seasonId, fatigueDiscs, window7],
   )
   const disciplineRunningNP = new Map<string, number>(
     fatigueRows.map((r) => [r.discipline, parseInt(r.total, 10)]),
@@ -231,8 +235,9 @@ export async function calculateSessionNP(
       answer_order: Array<{ questionId: string }>
     }>(`SELECT question_ids, answer_key, accepted_answers, answer_order
           FROM mednexus_exam_sessions
-         WHERE id = $1 AND user_id = $2 AND mode = 'exam' AND status = 'completed'`,
-      [sessionId, userId])
+         WHERE id = $1 AND user_id = $2 AND mode = 'exam' AND season_id = $3
+           AND status = 'completed'`,
+      [sessionId, userId, seasonId])
     const snapshot = snapshotResult.rows[0]
     if (!snapshot) throw new Error("Completed exam session not found")
     const plannedIds = Array.isArray(snapshot.question_ids) ? snapshot.question_ids : []
@@ -289,8 +294,9 @@ export async function calculateSessionNP(
       ? await client.query<{ total: string }>(
           `SELECT COALESCE(SUM(np_earned), 0)::text AS total
              FROM mednexus_discipline_np_log
-            WHERE user_id = $1 AND discipline = $2 AND earned_date = ANY($3::text[])`,
-          [userId, disc, window7],
+            WHERE user_id = $1 AND season_id = $2
+              AND discipline = $3 AND earned_date = ANY($4::text[])`,
+          [userId, seasonId, disc, window7],
         )
       : null
     const runningNP = Number(authoritativeFatigue?.rows[0]?.total ?? 0)
@@ -306,9 +312,9 @@ export async function calculateSessionNP(
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`exam-cap:${userId}:${today}`])
     const capResult = await client.query<{ total: string }>(
       `SELECT COALESCE(SUM(amount), 0)::text AS total FROM mednexus_np_transactions
-        WHERE user_id = $1 AND source = 'exam_reward'
-          AND created_at >= $2::date AND created_at < $2::date + INTERVAL '1 day'`,
-      [userId, today],
+        WHERE user_id = $1 AND season_id = $2 AND source = 'exam_reward'
+          AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
+      [userId, seasonId, today],
     )
     const remaining = Math.max(0, ECONOMY_CONFIG.examRewards.dailyCap - Number(capResult.rows[0]?.total ?? 0))
     totalNP = Math.min(eligibleReward, remaining)
@@ -388,9 +394,9 @@ export async function calculateSessionNP(
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`trial-tutor-cap:${userId}:${today}`])
       const capRows = await client.query<{ total: string }>(
         `SELECT COALESCE(SUM(amount), 0)::text AS total FROM mednexus_np_transactions
-          WHERE user_id = $1 AND source = ANY($2::text[])
-            AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
-        [userId, ["trial_tutor_question", "trial_tutor_streak", "trial_tutor_completion"], today],
+          WHERE user_id = $1 AND season_id = $2 AND source = ANY($3::text[])
+            AND created_at >= $4::date AND created_at < $4::date + INTERVAL '1 day'`,
+        [userId, seasonId, ["trial_tutor_question", "trial_tutor_streak", "trial_tutor_completion"], today],
       )
       let remaining = Math.max(0, ECONOMY_CONFIG.questionRewards.trialTutor.dailyCap - Number(capRows.rows[0]?.total ?? 0))
       for (const category of ["questions", "streaks", "completion"] as const) {
@@ -414,11 +420,11 @@ export async function calculateSessionNP(
   for (const [qId, { discipline, delta }] of correctIncrements) {
     await client.query(
       `INSERT INTO mednexus_user_question_progress
-         (user_id, question_id, correct_count, discipline)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (user_id, question_id) DO UPDATE
-         SET correct_count = mednexus_user_question_progress.correct_count + $3`,
-      [userId, qId, delta, discipline],
+         (season_id, user_id, question_id, correct_count, discipline)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (season_id, user_id, question_id) DO UPDATE
+         SET correct_count = mednexus_user_question_progress.correct_count + $4`,
+      [seasonId, userId, qId, delta, discipline],
     )
   }
 
@@ -426,11 +432,11 @@ export async function calculateSessionNP(
   for (const [discipline, np] of disciplineNPThisSession) {
     await client.query(
       `INSERT INTO mednexus_discipline_np_log
-         (user_id, discipline, earned_date, np_earned)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (user_id, discipline, earned_date) DO UPDATE
+         (season_id, user_id, discipline, earned_date, np_earned)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (season_id, user_id, discipline, earned_date) DO UPDATE
          SET np_earned = mednexus_discipline_np_log.np_earned + EXCLUDED.np_earned`,
-      [userId, discipline, today, np],
+      [seasonId, userId, discipline, today, np],
     )
   }
 
@@ -613,11 +619,12 @@ export async function openExamSession(
   questionIds: string[],
 ): Promise<string> {
   const id = `esess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const season = await getActiveSeason(pool)
   await pool.query(
     `INSERT INTO mednexus_exam_sessions
-       (id, user_id, mode, question_ids, answered_ids, status, started_at)
-     VALUES ($1, $2, $3, $4::jsonb, '[]'::jsonb, 'active', NOW())`,
-    [id, userId, mode, JSON.stringify(questionIds)],
+       (id, user_id, season_id, mode, question_ids, answered_ids, status, started_at)
+     VALUES ($1, $2, $3, $4, $5::jsonb, '[]'::jsonb, 'active', NOW())`,
+    [id, userId, season.id, mode, JSON.stringify(questionIds)],
   )
   return id
 }
@@ -630,13 +637,15 @@ export async function completeExamSession(
   sessionId:   string,
   answeredIds: string[],
 ): Promise<void> {
+  const season = await getActiveSeason(pool)
   await pool.query(
     `UPDATE mednexus_exam_sessions
         SET status = 'completed',
+            season_id = COALESCE(season_id, $3),
             answered_ids = $2::jsonb,
             submitted_at = NOW()
-      WHERE id = $1 AND status = 'active'`,
-    [sessionId, JSON.stringify(answeredIds)],
+      WHERE id = $1 AND COALESCE(season_id, $3) = $3 AND status = 'active'`,
+    [sessionId, JSON.stringify(answeredIds), season.id],
   )
 }
 
@@ -656,18 +665,20 @@ export async function abandonStaleSessions(
   userId:    string,
   staleMins: number = ECONOMY_CONFIG.antiFarming.abandonedExamMinutes,
 ): Promise<{ abandoned: number; penalisedQuestions: number }> {
+  const season = await getActiveSeason(pool)
   const { rows: staleSessions } = await pool.query<{
     id: string
     question_ids: string[]
     answered_ids: string[]
   }>(
     `UPDATE mednexus_exam_sessions
-        SET status = 'abandoned', submitted_at = NOW()
+        SET status = 'abandoned', season_id = COALESCE(season_id, $3), submitted_at = NOW()
       WHERE user_id  = $1
+        AND COALESCE(season_id, $3) = $3
         AND status   = 'active'
         AND started_at < NOW() - ($2 || ' minutes')::INTERVAL
       RETURNING id, question_ids, answered_ids`,
-    [userId, staleMins],
+    [userId, staleMins, season.id],
   )
 
   if (staleSessions.length === 0) return { abandoned: 0, penalisedQuestions: 0 }
@@ -685,10 +696,10 @@ export async function abandonStaleSessions(
       // row with correct_count will be incremented normally by calculateSessionNP.
       await pool.query(
         `INSERT INTO mednexus_user_question_progress
-           (user_id, question_id, correct_count, discipline)
-         VALUES ($1, $2, 0, '')
-         ON CONFLICT (user_id, question_id) DO NOTHING`,
-        [userId, qId],
+           (season_id, user_id, question_id, correct_count, discipline)
+         VALUES ($1, $2, $3, 0, '')
+         ON CONFLICT (season_id, user_id, question_id) DO NOTHING`,
+        [season.id, userId, qId],
       )
       penalisedQuestions++
     }

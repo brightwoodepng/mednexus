@@ -181,6 +181,7 @@ async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeaso
     SELECT user_id, SUM(questions_answered)::bigint AS questions,
            SUM(correct_answers)::bigint AS correct
     FROM mednexus_daily_activity
+    WHERE season_id = $1
     GROUP BY user_id
   )`
   const entries = await cachedPublicEntries(`${season.id}:alltime`, async () => {

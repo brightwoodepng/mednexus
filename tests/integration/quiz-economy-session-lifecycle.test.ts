@@ -14,8 +14,29 @@ describe("quiz economy session lifecycle", () => {
     const quiz = await readFile("components/quiz-simulator.tsx", "utf8")
 
     expect(quiz).toContain('mode === "trial" && !gamificationEnabled')
-    expect(quiz).toContain("earnedNP = data?.earned ?? 0")
-    expect(quiz).toContain("onComplete(result, history, earnedNP)")
+    expect(quiz).toContain("if (data) earnedNP = data.earned")
+    expect(quiz).toContain("onComplete(result, history, earnedNP, payoutError)")
+    expect(quiz).not.toContain("earnedNP = data?.earned ?? 0")
+  })
+
+  it("shows a confirmed Trial award or a visible payout failure on results", async () => {
+    const [app, results] = await Promise.all([
+      readFile("components/mednexus-app.tsx", "utf8"),
+      readFile("components/results-screen.tsx", "utf8"),
+    ])
+
+    expect(app).toContain("payoutError={lastResult.payoutError}")
+    expect(results).toContain("Verified Nexus Points")
+    expect(results).toContain("NP credit was not confirmed")
+    expect(results).not.toContain('mode === "exam" && earnedNP !== undefined')
+  })
+
+  it("uses the economy configuration for Trial NP feedback", async () => {
+    const quiz = await readFile("components/quiz-simulator.tsx", "utf8")
+
+    expect(quiz).toContain("ECONOMY_CONFIG.questionRewards.trialTutor.correct")
+    expect(quiz).toContain("ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers")
+    expect(quiz).not.toContain("10 + bonus")
   })
 
   it("creates a fresh server scoring session when replaying Trial Mode", async () => {

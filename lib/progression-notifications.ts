@@ -7,6 +7,7 @@
 
 import type { Pool } from "pg"
 import type { UserProgress, HistoryEntry } from "@/lib/types"
+import { getActiveSeason } from "@/lib/economy-seasons"
 
 interface QuestionSummary {
   id: string
@@ -179,11 +180,13 @@ export async function triggerProgressionNotifications(
       }
     }
 
+    const activeSeason = await getActiveSeason(pool)
+
     // ── 5. NP Thresholds (wallet balance) ─────────────────────────────────
     try {
       const walletRes = await pool.query(
-        "SELECT balance FROM mednexus_wallet WHERE user_id = $1",
-        [uid],
+        "SELECT balance FROM mednexus_season_wallets WHERE season_id = $1 AND user_id = $2",
+        [activeSeason.id, uid],
       )
       const balance: number = Number(walletRes.rows[0]?.balance ?? 0)
       for (const threshold of NP_MILESTONES) {
@@ -206,11 +209,11 @@ export async function triggerProgressionNotifications(
       const fatigueRes = await pool.query(
         `SELECT discipline, SUM(np_earned) AS total_np
          FROM mednexus_discipline_np_log
-         WHERE user_id = $1
+         WHERE season_id = $1 AND user_id = $2
            AND earned_date >= NOW() - INTERVAL '7 days'
          GROUP BY discipline
-         HAVING SUM(np_earned) >= $2`,
-        [uid, DISCIPLINE_FATIGUE_THRESHOLD],
+         HAVING SUM(np_earned) >= $3`,
+        [activeSeason.id, uid, DISCIPLINE_FATIGUE_THRESHOLD],
       )
       for (const row of fatigueRes.rows) {
         const disc = String(row.discipline)
@@ -227,7 +230,14 @@ export async function triggerProgressionNotifications(
     // ── 7. Weekly Leaderboard Top 3 ───────────────────────────────────────
     try {
       const lbRes = await pool.query(
-        `SELECT user_id FROM mednexus_wallet ORDER BY balance DESC LIMIT 3`,
+        `SELECT user_id
+           FROM mednexus_np_transactions
+          WHERE season_id = $1 AND amount > 0
+            AND created_at >= NOW() - INTERVAL '7 days'
+          GROUP BY user_id
+          ORDER BY SUM(amount) DESC, user_id
+          LIMIT 3`,
+        [activeSeason.id],
       )
       const isTop3 = lbRes.rows.some(
         (r: { user_id: string }) => r.user_id === uid,
