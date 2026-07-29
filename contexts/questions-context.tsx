@@ -61,7 +61,7 @@ interface QuestionsContextValue {
 
 const QuestionsContext = createContext<QuestionsContextValue | undefined>(undefined)
 
-/** Fetch questions from DB. Returns null if none saved yet. */
+/** Fetch questions from the authenticated runtime API. Null means unavailable. */
 async function fetchFromDb(filter: QuestionSetFilter = {}): Promise<{ questions: Question[] | null; updatedAt: string | null }> {
   try {
     const params = new URLSearchParams({ view: "runtime", page: "1", pageSize: String(PAGE_SIZE) })
@@ -181,12 +181,12 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const loadQuestionSet = useCallback(async (filter: QuestionSetFilter = {}) => {
     setIsLoading(true)
     const result = await fetchFromDb(filter)
-    const fallback = questionsDatabase.filter(question =>
-      (!filter.module || (question.module?.trim() || question.subject) === filter.module)
-      && (!filter.discipline || question.subject === filter.discipline))
-    const loaded = result.questions ?? fallback
-    persist(loaded, result.questions !== null)
-    if (!filter.module && !filter.discipline) setQuestionCount(loaded.length)
+    // Never substitute bundled demo content for an authentication race,
+    // network error, or rejected request. The server remains responsible for
+    // selecting its configured database/static source on successful requests.
+    const loaded = result.questions ?? questionsRef.current
+    if (result.questions !== null) persist(loaded, true)
+    if (result.questions !== null && !filter.module && !filter.discipline) setQuestionCount(loaded.length)
     if (result.updatedAt) setLastUpdated(new Date(result.updatedAt))
     setIsLoading(false)
     return loaded
