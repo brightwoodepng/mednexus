@@ -26,7 +26,9 @@ describe("multiplayer authentication contract", () => {
   it("accepts IDs only and snapshots the authoritative eligible bank", () => {
     expect(createRoute).toContain("questionIds")
     expect(createRoute).not.toContain("questionPool: Question[]")
-    expect(createRoute).toContain("getQuestionBankStatus")
+    expect(createRoute).toContain("jsonb_array_elements")
+    expect(createRoute).toContain("ANY($1::text[])")
+    expect(createRoute).not.toContain("SELECT data FROM mednexus_questions")
     expect(createRoute).toContain("isSupportedSoloQuestion")
     expect(createRoute).toContain("createQuestionContentFingerprint")
     expect(createRoute).toContain("body.questionIds.length > 200")

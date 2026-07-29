@@ -47,7 +47,9 @@ describe("verified NP rewards", () => {
       expect(sessionRoute).toContain(`"${mode}"`)
       expect(game).toContain(`useSoloScoring("${mode}")`)
     }
-    expect(sessionRoute).toContain("SELECT data FROM mednexus_questions")
+    expect(sessionRoute).toContain("jsonb_array_elements")
+    expect(sessionRoute).toContain("ANY($1::text[])")
+    expect(sessionRoute).not.toContain("SELECT data FROM mednexus_questions")
     expect(sessionRoute).toContain("answer_order")
     expect(sessionRoute).toContain("duplicateOrderedAnswer")
     expect(payoutRoute).toContain("completionBonusAvailable")

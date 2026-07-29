@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
+import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -8,12 +9,42 @@ async function getPool() {
 
 // Personal notifications are registered-user data; guests never receive them.
 export async function GET(req: NextRequest) {
+  const queryStartedAt = performance.now()
   try {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
     const pool = await getPool(); if (!pool) return NextResponse.json({ notifications: [] })
-    const res = await pool.query(`SELECT id, type, message, is_read, created_at FROM mednexus_user_notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 200`, [auth.uid])
-    return NextResponse.json({ notifications: res.rows.map(r => ({ id:r.id, type:r.type, message:r.message, isRead:r.is_read, createdAt:r.created_at })) })
+    if (req.nextUrl.searchParams.get("view") === "count") {
+      const count = await pool.query(
+        `SELECT COUNT(*) FILTER (WHERE is_read = FALSE)::int AS unread
+         FROM mednexus_user_notifications WHERE user_id = $1`,
+        [auth.uid],
+      )
+      return measuredJson({
+        route: "GET /api/user-notifications?view=count",
+        queryStartedAt,
+        rowCount: 1,
+        payload: { unread: Number(count.rows[0]?.unread ?? 0) },
+      })
+    }
+    const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
+    const res = await pool.query(
+      `SELECT id, type, message, is_read, created_at, COUNT(*) OVER()::int AS total_count
+       FROM mednexus_user_notifications
+       WHERE user_id = $1
+       ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+      [auth.uid, pageSize, offset],
+    )
+    const payload = {
+      notifications: res.rows.map(r => ({ id:r.id, type:r.type, message:r.message, isRead:r.is_read, createdAt:r.created_at })),
+      pagination: { page, pageSize, total: Number(res.rows[0]?.total_count ?? 0) },
+    }
+    return measuredJson({
+      route: "GET /api/user-notifications",
+      queryStartedAt,
+      rowCount: res.rows.length,
+      payload,
+    })
   } catch (err) { console.error("[user-notifications GET]", err); return NextResponse.json({ error: "Server error" }, { status: 500 }) }
 }
 async function mutate(req: NextRequest, remove: boolean) {

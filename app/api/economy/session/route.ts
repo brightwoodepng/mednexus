@@ -61,8 +61,14 @@ type SnapshotResult = {
 }
 
 async function loadQuestionSnapshot(questionIds: string[], validateSoloPool: boolean): Promise<SnapshotResult> {
-  const saved = await pool.query("SELECT data FROM mednexus_questions WHERE id = 1")
-  const savedBank: Question[] = Array.isArray(saved.rows[0]?.data) ? saved.rows[0].data : []
+  const saved = await pool.query<{ question: Question }>(
+    `SELECT question.value AS question
+     FROM mednexus_questions source
+     CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
+     WHERE source.id=1 AND question.value->>'id'=ANY($1::text[])`,
+    [questionIds],
+  )
+  const savedBank = saved.rows.map(row => row.question)
   const bank = savedBank.length ? savedBank : questionsDatabase
   const permittedPool = validateSoloPool ? buildGameQuestionPool(bank) : null
   const permittedQuestions = permittedPool?.questions ?? bank

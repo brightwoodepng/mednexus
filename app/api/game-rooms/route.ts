@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import pool from "@/lib/db"
 import type { Question } from "@/lib/types"
 import { requireAuthenticatedUser } from "@/lib/request-auth"
-import { getQuestionBankStatus } from "@/lib/question-bank-server"
 import { createQuestionContentFingerprint, isSupportedSoloQuestion } from "@/lib/game-question-pool"
 import { getAuthoritativeCosmetics, roomError } from "@/lib/multiplayer-server"
 
@@ -33,8 +32,14 @@ export async function POST(req: Request) {
     const ids = body.questionIds as string[]
     if (new Set(ids).size !== ids.length) return fail("INVALID_QUESTION_SELECTION", "Question selection contains duplicate IDs", 400)
 
-    const bank = (await getQuestionBankStatus()).questions as Question[]
-    const byId = new Map(bank.map(question => [question.id, question]))
+    const selectedRows = await pool.query<{ question: Question }>(
+      `SELECT question.value AS question
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
+       WHERE source.id=1 AND question.value->>'id'=ANY($1::text[])`,
+      [ids],
+    )
+    const byId = new Map(selectedRows.rows.map(({ question }) => [question.id, question]))
     const selected = ids.map(id => byId.get(id))
     if (selected.some(question => !question || !isSupportedSoloQuestion(question))) {
       return fail("INVALID_QUESTION_SELECTION", "One or more questions are missing or ineligible", 422)

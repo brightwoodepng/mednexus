@@ -21,7 +21,7 @@ import {
 // Invalidate the local cache so modules.ts picks up fresh questions
 import { saveActiveQuestions } from "@/lib/custom-questions"
 
-const POLL_INTERVAL = 30_000 // 30 s
+const PAGE_SIZE = 50
 
 interface QuestionsContextValue {
   questions: Question[]
@@ -54,10 +54,24 @@ const QuestionsContext = createContext<QuestionsContextValue | undefined>(undefi
 /** Fetch questions from DB. Returns null if none saved yet. */
 async function fetchFromDb(): Promise<{ questions: Question[] | null; updatedAt: string | null }> {
   try {
-    const res = await fetch("/api/questions", { cache: "no-store" })
-    if (!res.ok) return { questions: null, updatedAt: null }
-    const data = await res.json()
-    return { questions: data.questions, updatedAt: data.updatedAt }
+    const firstResponse = await fetch(
+      `/api/questions?view=runtime&page=1&pageSize=${PAGE_SIZE}`,
+      { cache: "no-store" },
+    )
+    if (!firstResponse.ok) return { questions: null, updatedAt: null }
+    const first = await firstResponse.json()
+    const questions: Question[] = Array.isArray(first.questions) ? first.questions : []
+    const pages = Math.max(1, Number(first.pagination?.pages ?? 1))
+    for (let page = 2; page <= pages; page++) {
+      const response = await fetch(
+        `/api/questions?view=runtime&page=${page}&pageSize=${PAGE_SIZE}`,
+        { cache: "no-store" },
+      )
+      if (!response.ok) return { questions: null, updatedAt: null }
+      const data = await response.json()
+      if (Array.isArray(data.questions)) questions.push(...data.questions)
+    }
+    return { questions, updatedAt: first.updatedAt ?? null }
   } catch {
     return { questions: null, updatedAt: null }
   }
@@ -124,12 +138,15 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     questionsRef.current = qs
   }
 
-  // Initial load + polling
+  // Initial load only. The old 30-second poll downloaded the full bank even
+  // when it had not changed. Admin writes still trigger an explicit refresh.
   useEffect(() => {
-    let pollTimer: ReturnType<typeof setInterval> | null = null
+    let cancelled = false
+    let inFlight: Promise<void> | null = null
 
     async function load() {
       const { questions: dbQuestions, updatedAt } = await fetchFromDb()
+      if (cancelled) return
       if (dbQuestions !== null) {
         persist(dbQuestions, true)
         if (updatedAt) setLastUpdated(new Date(updatedAt))
@@ -137,26 +154,18 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
       setIsLoading(false)
     }
 
-    async function poll() {
-      const { questions: dbQuestions, updatedAt } = await fetchFromDb()
-      if (dbQuestions === null) return
-      const dbUpdated = updatedAt ? new Date(updatedAt).getTime() : 0
-      const localUpdated = lastUpdated?.getTime() ?? 0
-      if (dbUpdated > localUpdated) {
-        persist(dbQuestions, true)
-        setLastUpdated(new Date(updatedAt!))
-      }
+    function refresh() {
+      if (inFlight) return
+      inFlight = load().finally(() => { inFlight = null })
     }
 
-    load().then(() => {
-      pollTimer = setInterval(poll, POLL_INTERVAL)
-    })
-
-    const refresh = () => { void load() }
+    refresh()
     window.addEventListener("mednexus:questions-invalidated", refresh)
 
-    return () => { if (pollTimer) clearInterval(pollTimer); window.removeEventListener("mednexus:questions-invalidated", refresh) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true
+      window.removeEventListener("mednexus:questions-invalidated", refresh)
+    }
   }, [])
 
   const saveToDb = useCallback(async (qs: Question[]) => {

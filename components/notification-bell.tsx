@@ -5,7 +5,7 @@ import { BellIcon } from "@/components/icons"
 import { NotificationOverlay } from "@/components/notification-overlay"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 
-const POLL_INTERVAL = 60_000
+const POLL_INTERVAL = 300_000
 
 /** Read the stored auth token from localStorage (same keys as app-context). */
 function getStoredAuthHeader(): { key: string; value: string } | null {
@@ -30,17 +30,13 @@ async function fetchUnreadCount(): Promise<number> {
     if (authHeader) personalHeaders[authHeader.key] = authHeader.value
 
     const [broadcastRes, personalRes] = await Promise.all([
-      fetch("/api/notifications", { cache: "no-store", headers: broadcastHeaders }),
-      fetch("/api/user-notifications", { cache: "no-store", headers: personalHeaders }),
+      fetch("/api/notifications?view=count", { cache: "no-store", headers: broadcastHeaders }),
+      fetch("/api/user-notifications?view=count", { cache: "no-store", headers: personalHeaders }),
     ])
 
-    const broadcastData = broadcastRes.ok ? await broadcastRes.json() : { notifications: [] }
-    const personalData  = personalRes.ok  ? await personalRes.json()  : { notifications: [] }
-
-    const broadcastUnread: number = (broadcastData.notifications ?? []).filter((n: { isRead: boolean }) => !n.isRead).length
-    const personalUnread: number  = (personalData.notifications ?? []).filter((n: { isRead: boolean }) => !n.isRead).length
-
-    return broadcastUnread + personalUnread
+    const broadcastData = broadcastRes.ok ? await broadcastRes.json() : { unread: 0 }
+    const personalData  = personalRes.ok  ? await personalRes.json()  : { unread: 0 }
+    return Number(broadcastData.unread ?? 0) + Number(personalData.unread ?? 0)
   } catch {
     return 0
   }
@@ -52,12 +48,23 @@ export function NotificationBell() {
   const refresh = useCallback(async () => {
     const count = await fetchUnreadCount()
     setUnreadCount(count)
-  }, [])
+  }, [setUnreadCount])
 
   useEffect(() => {
-    refresh()
-    const timer = setInterval(refresh, POLL_INTERVAL)
-    return () => clearInterval(timer)
+    let running = false
+    const check = async () => {
+      if (running || document.visibilityState !== "visible") return
+      running = true
+      try { await refresh() } finally { running = false }
+    }
+    void check()
+    const timer = setInterval(() => { void check() }, POLL_INTERVAL)
+    const onVisibility = () => { if (document.visibilityState === "visible") void check() }
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
   }, [refresh])
 
   function handleOpen() {
