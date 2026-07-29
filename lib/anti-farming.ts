@@ -18,6 +18,7 @@ import pool from "@/lib/db"
 import { applyNPCredits } from "@/lib/np-ledger"
 import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
 import { getActiveSeason } from "@/lib/economy-seasons"
+import { countEconomyQueries, type EconomyQueryMetrics } from "@/lib/economy-api"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -484,9 +485,10 @@ export interface DailyLoginResult {
  * Payout values and the finite, non-repeating 30-day milestone program live in
  * ECONOMY_CONFIG.dailyLogin.
  */
-export async function processDailyLogin(userId: string): Promise<DailyLoginResult> {
+export async function processDailyLogin(userId: string, metrics?: EconomyQueryMetrics): Promise<DailyLoginResult> {
   if (!isEarningModeEnabled("daily_login")) throw new Error("Daily login rewards are disabled")
-  const client = await pool.connect()
+  const connectedClient = await pool.connect()
+  const client = metrics ? countEconomyQueries(connectedClient, metrics) : connectedClient
   try {
     await client.query("BEGIN")
 
@@ -602,7 +604,7 @@ export async function processDailyLogin(userId: string): Promise<DailyLoginResul
     await client.query("ROLLBACK")
     throw err
   } finally {
-    client.release()
+    connectedClient.release()
   }
 }
 

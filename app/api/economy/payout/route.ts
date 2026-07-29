@@ -7,6 +7,7 @@ import {
   computeBountyProgress,
   mergeBountyProgress,
   TODAY_DATE,
+  economyWeekId,
   type GameResult,
 } from "@/lib/economy"
 import { calculateSessionNP, type SessionQuestionInput } from "@/lib/anti-farming"
@@ -19,10 +20,11 @@ import {
   recordDailyActivity,
   type NPCredit,
 } from "@/lib/np-ledger"
-import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
+import { recordWeeklyGoalActivity, weeklyGoalView, type WeeklyGoalProgress } from "@/lib/weekly-goals"
 import { calculateDoubleBank, hasConsistentSoloCompletion } from "@/lib/solo-completion-validation"
 import { getPersonalBestUpdate, personalBestValue, type SoloPersonalBestResult } from "@/lib/game-personal-best"
 import { getActiveSeason } from "@/lib/economy-seasons"
+import { countEconomyQueries, economyJson, economyMetrics } from "@/lib/economy-api"
 
 type Key = {
   id: string
@@ -106,13 +108,15 @@ async function updatePersonalBest(
 
 /** Credits a completed, server-recorded activity exactly once. */
 export async function POST(req: NextRequest) {
+  const metrics = economyMetrics()
   try {
     const auth = await requireRegisteredUser(req)
     if (!auth) return unauthorized()
     const { sessionId } = await req.json()
     if (!sessionId) return NextResponse.json({ error: "sessionId is required" }, { status: 400 })
 
-    const client = await pool.connect()
+    const connectedClient = await pool.connect()
+    const client = countEconomyQueries(connectedClient, metrics)
     try {
       await client.query("BEGIN")
       const activeSeason = await getActiveSeason(client, true)
@@ -406,6 +410,20 @@ export async function POST(req: NextRequest) {
       ]
       const suppressed = credit.suppressed + bountyCredit.suppressed + weekly.credited.suppressed
       if (suppressed > 0) breakdown.push({ label: "Daily repeatable NP ceiling", amount: -suppressed })
+      const [walletState, bountyState, weeklyState] = await Promise.all([
+        client.query("SELECT balance,lifetime_earned,rank_points FROM mednexus_season_wallets WHERE user_id=$1 AND season_id=$2", [auth.uid, seasonId]),
+        client.query("SELECT bounty_id,progress,claimed FROM mednexus_bounty_progress WHERE season_id=$1 AND uid=$2 AND bounty_date=$3", [seasonId, auth.uid, TODAY_DATE()]),
+        client.query(`SELECT eligible_answered,eligible_correct,qualifying_exams,distinct_exam_dates,credited_goal_ids
+          FROM mednexus_weekly_goal_progress WHERE season_id=$1 AND uid=$2 AND week_id=$3`, [seasonId, auth.uid, economyWeekId()]),
+      ])
+      const walletRow = walletState.rows[0]
+      const bountyMap = Object.fromEntries(bountyState.rows.map(row => [row.bounty_id, row]))
+      const weeklyRow = weeklyState.rows[0]
+      const weeklyProgress: WeeklyGoalProgress = {
+        weekId: economyWeekId(), eligibleAnswered: Number(weeklyRow?.eligible_answered ?? 0),
+        eligibleCorrect: Number(weeklyRow?.eligible_correct ?? 0), qualifyingExams: Number(weeklyRow?.qualifying_exams ?? 0),
+        distinctExamDates: weeklyRow?.distinct_exam_dates ?? [], creditedGoalIds: weeklyRow?.credited_goal_ids ?? [],
+      }
       const payload = {
         earned: credit.credited + bountyCredit.credited + weekly.credited.credited,
         newBalance: bountyCredit.credited > 0 ? bountyCredit.newBalance : weekly.credited.newBalance,
@@ -419,18 +437,21 @@ export async function POST(req: NextRequest) {
         correct: correctCount,
         total,
         isNewHigh,
+        wallet: { balance: Number(walletRow?.balance ?? 0), lifetimeEarned: Number(walletRow?.lifetime_earned ?? 0), rankPoints: Number(walletRow?.rank_points ?? 0) },
+        bounties: getTodaysBounties().map(item => ({ ...item, progress: Number(bountyMap[item.id]?.progress ?? 0), claimed: bountyMap[item.id]?.claimed ?? false })),
+        weeklyGoals: weeklyGoalView(weeklyProgress),
       }
       await client.query(
         "UPDATE mednexus_exam_sessions SET payout = $3::jsonb WHERE id = $1 AND season_id = $2",
         [sessionId, seasonId, JSON.stringify(payload)],
       )
       await client.query("COMMIT")
-      return NextResponse.json(payload)
+      return economyJson("economy.payout", payload, metrics)
     } catch (error) {
       await client.query("ROLLBACK")
       throw error
     } finally {
-      client.release()
+      connectedClient.release()
     }
   } catch (error) {
     console.error("economy payout", error)
