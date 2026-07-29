@@ -14,14 +14,29 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
   onNavigate: (screen: Screen) => void
   onPause: () => void; onDismiss: () => void; onComplete: () => void
 }) {
-  const shell = useApplicationShell()
+  const {
+    sidebarCollapsed,
+    setSidebarCollapsed,
+    mobileNavigationOpen,
+    setMobileNavigationOpen,
+    workspaceSwitcherOpen,
+    setWorkspaceSwitcherOpen,
+    setAccountMenuOpen,
+    setAppearanceOpen,
+  } = useApplicationShell()
   const theme = useTheme()
   const [isPhone, setIsPhone] = useState(false)
   const [measureEpoch, setMeasureEpoch] = useState(0)
   const [interactionComplete, setInteractionComplete] = useState(false)
   const initialTheme = useRef({ theme: theme.activeTheme, glass: theme.isGlassEnabled })
   const changed = useRef({ drawer: false, sidebar: false, workspace: false, account: false, appearance: false })
+  const onNavigateRef = useRef(onNavigate)
+  const onCheckpointRef = useRef(onCheckpoint)
+  const checkpointedStep = useRef<string | null>(null)
   const step = tutorial.steps[stepIndex]
+
+  useEffect(() => { onNavigateRef.current = onNavigate }, [onNavigate])
+  useEffect(() => { onCheckpointRef.current = onCheckpoint }, [onCheckpoint])
 
   useEffect(() => {
     const media = matchMedia(phoneQuery)
@@ -31,46 +46,57 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
   }, [])
 
   const restoreUi = useCallback(() => {
-    if (changed.current.drawer) shell.setMobileNavigationOpen(false)
-    if (changed.current.sidebar) shell.setSidebarCollapsed(true)
-    if (changed.current.workspace) shell.setWorkspaceSwitcherOpen(false)
-    if (changed.current.account) shell.setAccountMenuOpen(false)
-    if (changed.current.appearance) shell.setAppearanceOpen(false)
+    if (changed.current.drawer) setMobileNavigationOpen(false)
+    if (changed.current.sidebar) setSidebarCollapsed(true)
+    if (changed.current.workspace) setWorkspaceSwitcherOpen(false)
+    if (changed.current.account) setAccountMenuOpen(false)
+    if (changed.current.appearance) setAppearanceOpen(false)
     changed.current = { drawer: false, sidebar: false, workspace: false, account: false, appearance: false }
-  }, [shell])
+  }, [setAccountMenuOpen, setAppearanceOpen, setMobileNavigationOpen, setSidebarCollapsed, setWorkspaceSwitcherOpen])
 
   const apply = useCallback((action: TutorialNavigationAction | undefined, current: TutorialStep) => {
     if (!action || action.type === "none") return
-    if (action.type === "navigate-preview") { onNavigate(action.screen); return }
-    if (action.type === "open-mobile-drawer" && isPhone) { shell.setMobileNavigationOpen(true); changed.current.drawer = true }
-    if (action.type === "close-mobile-drawer") shell.setMobileNavigationOpen(false)
-    if (action.type === "open-workspace-switcher") { shell.setWorkspaceSwitcherOpen(true); changed.current.workspace = true }
-    if (action.type === "close-workspace-switcher") shell.setWorkspaceSwitcherOpen(false)
-    if (action.type === "open-account-menu") { shell.setAccountMenuOpen(true); changed.current.account = true }
-    if (action.type === "close-account-menu") shell.setAccountMenuOpen(false)
-    if (action.type === "open-appearance") { shell.setAppearanceOpen(true); changed.current.appearance = true }
-    if (action.type === "close-appearance") shell.setAppearanceOpen(false)
+    if (action.type === "navigate-preview") { onNavigateRef.current(action.screen); return }
+    if (action.type === "open-mobile-drawer" && isPhone) { setMobileNavigationOpen(true); changed.current.drawer = true }
+    if (action.type === "close-mobile-drawer") setMobileNavigationOpen(false)
+    if (action.type === "open-workspace-switcher") { setWorkspaceSwitcherOpen(true); changed.current.workspace = true }
+    if (action.type === "close-workspace-switcher") setWorkspaceSwitcherOpen(false)
+    if (action.type === "open-account-menu") { setAccountMenuOpen(true); changed.current.account = true }
+    if (action.type === "close-account-menu") setAccountMenuOpen(false)
+    if (action.type === "open-appearance") { setAppearanceOpen(true); changed.current.appearance = true }
+    if (action.type === "close-appearance") setAppearanceOpen(false)
     // A collapsed rail is expanded only when its full-sidebar target is needed.
-    if (!isPhone && shell.sidebarCollapsed && current.desktopTargetAnchorId?.startsWith("desktop-")) {
-      shell.setSidebarCollapsed(false); changed.current.sidebar = true
+    if (!isPhone && sidebarCollapsed && current.desktopTargetAnchorId?.startsWith("desktop-")) {
+      setSidebarCollapsed(false); changed.current.sidebar = true
     }
-  }, [isPhone, onNavigate, shell])
+  }, [isPhone, setAccountMenuOpen, setAppearanceOpen, setMobileNavigationOpen, setSidebarCollapsed, setWorkspaceSwitcherOpen, sidebarCollapsed])
 
   useEffect(() => {
+    checkpointedStep.current = null
     setInteractionComplete(!step.interaction || (!isPhone && step.interaction.expectedAction === "open-mobile-drawer"))
-    if (!step.interaction) apply(step.navigationAction, step)
+    if (!step.interaction || !isPhone) apply(step.navigationAction, step)
     const timer = window.setTimeout(() => setMeasureEpoch(value => value + 1), 260)
     return () => clearTimeout(timer)
   }, [apply, step, isPhone])
 
   useEffect(() => {
-    if (step.interaction?.expectedAction === "open-mobile-drawer" && shell.mobileNavigationOpen) {
-      changed.current.drawer = true; setInteractionComplete(true); onCheckpoint(); window.setTimeout(() => setMeasureEpoch(value => value + 1), 240)
+    if (checkpointedStep.current === step.id) return
+    if (step.interaction?.expectedAction === "open-mobile-drawer" && mobileNavigationOpen) {
+      checkpointedStep.current = step.id
+      changed.current.drawer = true
+      if (step.navigationAction?.type === "open-workspace-switcher") apply(step.navigationAction, step)
+      setInteractionComplete(true)
+      onCheckpointRef.current()
+      window.setTimeout(() => setMeasureEpoch(value => value + 1), 240)
     }
-    if (step.interaction?.expectedAction === "open-workspace-switcher" && shell.workspaceSwitcherOpen) {
-      changed.current.workspace = true; setInteractionComplete(true); onCheckpoint(); window.setTimeout(() => setMeasureEpoch(value => value + 1), 220)
+    if (step.interaction?.expectedAction === "open-workspace-switcher" && workspaceSwitcherOpen) {
+      checkpointedStep.current = step.id
+      changed.current.workspace = true
+      setInteractionComplete(true)
+      onCheckpointRef.current()
+      window.setTimeout(() => setMeasureEpoch(value => value + 1), 220)
     }
-  }, [onCheckpoint, shell.mobileNavigationOpen, shell.workspaceSwitcherOpen, step.interaction])
+  }, [apply, mobileNavigationOpen, step, workspaceSwitcherOpen])
 
   const leaveStep = (next: number) => { if (step.restoreUiAfterStep) restoreUi(); onStep(next) }
   const cancel = (callback: () => void) => { restoreUi(); theme.setActiveTheme(initialTheme.current.theme); theme.setIsGlassEnabled(initialTheme.current.glass); callback() }

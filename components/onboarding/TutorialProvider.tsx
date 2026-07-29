@@ -4,6 +4,8 @@ import { useApp } from "@/contexts/app-context"
 import { emptyOnboardingRecord, TUTORIAL_IDS, TUTORIAL_VERSION, type OnboardingRecord, type TutorialId } from "@/lib/onboarding"
 import type { StudyHubId } from "@/components/study-hub-switcher"
 import type { Screen } from "@/lib/view"
+import { useApplicationShell } from "@/components/authenticated-application-shell"
+import { withHubContext } from "@/lib/admin-hub-routing"
 import { tutorials } from "./tutorials"
 import { TutorialNavigationController } from "./TutorialNavigationController"
 
@@ -11,10 +13,19 @@ type TutorialContextValue = { replay: (id: TutorialId) => Promise<void>; reset: 
 const TutorialContext = createContext<TutorialContextValue | null>(null)
 const idForHub = (hub: StudyHubId): TutorialId | null => hub === "mcq-qbank" ? "mcq_qbank_intro" : hub === "theory-vault" ? "theory_vault_intro" : null
 
-export function TutorialProvider({ activeHub, blocked, welcomeOpen, onNavigate, children }: { activeHub: StudyHubId; blocked: boolean; welcomeOpen: boolean; onNavigate: (screen: Screen) => void; children: ReactNode }) {
+export function TutorialProvider({ activeHub, currentScreen, blocked, welcomeOpen, onNavigate, children }: { activeHub: StudyHubId; currentScreen: Screen; blocked: boolean; welcomeOpen: boolean; onNavigate: (screen: Screen) => void; children: ReactNode }) {
   const { user, authReady } = useApp()
+  const {
+    setActiveStudyHub,
+    setMobileNavigationOpen,
+    setWorkspaceSwitcherOpen,
+    setAccountMenuOpen,
+    setAppearanceOpen,
+    setNotificationOpen,
+  } = useApplicationShell()
   const [records, setRecords] = useState<Record<TutorialId, OnboardingRecord>>(() => ({ mcq_qbank_intro: emptyOnboardingRecord("mcq_qbank_intro"), theory_vault_intro: emptyOnboardingRecord("theory_vault_intro") }))
   const [activeTutorial, setActiveTutorial] = useState<TutorialId | null>(null)
+  const [pendingReplay, setPendingReplay] = useState<TutorialId | null>(null)
   // Pausing is a session-level choice. The persisted `in_progress` status is what
   // lets a later visit resume, but it must not immediately reopen the tour in
   // the same mounted provider.
@@ -50,14 +61,42 @@ export function TutorialProvider({ activeHub, blocked, welcomeOpen, onNavigate, 
   useEffect(() => {
     if (priorHub.current !== activeHub && activeTutorial) { void update(activeTutorial, "step", records[activeTutorial].currentStep); setActiveTutorial(null) }
     priorHub.current = activeHub
-    if (!authReady || !user || blocked || welcomeOpen || activeTutorial) return
+    const hubHome: Screen = activeHub === "theory-vault" ? "theory-dashboard" : "dashboard"
+    if (!authReady || !user || blocked || welcomeOpen || activeTutorial || pendingReplay || currentScreen !== hubHome) return
     const id = idForHub(activeHub); if (!id) return
     const record = records[id]; if (record.status === "completed" || record.status === "dismissed" || pausedTutorials.current.has(id)) return
     const timer = window.setTimeout(() => { setActiveTutorial(id); void update(id, record.status === "in_progress" ? "step" : "start", record.currentStep) }, 350)
     return () => clearTimeout(timer)
-  }, [activeHub, activeTutorial, authReady, blocked, records, update, user, welcomeOpen])
+  }, [activeHub, activeTutorial, authReady, blocked, currentScreen, pendingReplay, records, update, user, welcomeOpen])
 
-  const replay = useCallback(async (id: TutorialId) => { pausedTutorials.current.delete(id); await update(id, "restart", 0); setActiveTutorial(id) }, [update])
+  useEffect(() => {
+    if (!pendingReplay || blocked || welcomeOpen) return
+    const targetHub: StudyHubId = pendingReplay === "mcq_qbank_intro" ? "mcq-qbank" : "theory-vault"
+    const targetScreen: Screen = pendingReplay === "mcq_qbank_intro" ? "dashboard" : "theory-dashboard"
+    if (activeHub !== targetHub || currentScreen !== targetScreen) return
+    const timer = window.setTimeout(() => {
+      setActiveTutorial(pendingReplay)
+      setPendingReplay(null)
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [activeHub, blocked, currentScreen, pendingReplay, welcomeOpen])
+
+  const replay = useCallback(async (id: TutorialId) => {
+    const targetHub: StudyHubId = id === "mcq_qbank_intro" ? "mcq-qbank" : "theory-vault"
+    const targetScreen: Screen = id === "mcq_qbank_intro" ? "dashboard" : "theory-dashboard"
+    pausedTutorials.current.delete(id)
+    setActiveTutorial(null)
+    setPendingReplay(id)
+    setMobileNavigationOpen(false)
+    setWorkspaceSwitcherOpen(false)
+    setAccountMenuOpen(false)
+    setAppearanceOpen(false)
+    setNotificationOpen(false)
+    setActiveStudyHub(targetHub)
+    window.history.pushState({}, "", withHubContext("/", targetHub))
+    onNavigate(targetScreen)
+    await update(id, "restart", 0)
+  }, [onNavigate, setAccountMenuOpen, setActiveStudyHub, setAppearanceOpen, setMobileNavigationOpen, setNotificationOpen, setWorkspaceSwitcherOpen, update])
   const reset = useCallback(async () => { for (const id of TUTORIAL_IDS) await update(id, "restart", 0); setActiveTutorial(null) }, [update])
   const value = useMemo(() => ({ replay, reset, records, activeTutorial }), [activeTutorial, records, replay, reset])
   const active = activeTutorial ? records[activeTutorial] : null
