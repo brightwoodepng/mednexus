@@ -100,7 +100,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const sessionDataRef   = useRef<{questionId:string;discipline:string;isCorrect:boolean;currentStreak:number}[]>([])
   // Guard: ensure payout is called at most once per session
   const payoutCalledRef  = useRef(false)
-  const scoredSessionIdRef = useRef<string | null>(null)
+  const scoredSessionPromiseRef = useRef<Promise<string | null> | null>(null)
   // Local streak tracking (for NP bonus calc; separate from streak engine state)
   const currentStreakRef = useRef(0)
   // Synced copy of streakEngine.bestStreak for use inside callbacks
@@ -152,10 +152,14 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     return ans === correct
   }
 
-  useEffect(() => {
+  const beginScoredSession = useCallback(() => {
     if (!user?.uid || user.uid.startsWith("guest")) return
-    startScoredActivity(mode, questions.map(q => q.id)).then(id => { scoredSessionIdRef.current = id })
+    scoredSessionPromiseRef.current = startScoredActivity(mode, questions.map(q => q.id))
   }, [mode, questions, startScoredActivity, user?.uid])
+
+  useEffect(() => {
+    beginScoredSession()
+  }, [beginScoredSession])
 
   const submitBlock = useCallback(async () => {
     const timeTakenMs = Date.now() - startedAt.current
@@ -185,6 +189,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     let earnedNP: number | undefined
     if (!payoutCalledRef.current && user?.uid && !user.uid.startsWith("guest-")) {
       payoutCalledRef.current = true
+      const sessionId = await scoredSessionPromiseRef.current
 
       if (mode === "exam") {
         // Build session data from final submitted answers for anti-farming check
@@ -204,7 +209,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             bestStreak: 0,
             isNewHigh: false,
             sessionData: examSessionData,
-            sessionId: scoredSessionIdRef.current ?? undefined,
+            sessionId: sessionId ?? undefined,
             answers,
             orderedAnswers: questions.map((question) => ({ questionId: question.id, answer: answers[question.id] ?? null })),
             completionReason: "pool_completed",
@@ -222,16 +227,19 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           earnedNP = data?.earned ?? 0
         } catch { /* ignore — balance refreshes on next load */ }
       } else if (mode === "trial" && !gamificationEnabled) {
-        // Non-gamification trial: Grand Finale won't fire, so pay out here
-        submitGameResult({
-          mode: "trial",
+        // Focus-mode Trial sessions complete through Submit Block.
+        // Await the committed payout before leaving the quiz so wallet state and
+        // the results screen both receive the authoritative award.
+        try {
+          const data = await submitGameResult({
+            mode,
           score: result.percentage,
           correct: result.correct,
           total: result.total,
           bestStreak: bestStreakRef.current,
           isNewHigh: false,
           sessionData: sessionDataRef.current,
-          sessionId: scoredSessionIdRef.current ?? undefined,
+          sessionId: sessionId ?? undefined,
           answers,
           orderedAnswers: questions.map((question) => ({ questionId: question.id, answer: answers[question.id] ?? null })),
           completionReason: "pool_completed",
@@ -239,7 +247,9 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           clientRoundFinishedAt: new Date().toISOString(),
           selectedQuestionCount: questions.length,
           answeredQuestionCount: questions.length,
-        }).catch(() => {/* ignore */})
+          })
+          earnedNP = data?.earned ?? 0
+        } catch { /* balance refreshes on next load */ }
       }
     }
 
@@ -306,23 +316,23 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           }
         }
         const acc = Math.round((correctCount / questions.length) * 100)
-        submitGameResult({
-          mode: "trial",
-          score: acc,
-          correct: correctCount,
-          total: questions.length,
-          bestStreak: bestStreakRef.current,
-          isNewHigh: false,
-          sessionData: sessionDataRef.current,
-          sessionId: scoredSessionIdRef.current ?? undefined,
-          answers,
-          orderedAnswers: questions.map((question) => ({ questionId: question.id, answer: answers[question.id] ?? null })),
-          completionReason: "pool_completed",
-          clientRoundStartedAt: new Date(startedAt.current).toISOString(),
-          clientRoundFinishedAt: new Date().toISOString(),
-          selectedQuestionCount: questions.length,
-          answeredQuestionCount: questions.length,
-        }).catch(() => {/* ignore */})
+        void scoredSessionPromiseRef.current?.then((sessionId) => submitGameResult({
+            mode: "trial",
+            score: acc,
+            correct: correctCount,
+            total: questions.length,
+            bestStreak: bestStreakRef.current,
+            isNewHigh: false,
+            sessionData: sessionDataRef.current,
+            sessionId: sessionId ?? undefined,
+            answers,
+            orderedAnswers: questions.map((question) => ({ questionId: question.id, answer: answers[question.id] ?? null })),
+            completionReason: "pool_completed",
+            clientRoundStartedAt: new Date(startedAt.current).toISOString(),
+            clientRoundFinishedAt: new Date().toISOString(),
+            selectedQuestionCount: questions.length,
+            answeredQuestionCount: questions.length,
+          })).catch(() => {/* balance refreshes on next load */})
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -471,6 +481,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     finaleTriggeredRef.current  = false
     historyRecordedRef.current  = false
     payoutCalledRef.current     = false
+    beginScoredSession()
     sessionDataRef.current      = []
     currentStreakRef.current    = 0
     setIndex(0)
