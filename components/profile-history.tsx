@@ -210,8 +210,10 @@ function ProfileHeader() {
 
 function ModuleReviewSection() {
   const { progress } = useApp()
-  const { questions } = useQuestions()
+  const { questions, loadQuestionSet } = useQuestions()
   const [openModule, setOpenModule] = useState<string | null>(null)
+
+  useEffect(() => { if (progress.history.length > 0 && questions.length === 0) void loadQuestionSet() }, [loadQuestionSet, progress.history.length, questions.length])
 
   // Fast question lookup by ID
   const questionById = useMemo(() => {

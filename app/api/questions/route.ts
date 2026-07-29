@@ -6,6 +6,7 @@ import {
   getQuestionBankStatus,
   getQuestionPage,
 } from "@/lib/question-bank-server"
+import { requireAuthenticatedUser } from "@/lib/request-auth"
 
 export const maxDuration = 120
 export const dynamic = "force-dynamic"
@@ -31,7 +32,11 @@ export async function GET(req: NextRequest) {
     }
 
     const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
-    const publicProjection = req.nextUrl.searchParams.get("view") !== "runtime"
+    const runtime = req.nextUrl.searchParams.get("view") === "runtime"
+    if (runtime && !await requireAuthenticatedUser(req)) {
+      return noStore(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
+    }
+    const publicProjection = !runtime
     const result = await getQuestionPage({
       pageSize,
       offset,
