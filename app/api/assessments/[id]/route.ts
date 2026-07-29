@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
+import { measuredJson } from "@/lib/api-efficiency"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -29,6 +30,7 @@ function rowToAssessment(row: Record<string, unknown>) {
 // GET /api/assessments/[id]?token=[shareToken]
 // Returns assessment + questions (by share_token for guests, or by id for admin)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const queryStartedAt = performance.now()
   try {
     const { id } = await params
     const pool = await getPool()
@@ -38,19 +40,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const shareToken = req.nextUrl.searchParams.get("token")
 
     let row: Record<string, unknown> | null = null
+    const projection = `id,title,module_name,question_ids,question_snapshot,question_count,
+      time_limit_mins,tries_allowed,pass_mark,status,share_token,created_at`
 
     if (canManageAssessments) {
-      const res = await pool.query("SELECT * FROM mednexus_assessments WHERE id = $1", [id])
+      const res = await pool.query(`SELECT ${projection} FROM mednexus_assessments WHERE id = $1`, [id])
       row = res.rows[0] ?? null
     } else if (shareToken) {
       const res = await pool.query(
-        "SELECT * FROM mednexus_assessments WHERE share_token = $1 AND status = 'live'",
+        `SELECT ${projection} FROM mednexus_assessments WHERE share_token = $1 AND status = 'live'`,
         [shareToken]
       )
       row = res.rows[0] ?? null
     } else {
       const res = await pool.query(
-        "SELECT * FROM mednexus_assessments WHERE id = $1 AND status = 'live'",
+        `SELECT ${projection} FROM mednexus_assessments WHERE id = $1 AND status = 'live'`,
         [id]
       )
       row = res.rows[0] ?? null
@@ -61,9 +65,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const assessment = rowToAssessment(row)
 
     // Also return the actual question objects for the selected IDs
-    const qRes = await pool.query("SELECT data FROM mednexus_questions WHERE id = 1")
     const snapshot = Array.isArray(row.question_snapshot) ? row.question_snapshot as Array<{ id: string }> : []
-    const allQuestions: Array<{ id: string }> = snapshot.length ? snapshot : (qRes.rows[0]?.data ?? [])
+    const qRes = snapshot.length
+      ? null
+      : await pool.query("SELECT data FROM mednexus_questions WHERE id = 1")
+    const allQuestions: Array<{ id: string }> = snapshot.length ? snapshot : (qRes?.rows[0]?.data ?? [])
     const questionIdSet = new Set(assessment.questionIds as string[])
     // Deduplicate: filter then keep only the first occurrence of each id
     const seenIds = new Set<string>()
@@ -71,9 +77,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (!questionIdSet.has(q.id) || seenIds.has(q.id)) return false
       seenIds.add(q.id)
       return true
+    }).map((question) => {
+      if (canManageAssessments) return question
+      const {
+        correctAnswer: _correctAnswer,
+        explanation: _explanation,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
+        sourceMetadata: _sourceMetadata,
+        ...safeQuestion
+      } = question as Record<string, unknown>
+      return safeQuestion
     })
 
-    return NextResponse.json({ assessment, questions })
+    const payload = { assessment, questions }
+    return measuredJson({
+      route: "GET /api/assessments/[id]",
+      queryStartedAt,
+      rowCount: questions.length,
+      payload,
+    })
   } catch (err) {
     console.error("[assessments/[id] GET]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })

@@ -10,7 +10,9 @@ export async function GET(req: NextRequest) {
     if (!auth) return unauthorized()
     const weekId = economyWeekId()
     const { rows } = await pool.query(
-      "SELECT * FROM mednexus_weekly_goal_progress WHERE uid = $1 AND week_id = $2",
+      `SELECT eligible_answered,eligible_correct,qualifying_exams,
+              distinct_exam_dates,credited_goal_ids
+       FROM mednexus_weekly_goal_progress WHERE uid = $1 AND week_id = $2`,
       [auth.uid, weekId],
     )
     const row = rows[0]

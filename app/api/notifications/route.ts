@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { requireRegisteredUser } from "@/lib/request-auth"
 import { auditAdmin } from "@/lib/platform-settings"
+import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -23,6 +24,7 @@ async function adminUnauthorized(req: NextRequest) {
 
 // GET /api/notifications — broadcasts plus the authenticated user's read state.
 export async function GET(req: NextRequest) {
+  const queryStartedAt = performance.now()
   try {
     const auth = await requireRegisteredUser(req)
     if (!auth) return await adminUnauthorized(req)
@@ -31,19 +33,38 @@ export async function GET(req: NextRequest) {
     if (!pool) return NextResponse.json({ notifications: [] })
 
     const canManageBroadcasts = await requireAdminRequest(req, "manage_broadcasts")
+    if (req.nextUrl.searchParams.get("view") === "count") {
+      const count = await pool.query(
+        `SELECT COUNT(*) FILTER (WHERE COALESCE(s.is_read, FALSE) = FALSE)::int AS unread
+         FROM mednexus_notifications n
+         LEFT JOIN mednexus_notification_states s
+           ON s.notification_id = n.id AND s.user_id = $1
+         WHERE ($2 OR n.admin_only = FALSE)`,
+        [auth.uid, canManageBroadcasts],
+      )
+      return measuredJson({
+        route: "GET /api/notifications?view=count",
+        queryStartedAt,
+        rowCount: 1,
+        payload: { unread: Number(count.rows[0]?.unread ?? 0) },
+      })
+    }
+
+    const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
     const res = await pool.query(
       `SELECT n.id, n.title, n.body, n.type, n.admin_only, n.created_at,
-              COALESCE(s.is_read, FALSE) AS is_read
+              COALESCE(s.is_read, FALSE) AS is_read,
+              COUNT(*) OVER()::int AS total_count
          FROM mednexus_notifications n
          LEFT JOIN mednexus_notification_states s
            ON s.notification_id = n.id AND s.user_id = $1
         WHERE ($2 OR n.admin_only = FALSE)
         ORDER BY n.created_at DESC
-        LIMIT 100`,
-      [auth.uid, canManageBroadcasts],
+        LIMIT $3 OFFSET $4`,
+      [auth.uid, canManageBroadcasts, pageSize, offset],
     )
 
-    return NextResponse.json({
+    const payload = {
       notifications: res.rows.map((r) => ({
         id: r.id,
         title: r.title,
@@ -53,6 +74,17 @@ export async function GET(req: NextRequest) {
         isRead: r.is_read,
         createdAt: r.created_at,
       })),
+      pagination: {
+        page,
+        pageSize,
+        total: Number(res.rows[0]?.total_count ?? 0),
+      },
+    }
+    return measuredJson({
+      route: "GET /api/notifications",
+      queryStartedAt,
+      rowCount: res.rows.length,
+      payload,
     })
   } catch (err) {
     console.error("[notifications GET]", err)

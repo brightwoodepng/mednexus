@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ADMIN_PERMISSIONS, adminAccessDenied, type AdminPermission, requireAdminRequest } from "@/lib/admin-access"
+import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 
 const roles = ["STUDENT", "ADMIN", "SUPER_ADMIN"] as const
 type ManagedRole = typeof roles[number]
@@ -13,17 +14,27 @@ export async function GET(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_system")) return adminAccessDenied(req)
 
   try {
+    const queryStartedAt = performance.now()
+    const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
     const pool = await getPool()
     const result = await pool.query(
       `SELECT u.uid, u.name, u.index_number, u.role,
               COALESCE(jsonb_object_agg(p.permission, p.granted)
-                FILTER (WHERE p.permission IS NOT NULL), '{}'::jsonb) AS permission_overrides
+                FILTER (WHERE p.permission IS NOT NULL), '{}'::jsonb) AS permission_overrides,
+              COUNT(*) OVER()::int AS total_count
        FROM mednexus_registered_users u
        LEFT JOIN mednexus_user_permissions p ON p.user_id = u.uid
        GROUP BY u.uid, u.name, u.index_number, u.role
-       ORDER BY u.name ASC`,
+       ORDER BY u.name ASC
+       LIMIT $1 OFFSET $2`,
+      [pageSize, offset],
     )
-    return NextResponse.json({ permissions: ADMIN_PERMISSIONS, users: result.rows })
+    const payload = {
+      permissions: ADMIN_PERMISSIONS,
+      users: result.rows.map(({ total_count: _total, ...user }) => user),
+      pagination: { page, pageSize, total: Number(result.rows[0]?.total_count ?? 0) },
+    }
+    return measuredJson({ route: "GET /api/admin/roles", queryStartedAt, rowCount: result.rows.length, payload })
   } catch (error) {
     console.error("[admin/roles GET]", error)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
