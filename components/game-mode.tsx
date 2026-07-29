@@ -2118,12 +2118,24 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenStore?: () => void }) {
+  const { questions, loadQuestionSet } = useQuestions()
+  const [bankLoading, setBankLoading] = useState(false)
   // Auto-resume an in-progress multiplayer match on mount (e.g. after a page
   // refresh) instead of forcing the player back through mode selection.
   const [activeMode, setActiveMode] = useState<GameModeId | null>(() => {
     const active = loadActiveRoomSession()
     return active ? active.mode : null
   })
+
+  useEffect(() => {
+    if (!activeMode || questions.length > 0) return
+    setBankLoading(true)
+    void loadQuestionSet().finally(() => setBankLoading(false))
+  }, [activeMode, loadQuestionSet, questions.length])
+
+  if (activeMode && (bankLoading || questions.length === 0)) {
+    return <div className="flex min-h-[50vh] items-center justify-center text-sm font-semibold text-muted-foreground">Loading questions…</div>
+  }
 
   if (activeMode === "rapid") return <RapidFireMode onExit={() => setActiveMode(null)} />
   if (activeMode === "sudden") return <SuddenDeathMode onExit={() => setActiveMode(null)} />

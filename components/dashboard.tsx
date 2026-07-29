@@ -113,7 +113,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const { globalMode } = useStudyMode()
   const { isGlassEnabled } = useTheme()
   const { equippedCosmetics, dailyLoginReward, clearDailyLoginReward } = useEconomy()
-  const { questions, isLoading: questionsLoading } = useQuestions()
+  const { questionCount, isLoading: questionsLoading } = useQuestions()
   const greeting = useGreeting()
   const liveExams = useLiveAssessments()
 
@@ -137,7 +137,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   return (
     <div data-tutorial-anchor="mcq-home" className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
 
-      {!questionsLoading && questions.length === 0 && <section className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-6 text-center"><h2 className="text-lg font-bold">Question bank is currently empty</h2><p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">Practice questions are temporarily unavailable because the live question bank has been intentionally cleared. Please check back after an administrator publishes a reviewed bank.</p></section>}
+      {!questionsLoading && questionCount === 0 && <section className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-6 text-center"><h2 className="text-lg font-bold">Question bank is currently empty</h2><p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">Practice questions are temporarily unavailable because the live question bank has been intentionally cleared. Please check back after an administrator publishes a reviewed bank.</p></section>}
 
       {/* Daily Login Reward Banner — shown once per new calendar day */}
       {dailyLoginReward && !dailyLoginReward.alreadyDone && dailyLoginReward.earned > 0 && (
