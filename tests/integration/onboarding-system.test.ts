@@ -75,6 +75,26 @@ describe("coordinated onboarding contract", () => {
     const app = read("components/mednexus-app.tsx")
     const controller = read("components/onboarding/TutorialNavigationController.tsx")
     expect(app).toContain("onNavigate={handleScreenNavigation}")
-    expect(controller).toContain("onNavigate(action.screen)")
+    expect(controller).toContain("onNavigateRef.current(action.screen)")
+  })
+
+  it("restarts replay from the matching workspace instead of remaining on profile", () => {
+    const provider = read("components/onboarding/TutorialProvider.tsx")
+    expect(provider).toContain("setPendingReplay(id)")
+    expect(provider).toContain('id === "mcq_qbank_intro" ? "dashboard" : "theory-dashboard"')
+    expect(provider).toContain("setActiveStudyHub(targetHub)")
+    expect(provider).toContain('window.history.pushState({}, "", withHubContext("/", targetHub))')
+    expect(provider).toContain("onNavigate(targetScreen)")
+    expect(provider).toContain("currentScreen !== targetScreen")
+    expect(provider).toContain("currentScreen !== hubHome")
+  })
+
+  it("checkpoints each phone interaction once without a render loop", () => {
+    const controller = read("components/onboarding/TutorialNavigationController.tsx")
+    const definitions = read("components/onboarding/tutorials.ts")
+    expect(controller).toContain("checkpointedStep.current === step.id")
+    expect(controller).toContain("onCheckpointRef.current()")
+    expect(controller).not.toContain("[onCheckpoint, shell.mobileNavigationOpen")
+    expect(definitions).toContain('mobileDrawerTargetAnchorId: "drawer-workspace-switcher"')
   })
 })
