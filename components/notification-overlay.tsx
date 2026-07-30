@@ -417,34 +417,47 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
         const unreadBroadcasts = broadcasts.filter((n) => !n.isRead)
         const unreadPersonal   = personal.filter((n) => !n.isRead)
 
-        const markPromises: Promise<unknown>[] = [
-          ...unreadBroadcasts.map((n) =>
-            fetch("/api/notifications", {
+        const markRequests: Array<{ source: OverlayItem["source"], request: Promise<Response> }> = []
+        if (unreadBroadcasts.length > 0) {
+          markRequests.push({
+            source: "broadcast",
+            request: fetch("/api/notifications", {
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",
                 ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
               },
-              body: JSON.stringify({ id: n.id, isRead: true }),
+              body: JSON.stringify({ markAllRead: true }),
             }),
-          ),
-          ...unreadPersonal.map((n) =>
-            fetch("/api/user-notifications", {
+          })
+        }
+        if (unreadPersonal.length > 0) {
+          markRequests.push({
+            source: "personal",
+            request: fetch("/api/user-notifications", {
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",
                 ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
               },
-              body: JSON.stringify({ id: n.id }),
+              body: JSON.stringify({ markAllRead: true }),
             }),
-          ),
-        ]
+          })
+        }
 
-        await Promise.all(markPromises)
+        const markResults = await Promise.allSettled(markRequests.map(({ request }) => request))
+        const successfulSources = new Set(
+          markResults.flatMap((result, index) =>
+            result.status === "fulfilled" && result.value.ok ? [markRequests[index].source] : [],
+          ),
+        )
 
         if (!cancelled) {
-          setItems((prev) => prev.map((n) => ({ ...n, isRead: true })))
-          onUnreadCountChange?.(0)
+          setItems((prev) => {
+            const next = prev.map((n) => successfulSources.has(n.source) ? { ...n, isRead: true } : n)
+            onUnreadCountChange?.(next.filter((n) => !n.isRead).length)
+            return next
+          })
         }
       } finally {
         if (!cancelled) setLoading(false)

@@ -36,8 +36,16 @@ export async function GET(req: NextRequest) {
 }
 async function mutate(req: NextRequest, remove: boolean) {
   const auth = await requireRegisteredUser(req); if (!auth) return unauthorized()
-  const { id } = await req.json(); if (typeof id !== "string" || !id) return NextResponse.json({ error: "id is required" }, { status: 400 })
+  const body = await req.json()
   const pool = await getPool(); if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
+  if (!remove && body.markAllRead === true) {
+    const result = await pool.query(
+      "UPDATE mednexus_user_notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE",
+      [auth.uid],
+    )
+    return NextResponse.json({ success: true, updated: result.rowCount ?? 0 })
+  }
+  const { id } = body; if (typeof id !== "string" || !id) return NextResponse.json({ error: "id is required" }, { status: 400 })
   const result = await pool.query(remove ? "DELETE FROM mednexus_user_notifications WHERE id = $1 AND user_id = $2 RETURNING id" : "UPDATE mednexus_user_notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2 RETURNING id", [id, auth.uid])
   if (!result.rowCount) return NextResponse.json({ error: "Notification not found" }, { status: 404 })
   return NextResponse.json({ success: true })
