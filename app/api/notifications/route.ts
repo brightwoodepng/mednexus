@@ -108,6 +108,26 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json()
+
+    if (body.markAllRead === true) {
+      const auth = await requireRegisteredUser(req)
+      if (!auth) return await adminUnauthorized(req)
+      const pool = await getPool()
+      if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
+
+      const result = await pool.query(
+        `INSERT INTO mednexus_notification_states (notification_id, user_id, is_read, updated_at)
+         SELECT id, $1, TRUE, NOW()
+           FROM mednexus_notifications
+          WHERE ($2 OR admin_only = FALSE)
+         ON CONFLICT (notification_id, user_id)
+         DO UPDATE SET is_read = TRUE, updated_at = NOW()
+         WHERE mednexus_notification_states.is_read = FALSE`,
+        [auth.uid, auth.role === "ADMIN" || auth.role === "SUPER_ADMIN"],
+      )
+      return NextResponse.json({ success: true, updated: result.rowCount ?? 0 })
+    }
+
     const { id } = body
     if (typeof id !== "string" || !id) return NextResponse.json({ error: "id is required" }, { status: 400 })
 
