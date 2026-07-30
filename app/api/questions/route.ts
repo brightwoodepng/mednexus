@@ -12,6 +12,19 @@ import { requireAuthenticatedUser } from "@/lib/request-auth"
 export const maxDuration = 120
 export const dynamic = "force-dynamic"
 
+// Runtime records include answer options and explanations. Keep this bounded
+// well below typical serverless response limits while avoiding tiny-page
+// request waterfalls for the few tools that intentionally load the full bank.
+export const QUESTION_MAX_PAGE_SIZE = 100
+
+function addServerTiming(response: NextResponse, timings: { auth?: number; database: number }) {
+  const values = []
+  if (timings.auth !== undefined) values.push(`auth;dur=${timings.auth.toFixed(1)}`)
+  values.push(`database;dur=${timings.database.toFixed(1)}`)
+  response.headers.set("Server-Timing", values.join(", "))
+  return response
+}
+
 function noStore(response: NextResponse) {
   response.headers.set("Cache-Control", "no-store, max-age=0")
   return response
@@ -21,15 +34,22 @@ export async function GET(req: NextRequest) {
   const queryStartedAt = performance.now()
   try {
     if (req.nextUrl.searchParams.get("view") === "catalog") {
+      const authStartedAt = performance.now()
       if (!await requireAuthenticatedUser(req)) {
         return noStore(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
       }
+      const authDuration = performance.now() - authStartedAt
+      const databaseStartedAt = performance.now()
       const catalog = await getQuestionCatalog()
-      return noStore(measuredJson({
+      const response = measuredJson({
         route: "GET /api/questions?view=catalog",
-        queryStartedAt,
+        queryStartedAt: databaseStartedAt,
         rowCount: catalog.modules.length,
         payload: catalog,
+      })
+      return noStore(addServerTiming(response, {
+        auth: authDuration,
+        database: performance.now() - databaseStartedAt,
       }))
     }
 
@@ -45,12 +65,17 @@ export async function GET(req: NextRequest) {
       return response
     }
 
-    const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
+    const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams, {
+      maxPageSize: QUESTION_MAX_PAGE_SIZE,
+    })
     const runtime = req.nextUrl.searchParams.get("view") === "runtime"
+    const authStartedAt = performance.now()
     if (runtime && !await requireAuthenticatedUser(req)) {
       return noStore(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
     }
+    const authDuration = runtime ? performance.now() - authStartedAt : undefined
     const publicProjection = !runtime
+    const databaseStartedAt = performance.now()
     const result = await getQuestionPage({
       pageSize,
       offset,
@@ -69,13 +94,17 @@ export async function GET(req: NextRequest) {
         pages: Math.ceil(result.total / pageSize),
       },
     }
-    return noStore(measuredJson({
+    const response = measuredJson({
       route: publicProjection
         ? "GET /api/questions"
         : "GET /api/questions?view=runtime",
-      queryStartedAt,
+      queryStartedAt: databaseStartedAt,
       rowCount: result.questions.length,
       payload,
+    })
+    return noStore(addServerTiming(response, {
+      auth: authDuration,
+      database: performance.now() - databaseStartedAt,
     }))
   } catch (err) {
     console.error("[questions GET]", err)
