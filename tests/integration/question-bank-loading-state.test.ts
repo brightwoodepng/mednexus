@@ -17,10 +17,13 @@ describe("question bank loading state", () => {
     expect(source).not.toContain("const loaded = result.questions ?? fallback")
   })
 
-  it("loads the runtime bank once the application has an eligible user", async () => {
-    const source = await readFile("components/mednexus-app.tsx", "utf8")
+  it("loads the compact catalog after authentication and full records by module", async () => {
+    const context = await readFile("contexts/questions-context.tsx", "utf8")
+    const application = await readFile("components/mednexus-app.tsx", "utf8")
 
-    expect(source).toContain("if (!authReady || !user || requiresPasswordUpdate) return")
-    expect(source).toContain("void loadQuestionSet()")
+    expect(context).toContain('fetch("/api/questions?view=catalog"')
+    expect(context).toContain("if (!authReady || !user)")
+    expect(application).toContain("await loadQuestionSet({ module: config.module, discipline: config.discipline })")
+    expect(application).not.toContain("void loadQuestionSet()")
   })
 })
