@@ -1631,6 +1631,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   const [timeLeftMs, setTimeLeftMs] = useState<number | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const pollInFlightRef = useRef(false)
+  const pollingCompleteRef = useRef(false)
   const retryDelayRef = useRef(1500)
   const authoritativeHostRef = useRef(isHost)
   const lastVersionRef = useRef<number>(-1)
@@ -1641,6 +1642,13 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   const questionKeyRef = useRef<string>("")
 
   const mergeRoom = useCallback((state: RoomState | RoomDelta) => {
+    if (state.phase === "done") {
+      pollingCompleteRef.current = true
+      if (pollRef.current) {
+        clearTimeout(pollRef.current)
+        pollRef.current = null
+      }
+    }
     setRoom(previous => {
       if ("questionPool" in state) return state
       if (!previous) return null
@@ -1671,13 +1679,36 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   useEffect(() => {
     let cancelled = false
     const schedule = async () => {
+      if (cancelled || pollingCompleteRef.current || document.visibilityState !== "visible") return
       await poll()
-      if (!cancelled) pollRef.current = setTimeout(schedule, retryDelayRef.current)
+      if (!cancelled && !pollingCompleteRef.current && document.visibilityState === "visible") {
+        pollRef.current = setTimeout(schedule, retryDelayRef.current)
+      }
     }
-    schedule()
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible" || pollingCompleteRef.current) {
+        if (pollRef.current) {
+          clearTimeout(pollRef.current)
+          pollRef.current = null
+        }
+        return
+      }
+
+      // Resume immediately after foregrounding. If a request was already in
+      // flight when the tab was hidden, it remains the single authoritative
+      // poll and will schedule the next iteration when it settles.
+      if (!pollInFlightRef.current) {
+        if (pollRef.current) clearTimeout(pollRef.current)
+        pollRef.current = null
+        void schedule()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    void schedule()
     return () => {
       cancelled = true
-      if (pollRef.current) clearInterval(pollRef.current)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      if (pollRef.current) clearTimeout(pollRef.current)
     }
   }, [poll])
 
