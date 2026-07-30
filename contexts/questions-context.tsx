@@ -22,10 +22,10 @@ import {
 // Invalidate the local cache so modules.ts picks up fresh questions
 import { saveActiveQuestions } from "@/lib/custom-questions"
 
-const QUESTION_PAGE_SIZE = 100
+const QUESTION_PAGE_SIZE = 25
 const PAGE_CONCURRENCY = 4
-export type QuestionSetFilter = { module?: string | null; discipline?: string | null }
-export type QuestionCatalogModule = { name: string; count: number; disciplines: Array<{ name: string; count: number }> }
+export type QuestionSetFilter = { module?: string | null; discipline?: string | null; topic?: string | null }
+export type QuestionCatalogModule = { name: string; count: number; disciplines: Array<{ name: string; count: number; topics: Array<{ name: string; count: number }> }> }
 
 function storedAuthHeaders(): HeadersInit {
   if (typeof window === "undefined") return {}
@@ -43,7 +43,10 @@ interface QuestionsContextValue {
   catalogLoading: boolean
   catalogError: string | null
   reloadCatalog: () => Promise<void>
-  loadQuestionSet: (filter?: QuestionSetFilter) => Promise<Question[]>
+  loadQuestionSet: (filter: QuestionSetFilter) => Promise<Question[]>
+  /** Administrative editor/export/bulk allowlist only. */
+  loadFullQuestionBank: () => Promise<Question[]>
+  loadGameQuestionPool: () => Promise<Question[]>
   addQuestion: (q: Question) => Promise<void>
   updateQuestion: (q: Question) => Promise<void>
   deleteQuestion: (id: string) => Promise<void>
@@ -107,6 +110,7 @@ async function fetchFromDb(
     const params = new URLSearchParams({ view: "runtime", page: "1", pageSize: String(QUESTION_PAGE_SIZE) })
     if (filter.module) params.set("module", filter.module)
     if (filter.discipline) params.set("discipline", filter.discipline)
+    if (filter.topic) params.set("topic", filter.topic)
     const firstStartedAt = performance.now()
     const firstResponse = await fetch(
       `/api/questions?${params}`,
@@ -196,7 +200,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const userId = user?.uid
   const [questions, setQuestions] = useState<Question[]>([])
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [questionCount, setQuestionCount] = useState<number | null>(null)
   const [catalog, setCatalog] = useState<QuestionCatalogModule[]>([])
   const [catalogLoading, setCatalogLoading] = useState(false)
@@ -208,6 +212,8 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const catalogRequest = useRef<AbortController | null>(null)
   const questionSetRequest = useRef<AbortController | null>(null)
   const questionSetLoadId = useRef(0)
+  const catalogLoadId = useRef(0)
+  const sessionOwner = useRef<string | undefined>(undefined)
 
   useEffect(() => () => {
     catalogRequest.current?.abort()
@@ -225,36 +231,9 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     questionsRef.current = qs
   }
 
-  // Fetch metadata only at startup. Content is loaded lazily by the workspace
-  // that needs it, preventing every route from transferring the entire bank.
-  useEffect(() => {
-    let cancelled = false
-    async function loadMetadata() {
-      try {
-        const response = await fetch("/api/questions?view=meta")
-        if (!response.ok) throw new Error("metadata unavailable")
-        const metadata = await response.json() as { count?: number; updatedAt?: string | null }
-        if (!cancelled) {
-          setQuestionCount(Number(metadata.count ?? 0))
-          if (metadata.updatedAt) setLastUpdated(new Date(metadata.updatedAt))
-        }
-      } catch {
-        if (!cancelled) setQuestionCount(questionsDatabase.length)
-      } finally {
-        if (!cancelled) setIsLoading(false)
-      }
-    }
-    void loadMetadata()
-    window.addEventListener("mednexus:questions-invalidated", loadMetadata)
-
-    return () => {
-      cancelled = true
-      window.removeEventListener("mednexus:questions-invalidated", loadMetadata)
-    }
-  }, [])
-
   const reloadCatalog = useCallback(async () => {
     catalogRequest.current?.abort()
+    const loadId = ++catalogLoadId.current
     const controller = new AbortController()
     catalogRequest.current = controller
     setCatalogLoading(true)
@@ -267,15 +246,17 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         signal: controller.signal,
       })
       if (!response.ok) throw new Error(response.status === 401 ? "Authentication expired" : "Catalog unavailable")
-      const data = await readTimedJson<{ modules?: QuestionCatalogModule[] }>(response, "catalog", startedAt)
+      const data = await readTimedJson<{ modules?: QuestionCatalogModule[]; totalCount?: number; updatedAt?: string | null }>(response, "catalog", startedAt)
+      if (controller.signal.aborted || loadId !== catalogLoadId.current) return
       const modules = Array.isArray(data.modules) ? data.modules : []
       setCatalog(modules)
-      setQuestionCount(modules.reduce((sum, module) => sum + module.count, 0))
+      setQuestionCount(Number(data.totalCount ?? modules.reduce((sum, module) => sum + module.count, 0)))
+      setLastUpdated(data.updatedAt ? new Date(data.updatedAt) : null)
     } catch (error) {
       if (controller.signal.aborted) return
       setCatalogError(error instanceof Error ? error.message : "Catalog unavailable")
     } finally {
-      if (catalogRequest.current === controller) {
+      if (catalogRequest.current === controller && loadId === catalogLoadId.current) {
         catalogRequest.current = null
         setCatalogLoading(false)
       }
@@ -283,24 +264,41 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (sessionOwner.current !== userId) {
+      sessionOwner.current = userId
+      catalogRequest.current?.abort()
+      questionSetRequest.current?.abort()
+      catalogLoadId.current++
+      questionSetLoadId.current++
+      questionSetCache.current.clear()
+      questionsRef.current = []
+      setQuestions([])
+      setCatalog([])
+      setQuestionCount(null)
+      setLastUpdated(null)
+      setCatalogError(null)
+      setIsLoading(false)
+      setCatalogLoading(false)
+    }
     if (!authReady || !userId) {
-      if (authReady) setCatalog([])
       return
     }
     void reloadCatalog()
   }, [authReady, reloadCatalog, userId])
 
-  const loadQuestionSet = useCallback(async (filter: QuestionSetFilter = {}) => {
+  const loadQuestionSet = useCallback(async (filter: QuestionSetFilter) => {
     questionSetRequest.current?.abort()
     const loadId = ++questionSetLoadId.current
-    const cacheKey = filter.module ? `${filter.module}\u0000${filter.discipline ?? "*"}` : null
+    const owner = userId
+    const cacheKey = filter.module ? `${owner}\u0000${filter.module}\u0000${filter.discipline ?? "*"}\u0000${filter.topic ?? "*"}` : null
     if (cacheKey && questionSetCache.current.has(cacheKey)) {
       setIsLoading(false)
       return questionSetCache.current.get(cacheKey)!
     }
-    const cachedModule = filter.module ? questionSetCache.current.get(`${filter.module}\u0000*`) : undefined
+    const cachedModule = filter.module ? questionSetCache.current.get(`${owner}\u0000${filter.module}\u0000*\u0000*`) : undefined
     if (cachedModule && filter.discipline) {
-      const subset = cachedModule.filter((question) => question.subject === filter.discipline)
+      const subset = cachedModule.filter((question) => question.subject === filter.discipline
+        && (!filter.topic || (question as Question & { topic?: string }).topic === filter.topic || question.tags?.[0] === filter.topic))
       questionSetCache.current.set(cacheKey!, subset)
       persist(subset, true)
       setIsLoading(false)
@@ -316,7 +314,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
       if (controller.signal.aborted) return questionsRef.current
       throw error
     }
-    if (loadId !== questionSetLoadId.current || controller.signal.aborted) return questionsRef.current
+    if (loadId !== questionSetLoadId.current || controller.signal.aborted || sessionOwner.current !== owner) return questionsRef.current
     // Never substitute bundled demo content for an authentication race,
     // network error, or rejected request. The server remains responsible for
     // selecting its configured database/static source on successful requests.
@@ -328,7 +326,29 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
     if (questionSetRequest.current === controller) questionSetRequest.current = null
     return loaded
-  }, [])
+  }, [userId])
+
+  const loadFullQuestionBank = useCallback(() => loadQuestionSet({}), [loadQuestionSet])
+
+  const loadGameQuestionPool = useCallback(async () => {
+    questionSetRequest.current?.abort()
+    const controller = new AbortController()
+    questionSetRequest.current = controller
+    const loadId = ++questionSetLoadId.current
+    const owner = userId
+    setIsLoading(true)
+    const startedAt = performance.now()
+    const response = await fetch(`/api/questions?view=runtime&page=1&pageSize=${QUESTION_PAGE_SIZE}`, {
+      cache: "no-store", headers: storedAuthHeaders(), signal: controller.signal,
+    })
+    if (!response.ok) throw new Error(`Game question pool unavailable (HTTP ${response.status})`)
+    const data = await readTimedJson<{ questions?: Question[] }>(response, "game-question-pool", startedAt)
+    if (controller.signal.aborted || loadId !== questionSetLoadId.current || sessionOwner.current !== owner) return questionsRef.current
+    const loaded = Array.isArray(data.questions) ? data.questions : []
+    persist(loaded, true)
+    setIsLoading(false)
+    return loaded
+  }, [userId])
 
   const saveToDb = useCallback(async (qs: Question[]) => {
     const ok = await pushToDb(qs)
@@ -410,6 +430,8 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         catalogError,
         reloadCatalog,
         loadQuestionSet,
+        loadFullQuestionBank,
+        loadGameQuestionPool,
         addQuestion,
         updateQuestion,
         deleteQuestion,
