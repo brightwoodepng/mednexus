@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
   const questionId = String(form.get("questionId") ?? "").trim() || null
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
-  await putMcqMedia(objectKey, bytes, mimeType, checksum)
-  await pool.query("INSERT INTO mednexus_mcq_media_assets (id,question_id,object_key,mime_type,byte_size,checksum_sha256,width,height,caption,alt_text,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)", [id, questionId, objectKey, mimeType, bytes.byteLength, checksum, metadata.width, metadata.height, caption, alt, admin.uid])
+  const objectLocation = await putMcqMedia(objectKey, bytes, mimeType, checksum)
+  await pool.query("INSERT INTO mednexus_mcq_media_assets (id,question_id,object_key,mime_type,byte_size,checksum_sha256,width,height,caption,alt_text,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)", [id, questionId, objectLocation, mimeType, bytes.byteLength, checksum, metadata.width, metadata.height, caption, alt, admin.uid])
   await auditAdmin(pool, admin.uid, "upload", "mcq_media", id, { questionId, mimeType, size: bytes.byteLength, checksum, width: metadata.width, height: metadata.height })
-  return NextResponse.json({ asset: { id, url: publicMcqMediaUrl(objectKey) ?? "/api/mcq/media/" + id, kind: "image", caption, alt, mimeType, byteSize: bytes.byteLength, checksum, width: metadata.width, height: metadata.height } }, { status: 201 })
+  return NextResponse.json({ asset: { id, url: publicMcqMediaUrl(objectLocation) ?? "/api/mcq/media/" + id, kind: "image", caption, alt, mimeType, byteSize: bytes.byteLength, checksum, width: metadata.width, height: metadata.height } }, { status: 201 })
 }

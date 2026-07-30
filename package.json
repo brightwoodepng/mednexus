@@ -10,6 +10,7 @@
     "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:migrate-mcq-media": "tsx scripts/migrate-mcq-media-to-object-storage.ts",
+    "db:migrate-inline-mcq-media": "tsx scripts/migrate-inline-mcq-media.ts",
     "db:audit-economy": "tsx scripts/audit-economy-readiness.ts",
     "seed:theory-demo": "tsx scripts/seed-theory-demo.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
@@ -21,8 +22,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1098.0",
-    "@aws-sdk/s3-request-presigner": "^3.1098.0",
     "@base-ui/react": "^1.6.0",
     "@google/genai": "^2.10.0",
     "@google/generative-ai": "^0.24.1",
@@ -31,6 +30,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.20.0",
     "@vercel/analytics": "^1.6.1",
+    "@vercel/blob": "^2.6.1",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",

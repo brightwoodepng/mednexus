@@ -136,17 +136,25 @@ async function getSessionAccount(): Promise<SessionAccount | null> {
   }
 }
 
-async function apiGet(auth: AuthHeader): Promise<{ name: string; progress: UserProgress; version: number } | null> {
+type RemoteProgress = { name: string; progress?: UserProgress; version: number; unchanged: boolean }
+
+async function apiGet(auth: AuthHeader, knownVersion?: number): Promise<RemoteProgress | null> {
   try {
     const headers: Record<string, string> = {}
     if (auth) headers[auth.key] = auth.value
-    const res = await fetch("/api/sync", {
+    const query = Number.isSafeInteger(knownVersion) ? `?version=${knownVersion}` : ""
+    const res = await fetch(`/api/sync${query}`, {
       headers,
       signal: AbortSignal.timeout(6000),
     })
     if (!res.ok) return null
     const data = await res.json()
-    return { name: data.name, progress: { ...EMPTY_PROGRESS, ...data.progress }, version: data.version ?? 0 }
+    return {
+      name: data.name,
+      progress: data.unchanged ? undefined : { ...EMPTY_PROGRESS, ...data.progress },
+      version: data.version ?? 0,
+      unchanged: data.unchanged === true,
+    }
   } catch {
     return null
   }
@@ -195,6 +203,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const tokenRef = useRef<AuthHeader>(null)
   const syncVersionRef = useRef(0)
   const pendingMutations = useRef<SyncMutation[]>([])
+  const syncVersionStorageKey = (uid: string) => `mednexus-sync-version:${uid}`
+  const storedSyncVersion = (uid: string) => {
+    const raw = localStorage.getItem(syncVersionStorageKey(uid))
+    if (raw === null) return undefined
+    const version = Number(raw)
+    return Number.isSafeInteger(version) && version >= 0 ? version : undefined
+  }
 
   const scheduleSync = useCallback((name: string, mutation: SyncMutation) => {
     pendingMutations.current.push(mutation)
@@ -225,6 +240,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       if (result.ok && result.version !== undefined) {
         syncVersionRef.current = result.version
+        const uid = userRef.current?.uid
+        if (uid) {
+          try { localStorage.setItem(syncVersionStorageKey(uid), String(result.version)) } catch {}
+        }
         setCloudEnabled(true)
       } else {
         setCloudEnabled(false)
@@ -288,11 +307,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setRequiresPasswordUpdate(needsPwUpdate)
           setAuthReady(true)
 
-          const remote = await apiGet(tokenRef.current)
+          const remote = await apiGet(tokenRef.current, storedSyncVersion(account.uid))
           if (remote) {
             syncVersionRef.current = remote.version
+            try { localStorage.setItem(syncVersionStorageKey(account.uid), String(remote.version)) } catch {}
             setCloudEnabled(true)
-            setProgress(remote.progress)
+            if (remote.progress) setProgress(remote.progress)
             setUser((current) => current ? { ...current, name: remote.name } : current)
           }
           return
@@ -305,11 +325,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRequiresPasswordUpdate(needsPwUpdate)
         setAuthReady(true)
 
-        const remote = await apiGet(tokenRef.current)
+        const remote = await apiGet(tokenRef.current, storedSyncVersion(uid))
         if (remote) {
           syncVersionRef.current = remote.version
+          try { localStorage.setItem(syncVersionStorageKey(uid), String(remote.version)) } catch {}
           setCloudEnabled(true)
-          setProgress(remote.progress)
+          if (remote.progress) setProgress(remote.progress)
           setUser({ uid, name: remote.name, role: "guest", classLevel })
         }
       } else {
@@ -416,8 +437,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const remote = await apiGet(tokenRef.current)
       if (remote) {
         syncVersionRef.current = remote.version
+        try { localStorage.setItem(syncVersionStorageKey(accountUid), String(remote.version)) } catch {}
         setCloudEnabled(true)
-        setProgress(remote.progress)
+        if (remote.progress) setProgress(remote.progress)
       }
 
       return { ok: true }

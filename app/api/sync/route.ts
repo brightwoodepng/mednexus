@@ -45,29 +45,48 @@ export async function GET(req: NextRequest) {
     const { uid } = auth
     const pool = await getPgPool()
     if (pool) {
-      const [userRes, progressRes, historyRes, examRes] = await Promise.all([
-        pool.query("SELECT name FROM mednexus_users WHERE uid = $1", [uid]),
-        pool.query("SELECT data, version FROM mednexus_progress WHERE uid = $1", [uid]),
+      // Keep the common unchanged check metadata-only. Selecting `data` here
+      // would still transfer the complete progress JSON from Postgres even
+      // though the response contains no progress payload.
+      const versionRes = await pool.query(
+        `SELECT users.name, COALESCE(progress.version, 0)::int AS version
+           FROM mednexus_users users
+           LEFT JOIN mednexus_progress progress ON progress.uid = users.uid
+          WHERE users.uid = $1`,
+        [uid],
+      )
+      if (!versionRes.rows.length) return jsonWithSize({ error: "Not found" }, "GET", 404)
+      const version = Number(versionRes.rows[0].version)
+      const knownVersion = Number(req.nextUrl.searchParams.get("version"))
+      if (Number.isSafeInteger(knownVersion) && knownVersion >= 0 && knownVersion === version) {
+        return jsonWithSize({ uid, name: versionRes.rows[0].name, version, unchanged: true }, "GET")
+      }
+      const [progressRes, historyRes, examRes] = await Promise.all([
+        pool.query("SELECT data FROM mednexus_progress WHERE uid = $1", [uid]),
         pool.query("SELECT payload FROM mednexus_progress_history WHERE uid = $1 ORDER BY occurred_at DESC, event_id DESC LIMIT $2", [uid, HISTORY_LIMIT]),
         pool.query("SELECT payload FROM mednexus_progress_exam_scores WHERE uid = $1 ORDER BY occurred_at DESC, event_id DESC LIMIT $2", [uid, EXAM_LIMIT]),
       ])
-      if (!userRes.rows.length) return jsonWithSize({ error: "Not found" }, "GET", 404)
-      const summary = progressRes.rows[0] ?? { data: {}, version: 0 }
-      return jsonWithSize({ uid, name: userRes.rows[0].name, version: Number(summary.version), progress: {
-        ...summary.data, history: historyRes.rows.map((row) => row.payload), examScores: examRes.rows.map((row) => row.payload),
+      return jsonWithSize({ uid, name: versionRes.rows[0].name, version, progress: {
+        ...(progressRes.rows[0]?.data ?? {}), history: historyRes.rows.map((row) => row.payload), examScores: examRes.rows.map((row) => row.payload),
       }, limits: { history: HISTORY_LIMIT, examScores: EXAM_LIMIT } }, "GET")
     }
 
     const db = await getFirestore()
     if (db) {
       const ref = db.collection("users").doc(uid)
-      const [snap, history, exams] = await Promise.all([
-        ref.get(), ref.collection("progressHistory").orderBy("occurredAt", "desc").limit(HISTORY_LIMIT).get(),
-        ref.collection("progressExamScores").orderBy("occurredAt", "desc").limit(EXAM_LIMIT).get(),
-      ])
+      const snap = await ref.get()
       if (!snap.exists) return jsonWithSize({ error: "Not found" }, "GET", 404)
       const data = snap.data()!
-      return jsonWithSize({ uid, name: data.name ?? "Clinician", version: data.progressVersion ?? 0, progress: {
+      const version = Number(data.progressVersion ?? 0)
+      const knownVersion = Number(req.nextUrl.searchParams.get("version"))
+      if (Number.isSafeInteger(knownVersion) && knownVersion >= 0 && knownVersion === version) {
+        return jsonWithSize({ uid, name: data.name ?? "Clinician", version, unchanged: true }, "GET")
+      }
+      const [history, exams] = await Promise.all([
+        ref.collection("progressHistory").orderBy("occurredAt", "desc").limit(HISTORY_LIMIT).get(),
+        ref.collection("progressExamScores").orderBy("occurredAt", "desc").limit(EXAM_LIMIT).get(),
+      ])
+      return jsonWithSize({ uid, name: data.name ?? "Clinician", version, progress: {
         ...(data.progressSummary ?? data.progress ?? {}), history: history.docs.map((doc) => doc.data().payload),
         examScores: exams.docs.map((doc) => doc.data().payload),
       }, limits: { history: HISTORY_LIMIT, examScores: EXAM_LIMIT } }, "GET")

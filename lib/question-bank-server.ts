@@ -1,6 +1,7 @@
 import "server-only"
 
 import { questionsDatabase } from "@/lib/questions-database"
+import { isSupportedSoloQuestion } from "@/lib/game-question-pool"
 import type { Question } from "@/lib/types"
 
 export type QuestionBankSource = "postgres" | "firestore" | "static"
@@ -113,6 +114,104 @@ export async function getQuestionCatalog(): Promise<QuestionCatalog> {
   }
 
   return buildQuestionCatalog(questionsDatabase)
+}
+
+/** Compact navigation counts limited to questions supported by game modes. */
+export async function getGameQuestionCatalog(): Promise<QuestionCatalog> {
+  if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
+    const { default: pool } = await import("@/lib/db")
+    const result = await pool.query<{ module_name: string; discipline_name: string; topic_name: string; count: number; updated_at: Date | string | null }>(
+      `SELECT
+         COALESCE(NULLIF(BTRIM(item.value->>'module'), ''), item.value->>'subject') AS module_name,
+         item.value->>'subject' AS discipline_name,
+         COALESCE(NULLIF(BTRIM(item.value->>'topic'), ''), NULLIF(BTRIM(item.value->'tags'->>0), ''), 'General') AS topic_name,
+         COUNT(*)::int AS count,
+         MAX(source.updated_at) AS updated_at
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) item(value)
+       WHERE source.id = 1
+         AND (NULLIF(item.value->>'moduleStatus', '') IS NULL OR item.value->>'moduleStatus' = 'live')
+         AND (NULLIF(item.value->>'status', '') IS NULL OR item.value->>'status' = 'live')
+         AND (NULLIF(item.value->>'questionType', '') IS NULL OR item.value->>'questionType' = 'STANDARD_MCQ')
+         AND jsonb_typeof(item.value->'correctAnswer') = 'string'
+         AND jsonb_typeof(item.value->'options') = 'array'
+         AND jsonb_array_length(item.value->'options') >= 2
+         AND EXISTS (
+           SELECT 1
+           FROM jsonb_array_elements(item.value->'options') option
+           WHERE option->>'id' = item.value->>'correctAnswer'
+         )
+       GROUP BY module_name, discipline_name, topic_name
+       ORDER BY module_name, discipline_name, topic_name`,
+    )
+    return catalogFromCounts(result.rows.map(row => ({
+      module: row.module_name,
+      discipline: row.discipline_name,
+      topic: row.topic_name,
+      count: Number(row.count),
+    })), result.rows[0]?.updated_at ? new Date(result.rows[0].updated_at).toISOString() : null)
+  }
+
+  return buildQuestionCatalog(questionsDatabase.filter(isSupportedSoloQuestion))
+}
+
+export async function getRandomGameQuestions(options: {
+  quantity: number
+  moduleName?: string
+  discipline?: string
+}): Promise<QuestionPage> {
+  if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
+    const { default: pool } = await import("@/lib/db")
+    const result = await pool.query<{ question: Question; total_count: number; updated_at: Date | string | null }>(
+      `WITH eligible AS (
+         SELECT item.value, source.updated_at
+         FROM mednexus_questions source
+         CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) item(value)
+         WHERE source.id = 1
+           AND ($1 = '' OR COALESCE(NULLIF(BTRIM(item.value->>'module'), ''), item.value->>'subject', '') = $1)
+           AND ($2 = '' OR COALESCE(item.value->>'subject', '') = $2)
+           AND (NULLIF(item.value->>'moduleStatus', '') IS NULL OR item.value->>'moduleStatus' = 'live')
+           AND (NULLIF(item.value->>'status', '') IS NULL OR item.value->>'status' = 'live')
+           AND (NULLIF(item.value->>'questionType', '') IS NULL OR item.value->>'questionType' = 'STANDARD_MCQ')
+           AND jsonb_typeof(item.value->'correctAnswer') = 'string'
+           AND jsonb_typeof(item.value->'options') = 'array'
+           AND jsonb_array_length(item.value->'options') >= 2
+           AND EXISTS (
+             SELECT 1
+             FROM jsonb_array_elements(item.value->'options') option
+             WHERE option->>'id' = item.value->>'correctAnswer'
+           )
+       ),
+       counted AS (
+         SELECT value, updated_at, COUNT(*) OVER()::int AS total_count
+         FROM eligible
+       )
+       SELECT
+         value - 'createdAt' - 'updatedAt' - 'audit' - 'sourceMetadata' AS question,
+         total_count,
+         updated_at
+       FROM counted
+       ORDER BY random()
+       LIMIT $3`,
+      [options.moduleName ?? "", options.discipline ?? "", options.quantity],
+    )
+    return {
+      questions: result.rows.map(row => row.question),
+      total: Number(result.rows[0]?.total_count ?? 0),
+      updatedAt: result.rows[0]?.updated_at ? new Date(result.rows[0].updated_at).toISOString() : null,
+    }
+  }
+
+  const eligible = questionsDatabase.filter(question =>
+    isSupportedSoloQuestion(question)
+    && (!options.moduleName || (question.module?.trim() || question.subject) === options.moduleName)
+    && (!options.discipline || question.subject === options.discipline),
+  )
+  return {
+    questions: [...eligible].sort(() => Math.random() - 0.5).slice(0, options.quantity),
+    total: eligible.length,
+    updatedAt: null,
+  }
 }
 
 export function buildQuestionCatalog(questions: readonly Question[], updatedAt: string | null = null): QuestionCatalog {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { buildQuestionCatalog } from "@/lib/question-bank-server"
 import type { Question } from "@/lib/types"
+import { externalizeLegacyQuestionMedia } from "@/lib/mcq-media-normalization"
 
 export const maxDuration = 120
 
@@ -54,7 +55,11 @@ export async function POST(req: NextRequest) {
       // Filter by stable ID inside the same atomic upsert. A retry after a
       // response timeout therefore cannot append the same question twice,
       // and the full existing bank never has to travel through the server.
-      const result = await pool.query(
+      const client = await pool.connect()
+      try {
+        await client.query("BEGIN")
+        const normalizedQuestions = await externalizeLegacyQuestionMedia(client, questions, "question-import")
+        const result = await client.query(
         `INSERT INTO mednexus_questions AS target (id, data, updated_at)
          VALUES (1, $1::jsonb, NOW())
          ON CONFLICT (id) DO UPDATE
@@ -72,13 +77,20 @@ export async function POST(req: NextRequest) {
                ),
                updated_at = NOW()
          RETURNING jsonb_array_length(data) AS total`,
-        [JSON.stringify(questions)],
-      )
-      return NextResponse.json({
-        success: true,
-        accepted: questions.length,
-        total: result.rows[0]?.total ?? null,
-      })
+          [JSON.stringify(normalizedQuestions)],
+        )
+        await client.query("COMMIT")
+        return NextResponse.json({
+          success: true,
+          accepted: normalizedQuestions.length,
+          total: result.rows[0]?.total ?? null,
+        })
+      } catch (error) {
+        await client.query("ROLLBACK")
+        throw error
+      } finally {
+        client.release()
+      }
     }
 
     // Firestore fallback — no atomic array-append operator for large blobs,

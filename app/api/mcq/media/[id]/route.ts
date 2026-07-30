@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server"
 import { deliveryMcqMediaUrl, IMMUTABLE_CACHE_CONTROL } from "@/lib/mcq-media-storage"
 
+let legacyDataColumnPromise: Promise<boolean> | null = null
+
+function hasLegacyDataColumn(pool: { query: (sql: string) => Promise<{ rowCount?: number | null }> }) {
+  if (!legacyDataColumnPromise) {
+    legacyDataColumnPromise = pool.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_name='mednexus_mcq_media_assets' AND column_name='data'",
+    ).then(result => Boolean(result.rowCount)).catch(error => {
+      legacyDataColumnPromise = null
+      throw error
+    })
+  }
+  return legacyDataColumnPromise
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const { default: pool, ensureSchema } = await import("@/lib/db")
@@ -8,10 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // Deployments can serve traffic while the explicit object-storage backfill is
   // still running. Keep legacy BYTEA assets readable until that migration has
   // verified every object and removed the data column.
-  const legacyColumn = await pool.query(
-    "SELECT 1 FROM information_schema.columns WHERE table_name='mednexus_mcq_media_assets' AND column_name='data'",
-  )
-  const projection = legacyColumn.rowCount ? "object_key,mime_type,data" : "object_key,mime_type"
+  const projection = await hasLegacyDataColumn(pool) ? "object_key,mime_type,data" : "object_key,mime_type"
   const result = await pool.query(`SELECT ${projection} FROM mednexus_mcq_media_assets WHERE id=$1`, [id])
   if (!result.rows[0]) return NextResponse.json({ error: "Media not found." }, { status: 404 })
   if (result.rows[0].object_key) {

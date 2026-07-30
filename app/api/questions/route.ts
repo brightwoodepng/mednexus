@@ -3,10 +3,11 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 import {
   buildQuestionCatalog,
+  getGameQuestionCatalog,
   getQuestionBankMetadata,
   getQuestionCatalog,
-  getQuestionBankStatus,
   getQuestionPage,
+  getRandomGameQuestions,
 } from "@/lib/question-bank-server"
 import { requireAuthenticatedUser } from "@/lib/request-auth"
 
@@ -49,6 +50,52 @@ export async function GET(req: NextRequest) {
         queryStartedAt: databaseStartedAt,
         rowCount: catalog.modules.length,
         payload: catalog,
+      })
+      return noStore(addServerTiming(response, {
+        auth: authDuration,
+        database: performance.now() - databaseStartedAt,
+      }))
+    }
+
+    if (req.nextUrl.searchParams.get("view") === "game-catalog") {
+      const authStartedAt = performance.now()
+      if (!await requireAuthenticatedUser(req)) {
+        return noStore(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
+      }
+      const authDuration = performance.now() - authStartedAt
+      const databaseStartedAt = performance.now()
+      const catalog = await getGameQuestionCatalog()
+      const response = measuredJson({
+        route: "GET /api/questions?view=game-catalog",
+        queryStartedAt: databaseStartedAt,
+        rowCount: catalog.modules.length,
+        payload: catalog,
+      })
+      return noStore(addServerTiming(response, {
+        auth: authDuration,
+        database: performance.now() - databaseStartedAt,
+      }))
+    }
+
+    if (req.nextUrl.searchParams.get("view") === "game") {
+      const authStartedAt = performance.now()
+      if (!await requireAuthenticatedUser(req)) {
+        return noStore(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
+      }
+      const authDuration = performance.now() - authStartedAt
+      const requestedQuantity = Number.parseInt(req.nextUrl.searchParams.get("quantity") ?? "10", 10)
+      const quantity = Math.min(500, Math.max(1, Number.isFinite(requestedQuantity) ? requestedQuantity : 10))
+      const databaseStartedAt = performance.now()
+      const selection = await getRandomGameQuestions({
+        quantity,
+        moduleName: req.nextUrl.searchParams.get("module")?.trim() || undefined,
+        discipline: req.nextUrl.searchParams.get("discipline")?.trim() || undefined,
+      })
+      const response = measuredJson({
+        route: "GET /api/questions?view=game",
+        queryStartedAt: databaseStartedAt,
+        rowCount: selection.questions.length,
+        payload: selection,
       })
       return noStore(addServerTiming(response, {
         auth: authDuration,
@@ -121,16 +168,19 @@ export async function PUT(req: NextRequest) {
   try {
     const { questions } = await req.json()
     if (!Array.isArray(questions)) return NextResponse.json({ error: "questions must be an array" }, { status: 400 })
-    const status = await getQuestionBankStatus()
-    if (status.postgres.available) {
+    // This legacy replacement route already receives the complete next bank.
+    // Do not download the complete current bank merely to discover which
+    // configured backend should receive the overwrite.
+    if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
       const { default: pool } = await import("@/lib/db")
       await pool.query(`INSERT INTO mednexus_questions (id, data, updated_at) VALUES (1, $1::jsonb, NOW()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`, [JSON.stringify(questions)])
       return noStore(NextResponse.json({ success: true, count: questions.length }))
     }
-    if (status.firestore.available) {
+    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
       const { getAdminDb } = await import("@/lib/firebase-admin")
       const { FieldValue } = await import("firebase-admin/firestore")
-      const db = getAdminDb()!
+      const db = getAdminDb()
+      if (!db) return NextResponse.json({ error: "No database configured" }, { status: 503 })
       const updatedAt = new Date().toISOString()
       const batch = db.batch()
       batch.set(db.collection("mednexus").doc("questions"), { data: questions, updatedAt: FieldValue.serverTimestamp() })

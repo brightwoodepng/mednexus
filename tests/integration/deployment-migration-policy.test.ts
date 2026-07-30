@@ -8,8 +8,13 @@ describe("deployment migration policy", () => {
     expect(() => validateDeploymentEnvironment({ NODE_ENV: "test", VERCEL_ENV: "production" })).toThrow("SESSION_SECRET")
     expect(() => validateDeploymentEnvironment({ NODE_ENV: "test", VERCEL_ENV: "production", SESSION_SECRET: "test-secret" })).not.toThrow()
   })
-  it("keeps database migration as a required production gate", () => {
-    expect(deploymentBuildSteps({ NODE_ENV: "test", VERCEL_ENV: "production" })).toEqual(["db:migrate", "build"])
+  it("does not consume database transfer during ordinary production builds", () => {
+    expect(deploymentBuildSteps({ NODE_ENV: "test", VERCEL_ENV: "production" })).toEqual(["build"])
+    expect(deploymentBuildSteps({
+      NODE_ENV: "test",
+      VERCEL_ENV: "production",
+      RUN_DATABASE_MIGRATIONS: "true",
+    })).toEqual(["db:migrate", "build"])
   })
 
   it("does not expose production data to arbitrary preview branches", () => {
@@ -26,6 +31,7 @@ describe("deployment migration policy", () => {
       NODE_ENV: "test",
       POSTGRES_URL: "postgres://preview.example/mednexus",
       VERCEL_PREVIEW_DATABASE_APPROVED: "true",
+      RUN_DATABASE_MIGRATIONS: "true",
     })).toEqual(["db:migrate", "build"])
   })
 

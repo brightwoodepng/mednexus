@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
 
     const res = await pool.query(
-      `SELECT id,title,module_name,question_ids,question_snapshot,question_count,
+      `SELECT id,title,module_name,question_ids,question_count,
         time_limit_mins,tries_allowed,pass_mark,status,share_token,created_at
        FROM mednexus_assessments WHERE share_token = $1`,
       [token]
@@ -46,28 +47,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ assessment, questions: [] })
     }
 
-    // Fetch question objects
-    const snapshot = Array.isArray(row.question_snapshot) ? row.question_snapshot : []
-    const qRes = snapshot.length ? null : await pool.query("SELECT data FROM mednexus_questions WHERE id = 1")
-    const allQuestions: Array<{ id: string }> = snapshot.length ? snapshot : (qRes?.rows[0]?.data ?? [])
-    const questionIdSet = new Set(assessment.questionIds as string[])
-    // Deduplicate: keep only the first occurrence of each id
-    const seenIds = new Set<string>()
-    const questions = allQuestions.filter((q) => {
-      if (!questionIdSet.has(q.id) || seenIds.has(q.id)) return false
-      seenIds.add(q.id)
-      return true
-    }).map((question) => {
-      const {
-        correctAnswer: _correctAnswer,
-        explanation: _explanation,
-        createdAt: _createdAt,
-        updatedAt: _updatedAt,
-        sourceMetadata: _sourceMetadata,
-        ...safeQuestion
-      } = question as Record<string, unknown>
-      return safeQuestion
-    })
+    const questions = await loadAssessmentQuestions(pool, row.id, "safe")
 
     return NextResponse.json({ assessment, questions })
   } catch (err) {

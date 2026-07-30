@@ -124,47 +124,51 @@ export async function POST(req: NextRequest) {
     const settings = await getPlatformSettings(pool)
     const qCount = Math.max(1, Number(questionCount) || settings.assessmentDefaultQuestionCount)
 
-    // Select only the bounded snapshot needed for this assessment. The previous
-    // implementation transferred the complete JSONB question bank to the app.
-    const qRes = await pool.query<{ question: Record<string, unknown> }>(
-      `WITH eligible AS (
-         SELECT DISTINCT ON (question.value->>'id') question.value AS question
-         FROM mednexus_questions source
-         CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
-         WHERE source.id=1
-           AND COALESCE(NULLIF(question.value->>'module', ''), question.value->>'subject')=$1
-           AND COALESCE(question.value->>'id', '') <> ''
-         ORDER BY question.value->>'id'
-       )
-       SELECT question FROM eligible ORDER BY random() LIMIT $2`,
-      [moduleName, qCount],
-    )
-    const selected = qRes.rows.map(row => row.question)
-    if (selected.length === 0) {
-      return NextResponse.json({ error: "No questions found for this module" }, { status: 400 })
-    }
-    const questionIds = selected.map(q => String(q.id))
-
     const id = `asmt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const shareToken = `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
 
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
-      await client.query(
-      `INSERT INTO mednexus_assessments
+      const created = await client.query<{ question_count: number }>(
+      `WITH eligible AS (
+         SELECT DISTINCT ON (question.value->>'id') question.value AS question
+         FROM mednexus_questions source
+         CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
+         WHERE source.id=1
+           AND COALESCE(NULLIF(question.value->>'module', ''), question.value->>'subject')=$3
+           AND COALESCE(question.value->>'id', '') <> ''
+         ORDER BY question.value->>'id'
+       ),
+       selected AS (
+         SELECT question FROM eligible ORDER BY random() LIMIT $4
+       )
+       INSERT INTO mednexus_assessments
          (id,title,module_name,question_ids,question_snapshot,question_count,time_limit_mins,tries_allowed,pass_mark,status,share_token)
-       VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7,$8,$9,'offline',$10)`,
+       SELECT $1,$2,$3,
+         jsonb_agg(question->>'id'),
+         jsonb_agg(question),
+         COUNT(*)::int,$5,$6,$7,'offline',$8
+       FROM selected
+       HAVING COUNT(*) > 0
+       RETURNING question_count`,
         [
-          id, title.trim(), moduleName, JSON.stringify(questionIds), JSON.stringify(selected),
-          questionIds.length,
+          id, title.trim(), moduleName, qCount,
           Number(timeLimitMins) || settings.assessmentDefaultTimeLimitMins,
           Number(triesAllowed) || settings.assessmentDefaultTriesAllowed,
           Number(passMark) || settings.assessmentDefaultPassMark,
           shareToken,
         ],
       )
-      await auditAdmin(client, admin.uid, "create", "assessment", id, { title: title.trim(), moduleName, questionCount: questionIds.length })
+      if (!created.rows.length) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: "No questions found for this module" }, { status: 400 })
+      }
+      await auditAdmin(client, admin.uid, "create", "assessment", id, {
+        title: title.trim(),
+        moduleName,
+        questionCount: Number(created.rows[0].question_count),
+      })
       await client.query("COMMIT")
     } catch (error) {
       await client.query("ROLLBACK")

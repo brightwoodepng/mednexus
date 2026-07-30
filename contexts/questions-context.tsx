@@ -26,6 +26,7 @@ const QUESTION_PAGE_SIZE = 25
 const PAGE_CONCURRENCY = 4
 export type QuestionSetFilter = { module?: string | null; discipline?: string | null; topic?: string | null }
 export type QuestionCatalogModule = { name: string; count: number; disciplines: Array<{ name: string; count: number; topics: Array<{ name: string; count: number }> }> }
+export type GameQuestionBatch = { questions: Question[]; total: number }
 
 function storedAuthHeaders(): HeadersInit {
   if (typeof window === "undefined") return {}
@@ -42,11 +43,13 @@ interface QuestionsContextValue {
   catalog: QuestionCatalogModule[]
   catalogLoading: boolean
   catalogError: string | null
+  gameCatalog: QuestionCatalogModule[]
+  gameCatalogLoading: boolean
   reloadCatalog: () => Promise<void>
   loadQuestionSet: (filter: QuestionSetFilter) => Promise<Question[]>
   /** Administrative editor/export/bulk allowlist only. */
   loadFullQuestionBank: () => Promise<Question[]>
-  loadGameQuestionPool: () => Promise<Question[]>
+  loadGameQuestionPool: (filter: QuestionSetFilter, quantity: number) => Promise<GameQuestionBatch>
   addQuestion: (q: Question) => Promise<void>
   updateQuestion: (q: Question) => Promise<void>
   deleteQuestion: (id: string) => Promise<void>
@@ -153,12 +156,20 @@ async function fetchFromDb(
   }
 }
 
-async function pushToDb(questions: Question[]): Promise<boolean> {
+async function reconcileWithDb(previous: Question[], questions: Question[]): Promise<boolean> {
   try {
-    const res = await fetch("/api/questions", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ questions }),
+    const previousById = new Map(previous.map(question => [question.id, question]))
+    const nextIds = new Set(questions.map(question => question.id))
+    const upserts = questions.filter(question => {
+      const before = previousById.get(question.id)
+      return !before || JSON.stringify(before) !== JSON.stringify(question)
+    })
+    const deletedIds = previous.filter(question => !nextIds.has(question.id)).map(question => question.id)
+    if (!upserts.length && !deletedIds.length) return true
+    const res = await fetch("/api/admin/mcq/questions/reconcile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...storedAuthHeaders() },
+      body: JSON.stringify({ upserts, deletedIds }),
     })
     return res.ok
   } catch {
@@ -205,9 +216,12 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const [catalog, setCatalog] = useState<QuestionCatalogModule[]>([])
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [gameCatalog, setGameCatalog] = useState<QuestionCatalogModule[]>([])
+  const [gameCatalogLoading, setGameCatalogLoading] = useState(false)
   const questionSetCache = useRef(new Map<string, Question[]>())
   const questionsRef = useRef(questions)
   questionsRef.current = questions
+  const persistedQuestionsRef = useRef<Question[]>([])
   const suppressNextAutoSave = useRef(false)
   const catalogRequest = useRef<AbortController | null>(null)
   const questionSetRequest = useRef<AbortController | null>(null)
@@ -226,6 +240,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   // their own full-bank auto-save effects know to skip re-saving.
   function persist(qs: Question[], alreadySaved = false) {
     if (alreadySaved) suppressNextAutoSave.current = true
+    if (alreadySaved) persistedQuestionsRef.current = [...qs]
     saveActiveQuestions(qs)
     setQuestions([...qs])
     questionsRef.current = qs
@@ -263,6 +278,28 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const reloadGameCatalog = useCallback(async () => {
+    setGameCatalogLoading(true)
+    try {
+      const startedAt = performance.now()
+      const response = await fetch("/api/questions?view=game-catalog", {
+        cache: "no-store",
+        headers: storedAuthHeaders(),
+      })
+      if (!response.ok) throw new Error("Game catalog unavailable")
+      const data = await readTimedJson<{ modules?: QuestionCatalogModule[] }>(
+        response,
+        "game-catalog",
+        startedAt,
+      )
+      setGameCatalog(Array.isArray(data.modules) ? data.modules : [])
+    } catch {
+      setGameCatalog([])
+    } finally {
+      setGameCatalogLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (sessionOwner.current !== userId) {
       sessionOwner.current = userId
@@ -272,19 +309,23 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
       questionSetLoadId.current++
       questionSetCache.current.clear()
       questionsRef.current = []
+      persistedQuestionsRef.current = []
       setQuestions([])
       setCatalog([])
+      setGameCatalog([])
       setQuestionCount(null)
       setLastUpdated(null)
       setCatalogError(null)
       setIsLoading(false)
       setCatalogLoading(false)
+      setGameCatalogLoading(false)
     }
     if (!authReady || !userId) {
       return
     }
     void reloadCatalog()
-  }, [authReady, reloadCatalog, userId])
+    void reloadGameCatalog()
+  }, [authReady, reloadCatalog, reloadGameCatalog, userId])
 
   const loadQuestionSet = useCallback(async (filter: QuestionSetFilter) => {
     questionSetRequest.current?.abort()
@@ -330,29 +371,32 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
 
   const loadFullQuestionBank = useCallback(() => loadQuestionSet({}), [loadQuestionSet])
 
-  const loadGameQuestionPool = useCallback(async () => {
-    questionSetRequest.current?.abort()
+  const loadGameQuestionPool = useCallback(async (filter: QuestionSetFilter, quantity: number) => {
     const controller = new AbortController()
-    questionSetRequest.current = controller
-    const loadId = ++questionSetLoadId.current
     const owner = userId
-    setIsLoading(true)
+    const params = new URLSearchParams({
+      view: "game",
+      quantity: String(Math.max(1, quantity)),
+    })
+    if (filter.module) params.set("module", filter.module)
+    if (filter.discipline) params.set("discipline", filter.discipline)
     const startedAt = performance.now()
-    const response = await fetch(`/api/questions?view=runtime&page=1&pageSize=${QUESTION_PAGE_SIZE}`, {
+    const response = await fetch(`/api/questions?${params}`, {
       cache: "no-store", headers: storedAuthHeaders(), signal: controller.signal,
     })
     if (!response.ok) throw new Error(`Game question pool unavailable (HTTP ${response.status})`)
-    const data = await readTimedJson<{ questions?: Question[] }>(response, "game-question-pool", startedAt)
-    if (controller.signal.aborted || loadId !== questionSetLoadId.current || sessionOwner.current !== owner) return questionsRef.current
+    const data = await readTimedJson<{ questions?: Question[]; total?: number }>(response, "game-question-pool", startedAt)
+    if (controller.signal.aborted || sessionOwner.current !== owner) return { questions: [], total: 0 }
     const loaded = Array.isArray(data.questions) ? data.questions : []
-    persist(loaded, true)
-    setIsLoading(false)
-    return loaded
+    return { questions: loaded, total: Number(data.total ?? loaded.length) }
   }, [userId])
 
   const saveToDb = useCallback(async (qs: Question[]) => {
-    const ok = await pushToDb(qs)
-    if (ok) setLastUpdated(new Date())
+    const ok = await reconcileWithDb(persistedQuestionsRef.current, qs)
+    if (ok) {
+      persistedQuestionsRef.current = [...qs]
+      setLastUpdated(new Date())
+    }
     return ok
   }, [])
 
@@ -428,6 +472,8 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         catalog,
         catalogLoading,
         catalogError,
+        gameCatalog,
+        gameCatalogLoading,
         reloadCatalog,
         loadQuestionSet,
         loadFullQuestionBank,
