@@ -183,16 +183,53 @@ function fmtTime(iso: string) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
 }
 
+export type StoredCredential =
+  | { kind: "guest"; token: string }
+  | { kind: "registered"; token: string }
+
 /** Read the stored auth token from localStorage (same keys as app-context). */
-function getStoredAuthHeader(): { key: string; value: string } | null {
+function getStoredCredential(): StoredCredential | null {
   if (typeof window === "undefined") return null
   try {
     const guestToken = localStorage.getItem("mednexus-guest-token")
-    if (guestToken) return { key: "x-guest-token", value: guestToken }
+    if (guestToken) return { kind: "guest", token: guestToken }
     const userToken = localStorage.getItem("mednexus-user-token")
-    if (userToken) return { key: "x-session-token", value: userToken }
+    if (userToken) return { kind: "registered", token: userToken }
   } catch { /* ignore */ }
   return null
+}
+
+function credentialHeaders(credential: StoredCredential | null): Record<string, string> {
+  if (!credential) return {}
+  return credential.kind === "registered"
+    ? { "x-session-token": credential.token }
+    : { "x-guest-token": credential.token }
+}
+
+interface BroadcastFeedData {
+  notifications?: Array<{ id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string }>
+}
+
+interface PersonalFeedData {
+  notifications?: Array<{ id: string; type: string; message: string; isRead: boolean; createdAt: string }>
+}
+
+/** Load the feeds available to this credential without calling registered-only APIs for guests. */
+export async function loadNotificationFeedData(
+  credential: StoredCredential | null,
+  fetcher: typeof fetch = fetch,
+): Promise<{ broadcastData: BroadcastFeedData; personalData: PersonalFeedData }> {
+  const headers = credentialHeaders(credential)
+  const broadcastRequest = fetcher("/api/notifications", { cache: "no-store", headers })
+  const personalRequest = credential?.kind === "registered"
+    ? fetcher("/api/user-notifications", { cache: "no-store", headers })
+    : null
+
+  const [broadcastRes, personalRes] = await Promise.all([broadcastRequest, personalRequest])
+  return {
+    broadcastData: broadcastRes.ok ? await broadcastRes.json() : { notifications: [] },
+    personalData: personalRes?.ok ? await personalRes.json() : { notifications: [] },
+  }
 }
 
 // ─── Notification Row ─────────────────────────────────────────────────────────
@@ -212,13 +249,17 @@ function NotificationRow({
     if (item.isRead || marking) return
     setMarking(true)
     const endpoint = item.source === "personal" ? "/api/user-notifications" : "/api/notifications"
-    const authHeader = getStoredAuthHeader()
+    const credential = getStoredCredential()
+    if (item.source === "personal" && credential?.kind !== "registered") {
+      setMarking(false)
+      return
+    }
     try {
       await fetch(endpoint, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+          ...credentialHeaders(credential),
         },
         body: JSON.stringify({ id: item.id, isRead: true }),
       })
@@ -233,13 +274,17 @@ function NotificationRow({
     if (deleting) return
     setDeleting(true)
     const endpoint = item.source === "personal" ? "/api/user-notifications" : "/api/notifications"
-    const authHeader = getStoredAuthHeader()
+    const credential = getStoredCredential()
+    if (item.source === "personal" && credential?.kind !== "registered") {
+      setDeleting(false)
+      return
+    }
     try {
       await fetch(endpoint, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+          ...credentialHeaders(credential),
         },
         body: JSON.stringify({ id: item.id }),
       })
@@ -384,23 +429,10 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
     ;(async () => {
       setLoading(true)
       try {
-        const broadcastHeaders: Record<string, string> = {}
-        const authHeader = getStoredAuthHeader()
-        if (authHeader) broadcastHeaders[authHeader.key] = authHeader.value
-
-
-        const personalHeaders: Record<string, string> = {}
-        if (authHeader) personalHeaders[authHeader.key] = authHeader.value
-
-        const [broadcastRes, personalRes] = await Promise.all([
-          fetch("/api/notifications", { cache: "no-store", headers: broadcastHeaders }),
-          fetch("/api/user-notifications", { cache: "no-store", headers: personalHeaders }),
-        ])
+        const credential = getStoredCredential()
+        const { broadcastData, personalData } = await loadNotificationFeedData(credential)
 
         if (cancelled) return
-
-        const broadcastData = broadcastRes.ok ? await broadcastRes.json() : { notifications: [] }
-        const personalData  = personalRes.ok  ? await personalRes.json()  : { notifications: [] }
 
         const broadcasts: OverlayItem[] = (broadcastData.notifications ?? []).map(normaliseBroadcast)
         const personal: OverlayItem[]   = (personalData.notifications ?? []).map(normalisePersonal)
@@ -425,20 +457,20 @@ export function NotificationOverlay({ open, onClose, onUnreadCountChange }: Noti
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",
-                ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+                ...credentialHeaders(credential),
               },
               body: JSON.stringify({ markAllRead: true }),
             }),
           })
         }
-        if (unreadPersonal.length > 0) {
+        if (credential?.kind === "registered" && unreadPersonal.length > 0) {
           markRequests.push({
             source: "personal",
             request: fetch("/api/user-notifications", {
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",
-                ...(authHeader ? { [authHeader.key]: authHeader.value } : {}),
+                ...credentialHeaders(credential),
               },
               body: JSON.stringify({ markAllRead: true }),
             }),
