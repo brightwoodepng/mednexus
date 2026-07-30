@@ -5,7 +5,7 @@ import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useTheme } from "@/contexts/theme-context"
 import { useEconomy } from "@/contexts/economy-context"
-import { useQuestions } from "@/contexts/questions-context"
+import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import {
   getLiveModules,
   getDisciplinesForModule,
@@ -113,7 +113,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const { globalMode } = useStudyMode()
   const { isGlassEnabled } = useTheme()
   const { equippedCosmetics, dailyLoginReward, clearDailyLoginReward } = useEconomy()
-  const { questionCount, isLoading: questionsLoading } = useQuestions()
+  const { questionCount, isLoading: questionsLoading, catalog, catalogLoading, catalogError, reloadCatalog } = useQuestions()
   const greeting = useGreeting()
   const liveExams = useLiveAssessments()
 
@@ -261,14 +261,23 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
       </section>
 
       {/* Mode-specific content */}
+      {catalogLoading && catalog.length === 0 && (
+        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground" role="status">Loading module catalog…</div>
+      )}
+      {catalogError && catalog.length === 0 && (
+        <div className="rounded-2xl border border-rose-300 bg-rose-50 p-5 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200" role="alert">
+          Module catalog could not be loaded. <button type="button" className="font-semibold underline" onClick={() => void reloadCatalog()}>Try again</button>
+        </div>
+      )}
       {globalMode === "trial" ? (
         <TrialDashboard
+          catalog={catalog}
           onReadyForQuiz={onReadyForQuiz}
           onOpenModules={onOpenModules}
           onOpenWeakAreas={onOpenWeakAreas}
         />
       ) : (
-        <ExamDashboard onReadyForQuiz={onReadyForQuiz} onOpenModules={onOpenModules} />
+        <ExamDashboard catalog={catalog} onReadyForQuiz={onReadyForQuiz} onOpenModules={onOpenModules} />
       )}
 
     </div>
@@ -331,17 +340,19 @@ function CoverageList({ coverage }: { coverage: Record<string, { attempted: numb
 
 // ── Trial Dashboard ───────────────────────────────────────────────────────────
 function TrialDashboard({
+  catalog,
   onReadyForQuiz,
   onOpenModules,
   onOpenWeakAreas,
 }: {
+  catalog: QuestionCatalogModule[]
   onReadyForQuiz: (c: QuizReadyConfig) => void
   onOpenModules: (module?: string) => void
   onOpenWeakAreas: () => void
 }) {
   const { progress } = useApp()
 
-  const modules = getLiveModules()
+  const modules = catalog.map((module) => module.name)
   const weakAreaQuestions = getWeakAreaQuestions(progress.history)
   const weakAreaCount = weakAreaQuestions.length
   const favorites = progress.favoriteModules ?? []
@@ -403,6 +414,7 @@ function TrialDashboard({
             <ModuleCard
               key={mod}
               mod={mod}
+              catalogModule={catalog.find((entry) => entry.name === mod)!}
               paletteIndex={modules.indexOf(mod) % CARD_PALETTES.length}
               isFav={favorites.includes(mod)}
               onOpen={() => onOpenModules(mod)}
@@ -427,19 +439,21 @@ function TrialDashboard({
 // ── Module Card ───────────────────────────────────────────────────────────────
 function ModuleCard({
   mod,
+  catalogModule,
   paletteIndex,
   isFav,
   onOpen,
 }: {
   mod: string
+  catalogModule: QuestionCatalogModule
   paletteIndex: number
   isFav: boolean
   onOpen: () => void
 }) {
   const { toggleFavoriteModule } = useApp()
   const palette = CARD_PALETTES[paletteIndex]
-  const total = getModuleQuestionCount(mod)
-  const disciplines = getDisciplinesForModule(mod)
+  const total = catalogModule.count
+  const disciplines = catalogModule.disciplines
 
   return (
     <div className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}>
@@ -583,14 +597,16 @@ function DisciplineView({
 
 // ── Exam Dashboard ────────────────────────────────────────────────────────────
 function ExamDashboard({
+  catalog,
   onReadyForQuiz,
   onOpenModules,
 }: {
+  catalog: QuestionCatalogModule[]
   onReadyForQuiz: (c: QuizReadyConfig) => void
   onOpenModules: (module?: string) => void
 }) {
   const { progress } = useApp()
-  const modules = getLiveModules()
+  const modules = catalog.map((module) => module.name)
   const examScores = (progress.examScores ?? []).slice(0, 5)
 
   return (
@@ -640,7 +656,7 @@ function ExamDashboard({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {modules.map((mod, i) => {
             const palette = CARD_PALETTES[i % CARD_PALETTES.length]
-            const total = getModuleQuestionCount(mod)
+            const total = catalog[i].count
             return (
               <button
                 key={mod}

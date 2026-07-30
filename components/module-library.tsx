@@ -1,11 +1,9 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import { useApp } from "@/contexts/app-context"
 import {
-  getLiveModules,
-  getDisciplinesForModule,
-  getModuleQuestionCount,
   getDisciplineCoverage,
   getQuestionsForModuleAndDiscipline,
   getQuestionsForModule,
@@ -54,13 +52,14 @@ const CARD_PALETTES = [
 
 export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryProps) {
   const { progress, toggleFavoriteModule } = useApp()
+  const { catalog, catalogLoading, catalogError, reloadCatalog, loadQuestionSet } = useQuestions()
 
   const [view,          setView         ] = useState<ViewMode>("module")
   const [viewingModule, setViewingModule ] = useState<string | null>(initialModule ?? null)
   const [search,        setSearch        ] = useState("")
   const [sort,          setSort          ] = useState<SortKey>("starred")
 
-  const modules   = getLiveModules()
+  const modules   = catalog.map((module) => module.name)
   const coverage  = getDisciplineCoverage(progress.history)
   const favorites = progress.favoriteModules ?? []
 
@@ -82,13 +81,13 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     }
     return [...list].sort((a, b) => {
       if (sort === "az")   return a.localeCompare(b)
-      if (sort === "most") return getModuleQuestionCount(b) - getModuleQuestionCount(a)
+      if (sort === "most") return (catalog.find((m) => m.name === b)?.count ?? 0) - (catalog.find((m) => m.name === a)?.count ?? 0)
       // "starred" — favourites first, then A→Z
       const aFav = favorites.includes(a) ? 0 : 1
       const bFav = favorites.includes(b) ? 0 : 1
       return aFav - bFav || a.localeCompare(b)
     })
-  }, [modules, favorites, sort, search])
+  }, [modules, catalog, favorites, sort, search])
 
   // ── Discipline-view data ──────────────────────────────────────────────────
   // Flat list: one entry per (module, discipline) pair.
@@ -104,17 +103,17 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
     }
     const result: DisciplineEntry[] = []
     modules.forEach((mod, modIdx) => {
-      getDisciplinesForModule(mod).forEach((disc) => {
+      catalog[modIdx]?.disciplines.forEach((disc) => {
         result.push({
-          discipline:  disc,
+          discipline:  disc.name,
           module:      mod,
           moduleIndex: modIdx,
-          total:       getQuestionsForModuleAndDiscipline(mod, disc).length,
+          total:       disc.count,
         })
       })
     })
     return result
-  }, [modules])
+  }, [modules, catalog])
 
   const filteredDisciplines = useMemo(() => {
     let list = allDisciplines
@@ -133,10 +132,12 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
 
   // ── Drill-down: module → discipline list ──────────────────────────────────
 
-  if (view === "module" && viewingModule) {
+  const viewingCatalogModule = catalog.find((entry) => entry.name === viewingModule)
+  if (view === "module" && viewingModule && viewingCatalogModule) {
     return (
       <ModuleDrillDown
         module={viewingModule}
+        catalogModule={viewingCatalogModule}
         coverage={coverage}
         onBack={() => setViewingModule(null)}
         onSelectDiscipline={(disc) => onReadyForQuiz({ module: viewingModule, discipline: disc })}
@@ -250,6 +251,15 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         </div>
       </div>
 
+      {catalogLoading && catalog.length === 0 && (
+        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground" role="status">Loading module catalog…</div>
+      )}
+      {catalogError && catalog.length === 0 && (
+        <div className="rounded-2xl border border-rose-300 bg-rose-50 p-5 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200" role="alert">
+          Module catalog could not be loaded. <button type="button" className="font-semibold underline" onClick={() => void reloadCatalog()}>Try again</button>
+        </div>
+      )}
+
       {/* ── Grid / empty state ── */}
       {isEmpty ? (
         <EmptyState onClear={() => setSearch("")} />
@@ -259,8 +269,9 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
           allModules={modules}
           coverage={coverage}
           favorites={favorites}
-          onOpen={setViewingModule}
+          onOpen={(module) => { setViewingModule(module); void loadQuestionSet({ module }) }}
           onToggleFav={toggleFavoriteModule}
+          catalog={catalog}
         />
       ) : (
         <DisciplineGrid
@@ -282,6 +293,7 @@ function ModuleGrid({
   favorites,
   onOpen,
   onToggleFav,
+  catalog,
 }: {
   modules:    string[]
   allModules: string[]
@@ -289,13 +301,15 @@ function ModuleGrid({
   favorites:  string[]
   onOpen:     (mod: string) => void
   onToggleFav:(mod: string) => void
+  catalog: QuestionCatalogModule[]
 }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
       {modules.map((mod) => {
         const palette    = CARD_PALETTES[allModules.indexOf(mod) % CARD_PALETTES.length]
-        const total      = getModuleQuestionCount(mod)
-        const disciplines = getDisciplinesForModule(mod)
+        const catalogModule = catalog.find((entry) => entry.name === mod)!
+        const total = catalogModule.count
+        const disciplines = catalogModule.disciplines
         const isFav      = favorites.includes(mod)
 
         return (
@@ -406,18 +420,20 @@ function DisciplineGrid({
 
 function ModuleDrillDown({
   module,
+  catalogModule,
   coverage,
   onBack,
   onSelectDiscipline,
 }: {
   module:              string
+  catalogModule:       QuestionCatalogModule
   coverage:            Record<string, { attempted: number; total: number; correct: number }>
   onBack:              () => void
   onSelectDiscipline:  (discipline: string | null) => void
 }) {
-  const disciplines    = getDisciplinesForModule(module)
-  const totalInModule  = getModuleQuestionCount(module)
-  const modIndex       = getLiveModules().indexOf(module) % CARD_PALETTES.length
+  const disciplines    = catalogModule.disciplines
+  const totalInModule  = catalogModule.count
+  const modIndex       = catalogModule.name.length % CARD_PALETTES.length
   const palette        = CARD_PALETTES[modIndex]
 
   function handleExportJSON() {
@@ -495,7 +511,8 @@ function ModuleDrillDown({
           <p className="mt-0.5 text-sm text-muted-foreground">{totalInModule} questions · all topics</p>
         </button>
 
-        {disciplines.map((disc, i) => {
+        {disciplines.map((discipline, i) => {
+          const disc = discipline.name
           const dPalette = CARD_PALETTES[i % CARD_PALETTES.length]
           const cov      = coverage[disc]
 
@@ -522,7 +539,7 @@ function ModuleDrillDown({
               </div>
               <h3 className="font-bold text-foreground leading-snug">{disc}</h3>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {cov ? `${cov.total} questions` : "no questions yet"}
+                {discipline.count} questions
               </p>
             </button>
           )

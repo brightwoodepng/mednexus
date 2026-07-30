@@ -63,6 +63,65 @@ export type QuestionPage = {
   updatedAt: string | null
 }
 
+export type QuestionCatalog = {
+  modules: Array<{
+    name: string
+    count: number
+    disciplines: Array<{ name: string; count: number }>
+  }>
+}
+
+/** Aggregate learner-visible navigation data without transferring question content. */
+export async function getQuestionCatalog(): Promise<QuestionCatalog> {
+  if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
+    const { default: pool } = await import("@/lib/db")
+    const result = await pool.query<{ module_name: string; discipline_name: string; count: number }>(
+      `SELECT
+         COALESCE(NULLIF(BTRIM(item.value->>'module'), ''), item.value->>'subject') AS module_name,
+         item.value->>'subject' AS discipline_name,
+         COUNT(*)::int AS count
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) item(value)
+       WHERE source.id = 1
+         AND (NULLIF(item.value->>'moduleStatus', '') IS NULL OR item.value->>'moduleStatus' = 'live')
+       GROUP BY module_name, discipline_name
+       ORDER BY module_name, discipline_name`,
+    )
+    return catalogFromCounts(result.rows.map(row => ({
+      module: row.module_name,
+      discipline: row.discipline_name,
+      count: Number(row.count),
+    })))
+  }
+
+  const status = await getQuestionBankStatus()
+  const counts = new Map<string, { module: string; discipline: string; count: number }>()
+  for (const question of status.questions as Question[]) {
+    if (question.moduleStatus && question.moduleStatus !== "live") continue
+    const module = question.module?.trim() || question.subject
+    const key = `${module}\u0000${question.subject}`
+    const current = counts.get(key)
+    if (current) current.count++
+    else counts.set(key, { module, discipline: question.subject, count: 1 })
+  }
+  return catalogFromCounts([...counts.values()])
+}
+
+function catalogFromCounts(rows: Array<{ module: string; discipline: string; count: number }>): QuestionCatalog {
+  const modules = new Map<string, QuestionCatalog["modules"][number]>()
+  for (const row of rows) {
+    if (!row.module || !row.discipline) continue
+    let module = modules.get(row.module)
+    if (!module) {
+      module = { name: row.module, count: 0, disciplines: [] }
+      modules.set(row.module, module)
+    }
+    module.count += row.count
+    module.disciplines.push({ name: row.discipline, count: row.count })
+  }
+  return { modules: [...modules.values()].sort((a, b) => a.name.localeCompare(b.name)) }
+}
+
 type QuestionPageOptions = {
   pageSize: number
   offset: number
