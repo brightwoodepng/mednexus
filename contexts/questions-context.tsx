@@ -22,7 +22,8 @@ import {
 // Invalidate the local cache so modules.ts picks up fresh questions
 import { saveActiveQuestions } from "@/lib/custom-questions"
 
-const PAGE_SIZE = 50
+const QUESTION_PAGE_SIZE = 100
+const PAGE_CONCURRENCY = 4
 export type QuestionSetFilter = { module?: string | null; discipline?: string | null }
 export type QuestionCatalogModule = { name: string; count: number; disciplines: Array<{ name: string; count: number }> }
 
@@ -67,29 +68,83 @@ interface QuestionsContextValue {
 
 const QuestionsContext = createContext<QuestionsContextValue | undefined>(undefined)
 
-/** Fetch questions from the authenticated runtime API. Null means unavailable. */
-async function fetchFromDb(filter: QuestionSetFilter = {}): Promise<{ questions: Question[] | null; updatedAt: string | null }> {
+type RequestTiming = { authenticationMs?: number; databaseQueryMs?: number }
+
+async function readTimedJson<T>(response: Response, request: string, requestStartedAt: number): Promise<T> {
+  const headersReceivedAt = performance.now()
+  const serverTiming = response.headers.get("Server-Timing") ?? ""
+  const timing: RequestTiming = {}
+  for (const entry of serverTiming.split(",")) {
+    const [name, ...parameters] = entry.trim().split(";")
+    const duration = parameters.find(parameter => parameter.startsWith("dur="))?.slice(4)
+    if (name === "auth" && duration) timing.authenticationMs = Number(duration)
+    if (name === "database" && duration) timing.databaseQueryMs = Number(duration)
+  }
+  const body = await response.text()
+  const bodyReceivedAt = performance.now()
+  const data = JSON.parse(body) as T
+  const processedAt = performance.now()
+  console.info("[questions-request-timing]", {
+    request,
+    authenticationMs: timing.authenticationMs,
+    databaseQueryMs: timing.databaseQueryMs,
+    networkTransferMs: Math.max(0, bodyReceivedAt - requestStartedAt
+      - (timing.authenticationMs ?? 0) - (timing.databaseQueryMs ?? 0)),
+    bodyDownloadMs: bodyReceivedAt - headersReceivedAt,
+    clientProcessingMs: processedAt - bodyReceivedAt,
+    totalClientMs: processedAt - requestStartedAt,
+    responseBytes: new TextEncoder().encode(body).byteLength,
+  })
+  return data
+}
+
+/** Fetch a filtered set, or the intentionally requested full bank, in bounded concurrent pages. */
+async function fetchFromDb(
+  filter: QuestionSetFilter,
+  signal: AbortSignal,
+): Promise<{ questions: Question[] | null; updatedAt: string | null }> {
   try {
-    const params = new URLSearchParams({ view: "runtime", page: "1", pageSize: String(PAGE_SIZE) })
+    const params = new URLSearchParams({ view: "runtime", page: "1", pageSize: String(QUESTION_PAGE_SIZE) })
     if (filter.module) params.set("module", filter.module)
     if (filter.discipline) params.set("discipline", filter.discipline)
+    const firstStartedAt = performance.now()
     const firstResponse = await fetch(
       `/api/questions?${params}`,
-      { cache: "no-store", headers: storedAuthHeaders() },
+      { cache: "no-store", headers: storedAuthHeaders(), signal },
     )
     if (!firstResponse.ok) return { questions: null, updatedAt: null }
-    const first = await firstResponse.json()
-    const questions: Question[] = Array.isArray(first.questions) ? first.questions : []
+    const first = await readTimedJson<{ questions?: Question[]; updatedAt?: string | null; pagination?: { pages?: number } }>(
+      firstResponse,
+      filter.module ? "module-questions:first-page" : "full-bank:first-page",
+      firstStartedAt,
+    )
+    const pageResults: Question[][] = [Array.isArray(first.questions) ? first.questions : []]
     const pages = Math.max(1, Number(first.pagination?.pages ?? 1))
-    for (let page = 2; page <= pages; page++) {
-      params.set("page", String(page))
-      const response = await fetch(`/api/questions?${params}`, { cache: "no-store", headers: storedAuthHeaders() })
-      if (!response.ok) return { questions: null, updatedAt: null }
-      const data = await response.json()
-      if (Array.isArray(data.questions)) questions.push(...data.questions)
+    let nextPage = 2
+    async function worker() {
+      while (nextPage <= pages) {
+        const page = nextPage++
+        const pageParams = new URLSearchParams(params)
+        pageParams.set("page", String(page))
+        const startedAt = performance.now()
+        const response = await fetch(`/api/questions?${pageParams}`, {
+          cache: "no-store",
+          headers: storedAuthHeaders(),
+          signal,
+        })
+        if (!response.ok) throw new Error(`Question page ${page} unavailable`)
+        const data = await readTimedJson<{ questions?: Question[] }>(
+          response,
+          filter.module ? "module-questions:page" : "full-bank:page",
+          startedAt,
+        )
+        pageResults[page - 1] = Array.isArray(data.questions) ? data.questions : []
+      }
     }
-    return { questions, updatedAt: first.updatedAt ?? null }
-  } catch {
+    await Promise.all(Array.from({ length: Math.min(PAGE_CONCURRENCY, pages - 1) }, () => worker()))
+    return { questions: pageResults.flat(), updatedAt: first.updatedAt ?? null }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error
     return { questions: null, updatedAt: null }
   }
 }
@@ -138,6 +193,7 @@ async function appendToDb(questions: Question[]): Promise<{ ok: boolean; error?:
 
 export function QuestionsProvider({ children }: { children: ReactNode }) {
   const { user, authReady } = useApp()
+  const userId = user?.uid
   const [questions, setQuestions] = useState<Question[]>([])
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -149,6 +205,14 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const questionsRef = useRef(questions)
   questionsRef.current = questions
   const suppressNextAutoSave = useRef(false)
+  const catalogRequest = useRef<AbortController | null>(null)
+  const questionSetRequest = useRef<AbortController | null>(null)
+  const questionSetLoadId = useRef(0)
+
+  useEffect(() => () => {
+    catalogRequest.current?.abort()
+    questionSetRequest.current?.abort()
+  }, [])
 
   // Sync to custom-questions cache so modules.ts picks up changes.
   // `alreadySaved` marks state changes this context has already persisted
@@ -190,42 +254,69 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const reloadCatalog = useCallback(async () => {
+    catalogRequest.current?.abort()
+    const controller = new AbortController()
+    catalogRequest.current = controller
     setCatalogLoading(true)
     setCatalogError(null)
     try {
-      const response = await fetch("/api/questions?view=catalog", { cache: "no-store", headers: storedAuthHeaders() })
+      const startedAt = performance.now()
+      const response = await fetch("/api/questions?view=catalog", {
+        cache: "no-store",
+        headers: storedAuthHeaders(),
+        signal: controller.signal,
+      })
       if (!response.ok) throw new Error(response.status === 401 ? "Authentication expired" : "Catalog unavailable")
-      const data = await response.json() as { modules?: QuestionCatalogModule[] }
+      const data = await readTimedJson<{ modules?: QuestionCatalogModule[] }>(response, "catalog", startedAt)
       const modules = Array.isArray(data.modules) ? data.modules : []
       setCatalog(modules)
       setQuestionCount(modules.reduce((sum, module) => sum + module.count, 0))
     } catch (error) {
+      if (controller.signal.aborted) return
       setCatalogError(error instanceof Error ? error.message : "Catalog unavailable")
     } finally {
-      setCatalogLoading(false)
+      if (catalogRequest.current === controller) {
+        catalogRequest.current = null
+        setCatalogLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => {
-    if (!authReady || !user) {
+    if (!authReady || !userId) {
       if (authReady) setCatalog([])
       return
     }
     void reloadCatalog()
-  }, [authReady, reloadCatalog, user?.uid])
+  }, [authReady, reloadCatalog, userId])
 
   const loadQuestionSet = useCallback(async (filter: QuestionSetFilter = {}) => {
+    questionSetRequest.current?.abort()
+    const loadId = ++questionSetLoadId.current
     const cacheKey = filter.module ? `${filter.module}\u0000${filter.discipline ?? "*"}` : null
-    if (cacheKey && questionSetCache.current.has(cacheKey)) return questionSetCache.current.get(cacheKey)!
+    if (cacheKey && questionSetCache.current.has(cacheKey)) {
+      setIsLoading(false)
+      return questionSetCache.current.get(cacheKey)!
+    }
     const cachedModule = filter.module ? questionSetCache.current.get(`${filter.module}\u0000*`) : undefined
     if (cachedModule && filter.discipline) {
       const subset = cachedModule.filter((question) => question.subject === filter.discipline)
       questionSetCache.current.set(cacheKey!, subset)
       persist(subset, true)
+      setIsLoading(false)
       return subset
     }
+    const controller = new AbortController()
+    questionSetRequest.current = controller
     setIsLoading(true)
-    const result = await fetchFromDb(filter)
+    let result: Awaited<ReturnType<typeof fetchFromDb>>
+    try {
+      result = await fetchFromDb(filter, controller.signal)
+    } catch (error) {
+      if (controller.signal.aborted) return questionsRef.current
+      throw error
+    }
+    if (loadId !== questionSetLoadId.current || controller.signal.aborted) return questionsRef.current
     // Never substitute bundled demo content for an authentication race,
     // network error, or rejected request. The server remains responsible for
     // selecting its configured database/static source on successful requests.
@@ -235,6 +326,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     if (result.questions !== null && !filter.module && !filter.discipline) setQuestionCount(loaded.length)
     if (result.updatedAt) setLastUpdated(new Date(result.updatedAt))
     setIsLoading(false)
+    if (questionSetRequest.current === controller) questionSetRequest.current = null
     return loaded
   }, [])
 
