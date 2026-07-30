@@ -32,6 +32,13 @@ describe("API transfer safeguards", () => {
     })
   })
 
+  it("allows payload-aware routes to choose a larger but still bounded page", () => {
+    expect(boundedPagination(
+      new URLSearchParams("page=2&pageSize=1000"),
+      { maxPageSize: 100 },
+    )).toEqual({ page: 2, pageSize: 100, offset: 100 })
+  })
+
   it("measures the actual UTF-8 serialized response size", () => {
     expect(serializedBytes({ value: "é" })).toBe(Buffer.byteLength('{"value":"é"}', "utf8"))
   })
