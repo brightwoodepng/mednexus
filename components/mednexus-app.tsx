@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { adminScreenFromUrl, studyHubFromUrl, withHubContext } from "@/lib/admin-hub-routing"
+import { learnerScreenFromUrl, learnerScreenUrl, studyHubFromUrl } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useQuestions } from "@/contexts/questions-context"
@@ -451,8 +451,7 @@ export function MedNexusApp() {
     const restoreFromLocation = () => {
       const hub = studyHubFromUrl()
       setActiveStudyHub(hub)
-      const pathname = window.location.pathname
-      setScreen(adminScreenFromUrl() ?? (pathname === "/profile" ? "profile" : hub === "theory-vault" ? "theory-dashboard" : "dashboard"))
+      setScreen(learnerScreenFromUrl())
     }
     restoreFromLocation()
     window.addEventListener("popstate", restoreFromLocation)
@@ -465,13 +464,7 @@ export function MedNexusApp() {
   }, [activeStudyHub, screen])
 
   const handleScreenNavigation = useCallback((nextScreen: Screen) => {
-    if (nextScreen === "profile") {
-      window.history.pushState({}, "", withHubContext("/profile", activeStudyHub))
-    } else if (nextScreen === "user-management") {
-      window.history.pushState({}, "", withHubContext("/admin/users", activeStudyHub))
-    } else if (nextScreen === "broadcast") {
-      window.history.pushState({}, "", withHubContext("/admin/broadcasts", activeStudyHub))
-    }
+    window.history.pushState({}, "", learnerScreenUrl(nextScreen, activeStudyHub))
     setScreen(nextScreen)
   }, [activeStudyHub])
 
@@ -617,7 +610,7 @@ export function MedNexusApp() {
 
   function exitQuiz() {
     setActiveQuiz(null)
-    setScreen("dashboard")
+    handleScreenNavigation("dashboard")
   }
 
   if (safeScreen === "quiz" && activeQuiz) {
@@ -655,7 +648,7 @@ export function MedNexusApp() {
       hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
           {safeScreen === "dashboard" && (
-            <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); setScreen("modules") }} onOpenWeakAreas={() => setScreen("weak-areas")} onOpenLiveAssessments={() => setScreen("live-assessments")} />
+            <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); handleScreenNavigation("modules") }} onOpenWeakAreas={() => handleScreenNavigation("weak-areas")} onOpenLiveAssessments={() => handleScreenNavigation("live-assessments")} />
           )}
           {safeScreen === "theory-dashboard" && <TheoryVault initialView="Dashboard" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
           {safeScreen === "theory-browse" && <TheoryVault initialView="Browse Questions" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
@@ -669,12 +662,12 @@ export function MedNexusApp() {
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
           {safeScreen === "leaderboard" && <LeaderboardScreen onNavigate={handleScreenNavigation} />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen onExamActiveChange={setIsExamActive} />}
-          {safeScreen === "game" && <GameMode onExit={() => setScreen("dashboard")} onOpenStore={() => setScreen("store")} />}
-          {safeScreen === "store" && <NexusStoreHub onNavigate={setScreen} />}
-          {safeScreen === "store-supply" && <NexusStoreSupplyPage onBack={() => setScreen("store")} />}
-          {safeScreen === "store-cosmetics" && <NexusStoreCosmeticsPage onBack={() => setScreen("store")} />}
-          {safeScreen === "store-vault" && <NexusStoreVaultPage onBack={() => setScreen("store")} />}
-          {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} payoutError={lastResult.payoutError} onReturn={() => setScreen("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
+          {safeScreen === "game" && <GameMode onExit={() => handleScreenNavigation("dashboard")} onOpenStore={() => handleScreenNavigation("store")} />}
+          {safeScreen === "store" && <NexusStoreHub onNavigate={handleScreenNavigation} />}
+          {safeScreen === "store-supply" && <NexusStoreSupplyPage onBack={() => handleScreenNavigation("store")} />}
+          {safeScreen === "store-cosmetics" && <NexusStoreCosmeticsPage onBack={() => handleScreenNavigation("store")} />}
+          {safeScreen === "store-vault" && <NexusStoreVaultPage onBack={() => handleScreenNavigation("store")} />}
+          {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} payoutError={lastResult.payoutError} onReturn={() => handleScreenNavigation("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
     </LearnerWorkspaceShell>
       <QuantityModal
         open={pendingQuiz !== null}
