@@ -2118,7 +2118,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenStore?: () => void }) {
-  const { questions, loadQuestionSet } = useQuestions()
+  const { questions, loadGameQuestionPool } = useQuestions()
   const [bankLoading, setBankLoading] = useState(false)
   // Auto-resume an in-progress multiplayer match on mount (e.g. after a page
   // refresh) instead of forcing the player back through mode selection.
@@ -2130,8 +2130,8 @@ export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenSt
   useEffect(() => {
     if (!activeMode || questions.length > 0) return
     setBankLoading(true)
-    void loadQuestionSet().finally(() => setBankLoading(false))
-  }, [activeMode, loadQuestionSet, questions.length])
+    void loadGameQuestionPool().finally(() => setBankLoading(false))
+  }, [activeMode, loadGameQuestionPool, questions.length])
 
   if (activeMode && (bankLoading || questions.length === 0)) {
     return <div className="flex min-h-[50vh] items-center justify-center text-sm font-semibold text-muted-foreground">Loading questions…</div>

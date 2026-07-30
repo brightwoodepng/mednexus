@@ -989,9 +989,9 @@ interface QuestionEditorProps {
 }
 
 export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenImporter, onOpenAssessments }: QuestionEditorProps = {}) {
-  const { questions, loadQuestionSet, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb, appendQuestionsInChunks, suppressNextAutoSave } = useQuestions()
+  const { questions, loadFullQuestionBank, addQuestion, updateQuestion, deleteQuestion, deleteAllQuestions, resetToDefault, saveToDb, appendQuestionsInChunks, suppressNextAutoSave } = useQuestions()
 
-  useEffect(() => { if (questions.length === 0) void loadQuestionSet() }, [loadQuestionSet, questions.length])
+  useEffect(() => { if (questions.length === 0) void loadFullQuestionBank() }, [loadFullQuestionBank, questions.length])
 
   // Draft questions (imported from PDF/Word but not yet committed to DB)
   const [draftQuestions, setDraftQuestions] = useState<Question[]>([])

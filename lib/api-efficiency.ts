@@ -43,12 +43,16 @@ export function logDatabaseRoute(input: {
   rowCount: number
   payload: unknown
 }) {
-  if (process.env.NODE_ENV === "production") return
-  console.info("[db-route]", JSON.stringify({
+  // Structured platform logs remain available in production. Deployments can
+  // route this privacy-safe envelope to their metrics backend without ever
+  // including question content.
+  console.info("[question-request-metric]", JSON.stringify({
+    requestType: input.route.includes("catalog") ? "catalog" : input.route.includes("runtime") ? "module-questions" : "question-metadata",
     route: input.route,
     queryDurationMs: Math.round(input.queryDurationMs * 10) / 10,
     rowCount: input.rowCount,
     responseBytes: serializedBytes(input.payload),
+    terminalOutcome: "success",
   }))
 }
 

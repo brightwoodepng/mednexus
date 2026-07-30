@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
+import { buildQuestionCatalog } from "@/lib/question-bank-server"
+import type { Question } from "@/lib/types"
 
 export const maxDuration = 120
 
@@ -86,13 +88,15 @@ export async function POST(req: NextRequest) {
     if (db) {
       const { FieldValue } = await import("firebase-admin/firestore")
       const docRef = db.collection("mednexus").doc("questions")
+      const catalogRef = db.collection("mednexus").doc("questionCatalog")
       const result = await db.runTransaction(async (transaction) => {
         const snap = await transaction.get(docRef)
-        const existing: Array<{ id?: string }> = snap.exists ? (snap.data()!.data ?? []) : []
+        const existing: Question[] = snap.exists ? (snap.data()!.data ?? []) : []
         const existingIds = new Set(existing.map((question) => question.id).filter(Boolean))
         const additions = questions.filter((question) => !existingIds.has(question.id))
         const merged = [...existing, ...additions]
         transaction.set(docRef, { data: merged, updatedAt: FieldValue.serverTimestamp() })
+        transaction.set(catalogRef, buildQuestionCatalog(merged, new Date().toISOString()))
         return { additions, merged }
       })
       return NextResponse.json({
