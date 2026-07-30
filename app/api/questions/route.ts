@@ -3,6 +3,7 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 import {
   getQuestionBankMetadata,
+  getQuestionCatalog,
   getQuestionBankStatus,
   getQuestionPage,
 } from "@/lib/question-bank-server"
@@ -19,6 +20,19 @@ function noStore(response: NextResponse) {
 export async function GET(req: NextRequest) {
   const queryStartedAt = performance.now()
   try {
+    if (req.nextUrl.searchParams.get("view") === "catalog") {
+      if (!await requireAuthenticatedUser(req)) {
+        return noStore(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
+      }
+      const catalog = await getQuestionCatalog()
+      return noStore(measuredJson({
+        route: "GET /api/questions?view=catalog",
+        queryStartedAt,
+        rowCount: catalog.modules.length,
+        payload: catalog,
+      }))
+    }
+
     if (req.nextUrl.searchParams.get("view") === "meta") {
       const metadata = await getQuestionBankMetadata()
       const response = measuredJson({

@@ -11,6 +11,7 @@ import {
   type MutableRefObject,
 } from "react"
 import { questionsDatabase } from "@/lib/questions-database"
+import { useApp } from "@/contexts/app-context"
 import type { Question } from "@/lib/types"
 import {
   saveQuestionChunks,
@@ -23,6 +24,7 @@ import { saveActiveQuestions } from "@/lib/custom-questions"
 
 const PAGE_SIZE = 50
 export type QuestionSetFilter = { module?: string | null; discipline?: string | null }
+export type QuestionCatalogModule = { name: string; count: number; disciplines: Array<{ name: string; count: number }> }
 
 function storedAuthHeaders(): HeadersInit {
   if (typeof window === "undefined") return {}
@@ -36,6 +38,10 @@ interface QuestionsContextValue {
   lastUpdated: Date | null
   isLoading: boolean
   questionCount: number | null
+  catalog: QuestionCatalogModule[]
+  catalogLoading: boolean
+  catalogError: string | null
+  reloadCatalog: () => Promise<void>
   loadQuestionSet: (filter?: QuestionSetFilter) => Promise<Question[]>
   addQuestion: (q: Question) => Promise<void>
   updateQuestion: (q: Question) => Promise<void>
@@ -131,10 +137,15 @@ async function appendToDb(questions: Question[]): Promise<{ ok: boolean; error?:
 }
 
 export function QuestionsProvider({ children }: { children: ReactNode }) {
+  const { user, authReady } = useApp()
   const [questions, setQuestions] = useState<Question[]>([])
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [questionCount, setQuestionCount] = useState<number | null>(null)
+  const [catalog, setCatalog] = useState<QuestionCatalogModule[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const questionSetCache = useRef(new Map<string, Question[]>())
   const questionsRef = useRef(questions)
   questionsRef.current = questions
   const suppressNextAutoSave = useRef(false)
@@ -178,7 +189,41 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const reloadCatalog = useCallback(async () => {
+    setCatalogLoading(true)
+    setCatalogError(null)
+    try {
+      const response = await fetch("/api/questions?view=catalog", { cache: "no-store", headers: storedAuthHeaders() })
+      if (!response.ok) throw new Error(response.status === 401 ? "Authentication expired" : "Catalog unavailable")
+      const data = await response.json() as { modules?: QuestionCatalogModule[] }
+      const modules = Array.isArray(data.modules) ? data.modules : []
+      setCatalog(modules)
+      setQuestionCount(modules.reduce((sum, module) => sum + module.count, 0))
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : "Catalog unavailable")
+    } finally {
+      setCatalogLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!authReady || !user) {
+      if (authReady) setCatalog([])
+      return
+    }
+    void reloadCatalog()
+  }, [authReady, reloadCatalog, user?.uid])
+
   const loadQuestionSet = useCallback(async (filter: QuestionSetFilter = {}) => {
+    const cacheKey = filter.module ? `${filter.module}\u0000${filter.discipline ?? "*"}` : null
+    if (cacheKey && questionSetCache.current.has(cacheKey)) return questionSetCache.current.get(cacheKey)!
+    const cachedModule = filter.module ? questionSetCache.current.get(`${filter.module}\u0000*`) : undefined
+    if (cachedModule && filter.discipline) {
+      const subset = cachedModule.filter((question) => question.subject === filter.discipline)
+      questionSetCache.current.set(cacheKey!, subset)
+      persist(subset, true)
+      return subset
+    }
     setIsLoading(true)
     const result = await fetchFromDb(filter)
     // Never substitute bundled demo content for an authentication race,
@@ -186,6 +231,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     // selecting its configured database/static source on successful requests.
     const loaded = result.questions ?? questionsRef.current
     if (result.questions !== null) persist(loaded, true)
+    if (result.questions !== null && cacheKey) questionSetCache.current.set(cacheKey, loaded)
     if (result.questions !== null && !filter.module && !filter.discipline) setQuestionCount(loaded.length)
     if (result.updatedAt) setLastUpdated(new Date(result.updatedAt))
     setIsLoading(false)
@@ -267,6 +313,10 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         lastUpdated,
         isLoading,
         questionCount,
+        catalog,
+        catalogLoading,
+        catalogError,
+        reloadCatalog,
         loadQuestionSet,
         addQuestion,
         updateQuestion,

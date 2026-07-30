@@ -464,17 +464,16 @@ export function MedNexusApp() {
     fetch("/api/platform/config").then((response) => response.json()).then((body) => setPlatformConfig(body.config ?? body ?? null)).catch(() => setPlatformConfig(null))
   }, [])
 
-  // Populate the client cache only after authentication is established. The
-  // dashboard's module helpers read this cache, so loading here prevents both
-  // a demo-bank flash and an empty dashboard that never requests its bank.
+  // Resume data needs only its original module slice; the compact catalog is
+  // loaded independently by QuestionsProvider after authentication.
   useEffect(() => {
     if (!authReady || !user || requiresPasswordUpdate) return
     if (user.role === "user" && user.status !== "approved") return
     if (restoredForUserRef.current === user.uid) return
     restoredForUserRef.current = user.uid
-    void loadQuestionSet().then(loadedQuestions => {
-      const stored = loadQuizSession(user.uid)
-      if (!stored) return
+    const stored = loadQuizSession(user.uid)
+    if (!stored) return
+    void loadQuestionSet({ module: stored.setupModule, discipline: stored.discipline }).then(loadedQuestions => {
       const restored = restoreQuizSession(stored, loadedQuestions)
       if (!restored) {
         clearQuizSession(user.uid)
@@ -541,7 +540,7 @@ export function MedNexusApp() {
 
   const safeScreen = screen
 
-  const handleReadyForQuiz = useCallback((config: { module: string; discipline: string | null }) => {
+  const handleReadyForQuiz = useCallback(async (config: { module: string; discipline: string | null }) => {
     let questions: Question[]
     let displayName: string
 
@@ -567,13 +566,13 @@ export function MedNexusApp() {
       questions = sortByUrgency(questions, srsData)
       displayName = config.discipline ?? modName
     } else {
-      questions = getQuestionsForModuleAndDiscipline(config.module, config.discipline)
+      questions = await loadQuestionSet({ module: config.module, discipline: config.discipline })
       displayName = config.module
     }
 
     setPendingQuiz({ questions, moduleName: displayName, discipline: config.discipline, setupModule: config.module })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progress.history])
+  }, [loadQuestionSet, progress.history])
 
   if (!authReady) {
     return (
