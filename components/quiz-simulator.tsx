@@ -28,6 +28,7 @@ import { AppearanceModal } from "@/components/appearance-modal"
 import { useEconomy } from "@/contexts/economy-context"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { useQuestionKeyboardNavigation } from "@/hooks/use-question-keyboard-navigation"
+import type { QuizSession } from "@/lib/quiz-session"
 
 function QuestionMediaGallery({ items, className = "" }: { items: QuestionMedia[]; className?: string }) {
   if (!items.length) return null
@@ -43,6 +44,8 @@ interface QuizSimulatorProps {
   mode: QuizMode
   /** Whether the user opted into gamification for this Trial Mode session */
   gamificationEnabled?: boolean
+  session: QuizSession
+  onSessionChange: (session: QuizSession) => void
   onExit: () => void
   onComplete: (result: BlockResult, history: HistoryEntry[], earnedNP?: number, payoutError?: string) => void
 }
@@ -78,19 +81,20 @@ function NPFloatToast({
   )
 }
 
-export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled = false, onExit, onComplete }: QuizSimulatorProps) {
+export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled = false, session, onSessionChange, onExit, onComplete }: QuizSimulatorProps) {
   const { user, progress, toggleFlag, recordHistory } = useApp()
   const { submitGameResult, startScoredActivity } = useEconomy()
   const { triggerError, isShaking, isFlashing } = useErrorFeedback()
   // Dynamic Streak Engine — strictly Trial Mode + gamification opt-in. Dormant otherwise.
   const streakEngine = useStreakEngine(questions.length, mode === "trial" && gamificationEnabled)
 
-  const [index, setIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string | string[] | null>>({})
-  const [struck, setStruck] = useState<Record<string, Set<string>>>({})
-  const [sataSelections, setSataSelections] = useState<Record<string, string[]>>({})
-  const [sataLocked, setSataLocked] = useState<Set<string>>(new Set())
-  const [timeLeft, setTimeLeft] = useState(questions.length * SECONDS_PER_QUESTION)
+  const [index, setIndex] = useState(session.currentQuestionIndex)
+  const [answers, setAnswers] = useState<Record<string, string | string[] | null>>(session.answers)
+  const [struck, setStruck] = useState<Record<string, Set<string>>>(() => Object.fromEntries(Object.entries(session.struckOptions).map(([id, options]) => [id, new Set(options)])))
+  const [sataSelections, setSataSelections] = useState<Record<string, string[]>>(session.sataSelections)
+  const [sataLocked, setSataLocked] = useState<Set<string>>(() => new Set(session.sataLockedQuestionIds))
+  const initialRemaining = Math.max(0, session.durationSeconds - Math.floor((Date.now() - session.startedAt) / 1000))
+  const [timeLeft, setTimeLeft] = useState(mode === "exam" ? initialRemaining : 0)
   const [calcOpen, setCalcOpen] = useState(false)
   const [labsOpen, setLabsOpen] = useState(false)
   const [focusNavOpen, setFocusNavOpen] = useState(false)
@@ -104,12 +108,13 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const payoutCalledRef  = useRef(false)
   const scoredSessionPromiseRef = useRef<Promise<string | null> | null>(null)
   const payoutPromiseRef = useRef<Promise<unknown> | null>(null)
+  const sessionRef = useRef(session)
   // Local streak tracking (for NP bonus calc; separate from streak engine state)
   const currentStreakRef = useRef(0)
   // Synced copy of streakEngine.bestStreak for use inside callbacks
   const bestStreakRef    = useRef(0)
 
-  const startedAt = useRef(Date.now())
+  const startedAt = useRef(session.startedAt)
   const finaleTriggeredRef = useRef(false)
   const historyRecordedRef = useRef(false)
 
@@ -182,12 +187,38 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
   const beginScoredSession = useCallback(() => {
     if (!user?.uid || user.uid.startsWith("guest")) return
-    scoredSessionPromiseRef.current = startScoredActivity(mode, questions.map(q => q.id))
-  }, [mode, questions, startScoredActivity, user?.uid])
+    if (scoredSessionPromiseRef.current) return
+    if (sessionRef.current.scoringSessionId) {
+      scoredSessionPromiseRef.current = Promise.resolve(sessionRef.current.scoringSessionId)
+      return
+    }
+    scoredSessionPromiseRef.current = startScoredActivity(mode, questions.map(q => q.id)).then(scoringSessionId => {
+      if (scoringSessionId) {
+        sessionRef.current = { ...sessionRef.current, scoringSessionId }
+        onSessionChange(sessionRef.current)
+      }
+      return scoringSessionId
+    })
+  }, [mode, onSessionChange, questions, startScoredActivity, user?.uid])
 
   useEffect(() => {
     beginScoredSession()
   }, [beginScoredSession])
+
+  // Trial Mode is intentionally untimed. Exam Mode derives its countdown from
+  // the wall clock below, so backgrounded/closed time is never paused.
+  useEffect(() => {
+    sessionRef.current = {
+      ...sessionRef.current,
+      currentQuestionIndex: index,
+      answers,
+      struckOptions: Object.fromEntries(Object.entries(struck).map(([id, options]) => [id, [...options]])),
+      sataSelections,
+      sataLockedQuestionIds: [...sataLocked],
+      flaggedQuestionIds: questions.filter(question => progress.flaggedQuestionIds.includes(question.id)).map(question => question.id),
+    }
+    onSessionChange(sessionRef.current)
+  }, [answers, index, onSessionChange, progress.flaggedQuestionIds, questions, sataLocked, sataSelections, struck])
 
   const submitBlock = useCallback(async () => {
     const timeTakenMs = Date.now() - startedAt.current
@@ -297,10 +328,15 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   // Exam timer
   useEffect(() => {
     if (mode !== "exam") return
-    if (timeLeft <= 0) { submitBlock(); return }
-    const t = setInterval(() => setTimeLeft((s) => s - 1), 1000)
+    const updateRemaining = () => setTimeLeft(Math.max(0, session.durationSeconds - Math.floor((Date.now() - session.startedAt) / 1000)))
+    updateRemaining()
+    const t = setInterval(updateRemaining, 1000)
     return () => clearInterval(t)
-  }, [mode, timeLeft, submitBlock])
+  }, [mode, session.durationSeconds, session.startedAt])
+
+  useEffect(() => {
+    if (mode === "exam" && timeLeft <= 0) void submitBlock()
+  }, [mode, submitBlock, timeLeft])
 
   // Grand Finale trigger — fires the exact moment the last question is answered.
   // Placed before the early-return guard so hook call order is stable.
