@@ -4,12 +4,14 @@ import { NextRequest } from "next/server"
 const requireAuthenticatedUser = vi.fn()
 const getQuestionPage = vi.fn()
 const getQuestionBankMetadata = vi.fn()
+const getQuestionCatalog = vi.fn()
 
 vi.mock("@/lib/request-auth", () => ({ requireAuthenticatedUser }))
 vi.mock("@/lib/question-bank-server", () => ({
   getQuestionBankStatus: vi.fn(),
   getQuestionPage,
   getQuestionBankMetadata,
+  getQuestionCatalog,
 }))
 vi.mock("@/lib/db", () => ({ default: { query: vi.fn() } }))
 
@@ -21,6 +23,7 @@ describe("question transfer security", () => {
     requireAuthenticatedUser.mockResolvedValue(null)
     getQuestionBankMetadata.mockResolvedValue({ count: 123, updatedAt: null })
     getQuestionPage.mockResolvedValue({ questions: [], total: 0, updatedAt: null })
+    getQuestionCatalog.mockResolvedValue({ modules: [], totalCount: 0, updatedAt: null })
   })
 
   it("keeps metadata public without loading a question page", async () => {
@@ -44,7 +47,7 @@ describe("question transfer security", () => {
     const response = await GET(request("/api/questions?view=runtime&module=Cardiology&discipline=ECG&pageSize=500"))
     expect(response.status).toBe(200)
     expect(getQuestionPage).toHaveBeenCalledWith(expect.objectContaining({
-      moduleName: "Cardiology", discipline: "ECG", pageSize: 50, offset: 0, publicProjection: false,
+      moduleName: "Cardiology", discipline: "ECG", pageSize: 25, offset: 0, publicProjection: false,
     }))
   })
 

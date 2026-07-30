@@ -22,7 +22,8 @@ describe("question bank loading state", () => {
     const application = await readFile("components/mednexus-app.tsx", "utf8")
 
     expect(context).toContain('fetch("/api/questions?view=catalog"')
-    expect(context).toContain("if (!authReady || !user)")
+    expect(context).toContain("if (!authReady || !userId)")
+    expect(context).not.toContain('fetch("/api/questions?view=meta")')
     expect(application).toContain("await loadQuestionSet({ module: config.module, discipline: config.discipline })")
     expect(application).not.toContain("void loadQuestionSet()")
   })

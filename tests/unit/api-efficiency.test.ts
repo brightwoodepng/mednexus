@@ -42,4 +42,10 @@ describe("API transfer safeguards", () => {
   it("measures the actual UTF-8 serialized response size", () => {
     expect(serializedBytes({ value: "é" })).toBe(Buffer.byteLength('{"value":"é"}', "utf8"))
   })
+
+  it("keeps a representative media-heavy runtime page below the 6 MiB safety target", () => {
+    const representativeQuestion = { explanation: "x".repeat(100 * 1024), mediaBase64: "y".repeat(100 * 1024) }
+    expect(serializedBytes({ questions: Array.from({ length: 25 }, () => representativeQuestion) }))
+      .toBeLessThan(6 * 1024 * 1024)
+  })
 })
