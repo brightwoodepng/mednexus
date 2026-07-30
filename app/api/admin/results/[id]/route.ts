@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { bestAttempts, loadAttempts, median, percentage } from "@/lib/admin-results"
+import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdminRequest(req, "manage_assessments")) return adminAccessDenied(req)
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
   const result = await pool.query(
-    `SELECT id,title,module_name,question_snapshot,question_count,pass_mark,status
+    `SELECT id,title,module_name,question_count,pass_mark,status
      FROM mednexus_assessments WHERE id=$1`,
     [id],
   )
@@ -18,7 +19,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const loaded = await loadAttempts(pool, id)
   const attempts = mode === "best" ? bestAttempts(loaded) : loaded
   const scores = attempts.map(percentage)
-  const snapshot = Array.isArray(assessment.question_snapshot) ? assessment.question_snapshot : []
+  const snapshot = await loadAssessmentQuestions(pool, id, "analytics") as Array<{
+    id: string
+    vignette?: string
+    subject?: string
+    module?: string
+    correctAnswer?: string
+  }>
   const questionPerformance = snapshot.map((question: { id: string; vignette?: string; subject?: string; module?: string; correctAnswer?: string }) => {
     const answered = attempts.filter((attempt) => attempt.answers && Object.hasOwn(attempt.answers, question.id))
     const correct = answered.filter((attempt) => attempt.answers[question.id] === question.correctAnswer).length

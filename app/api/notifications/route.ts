@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const pool = await getPool()
     if (!pool) return NextResponse.json({ notifications: [] })
 
-    const canManageBroadcasts = await requireAdminRequest(req, "manage_broadcasts")
+    const canManageBroadcasts = auth.permissions?.has("manage_broadcasts") ?? auth.role === "SUPER_ADMIN"
     const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
     const res = await pool.query(
       `SELECT n.id, n.title, n.body, n.type, n.admin_only, n.created_at,
@@ -123,7 +123,7 @@ export async function PATCH(req: NextRequest) {
          ON CONFLICT (notification_id, user_id)
          DO UPDATE SET is_read = TRUE, updated_at = NOW()
          WHERE mednexus_notification_states.is_read = FALSE`,
-        [auth.uid, auth.role === "ADMIN" || auth.role === "SUPER_ADMIN"],
+        [auth.uid, auth.permissions?.has("manage_broadcasts") ?? auth.role === "SUPER_ADMIN"],
       )
       return NextResponse.json({ success: true, updated: result.rowCount ?? 0 })
     }

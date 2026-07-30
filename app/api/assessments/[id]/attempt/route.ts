@@ -3,6 +3,7 @@ import { randomUUID } from "crypto"
 import type { Pool, PoolClient } from "pg"
 import { getRequestAuth, unauthorized } from "@/lib/request-auth"
 import { boundedPagination } from "@/lib/api-efficiency"
+import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))", [id, account.uid])
 
     const asmtRes = await client.query(
-      `SELECT id,question_ids,question_snapshot,tries_allowed,status
+      `SELECT id,question_ids,tries_allowed,status
        FROM mednexus_assessments WHERE id = $1 FOR UPDATE`,
       [id],
     )
@@ -118,12 +119,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const tries = Number(triesRes.rows[0]?.count ?? 0)
     if (tries >= asmt.tries_allowed) { await client.query("ROLLBACK"); return NextResponse.json({ error: "No tries remaining" }, { status: 403 }) }
 
-    const snapshot = Array.isArray(asmt.question_snapshot) ? asmt.question_snapshot as Array<{ id: string; correctAnswer: string }> : []
-    const qRes = snapshot.length
-      ? null
-      : await client.query("SELECT data FROM mednexus_questions WHERE id = 1")
-    const allQuestions: Array<{ id: string; correctAnswer: string }> = snapshot.length ? snapshot : (qRes?.rows[0]?.data ?? [])
-    const qMap = new Map(allQuestions.map((q) => [q.id, q]))
+    const gradingQuestions = await loadAssessmentQuestions(client, id, "grading") as Array<{ id: string; correctAnswer: string }>
+    const qMap = new Map(gradingQuestions.map((q) => [q.id, q]))
     const questionIds = asmt.question_ids as string[]
     const score = questionIds.reduce((sum, qId) => sum + (qMap.get(qId)?.correctAnswer === answers[qId] ? 1 : 0), 0)
     const total = questionIds.length
@@ -143,7 +140,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await client.query("COMMIT")
     const attemptsUsed = tries + 1
     const reviewQuestions = attemptsUsed >= Number(asmt.tries_allowed)
-      ? allQuestions.filter(question => questionIds.includes(question.id))
+      ? await loadAssessmentQuestions(pool, id, "full")
       : undefined
     return NextResponse.json({
       success: true,

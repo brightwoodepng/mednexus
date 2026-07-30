@@ -93,6 +93,7 @@ function setRoom(participants: number, phase: Phase, version: number, answered =
     created_at: new Date(),
     phase_started_at: new Date(),
     knockout_winner_id: null,
+    is_player: true,
   }
 }
 

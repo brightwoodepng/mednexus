@@ -21,10 +21,10 @@ async function migrate() {
     if (!metadata.width || !metadata.height) throw new Error(`Asset ${asset.id} has invalid dimensions`)
     const extension = asset.mime_type === "image/jpeg" ? "jpg" : asset.mime_type.split("/")[1]
     const key = `mcq-media/${digest}.${extension}`
-    await storage.putMcqMedia(key, bytes, asset.mime_type, digest)
-    const stored = await storage.readMcqMedia(key)
+    const objectLocation = await storage.putMcqMedia(key, bytes, asset.mime_type, digest)
+    const stored = await storage.readMcqMedia(objectLocation)
     if (stored.byteLength !== bytes.byteLength || await checksum(stored) !== digest) throw new Error(`Checksum verification failed for ${asset.id}; database was not changed`)
-    await pool.query("UPDATE mednexus_mcq_media_assets SET object_key=$1,byte_size=$2,checksum_sha256=$3,width=$4,height=$5,updated_at=NOW() WHERE id=$6 AND object_key IS NULL", [key, bytes.byteLength, digest, metadata.width, metadata.height, asset.id])
+    await pool.query("UPDATE mednexus_mcq_media_assets SET object_key=$1,byte_size=$2,checksum_sha256=$3,width=$4,height=$5,updated_at=NOW() WHERE id=$6 AND object_key IS NULL", [objectLocation, bytes.byteLength, digest, metadata.width, metadata.height, asset.id])
     console.log(`Migrated and verified ${asset.id}`)
   }
 

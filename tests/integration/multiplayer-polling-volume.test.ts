@@ -14,6 +14,8 @@ describe("multiplayer polling query budget", () => {
   it("keeps unchanged participant polls to one metadata query and no lock", () => {
     expect(route).toContain('X-Game-Room-Query-Count')
     expect(route).toContain('instrument(NextResponse.json({ unchanged: true, version: knownVersion }), 1, "unchanged")')
+    expect(route).toContain("AS is_player")
+    expect(route).not.toMatch(/SELECT version,players,created_at/)
     expect(route.indexOf("if (transitionDue) await autoTick(pin)")).toBeGreaterThan(route.indexOf("const transitionDue"))
   })
 
@@ -34,5 +36,7 @@ describe("multiplayer polling query budget", () => {
     expect(route).toContain('{ questionPool: safePool } : { currentQuestion }')
     expect(route).toContain('question_pool -> current_qi AS current_question')
     expect(client).toContain("const questionPool = [...previous.questionPool]")
+    expect(route).toContain("Action callers already received the pool")
+    expect(client).toContain("mergeRoom(updated)")
   })
 })

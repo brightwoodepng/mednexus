@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server"
-import { requireAdminRequest } from "@/lib/admin-access"
 import { measuredJson } from "@/lib/api-efficiency"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 
@@ -26,7 +25,7 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const canManageBroadcasts = Boolean(await requireAdminRequest(req, "manage_broadcasts"))
+    const canManageBroadcasts = auth.permissions?.has("manage_broadcasts") ?? auth.role === "SUPER_ADMIN"
     const result = await pool.query(
       `SELECT
          (SELECT COUNT(*)::int

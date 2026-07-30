@@ -44,6 +44,10 @@ type CompactRoom = Omit<RawRoom, "question_pool"> & {
   current_question?: SlimQuestion | null
 }
 
+type PollMetadata = Pick<RawRoom, "created_at" | "host_id" | "mode" | "phase" | "phase_started_at" | "version"> & {
+  is_player: boolean
+}
+
 // ── Self-driven match pacing ────────────────────────────────────────────────
 // This app has no push/realtime infra (no Supabase, no websockets) — clients
 // poll with a bounded cadence. The host is the sole authoritative timer tick;
@@ -65,7 +69,7 @@ function getTimeLimitMs(mode: string): number {
 const REVEAL_DURATION_MS = 3_000
 const ROOM_TTL_MS = 24 * 60 * 60 * 1000
 
-function isExpired(room: RawRoom) {
+function isExpired(room: Pick<RawRoom, "created_at">) {
   return Date.now() - new Date(room.created_at).getTime() > ROOM_TTL_MS
 }
 
@@ -217,7 +221,9 @@ export async function GET(
   { params }: { params: Promise<{ pin: string }> }
 ) {
   try {
-    const auth = await requireAuthenticatedUser(req)
+    // Polls arrive every 1.5 seconds. Revalidate account approval periodically,
+    // rather than transferring the same role/permission rows on every tick.
+    const auth = await requireAuthenticatedUser(req, { cacheMs: 15_000 })
     if (!auth) return NextResponse.json(roomError("AUTHENTICATION_REQUIRED", "Authentication required", 401), { status: 401 })
     const { pin } = await params
     const searchParams = new URL(req.url).searchParams
@@ -228,17 +234,22 @@ export async function GET(
 
     if (knownVersion !== null && Number.isInteger(knownVersion) && knownVersion >= 0) {
       const current = await pool.query(
-        `SELECT version,players,created_at,host_id,mode,phase,phase_started_at
+        `SELECT version,created_at,host_id,mode,phase,phase_started_at,
+                EXISTS (
+                  SELECT 1
+                    FROM jsonb_array_elements(COALESCE(players, '[]'::jsonb)) player(value)
+                   WHERE player.value->>'id' = $2
+                ) AS is_player
            FROM mednexus_game_rooms WHERE pin=$1`,
-        [pin],
+        [pin, auth.uid],
       )
-      const row = current.rows[0] as RawRoom | undefined
+      const row = current.rows[0] as PollMetadata | undefined
       if (!row) return NextResponse.json(roomError("ROOM_NOT_FOUND", "Room not found", 404), { status: 404 })
-      if (isExpired(row as RawRoom)) {
+      if (isExpired(row)) {
         await pool.query("DELETE FROM mednexus_game_rooms WHERE pin=$1", [pin])
         return NextResponse.json(roomError("ROOM_EXPIRED", "Room has expired", 410), { status: 410 })
       }
-      if (!row.players.some(player => player.id === auth.uid)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      if (!row.is_player) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
       // Only the host is an authoritative clock. A normal participant poll is
       // always one cheap metadata query; the locking transaction is attempted
       // only after the host observes that a timed transition is actually due.
@@ -707,8 +718,17 @@ export async function PATCH(
 
     await client.query("COMMIT")
 
-    const updated = await client.query("SELECT pin,mode,host_id,host_name,question_pool,current_qi,phase,players,version,scored_uids,created_at,expires_at,phase_started_at,knockout_winner_id FROM mednexus_game_rooms WHERE pin = $1", [pin])
-    return NextResponse.json(buildResponse(updated.rows[0] as RawRoom, auth.uid))
+    // Action callers already received the pool during the initial room load.
+    // Return only the active question after a mutation; rereading the complete
+    // pool here made every answer and phase transition a large DB transfer.
+    const updated = await client.query(
+      `SELECT pin,mode,host_id,host_name,current_qi,phase,players,version,created_at,
+              phase_started_at,knockout_winner_id,
+              question_pool -> current_qi AS current_question
+         FROM mednexus_game_rooms WHERE pin = $1`,
+      [pin],
+    )
+    return NextResponse.json(buildResponse(updated.rows[0] as CompactRoom, auth.uid, false))
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {})
     console.error("[game-rooms PATCH]", err)

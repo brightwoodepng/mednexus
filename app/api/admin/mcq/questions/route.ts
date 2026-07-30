@@ -154,15 +154,19 @@ export async function PATCH(req: NextRequest) {
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const current = await client.query("SELECT data FROM mednexus_questions WHERE id=1 FOR UPDATE")
-    const bank: Question[] = current.rows[0]?.data ?? []
-    const selected = new Set(ids)
+    await client.query("SELECT updated_at FROM mednexus_questions WHERE id=1 FOR UPDATE")
+    const current = await client.query<{ question: Question }>(
+      `SELECT item.value AS question
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) item(value)
+       WHERE source.id=1 AND item.value->>'id'=ANY($1::text[])`,
+      [ids],
+    )
+    const selectedQuestions = current.rows.map(row => row.question)
     const now = new Date().toISOString()
-    let affected = 0
+    const affected = selectedQuestions.length
     const additions: Question[] = []
-    const next = bank.flatMap<Question>((question) => {
-      if (!selected.has(question.id)) return [question]
-      affected++
+    const upserts = selectedQuestions.flatMap<Question>((question) => {
       if (body.action === "delete") return []
       if (body.action === "duplicate") { additions.push({ ...question, id: randomUUID(), status: "draft", moduleStatus: "draft", vignette: question.vignette + " (Copy)", updatedAt: now }); return [question] }
       if (body.action === "status") return [{ ...question, status: body.status, moduleStatus: body.status === "live" ? "live" : body.status === "offline" || body.status === "archived" ? "offline" : "draft", updatedAt: now }]
@@ -170,7 +174,35 @@ export async function PATCH(req: NextRequest) {
       if (body.action === "tags") return [{ ...question, tags: [...new Set(body.tags ?? [])], updatedAt: now }]
       return [question]
     })
-    await client.query("UPDATE mednexus_questions SET data=$1::jsonb,updated_at=NOW() WHERE id=1", [JSON.stringify([...next, ...additions])])
+    const incoming = body.action === "duplicate" ? additions : upserts
+    const deletedIds = body.action === "delete" ? ids : []
+    await client.query(
+      `WITH incoming AS (
+         SELECT value, ordinality, value->>'id' AS id
+         FROM jsonb_array_elements($1::jsonb) WITH ORDINALITY item(value, ordinality)
+       ),
+       existing AS (
+         SELECT value, ordinality, value->>'id' AS id
+         FROM mednexus_questions source
+         CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb))
+           WITH ORDINALITY item(value,ordinality)
+         WHERE source.id=1
+       ),
+       merged AS (
+         SELECT COALESCE(incoming.value,existing.value) AS value,0 AS bucket,existing.ordinality
+         FROM existing LEFT JOIN incoming USING (id)
+         WHERE NOT (existing.id=ANY($2::text[]))
+         UNION ALL
+         SELECT incoming.value,1,incoming.ordinality
+         FROM incoming
+         WHERE NOT EXISTS (SELECT 1 FROM existing WHERE existing.id=incoming.id)
+       )
+       UPDATE mednexus_questions
+       SET data=COALESCE((SELECT jsonb_agg(value ORDER BY bucket,ordinality) FROM merged),'[]'::jsonb),
+           updated_at=NOW()
+       WHERE id=1`,
+      [JSON.stringify(incoming), deletedIds],
+    )
     await auditAdmin(client, admin.uid, body.action ?? "bulk_update", "mcq_question", null, { ids, affected, created: additions.length, status: body.status, module: body.module, subject: body.subject })
     await client.query("COMMIT")
     return NextResponse.json({ success: true, affected, created: additions.length })

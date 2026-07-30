@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useQuestions } from "@/contexts/questions-context"
+import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import { useApp } from "@/contexts/app-context"
 import { multiplayerApi } from "@/lib/multiplayer-api"
-import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
 import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
@@ -62,40 +61,13 @@ interface RoomState {
 type RoomDelta = Omit<RoomState, "questionPool"> & { currentQuestion?: SlimQuestion }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
-
-/** Returns true when a question has multiple correct answers (SATA).
- *  Single-item arrays ["A"] are treated as single-answer (normalised on save).
- *  Multiplayer game modes only support single-answer MCQs so true SATA must be excluded. */
-function isSATA(q: Question): boolean {
-  return Array.isArray(q.correctAnswer) && q.correctAnswer.length > 1
-}
-
-function filterQuestions(allQ: Question[], filter: GameFilter): Question[] {
-  let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
-  if (filter.scope === "module" && filter.value) {
-    const f = base.filter(q => q.module === filter.value)
-    base = f
-  } else if (filter.scope === "subject" && filter.value) {
-    const f = base.filter(q => q.subject === filter.value && (!filter.module || q.module === filter.module))
-    base = f
-  }
-  return shuffle(base)
-}
-
-function countFilter(allQ: Question[], filter: GameFilter): number {
-  let base = allQ.filter(q => !isSATA(q) && (!q.moduleStatus || q.moduleStatus === "live"))
-  if (filter.scope === "module" && filter.value) return base.filter(q => q.module === filter.value).length
-  if (filter.scope === "subject" && filter.value) return base.filter(q => q.subject === filter.value && (!filter.module || q.module === filter.module)).length
-  return base.length
+function countFilter(catalog: QuestionCatalogModule[], filter: GameFilter): number {
+  if (filter.scope === "all") return catalog.reduce((sum, module) => sum + module.count, 0)
+  const moduleName = filter.module ?? (filter.scope === "module" ? filter.value : null)
+  const module = catalog.find(item => item.name === moduleName)
+  if (!module) return 0
+  if (filter.scope === "module") return module.count
+  return module.disciplines.find(item => item.name === filter.value)?.count ?? 0
 }
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -113,7 +85,7 @@ async function apiPollRoom(pin: string, version: number, authoritativeTick: bool
   return "unchanged" in payload ? null : payload
 }
 
-async function apiAction(pin: string, payload: Record<string, unknown>): Promise<RoomState> {
+async function apiAction(pin: string, payload: Record<string, unknown>): Promise<RoomState | RoomDelta> {
   return multiplayerApi(`/api/game-rooms/${pin}`, { method: "PATCH", body: JSON.stringify(payload) })
 }
 
@@ -345,11 +317,11 @@ function AnswerProgress({ players, total }: { players: RoomPlayer[]; total: numb
 }
 
 // ── Filter Picker (reused from game-mode) ─────────────────────────────────────
-function FilterPicker({ allQ, filter, onChange }: { allQ: Question[]; filter: GameFilter; onChange: (f: GameFilter) => void }) {
-  const modules = [...new Set(allQ.map(q => q.module).filter(Boolean) as string[])].sort()
+function FilterPicker({ catalog, filter, onChange }: { catalog: QuestionCatalogModule[]; filter: GameFilter; onChange: (f: GameFilter) => void }) {
+  const modules = catalog.map(module => module.name)
   const selectedModule = filter.module ?? (filter.scope === "module" ? filter.value : null)
-  const subjects = [...new Set(allQ.filter(q => q.module === selectedModule).map(q => q.subject).filter(Boolean))].sort()
-  const count = countFilter(allQ, filter)
+  const subjects = catalog.find(module => module.name === selectedModule)?.disciplines.map(item => item.name) ?? []
+  const count = countFilter(catalog, filter)
   const hasFilter = filter.scope !== "all" && filter.value !== null
 
   return (
@@ -379,7 +351,7 @@ function FilterPicker({ allQ, filter, onChange }: { allQ: Question[]; filter: Ga
           ))}
         </div>
       </>}
-      {!selectedModule && <p className="text-center text-xs text-muted-foreground py-2">All {countFilter(allQ, DEFAULT_FILTER)} eligible questions</p>}
+      {!selectedModule && <p className="text-center text-xs text-muted-foreground py-2">All {countFilter(catalog, DEFAULT_FILTER)} eligible questions</p>}
       {hasFilter && (
         <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-primary/8 px-3 py-2">
           <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-primary">{filter.value}</span>
@@ -1068,7 +1040,7 @@ function JoinScreen({ onJoined, onBack }: {
 function CreateRoomScreen({ mode, onCreated, onBack }: {
   mode: MultiMode; onCreated: (pin: string, hostId: string) => void; onBack: () => void
 }) {
-  const { questions: allQ } = useQuestions()
+  const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
   const { user } = useApp()
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
   const [qCount, setQCount] = useState(10)
@@ -1076,7 +1048,7 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const maxQ = Math.max(countFilter(allQ, filter), 5)
+  const maxQ = Math.max(countFilter(catalog, filter), 5)
   const clampedCount = Math.min(qCount, maxQ)
   const modeLabel = mode === "clash" ? "Multiplayer Clash" : mode === "cohort" ? "Cohort Review" : mode === "djmulti" ? "Double Jeopardy" : "Wager Wars"
   const modeIcon = mode === "clash" ? "⚔️" : mode === "cohort" ? "🎓" : mode === "djmulti" ? "🎲" : "🎰"
@@ -1086,7 +1058,11 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
     if (!hostName.trim()) { setError("Please enter your display name."); return }
     setLoading(true); setError("")
     try {
-      const pool = filterQuestions(allQ, filter).slice(0, clampedCount)
+      const selection = await loadGameQuestionPool({
+        module: filter.module ?? (filter.scope === "module" ? filter.value : null),
+        discipline: filter.scope === "subject" ? filter.value : null,
+      }, clampedCount)
+      const pool = selection.questions
       if (pool.length === 0) { setError("No questions found for the selected filter."); setLoading(false); return }
       if (!user) throw new Error("Authentication required")
       const created = await apiCreateRoom(mode, hostName.trim(), pool.map(question => question.id))
@@ -1119,7 +1095,7 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
           <NameInput value={hostName} onChange={setHostName} placeholder="Your display name" />
         </div>
 
-        <FilterPicker allQ={allQ} filter={filter} onChange={setFilter} />
+        <FilterPicker catalog={catalog} filter={filter} onChange={setFilter} />
         <QCountPicker value={clampedCount} onChange={setQCount} max={maxQ} />
 
         {error && <div className="mb-3"><ErrorBanner msg={error} /></div>}
@@ -1775,7 +1751,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
     const updated = await apiAction(pin, payload).catch((cause) => { setError(cause instanceof Error ? cause.message : "Room action failed"); return null })
     if (updated) {
       lastVersionRef.current = updated.version
-      setRoom(updated)
+      mergeRoom(updated)
     }
   }
 
@@ -1806,7 +1782,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
       const newScore = updated.players.find(p => p.id === myId)?.score ?? 0
       setMyLastAnswerCorrect(newScore > prevScore)
       lastVersionRef.current = updated.version
-      setRoom(updated)
+      mergeRoom(updated)
       // Record this answer for the post-game Review Vignettes drawer
       if (currentQ) {
         setAnswerHistory(prev => [...prev, { question: currentQ, selected: answer }])

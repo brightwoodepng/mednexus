@@ -32,4 +32,12 @@ describe("server request auth", () => {
     expect(await requireRegisteredUser(guest)).toBeNull()
     expect(await requireAuthenticatedUser(guest)).toMatchObject({ uid: "guest-1", isGuest: true })
   })
+  it("reuses a bounded account lookup for high-frequency authenticated polling", async () => {
+    const { requireAuthenticatedUser } = await import("@/lib/request-auth")
+    const { createSessionToken } = await import("@/lib/session-auth")
+    const poll = request(createSessionToken("polling-learner", "STUDENT"))
+    expect(await requireAuthenticatedUser(poll, { cacheMs: 15_000 })).toMatchObject({ uid: "polling-learner" })
+    expect(await requireAuthenticatedUser(poll, { cacheMs: 15_000 })).toMatchObject({ uid: "polling-learner" })
+    expect(query).toHaveBeenCalledTimes(1)
+  })
 })

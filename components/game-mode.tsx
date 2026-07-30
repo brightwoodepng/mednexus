@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo } from "react"
-import { useQuestions } from "@/contexts/questions-context"
+import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
 import { useErrorFeedback } from "@/hooks/use-error-feedback"
@@ -9,7 +9,7 @@ import { MultiplayerClash, CohortReview, WagerWars, DoubleJeopardyMulti } from "
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
 import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/economy-panel"
-import { buildGameQuestionPool, createQuestionContentFingerprint, deduplicateGameQuestions, getEffectiveQuestionModule } from "@/lib/game-question-pool"
+import { buildGameQuestionPool, createQuestionContentFingerprint, deduplicateGameQuestions } from "@/lib/game-question-pool"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getPersonalBestUpdate } from "@/lib/game-personal-best"
 import { getSuddenDeathResultTotal } from "@/lib/sudden-death-result"
@@ -186,12 +186,28 @@ function makeSoloRoundSelection(allQ: Question[], filter: GameFilter, requestedQ
   return { selected, selectedQuantity, eligiblePoolSize: eligible.length }
 }
 
-/** Count how many (live, single-answer) questions match a filter. */
-function countForFilter(allQ: Question[], filter: GameFilter): number {
-  return buildGameQuestionPool(allQ, {
-    effectiveModule: filter.module,
-    discipline: filter.discipline,
-  }).questions.length
+async function loadSoloRoundSelection(
+  loader: ReturnType<typeof useQuestions>["loadGameQuestionPool"],
+  filter: GameFilter,
+  requestedQuantity: number,
+  previousIds: readonly string[] = [],
+) {
+  const batch = await loader(filter, requestedQuantity)
+  const selection = makeSoloRoundSelection(batch.questions, DEFAULT_FILTER, null, previousIds)
+  return {
+    selected: selection.selected,
+    selectedQuantity: selection.selected.length,
+    eligiblePoolSize: batch.total,
+  }
+}
+
+/** Count how many game-eligible questions match a compact catalog selection. */
+function countForCatalog(catalog: QuestionCatalogModule[], filter: GameFilter): number {
+  if (filter.module === null) return catalog.reduce((sum, module) => sum + module.count, 0)
+  const module = catalog.find(item => item.name === filter.module)
+  if (!module) return 0
+  if (filter.discipline === null) return module.count
+  return module.disciplines.find(item => item.name === filter.discipline)?.count ?? 0
 }
 
 function minimumQuestionsForRewardedGame(mode: ModeConfig["id"]): number {
@@ -660,20 +676,18 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
 }
 
 // ── Filter picker (used inside ModeMenu) ──────────────────────────────────────
-function FilterPicker({ allQ, filter, onChange }: {
-  allQ: Question[]
+function FilterPicker({ catalog, filter, onChange }: {
+  catalog: QuestionCatalogModule[]
   filter: GameFilter
   onChange: (f: GameFilter) => void
 }) {
-  const eligibleQuestions = useMemo(() => buildGameQuestionPool(allQ).questions, [allQ])
-  const modules = useMemo(() => [...new Set(eligibleQuestions.map(getEffectiveQuestionModule))].sort(), [eligibleQuestions])
-  const disciplines = useMemo(() => filter.module === null ? [] : [
-    ...new Set(eligibleQuestions
-      .filter(question => getEffectiveQuestionModule(question) === filter.module)
-      .map(question => question.subject)),
-  ].sort(), [eligibleQuestions, filter.module])
+  const modules = useMemo(() => catalog.map(module => module.name), [catalog])
+  const disciplines = useMemo(() => filter.module === null
+    ? []
+    : catalog.find(module => module.name === filter.module)?.disciplines.map(item => item.name) ?? [],
+  [catalog, filter.module])
 
-  const count = countForFilter(allQ, filter)
+  const count = countForCatalog(catalog, filter)
   const summary = filter.module === null
     ? `All Questions · ${count} available`
     : `${filter.module} · ${filter.discipline ?? "Whole Module"} · ${count} available`
@@ -713,12 +727,12 @@ function FilterPicker({ allQ, filter, onChange }: {
 // ── Shared per-mode menu (start screen) ──────────────────────────────────────
 const GAME_PRESETS = [10, 20, 50, 75, 100, 150] as const
 
-function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
+function ModeMenu({ mode, hs, catalog, filter, onFilterChange, onStart, onBack }: {
   mode: ModeConfig; hs: number
-  allQ: Question[]; filter: GameFilter; onFilterChange: (f: GameFilter) => void
-  onStart: (qty: number | null) => void; onBack: () => void
+  catalog: QuestionCatalogModule[]; filter: GameFilter; onFilterChange: (f: GameFilter) => void
+  onStart: (qty: number) => Promise<void>; onBack: () => void
 }) {
-  const count = countForFilter(allQ, filter)
+  const count = countForCatalog(catalog, filter)
   const minimumQuestions = minimumQuestionsForRewardedGame(mode.id)
   const tooFew = count < minimumQuestions
 
@@ -726,6 +740,7 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [customValue, setCustomValue] = useState("")
   const [useCustom, setUseCustom] = useState(false)
+  const [starting, setStarting] = useState(false)
 
   useEffect(() => {
     if (useCustom) {
@@ -798,7 +813,7 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
         </div>
 
         {/* Filter picker */}
-        <FilterPicker allQ={allQ} filter={filter} onChange={handleFilterChange} />
+        <FilterPicker catalog={catalog} filter={filter} onChange={handleFilterChange} />
 
         {/* Question Count */}
         <div className="mb-5 rounded-3xl border border-border bg-card p-4">
@@ -887,10 +902,17 @@ function ModeMenu({ mode, hs, allQ, filter, onFilterChange, onStart, onBack }: {
         )}
 
         <button
-          type="button" disabled={tooFew} onClick={() => onStart(getQty() ?? count)}
+          type="button" disabled={tooFew || starting} onClick={async () => {
+            setStarting(true)
+            try {
+              await onStart(getQty() ?? count)
+            } finally {
+              setStarting(false)
+            }
+          }}
           className={`w-full rounded-2xl bg-gradient-to-r ${mode.gradient} py-4 text-base font-bold text-white shadow-lg ${mode.shadow} transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100`}
         >
-          {startLabel}
+          {starting ? "Loading Questions…" : startLabel}
         </button>
         <button type="button" onClick={onBack} className="mt-3 w-full rounded-2xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
           Back to Mode Select
@@ -1199,7 +1221,7 @@ const MAX_LIVES = 3
 const BASE_PTS = 100
 
 function RapidFireMode({ onExit }: { onExit: () => void }) {
-  const { questions: allQ } = useQuestions()
+  const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
   const scoring = useSoloScoring("rapid")
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[0]
@@ -1318,9 +1340,10 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
     setLifelineUsed(true); setSecondOpinionActive(true)
   }
 
-  function start(qty?: number | null) {
-    const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
-    const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+  async function start(qty?: number) {
+    const requestedQuantity = qty ?? round.configuration?.selectedQuantity ?? countForCatalog(catalog, filter)
+    const selection = await loadSoloRoundSelection(loadGameQuestionPool, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+    if (selection.selected.length === 0) return
     const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
     scoring.begin(p)
     r.current.pool = p; r.current.qi = 0
@@ -1336,7 +1359,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
     expiryRef.current = Date.now() + RAPID_TIME * 1000
   }
 
-  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
+  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} catalog={catalog} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
     return <GameOver emoji={acc >= 80 ? "🏆" : acc >= 60 ? "🎯" : "💪"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : "Game Over!"} scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Accuracy", value: `${acc}%` }, { label: "Best Streak", value: `${bestStreak}×` }]} isNewHigh={isNewHigh} gameResult={{ mode: "rapid", score, correct: totalRight, total: totalQ, bestStreak, isNewHigh, lifelineUsed }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={() => start()} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
@@ -1408,7 +1431,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
 const SUDDEN_TIME = 20
 
 function SuddenDeathMode({ onExit }: { onExit: () => void }) {
-  const { questions: allQ } = useQuestions()
+  const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
   const scoring = useSoloScoring("sudden")
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[1]
@@ -1509,9 +1532,10 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
     setLifelineUsedSD(true); setSecondOpinionSD(true)
   }
 
-  function start(qty?: number | null) {
-    const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
-    const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+  async function start(qty?: number) {
+    const requestedQuantity = qty ?? round.configuration?.selectedQuantity ?? countForCatalog(catalog, filter)
+    const selection = await loadSoloRoundSelection(loadGameQuestionPool, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+    if (selection.selected.length === 0) return
     const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
     scoring.begin(p)
     r.current.pool = p; r.current.qi = 0
@@ -1524,7 +1548,7 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
     expiryRef.current = Date.now() + SUDDEN_TIME * 1000
   }
 
-  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
+  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} catalog={catalog} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const score = survived * BASE_PTS
     const total = getSuddenDeathResultTotal(round.completionReason, survived, answerHistory.length)
@@ -1572,7 +1596,7 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
 const TIMEATK_START = 90
 
 function TimeAttackMode({ onExit }: { onExit: () => void }) {
-  const { questions: allQ } = useQuestions()
+  const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
   const scoring = useSoloScoring("timeatk")
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[2]
@@ -1677,9 +1701,10 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     setLifelineUsedTA(true); setSecondOpinionTA(true)
   }
 
-  function start(qty?: number | null) {
-    const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
-    const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+  async function start(qty?: number) {
+    const requestedQuantity = qty ?? round.configuration?.selectedQuantity ?? countForCatalog(catalog, filter)
+    const selection = await loadSoloRoundSelection(loadGameQuestionPool, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+    if (selection.selected.length === 0) return
     const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
     scoring.begin(p)
     r.current.pool = p; r.current.qi = 0
@@ -1693,7 +1718,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
     expiryRef.current = Date.now() + TIMEATK_START * 1000
   }
 
-  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
+  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} catalog={catalog} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
     return <GameOver emoji={acc >= 80 ? "⚡🏆" : acc >= 60 ? "⏱️" : "💨"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : "Time's Up!"} scoreLabel="Final Score" score={score} stats={[{ label: "Answered", value: String(totalQ) }, { label: "Correct", value: String(totalRight) }, { label: "Accuracy", value: `${acc}%` }]} isNewHigh={isNewHigh} gameResult={{ mode: "timeatk", score, correct: totalRight, total: totalQ, bestStreak: 0, isNewHigh, lifelineUsed: lifelineUsedTA, freezeCount: freezeCountTA }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={() => start()} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
@@ -1750,7 +1775,7 @@ const DJ_BETS = [
 type DJPhase = "menu" | "wager" | "answering" | "feedback" | "over"
 
 function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
-  const { questions: allQ } = useQuestions()
+  const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
   const scoring = useSoloScoring("double")
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES.find(m => m.id === "double")!
@@ -1782,9 +1807,10 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
 
   const qty5050dj = inventory["lifeline_50_50"] ?? 0
 
-  function start(qty?: number | null) {
-    const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
-    const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+  async function start(qty?: number) {
+    const requestedQuantity = qty ?? round.configuration?.selectedQuantity ?? countForCatalog(catalog, filter)
+    const selection = await loadSoloRoundSelection(loadGameQuestionPool, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+    if (selection.selected.length === 0) return
     const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
     scoring.begin(p)
     r.current.pool = p; r.current.qi = 0
@@ -1840,7 +1866,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
   }
 
   if (djPhase === "menu") {
-    return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
+    return <ModeMenu mode={cfg} hs={hs} catalog={catalog} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   }
 
   if (djPhase === "over") {
@@ -1954,7 +1980,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
 
 // ── STREAK MASTER ─────────────────────────────────────────────────────────────
 function StreakMasterMode({ onExit }: { onExit: () => void }) {
-  const { questions: allQ } = useQuestions()
+  const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
   const scoring = useSoloScoring("streak")
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[3]
@@ -2032,9 +2058,10 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 
   function finishGame() { round.finalize("player_finished") }
 
-  function start(qty?: number | null) {
-    const requestedQuantity = qty === undefined ? round.configuration?.selectedQuantity ?? null : qty
-    const selection = makeSoloRoundSelection(allQ, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+  async function start(qty?: number) {
+    const requestedQuantity = qty ?? round.configuration?.selectedQuantity ?? countForCatalog(catalog, filter)
+    const selection = await loadSoloRoundSelection(loadGameQuestionPool, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
+    if (selection.selected.length === 0) return
     const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
     scoring.begin(p)
     r.current.pool = p; r.current.qi = 0
@@ -2047,7 +2074,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
     setPhase("playing")
   }
 
-  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} allQ={allQ} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
+  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} catalog={catalog} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
   if (phase === "over") {
     const acc = totalQ > 0 ? Math.round(totalRight / totalQ * 100) : 0
     const finalScore = bestStreak * 50 + totalRight * 10
@@ -2118,8 +2145,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenStore?: () => void }) {
-  const { questions, loadGameQuestionPool } = useQuestions()
-  const [bankLoading, setBankLoading] = useState(false)
+  const { gameCatalogLoading } = useQuestions()
   // Auto-resume an in-progress multiplayer match on mount (e.g. after a page
   // refresh) instead of forcing the player back through mode selection.
   const [activeMode, setActiveMode] = useState<GameModeId | null>(() => {
@@ -2127,15 +2153,10 @@ export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenSt
     return active ? active.mode : null
   })
 
-  useEffect(() => {
-    if (!activeMode || questions.length > 0) return
-    setBankLoading(true)
-    void loadGameQuestionPool().finally(() => setBankLoading(false))
-  }, [activeMode, loadGameQuestionPool, questions.length])
-
-  if (activeMode && (bankLoading || questions.length === 0)) {
-    return <div className="flex min-h-[50vh] items-center justify-center text-sm font-semibold text-muted-foreground">Loading questions…</div>
+  if (activeMode && gameCatalogLoading) {
+    return <div className="flex min-h-[50vh] items-center justify-center text-sm font-semibold text-muted-foreground">Loading question options…</div>
   }
+
 
   if (activeMode === "rapid") return <RapidFireMode onExit={() => setActiveMode(null)} />
   if (activeMode === "sudden") return <SuddenDeathMode onExit={() => setActiveMode(null)} />

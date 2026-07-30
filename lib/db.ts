@@ -26,12 +26,33 @@ const pool = new Pool({
 })
 
 let initialized = false
+export const CURRENT_SCHEMA_VERSION = "2026-07-30-transfer-efficient-v1"
 
 export async function ensureSchema() {
   if (initialized) return
 
   const client = await pool.connect()
   try {
+    // Serverless cold starts used to execute the complete 1,000+ line
+    // idempotent schema program. A deployed schema needs only this tiny marker
+    // lookup; explicit release migrations install the marker after succeeding.
+    try {
+      const current = await client.query(
+        `SELECT EXISTS (
+           SELECT 1 FROM mednexus_schema_migrations WHERE version=$1
+         ) AS current`,
+        [CURRENT_SCHEMA_VERSION],
+      )
+      if (current.rows[0]?.current === true) {
+        initialized = true
+        return
+      }
+    } catch (error) {
+      // A genuinely fresh database has no migration table yet and must run the
+      // bootstrap below. Connectivity/permission errors must still surface.
+      if ((error as { code?: string }).code !== "42P01") throw error
+    }
+
     await client.query("BEGIN")
     // Serialize deploys/cold starts without leaving a session-level lock behind.
     await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus-schema-migrations'))")
@@ -1256,6 +1277,12 @@ export async function ensureSchema() {
       FOR EACH ROW
       EXECUTE FUNCTION mednexus_migrate_host();
   `)
+
+    await client.query(
+      `INSERT INTO mednexus_schema_migrations(version)
+       VALUES ($1) ON CONFLICT (version) DO NOTHING`,
+      [CURRENT_SCHEMA_VERSION],
+    )
 
     await client.query("COMMIT")
     initialized = true
