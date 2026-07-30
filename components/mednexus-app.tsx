@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { learnerScreenFromUrl, learnerScreenUrl, studyHubFromUrl } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
@@ -37,6 +37,7 @@ import { useApplicationShell } from "@/components/authenticated-application-shel
 import { LearnerWorkspaceShell } from "@/components/learner-workspace-shell"
 import { TheoryVault } from "@/components/theory-vault"
 import { TutorialProvider } from "@/components/onboarding"
+import { clearQuizSession, createQuizSession, loadQuizSession, restoreQuizSession, saveQuizSession, type QuizSession } from "@/lib/quiz-session"
 
 interface PendingQuiz {
   questions: Question[]
@@ -53,6 +54,7 @@ interface ActiveQuiz {
   startedAt: number
   setupModule: string
   gamificationEnabled: boolean
+  session: QuizSession
 }
 
 // ── Credits Modal ─────────────────────────────────────────────────────────────
@@ -400,6 +402,27 @@ function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) 
   )
 }
 
+function QuizSessionChoice({ title, description, primaryLabel, secondaryLabel, onPrimary, onSecondary }: {
+  title: string
+  description: string
+  primaryLabel: string
+  secondaryLabel: string
+  onPrimary: () => void
+  onSecondary: () => void
+}) {
+  return <div className="fixed inset-0 z-[200] flex items-center justify-center bg-foreground/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="quiz-session-title">
+    <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
+      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><TimerIcon size={24} /></div>
+      <h2 id="quiz-session-title" className="text-xl font-bold tracking-tight">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" onClick={onSecondary} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted">{secondaryLabel}</button>
+        <button type="button" autoFocus onClick={onPrimary} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">{primaryLabel}</button>
+      </div>
+    </div>
+  </div>
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
@@ -421,6 +444,9 @@ export function MedNexusApp() {
   const [showWelcome, setShowWelcome] = useState(false)
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
+  const [resumeCandidate, setResumeCandidate] = useState<ActiveQuiz | null>(null)
+  const [discardQuizOpen, setDiscardQuizOpen] = useState(false)
+  const restoredForUserRef = useRef<string | null>(null)
   const [modulesInitialModule, setModulesInitialModule] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<{
     result: BlockResult
@@ -444,7 +470,27 @@ export function MedNexusApp() {
   useEffect(() => {
     if (!authReady || !user || requiresPasswordUpdate) return
     if (user.role === "user" && user.status !== "approved") return
-    void loadQuestionSet()
+    if (restoredForUserRef.current === user.uid) return
+    restoredForUserRef.current = user.uid
+    void loadQuestionSet().then(loadedQuestions => {
+      const stored = loadQuizSession(user.uid)
+      if (!stored) return
+      const restored = restoreQuizSession(stored, loadedQuestions)
+      if (!restored) {
+        clearQuizSession(user.uid)
+        return
+      }
+      setResumeCandidate({
+        questions: restored.questions,
+        moduleName: stored.moduleName,
+        discipline: stored.discipline,
+        mode: stored.mode,
+        startedAt: stored.startedAt,
+        setupModule: stored.setupModule,
+        gamificationEnabled: stored.gamificationEnabled,
+        session: stored,
+      })
+    })
   }, [authReady, loadQuestionSet, requiresPasswordUpdate, user])
 
   useEffect(() => {
@@ -467,6 +513,11 @@ export function MedNexusApp() {
     window.history.pushState({}, "", learnerScreenUrl(nextScreen, activeStudyHub))
     setScreen(nextScreen)
   }, [activeStudyHub])
+
+  const handleQuizSessionChange = useCallback((session: QuizSession) => {
+    saveQuizSession(session)
+    setActiveQuiz(current => current ? { ...current, session } : current)
+  }, [])
 
   useEffect(() => {
     if (user?.role === "user" && user.status === "approved" && !requiresPasswordUpdate) {
@@ -559,15 +610,28 @@ export function MedNexusApp() {
   }
 
   function handleStartQuiz(selectedQuestions: Question[], gamificationEnabled: boolean) {
-    if (!pendingQuiz) return
+    if (!pendingQuiz || !user) return
+    const startedAt = Date.now()
+    const session = createQuizSession({
+      userId: user.uid,
+      questions: selectedQuestions,
+      moduleName: pendingQuiz.moduleName,
+      discipline: pendingQuiz.discipline,
+      setupModule: pendingQuiz.setupModule,
+      mode: globalMode,
+      gamificationEnabled,
+      startedAt,
+    })
+    saveQuizSession(session)
     setActiveQuiz({
       questions: selectedQuestions,
       moduleName: pendingQuiz.moduleName,
       discipline: pendingQuiz.discipline,
       mode: globalMode,
-      startedAt: Date.now(),
+      startedAt,
       setupModule: pendingQuiz.setupModule,
       gamificationEnabled,
+      session,
     })
     setPendingQuiz(null)
     setScreen("quiz")
@@ -604,24 +668,27 @@ export function MedNexusApp() {
       earnedNP,
       payoutError,
     })
+    if (user) clearQuizSession(user.uid)
     setActiveQuiz(null)
     setScreen("results")
   }
 
   function exitQuiz() {
-    setActiveQuiz(null)
-    handleScreenNavigation("dashboard")
+    setDiscardQuizOpen(true)
   }
 
   if (safeScreen === "quiz" && activeQuiz) {
     return (
       <div className="h-screen">
-        <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} gamificationEnabled={activeQuiz.gamificationEnabled} onExit={exitQuiz} onComplete={handleQuizComplete} />
+        <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} gamificationEnabled={activeQuiz.gamificationEnabled} session={activeQuiz.session} onSessionChange={handleQuizSessionChange} onExit={exitQuiz} onComplete={handleQuizComplete} />
+        {discardQuizOpen && <QuizSessionChoice title="Discard this attempt?" description="Your answers and progress will be permanently removed." primaryLabel="Keep studying" secondaryLabel="Discard attempt" onPrimary={() => setDiscardQuizOpen(false)} onSecondary={() => { clearQuizSession(user.uid); setDiscardQuizOpen(false); setActiveQuiz(null); handleScreenNavigation("dashboard") }} />}
       </div>
     )
   }
 
   return (
+    <>
+    {resumeCandidate && <QuizSessionChoice title={resumeCandidate.mode === "exam" && Date.now() >= resumeCandidate.session.startedAt + resumeCandidate.session.durationSeconds * 1000 ? "Exam time has expired" : "Continue your saved attempt?"} description={resumeCandidate.mode === "exam" ? "Exam time kept running while you were away. Resume to submit the remaining answers, or discard this attempt." : "Trial Mode is untimed. Your question order, answers, and review state are ready."} primaryLabel="Resume" secondaryLabel="Discard" onPrimary={() => { setActiveQuiz(resumeCandidate); setResumeCandidate(null); setScreen("quiz") }} onSecondary={() => { clearQuizSession(user.uid); setResumeCandidate(null) }} />}
     <TutorialProvider activeHub={activeStudyHub} currentScreen={safeScreen} welcomeOpen={showWelcome} onNavigate={handleScreenNavigation} blocked={Boolean(pendingQuiz || activeQuiz || isExamActive || theoryQuestionOpen || themeOpen || importerOpen || creditsOpen || loadActiveRoomSession())}>
     <LearnerWorkspaceShell
       screen={safeScreen}
@@ -693,5 +760,6 @@ export function MedNexusApp() {
       <CreditsModal open={creditsOpen} onClose={() => setCreditsOpen(false)} />
       {showWelcome && user && <WelcomeModal name={user.name} onClose={() => setShowWelcome(false)} />}
     </TutorialProvider>
+    </>
   )
 }
