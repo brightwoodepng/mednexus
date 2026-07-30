@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 import {
+  buildQuestionCatalog,
   getQuestionBankMetadata,
   getQuestionCatalog,
   getQuestionBankStatus,
@@ -15,7 +16,9 @@ export const dynamic = "force-dynamic"
 // Runtime records include answer options and explanations. Keep this bounded
 // well below typical serverless response limits while avoiding tiny-page
 // request waterfalls for the few tools that intentionally load the full bank.
-export const QUESTION_MAX_PAGE_SIZE = 100
+// 25 x a representative 200 KiB media-heavy record stays near 5 MiB, leaving
+// headroom beneath common 6 MiB serverless response limits.
+export const QUESTION_MAX_PAGE_SIZE = 25
 
 function addServerTiming(response: NextResponse, timings: { auth?: number; database: number }) {
   const values = []
@@ -81,6 +84,7 @@ export async function GET(req: NextRequest) {
       offset,
       moduleName: req.nextUrl.searchParams.get("module")?.trim() || undefined,
       discipline: req.nextUrl.searchParams.get("discipline")?.trim() || undefined,
+      topic: req.nextUrl.searchParams.get("topic")?.trim() || undefined,
       search: req.nextUrl.searchParams.get("q")?.trim().slice(0, 200) || undefined,
       publicProjection,
     })
@@ -126,7 +130,12 @@ export async function PUT(req: NextRequest) {
     if (status.firestore.available) {
       const { getAdminDb } = await import("@/lib/firebase-admin")
       const { FieldValue } = await import("firebase-admin/firestore")
-      await getAdminDb()!.collection("mednexus").doc("questions").set({ data: questions, updatedAt: FieldValue.serverTimestamp() })
+      const db = getAdminDb()!
+      const updatedAt = new Date().toISOString()
+      const batch = db.batch()
+      batch.set(db.collection("mednexus").doc("questions"), { data: questions, updatedAt: FieldValue.serverTimestamp() })
+      batch.set(db.collection("mednexus").doc("questionCatalog"), buildQuestionCatalog(questions, updatedAt))
+      await batch.commit()
       return noStore(NextResponse.json({ success: true, count: questions.length }))
     }
     return NextResponse.json({ error: "No database configured" }, { status: 503 })

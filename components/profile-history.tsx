@@ -213,7 +213,11 @@ function ModuleReviewSection() {
   const { questions, loadQuestionSet } = useQuestions()
   const [openModule, setOpenModule] = useState<string | null>(null)
 
-  useEffect(() => { if (progress.history.length > 0 && questions.length === 0) void loadQuestionSet() }, [loadQuestionSet, progress.history.length, questions.length])
+  // History navigation is metadata-only. Fetch records only when the learner
+  // opens one module for review, never the entire bank on profile render.
+  useEffect(() => {
+    if (openModule) void loadQuestionSet({ module: openModule })
+  }, [loadQuestionSet, openModule])
 
   // Fast question lookup by ID
   const questionById = useMemo(() => {
