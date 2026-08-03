@@ -2145,7 +2145,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenStore?: () => void }) {
-  const { gameCatalogLoading } = useQuestions()
+  const { gameCatalog, gameCatalogLoading, reloadGameCatalog } = useQuestions()
   // Auto-resume an in-progress multiplayer match on mount (e.g. after a page
   // refresh) instead of forcing the player back through mode selection.
   const [activeMode, setActiveMode] = useState<GameModeId | null>(() => {
@@ -2153,7 +2153,13 @@ export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenSt
     return active ? active.mode : null
   })
 
-  if (activeMode && gameCatalogLoading) {
+  useEffect(() => {
+    if (activeMode && gameCatalog.length === 0) void reloadGameCatalog()
+    // Fetch once when a player enters or resumes a mode.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMode])
+
+  if (activeMode && (gameCatalogLoading || gameCatalog.length === 0)) {
     return <div className="flex min-h-[50vh] items-center justify-center text-sm font-semibold text-muted-foreground">Loading question options…</div>
   }
 

@@ -24,6 +24,7 @@ import { saveActiveQuestions } from "@/lib/custom-questions"
 
 const QUESTION_PAGE_SIZE = 25
 const PAGE_CONCURRENCY = 4
+const CATALOG_CACHE_KEY = "mednexus-question-catalog:v1"
 export type QuestionSetFilter = { module?: string | null; discipline?: string | null; topic?: string | null }
 export type QuestionCatalogModule = { name: string; count: number; disciplines: Array<{ name: string; count: number; topics: Array<{ name: string; count: number }> }> }
 export type GameQuestionBatch = { questions: Question[]; total: number }
@@ -46,6 +47,7 @@ interface QuestionsContextValue {
   gameCatalog: QuestionCatalogModule[]
   gameCatalogLoading: boolean
   reloadCatalog: () => Promise<void>
+  reloadGameCatalog: () => Promise<void>
   loadQuestionSet: (filter: QuestionSetFilter) => Promise<Question[]>
   /** Administrative editor/export/bulk allowlist only. */
   loadFullQuestionBank: () => Promise<Question[]>
@@ -264,9 +266,15 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
       const data = await readTimedJson<{ modules?: QuestionCatalogModule[]; totalCount?: number; updatedAt?: string | null }>(response, "catalog", startedAt)
       if (controller.signal.aborted || loadId !== catalogLoadId.current) return
       const modules = Array.isArray(data.modules) ? data.modules : []
+      const totalCount = Number(data.totalCount ?? modules.reduce((sum, module) => sum + module.count, 0))
       setCatalog(modules)
-      setQuestionCount(Number(data.totalCount ?? modules.reduce((sum, module) => sum + module.count, 0)))
+      setQuestionCount(totalCount)
       setLastUpdated(data.updatedAt ? new Date(data.updatedAt) : null)
+      try {
+        localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify({ modules, totalCount, updatedAt: data.updatedAt ?? null }))
+      } catch {
+        // Storage can be unavailable in private browsing; the live response still works.
+      }
     } catch (error) {
       if (controller.signal.aborted) return
       setCatalogError(error instanceof Error ? error.message : "Catalog unavailable")
@@ -323,9 +331,22 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     if (!authReady || !userId) {
       return
     }
+    try {
+      const cached = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) ?? "null") as {
+        modules?: QuestionCatalogModule[]
+        totalCount?: number
+        updatedAt?: string | null
+      } | null
+      if (cached && Array.isArray(cached.modules) && cached.modules.length > 0) {
+        setCatalog(cached.modules)
+        setQuestionCount(Number(cached.totalCount ?? cached.modules.reduce((sum, module) => sum + module.count, 0)))
+        setLastUpdated(cached.updatedAt ? new Date(cached.updatedAt) : null)
+      }
+    } catch {
+      localStorage.removeItem(CATALOG_CACHE_KEY)
+    }
     void reloadCatalog()
-    void reloadGameCatalog()
-  }, [authReady, reloadCatalog, reloadGameCatalog, userId])
+  }, [authReady, reloadCatalog, userId])
 
   const loadQuestionSet = useCallback(async (filter: QuestionSetFilter) => {
     questionSetRequest.current?.abort()
@@ -475,6 +496,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         gameCatalog,
         gameCatalogLoading,
         reloadCatalog,
+        reloadGameCatalog,
         loadQuestionSet,
         loadFullQuestionBank,
         loadGameQuestionPool,

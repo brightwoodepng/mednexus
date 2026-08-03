@@ -262,7 +262,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
 
       {/* Mode-specific content */}
       {catalogLoading && catalog.length === 0 && (
-        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground" role="status">Loading module catalog…</div>
+        <ModuleCatalogSkeleton />
       )}
       {catalogError && catalog.length === 0 && (
         <div className="rounded-2xl border border-rose-300 bg-rose-50 p-5 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200" role="alert">
@@ -285,6 +285,25 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
 }
 
 // ── Coverage List ─────────────────────────────────────────────────────────────
+function ModuleCatalogSkeleton() {
+  return (
+    <section aria-label="Loading study modules" aria-busy="true">
+      <div className="mb-3 h-6 w-36 animate-pulse rounded-lg bg-muted sm:mb-4" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+        {[0, 1].map((item) => (
+          <div key={item} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+            <div className="mb-4 h-11 w-11 animate-pulse rounded-xl bg-muted" />
+            <div className="h-5 w-2/3 animate-pulse rounded-md bg-muted" />
+            <div className="mt-2 h-4 w-1/3 animate-pulse rounded-md bg-muted" />
+            <div className="mt-5 h-10 w-full animate-pulse rounded-xl bg-muted" />
+          </div>
+        ))}
+      </div>
+      <span className="sr-only">Loading module catalog…</span>
+    </section>
+  )
+}
+
 const COVERAGE_COLLAPSE_THRESHOLD = 8
 
 function CoverageList({ coverage }: { coverage: Record<string, { attempted: number; total: number; correct: number }> }) {
