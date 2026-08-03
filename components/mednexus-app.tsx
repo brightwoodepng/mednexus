@@ -24,6 +24,7 @@ import { GameMode } from "@/components/game-mode"
 import { NexusStoreHub, NexusStoreSupplyPage, NexusStoreVaultPage, NexusStoreCosmeticsPage } from "@/components/game-store-modal"
 import { UniversalImporter } from "@/components/universal-importer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
+import { loadSoloGameSession } from "@/lib/solo-game-session"
 import {
   StethoscopeIcon,
   PaletteIcon,
@@ -426,7 +427,7 @@ function QuizSessionChoice({ title, description, primaryLabel, secondaryLabel, o
 // ── Main App ──────────────────────────────────────────────────────────────────
 export function MedNexusApp() {
   const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
-  const { loadQuestionSet } = useQuestions()
+  const { loadQuestionSet, loadQuestionsByIds } = useQuestions()
   const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
@@ -464,7 +465,7 @@ export function MedNexusApp() {
     fetch("/api/platform/config").then((response) => response.json()).then((body) => setPlatformConfig(body.config ?? body ?? null)).catch(() => setPlatformConfig(null))
   }, [])
 
-  // Resume data needs only its original module slice; the compact catalog is
+  // Resume data fetches only the original ordered IDs; the compact catalog is
   // loaded independently by QuestionsProvider after authentication.
   useEffect(() => {
     if (!authReady || !user || requiresPasswordUpdate) return
@@ -473,7 +474,7 @@ export function MedNexusApp() {
     restoredForUserRef.current = user.uid
     const stored = loadQuizSession(user.uid)
     if (!stored) return
-    void loadQuestionSet({ module: stored.setupModule, discipline: stored.discipline }).then(loadedQuestions => {
+    void loadQuestionsByIds(stored.questionIds).then(loadedQuestions => {
       const restored = restoreQuizSession(stored, loadedQuestions)
       if (!restored) {
         clearQuizSession(user.uid)
@@ -489,8 +490,8 @@ export function MedNexusApp() {
         gamificationEnabled: stored.gamificationEnabled,
         session: stored,
       })
-    })
-  }, [authReady, loadQuestionSet, requiresPasswordUpdate, user])
+    }).catch(() => clearQuizSession(user.uid))
+  }, [authReady, loadQuestionsByIds, requiresPasswordUpdate, user])
 
   useEffect(() => {
     const restoreFromLocation = () => {
@@ -533,10 +534,10 @@ export function MedNexusApp() {
   // of leaving the player stranded on the dashboard. GameMode itself reads
   // the same cached session to auto-select clash/cohort and skip the lobby.
   useEffect(() => {
-    if (loadActiveRoomSession()) {
+    if (user && (loadActiveRoomSession(user.uid) || loadSoloGameSession(user.uid))) {
       setScreen("game")
     }
-  }, [])
+  }, [user])
 
   const safeScreen = screen
 
@@ -688,7 +689,7 @@ export function MedNexusApp() {
   return (
     <>
     {resumeCandidate && <QuizSessionChoice title={resumeCandidate.mode === "exam" && Date.now() >= resumeCandidate.session.startedAt + resumeCandidate.session.durationSeconds * 1000 ? "Exam time has expired" : "Continue your saved attempt?"} description={resumeCandidate.mode === "exam" ? "Exam time kept running while you were away. Resume to submit the remaining answers, or discard this attempt." : "Trial Mode is untimed. Your question order, answers, and review state are ready."} primaryLabel="Resume" secondaryLabel="Discard" onPrimary={() => { setActiveQuiz(resumeCandidate); setResumeCandidate(null); setScreen("quiz") }} onSecondary={() => { clearQuizSession(user.uid); setResumeCandidate(null) }} />}
-    <TutorialProvider activeHub={activeStudyHub} currentScreen={safeScreen} welcomeOpen={showWelcome} onNavigate={handleScreenNavigation} blocked={Boolean(pendingQuiz || activeQuiz || isExamActive || theoryQuestionOpen || themeOpen || importerOpen || creditsOpen || loadActiveRoomSession())}>
+    <TutorialProvider activeHub={activeStudyHub} currentScreen={safeScreen} welcomeOpen={showWelcome} onNavigate={handleScreenNavigation} blocked={Boolean(pendingQuiz || activeQuiz || isExamActive || theoryQuestionOpen || themeOpen || importerOpen || creditsOpen || loadActiveRoomSession(user.uid) || loadSoloGameSession(user.uid))}>
     <LearnerWorkspaceShell
       screen={safeScreen}
       onNavigate={handleScreenNavigation}

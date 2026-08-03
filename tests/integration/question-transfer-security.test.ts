@@ -5,6 +5,7 @@ const requireAuthenticatedUser = vi.fn()
 const getQuestionPage = vi.fn()
 const getQuestionBankMetadata = vi.fn()
 const getQuestionCatalog = vi.fn()
+const getQuestionsByIds = vi.fn()
 
 vi.mock("@/lib/request-auth", () => ({ requireAuthenticatedUser }))
 vi.mock("@/lib/question-bank-server", () => ({
@@ -12,6 +13,7 @@ vi.mock("@/lib/question-bank-server", () => ({
   getQuestionPage,
   getQuestionBankMetadata,
   getQuestionCatalog,
+  getQuestionsByIds,
 }))
 vi.mock("@/lib/db", () => ({ default: { query: vi.fn() } }))
 
@@ -24,6 +26,7 @@ describe("question transfer security", () => {
     getQuestionBankMetadata.mockResolvedValue({ count: 123, updatedAt: null })
     getQuestionPage.mockResolvedValue({ questions: [], total: 0, updatedAt: null })
     getQuestionCatalog.mockResolvedValue({ modules: [], totalCount: 0, updatedAt: null })
+    getQuestionsByIds.mockResolvedValue([])
   })
 
   it("keeps metadata public without loading a question page", async () => {
@@ -58,5 +61,33 @@ describe("question transfer security", () => {
       headers: { "content-type": "application/json" },
     }))
     expect(response.status).toBe(401)
+  })
+
+  it("restores only an authenticated, ordered, bounded question selection", async () => {
+    requireAuthenticatedUser.mockResolvedValue({ uid: "learner-1" })
+    getQuestionsByIds.mockResolvedValue([{ id: "q2" }, { id: "q1" }])
+    const { POST } = await import("@/app/api/questions/route")
+    const response = await POST(new NextRequest("http://mednexus.test/api/questions?view=recover", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ questionIds: ["q2", "q1"], gameOnly: true }),
+    }))
+    expect(response.status).toBe(200)
+    expect(getQuestionsByIds).toHaveBeenCalledWith(["q2", "q1"], true)
+    expect((await response.json()).questions.map((question: { id: string }) => question.id)).toEqual(["q2", "q1"])
+  })
+
+  it("rejects duplicate and oversized recovery selections before querying", async () => {
+    requireAuthenticatedUser.mockResolvedValue({ uid: "learner-1" })
+    const { POST } = await import("@/app/api/questions/route")
+    const duplicate = await POST(new NextRequest("http://mednexus.test/api/questions?view=recover", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ questionIds: ["q1", "q1"] }),
+    }))
+    const oversized = await POST(new NextRequest("http://mednexus.test/api/questions?view=recover", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ questionIds: Array.from({ length: 101 }, (_, index) => `q${index}`), gameOnly: true }),
+    }))
+    expect(duplicate.status).toBe(400)
+    expect(oversized.status).toBe(400)
+    expect(getQuestionsByIds).not.toHaveBeenCalled()
   })
 })

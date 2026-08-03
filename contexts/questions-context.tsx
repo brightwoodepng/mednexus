@@ -52,6 +52,7 @@ interface QuestionsContextValue {
   /** Administrative editor/export/bulk allowlist only. */
   loadFullQuestionBank: () => Promise<Question[]>
   loadGameQuestionPool: (filter: QuestionSetFilter, quantity: number) => Promise<GameQuestionBatch>
+  loadQuestionsByIds: (questionIds: string[], gameOnly?: boolean) => Promise<Question[]>
   addQuestion: (q: Question) => Promise<void>
   updateQuestion: (q: Question) => Promise<void>
   deleteQuestion: (id: string) => Promise<void>
@@ -412,6 +413,18 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     return { questions: loaded, total: Number(data.total ?? loaded.length) }
   }, [userId])
 
+  const loadQuestionsByIds = useCallback(async (questionIds: string[], gameOnly = false) => {
+    const response = await fetch("/api/questions?view=recover", {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json", ...storedAuthHeaders() },
+      body: JSON.stringify({ questionIds, gameOnly }),
+    })
+    if (!response.ok) throw new Error("Saved question pool is unavailable")
+    const data = await response.json() as { questions?: Question[] }
+    return Array.isArray(data.questions) ? data.questions : []
+  }, [])
+
   const saveToDb = useCallback(async (qs: Question[]) => {
     const ok = await reconcileWithDb(persistedQuestionsRef.current, qs)
     if (ok) {
@@ -500,6 +513,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         loadQuestionSet,
         loadFullQuestionBank,
         loadGameQuestionPool,
+        loadQuestionsByIds,
         addQuestion,
         updateQuestion,
         deleteQuestion,

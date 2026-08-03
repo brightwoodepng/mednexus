@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import { useApp } from "@/contexts/app-context"
-import { multiplayerApi } from "@/lib/multiplayer-api"
+import { multiplayerApi, MultiplayerApiError } from "@/lib/multiplayer-api"
 import { RichText } from "@/components/rich-text"
 import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
@@ -363,16 +363,16 @@ function FilterPicker({ catalog, filter, onChange }: { catalog: QuestionCatalogM
 }
 
 // ── Q-count picker ────────────────────────────────────────────────────────────
-const Q_COUNTS = [5, 10, 15, 20, 25]
+const Q_COUNTS = [5, 10, 15, 20, 25, 50, 100]
 
 function QCountPicker({ value, onChange, max }: { value: number; onChange: (n: number) => void; max: number }) {
   return (
     <div className="mb-4 rounded-3xl border border-border bg-card p-4">
       <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Questions per Match</p>
       <div className="flex flex-wrap gap-2">
-        {Q_COUNTS.filter(n => n <= Math.max(max, 5)).map(n => (
-          <button key={n} type="button" onClick={() => onChange(n)}
-            className={`rounded-xl px-4 py-2 text-sm font-bold transition-all ${value === n ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
+        {Q_COUNTS.map(n => (
+          <button key={n} type="button" onClick={() => onChange(n)} disabled={n > max}
+            className={`rounded-xl px-4 py-2 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-40 ${value === n ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
             {n}
           </button>
         ))}
@@ -1638,7 +1638,14 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   const poll = useCallback(async () => {
     if (pollInFlightRef.current) return
     pollInFlightRef.current = true
-    const state = await apiPollRoom(pin, lastVersionRef.current, authoritativeHostRef.current).catch(() => undefined)
+    const state = await apiPollRoom(pin, lastVersionRef.current, authoritativeHostRef.current).catch((cause) => {
+      if (cause instanceof MultiplayerApiError && (cause.status === 403 || cause.status === 404 || cause.status === 410)) {
+        clearActiveRoomSession()
+        pollingCompleteRef.current = true
+        setError(cause.message)
+      }
+      return undefined
+    })
     pollInFlightRef.current = false
     if (state) {
       // Ignore stale poll responses that have an older version than what we have
@@ -1923,7 +1930,8 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
 type MultiView = "select" | "create" | "join" | "room"
 
 export function MultiplayerClash({ onExit }: { onExit: () => void }) {
-  const resumed = useRef(loadActiveRoomSession())
+  const { user } = useApp()
+  const resumed = useRef(loadActiveRoomSession(user?.uid))
   const canResume = resumed.current?.mode === "clash"
   const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
   const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
@@ -1977,7 +1985,8 @@ export function MultiplayerClash({ onExit }: { onExit: () => void }) {
 }
 
 export function CohortReview({ onExit }: { onExit: () => void }) {
-  const resumed = useRef(loadActiveRoomSession())
+  const { user } = useApp()
+  const resumed = useRef(loadActiveRoomSession(user?.uid))
   const canResume = resumed.current?.mode === "cohort"
   const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
   const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
@@ -2032,7 +2041,8 @@ export function CohortReview({ onExit }: { onExit: () => void }) {
 
 // ── DOUBLE JEOPARDY MULTIPLAYER ENTRY POINT ──────────────────────────────────
 export function DoubleJeopardyMulti({ onExit }: { onExit: () => void }) {
-  const resumed = useRef(loadActiveRoomSession())
+  const { user } = useApp()
+  const resumed = useRef(loadActiveRoomSession(user?.uid))
   const canResume = resumed.current?.mode === "djmulti"
   const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
   const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")
@@ -2087,7 +2097,8 @@ export function DoubleJeopardyMulti({ onExit }: { onExit: () => void }) {
 
 // ── WAGER WARS ENTRY POINT ────────────────────────────────────────────────────
 export function WagerWars({ onExit }: { onExit: () => void }) {
-  const resumed = useRef(loadActiveRoomSession())
+  const { user } = useApp()
+  const resumed = useRef(loadActiveRoomSession(user?.uid))
   const canResume = resumed.current?.mode === "wager"
   const [view, setView] = useState<MultiView>(canResume ? "room" : "select")
   const [pin, setPin] = useState(canResume ? resumed.current!.pin : "")

@@ -78,6 +78,36 @@ export type QuestionCatalog = {
   }>
 }
 
+/** Restore a previously selected pool without reading unrelated questions. */
+export async function getQuestionsByIds(ids: string[], gameOnly = false): Promise<Question[]> {
+  if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
+    const { default: pool } = await import("@/lib/db")
+    const result = await pool.query<{ question: Question }>(
+      `SELECT item.value - 'createdAt' - 'updatedAt' - 'audit' - 'sourceMetadata' AS question
+         FROM unnest($1::text[]) WITH ORDINALITY requested(id, position)
+         JOIN mednexus_questions source ON source.id = 1
+         JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) item(value)
+           ON item.value->>'id' = requested.id
+        WHERE (NULLIF(item.value->>'moduleStatus', '') IS NULL OR item.value->>'moduleStatus' = 'live')
+          AND (NULLIF(item.value->>'status', '') IS NULL OR item.value->>'status' = 'live')
+          AND ($2::boolean = false OR (
+            (NULLIF(item.value->>'questionType', '') IS NULL OR item.value->>'questionType' = 'STANDARD_MCQ')
+            AND jsonb_typeof(item.value->'correctAnswer') = 'string'
+            AND jsonb_typeof(item.value->'options') = 'array'
+            AND jsonb_array_length(item.value->'options') >= 2
+            AND EXISTS (SELECT 1 FROM jsonb_array_elements(item.value->'options') option WHERE option->>'id' = item.value->>'correctAnswer')
+          ))
+        ORDER BY requested.position`,
+      [ids, gameOnly],
+    )
+    return result.rows.map(row => row.question)
+  }
+  const byId = new Map(questionsDatabase
+    .filter(question => !gameOnly || isSupportedSoloQuestion(question))
+    .map(question => [question.id, question]))
+  return ids.map(id => byId.get(id)).filter((question): question is Question => Boolean(question))
+}
+
 /** Aggregate learner-visible navigation data without transferring question content. */
 export async function getQuestionCatalog(): Promise<QuestionCatalog> {
   if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {

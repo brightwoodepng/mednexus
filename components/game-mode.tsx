@@ -8,12 +8,14 @@ import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { MultiplayerClash, CohortReview, WagerWars, DoubleJeopardyMulti } from "@/components/game-mode-multiplayer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
+import { useApp } from "@/contexts/app-context"
 import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/economy-panel"
 import { buildGameQuestionPool, createQuestionContentFingerprint, deduplicateGameQuestions } from "@/lib/game-question-pool"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getPersonalBestUpdate } from "@/lib/game-personal-best"
 import { getSuddenDeathResultTotal } from "@/lib/sudden-death-result"
 import { getMultiplayerRewardRules } from "@/lib/multiplayer-reward-presentation"
+import { clearSoloGameSession, loadSoloGameSession, saveSoloGameSession, type HydratedSoloGameSession, type SoloGameMode } from "@/lib/solo-game-session"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type GameModeId = "rapid" | "sudden" | "timeatk" | "streak" | "double" | "clash" | "cohort" | "wager" | "djmulti"
@@ -216,31 +218,117 @@ function minimumQuestionsForRewardedGame(mode: ModeConfig["id"]): number {
     : ECONOMY_CONFIG.gameRewards.solo.minimumAnswers
 }
 
-function useSoloScoring(mode: "rapid" | "sudden" | "timeatk" | "double" | "streak") {
+function useSoloScoring(mode: SoloGameMode, resumedSessionId?: string) {
   const { startScoredActivity } = useEconomy()
-  const sessionPromise = useRef<Promise<string | null> | null>(null)
+  const sessionPromise = useRef<Promise<string | null> | null>(resumedSessionId ? Promise.resolve(resumedSessionId) : null)
+  const [sessionId, setSessionId] = useState<string | undefined>(resumedSessionId)
   return {
     sessionPromise,
+    sessionId,
     begin(questions: readonly Question[]) {
-      sessionPromise.current = startScoredActivity(mode, questions.map(question => question.id))
+      sessionPromise.current = startScoredActivity(mode, questions.map(question => question.id)).then(id => {
+        setSessionId(id ?? undefined)
+        return id
+      })
     },
   }
 }
 
+function restoredNumber(state: Record<string, unknown>, key: string, fallback: number) {
+  const value = state[key]
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback
+}
+
+function restoredBoolean(state: Record<string, unknown>, key: string, fallback = false) {
+  return typeof state[key] === "boolean" ? state[key] as boolean : fallback
+}
+
+function restoredStrings(state: Record<string, unknown>, key: string) {
+  return Array.isArray(state[key]) ? (state[key] as unknown[]).filter((value): value is string => typeof value === "string") : []
+}
+
+function compactAnswerHistory(history: AnswerHistoryEntry[]) {
+  return history.map(entry => ({ questionId: entry.question.id, selected: entry.selected,
+    secondAttempt: entry.secondAttempt, assisted: entry.assisted, wager: entry.wager }))
+}
+
+function restoreAnswerHistory(value: unknown, questions: readonly Question[]): AnswerHistoryEntry[] {
+  if (!Array.isArray(value)) return []
+  const byId = new Map(questions.map(question => [question.id, question]))
+  return value.flatMap(item => {
+    if (!item || typeof item !== "object") return []
+    const saved = item as { questionId?: unknown; selected?: unknown; secondAttempt?: unknown; assisted?: unknown; wager?: unknown }
+    const question = typeof saved.questionId === "string" ? byId.get(saved.questionId) : undefined
+    if (!question || !(saved.selected === null || typeof saved.selected === "string")) return []
+    return [{ question, selected: saved.selected, secondAttempt: typeof saved.secondAttempt === "string" || saved.secondAttempt === null ? saved.secondAttempt : undefined,
+      assisted: saved.assisted === true, wager: typeof saved.wager === "number" ? saved.wager : undefined }]
+  })
+}
+
+function usePersistSoloGame(input: {
+  mode: SoloGameMode
+  active: boolean
+  round: ReturnType<typeof useSoloGameRound>
+  scoring: ReturnType<typeof useSoloScoring>
+  timerDeadline?: number
+  state: Record<string, unknown>
+}) {
+  const { user } = useApp()
+  useEffect(() => {
+    if (!user || !input.active || !input.round.configuration || input.round.pool.length === 0) return
+    saveSoloGameSession({
+      userId: user.uid,
+      mode: input.mode,
+      questionIds: input.round.pool.map(question => question.id),
+      module: input.round.configuration.module,
+      discipline: input.round.configuration.discipline,
+      eligiblePoolSize: input.round.configuration.eligiblePoolSize,
+      startedAt: input.round.configuration.startedAt,
+      currentQuestionIndex: input.round.qi,
+      answeredQuestionIds: [...input.round.answeredIds],
+      scoringSessionId: input.scoring.sessionId,
+      timerDeadline: input.timerDeadline,
+      state: input.state,
+    })
+  })
+  useEffect(() => {
+    if (user && input.round.completed) clearSoloGameSession(user.uid)
+  }, [input.round.completed, user])
+}
+
 /** Shared finite-round contract used by every solo mode.  A round owns a
  * de-duplicated, immutable pool and can cross its completion boundary once. */
-function useSoloGameRound(mode: ModeConfig["id"], onFinalize: (reason: SoloCompletionReason) => void) {
-  const [pool, setPool] = useState<readonly Question[]>([])
-  const [qi, setQi] = useState(0)
-  const [answeredIds, setAnsweredIds] = useState<ReadonlySet<string>>(new Set())
+function useSoloGameRound(mode: ModeConfig["id"], onFinalize: (reason: SoloCompletionReason) => void, resume?: HydratedSoloGameSession | null) {
+  const [pool, setPool] = useState<readonly Question[]>(resume?.questions ?? [])
+  const [qi, setQi] = useState(() => {
+    if (!resume) return 0
+    const currentWasCommitted = resume.answeredQuestionIds.includes(resume.questionIds[resume.currentQuestionIndex])
+    return mode !== "double" && currentWasCommitted && resume.currentQuestionIndex + 1 < resume.questionIds.length
+      ? resume.currentQuestionIndex + 1
+      : resume.currentQuestionIndex
+  })
+  const [answeredIds, setAnsweredIds] = useState<ReadonlySet<string>>(new Set(resume?.answeredQuestionIds ?? []))
   const [completed, setCompleted] = useState(false)
   const [completionReason, setCompletionReason] = useState<SoloCompletionReason | null>(null)
-  const [configuration, setConfiguration] = useState<SoloRoundConfiguration | null>(null)
+  const [configuration, setConfiguration] = useState<SoloRoundConfiguration | null>(() => resume ? Object.freeze({
+    mode, module: resume.module, discipline: resume.discipline, selectedQuantity: resume.questions.length,
+    eligiblePoolSize: resume.eligiblePoolSize, selectedQuestionIds: Object.freeze([...resume.questionIds]), startedAt: resume.startedAt,
+  }) : null)
   const finalizedRef = useRef(false)
   const generationRef = useRef(0)
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
   const finalizeRef = useRef(onFinalize)
   finalizeRef.current = onFinalize
+
+  useEffect(() => {
+    if (!resume || mode === "double") return
+    const lastIndex = resume.questionIds.length - 1
+    if (resume.currentQuestionIndex === lastIndex && resume.answeredQuestionIds.includes(resume.questionIds[lastIndex])) {
+      finalize("pool_completed")
+    }
+  // Resume a final answer that was saved during its feedback animation.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const cancelTimers = () => {
     timersRef.current.forEach(clearTimeout)
@@ -1220,30 +1308,31 @@ const RAPID_TIME = 15
 const MAX_LIVES = 3
 const BASE_PTS = 100
 
-function RapidFireMode({ onExit }: { onExit: () => void }) {
+function RapidFireMode({ onExit, resume }: { onExit: () => void; resume?: HydratedSoloGameSession | null }) {
   const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
-  const scoring = useSoloScoring("rapid")
+  const saved = resume?.state ?? {}
+  const scoring = useSoloScoring("rapid", resume?.scoringSessionId)
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[0]
 
-  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
-  const [phase, setPhase] = useState<Phase>("menu")
-  const [lives, setLives] = useState(MAX_LIVES)
-  const [score, setScore] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [bestStreak, setBestStreak] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(RAPID_TIME)
+  const [filter, setFilter] = useState<GameFilter>(() => resume ? { module: resume.module, discipline: resume.discipline } : DEFAULT_FILTER)
+  const [phase, setPhase] = useState<Phase>(resume ? "playing" : "menu")
+  const [lives, setLives] = useState(() => restoredNumber(saved, "lives", MAX_LIVES))
+  const [score, setScore] = useState(() => restoredNumber(saved, "score", 0))
+  const [streak, setStreak] = useState(() => restoredNumber(saved, "streak", 0))
+  const [bestStreak, setBestStreak] = useState(() => restoredNumber(saved, "bestStreak", 0))
+  const [timeLeft, setTimeLeft] = useState(() => resume?.timerDeadline ? Math.max(0, Math.ceil((resume.timerDeadline - Date.now()) / 1000)) : RAPID_TIME)
   const [fb, setFb] = useState<Feedback>(null)
   const [picked, setPicked] = useState<string | null>(null)
-  const [totalQ, setTotalQ] = useState(0)
-  const [totalRight, setTotalRight] = useState(0)
+  const [totalQ, setTotalQ] = useState(() => restoredNumber(saved, "totalQ", 0))
+  const [totalRight, setTotalRight] = useState(() => restoredNumber(saved, "totalRight", 0))
   const [isNewHigh, setIsNewHigh] = useState(false)
   const [hs, setHsState] = useState(() => readHs(cfg.hsKey))
-  const [eliminated, setEliminated] = useState<string[]>([])
-  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
-  const [lifelineUsed, setLifelineUsed] = useState(false)
-  const [secondOpinionActive, setSecondOpinionActive] = useState(false)
-  const [firstAttempt, setFirstAttempt] = useState<string | null | undefined>(undefined)
+  const [eliminated, setEliminated] = useState<string[]>(() => restoredStrings(saved, "eliminated"))
+  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>(() => restoreAnswerHistory(saved.answerHistory, resume?.questions ?? []))
+  const [lifelineUsed, setLifelineUsed] = useState(() => restoredBoolean(saved, "lifelineUsed"))
+  const [secondOpinionActive, setSecondOpinionActive] = useState(() => restoredBoolean(saved, "secondOpinionActive"))
+  const [firstAttempt, setFirstAttempt] = useState<string | null | undefined>(() => typeof saved.firstAttempt === "string" || saved.firstAttempt === null ? saved.firstAttempt : undefined)
 
   const round = useSoloGameRound(cfg.id, () => {
     const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, r.current.score)
@@ -1256,7 +1345,11 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
   const r = useRef({ pool: [] as readonly Question[], qi: 0, lives: MAX_LIVES, score: 0, streak: 0, bestStreak: 0, totalQ: 0, totalRight: 0, hs: 0, fb: null as Feedback, phase: "menu" as Phase })
   r.current = { pool, qi, lives, score, streak, bestStreak, totalQ, totalRight, hs, fb, phase }
   const doRef = useRef<((c: string | null) => void) | null>(null)
-  const expiryRef = useRef(0)
+  const expiryRef = useRef(resume?.answeredQuestionIds.includes(resume.questionIds[resume.currentQuestionIndex]) ? 0 : (resume?.timerDeadline ?? 0))
+
+  usePersistSoloGame({ mode: "rapid", active: phase === "playing", round, scoring,
+    timerDeadline: expiryRef.current, state: { lives, score, streak, bestStreak, totalQ, totalRight,
+      eliminated, answerHistory: compactAnswerHistory(answerHistory), lifelineUsed, secondOpinionActive, firstAttempt } })
 
   function advance(nl: number, ns: number) {
     if (nl <= 0) {
@@ -1299,7 +1392,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
 
   useEffect(() => {
     if (phase !== "playing" || fb !== null) return
-    expiryRef.current = Date.now() + RAPID_TIME * 1000
+    if (expiryRef.current <= 0) expiryRef.current = Date.now() + RAPID_TIME * 1000
     const id = setInterval(() => {
       if (round.finalizedRef.current) { clearInterval(id); return }
       const rem = Math.max(0, Math.ceil((expiryRef.current - Date.now()) / 1000))
@@ -1422,7 +1515,7 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
             freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionActive} />
         </div>
       }
-      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
+      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>}
     />
   )
 }
@@ -1430,33 +1523,38 @@ function RapidFireMode({ onExit }: { onExit: () => void }) {
 // ── SUDDEN DEATH ──────────────────────────────────────────────────────────────
 const SUDDEN_TIME = 20
 
-function SuddenDeathMode({ onExit }: { onExit: () => void }) {
+function SuddenDeathMode({ onExit, resume }: { onExit: () => void; resume?: HydratedSoloGameSession | null }) {
   const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
-  const scoring = useSoloScoring("sudden")
+  const saved = resume?.state ?? {}
+  const scoring = useSoloScoring("sudden", resume?.scoringSessionId)
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[1]
 
-  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
-  const [phase, setPhase] = useState<Phase>("menu")
-  const [survived, setSurvived] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(SUDDEN_TIME)
+  const [filter, setFilter] = useState<GameFilter>(() => resume ? { module: resume.module, discipline: resume.discipline } : DEFAULT_FILTER)
+  const [phase, setPhase] = useState<Phase>(resume ? "playing" : "menu")
+  const [survived, setSurvived] = useState(() => restoredNumber(saved, "survived", 0))
+  const [timeLeft, setTimeLeft] = useState(() => resume?.timerDeadline ? Math.max(0, Math.ceil((resume.timerDeadline - Date.now()) / 1000)) : SUDDEN_TIME)
   const [fb, setFb] = useState<Feedback>(null)
   const [picked, setPicked] = useState<string | null>(null)
   const [isNewHigh, setIsNewHigh] = useState(false)
   const [hs, setHsState] = useState(() => readHs(cfg.hsKey))
-  const [eliminated, setEliminated] = useState<string[]>([])
-  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
-  const [lifelineUsedSD, setLifelineUsedSD] = useState(false)
-  const [secondOpinionSD, setSecondOpinionSD] = useState(false)
-  const [firstAttemptSD, setFirstAttemptSD] = useState<string | null | undefined>(undefined)
+  const [eliminated, setEliminated] = useState<string[]>(() => restoredStrings(saved, "eliminated"))
+  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>(() => restoreAnswerHistory(saved.answerHistory, resume?.questions ?? []))
+  const [lifelineUsedSD, setLifelineUsedSD] = useState(() => restoredBoolean(saved, "lifelineUsed"))
+  const [secondOpinionSD, setSecondOpinionSD] = useState(() => restoredBoolean(saved, "secondOpinionActive"))
+  const [firstAttemptSD, setFirstAttemptSD] = useState<string | null | undefined>(() => typeof saved.firstAttempt === "string" || saved.firstAttempt === null ? saved.firstAttempt : undefined)
 
-  const round = useSoloGameRound(cfg.id, () => endGame(r.current.survived))
+  const round = useSoloGameRound(cfg.id, () => endGame(r.current.survived), resume)
   const { pool, qi } = round
 
   const r = useRef({ pool: [] as readonly Question[], qi: 0, survived: 0, hs: 0, fb: null as Feedback, phase: "menu" as Phase })
   r.current = { pool, qi, survived, hs, fb, phase }
   const doRef = useRef<((c: string | null) => void) | null>(null)
-  const expiryRef = useRef(0)
+  const expiryRef = useRef(resume?.answeredQuestionIds.includes(resume.questionIds[resume.currentQuestionIndex]) ? 0 : (resume?.timerDeadline ?? 0))
+
+  usePersistSoloGame({ mode: "sudden", active: phase === "playing", round, scoring,
+    timerDeadline: expiryRef.current, state: { survived, eliminated, answerHistory: compactAnswerHistory(answerHistory),
+      lifelineUsed: lifelineUsedSD, secondOpinionActive: secondOpinionSD, firstAttempt: firstAttemptSD } })
 
   function endGame(finalSurvived: number) {
     const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, finalSurvived)
@@ -1492,7 +1590,7 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
 
   useEffect(() => {
     if (phase !== "playing" || fb !== null) return
-    expiryRef.current = Date.now() + SUDDEN_TIME * 1000
+    if (expiryRef.current <= 0) expiryRef.current = Date.now() + SUDDEN_TIME * 1000
     const id = setInterval(() => {
       if (round.finalizedRef.current) { clearInterval(id); return }
       const rem = Math.max(0, Math.ceil((expiryRef.current - Date.now()) / 1000))
@@ -1587,7 +1685,7 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
             freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionSD} />
         </div>
       }
-      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
+      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>}
     />
   )
 }
@@ -1595,35 +1693,41 @@ function SuddenDeathMode({ onExit }: { onExit: () => void }) {
 // ── TIME ATTACK ───────────────────────────────────────────────────────────────
 const TIMEATK_START = 90
 
-function TimeAttackMode({ onExit }: { onExit: () => void }) {
+function TimeAttackMode({ onExit, resume }: { onExit: () => void; resume?: HydratedSoloGameSession | null }) {
   const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
-  const scoring = useSoloScoring("timeatk")
+  const saved = resume?.state ?? {}
+  const scoring = useSoloScoring("timeatk", resume?.scoringSessionId)
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[2]
 
-  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
-  const [phase, setPhase] = useState<Phase>("menu")
-  const [score, setScore] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(TIMEATK_START)
+  const [filter, setFilter] = useState<GameFilter>(() => resume ? { module: resume.module, discipline: resume.discipline } : DEFAULT_FILTER)
+  const [phase, setPhase] = useState<Phase>(resume ? "playing" : "menu")
+  const [score, setScore] = useState(() => restoredNumber(saved, "score", 0))
+  const [timeLeft, setTimeLeft] = useState(() => resume?.timerDeadline ? Math.max(0, Math.ceil((resume.timerDeadline - Date.now()) / 1000)) : TIMEATK_START)
   const [fb, setFb] = useState<Feedback>(null)
   const [picked, setPicked] = useState<string | null>(null)
-  const [totalQ, setTotalQ] = useState(0)
-  const [totalRight, setTotalRight] = useState(0)
+  const [totalQ, setTotalQ] = useState(() => restoredNumber(saved, "totalQ", 0))
+  const [totalRight, setTotalRight] = useState(() => restoredNumber(saved, "totalRight", 0))
   const [isNewHigh, setIsNewHigh] = useState(false)
   const [hs, setHsState] = useState(() => readHs(cfg.hsKey))
-  const [eliminated, setEliminated] = useState<string[]>([])
-  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
-  const [lifelineUsedTA, setLifelineUsedTA] = useState(false)
-  const [freezeCountTA, setFreezeCountTA] = useState(0)
-  const [secondOpinionTA, setSecondOpinionTA] = useState(false)
-  const [firstAttemptTA, setFirstAttemptTA] = useState<string | null | undefined>(undefined)
+  const [eliminated, setEliminated] = useState<string[]>(() => restoredStrings(saved, "eliminated"))
+  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>(() => restoreAnswerHistory(saved.answerHistory, resume?.questions ?? []))
+  const [lifelineUsedTA, setLifelineUsedTA] = useState(() => restoredBoolean(saved, "lifelineUsed"))
+  const [freezeCountTA, setFreezeCountTA] = useState(() => restoredNumber(saved, "freezeCount", 0))
+  const [secondOpinionTA, setSecondOpinionTA] = useState(() => restoredBoolean(saved, "secondOpinionActive"))
+  const [firstAttemptTA, setFirstAttemptTA] = useState<string | null | undefined>(() => typeof saved.firstAttempt === "string" || saved.firstAttempt === null ? saved.firstAttempt : undefined)
 
-  const round = useSoloGameRound(cfg.id, () => endGame(r.current.score))
+  const round = useSoloGameRound(cfg.id, () => endGame(r.current.score), resume)
   const { pool, qi } = round
 
   const r = useRef({ pool: [] as readonly Question[], qi: 0, score: 0, timeLeft: TIMEATK_START, hs: 0, fb: null as Feedback, phase: "menu" as Phase, totalQ: 0, totalRight: 0 })
   r.current = { pool, qi, score, timeLeft, hs, fb, phase, totalQ, totalRight }
-  const expiryRef = useRef(0)
+  const expiryRef = useRef(resume?.timerDeadline ?? 0)
+
+  usePersistSoloGame({ mode: "timeatk", active: phase === "playing", round, scoring,
+    timerDeadline: expiryRef.current, state: { score, totalQ, totalRight, eliminated,
+      answerHistory: compactAnswerHistory(answerHistory), lifelineUsed: lifelineUsedTA, freezeCount: freezeCountTA,
+      secondOpinionActive: secondOpinionTA, firstAttempt: firstAttemptTA } })
 
   function endGame(finalScore: number) {
     const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, finalScore)
@@ -1659,7 +1763,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
 
   useEffect(() => {
     if (phase !== "playing") return
-    expiryRef.current = Date.now() + TIMEATK_START * 1000
+    if (expiryRef.current <= 0) expiryRef.current = Date.now() + TIMEATK_START * 1000
     const id = setInterval(() => {
       if (round.finalizedRef.current) { clearInterval(id); return }
       const rem = Math.max(0, Math.ceil((expiryRef.current - Date.now()) / 1000))
@@ -1758,7 +1862,7 @@ function TimeAttackMode({ onExit }: { onExit: () => void }) {
             freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionTA} />
         </div>
       }
-      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
+      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>}
     />
   )
 }
@@ -1774,36 +1878,52 @@ const DJ_BETS = [
 
 type DJPhase = "menu" | "wager" | "answering" | "feedback" | "over"
 
-function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
+function DoubleJeopardyMode({ onExit, resume }: { onExit: () => void; resume?: HydratedSoloGameSession | null }) {
   const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
-  const scoring = useSoloScoring("double")
+  const saved = resume?.state ?? {}
+  const scoring = useSoloScoring("double", resume?.scoringSessionId)
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES.find(m => m.id === "double")!
 
-  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
-  const [djPhase, setDjPhase] = useState<DJPhase>("menu")
-  const [bank, setBank] = useState(DJ_STARTING_BANK)
-  const [wager, setWager] = useState(0)
+  const [filter, setFilter] = useState<GameFilter>(() => resume ? { module: resume.module, discipline: resume.discipline } : DEFAULT_FILTER)
+  const [djPhase, setDjPhase] = useState<DJPhase>(() => resume && (saved.djPhase === "wager" || saved.djPhase === "answering" || saved.djPhase === "feedback") ? saved.djPhase : "menu")
+  const [bank, setBank] = useState(() => restoredNumber(saved, "bank", DJ_STARTING_BANK))
+  const [wager, setWager] = useState(() => restoredNumber(saved, "wager", 0))
   const [picked, setPicked] = useState<string | null>(null)
   const [fb, setFb] = useState<Feedback>(null)
-  const [totalQ, setTotalQ] = useState(0)
-  const [totalRight, setTotalRight] = useState(0)
-  const [bestWager, setBestWager] = useState(0)
+  const [totalQ, setTotalQ] = useState(() => restoredNumber(saved, "totalQ", 0))
+  const [totalRight, setTotalRight] = useState(() => restoredNumber(saved, "totalRight", 0))
+  const [bestWager, setBestWager] = useState(() => restoredNumber(saved, "bestWager", 0))
   const [isNewHigh, setIsNewHigh] = useState(false)
   const [hs, setHsState] = useState(() => readHs(cfg.hsKey))
-  const [eliminated, setEliminated] = useState<string[]>([])
-  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
-  const [lifelineUsedDJ, setLifelineUsedDJ] = useState(false)
+  const [eliminated, setEliminated] = useState<string[]>(() => restoredStrings(saved, "eliminated"))
+  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>(() => restoreAnswerHistory(saved.answerHistory, resume?.questions ?? []))
+  const [lifelineUsedDJ, setLifelineUsedDJ] = useState(() => restoredBoolean(saved, "lifelineUsed"))
 
   const round = useSoloGameRound(cfg.id, () => {
     const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, r.current.bank)
     setIsNewHigh(isNewHigh)
     setHsState(best); writeHs(cfg.hsKey, best); setDjPhase("over")
-  })
+  }, resume)
   const { pool, qi } = round
 
   const r = useRef({ pool: [] as readonly Question[], qi: 0, bank: DJ_STARTING_BANK, wager: 0, hs: 0, totalQ: 0, totalRight: 0, bestWager: 0 })
   r.current = { pool, qi, bank, wager, hs, totalQ, totalRight, bestWager }
+
+  usePersistSoloGame({ mode: "double", active: djPhase !== "menu" && djPhase !== "over", round, scoring,
+    state: { djPhase, bank, wager, totalQ, totalRight, bestWager, eliminated,
+      answerHistory: compactAnswerHistory(answerHistory), lifelineUsed: lifelineUsedDJ } })
+
+  useEffect(() => {
+    if (djPhase !== "feedback") return
+    const timer = setTimeout(() => {
+      if (bank <= 0) round.finalize("bank_depleted")
+      else if (round.advanceOrFinalize()) { setFb(null); setPicked(null); setDjPhase("wager") }
+    }, 250)
+    return () => clearTimeout(timer)
+  // Resume a feedback boundary that was interrupted before its scheduled advance.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const qty5050dj = inventory["lifeline_50_50"] ?? 0
 
@@ -1941,7 +2061,7 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
           </div>
         </div>
 
-        <button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>
+        <button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>
       </div>
     )
   }
@@ -1973,39 +2093,44 @@ function DoubleJeopardyMode({ onExit }: { onExit: () => void }) {
             disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)} disabledFreeze={true} />
         </div>
       }
-      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Quit Game</button>}
+      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>}
     />
   )
 }
 
 // ── STREAK MASTER ─────────────────────────────────────────────────────────────
-function StreakMasterMode({ onExit }: { onExit: () => void }) {
+function StreakMasterMode({ onExit, resume }: { onExit: () => void; resume?: HydratedSoloGameSession | null }) {
   const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
-  const scoring = useSoloScoring("streak")
+  const saved = resume?.state ?? {}
+  const scoring = useSoloScoring("streak", resume?.scoringSessionId)
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
   const cfg = MODES[3]
 
-  const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
-  const [phase, setPhase] = useState<Phase>("menu")
-  const [streak, setStreak] = useState(0)
-  const [bestStreak, setBestStreak] = useState(0)
-  const [totalQ, setTotalQ] = useState(0)
-  const [totalRight, setTotalRight] = useState(0)
+  const [filter, setFilter] = useState<GameFilter>(() => resume ? { module: resume.module, discipline: resume.discipline } : DEFAULT_FILTER)
+  const [phase, setPhase] = useState<Phase>(resume ? "playing" : "menu")
+  const [streak, setStreak] = useState(() => restoredNumber(saved, "streak", 0))
+  const [bestStreak, setBestStreak] = useState(() => restoredNumber(saved, "bestStreak", 0))
+  const [totalQ, setTotalQ] = useState(() => restoredNumber(saved, "totalQ", 0))
+  const [totalRight, setTotalRight] = useState(() => restoredNumber(saved, "totalRight", 0))
   const [fb, setFb] = useState<Feedback>(null)
   const [picked, setPicked] = useState<string | null>(null)
   const [isNewHigh, setIsNewHigh] = useState(false)
   const [hs, setHsState] = useState(() => readHs(cfg.hsKey))
-  const [eliminated, setEliminated] = useState<string[]>([])
-  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>([])
-  const [lifelineUsedSM, setLifelineUsedSM] = useState(false)
-  const [secondOpinionSM, setSecondOpinionSM] = useState(false)
-  const [firstAttemptSM, setFirstAttemptSM] = useState<string | undefined>(undefined)
+  const [eliminated, setEliminated] = useState<string[]>(() => restoredStrings(saved, "eliminated"))
+  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>(() => restoreAnswerHistory(saved.answerHistory, resume?.questions ?? []))
+  const [lifelineUsedSM, setLifelineUsedSM] = useState(() => restoredBoolean(saved, "lifelineUsed"))
+  const [secondOpinionSM, setSecondOpinionSM] = useState(() => restoredBoolean(saved, "secondOpinionActive"))
+  const [firstAttemptSM, setFirstAttemptSM] = useState<string | undefined>(() => typeof saved.firstAttempt === "string" ? saved.firstAttempt : undefined)
 
-  const round = useSoloGameRound(cfg.id, () => finishGameStats())
+  const round = useSoloGameRound(cfg.id, () => finishGameStats(), resume)
   const { pool, qi } = round
 
   const r = useRef({ pool: [] as readonly Question[], qi: 0, streak: 0, bestStreak: 0, totalQ: 0, totalRight: 0, hs: 0, fb: null as Feedback })
   r.current = { pool, qi, streak, bestStreak, totalQ, totalRight, hs, fb }
+
+  usePersistSoloGame({ mode: "streak", active: phase === "playing", round, scoring,
+    state: { streak, bestStreak, totalQ, totalRight, eliminated, answerHistory: compactAnswerHistory(answerHistory),
+      lifelineUsed: lifelineUsedSM, secondOpinionActive: secondOpinionSM, firstAttempt: firstAttemptSM } })
 
   const qty5050sm = inventory["lifeline_50_50"] ?? 0
   const qtySecondOpinionSM = inventory["lifeline_second_opinion"] ?? 0
@@ -2134,7 +2259,7 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
             Finish Game
           </button>
           <button type="button" onClick={onExit} className="rounded-2xl border border-border py-2.5 px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-            Quit
+            Save & Exit
           </button>
           </div>
         </div>
@@ -2145,13 +2270,50 @@ function StreakMasterMode({ onExit }: { onExit: () => void }) {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenStore?: () => void }) {
-  const { gameCatalog, gameCatalogLoading, reloadGameCatalog } = useQuestions()
+  const { user } = useApp()
+  const { gameCatalog, gameCatalogLoading, reloadGameCatalog, loadQuestionsByIds } = useQuestions()
+  const roomResumeRef = useRef(loadActiveRoomSession(user?.uid))
+  const savedSoloRef = useRef(user ? loadSoloGameSession(user.uid) : null)
+  const [soloResume, setSoloResume] = useState<HydratedSoloGameSession | null | undefined>(savedSoloRef.current ? undefined : null)
   // Auto-resume an in-progress multiplayer match on mount (e.g. after a page
   // refresh) instead of forcing the player back through mode selection.
   const [activeMode, setActiveMode] = useState<GameModeId | null>(() => {
-    const active = loadActiveRoomSession()
-    return active ? active.mode : null
+    return roomResumeRef.current?.mode ?? savedSoloRef.current?.mode ?? null
   })
+
+  useEffect(() => {
+    const saved = savedSoloRef.current
+    if (!saved || !user) return
+    void loadQuestionsByIds(saved.questionIds, true).then(questions => {
+      if (questions.length !== saved.questionIds.length) throw new Error("Incomplete saved pool")
+      setSoloResume({ ...saved, questions })
+    }).catch(() => {
+      clearSoloGameSession(user.uid)
+      savedSoloRef.current = null
+      setSoloResume(null)
+      setActiveMode(current => current === saved.mode ? null : current)
+    })
+  }, [loadQuestionsByIds, user])
+
+  function handleSoloExit() {
+    if (user) {
+      const saved = loadSoloGameSession(user.uid)
+      savedSoloRef.current = saved
+      if (saved) {
+        setSoloResume(undefined)
+        void loadQuestionsByIds(saved.questionIds, true).then(questions => {
+          setSoloResume({ ...saved, questions })
+        }).catch(() => {
+          clearSoloGameSession(user.uid)
+          savedSoloRef.current = null
+          setSoloResume(null)
+        })
+      } else {
+        setSoloResume(null)
+      }
+    }
+    setActiveMode(null)
+  }
 
   useEffect(() => {
     if (activeMode && gameCatalog.length === 0) void reloadGameCatalog()
@@ -2159,16 +2321,17 @@ export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenSt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMode])
 
-  if (activeMode && (gameCatalogLoading || gameCatalog.length === 0)) {
+  const soloMode = activeMode === "rapid" || activeMode === "sudden" || activeMode === "timeatk" || activeMode === "streak" || activeMode === "double"
+  if (activeMode && (gameCatalogLoading || gameCatalog.length === 0 || (soloMode && savedSoloRef.current && soloResume === undefined))) {
     return <div className="flex min-h-[50vh] items-center justify-center text-sm font-semibold text-muted-foreground">Loading question options…</div>
   }
 
 
-  if (activeMode === "rapid") return <RapidFireMode onExit={() => setActiveMode(null)} />
-  if (activeMode === "sudden") return <SuddenDeathMode onExit={() => setActiveMode(null)} />
-  if (activeMode === "timeatk") return <TimeAttackMode onExit={() => setActiveMode(null)} />
-  if (activeMode === "streak") return <StreakMasterMode onExit={() => setActiveMode(null)} />
-  if (activeMode === "double") return <DoubleJeopardyMode onExit={() => setActiveMode(null)} />
+  if (activeMode === "rapid") return <RapidFireMode resume={soloResume?.mode === "rapid" ? soloResume : null} onExit={handleSoloExit} />
+  if (activeMode === "sudden") return <SuddenDeathMode resume={soloResume?.mode === "sudden" ? soloResume : null} onExit={handleSoloExit} />
+  if (activeMode === "timeatk") return <TimeAttackMode resume={soloResume?.mode === "timeatk" ? soloResume : null} onExit={handleSoloExit} />
+  if (activeMode === "streak") return <StreakMasterMode resume={soloResume?.mode === "streak" ? soloResume : null} onExit={handleSoloExit} />
+  if (activeMode === "double") return <DoubleJeopardyMode resume={soloResume?.mode === "double" ? soloResume : null} onExit={handleSoloExit} />
   if (activeMode === "clash") return <MultiplayerClash onExit={() => setActiveMode(null)} />
   if (activeMode === "cohort") return <CohortReview onExit={() => setActiveMode(null)} />
   if (activeMode === "wager") return <WagerWars onExit={() => setActiveMode(null)} />

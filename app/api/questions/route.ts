@@ -7,6 +7,7 @@ import {
   getQuestionBankMetadata,
   getQuestionCatalog,
   getQuestionPage,
+  getQuestionsByIds,
   getRandomGameQuestions,
 } from "@/lib/question-bank-server"
 import { requireAuthenticatedUser } from "@/lib/request-auth"
@@ -160,6 +161,36 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error("[questions GET]", err)
     return noStore(NextResponse.json({ error: "Server error" }, { status: 500 }))
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const authStartedAt = performance.now()
+  if (!await requireAuthenticatedUser(req)) {
+    return noStore(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
+  }
+  try {
+    const body = await req.json() as { questionIds?: unknown; gameOnly?: unknown }
+    const maximum = body.gameOnly === true ? 100 : 500
+    if (!Array.isArray(body.questionIds) || body.questionIds.length < 1 || body.questionIds.length > maximum
+      || body.questionIds.some(id => typeof id !== "string" || !id.trim())) {
+      return noStore(NextResponse.json({ error: `questionIds must contain 1 to ${maximum} valid IDs` }, { status: 400 }))
+    }
+    const ids = body.questionIds as string[]
+    if (new Set(ids).size !== ids.length) {
+      return noStore(NextResponse.json({ error: "questionIds must not contain duplicates" }, { status: 400 }))
+    }
+    const databaseStartedAt = performance.now()
+    const questions = await getQuestionsByIds(ids, body.gameOnly === true)
+    if (questions.length !== ids.length) {
+      return noStore(NextResponse.json({ error: "One or more saved questions are unavailable" }, { status: 409 }))
+    }
+    const response = measuredJson({ route: "POST /api/questions?view=recover", queryStartedAt: databaseStartedAt,
+      rowCount: questions.length, payload: { questions } })
+    return noStore(addServerTiming(response, { auth: performance.now() - authStartedAt,
+      database: performance.now() - databaseStartedAt }))
+  } catch {
+    return noStore(NextResponse.json({ error: "Invalid recovery request" }, { status: 400 }))
   }
 }
 

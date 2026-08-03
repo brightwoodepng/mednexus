@@ -76,7 +76,7 @@ describe("verified NP rewards", () => {
     ])
     for (const mode of ["rapid", "sudden", "timeatk", "double", "streak"]) {
       expect(sessionRoute).toContain(`"${mode}"`)
-      expect(game).toContain(`useSoloScoring("${mode}")`)
+      expect(game).toContain(`useSoloScoring("${mode}",`)
     }
     expect(sessionRoute).toContain("jsonb_array_elements")
     expect(sessionRoute).toContain("ANY($1::text[])")
