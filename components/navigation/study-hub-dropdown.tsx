@@ -51,6 +51,12 @@ export function StudyHubDropdown({
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
+      // The responsive shell keeps a hidden desktop sidebar mounted while the
+      // phone drawer is open. Both dropdown instances share the controlled
+      // open state, so the hidden instance must treat a click inside its phone
+      // peer as internal; otherwise it unmounts the link before `click` fires.
+      const target = e.target as Element | null
+      if (target?.closest("[data-study-hub-dropdown]")) return
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener("mousedown", handler)
@@ -82,7 +88,7 @@ export function StudyHubDropdown({
   const rowHoverCls = isGlassEnabled ? "hover:glass-pill-active" : "hover:bg-sidebar-accent"
 
   return (
-    <div ref={ref} className="relative min-w-0 w-full">
+    <div ref={ref} data-study-hub-dropdown className="relative min-w-0 w-full">
       {/* ── Trigger (compact, fits in header bar) ── */}
       <button
         type="button"
