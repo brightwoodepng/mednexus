@@ -54,6 +54,25 @@ describe("Theory Vault phone experience", () => {
     expect(source).not.toMatch(/(?:hover|active):scale-/)
   })
 
+  it("switches workspaces and their home screens through one immediate action", async () => {
+    const [app, shell, sidebar, theory] = await Promise.all([
+      readFile("components/mednexus-app.tsx", "utf8"),
+      readFile("components/learner-workspace-shell.tsx", "utf8"),
+      readFile("components/sidebar.tsx", "utf8"),
+      readFile("components/theory-vault.tsx", "utf8"),
+    ])
+    expect(app).toContain("const handleStudyHubNavigation = useCallback")
+    expect(app).toContain("const homeScreen = learnerHomeScreen(hub)")
+    expect(app).toContain("setScreen(homeScreen)")
+    expect(app).toContain("learnerScreenUrl(homeScreen, hub)")
+    expect(app).toContain("onSelectStudyHub={handleStudyHubNavigation}")
+    expect(shell).toContain("onSelectStudyHub={onSelectStudyHub}")
+    expect(sidebar).toContain("onSelect={onSelectStudyHub}")
+    expect(sidebar).toContain("<StudyHubDropdownIcon activeHub={activeStudyHub} onSelect={onSelectStudyHub}")
+    expect(theory).toContain('role="status" aria-live="polite"')
+    expect(theory).toContain('className="animate-spin text-primary"')
+  })
+
   it("centers the welcome modal and keeps the phone drawer above navigation", async () => {
     const [app, shell, sidebar] = await Promise.all([
       readFile("components/mednexus-app.tsx", "utf8"),

@@ -7,6 +7,10 @@ const HUB_QUERY_VALUES: Record<StudyHubId, string> = {
   "osce-hub": "osce",
 }
 
+export function learnerHomeScreen(hub: StudyHubId): Screen {
+  return hub === "theory-vault" ? "theory-dashboard" : "dashboard"
+}
+
 export function studyHubFromUrl(url = typeof window === "undefined" ? "http://localhost" : window.location.href): StudyHubId {
   const hub = new URL(url).searchParams.get("hub")
   return hub === "theory" ? "theory-vault" : hub === "osce" ? "osce-hub" : "mcq-qbank"
@@ -41,7 +45,7 @@ export function learnerScreenFromUrl(url = typeof window === "undefined" ? "http
 
   const requestedScreen = parsed.searchParams.get("screen") as Screen | null
   if (requestedScreen && URL_BACKED_LEARNER_SCREENS.has(requestedScreen)) return requestedScreen
-  return studyHubFromUrl(parsed.href) === "theory-vault" ? "theory-dashboard" : "dashboard"
+  return learnerHomeScreen(studyHubFromUrl(parsed.href))
 }
 
 /** Return the canonical, refresh-safe URL for a learner navigation destination. */
@@ -50,7 +54,7 @@ export function learnerScreenUrl(screen: Screen, hub: StudyHubId): string {
   if (screen === "user-management") return withHubContext("/admin/users", hub)
   if (screen === "broadcast") return withHubContext("/admin/broadcasts", hub)
 
-  const defaultScreen = hub === "theory-vault" ? "theory-dashboard" : "dashboard"
+  const defaultScreen = learnerHomeScreen(hub)
   const pathname = screen === defaultScreen ? "/" : `/?screen=${encodeURIComponent(screen)}`
   return withHubContext(pathname, hub)
 }

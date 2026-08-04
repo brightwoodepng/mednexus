@@ -6,6 +6,7 @@ import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ChevronLeftIcon, ChevronRightIcon, LogOutIcon, PaletteIcon, StethoscopeIcon, LayoutDashboardIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
+import type { StudyHubId } from "@/components/study-hub-switcher"
 import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
 import { StudyHubDropdown, StudyHubDropdownIcon } from "@/components/navigation/study-hub-dropdown"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
@@ -13,7 +14,7 @@ import { getHubNavigation } from "@/components/navigation/study-hub-navigation"
 import Link from "next/link"
 import { canShowAdminConsoleLink } from "@/lib/admin-console-link"
 
-interface SidebarProps { screen: Screen; onNavigate: (screen: Screen) => void; onOpenThemes: () => void; onOpenImporter?: () => void; mobileOpen: boolean; onCloseMobile: () => void; onReadyForQuiz: (config: { module: string; discipline: string | null }) => void; onSelectModule: (module: string) => void; collapsed: boolean; onCollapse: () => void; onExpand: () => void }
+interface SidebarProps { screen: Screen; onNavigate: (screen: Screen) => void; onSelectStudyHub: (hub: StudyHubId) => void; onOpenThemes: () => void; onOpenImporter?: () => void; mobileOpen: boolean; onCloseMobile: () => void; onReadyForQuiz: (config: { module: string; discipline: string | null }) => void; onSelectModule: (module: string) => void; collapsed: boolean; onCollapse: () => void; onExpand: () => void }
 
 function roleLabel(role: string | undefined) {
   if (role === "admin") return "Admin"
@@ -40,10 +41,10 @@ function UserAvatar({ name, size = "md" }: { name?: string; size?: "sm" | "md" }
 }
 
 /** Desktop projection of the learner shell navigation. */
-export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseMobile, collapsed, onCollapse, onExpand }: SidebarProps) {
+export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mobileOpen, onCloseMobile, collapsed, onCollapse, onExpand }: SidebarProps) {
   const { user, signOutUser } = useApp()
   const { isGlassEnabled } = useTheme()
-  const { activeStudyHub, setActiveStudyHub, workspaceSwitcherOpen, setWorkspaceSwitcherOpen } = useApplicationShell()
+  const { activeStudyHub, workspaceSwitcherOpen, setWorkspaceSwitcherOpen } = useApplicationShell()
   const navigation = useMemo(() => getHubNavigation(activeStudyHub), [activeStudyHub])
   const nav = (next: Screen) => { onNavigate(next); onCloseMobile() }
 
@@ -84,7 +85,7 @@ export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseM
         </p>
         <div data-tutorial-anchor={mobileOpen ? "drawer-workspace-switcher" : "desktop-workspace-switcher"}><StudyHubDropdown
           activeHub={activeStudyHub}
-          onSelect={setActiveStudyHub}
+          onSelect={onSelectStudyHub}
           onAfterSelect={onCloseMobile}
           open={workspaceSwitcherOpen}
           onOpenChange={setWorkspaceSwitcherOpen}
@@ -169,7 +170,7 @@ export function Sidebar({ screen, onNavigate, onOpenThemes, mobileOpen, onCloseM
       >
         <ChevronRightIcon size={16} />
       </button>
-      <StudyHubDropdownIcon activeHub={activeStudyHub} onSelect={setActiveStudyHub} />
+      <StudyHubDropdownIcon activeHub={activeStudyHub} onSelect={onSelectStudyHub} />
       <div className="my-1 h-px w-6 bg-sidebar-border/60" />
       {navigation.map((item) => {
         const Icon = item.id === "profile" ? User : item.icon
