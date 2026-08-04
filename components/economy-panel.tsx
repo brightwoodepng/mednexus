@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { Coins } from "lucide-react"
 import { useEconomy } from "@/contexts/economy-context"
 import { SELLABLE_STORE_ITEMS, BOUNTY_POOL } from "@/lib/economy"
 
@@ -10,11 +11,12 @@ export function WalletBadge({ onOpenStore }: { onOpenStore: () => void }) {
   return (
     <button
       type="button" onClick={onOpenStore}
-      className="flex h-8 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-3 shadow-sm transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+      aria-label={`Open Nexus Store, ${balance.toLocaleString()} Nexus Points`}
+      className="flex h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-border/80 bg-card/80 px-2 text-foreground shadow-sm backdrop-blur-sm transition-[background-color,border-color,box-shadow] hover:border-amber-500/30 hover:bg-card hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 sm:w-auto sm:px-3"
     >
-      <span className="text-sm">🪙</span>
-      <span className="text-sm font-extrabold tabular-nums text-white">{balance.toLocaleString()}</span>
-      <span className="text-[10px] font-bold text-white/80">NP</span>
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-500"><Coins size={15} aria-hidden /></span>
+      <span className="min-w-0 truncate text-xs font-extrabold tabular-nums">{balance.toLocaleString()}</span>
+      <span className="shrink-0 text-[10px] font-bold text-muted-foreground">NP</span>
     </button>
   )
 }
