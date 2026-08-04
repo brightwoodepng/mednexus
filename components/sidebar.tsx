@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo } from "react"
-import { flushSync } from "react-dom"
 import { User } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -14,6 +13,7 @@ import { useApplicationShell } from "@/components/authenticated-application-shel
 import { getHubNavigation } from "@/components/navigation/study-hub-navigation"
 import Link from "next/link"
 import { canShowAdminConsoleLink } from "@/lib/admin-console-link"
+import { learnerHomeScreen, learnerScreenUrl, studyHubFromUrl } from "@/lib/admin-hub-routing"
 
 interface SidebarProps { screen: Screen; onNavigate: (screen: Screen) => void; onSelectStudyHub: (hub: StudyHubId) => void; onOpenThemes: () => void; onOpenImporter?: () => void; mobileOpen: boolean; onCloseMobile: () => void; onReadyForQuiz: (config: { module: string; discipline: string | null }) => void; onSelectModule: (module: string) => void; collapsed: boolean; onCollapse: () => void; onExpand: () => void }
 
@@ -49,15 +49,19 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
   const navigation = useMemo(() => getHubNavigation(activeStudyHub), [activeStudyHub])
   const nav = (next: Screen) => { onNavigate(next); onCloseMobile() }
   const selectStudyHub = (hub: StudyHubId) => {
-    if (mobileOpen) {
-      // The phone drawer unmounts this selector when it closes. Commit the
-      // atomic hub, home-screen, and URL update before that unmount so a touch
-      // cannot be reduced to merely dismissing the drawer.
-      flushSync(() => onSelectStudyHub(hub))
-      onCloseMobile()
-      return
-    }
     onSelectStudyHub(hub)
+    if (!mobileOpen) return
+
+    onCloseMobile()
+    // The normal handler writes the canonical URL synchronously. Some mobile
+    // browsers can cancel the selector's React update when its drawer unmounts
+    // during the same tap. Verify the URL after the event and use a real
+    // navigation only as a recovery path, so a tap can never become a no-op.
+    window.setTimeout(() => {
+      if (studyHubFromUrl() !== hub) {
+        window.location.assign(learnerScreenUrl(learnerHomeScreen(hub), hub))
+      }
+    }, 0)
   }
 
   const firstName = user?.name?.split(" ")[0] ?? "Guest"
