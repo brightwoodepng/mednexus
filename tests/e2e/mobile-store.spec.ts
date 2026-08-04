@@ -29,5 +29,8 @@ test("store implementation retains keyboard, safe-area, labels and reduced-motio
   expect(store).toContain('role="dialog" aria-modal="true"')
   expect(store).toContain("returnFocus.current?.focus()")
   expect(store).toContain("grid grid-cols-4")
+  expect(store).toContain("grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2")
+  expect(store).not.toContain("min-[380px]:grid-cols-2")
+  expect(store).toContain('options.length === 1 ? "hidden sm:grid sm:grid-cols-1"')
   expect(cosmetics).toMatch(/prefers-reduced-motion|useReducedMotion/)
 })
