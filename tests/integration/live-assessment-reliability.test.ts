@@ -24,14 +24,18 @@ describe("live assessment reliability", () => {
     expect(guestAssessment).toContain('gradingMode: row.grading_mode ?? "standard"')
   })
 
-  it("collects and submits the required class level before starting a guest exam", () => {
-    const guestPage = read("app/exam/[token]/page.tsx")
-    expect(guestPage).toContain('import { ALL_LEVELS } from "@/lib/levels"')
-    expect(guestPage).toContain('id="assessment-guest-level"')
-    expect(guestPage).toContain("ALL_LEVELS.map")
-    expect(guestPage).toContain("createGuestSession(guestName.trim(), guestClassLevel)")
-    expect(guestPage).toContain("JSON.stringify({ name, classLevel })")
-    expect(guestPage).not.toContain('classLevel: ""')
+  it("creates an assessment-only participant without an application guest account", () => {
+    const participantPage = read("app/exam/[token]/page.tsx")
+    const participantRoute = read("app/api/assessments/by-token/route.ts")
+    const attemptRoute = read("app/api/assessments/[id]/attempt/route.ts")
+    expect(participantPage).toContain("createAssessmentParticipant(token, guestName.trim())")
+    expect(participantPage).toContain('authHeader={{ key: "x-assessment-token"')
+    expect(participantPage).not.toContain("/api/auth/guest")
+    expect(participantPage).not.toContain("assessment-guest-level")
+    expect(participantRoute).toContain("does not write to a user/profile table")
+    expect(participantRoute).toContain("createAssessmentParticipantToken")
+    expect(attemptRoute).toContain("verifyAssessmentParticipantToken")
+    expect(attemptRoute).toContain("participant.assessmentId === assessmentId")
   })
 
   it("uses the unified attempt source for accurate registered and guest analytics", () => {
