@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { getModules } from "@/lib/modules"
 import type { LiveAssessment, AssessmentAnalytics } from "@/lib/types"
 import { gradingModeLabel, type AssessmentGradingMode } from "@/lib/assessment-grading"
 import {
@@ -12,13 +11,28 @@ import {
 
 // ── Create Assessment Modal ────────────────────────────────────────────────────
 type AssessmentDefaults = { questionCount: number; timeLimitMins: number; triesAllowed: number; passMark: number }
+type AssessmentModuleOption = { name: string; eligibleQuestionCount: number }
 const FALLBACK_DEFAULTS: AssessmentDefaults = { questionCount: 10, timeLimitMins: 30, triesAllowed: 1, passMark: 50 }
 
-function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; onCreated: () => void; defaults: AssessmentDefaults }) {
-  const modules = getModules()
+async function readJsonResponse(response: Response): Promise<Record<string, unknown>> {
+  const text = await response.text()
+  if (!text.trim()) return {}
+  try { return JSON.parse(text) as Record<string, unknown> }
+  catch { return {} }
+}
+
+function CreateModal({ onClose, onCreated, defaults, modules, optionsLoading, optionsError, onRetryOptions }: {
+  onClose: () => void
+  onCreated: (result: { requestedQuestionCount: number; actualQuestionCount: number }) => void
+  defaults: AssessmentDefaults
+  modules: AssessmentModuleOption[]
+  optionsLoading: boolean
+  optionsError: string
+  onRetryOptions: () => void
+}) {
   const [form, setForm] = useState({
     title: "",
-    moduleName: modules[0] ?? "",
+    moduleName: modules[0]?.name ?? "",
     questionCount: String(defaults.questionCount),
     timeLimitMins: String(defaults.timeLimitMins),
     triesAllowed: String(defaults.triesAllowed),
@@ -27,6 +41,16 @@ function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; on
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const selectedModule = modules.find(module => module.name === form.moduleName)
+  const requestedCount = Math.max(1, Number(form.questionCount) || defaults.questionCount)
+  const actualCount = Math.min(requestedCount, selectedModule?.eligibleQuestionCount ?? 0)
+
+  useEffect(() => {
+    if (!modules.length) return
+    setForm(current => modules.some(module => module.name === current.moduleName)
+      ? current
+      : { ...current, moduleName: modules[0].name })
+  }, [modules])
 
   function set(key: keyof typeof form, val: string) {
     setForm((f) => ({ ...f, [key]: val }))
@@ -37,6 +61,8 @@ function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; on
     if (!form.title.trim() || !form.moduleName) { setError("Title and module are required."); return }
     setSaving(true)
     setError("")
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 30_000)
     try {
       const res = await fetch("/api/assessments", {
         method: "POST",
@@ -50,14 +76,21 @@ function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; on
           passMark: Number(form.passMark),
           gradingMode: form.gradingMode,
         }),
+        signal: controller.signal,
       })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error ?? "Failed to create."); return }
-      onCreated()
+      const data = await readJsonResponse(res)
+      if (!res.ok) { setError(typeof data.error === "string" ? data.error : `Unable to create the assessment (${res.status}). Please retry.`); return }
+      onCreated({
+        requestedQuestionCount: Number(data.requestedQuestionCount ?? requestedCount),
+        actualQuestionCount: Number(data.actualQuestionCount ?? actualCount),
+      })
       onClose()
-    } catch {
-      setError("Network error. Please try again.")
+    } catch (cause) {
+      setError(cause instanceof DOMException && cause.name === "AbortError"
+        ? "Creation took too long. Refresh the assessment list before retrying so you do not create a duplicate."
+        : "The assessment could not be created. Check your connection and try again.")
     } finally {
+      window.clearTimeout(timeout)
       setSaving(false)
     }
   }
@@ -81,13 +114,13 @@ function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; on
           </div>
           <div>
             <label className={labelCls}>Module *</label>
-            <select className={inputCls} value={form.moduleName} onChange={(e) => set("moduleName", e.target.value)} required>
-              {modules.length === 0 ? (
-                <option value="">No modules available</option>
-              ) : (
-                modules.map((m) => <option key={m} value={m}>{m}</option>)
-              )}
+            <select className={inputCls} value={form.moduleName} onChange={(e) => set("moduleName", e.target.value)} required disabled={optionsLoading || modules.length === 0}>
+              {optionsLoading && <option value="">Loading current modules…</option>}
+              {!optionsLoading && modules.length === 0 && <option value="">No eligible modules available</option>}
+              {modules.map(module => <option key={module.name} value={module.name}>{module.name} ({module.eligibleQuestionCount})</option>)}
             </select>
+            {optionsError ? <div role="alert" className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive"><span>{optionsError}</span><button type="button" onClick={onRetryOptions} className="shrink-0 font-semibold underline">Retry</button></div>
+              : selectedModule && <p className="mt-1 text-xs text-muted-foreground">{selectedModule.eligibleQuestionCount} eligible questions · this assessment will use {actualCount}.</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -122,7 +155,7 @@ function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; on
           )}
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors">Cancel</button>
-            <button type="submit" disabled={saving || modules.length === 0} className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60">
+            <button type="submit" disabled={saving || optionsLoading || modules.length === 0 || actualCount === 0} className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60">
               {saving ? "Creating…" : <><CheckIcon size={13} /> Create</>}
             </button>
           </div>
@@ -462,6 +495,10 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
   const [analyticsTarget, setAnalyticsTarget] = useState<LiveAssessment | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [defaults, setDefaults] = useState<AssessmentDefaults>(FALLBACK_DEFAULTS)
+  const [moduleOptions, setModuleOptions] = useState<AssessmentModuleOption[]>([])
+  const [optionsLoading, setOptionsLoading] = useState(true)
+  const [optionsError, setOptionsError] = useState("")
+  const [creationNotice, setCreationNotice] = useState("")
 
   const fetchAssessments = useCallback(async () => {
     setLoading(true)
@@ -477,7 +514,36 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
     }
   }, [])
 
-  useEffect(() => { fetchAssessments() }, [fetchAssessments])
+  const fetchModuleOptions = useCallback(async () => {
+    setOptionsLoading(true)
+    setOptionsError("")
+    try {
+      const response = await fetch("/api/assessments/options")
+      const body = await readJsonResponse(response)
+      if (!response.ok || !Array.isArray(body.modules)) {
+        throw new Error(typeof body.error === "string" ? body.error : "Unable to load current modules.")
+      }
+      setModuleOptions(body.modules as AssessmentModuleOption[])
+    } catch (cause) {
+      setModuleOptions([])
+      setOptionsError(cause instanceof Error ? cause.message : "Unable to load current modules.")
+    } finally {
+      setOptionsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void fetchAssessments()
+    void fetchModuleOptions()
+  }, [fetchAssessments, fetchModuleOptions])
+
+  const handleCreated = useCallback((result: { requestedQuestionCount: number; actualQuestionCount: number }) => {
+    setCreationNotice(result.actualQuestionCount < result.requestedQuestionCount
+      ? `Assessment created with all ${result.actualQuestionCount} eligible questions available.`
+      : `Assessment created with ${result.actualQuestionCount} questions.`)
+    void fetchAssessments()
+    void fetchModuleOptions()
+  }, [fetchAssessments, fetchModuleOptions])
 
   async function toggleStatus(asmt: LiveAssessment) {
     const newStatus = asmt.status === "live" ? "offline" : "live"
@@ -529,7 +595,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={fetchAssessments} className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors">
+          <button type="button" aria-label="Refresh assessments and modules" onClick={() => { void fetchAssessments(); void fetchModuleOptions() }} className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors">
             <RefreshCwIcon size={14} />
           </button>
           <button
@@ -541,6 +607,8 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
           </button>
         </div>
       </div>
+
+      {creationNotice && <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300"><span>{creationNotice}</span><button type="button" onClick={() => setCreationNotice("")} aria-label="Dismiss creation message" className="font-bold">×</button></div>}
 
       {loading ? (
         <div className="flex flex-col gap-3">
@@ -643,7 +711,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
         </div>
       )}
 
-      {createOpen && <CreateModal defaults={defaults} onClose={() => setCreateOpen(false)} onCreated={fetchAssessments} />}
+      {createOpen && <CreateModal defaults={defaults} modules={moduleOptions} optionsLoading={optionsLoading} optionsError={optionsError} onRetryOptions={() => void fetchModuleOptions()} onClose={() => setCreateOpen(false)} onCreated={handleCreated} />}
       {analyticsTarget && <AnalyticsModal assessment={analyticsTarget} onClose={() => setAnalyticsTarget(null)} />}
     </div>
   )
