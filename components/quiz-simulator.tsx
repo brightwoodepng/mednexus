@@ -28,6 +28,7 @@ import { AppearanceModal } from "@/components/appearance-modal"
 import { useEconomy } from "@/contexts/economy-context"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { useQuestionKeyboardNavigation } from "@/hooks/use-question-keyboard-navigation"
+import { useQuestionSwipeNavigation } from "@/hooks/use-question-swipe-navigation"
 import type { QuizSession } from "@/lib/quiz-session"
 
 function QuestionMediaGallery({ items, className = "" }: { items: QuestionMedia[]; className?: string }) {
@@ -51,6 +52,7 @@ interface QuizSimulatorProps {
 }
 
 const SECONDS_PER_QUESTION = 90
+const SWIPE_HINT_STORAGE_KEY = "mednexus-quiz-swipe-hint:v1"
 
 // ── NP Float Toast ─────────────────────────────────────────────────────────────
 function NPFloatToast({
@@ -101,6 +103,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const [showGrandFinale, setShowGrandFinale] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [npToast, setNpToast] = useState<{ id: number; amount: number; capped: boolean } | null>(null)
+  const [showSwipeHint, setShowSwipeHint] = useState(false)
 
   // Per-question session data for anti-farming payout
   const sessionDataRef   = useRef<{questionId:string;discipline:string;isCorrect:boolean;currentStreak:number}[]>([])
@@ -142,11 +145,45 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     setIndex((currentIndex) => Math.min(questions.length - 1, currentIndex + 1))
   }, [questions.length])
 
+  const questionNavigationEnabled = !calcOpen && !labsOpen && !focusNavOpen && !showGrandFinale && !themeOpen
+
   useQuestionKeyboardNavigation({
-    enabled: !calcOpen && !labsOpen && !focusNavOpen && !showGrandFinale && !themeOpen,
+    enabled: questionNavigationEnabled,
     onPrevious: goToPreviousQuestion,
     onNext: goToNextQuestion,
   })
+
+  const dismissSwipeHint = useCallback(() => {
+    setShowSwipeHint(false)
+    try {
+      window.localStorage.setItem(SWIPE_HINT_STORAGE_KEY, "seen")
+    } catch {
+      // Storage can be unavailable in privacy-restricted browsers.
+    }
+  }, [])
+
+  const questionSwipeHandlers = useQuestionSwipeNavigation({
+    enabled: questionNavigationEnabled,
+    onPrevious: goToPreviousQuestion,
+    onNext: goToNextQuestion,
+    onNavigate: dismissSwipeHint,
+  })
+
+  useEffect(() => {
+    const isPhoneLike = window.matchMedia("(pointer: coarse)").matches && window.matchMedia("(max-width: 767px)").matches
+    if (!isPhoneLike) return
+
+    try {
+      if (window.localStorage.getItem(SWIPE_HINT_STORAGE_KEY)) return
+      window.localStorage.setItem(SWIPE_HINT_STORAGE_KEY, "seen")
+    } catch {
+      // Still show the hint for this session when storage is unavailable.
+    }
+
+    setShowSwipeHint(true)
+    const timeout = window.setTimeout(() => setShowSwipeHint(false), 4500)
+    return () => window.clearTimeout(timeout)
+  }, [])
 
   // Repeat-cap estimate for NP toast (uses persisted history as proxy)
   const repeatCapMap = useMemo(() => {
@@ -734,11 +771,21 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           {isFlashing && (
             <div className="pointer-events-none absolute inset-0 z-10 bg-rose-500/[0.12]" />
           )}
-          <div className={`flex-1 px-4 pt-5 pb-6 sm:px-6 sm:pt-8 sm:pb-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}>
+          <div
+            className={`flex-1 touch-pan-y px-4 pt-5 pb-6 sm:px-6 sm:pt-8 sm:pb-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}
+            {...questionSwipeHandlers}
+          >
             <div className="mb-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Question {index + 1} of {questions.length}
               </span>
+              {showSwipeHint && (
+                <div role="status" aria-live="polite" className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground md:hidden">
+                  <ChevronLeftIcon size={14} aria-hidden="true" />
+                  <span>Swipe left or right to change questions</span>
+                  <ChevronRightIcon size={14} aria-hidden="true" />
+                </div>
+              )}
             </div>
 
             <RichText content={current.vignette} className="text-[15px] text-foreground text-pretty sm:text-base" />
