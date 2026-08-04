@@ -4,14 +4,10 @@ import { auditAdmin } from "@/lib/platform-settings"
 import { measuredJson } from "@/lib/api-efficiency"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 import { isAssessmentGradingMode } from "@/lib/assessment-grading"
+import { optionalRuntimePool } from "@/lib/runtime-db"
 
 async function getPool() {
-  if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
-  try {
-    const { default: pool, ensureSchema } = await import("@/lib/db")
-    await ensureSchema()
-    return pool
-  } catch { return null }
+  return optionalRuntimePool()
 }
 
 function rowToAssessment(row: Record<string, unknown>) {

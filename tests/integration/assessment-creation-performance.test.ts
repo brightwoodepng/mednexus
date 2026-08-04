@@ -15,6 +15,8 @@ describe("live assessment creation performance", () => {
     expect(optionsRoute).toContain('requireAdminRequest(req, "manage_assessments")')
     expect(optionsRoute).toContain("eligibleQuestionCount")
     expect(optionsRoute).not.toContain("question.value AS question")
+    expect(optionsRoute).toContain("runtimePool()")
+    expect(optionsRoute).not.toContain("ensureSchema")
   })
 
   it("shares canonical module and structural eligibility rules", () => {

@@ -13,7 +13,7 @@ import { useApplicationShell } from "@/components/authenticated-application-shel
 import { getHubNavigation } from "@/components/navigation/study-hub-navigation"
 import Link from "next/link"
 import { canShowAdminConsoleLink } from "@/lib/admin-console-link"
-import { learnerHomeScreen, learnerScreenUrl, studyHubFromUrl } from "@/lib/admin-hub-routing"
+import { learnerHomeScreen, learnerScreenUrl } from "@/lib/admin-hub-routing"
 
 interface SidebarProps { screen: Screen; onNavigate: (screen: Screen) => void; onSelectStudyHub: (hub: StudyHubId) => void; onOpenThemes: () => void; onOpenImporter?: () => void; mobileOpen: boolean; onCloseMobile: () => void; onReadyForQuiz: (config: { module: string; discipline: string | null }) => void; onSelectModule: (module: string) => void; collapsed: boolean; onCollapse: () => void; onExpand: () => void }
 
@@ -50,18 +50,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
   const nav = (next: Screen) => { onNavigate(next); onCloseMobile() }
   const selectStudyHub = (hub: StudyHubId) => {
     onSelectStudyHub(hub)
-    if (!mobileOpen) return
-
-    onCloseMobile()
-    // The normal handler writes the canonical URL synchronously. Some mobile
-    // browsers can cancel the selector's React update when its drawer unmounts
-    // during the same tap. Verify the URL after the event and use a real
-    // navigation only as a recovery path, so a tap can never become a no-op.
-    window.setTimeout(() => {
-      if (studyHubFromUrl() !== hub) {
-        window.location.assign(learnerScreenUrl(learnerHomeScreen(hub), hub))
-      }
-    }, 0)
+    if (mobileOpen) onCloseMobile()
   }
 
   const firstName = user?.name?.split(" ")[0] ?? "Guest"
@@ -102,6 +91,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
         <div data-tutorial-anchor={mobileOpen ? "drawer-workspace-switcher" : "desktop-workspace-switcher"}><StudyHubDropdown
           activeHub={activeStudyHub}
           onSelect={selectStudyHub}
+          hrefForHub={mobileOpen ? (hub) => learnerScreenUrl(learnerHomeScreen(hub), hub) : undefined}
           open={workspaceSwitcherOpen}
           onOpenChange={setWorkspaceSwitcherOpen}
         /></div>

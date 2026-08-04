@@ -5,14 +5,10 @@ import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 import { getRequestAuth } from "@/lib/request-auth"
 import { assessmentPercentage, isAssessmentGradingMode } from "@/lib/assessment-grading"
 import { assessmentEligibilitySql, assessmentModuleSql } from "@/lib/assessment-eligibility"
+import { optionalRuntimePool } from "@/lib/runtime-db"
 
 async function getPool() {
-  if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
-  try {
-    const { default: pool, ensureSchema } = await import("@/lib/db")
-    await ensureSchema()
-    return pool
-  } catch { return null }
+  return optionalRuntimePool()
 }
 
 function rowToAssessment(row: Record<string, unknown>) {

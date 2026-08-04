@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { measuredJson } from "@/lib/api-efficiency"
 import { assessmentEligibilitySql, assessmentModuleSql } from "@/lib/assessment-eligibility"
+import { runtimePool } from "@/lib/runtime-db"
 
 export const dynamic = "force-dynamic"
 
@@ -9,8 +10,7 @@ export async function GET(req: NextRequest) {
   const queryStartedAt = performance.now()
   if (!await requireAdminRequest(req, "manage_assessments")) return adminAccessDenied(req)
   try {
-    const { default: pool, ensureSchema } = await import("@/lib/db")
-    await ensureSchema()
+    const pool = await runtimePool()
     const moduleSql = assessmentModuleSql("question.value")
     const result = await pool.query<{ name: string; eligible_question_count: number; updated_at: string | null }>(
       `SELECT ${moduleSql} AS name,

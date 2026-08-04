@@ -4,6 +4,7 @@ import sharp from "sharp"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { publicMcqMediaUrl, putMcqMedia } from "@/lib/mcq-media-storage"
 import { auditAdmin } from "@/lib/platform-settings"
+import { runtimePool } from "@/lib/runtime-db"
 
 const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"])
 const MAX_INPUT_BYTES = 12 * 1024 * 1024
@@ -45,8 +46,7 @@ export async function POST(req: NextRequest) {
   const caption = String(form.get("caption") ?? "").trim().slice(0, 300)
   const alt = String(form.get("alt") ?? "Clinical question image").trim().slice(0, 300) || "Clinical question image"
   const questionId = String(form.get("questionId") ?? "").trim() || null
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const objectLocation = await putMcqMedia(objectKey, bytes, mimeType, checksum)
   await pool.query("INSERT INTO mednexus_mcq_media_assets (id,question_id,object_key,mime_type,byte_size,checksum_sha256,width,height,caption,alt_text,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)", [id, questionId, objectLocation, mimeType, bytes.byteLength, checksum, metadata.width, metadata.height, caption, alt, admin.uid])
   await auditAdmin(pool, admin.uid, "upload", "mcq_media", id, { questionId, mimeType, size: bytes.byteLength, checksum, width: metadata.width, height: metadata.height })

@@ -49,6 +49,8 @@ describe("professional admin MCQ manager", () => {
     expect(questionsRoute).toContain('body.status === "live"')
     expect(questionsRoute).toContain("incomplete and cannot be published")
     expect(questionsRoute).toContain("await auditAdmin")
+    expect(questionsRoute).toContain("runtimePool()")
+    expect(questionsRoute).not.toContain("ensureSchema")
     expect(exportRoute).toContain('searchParams.getAll("id")')
     expect(exportRoute).toContain("selectedIds: ids.length")
   })

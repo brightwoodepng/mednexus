@@ -73,10 +73,9 @@ describe("Theory Vault phone experience", () => {
     expect(shell).toContain("onSelectStudyHub={onSelectStudyHub}")
     expect(sidebar).toContain("onSelect={selectStudyHub}")
     expect(sidebar).toContain("onSelectStudyHub(hub)")
-    expect(sidebar).toContain("if (!mobileOpen) return")
-    expect(sidebar).toContain("studyHubFromUrl() !== hub")
-    expect(sidebar).toContain("window.location.assign(learnerScreenUrl(learnerHomeScreen(hub), hub))")
+    expect(sidebar).toContain("hrefForHub={mobileOpen ? (hub) => learnerScreenUrl(learnerHomeScreen(hub), hub) : undefined}")
     expect(sidebar).not.toContain("flushSync")
+    expect(sidebar).not.toContain("window.setTimeout")
     expect(sidebar).not.toContain("onAfterSelect")
     expect(sidebar).toContain("<StudyHubDropdownIcon activeHub={activeStudyHub} onSelect={onSelectStudyHub}")
     expect(theory).toContain('role="status" aria-live="polite"')
@@ -90,9 +89,8 @@ describe("Theory Vault phone experience", () => {
 
   it("keeps learner Theory reads separate from release-only schema migrations", async () => {
     const server = await readFile("lib/theory-server.ts", "utf8")
-    expect(server).not.toContain('import { ensureSchema } from "@/lib/db"')
-    expect(server).not.toContain("await ensureSchema()")
-    expect(server).toContain('const { default: pool } = await import("@/lib/db")')
+    expect(server).not.toContain("ensureSchema")
+    expect(server).toContain("return runtimePool()")
   })
 
   it("centers the welcome modal and keeps the phone drawer above navigation", async () => {

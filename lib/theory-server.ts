@@ -3,6 +3,7 @@ import "server-only"
 import crypto from "node:crypto"
 import type { Pool, PoolClient } from "pg"
 import type { TheoryConfidence, TheorySelfRating, TheoryStatus } from "@/lib/types"
+import { runtimePool } from "@/lib/runtime-db"
 
 export const THEORY_PAGE_SIZE = 20
 export const THEORY_MAX_PAGE_SIZE = 50
@@ -13,12 +14,7 @@ export function theoryDatabaseAvailable() {
 
 export async function theoryPool(): Promise<Pool> {
   if (!theoryDatabaseAvailable()) throw new Error("Theory Vault database is not configured.")
-  const { default: pool } = await import("@/lib/db")
-  // Learner requests run with the application database role, which is allowed
-  // to read and write Theory data but is intentionally not a schema owner.
-  // Release migrations provision the schema; never attempt DDL while opening
-  // Theory Vault or every cold start can fail with insufficient privileges.
-  return pool
+  return runtimePool()
 }
 
 export function theoryId(prefix: string) {
