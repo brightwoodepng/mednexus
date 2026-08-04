@@ -55,8 +55,9 @@ describe("Theory Vault phone experience", () => {
   })
 
   it("switches workspaces and their home screens through one immediate action", async () => {
-    const [app, shell, sidebar, theory] = await Promise.all([
+    const [app, applicationShell, shell, sidebar, theory] = await Promise.all([
       readFile("components/mednexus-app.tsx", "utf8"),
+      readFile("components/authenticated-application-shell.tsx", "utf8"),
       readFile("components/learner-workspace-shell.tsx", "utf8"),
       readFile("components/sidebar.tsx", "utf8"),
       readFile("components/theory-vault.tsx", "utf8"),
@@ -66,6 +67,9 @@ describe("Theory Vault phone experience", () => {
     expect(app).toContain("setScreen(homeScreen)")
     expect(app).toContain("learnerScreenUrl(homeScreen, hub)")
     expect(app).toContain("onSelectStudyHub={handleStudyHubNavigation}")
+    expect(applicationShell).toContain("const [activeStudyHub, setActiveStudyHub] = useState")
+    expect(applicationShell).not.toContain("withHubContext")
+    expect(applicationShell).not.toContain("window.history")
     expect(shell).toContain("onSelectStudyHub={onSelectStudyHub}")
     expect(sidebar).toContain("onSelect={onSelectStudyHub}")
     expect(sidebar).toContain("<StudyHubDropdownIcon activeHub={activeStudyHub} onSelect={onSelectStudyHub}")
