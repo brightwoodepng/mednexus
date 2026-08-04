@@ -7,7 +7,6 @@ import { AssessmentReview } from "@/components/assessment-review"
 import { StethoscopeIcon, ClockIcon, AlertTriangleIcon, CheckIcon, TrophyIcon, RefreshCwIcon } from "@/components/icons"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
-import { ALL_LEVELS } from "@/lib/levels"
 
 type Phase = "loading" | "unavailable" | "name-entry" | "exam" | "blind-review" | "results"
 
@@ -34,7 +33,6 @@ interface HighScore {
 // Stored after a completed attempt — latestResult/questions optional for in-progress state
 interface StoredAttempt {
   guestName: string
-  classLevel?: string
   guestId: string
   attemptCount: number
   triesAllowed: number
@@ -50,7 +48,7 @@ interface StoredAttempt {
   }
   highScore?: HighScore
   questions?: Question[]
-  guestToken?: string
+  participantToken?: string
 }
 
 function attemptKey(token: string) { return `mednexus-exam-${token}` }
@@ -68,15 +66,15 @@ function loadAttempt(token: string): StoredAttempt | null {
   } catch { return null }
 }
 
-async function createGuestSession(name: string, classLevel: string) {
-  const response = await fetch("/api/auth/guest", {
+async function createAssessmentParticipant(token: string, name: string) {
+  const response = await fetch("/api/assessments/by-token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, classLevel }),
+    body: JSON.stringify({ token, name }),
   })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok || !data.sessionToken) throw new Error(data.error ?? "Unable to start guest session")
-  return data as { uid: string; name: string; classLevel: string; sessionToken: string }
+  if (!response.ok || !data.participantToken) throw new Error(data.error ?? "Unable to join this assessment")
+  return data as { participantId: string; name: string; participantToken: string }
 }
 
 function formatTimeTaken(secs: number): string {
@@ -93,7 +91,6 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
   const [assessment, setAssessment] = useState<LiveAssessment | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [guestName, setGuestName] = useState("")
-  const [guestClassLevel, setGuestClassLevel] = useState("")
   const [guestId, setGuestId] = useState("")
   const [guestToken, setGuestToken] = useState("")
   const [nameError, setNameError] = useState("")
@@ -119,21 +116,20 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         const stored = loadAttempt(token)
         const triesAllowed = asmt.triesAllowed ?? 1
         let serverAttemptCount = 0
-        if (stored?.guestToken) {
+        if (stored?.participantToken) {
           const attemptsResponse = await fetch(`/api/assessments/${asmt.id}/attempt`, {
-            headers: { "x-guest-token": stored.guestToken },
+            headers: { "x-assessment-token": stored.participantToken },
           })
           if (attemptsResponse.ok) {
             const attempts = await attemptsResponse.json()
             serverAttemptCount = Number(attempts.count ?? 0)
-            setGuestToken(stored.guestToken)
+            setGuestToken(stored.participantToken)
           }
         }
 
         // 1. Tries exhausted with a completed result → show full review
         if (stored && stored.latestResult && serverAttemptCount >= triesAllowed) {
           setGuestName(stored.guestName)
-          setGuestClassLevel(stored.classLevel ?? "")
           setGuestId(stored.guestId)
           setTriesUsed(serverAttemptCount)
           setResult({ ...stored.latestResult, questions: stored.questions ?? qs })
@@ -145,7 +141,6 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         // 2. Attempt completed but tries remain → show blind review
         if (stored && stored.latestResult && serverAttemptCount > 0 && serverAttemptCount < triesAllowed) {
           setGuestName(stored.guestName)
-          setGuestClassLevel(stored.classLevel ?? "")
           setGuestId(stored.guestId)
           setTriesUsed(serverAttemptCount)
           setResult({ ...stored.latestResult, questions: stored.questions ?? qs })
@@ -155,7 +150,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         }
 
         // 3. In-progress session (reloaded / came back) → resume exam
-        if (stored?.guestId && stored.guestToken) {
+        if (stored?.guestId && stored.participantToken) {
           try {
             const sk = sessionKey(asmt.id, stored.guestId)
             const sessionRaw = localStorage.getItem(sk)
@@ -165,9 +160,8 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
               const remaining = Math.max(0, asmt.timeLimitMins * 60 - elapsed)
               if (remaining >= 0) {
                 setGuestName(stored.guestName)
-                setGuestClassLevel(stored.classLevel ?? "")
                 setGuestId(stored.guestId)
-                setGuestToken(stored.guestToken)
+                setGuestToken(stored.participantToken)
                 setTriesUsed(serverAttemptCount)
                 if (stored.highScore) setBestScore(stored.highScore)
                 setPhase("exam")
@@ -187,17 +181,16 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
 
   async function handleStartExam() {
     if (!guestName.trim()) { setNameError("Please enter your name to continue."); return }
-    if (!guestClassLevel) { setNameError("Please select your class level to continue."); return }
     setNameError("")
     try {
-      const guest = await createGuestSession(guestName.trim(), guestClassLevel)
-      setGuestId(guest.uid)
+      const guest = await createAssessmentParticipant(token, guestName.trim())
+      setGuestId(guest.participantId)
       setGuestName(guest.name)
-      setGuestToken(guest.sessionToken)
+      setGuestToken(guest.participantToken)
 
       // Keep only a resumable display session locally; the server owns attempts.
       const existing = loadAttempt(token)
-      saveAttempt(token, { guestName: guest.name, classLevel: guest.classLevel, guestId: guest.uid, guestToken: guest.sessionToken, attemptCount: triesUsed, triesAllowed: assessment?.triesAllowed ?? 1, latestResult: existing?.latestResult, highScore: existing?.highScore, questions: existing?.questions })
+      saveAttempt(token, { guestName: guest.name, guestId: guest.participantId, participantToken: guest.participantToken, attemptCount: triesUsed, triesAllowed: assessment?.triesAllowed ?? 1, latestResult: existing?.latestResult, highScore: existing?.highScore, questions: existing?.questions })
       setPhase("exam")
     } catch (error) {
       setNameError(error instanceof Error ? error.message : "Unable to start guest session.")
@@ -219,7 +212,6 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
     // Save completed attempt — highScore only updates when strictly better
     saveAttempt(token, {
       guestName: guestName.trim(),
-      classLevel: guestClassLevel,
       guestId,
       attemptCount: newAttemptCount,
       triesAllowed: assessment?.triesAllowed ?? 1,
@@ -235,7 +227,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
       },
       highScore: newHighScore,
       questions: res.questions,
-      guestToken,
+      participantToken: guestToken,
     })
 
     setResult(res)
@@ -333,7 +325,7 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         questions={questions}
         userName={guestName.trim() || "Guest"}
         userId={guestId}
-        authHeader={{ key: "x-guest-token", value: guestToken }}
+        authHeader={{ key: "x-assessment-token", value: guestToken }}
         onComplete={handleComplete}
       />
     )
@@ -591,21 +583,6 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
               className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               autoFocus
             />
-          </div>
-          <div>
-            <label htmlFor="assessment-guest-level" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-              Class Level
-            </label>
-            <select
-              id="assessment-guest-level"
-              value={guestClassLevel}
-              onChange={(event) => { setGuestClassLevel(event.target.value); setNameError("") }}
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-              required
-            >
-              <option value="" disabled>Select your class level…</option>
-              {ALL_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
-            </select>
           </div>
           {nameError && <p role="alert" className="text-xs text-destructive">{nameError}</p>}
           <button type="button" onClick={handleStartExam}

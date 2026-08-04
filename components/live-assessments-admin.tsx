@@ -249,7 +249,7 @@ function AnalyticsModal({
         <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;">${a.userName}</td>
         <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;">
           <span style="font-size:10px;font-weight:600;text-transform:uppercase;padding:2px 7px;border-radius:9999px;background:${a.isGuest ? "#fef9c3" : "#eff6ff"};color:${a.isGuest ? "#a16207" : "#1d4ed8"};">
-            ${a.isGuest ? "Guest" : "Registered"}
+            ${a.isGuest ? "External" : "Registered"}
           </span>
         </td>
         <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;">${a.score}/${a.total}</td>
@@ -321,8 +321,8 @@ function AnalyticsModal({
     </div>
     <div class="stat">
       <div class="stat-label">Participants</div>
-      <div class="stat-value" style="font-size:16px;padding-top:4px;">${analytics.registeredCount} reg<br/>${analytics.guestCount} guest</div>
-      <div class="stat-sub">registered vs guest</div>
+      <div class="stat-value" style="font-size:16px;padding-top:4px;">${analytics.registeredCount} reg<br/>${analytics.guestCount} external</div>
+      <div class="stat-sub">registered vs link participants</div>
     </div>
   </div>
 
@@ -428,7 +428,7 @@ function AnalyticsModal({
                   { label: "Total Submitted", value: String(analytics.totalSubmitted), sub: `${analytics.uniqueParticipants} unique participants` },
                   { label: "Average Score", value: `${analytics.averageScore}%`, sub: `Pass mark: ${analytics.passMark}%` },
                   { label: "Passed", value: String(analytics.passCount), sub: analytics.totalSubmitted ? `${Math.round((analytics.passCount / analytics.totalSubmitted) * 100)}% pass rate` : "–" },
-                  { label: "Participants", value: `${analytics.registeredCount} reg · ${analytics.guestCount} guest`, sub: "registered vs external" },
+                  { label: "Participants", value: `${analytics.registeredCount} reg · ${analytics.guestCount} external`, sub: "registered vs link participants" },
                 ].map(({ label, value, sub }) => (
                   <div key={label} className="rounded-xl border border-border bg-muted/30 p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
@@ -455,7 +455,7 @@ function AnalyticsModal({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-foreground truncate">{att.userName}
-                              {att.isGuest && <span className="ml-1.5 text-[9px] font-bold uppercase bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">Guest</span>}
+                              {att.isGuest && <span className="ml-1.5 text-[9px] font-bold uppercase bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">External</span>}
                             </p>
                           </div>
                           <span className={`text-sm font-bold tabular-nums ${pass ? "text-emerald-600" : "text-destructive"}`}>

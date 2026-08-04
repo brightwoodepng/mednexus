@@ -19,7 +19,7 @@ interface Props {
   questions: Question[]
   userName: string
   userId: string
-  authHeader: { key: "x-session-token" | "x-guest-token"; value: string }
+  authHeader: { key: "x-session-token" | "x-guest-token" | "x-assessment-token"; value: string }
   onComplete: (result: {
     score: number
     total: number

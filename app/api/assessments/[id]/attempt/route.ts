@@ -7,6 +7,7 @@ import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 import { assessmentGradingModeSql, gradeAssessment, isAssessmentGradingMode } from "@/lib/assessment-grading"
 import { optionalRuntimePool } from "@/lib/runtime-db"
 import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
+import { verifyAssessmentParticipantToken } from "@/lib/assessment-participant-token"
 
 async function getPool() {
   return optionalRuntimePool()
@@ -15,7 +16,13 @@ async function getPool() {
 type AuthenticatedAccount = { uid: string; name: string; role: string; isGuest: boolean }
 
 /** Resolve display identity from the account record, never from a client payload. */
-async function getAuthenticatedAccount(pool: Pool, req: NextRequest): Promise<AuthenticatedAccount | null> {
+async function getAuthenticatedAccount(pool: Pool, req: NextRequest, assessmentId: string): Promise<AuthenticatedAccount | null> {
+  const participant = verifyAssessmentParticipantToken(req.headers.get("x-assessment-token") ?? "")
+  if (participant) {
+    return participant.assessmentId === assessmentId
+      ? { uid: participant.participantId, name: participant.name, role: "EXTERNAL", isGuest: true }
+      : null
+  }
   const auth = await getRequestAuth(req, { allowGuest: true })
   if (!auth) return null
 
@@ -42,13 +49,13 @@ function suppliedIdentityConflicts(body: Record<string, unknown>, account: Authe
 }
 
 // GET /api/assessments/[id]/attempt
-// Returns attempts owned by the authenticated registered user or guest.
+// Returns attempts owned by the registered user, app guest, or link participant.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const pool = await getPool()
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
-    const account = await getAuthenticatedAccount(pool, req)
+    const account = await getAuthenticatedAccount(pool, req, id)
     if (!account) return unauthorized()
     const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
 
@@ -81,7 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 // POST /api/assessments/[id]/attempt
-// body: { answers }. Identity and scores are always derived server-side.
+// body: { answers }. Identity and scores are always derived from a signed credential server-side.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const pool = await getPool()
   if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
@@ -90,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id } = await params
     const body = await req.json() as Record<string, unknown>
-    const account = await getAuthenticatedAccount(pool, req)
+    const account = await getAuthenticatedAccount(pool, req, id)
     if (!account) return unauthorized()
     if (suppliedIdentityConflicts(body, account)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     const answers = body.answers && typeof body.answers === "object" && !Array.isArray(body.answers)
