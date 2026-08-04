@@ -3,13 +3,15 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { bestAttempts, loadAttempts, median, percentage } from "@/lib/admin-results"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 import { runtimePool } from "@/lib/runtime-db"
+import { assessmentGradingModeSql } from "@/lib/assessment-grading"
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdminRequest(req, "manage_assessments")) return adminAccessDenied(req)
   const { id } = await params
   const pool = await runtimePool()
   const result = await pool.query(
-    `SELECT id,title,module_name,question_count,pass_mark,grading_mode,status
+    `SELECT id,title,module_name,question_count,pass_mark,
+      ${assessmentGradingModeSql("mednexus_assessments")} AS grading_mode,status
      FROM mednexus_assessments WHERE id=$1`,
     [id],
   )

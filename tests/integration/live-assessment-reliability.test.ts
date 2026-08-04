@@ -20,7 +20,7 @@ describe("live assessment reliability", () => {
 
   it("includes the grading rule in guest assessment instructions", () => {
     const guestAssessment = read("app/api/assessments/by-token/route.ts")
-    expect(guestAssessment).toContain("pass_mark,grading_mode,status")
+    expect(guestAssessment).toContain("assessmentGradingModeSql")
     expect(guestAssessment).toContain('gradingMode: row.grading_mode ?? "standard"')
   })
 

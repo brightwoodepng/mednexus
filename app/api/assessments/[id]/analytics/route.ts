@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
-import { assessmentPercentage } from "@/lib/assessment-grading"
+import { assessmentGradingModeSql, assessmentPercentage } from "@/lib/assessment-grading"
 import { bestAttempts, loadAttempts } from "@/lib/admin-results"
 import { optionalRuntimePool } from "@/lib/runtime-db"
 import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
@@ -19,7 +19,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
 
     // Get assessment to find pass_mark
-    const asmtRes = await pool.query("SELECT pass_mark, tries_allowed, grading_mode FROM mednexus_assessments WHERE id = $1", [id])
+    const asmtRes = await pool.query(`SELECT pass_mark, tries_allowed,
+      ${assessmentGradingModeSql("mednexus_assessments")} AS grading_mode
+      FROM mednexus_assessments WHERE id = $1`, [id])
     if (!asmtRes.rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 })
     const { pass_mark, tries_allowed, grading_mode } = asmtRes.rows[0]
 

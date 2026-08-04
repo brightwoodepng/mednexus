@@ -3,7 +3,7 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin, getPlatformSettings } from "@/lib/platform-settings"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 import { getRequestAuth } from "@/lib/request-auth"
-import { assessmentPercentage, isAssessmentGradingMode } from "@/lib/assessment-grading"
+import { assessmentGradingModeSql, assessmentPercentage, isAssessmentGradingMode } from "@/lib/assessment-grading"
 import { assessmentEligibilitySql, assessmentModuleSql } from "@/lib/assessment-eligibility"
 import { optionalRuntimePool } from "@/lib/runtime-db"
 import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     const result = await pool.query(
       `SELECT
         a.id, a.title, a.module_name, a.question_count, a.time_limit_mins,
-        a.tries_allowed, a.pass_mark, a.grading_mode, a.status,
+        a.tries_allowed, a.pass_mark, ${assessmentGradingModeSql("a")} AS grading_mode, a.status,
         CASE WHEN $1::boolean THEN a.share_token ELSE NULL END AS share_token,
         a.created_at,
         COALESCE(attempts.attempts_used, 0)::int AS attempts_used,
@@ -159,11 +159,13 @@ export async function POST(req: NextRequest) {
          ORDER BY question.value->>'id'
        )
        INSERT INTO mednexus_assessments
-         (id,title,module_name,question_ids,question_snapshot,question_count,time_limit_mins,tries_allowed,pass_mark,grading_mode,status,share_token)
+         (id,title,module_name,question_ids,question_snapshot,question_count,time_limit_mins,tries_allowed,pass_mark,status,share_token)
        SELECT $1,$2,$3,
          jsonb_agg(question->>'id'),
-         jsonb_agg(question),
-         COUNT(*)::int,$5,$6,$7,$8,'offline',$9
+         jsonb_agg(question) || jsonb_build_array(jsonb_build_object(
+           '_mednexusAssessment', jsonb_build_object('gradingMode', $8)
+         )),
+         COUNT(*)::int,$5,$6,$7,'offline',$9
        FROM selected
        HAVING COUNT(*) > 0
        RETURNING question_count`,

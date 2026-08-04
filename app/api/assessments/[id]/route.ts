@@ -3,7 +3,7 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
 import { measuredJson } from "@/lib/api-efficiency"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
-import { isAssessmentGradingMode } from "@/lib/assessment-grading"
+import { assessmentGradingModeSql, assessmentSnapshotWithGradingSql, isAssessmentGradingMode } from "@/lib/assessment-grading"
 import { optionalRuntimePool } from "@/lib/runtime-db"
 import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
 
@@ -42,7 +42,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     let row: Record<string, unknown> | null = null
     const projection = `id,title,module_name,question_ids,question_count,
-      time_limit_mins,tries_allowed,pass_mark,grading_mode,status,share_token,created_at`
+      time_limit_mins,tries_allowed,pass_mark,
+      ${assessmentGradingModeSql("mednexus_assessments")} AS grading_mode,
+      status,share_token,created_at`
 
     if (canManageAssessments) {
       const res = await pool.query(`SELECT ${projection} FROM mednexus_assessments WHERE id = $1`, [id])
@@ -104,7 +106,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       if (!isAssessmentGradingMode(body.gradingMode)) {
         return NextResponse.json({ error: "Invalid grading mode" }, { status: 400 })
       }
-      fields.push(`grading_mode = $${i++}`)
+      fields.push(`question_snapshot = ${assessmentSnapshotWithGradingSql("question_snapshot", `$${i++}`)}`)
       values.push(body.gradingMode)
     }
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { bestAttempts, loadAttempts, percentage } from "@/lib/admin-results"
 import { auditAdmin } from "@/lib/platform-settings"
-import { gradingModeLabel } from "@/lib/assessment-grading"
+import { assessmentGradingModeSql, gradingModeLabel } from "@/lib/assessment-grading"
 import { runtimePool } from "@/lib/runtime-db"
 
 function csvCell(value: unknown) {
@@ -18,7 +18,9 @@ export async function GET(req: NextRequest) {
   const view = req.nextUrl.searchParams.get("view") === "all" ? "all" : "best"
   const pool = await runtimePool()
   const result = await pool.query(
-    "SELECT id,title,pass_mark,grading_mode FROM mednexus_assessments WHERE id=$1",
+    `SELECT id,title,pass_mark,
+      ${assessmentGradingModeSql("mednexus_assessments")} AS grading_mode
+     FROM mednexus_assessments WHERE id=$1`,
     [id],
   )
   const assessment = result.rows[0]

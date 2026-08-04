@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
+import { assessmentGradingModeSql } from "@/lib/assessment-grading"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -22,7 +23,9 @@ export async function GET(req: NextRequest) {
 
     const res = await pool.query(
       `SELECT id,title,module_name,question_ids,question_count,
-        time_limit_mins,tries_allowed,pass_mark,grading_mode,status,share_token,created_at
+        time_limit_mins,tries_allowed,pass_mark,
+        ${assessmentGradingModeSql("mednexus_assessments")} AS grading_mode,
+        status,share_token,created_at
        FROM mednexus_assessments WHERE share_token = $1`,
       [token]
     )
