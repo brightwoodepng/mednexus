@@ -24,6 +24,16 @@ describe("live assessment reliability", () => {
     expect(guestAssessment).toContain('gradingMode: row.grading_mode ?? "standard"')
   })
 
+  it("collects and submits the required class level before starting a guest exam", () => {
+    const guestPage = read("app/exam/[token]/page.tsx")
+    expect(guestPage).toContain('import { ALL_LEVELS } from "@/lib/levels"')
+    expect(guestPage).toContain('id="assessment-guest-level"')
+    expect(guestPage).toContain("ALL_LEVELS.map")
+    expect(guestPage).toContain("createGuestSession(guestName.trim(), guestClassLevel)")
+    expect(guestPage).toContain("JSON.stringify({ name, classLevel })")
+    expect(guestPage).not.toContain('classLevel: ""')
+  })
+
   it("uses the unified attempt source for accurate registered and guest analytics", () => {
     const analytics = read("app/api/assessments/[id]/analytics/route.ts")
     expect(analytics).toContain("bestAttempts(await loadAttempts(pool, id))")
