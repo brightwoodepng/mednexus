@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
        SELECT $1,$2,$3,
          jsonb_agg(question->>'id'),
          jsonb_agg(question) || jsonb_build_array(jsonb_build_object(
-           '_mednexusAssessment', jsonb_build_object('gradingMode', $8)
+           '_mednexusAssessment', jsonb_build_object('gradingMode', $8::text)
          )),
          COUNT(*)::int,$5,$6,$7,'offline',$9
        FROM selected

@@ -24,7 +24,7 @@ export function assessmentSnapshotWithGradingSql(snapshotExpression: string, gra
     FROM jsonb_array_elements(COALESCE(${snapshotExpression}, '[]'::jsonb)) snapshot_item(value)
     WHERE NOT snapshot_item.value ? '${ASSESSMENT_METADATA_KEY}'
   ), '[]'::jsonb) || jsonb_build_array(jsonb_build_object(
-    '${ASSESSMENT_METADATA_KEY}', jsonb_build_object('gradingMode', ${gradingModeParameter})
+    '${ASSESSMENT_METADATA_KEY}', jsonb_build_object('gradingMode', ${gradingModeParameter}::text)
   )))`
 }
 
