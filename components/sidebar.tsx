@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { flushSync } from "react-dom"
 import { User } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -48,10 +49,15 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
   const navigation = useMemo(() => getHubNavigation(activeStudyHub), [activeStudyHub])
   const nav = (next: Screen) => { onNavigate(next); onCloseMobile() }
   const selectStudyHub = (hub: StudyHubId) => {
+    if (mobileOpen) {
+      // The phone drawer unmounts this selector when it closes. Commit the
+      // atomic hub, home-screen, and URL update before that unmount so a touch
+      // cannot be reduced to merely dismissing the drawer.
+      flushSync(() => onSelectStudyHub(hub))
+      onCloseMobile()
+      return
+    }
     onSelectStudyHub(hub)
-    // Let the atomic hub, home-screen, and URL update commit before the phone
-    // drawer unmounts its workspace selector.
-    if (mobileOpen) window.requestAnimationFrame(onCloseMobile)
   }
 
   const firstName = user?.name?.split(" ")[0] ?? "Guest"
