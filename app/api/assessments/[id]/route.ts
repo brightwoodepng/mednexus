@@ -8,7 +8,8 @@ import { isAssessmentGradingMode } from "@/lib/assessment-grading"
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
   try {
-    const { default: pool } = await import("@/lib/db")
+    const { default: pool, ensureSchema } = await import("@/lib/db")
+    await ensureSchema()
     return pool
   } catch { return null }
 }

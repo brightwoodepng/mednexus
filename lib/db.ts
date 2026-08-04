@@ -26,7 +26,7 @@ const pool = new Pool({
 })
 
 let initialized = false
-export const CURRENT_SCHEMA_VERSION = "2026-07-30-transfer-efficient-v1"
+export const CURRENT_SCHEMA_VERSION = "2026-08-04-assessment-grading-v1"
 
 export async function ensureSchema() {
   if (initialized) return
