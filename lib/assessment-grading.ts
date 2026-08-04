@@ -2,6 +2,32 @@ export const ASSESSMENT_GRADING_MODES = ["standard", "negative"] as const
 
 export type AssessmentGradingMode = typeof ASSESSMENT_GRADING_MODES[number]
 
+const ASSESSMENT_METADATA_KEY = "_mednexusAssessment"
+
+/**
+ * Assessment snapshots already exist on every deployed database. Keep grading
+ * metadata beside the immutable question snapshot so mixed-version databases
+ * can use negative marking without a request-time schema change.
+ */
+export function assessmentGradingModeSql(assessmentExpression: string) {
+  return `COALESCE((
+    SELECT metadata.value->'${ASSESSMENT_METADATA_KEY}'->>'gradingMode'
+    FROM jsonb_array_elements(COALESCE(${assessmentExpression}.question_snapshot, '[]'::jsonb)) metadata(value)
+    WHERE metadata.value ? '${ASSESSMENT_METADATA_KEY}'
+    LIMIT 1
+  ), 'standard')`
+}
+
+export function assessmentSnapshotWithGradingSql(snapshotExpression: string, gradingModeParameter: string) {
+  return `(COALESCE((
+    SELECT jsonb_agg(snapshot_item.value)
+    FROM jsonb_array_elements(COALESCE(${snapshotExpression}, '[]'::jsonb)) snapshot_item(value)
+    WHERE NOT snapshot_item.value ? '${ASSESSMENT_METADATA_KEY}'
+  ), '[]'::jsonb) || jsonb_build_array(jsonb_build_object(
+    '${ASSESSMENT_METADATA_KEY}', jsonb_build_object('gradingMode', ${gradingModeParameter})
+  )))`
+}
+
 export type AssessmentGrade = {
   score: number
   total: number

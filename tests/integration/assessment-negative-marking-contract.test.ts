@@ -15,12 +15,14 @@ describe("negative-marking assessment contracts", () => {
 
   it("validates grading modes when assessments are created", () => {
     expect(createRoute).toContain("isAssessmentGradingMode(gradingMode)")
-    expect(createRoute).toContain("grading_mode")
+    expect(createRoute).toContain("_mednexusAssessment")
+    expect(createRoute).not.toContain("pass_mark,grading_mode,status")
   })
 
   it("defines the grading migration without running DDL in assessment requests", () => {
     expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-08-04-assessment-grading-v1"')
     expect(database).toContain("ADD COLUMN IF NOT EXISTS grading_mode")
+    expect(createRoute).toContain("assessmentGradingModeSql")
     expect(createRoute).toContain("optionalRuntimePool")
     expect(createRoute).not.toContain("ensureSchema")
   })

@@ -4,7 +4,7 @@ import type { Pool, PoolClient } from "pg"
 import { getRequestAuth, unauthorized } from "@/lib/request-auth"
 import { boundedPagination } from "@/lib/api-efficiency"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
-import { gradeAssessment, isAssessmentGradingMode } from "@/lib/assessment-grading"
+import { assessmentGradingModeSql, gradeAssessment, isAssessmentGradingMode } from "@/lib/assessment-grading"
 import { optionalRuntimePool } from "@/lib/runtime-db"
 import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
 
@@ -103,7 +103,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))", [id, account.uid])
 
     const asmtRes = await client.query(
-      `SELECT id,question_ids,tries_allowed,pass_mark,grading_mode,status
+      `SELECT id,question_ids,tries_allowed,pass_mark,
+        ${assessmentGradingModeSql("mednexus_assessments")} AS grading_mode,status
        FROM mednexus_assessments WHERE id = $1 FOR UPDATE`,
       [id],
     )
