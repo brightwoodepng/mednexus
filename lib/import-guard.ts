@@ -5,13 +5,14 @@ import pool from "@/lib/db"
 import { authenticateRequest, type RequestAuth } from "@/lib/request-auth"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import type { ImportExtractionSummary } from "@/lib/import-types"
+import { PLAIN_TEXT_IMPORT_CHAR_LIMIT } from "@/lib/plain-text-import"
 
 export const IMPORT_LIMITS = {
   // Multipart overhead needs room above the file ceiling; JSON endpoints have
   // tighter semantic limits below (chunk text and decoded image bytes).
   requestBytes: 30 * 1024 * 1024,
   fileBytes: 25 * 1024 * 1024,
-  textChars: 200_000,
+  textChars: PLAIN_TEXT_IMPORT_CHAR_LIMIT,
   chunkChars: 24_000,
   imageCount: 50,
   imageBytes: 8 * 1024 * 1024,

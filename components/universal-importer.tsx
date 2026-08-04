@@ -8,6 +8,12 @@ import { findImportQuestionDuplicates } from "@/lib/game-question-pool"
 import { importAuthHeaders, importError } from "@/lib/import-client"
 import { parseMednexusText } from "@/lib/mednexus-text-parser"
 import {
+  PLAIN_TEXT_IMPORT_CHAR_LIMIT,
+  plainTextImportFileType,
+  readPlainTextImportFile,
+  type PlainTextImportFileType,
+} from "@/lib/plain-text-import"
+import {
   createResumableBatches,
   deleteImportSession,
   failedQuestionRanges,
@@ -652,7 +658,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     finalizeBatchSession(working)
   }
 
-  async function processDocumentFile(file: File, fileType: "docx" | "pdf") {
+  async function processDocumentFile(file: File, fileType: "docx" | "pdf" | PlainTextImportFileType) {
     setError("")
     setPartialImportWarning("")
     setImportSummary(null)
@@ -681,18 +687,37 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         await deleteImportSession(fingerprint).catch(() => undefined)
       }
 
-      setProgressMessage(`Extracting ${fileType === "docx" ? "document" : "PDF"} text and images…`)
-      const formData = new FormData()
-      formData.append("file", file)
-      const route = fileType === "docx" ? "/api/parse-docx" : "/api/parse-pdf-file"
-      const extractResponse = await fetch(route, { method: "POST", body: formData, headers: importAuthHeaders() })
-      if (!extractResponse.ok) throw new Error(await importError(extractResponse))
-
-      const { text, images = [], summary } = await extractResponse.json() as {
+      setProgressMessage(
+        fileType === "txt" || fileType === "md"
+          ? `Reading ${fileType === "md" ? "Markdown" : "text"} file…`
+          : `Extracting ${fileType === "docx" ? "document" : "PDF"} text and images…`,
+      )
+      let extracted: {
         text: string
         images: ImportSourceImage[]
         summary?: ImportExtractionSummary
       }
+      if (fileType === "txt" || fileType === "md") {
+        const text = await readPlainTextImportFile(file)
+        extracted = {
+          text,
+          images: [],
+          summary: {
+            textChars: text.length,
+            imageCount: 0,
+            limits: { textChars: PLAIN_TEXT_IMPORT_CHAR_LIMIT, imageCount: 50 },
+            withinLimits: true,
+          },
+        }
+      } else {
+        const formData = new FormData()
+        formData.append("file", file)
+        const route = fileType === "docx" ? "/api/parse-docx" : "/api/parse-pdf-file"
+        const extractResponse = await fetch(route, { method: "POST", body: formData, headers: importAuthHeaders() })
+        if (!extractResponse.ok) throw new Error(await importError(extractResponse))
+        extracted = await extractResponse.json() as typeof extracted
+      }
+      const { text, images = [], summary } = extracted
       if (!text?.trim()) throw new Error("The document appears to be empty or could not be read.")
 
       const numberedBatches = splitIntoQuestionBatches(text, 25)
@@ -749,6 +774,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
     await processDocumentFile(file, "pdf")
   }
 
+  async function processPlainTextFile(file: File, fileType: PlainTextImportFileType) {
+    await processDocumentFile(file, fileType)
+  }
+
   // ── Raw text handler ─────────────────────────────────────────────────────────
   async function processText() {
     const text = textInput.trim()
@@ -801,8 +830,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
       processDocxFile(file)
     } else if (name.endsWith(".pdf")) {
       processPdfFile(file)
+    } else if (plainTextImportFileType(name)) {
+      processPlainTextFile(file, plainTextImportFileType(name)!)
     } else {
-      setError("Unsupported file type. Please drop a .json, .docx, or .pdf file.")
+      setError("Unsupported file type. Please drop a .json, .docx, .pdf, .txt, or .md file.")
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -907,7 +938,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".json,.docx,.pdf,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                  accept=".json,.docx,.pdf,.txt,.md,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,text/plain,text/markdown"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0]
@@ -927,7 +958,7 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                   <p className="mt-1 text-sm text-muted-foreground">
                     {isProcessing
                       ? "Please wait while your questions are extracted"
-                      : "Accepts .json · .docx · .pdf"}
+                      : "Accepts .json · .docx · .pdf · .txt · .md"}
                   </p>
                 </div>
 
