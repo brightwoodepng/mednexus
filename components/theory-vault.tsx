@@ -11,17 +11,9 @@ import { useTheme } from "@/contexts/theme-context"
 import { TheoryMarkdown } from "@/components/theory-markdown"
 import { TheoryQuestionMedia } from "@/components/theory-question-media"
 import type { TheoryQuestionDetail, TheorySelfRating, TheoryStudyMode } from "@/lib/types"
+import { loadTheoryDashboard, type TheoryDashboardData } from "@/lib/theory-dashboard-client"
 
 type View = "Dashboard" | "Browse Questions" | "Bookmarks" | "My Notes" | "Revision Queue" | "Progress" | "Search"
-type DashboardData = {
-  authenticated: boolean
-  displayName: string
-  totals: { total: number; completed: number }
-  collections: Array<{ id: string; slug: string; title: string; kind: string; groups: number; sets: number; total: number; completed: number }>
-  continueStudying: null | { id: string; setId: string | null; setTitle: string | null; setNumber: number | null; setLabel: string | null; collection: string; groupName: string; lastStudiedAt: string; setTotal: number; setCompleted: number }
-  counts: { bookmarks: number; notes: number; drafts: number; revision: number }
-  recentSets: Array<{ id: string; setId: string; setTitle: string; setNumber: number; setLabel: string; collection: string; groupName: string; lastStudiedAt: string; progressPercent: number }>
-}
 type CatalogData = {
   collections: Array<{ id: string; slug: string; title: string; kind: string; totalQuestions: number; completedQuestions: number }>
   modules: Array<{ id: string; collectionId: string; name: string; description: string }>
@@ -129,27 +121,33 @@ function SignInNotice() {
   return <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">Sign in with a student account to save drafts, bookmarks, notes, revision items, and progress.</div>
 }
 
-export function TheoryVault({ initialView = "Dashboard", externalQuery, onExternalQueryChange, onQuestionViewChange }: { initialView?: View; externalQuery?: string; onExternalQueryChange?: (q: string) => void; onQuestionViewChange?: (active: boolean) => void }) {
+export function TheoryVault({ initialView = "Dashboard", initialDashboard = null, externalQuery, onExternalQueryChange, onQuestionViewChange }: { initialView?: View; initialDashboard?: TheoryDashboardData | null; externalQuery?: string; onExternalQueryChange?: (q: string) => void; onQuestionViewChange?: (active: boolean) => void }) {
   const { user } = useApp()
   const registered = user?.role === "user" && user.sessionVerified
   const [view, setView] = useState<View>(initialView)
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null)
+  const [dashboard, setDashboard] = useState<TheoryDashboardData | null>(initialDashboard)
   const [catalog, setCatalog] = useState<CatalogData | null>(null)
   const [setData, setSetData] = useState<SetData | null>(null)
   const [questionId, setQuestionId] = useState<string | null>(null)
   const [sessionQuestionIds, setSessionQuestionIds] = useState<string[] | null>(null)
   const [collectionId, setCollectionId] = useState<string | null>(null)
   const [groupId, setGroupId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(initialView === "Dashboard" ? !initialDashboard : true)
   const [error, setError] = useState("")
   const [internalQuery, setInternalQuery] = useState("")
   const globalQuery = externalQuery !== undefined ? externalQuery : internalQuery
   const setGlobalQuery = onExternalQueryChange ?? setInternalQuery
   const showingQuestion = questionId !== null
+  const dashboardVisible = useRef(Boolean(initialDashboard))
 
   const loadDashboard = useCallback(async () => {
-    setLoading(true); setError("")
-    try { setDashboard(await api<DashboardData>("/api/theory/dashboard")) }
+    if (!dashboardVisible.current) setLoading(true)
+    setError("")
+    try {
+      const nextDashboard = await loadTheoryDashboard()
+      dashboardVisible.current = true
+      setDashboard(nextDashboard)
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to load Theory Vault.") }
     finally { setLoading(false) }
   }, [])
@@ -245,7 +243,7 @@ function TheoryStatCard({ glass, emoji, label, value, sub, color, onClick }: { g
 }
 
 function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion }: {
-  data: DashboardData | null; displayName?: string; onView: (view: View) => void; onCollection: (id: string) => void
+  data: TheoryDashboardData | null; displayName?: string; onView: (view: View) => void; onCollection: (id: string) => void
   onSet: (id: string) => void; onQuestion: (id: string) => void
 }) {
   const { isGlassEnabled } = useTheme()

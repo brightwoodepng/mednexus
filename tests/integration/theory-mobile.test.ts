@@ -75,6 +75,11 @@ describe("Theory Vault phone experience", () => {
     expect(sidebar).toContain("<StudyHubDropdownIcon activeHub={activeStudyHub} onSelect={onSelectStudyHub}")
     expect(theory).toContain('role="status" aria-live="polite"')
     expect(theory).toContain('className="animate-spin text-primary"')
+    expect(app).toContain("void preloadTheoryDashboard().catch(() => undefined)")
+    expect(app).toContain("}, 25_000)")
+    expect(app).toContain("initialDashboard={getRecentTheoryDashboard()}")
+    expect(theory).toContain("if (!dashboardVisible.current) setLoading(true)")
+    expect(theory).toContain("const nextDashboard = await loadTheoryDashboard()")
   })
 
   it("centers the welcome modal and keeps the phone drawer above navigation", async () => {

@@ -39,6 +39,7 @@ import type { StudyHubId } from "@/components/study-hub-switcher"
 import { LearnerWorkspaceShell } from "@/components/learner-workspace-shell"
 import { TheoryVault } from "@/components/theory-vault"
 import { TutorialProvider } from "@/components/onboarding"
+import { abortTheoryDashboardPreload, getRecentTheoryDashboard, preloadTheoryDashboard } from "@/lib/theory-dashboard-client"
 import { clearQuizSession, createQuizSession, loadQuizSession, restoreQuizSession, saveQuizSession, type QuizSession } from "@/lib/quiz-session"
 
 interface PendingQuiz {
@@ -437,6 +438,8 @@ export function MedNexusApp() {
 
 
   const { activeStudyHub, setActiveStudyHub, appearanceOpen: themeOpen, setAppearanceOpen: setThemeOpen } = useApplicationShell()
+  const activeStudyHubRef = useRef(activeStudyHub)
+  activeStudyHubRef.current = activeStudyHub
   const [isExamActive, setIsExamActive] = useState(false)
   const [theorySearchQuery, setTheorySearchQuery] = useState("")
   const [theoryQuestionOpen, setTheoryQuestionOpen] = useState(false)
@@ -536,6 +539,18 @@ export function MedNexusApp() {
       }
     }
   }, [user?.uid, user?.role, user?.status, requiresPasswordUpdate])
+
+  useEffect(() => {
+    if (!authReady || user?.role !== "user" || user.status !== "approved" || requiresPasswordUpdate) return
+    if (activeStudyHubRef.current === "mcq-qbank") void preloadTheoryDashboard().catch(() => undefined)
+    const refresh = window.setInterval(() => {
+      if (activeStudyHubRef.current === "mcq-qbank") void preloadTheoryDashboard().catch(() => undefined)
+    }, 25_000)
+    return () => {
+      window.clearInterval(refresh)
+      abortTheoryDashboardPreload()
+    }
+  }, [authReady, requiresPasswordUpdate, user?.role, user?.status, user?.uid])
 
   // Global auto-rejoin: if a multiplayer match was in progress when the app
   // was refreshed/reloaded, jump straight back into the Game screen instead
@@ -726,7 +741,7 @@ export function MedNexusApp() {
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); handleScreenNavigation("modules") }} onOpenWeakAreas={() => handleScreenNavigation("weak-areas")} onOpenLiveAssessments={() => handleScreenNavigation("live-assessments")} />
           )}
-          {safeScreen === "theory-dashboard" && <TheoryVault initialView="Dashboard" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
+          {safeScreen === "theory-dashboard" && <TheoryVault initialView="Dashboard" initialDashboard={getRecentTheoryDashboard()} externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
           {safeScreen === "theory-browse" && <TheoryVault initialView="Browse Questions" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
           {safeScreen === "theory-bookmarks" && <TheoryVault initialView="Bookmarks" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
           {safeScreen === "theory-notes" && <TheoryVault initialView="My Notes" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
