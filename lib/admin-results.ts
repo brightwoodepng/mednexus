@@ -1,5 +1,6 @@
 import "server-only"
 import type { Pool } from "pg"
+import { assessmentPercentage } from "@/lib/assessment-grading"
 
 type Attempt = {
   id: string
@@ -14,7 +15,7 @@ type Attempt = {
 }
 
 export function percentage(attempt: Pick<Attempt, "score" | "total">) {
-  return attempt.total > 0 ? Math.round(attempt.score / attempt.total * 100) : 0
+  return assessmentPercentage(attempt.score, attempt.total)
 }
 
 export function median(values: number[]) {

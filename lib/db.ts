@@ -396,6 +396,7 @@ export async function ensureSchema() {
       time_limit_mins INTEGER NOT NULL DEFAULT 30,
       tries_allowed   INTEGER NOT NULL DEFAULT 1,
       pass_mark       INTEGER NOT NULL DEFAULT 50,
+      grading_mode    TEXT    NOT NULL DEFAULT 'standard',
       status          TEXT    NOT NULL DEFAULT 'offline',
       share_token     TEXT    NOT NULL,
       created_at      TIMESTAMPTZ DEFAULT NOW()
@@ -944,6 +945,8 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS attempt_id TEXT REFERENCES mednexus_osce_station_attempts(id) ON DELETE SET NULL;
     ALTER TABLE mednexus_assessments
       ADD COLUMN IF NOT EXISTS question_snapshot JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE mednexus_assessments
+      ADD COLUMN IF NOT EXISTS grading_mode TEXT NOT NULL DEFAULT 'standard';
 
     -- Sweep expired rows on every cold start (cheap on a small table).
     DELETE FROM mednexus_game_rooms   WHERE expires_at < NOW();

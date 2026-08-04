@@ -484,6 +484,7 @@ export interface LiveAssessment {
   timeLimitMins: number
   triesAllowed: number
   passMark: number // percentage 0-100
+  gradingMode: "standard" | "negative"
   status: "live" | "offline"
   shareToken: string
   createdAt: string

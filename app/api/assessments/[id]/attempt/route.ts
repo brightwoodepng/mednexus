@@ -4,6 +4,7 @@ import type { Pool, PoolClient } from "pg"
 import { getRequestAuth, unauthorized } from "@/lib/request-auth"
 import { boundedPagination } from "@/lib/api-efficiency"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
+import { gradeAssessment, isAssessmentGradingMode } from "@/lib/assessment-grading"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))", [id, account.uid])
 
     const asmtRes = await client.query(
-      `SELECT id,question_ids,tries_allowed,status
+      `SELECT id,question_ids,tries_allowed,pass_mark,grading_mode,status
        FROM mednexus_assessments WHERE id = $1 FOR UPDATE`,
       [id],
     )
@@ -120,10 +121,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (tries >= asmt.tries_allowed) { await client.query("ROLLBACK"); return NextResponse.json({ error: "No tries remaining" }, { status: 403 }) }
 
     const gradingQuestions = await loadAssessmentQuestions(client, id, "grading") as Array<{ id: string; correctAnswer: string }>
-    const qMap = new Map(gradingQuestions.map((q) => [q.id, q]))
+    const correctAnswers = new Map(gradingQuestions.map((q) => [q.id, q.correctAnswer]))
     const questionIds = asmt.question_ids as string[]
-    const score = questionIds.reduce((sum, qId) => sum + (qMap.get(qId)?.correctAnswer === answers[qId] ? 1 : 0), 0)
-    const total = questionIds.length
+    const gradingMode = isAssessmentGradingMode(asmt.grading_mode) ? asmt.grading_mode : "standard"
+    const grade = gradeAssessment(questionIds, correctAnswers, answers, gradingMode, Number(asmt.pass_mark))
+    const { score, total } = grade
 
     const bestRes = await client.query(
       "SELECT MAX(score) AS best_score FROM mednexus_assessment_attempts WHERE assessment_id = $1 AND user_id = $2 AND submitted_at IS NOT NULL",
@@ -147,6 +149,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       attemptId,
       score,
       total,
+      percentage: grade.percentage,
+      passed: grade.passed,
+      breakdown: { correct: grade.correct, wrong: grade.wrong, unanswered: grade.unanswered },
+      gradingMode,
       isNewHighScore: previousBest === null || score > previousBest,
       attemptsUsed,
       ...(reviewQuestions ? { reviewQuestions } : {}),

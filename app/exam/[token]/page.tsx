@@ -15,6 +15,8 @@ interface Result {
   total: number
   percentage: number
   passed: boolean
+  breakdown?: { correct: number; wrong: number; unanswered: number }
+  gradingMode?: "standard" | "negative"
   answers: Record<string, string | null>
   questions: Question[]
   timeTaken?: number
@@ -39,6 +41,8 @@ interface StoredAttempt {
     total: number
     percentage: number
     passed: boolean
+    breakdown?: { correct: number; wrong: number; unanswered: number }
+    gradingMode?: "standard" | "negative"
     answers: Record<string, string | null>
     timeTaken?: number
   }
@@ -216,6 +220,8 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
         total: res.total,
         percentage: res.percentage,
         passed: res.passed,
+        breakdown: res.breakdown,
+        gradingMode: res.gradingMode,
         answers: res.answers,
         timeTaken: res.timeTaken,
       },
@@ -340,11 +346,12 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
             </div>
             <h1 className="text-xl font-bold text-foreground">Attempt {triesUsed} Complete</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {result.score} of {result.total} correct
+              {result.score}/{result.total} points
             </p>
             <p className={`mt-1.5 text-sm font-semibold ${result.passed ? "text-emerald-600" : "text-destructive"}`}>
               {result.passed ? "✓ Passed" : "✗ Did not pass"}
             </p>
+            {result.breakdown && <p className="mt-2 text-xs text-muted-foreground">{result.breakdown.correct} correct · {result.breakdown.wrong} wrong · {result.breakdown.unanswered} unanswered</p>}
           </div>
 
           {/* Stats */}
@@ -449,12 +456,13 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
               </p>
             ) : (
               <p className="mt-1 text-sm text-muted-foreground">
-                {displayScore.score} of {displayScore.total} correct · Pass mark {assessment.passMark}%
+                {displayScore.score}/{displayScore.total} points · Pass mark {assessment.passMark}%
               </p>
             )}
             <p className={`mt-2 text-sm font-semibold ${displayScore.passed ? "text-emerald-600" : "text-destructive"}`}>
               {displayScore.passed ? "✓ Passed" : "✗ Did not pass"}
             </p>
+            {result.breakdown && <p className="mt-2 text-xs text-muted-foreground">{result.breakdown.correct} correct · {result.breakdown.wrong} wrong · {result.breakdown.unanswered} unanswered</p>}
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
@@ -535,6 +543,10 @@ function GuestExamPageInner({ params }: { params: Promise<{ token: string }> }) 
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Pass mark</span>
             <span className="font-semibold text-foreground">{assessment?.passMark}%</span>
+          </div>
+          <div className="flex justify-between gap-4 text-sm">
+            <span className="text-muted-foreground">Grading</span>
+            <span className="text-right font-semibold text-foreground">{assessment?.gradingMode === "negative" ? "+1 correct · −1 wrong · 0 unanswered" : "+1 correct · 0 wrong · 0 unanswered"}</span>
           </div>
           {triesAllowed > 1 && (
             <div className="flex justify-between text-sm">

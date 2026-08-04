@@ -5,6 +5,7 @@ import { useApp } from "@/contexts/app-context"
 import type { LiveAssessment, Question } from "@/lib/types"
 import { AssessmentExamRunner } from "@/components/assessment-exam-runner"
 import { AssessmentReview } from "@/components/assessment-review"
+import { gradingModeLabel } from "@/lib/assessment-grading"
 import {
   ClipboardListIcon, ClockIcon, PlayIcon, CheckIcon, AlertTriangleIcon,
   RadioIcon, UsersIcon, TrophyIcon, RefreshCwIcon,
@@ -22,6 +23,8 @@ interface Result {
   total: number
   percentage: number
   passed: boolean
+  breakdown?: { correct: number; wrong: number; unanswered: number }
+  gradingMode?: "standard" | "negative"
   answers: Record<string, string | null>
   questions: Question[]
 }
@@ -31,6 +34,8 @@ interface StoredResult {
   total: number
   percentage: number
   passed: boolean
+  breakdown?: { correct: number; wrong: number; unanswered: number }
+  gradingMode?: "standard" | "negative"
   answers: Record<string, string | null>
   questions: Question[]
 }
@@ -161,6 +166,8 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
         total: res.total,
         percentage: res.percentage,
         passed: res.passed,
+        breakdown: res.breakdown,
+        gradingMode: res.gradingMode,
         answers: res.answers,
         questions: res.questions,
       })
@@ -234,8 +241,13 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
         <div>
           <h2 className="text-xl font-bold text-foreground">{result.passed ? "Congratulations!" : "Exam Complete"}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {result.score}/{result.total} correct · Pass mark {activeAssessment.passMark}%
+            {result.score}/{result.total} points · Pass mark {activeAssessment.passMark}%
           </p>
+          {result.breakdown && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {result.breakdown.correct} correct · {result.breakdown.wrong} wrong · {result.breakdown.unanswered} unanswered
+            </p>
+          )}
           <p className={`mt-2 font-semibold ${result.passed ? "text-emerald-600" : "text-destructive"}`}>
             {result.passed ? "✓ Passed" : "✗ Did not pass"}
           </p>
@@ -325,6 +337,7 @@ export function LiveAssessmentsScreen({ onExamActiveChange }: LiveAssessmentsScr
                         <span className="flex items-center gap-1">
                           <TrophyIcon size={11} /> Pass: {asmt.passMark}%
                         </span>
+                        <span>{gradingModeLabel(asmt.gradingMode)}</span>
                         <span className="flex items-center gap-1">
                           <UsersIcon size={11} />
                           {exhausted ? "No tries left" : `${triesLeft} tr${triesLeft === 1 ? "y" : "ies"} remaining`}

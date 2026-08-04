@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { getModules } from "@/lib/modules"
 import type { LiveAssessment, AssessmentAnalytics } from "@/lib/types"
+import { gradingModeLabel, type AssessmentGradingMode } from "@/lib/assessment-grading"
 import {
   ClipboardListIcon, PlusIcon, TrashIcon, ClockIcon, UsersIcon,
   BarChart2Icon, LinkIcon, CheckIcon, XIcon, AlertTriangleIcon,
@@ -22,6 +23,7 @@ function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; on
     timeLimitMins: String(defaults.timeLimitMins),
     triesAllowed: String(defaults.triesAllowed),
     passMark: String(defaults.passMark),
+    gradingMode: "standard" as AssessmentGradingMode,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -46,6 +48,7 @@ function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; on
           timeLimitMins: Number(form.timeLimitMins),
           triesAllowed: Number(form.triesAllowed),
           passMark: Number(form.passMark),
+          gradingMode: form.gradingMode,
         }),
       })
       const data = await res.json()
@@ -104,6 +107,14 @@ function CreateModal({ onClose, onCreated, defaults }: { onClose: () => void; on
               <input type="number" min="1" max="100" className={inputCls} value={form.passMark} onChange={(e) => set("passMark", e.target.value)} />
             </div>
           </div>
+          <div>
+            <label className={labelCls} htmlFor="assessment-grading">Grading</label>
+            <select id="assessment-grading" className={inputCls} value={form.gradingMode} onChange={(e) => set("gradingMode", e.target.value)}>
+              <option value="standard">Standard (+1 correct, 0 wrong, 0 unanswered)</option>
+              <option value="negative">Negative (+1 correct, −1 wrong, 0 unanswered)</option>
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">The grading rule is locked after the first submission.</p>
+          </div>
           {error && (
             <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
               <AlertTriangleIcon size={13} /> {error}
@@ -127,7 +138,7 @@ function AnalyticsModal({
   onClose,
 }: { assessment: LiveAssessment; onClose: () => void }) {
   const [loading, setLoading] = useState(true)
-  const [analytics, setAnalytics] = useState<AssessmentAnalytics & { uniqueParticipants: number; passMark: number; triesAllowed: number; failCount: number; highestScore: number; lowestScore: number; medianScore: number } | null>(null)
+  const [analytics, setAnalytics] = useState<AssessmentAnalytics & { uniqueParticipants: number; passMark: number; triesAllowed: number; gradingMode: AssessmentGradingMode; failCount: number; highestScore: number; lowestScore: number; medianScore: number } | null>(null)
   const [recentAttempts, setRecentAttempts] = useState<Array<{ userName: string; isGuest: boolean; score: number; total: number; percentage: number; submittedAt: string }>>([])
 
   useEffect(() => {
@@ -253,6 +264,7 @@ function AnalyticsModal({
     <div>
       <h1>${assessment.title}</h1>
       <p>Analytics Report &middot; Generated ${generatedAt} &middot; MedNexus</p>
+      <p>Grading: ${gradingModeLabel(assessment.gradingMode)}</p>
     </div>
     <div class="badge">Pass mark: ${passMark}%</div>
   </div>
@@ -377,6 +389,7 @@ function AnalyticsModal({
           ) : analytics ? (
             <>
               {/* Summary stats */}
+              <p className="text-xs text-muted-foreground">Grading: {gradingModeLabel(analytics.gradingMode ?? assessment.gradingMode)}</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Total Submitted", value: String(analytics.totalSubmitted), sub: `${analytics.uniqueParticipants} unique participants` },
@@ -577,6 +590,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
                       <span className="flex items-center gap-1"><ClockIcon size={10} /> {asmt.timeLimitMins} min</span>
                       <span>{asmt.triesAllowed} tr{asmt.triesAllowed === 1 ? "y" : "ies"}</span>
                       <span><TrophyIcon size={10} className="inline mr-0.5" /> Pass: {asmt.passMark}%</span>
+                      <span>{gradingModeLabel(asmt.gradingMode)}</span>
                     </div>
                   </div>
 

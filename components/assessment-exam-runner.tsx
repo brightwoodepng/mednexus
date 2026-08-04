@@ -29,6 +29,8 @@ interface Props {
     questions: Question[]
     timeTaken: number
     attemptsUsed: number
+    breakdown?: { correct: number; wrong: number; unanswered: number }
+    gradingMode?: "standard" | "negative"
   }) => void
   onExit?: () => void
 }
@@ -381,6 +383,8 @@ export function AssessmentExamRunner({
     let passed = percentage >= passMark
     let attemptsUsed = 0
     let completedQuestions = questions
+    let breakdown: { correct: number; wrong: number; unanswered: number } | undefined
+    let gradingMode: "standard" | "negative" | undefined
 
     try {
       // The attempt API derives identity and scoring from the authenticated
@@ -395,8 +399,10 @@ export function AssessmentExamRunner({
 
       score = Number(payload.score ?? score)
       total = Number(payload.total ?? total)
-      percentage = total ? Math.round((score / total) * 100) : 0
-      passed = percentage >= passMark
+      percentage = Number(payload.percentage ?? (total ? Math.round((score / total) * 100) : 0))
+      passed = Boolean(payload.passed ?? percentage >= passMark)
+      breakdown = payload.breakdown
+      gradingMode = payload.gradingMode
       attemptsUsed = Number(payload.attemptsUsed ?? 0)
       if (Array.isArray(payload.reviewQuestions)) {
         completedQuestions = payload.reviewQuestions
@@ -411,7 +417,7 @@ export function AssessmentExamRunner({
     clearSession(sessionKey)
     setSubmitted(true)
     setSubmitting(false)
-    onComplete({ score, total, percentage, passed, answers: finalAnswers, questions: completedQuestions, timeTaken, attemptsUsed })
+    onComplete({ score, total, percentage, passed, answers: finalAnswers, questions: completedQuestions, timeTaken, attemptsUsed, breakdown, gradingMode })
   }, [assessmentId, questions, passMark, onComplete, sessionKey, authHeader])
 
   // ── NO visibilitychange / beforeunload auto-submit ────────────────────────

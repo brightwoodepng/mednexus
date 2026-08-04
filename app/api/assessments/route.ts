@@ -3,6 +3,7 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin, getPlatformSettings } from "@/lib/platform-settings"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 import { getRequestAuth } from "@/lib/request-auth"
+import { assessmentPercentage, isAssessmentGradingMode } from "@/lib/assessment-grading"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -22,6 +23,7 @@ function rowToAssessment(row: Record<string, unknown>) {
     timeLimitMins: row.time_limit_mins,
     triesAllowed: row.tries_allowed,
     passMark: row.pass_mark,
+    gradingMode: row.grading_mode ?? "standard",
     status: row.status,
     shareToken: row.share_token,
     createdAt: row.created_at,
@@ -29,9 +31,7 @@ function rowToAssessment(row: Record<string, unknown>) {
     lastAttempt: row.last_score == null ? undefined : {
       score: Number(row.last_score),
       total: Number(row.last_total),
-      percentage: Number(row.last_total) > 0
-        ? Math.round(Number(row.last_score) / Number(row.last_total) * 100)
-        : 0,
+      percentage: assessmentPercentage(Number(row.last_score), Number(row.last_total)),
       submittedAt: row.last_submitted_at,
     },
   }
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     const result = await pool.query(
       `SELECT
         a.id, a.title, a.module_name, a.question_count, a.time_limit_mins,
-        a.tries_allowed, a.pass_mark, a.status,
+        a.tries_allowed, a.pass_mark, a.grading_mode, a.status,
         CASE WHEN $1::boolean THEN a.share_token ELSE NULL END AS share_token,
         a.created_at,
         COALESCE(attempts.attempts_used, 0)::int AS attempts_used,
@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/assessments — admin only
-// body: { title, moduleName, questionCount, timeLimitMins, triesAllowed, passMark }
+// body: { title, moduleName, questionCount, timeLimitMins, triesAllowed, passMark, gradingMode }
 export async function POST(req: NextRequest) {
   try {
     const admin = await requireAdminRequest(req, "manage_assessments")
@@ -116,9 +116,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const { title, moduleName, questionCount, timeLimitMins, triesAllowed, passMark } = body
+    const gradingMode = body.gradingMode ?? "standard"
 
     if (!title?.trim() || !moduleName?.trim()) {
       return NextResponse.json({ error: "title and moduleName are required" }, { status: 400 })
+    }
+    if (!isAssessmentGradingMode(gradingMode)) {
+      return NextResponse.json({ error: "Invalid grading mode" }, { status: 400 })
     }
 
     const settings = await getPlatformSettings(pool)
@@ -144,11 +148,11 @@ export async function POST(req: NextRequest) {
          SELECT question FROM eligible ORDER BY random() LIMIT $4
        )
        INSERT INTO mednexus_assessments
-         (id,title,module_name,question_ids,question_snapshot,question_count,time_limit_mins,tries_allowed,pass_mark,status,share_token)
+         (id,title,module_name,question_ids,question_snapshot,question_count,time_limit_mins,tries_allowed,pass_mark,grading_mode,status,share_token)
        SELECT $1,$2,$3,
          jsonb_agg(question->>'id'),
          jsonb_agg(question),
-         COUNT(*)::int,$5,$6,$7,'offline',$8
+         COUNT(*)::int,$5,$6,$7,$8,'offline',$9
        FROM selected
        HAVING COUNT(*) > 0
        RETURNING question_count`,
@@ -157,6 +161,7 @@ export async function POST(req: NextRequest) {
           Number(timeLimitMins) || settings.assessmentDefaultTimeLimitMins,
           Number(triesAllowed) || settings.assessmentDefaultTriesAllowed,
           Number(passMark) || settings.assessmentDefaultPassMark,
+          gradingMode,
           shareToken,
         ],
       )
@@ -168,6 +173,7 @@ export async function POST(req: NextRequest) {
         title: title.trim(),
         moduleName,
         questionCount: Number(created.rows[0].question_count),
+        gradingMode,
       })
       await client.query("COMMIT")
     } catch (error) {
