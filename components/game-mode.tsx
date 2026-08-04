@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo } from "react"
+import { ClipboardList, ShoppingBag } from "lucide-react"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
@@ -135,6 +136,7 @@ const MULTI_MODES: MultiModeCard[] = [
 ]
 
 const DEFAULT_FILTER: GameFilter = { module: null, discipline: null }
+const GAME_UTILITY_BUTTON = "flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-card/80 px-2 text-xs font-extrabold text-foreground shadow-sm backdrop-blur-sm transition-[background-color,border-color,box-shadow] hover:bg-card hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-auto sm:px-3"
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function shuffle<T>(arr: readonly T[]): T[] {
@@ -1072,17 +1074,18 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-6">
       <div className="mx-auto w-full max-w-md sm:max-w-2xl">
-        <div className="mb-6 flex items-center justify-between gap-2">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg font-extrabold tracking-tight text-foreground md:text-xl">Game Mode</h1>
             <p className="hidden text-xs text-muted-foreground md:block">Choose your challenge</p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
             <button type="button" onClick={onOpenStore}
-              className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1.5 shadow-sm text-sm font-extrabold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]">
-              🏪 <span>Store</span>
+              className={`${GAME_UTILITY_BUTTON} hover:border-violet-500/30`}>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-500"><ShoppingBag size={15} aria-hidden /></span>
+              <span>Store</span>
             </button>
+            <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
           </div>
         </div>
 
@@ -1238,20 +1241,21 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
   return (
     <div className="flex min-h-full flex-col p-3 sm:p-5 lg:p-6">
       <div className="mx-auto w-full max-w-2xl">
-        <div className="mb-3 flex justify-end gap-2">
-          <div className="flex items-center gap-2">
+        <div className="mb-3 grid w-full grid-cols-3 gap-2 sm:flex sm:justify-end">
               <button
                 type="button" onClick={onOpenStore}
-                className="flex h-8 items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 shadow-sm text-sm font-extrabold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+                className={`${GAME_UTILITY_BUTTON} hover:border-violet-500/30`}
               >
-                🏪 Store
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-500"><ShoppingBag size={15} aria-hidden /></span>
+                <span>Store</span>
               </button>
-              <button type="button" onClick={() => setQuestsOpen(true)} className="relative flex h-8 items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 text-sm font-extrabold dark:border-violet-800/40 dark:bg-violet-950/30">
-                📋 <span className="text-white">Quests</span>
-                {questBadgeCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] text-white">{questBadgeCount}</span>}
+              <button type="button" onClick={() => setQuestsOpen(true)} aria-label={questBadgeCount > 0 ? `Quests, ${questBadgeCount} rewards ready` : "Quests"} className={`${GAME_UTILITY_BUTTON} hover:border-cyan-500/30`}>
+                <span className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-500"><ClipboardList size={15} aria-hidden />
+                  {questBadgeCount > 0 && <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[9px] font-bold leading-none text-white">{questBadgeCount}</span>}
+                </span>
+                <span>Quests</span>
               </button>
               <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
-          </div>
         </div>
 
         {/* Category tabs — Solo vs Multiplayer */}
