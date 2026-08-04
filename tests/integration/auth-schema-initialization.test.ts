@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { readFileSync } from "node:fs"
 
 type RegisteredUser = {
   uid: string
@@ -243,5 +244,14 @@ describe("account entry schema initialization", () => {
     expect(guestResponse.status).toBe(201)
     expect(guestUsers).toHaveLength(1)
     expect(ensureSchema).toHaveBeenCalledTimes(2)
+  })
+
+  it("upgrades existing guest tables before class-level guest sessions are inserted", () => {
+    const schema = readFileSync("lib/db.ts", "utf8")
+    const upgrade = schema.slice(schema.indexOf("Older deployments created guest sessions"))
+    expect(upgrade).toContain("ALTER TABLE mednexus_guest_users")
+    expect(upgrade).toContain("ADD COLUMN IF NOT EXISTS class_level TEXT NOT NULL DEFAULT ''")
+    expect(upgrade).toContain("ADD COLUMN IF NOT EXISTS token_hash TEXT")
+    expect(upgrade).toContain("ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ")
   })
 })

@@ -842,6 +842,19 @@ export async function ensureSchema() {
     ALTER TABLE mednexus_registered_users
       ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'REGISTERED';
 
+    -- Older deployments created guest sessions before class levels became
+    -- mandatory. Keep the guest preview flow compatible with those databases.
+    ALTER TABLE mednexus_guest_users
+      ADD COLUMN IF NOT EXISTS class_level TEXT NOT NULL DEFAULT '';
+    ALTER TABLE mednexus_guest_users
+      ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'GUEST';
+    ALTER TABLE mednexus_guest_users
+      ADD COLUMN IF NOT EXISTS token_hash TEXT;
+    ALTER TABLE mednexus_guest_users
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    ALTER TABLE mednexus_guest_users
+      ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days';
+
     -- Permission rows are explicit overrides: TRUE grants and FALSE removes an
     -- ADMIN baseline capability. Existing rows retain their original grant.
     ALTER TABLE mednexus_user_permissions
