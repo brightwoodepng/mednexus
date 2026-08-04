@@ -35,21 +35,39 @@ function summary(question: Question) {
   return { ...question, status: statusOf(question), validationIssues: issues(question), mediaCount }
 }
 
+const issueExpression = `(COALESCE(BTRIM(question.value->>'module'),'')=''
+  OR COALESCE(BTRIM(question.value->>'subject'),'')=''
+  OR COALESCE(BTRIM(question.value->>'vignette'),'')=''
+  OR jsonb_array_length(CASE WHEN jsonb_typeof(question.value->'options')='array' THEN question.value->'options' ELSE '[]'::jsonb END)<2
+  OR question.value->'correctAnswer' IS NULL
+  OR COALESCE(BTRIM(question.value->'explanation'->>'details'),'')='')`
+
+const sortExpressions: Record<string, string> = {
+  "updated-desc": `COALESCE(question.value->>'updatedAt','') DESC,question.value->>'id'`,
+  "updated-asc": `COALESCE(question.value->>'updatedAt','') ASC,question.value->>'id'`,
+  module: `COALESCE(question.value->>'module',''),COALESCE(question.value->>'subject',''),question.value->>'id'`,
+  stem: `COALESCE(question.value->>'vignette',''),question.value->>'id'`,
+}
+
 export async function GET(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_mcq_content")) return adminAccessDenied(req)
-  const queryStartedAt = performance.now()
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
-  const search = (req.nextUrl.searchParams.get("search") ?? "").trim().slice(0, 200)
-  const moduleName = req.nextUrl.searchParams.get("module") ?? ""
-  const subject = req.nextUrl.searchParams.get("subject") ?? ""
-  const status = req.nextUrl.searchParams.get("status") ?? ""
-  const media = req.nextUrl.searchParams.get("media") ?? ""
-  const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
-  const statusExpression = `COALESCE(NULLIF(question.value->>'status',''),
-    CASE question.value->>'moduleStatus' WHEN 'draft' THEN 'draft'
-      WHEN 'offline' THEN 'offline' ELSE 'live' END)`
-  const hasMediaExpression = `(COALESCE(question.value->>'mediaBase64','') <> ''
+  try {
+    const queryStartedAt = performance.now()
+    const { default: pool, ensureSchema } = await import("@/lib/db")
+    await ensureSchema()
+    const search = (req.nextUrl.searchParams.get("search") ?? "").trim().slice(0, 200)
+    const moduleName = req.nextUrl.searchParams.get("module") ?? ""
+    const subject = req.nextUrl.searchParams.get("subject") ?? ""
+    const status = req.nextUrl.searchParams.get("status") ?? ""
+    const media = req.nextUrl.searchParams.get("media") ?? ""
+    const issuesOnly = req.nextUrl.searchParams.get("issues") === "with"
+    const sort = req.nextUrl.searchParams.get("sort") ?? "updated-desc"
+    const sortExpression = sortExpressions[sort] ?? sortExpressions["updated-desc"]
+    const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
+    const statusExpression = `COALESCE(NULLIF(question.value->>'status',''),
+      CASE question.value->>'moduleStatus' WHEN 'draft' THEN 'draft'
+        WHEN 'offline' THEN 'offline' ELSE 'live' END)`
+    const hasMediaExpression = `(COALESCE(question.value->>'mediaBase64','') <> ''
     OR jsonb_array_length(CASE WHEN jsonb_typeof(question.value->'media')='array'
       THEN question.value->'media' ELSE '[]'::jsonb END) > 0
     OR EXISTS (
@@ -57,8 +75,8 @@ export async function GET(req: NextRequest) {
         THEN question.value->'options' ELSE '[]'::jsonb END) option
       WHERE jsonb_array_length(CASE WHEN jsonb_typeof(option->'media')='array'
         THEN option->'media' ELSE '[]'::jsonb END) > 0
-    ))`
-  const [result, taxonomy, statusCounts] = await Promise.all([
+      ))`
+    const [result, taxonomy, statusCounts, issueCount] = await Promise.all([
     pool.query(
       `SELECT question.value AS question, source.updated_at,
               COUNT(*) OVER()::int AS total_count
@@ -69,15 +87,16 @@ export async function GET(req: NextRequest) {
          AND ($2='' OR COALESCE(question.value->>'subject','')=$2)
          AND ($3='' OR ${statusExpression}=$3)
          AND ($4='' OR ($4='with')=${hasMediaExpression})
+         AND (NOT $8::boolean OR ${issueExpression})
          AND ($5='' OR question.value->>'id' ILIKE '%'||$5||'%'
            OR question.value->>'module' ILIKE '%'||$5||'%'
            OR question.value->>'subject' ILIKE '%'||$5||'%'
            OR question.value->>'vignette' ILIKE '%'||$5||'%'
-           OR question.value->'options'::text ILIKE '%'||$5||'%'
-           OR question.value->'tags'::text ILIKE '%'||$5||'%')
-       ORDER BY question.value->>'id'
+           OR (question.value->'options')::text ILIKE '%'||$5||'%'
+           OR (question.value->'tags')::text ILIKE '%'||$5||'%')
+       ORDER BY ${sortExpression}
        LIMIT $6 OFFSET $7`,
-      [moduleName, subject, status, media, search, pageSize, offset],
+      [moduleName, subject, status, media, search, pageSize, offset, issuesOnly],
     ),
     pool.query(
       `SELECT DISTINCT question.value->>'module' AS module, question.value->>'subject' AS subject
@@ -89,27 +108,29 @@ export async function GET(req: NextRequest) {
       `SELECT ${statusExpression} AS status, COUNT(*)::int AS count
        FROM mednexus_questions source
        CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) question(value)
-       WHERE source.id=1 GROUP BY 1`,
+      WHERE source.id=1 GROUP BY 1`,
     ),
-  ])
-  const questions = result.rows.map(row => summary(row.question as Question))
-  const modules = [...new Set(taxonomy.rows.map(row => row.module).filter(Boolean))].sort()
-  const subjects = [...new Set(taxonomy.rows.map(row => row.subject).filter(Boolean))].sort()
-  const counts = Object.fromEntries(statusCounts.rows.map(row => [row.status, Number(row.count)]))
-  const total = Number(result.rows[0]?.total_count ?? 0)
-  const payload = {
-    questions,
-    pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) },
-    filters: { modules, subjects },
-    counts,
-    updatedAt: result.rows[0]?.updated_at ?? null,
+      pool.query(`SELECT COUNT(*)::int AS count FROM mednexus_questions source
+        CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) question(value)
+        WHERE source.id=1 AND ${issueExpression}`),
+    ])
+    const questions = result.rows.map(row => summary(row.question as Question))
+    const modules = [...new Set(taxonomy.rows.map(row => row.module).filter(Boolean))].sort()
+    const subjects = [...new Set(taxonomy.rows.map(row => row.subject).filter(Boolean))].sort()
+    const counts = { ...Object.fromEntries(statusCounts.rows.map(row => [row.status, Number(row.count)])), issues: Number(issueCount.rows[0]?.count ?? 0) }
+    const total = Number(result.rows[0]?.total_count ?? 0)
+    const payload = {
+      questions,
+      pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) },
+      filters: { modules, subjects },
+      counts,
+      updatedAt: result.rows[0]?.updated_at ?? null,
+    }
+    return measuredJson({ route: "GET /api/admin/mcq/questions", queryStartedAt, rowCount: questions.length, payload })
+  } catch (error) {
+    console.error("[admin/mcq/questions GET]", error)
+    return NextResponse.json({ error: "Unable to load the MCQ bank." }, { status: 500 })
   }
-  return measuredJson({
-    route: "GET /api/admin/mcq/questions",
-    queryStartedAt,
-    rowCount: questions.length,
-    payload,
-  })
 }
 
 export async function POST(req: NextRequest) {
@@ -163,6 +184,13 @@ export async function PATCH(req: NextRequest) {
       [ids],
     )
     const selectedQuestions = current.rows.map(row => row.question)
+    if (body.action === "status" && body.status === "live") {
+      const blocked = selectedQuestions.filter((question) => issues(question).length > 0)
+      if (blocked.length) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: `${blocked.length} selected question${blocked.length === 1 ? " is" : "s are"} incomplete and cannot be published.`, blocked: blocked.map((question) => question.id) }, { status: 422 })
+      }
+    }
     const now = new Date().toISOString()
     const affected = selectedQuestions.length
     const additions: Question[] = []

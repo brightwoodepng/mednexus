@@ -31,11 +31,11 @@ export function McqBankWorkspace() {
   }
 
   return <>
-    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-      <div><p className="text-sm font-semibold">Choose your management workspace</p><p className="text-xs text-muted-foreground">Your selection is remembered on this device.</p></div>
-      <div className="grid grid-cols-2 rounded-xl bg-muted p-1" aria-label="MCQ manager view">
-        <button onClick={() => choose("modern")} className={"inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition " + (view === "modern" ? "bg-background text-primary shadow-sm" : "text-muted-foreground")}><LayoutGrid size={16}/>New Manager</button>
-        <button onClick={() => choose("legacy")} className={"inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition " + (view === "legacy" ? "bg-background text-primary shadow-sm" : "text-muted-foreground")}><ListTree size={16}/>Legacy View</button>
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">MCQ Bank</h1>
+      <div className="grid grid-cols-2 rounded-xl border border-border bg-muted/60 p-1" aria-label="MCQ manager view">
+        <button onClick={() => choose("modern")} aria-pressed={view === "modern"} className={"inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors " + (view === "modern" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}><LayoutGrid size={16}/>Manager</button>
+        <button onClick={() => choose("legacy")} aria-pressed={view === "legacy"} title="Compatibility editor" className={"inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors " + (view === "legacy" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}><ListTree size={16}/>Legacy</button>
       </div>
     </div>
     {!ready ? <div className="min-h-64 animate-pulse rounded-2xl bg-muted"/> : view === "modern" ? <McqModernWorkspace onOpenImporter={() => setImporterOpen(true)}/> : <QuestionEditor pendingImport={pendingImport} onPendingImportConsumed={() => setPendingImport(null)} onOpenImporter={() => setImporterOpen(true)}/>} 

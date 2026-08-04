@@ -20,12 +20,12 @@ const ADMIN_BASELINE = new Set<AdminPermission>([
   "manage_users", "manage_broadcasts",
 ])
 
-async function currentAccess(payload: SessionPayload): Promise<{ role: AdminRole; permissions: Map<AdminPermission, boolean> } | null> {
+async function currentAccess(payload: SessionPayload): Promise<{ role: AdminRole; name: string; permissions: Map<AdminPermission, boolean> } | null> {
   const { default: pool } = await import("@/lib/db")
   // Role and individual permission overrides are read together after the token
   // has been verified. Never trust role or permissions supplied by a client.
   const result = await pool.query(
-    `SELECT u.role, u.status, p.permission, p.granted
+    `SELECT u.name, u.role, u.status, p.permission, p.granted
      FROM mednexus_registered_users u
      LEFT JOIN mednexus_user_permissions p ON p.user_id = u.uid
      WHERE u.uid = $1`,
@@ -40,7 +40,12 @@ async function currentAccess(payload: SessionPayload): Promise<{ role: AdminRole
       permissionOverrides.set(row.permission as AdminPermission, row.granted !== false)
     }
   }
-  return { role, permissions: permissionOverrides }
+  return { role, name: user.name || "Administrator", permissions: permissionOverrides }
+}
+
+function permissionAllowed(access: { role: AdminRole; permissions: Map<AdminPermission, boolean> }, candidate: AdminPermission) {
+  return access.role === "SUPER_ADMIN"
+    || (access.permissions.get(candidate) ?? (access.role === "ADMIN" && ADMIN_BASELINE.has(candidate)))
 }
 
 export async function getVerifiedAdmin(token: string | null | undefined, permission?: AdminPermission) {
@@ -51,13 +56,32 @@ export async function getVerifiedAdmin(token: string | null | undefined, permiss
   // The console itself is a privileged surface too. An ADMIN account with all
   // of its capabilities removed must not retain access to the dashboard just
   // because its (now stale) session token once named an administrator.
-  const hasPermission = (candidate: AdminPermission) => access.role === "SUPER_ADMIN"
-    || (access.permissions.get(candidate) ?? (access.role === "ADMIN" && ADMIN_BASELINE.has(candidate)))
   const allowed = permission
-    ? hasPermission(permission)
-    : ADMIN_PERMISSIONS.some(hasPermission)
+    ? permissionAllowed(access, permission)
+    : ADMIN_PERMISSIONS.some((candidate) => permissionAllowed(access, candidate))
   if (!allowed) return null
   return { uid: payload.uid, role: access.role }
+}
+
+export async function getVerifiedAdminSnapshotFromCookie() {
+  const token = (await cookies()).get("mednexus_session")?.value
+  const payload = verifySessionToken(token ?? "")
+  if (!payload) return null
+  const access = await currentAccess(payload)
+  if (!access || !ADMIN_PERMISSIONS.some((permission) => permissionAllowed(access, permission))) return null
+  return {
+    uid: payload.uid,
+    name: access.name,
+    role: access.role,
+    capabilities: {
+      mcq: permissionAllowed(access, "manage_mcq_content"),
+      theory: permissionAllowed(access, "manage_theory_content"),
+      assessments: permissionAllowed(access, "manage_assessments"),
+      users: permissionAllowed(access, "manage_users"),
+      broadcasts: permissionAllowed(access, "manage_broadcasts"),
+      system: permissionAllowed(access, "manage_system"),
+    },
+  }
 }
 
 export async function getVerifiedAdminFromCookie(permission?: AdminPermission) {
