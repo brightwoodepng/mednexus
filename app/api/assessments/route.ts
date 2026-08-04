@@ -4,6 +4,7 @@ import { auditAdmin, getPlatformSettings } from "@/lib/platform-settings"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 import { getRequestAuth } from "@/lib/request-auth"
 import { assessmentPercentage, isAssessmentGradingMode } from "@/lib/assessment-grading"
+import { assessmentEligibilitySql, assessmentModuleSql } from "@/lib/assessment-eligibility"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -126,26 +127,38 @@ export async function POST(req: NextRequest) {
     }
 
     const settings = await getPlatformSettings(pool)
-    const qCount = Math.max(1, Number(questionCount) || settings.assessmentDefaultQuestionCount)
+    const requestedQuestionCount = Math.min(200, Math.max(1, Number(questionCount) || settings.assessmentDefaultQuestionCount))
+    const canonicalModuleName = moduleName.trim()
 
     const id = `asmt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const shareToken = `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+    let actualQuestionCount = 0
 
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
+      const moduleSql = assessmentModuleSql("question.value")
       const created = await client.query<{ question_count: number }>(
-      `WITH eligible AS (
-         SELECT DISTINCT ON (question.value->>'id') question.value AS question
+      `WITH eligible_ids AS MATERIALIZED (
+         SELECT DISTINCT question.value->>'id' AS id
          FROM mednexus_questions source
          CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
          WHERE source.id=1
-           AND COALESCE(NULLIF(question.value->>'module', ''), question.value->>'subject')=$3
+           AND ${moduleSql}=$3
+           AND ${assessmentEligibilitySql("question.value")}
            AND COALESCE(question.value->>'id', '') <> ''
-         ORDER BY question.value->>'id'
+       ),
+       selected_ids AS MATERIALIZED (
+         SELECT id FROM eligible_ids ORDER BY random() LIMIT $4
        ),
        selected AS (
-         SELECT question FROM eligible ORDER BY random() LIMIT $4
+         SELECT DISTINCT ON (question.value->>'id') question.value AS question
+         FROM mednexus_questions source
+         CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
+         JOIN selected_ids ON selected_ids.id=question.value->>'id'
+         WHERE source.id=1 AND ${moduleSql}=$3
+           AND ${assessmentEligibilitySql("question.value")}
+         ORDER BY question.value->>'id'
        )
        INSERT INTO mednexus_assessments
          (id,title,module_name,question_ids,question_snapshot,question_count,time_limit_mins,tries_allowed,pass_mark,grading_mode,status,share_token)
@@ -157,7 +170,7 @@ export async function POST(req: NextRequest) {
        HAVING COUNT(*) > 0
        RETURNING question_count`,
         [
-          id, title.trim(), moduleName, qCount,
+          id, title.trim(), canonicalModuleName, requestedQuestionCount,
           Number(timeLimitMins) || settings.assessmentDefaultTimeLimitMins,
           Number(triesAllowed) || settings.assessmentDefaultTriesAllowed,
           Number(passMark) || settings.assessmentDefaultPassMark,
@@ -167,12 +180,14 @@ export async function POST(req: NextRequest) {
       )
       if (!created.rows.length) {
         await client.query("ROLLBACK")
-        return NextResponse.json({ error: "No questions found for this module" }, { status: 400 })
+        return NextResponse.json({ error: "This module has no structurally complete questions. Refresh the module list or complete its questions first." }, { status: 422 })
       }
+      actualQuestionCount = Number(created.rows[0].question_count)
       await auditAdmin(client, admin.uid, "create", "assessment", id, {
         title: title.trim(),
-        moduleName,
-        questionCount: Number(created.rows[0].question_count),
+        moduleName: canonicalModuleName,
+        requestedQuestionCount,
+        questionCount: actualQuestionCount,
         gradingMode,
       })
       await client.query("COMMIT")
@@ -183,7 +198,7 @@ export async function POST(req: NextRequest) {
       client.release()
     }
 
-    return NextResponse.json({ success: true, id, shareToken })
+    return NextResponse.json({ success: true, id, shareToken, requestedQuestionCount, actualQuestionCount })
   } catch (err) {
     console.error("[assessments POST]", err)
     return NextResponse.json({ error: "Server error" }, { status: 500 })
