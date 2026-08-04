@@ -37,4 +37,11 @@ describe("Game Mode utility buttons", () => {
     expect(wallet).not.toContain("bg-gradient-to-r")
     expect(wallet).not.toMatch(/(?:hover|active):scale-/)
   })
+
+  it("keeps Solo and Multiplayer mode cards free of category tags", async () => {
+    const source = await readFile("components/game-mode.tsx", "utf8")
+    expect(source).not.toContain("badgeColor")
+    expect(source).not.toMatch(/badge:\s*"(?:Classic|High Risk|Speed|Endurance|Confidence|Study Group|Kahoot Style|High Stakes)"/)
+    expect(source).not.toContain("mode.badge")
+  })
 })

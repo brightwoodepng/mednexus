@@ -44,8 +44,6 @@ interface SoloRoundConfiguration {
 interface ModeConfig {
   id: GameModeId
   name: string
-  badge: string
-  badgeColor: string
   icon: string
   gradient: string
   shadow: string
@@ -58,40 +56,35 @@ interface ModeConfig {
 // ── Mode definitions ──────────────────────────────────────────────────────────
 const MODES: ModeConfig[] = [
   {
-    id: "rapid", name: "Rapid Fire", badge: "Classic",
-    badgeColor: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+    id: "rapid", name: "Rapid Fire",
     icon: "⚡", gradient: "from-violet-500 to-fuchsia-600", shadow: "shadow-violet-500/20",
     desc: "Race the clock — 3 lives, 15s per question, streak multipliers.",
     rules: ["3 lives — wrong or timeout costs 1", "15 seconds per question", "Selected questions appear once per round", "Streak bonuses up to +150 pts"],
     hsKey: "mednexus-hs-rapid", hsLabel: "Best Score",
   },
   {
-    id: "sudden", name: "Sudden Death", badge: "High Risk",
-    badgeColor: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+    id: "sudden", name: "Sudden Death",
     icon: "💀", gradient: "from-rose-500 to-orange-500", shadow: "shadow-rose-500/20",
     desc: "One mistake ends everything. How many can you survive?",
     rules: ["Any wrong answer = instant game over", "20 seconds per question", "Selected questions appear once per round", "Score = questions survived × 100"],
     hsKey: "mednexus-hs-sudden", hsLabel: "Best Survived",
   },
   {
-    id: "timeatk", name: "Time Attack", badge: "Speed",
-    badgeColor: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
+    id: "timeatk", name: "Time Attack",
     icon: "⏱️", gradient: "from-cyan-500 to-blue-600", shadow: "shadow-cyan-500/20",
     desc: "90 seconds on the clock. Right answers add time, wrong ones drain it.",
     rules: ["90-second total bank", "Correct: +100 pts +3 seconds", "Wrong: −5 seconds (no lives)", "Selected questions appear once per round"],
     hsKey: "mednexus-hs-timeatk", hsLabel: "Best Score",
   },
   {
-    id: "streak", name: "Streak Master", badge: "Endurance",
-    badgeColor: "bg-amber-100 text-white dark:bg-amber-900/30",
+    id: "streak", name: "Streak Master",
     icon: "🔥", gradient: "from-amber-400 to-rose-500", shadow: "shadow-amber-500/20",
     desc: "No game over. Build the longest streak you can, finish whenever you're ready.",
     rules: ["Wrong answer resets streak — game continues", "No timer, no pressure", "Finish anytime to bank your best streak", "Selected questions appear once per round"],
     hsKey: "mednexus-hs-streak", hsLabel: "Best Streak",
   },
   {
-    id: "double", name: "Double Jeopardy", badge: "Confidence",
-    badgeColor: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+    id: "double", name: "Double Jeopardy",
     icon: "🎲", gradient: "from-indigo-500 to-purple-600", shadow: "shadow-indigo-500/20",
     desc: "Read the vignette, wager your confidence — then see the options.",
     rules: ["Vignette shown first, options hidden", "Wager: Safe 10% / Moderate 25% / Bold 50% / All In 100%", "Correct = win the wager · Wrong = lose it", "Selected questions appear once per round"],
@@ -101,34 +94,30 @@ const MODES: ModeConfig[] = [
 
 // Multiplayer modes (shown separately in the grid)
 interface MultiModeCard {
-  id: GameModeId; name: string; badge: string; badgeColor: string
+  id: GameModeId; name: string
   icon: string; gradient: string; shadow: string; desc: string; rules: string[]
 }
 const MULTI_MODES: MultiModeCard[] = [
   {
-    id: "clash", name: "Multiplayer Clash", badge: "Study Group",
-    badgeColor: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
+    id: "clash", name: "Multiplayer Clash",
     icon: "⚔️", gradient: "from-fuchsia-500 to-violet-600", shadow: "shadow-fuchsia-500/20",
     desc: "Compete with up to 5 players. Fastest correct answer takes max points.",
     rules: ["No NP entry fee", "Max 5 players per room · 6-digit PIN", ...getMultiplayerRewardRules()],
   },
   {
-    id: "cohort", name: "Cohort Review", badge: "Kahoot Style",
-    badgeColor: "bg-teal-100 text-white dark:bg-teal-900/30",
+    id: "cohort", name: "Cohort Review",
     icon: "🎓", gradient: "from-teal-500 to-cyan-500", shadow: "shadow-teal-500/20",
     desc: "Lecture hall mode — unlimited players, host controls the pace.",
     rules: ["No NP entry fee", "Unlimited players · Players buzz in via phone", ...getMultiplayerRewardRules()],
   },
   {
-    id: "wager", name: "Wager Wars", badge: "High Stakes",
-    badgeColor: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    id: "wager", name: "Wager Wars",
     icon: "🎰", gradient: "from-amber-500 to-rose-500", shadow: "shadow-amber-500/20",
     desc: "Wager match chips before seeing options. Chips affect this match only and are not spendable NP.",
     rules: ["Vignette shown first, options hidden", "Wager match chips or go All-In", "Chip balance hits 0 → Spectator mode", ...getMultiplayerRewardRules()],
   },
   {
-    id: "djmulti", name: "Double Jeopardy", badge: "Confidence",
-    badgeColor: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+    id: "djmulti", name: "Double Jeopardy",
     icon: "🎲", gradient: "from-indigo-500 to-purple-600", shadow: "shadow-indigo-500/20",
     desc: "Read the vignette, wager your confidence — then see the options. Now with friends.",
     rules: ["Max 5 players · In-game points bank", "Wager: Safe 10% / Moderate 25% / Bold 50% / All In 100%", "Points bank hits 0 → Spectator mode", ...getMultiplayerRewardRules()],
@@ -890,10 +879,7 @@ function ModeMenu({ mode, hs, catalog, filter, onFilterChange, onStart, onBack }
           <div className={`mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br ${mode.gradient} shadow-xl ${mode.shadow} text-4xl`}>
             {mode.icon}
           </div>
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">{mode.name}</h1>
-            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${mode.badgeColor}`}>{mode.badge}</span>
-          </div>
+          <h1 className="mb-2 text-2xl font-extrabold tracking-tight text-foreground">{mode.name}</h1>
           <p className="text-sm text-muted-foreground">{mode.desc}</p>
           {hs > 0 && (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-1.5 text-sm font-bold text-amber-700 dark:text-amber-400">
@@ -1143,8 +1129,8 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
 }
 
 // ── Mode Select Screen ────────────────────────────────────────────────────────
-function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules, hsLabel, hsKey, onSelect }: {
-  name: string; badge: string; badgeColor: string; icon: string; gradient: string; shadow: string
+function ModeCard({ name, icon, gradient, shadow, desc, rules, hsLabel, hsKey, onSelect }: {
+  name: string; icon: string; gradient: string; shadow: string
   desc: string; rules: string[]; hsLabel?: string; hsKey?: string; onSelect: () => void
 }) {
   const hs = hsKey ? readHs(hsKey) : 0
@@ -1159,10 +1145,7 @@ function ModeCard({ name, badge, badgeColor, icon, gradient, shadow, desc, rules
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="font-bold text-foreground">{name}</span>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${badgeColor}`}>{badge}</span>
-          </div>
+          <span className="mb-1 block font-bold text-foreground">{name}</span>
           <p className="text-xs leading-relaxed text-muted-foreground">{desc}</p>
         </div>
       </div>
