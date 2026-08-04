@@ -42,6 +42,18 @@ describe("Theory Vault phone experience", () => {
     expect(source).not.toContain("min-w-max")
   })
 
+  it("keeps phone navigation geometry and typography stable across states", async () => {
+    const source = await readFile("components/bottom-nav.tsx", "utf8")
+    expect(source).toContain("h-12 w-full min-w-0")
+    expect(source).toContain("text-[9px] font-semibold leading-none")
+    expect(source).toContain("transition-[background-color,color,box-shadow]")
+    expect(source).toContain('aria-current={active ? "page" : undefined}')
+    expect(source).toContain('active ? "bg-primary/15 shadow-sm" : "bg-transparent"')
+    expect(source).not.toContain("transition-all")
+    expect(source).not.toContain('active ? "font-bold')
+    expect(source).not.toMatch(/(?:hover|active):scale-/)
+  })
+
   it("centers the welcome modal and keeps the phone drawer above navigation", async () => {
     const [app, shell, sidebar] = await Promise.all([
       readFile("components/mednexus-app.tsx", "utf8"),
