@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
+import { runtimePool } from "@/lib/runtime-db"
 
 export async function GET(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_assessments")) return adminAccessDenied(req)
   const queryStartedAt = performance.now()
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const search = (req.nextUrl.searchParams.get("search") ?? "").trim().slice(0, 200)
   const moduleName = req.nextUrl.searchParams.get("module") ?? ""
   const status = req.nextUrl.searchParams.get("status") ?? ""

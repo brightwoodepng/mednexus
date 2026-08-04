@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
+import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     const res = await pool.query(
       `SELECT id,title,module_name,question_ids,question_count,
-        time_limit_mins,tries_allowed,pass_mark,status,share_token,created_at
+        time_limit_mins,tries_allowed,pass_mark,grading_mode,status,share_token,created_at
        FROM mednexus_assessments WHERE share_token = $1`,
       [token]
     )
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
       timeLimitMins: row.time_limit_mins,
       triesAllowed: row.tries_allowed,
       passMark: row.pass_mark,
+      gradingMode: row.grading_mode ?? "standard",
       status: row.status,
       shareToken: row.share_token,
       createdAt: row.created_at,
@@ -52,6 +54,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ assessment, questions })
   } catch (err) {
     console.error("[by-token GET]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return assessmentErrorResponse(err)
   }
 }

@@ -3,6 +3,7 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { bestAttempts, loadAttempts, percentage } from "@/lib/admin-results"
 import { auditAdmin } from "@/lib/platform-settings"
 import { gradingModeLabel } from "@/lib/assessment-grading"
+import { runtimePool } from "@/lib/runtime-db"
 
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`
@@ -15,8 +16,7 @@ export async function GET(req: NextRequest) {
   if (!id) return NextResponse.json({ error: "assessmentId is required" }, { status: 400 })
   const format = req.nextUrl.searchParams.get("format") === "pdf" ? "pdf" : "csv"
   const view = req.nextUrl.searchParams.get("view") === "all" ? "all" : "best"
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const result = await pool.query(
     "SELECT id,title,pass_mark,grading_mode FROM mednexus_assessments WHERE id=$1",
     [id],

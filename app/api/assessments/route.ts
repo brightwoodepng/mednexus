@@ -6,6 +6,7 @@ import { getRequestAuth } from "@/lib/request-auth"
 import { assessmentPercentage, isAssessmentGradingMode } from "@/lib/assessment-grading"
 import { assessmentEligibilitySql, assessmentModuleSql } from "@/lib/assessment-eligibility"
 import { optionalRuntimePool } from "@/lib/runtime-db"
+import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
 
 async function getPool() {
   return optionalRuntimePool()
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
   const queryStartedAt = performance.now()
   try {
     const pool = await getPool()
-    if (!pool) return NextResponse.json({ assessments: [] })
+    if (!pool) return NextResponse.json({ error: "The assessment database is not configured." }, { status: 503 })
 
     const admin = await requireAdminRequest(req, "manage_assessments")
     const canManageAssessments = Boolean(admin)
@@ -98,7 +99,7 @@ export async function GET(req: NextRequest) {
     })
   } catch (err) {
     console.error("[assessments GET]", err)
-    return NextResponse.json({ assessments: [] })
+    return assessmentErrorResponse(err)
   }
 }
 
@@ -198,6 +199,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, id, shareToken, requestedQuestionCount, actualQuestionCount })
   } catch (err) {
     console.error("[assessments POST]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return assessmentErrorResponse(err)
   }
 }
