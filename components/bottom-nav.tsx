@@ -21,7 +21,7 @@ export function BottomNav({ screen, activeHub, onNavigate, hidden }: BottomNavPr
         const Icon = tab.icon
         const active = screen === tab.screen
         return <button key={tab.id} data-tutorial-anchor={`mobile-bottom-nav-${tab.id}`} type="button" onClick={() => onNavigate(tab.screen)} aria-current={active ? "page" : undefined} aria-label={tab.label} className="flex min-h-14 min-w-0 flex-col items-center justify-center rounded-[1.4rem] px-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-          <span className={`flex min-w-0 max-w-full flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-2 py-1.5 transition-all duration-200 ${active ? "bg-primary/15 shadow-sm" : "bg-transparent"}`}><Icon size={19} className={active ? "text-primary" : (tab.iconColor ?? "text-muted-foreground")} /><span className={`max-w-full truncate text-[9px] font-semibold leading-none min-[360px]:text-[10px] ${active ? "font-bold text-primary" : "text-muted-foreground"}`}>{tab.mobileLabel ?? tab.label}</span></span>
+          <span className={`flex h-12 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-2 py-1.5 transition-[background-color,color,box-shadow] duration-200 ${active ? "bg-primary/15 shadow-sm" : "bg-transparent"}`}><Icon size={19} className={`shrink-0 transition-colors duration-200 ${active ? "text-primary" : (tab.iconColor ?? "text-muted-foreground")}`} /><span className={`max-w-full truncate text-[9px] font-semibold leading-none transition-colors duration-200 min-[360px]:text-[10px] ${active ? "text-primary" : "text-muted-foreground"}`}>{tab.mobileLabel ?? tab.label}</span></span>
         </button>
       })}
     </div>
