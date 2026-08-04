@@ -5,18 +5,11 @@ import { auditAdmin } from "@/lib/platform-settings"
 import type { Question } from "@/lib/types"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 import { runtimePool } from "@/lib/runtime-db"
+import { applyQuestionStatus, managedQuestionStatuses, normalizeCategory, normalizeQuestionStatus, type ManagedQuestionStatus } from "@/lib/mcq-status"
 
 export const dynamic = "force-dynamic"
 
-type ManagedStatus = "draft" | "review" | "live" | "offline" | "archived"
-const statuses = new Set<ManagedStatus>(["draft", "review", "live", "offline", "archived"])
-
-function statusOf(question: Question): ManagedStatus {
-  if (question.status && statuses.has(question.status)) return question.status
-  if (question.moduleStatus === "draft") return "draft"
-  if (question.moduleStatus === "offline") return "offline"
-  return "live"
-}
+const statuses = new Set<ManagedQuestionStatus>(managedQuestionStatuses)
 
 function issues(question: Question) {
   const found: string[] = []
@@ -33,7 +26,7 @@ function issues(question: Question) {
 
 function summary(question: Question) {
   const mediaCount = (question.media ?? []).length + (question.mediaBase64 ? 1 : 0)
-  return { ...question, status: statusOf(question), validationIssues: issues(question), mediaCount }
+  return { ...question, status: normalizeQuestionStatus(question), validationIssues: issues(question), mediaCount }
 }
 
 const issueExpression = `(COALESCE(BTRIM(question.value->>'module'),'')=''
@@ -83,9 +76,9 @@ export async function GET(req: NextRequest) {
        FROM mednexus_questions source
        CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) question(value)
        WHERE source.id=1
-         AND ($1='' OR COALESCE(question.value->>'module','')=$1)
-         AND ($2='' OR COALESCE(question.value->>'subject','')=$2)
-         AND ($3='' OR ${statusExpression}=$3)
+         AND ($1='' OR BTRIM(COALESCE(question.value->>'module',''))=$1)
+         AND ($2='' OR BTRIM(COALESCE(question.value->>'subject',''))=$2)
+         AND ($3='all' OR ($3='' AND ${statusExpression}<>'archived') OR ${statusExpression}=$3)
          AND ($4='' OR ($4='with')=${hasMediaExpression})
          AND (NOT $8::boolean OR ${issueExpression})
          AND ($5='' OR question.value->>'id' ILIKE '%'||$5||'%'
@@ -99,10 +92,13 @@ export async function GET(req: NextRequest) {
       [moduleName, subject, status, media, search, pageSize, offset, issuesOnly],
     ),
     pool.query(
-      `SELECT DISTINCT question.value->>'module' AS module, question.value->>'subject' AS subject
+      `SELECT BTRIM(COALESCE(question.value->>'module','')) AS module,
+              BTRIM(COALESCE(question.value->>'subject','')) AS subject,
+              ${statusExpression} AS status, COUNT(*)::int AS count
        FROM mednexus_questions source
        CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) question(value)
-       WHERE source.id=1`,
+       WHERE source.id=1
+       GROUP BY 1,2,3 ORDER BY 1,2,3`,
     ),
     pool.query(
       `SELECT ${statusExpression} AS status, COUNT(*)::int AS count
@@ -117,12 +113,25 @@ export async function GET(req: NextRequest) {
     const questions = result.rows.map(row => summary(row.question as Question))
     const modules = [...new Set(taxonomy.rows.map(row => row.module).filter(Boolean))].sort()
     const subjects = [...new Set(taxonomy.rows.map(row => row.subject).filter(Boolean))].sort()
+    const categories = modules.map(module => {
+      const rows = taxonomy.rows.filter(row => row.module === module)
+      const statusCounts = Object.fromEntries(managedQuestionStatuses.map(item => [item, rows.filter(row => row.status === item).reduce((sum, row) => sum + Number(row.count), 0)]))
+      return {
+        module,
+        count: rows.reduce((sum, row) => sum + Number(row.count), 0),
+        statusCounts,
+        disciplines: [...new Set(rows.map(row => row.subject).filter(Boolean))].map(subject => {
+          const disciplineRows = rows.filter(row => row.subject === subject)
+          return { subject, count: disciplineRows.reduce((sum, row) => sum + Number(row.count), 0), statusCounts: Object.fromEntries(managedQuestionStatuses.map(item => [item, disciplineRows.filter(row => row.status === item).reduce((sum, row) => sum + Number(row.count), 0)])) }
+        }),
+      }
+    })
     const counts = { ...Object.fromEntries(statusCounts.rows.map(row => [row.status, Number(row.count)])), issues: Number(issueCount.rows[0]?.count ?? 0) }
     const total = Number(result.rows[0]?.total_count ?? 0)
     const payload = {
       questions,
       pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) },
-      filters: { modules, subjects },
+      filters: { modules, subjects, categories },
       counts,
       updatedAt: result.rows[0]?.updated_at ?? null,
     }
@@ -164,9 +173,10 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const admin = await requireAdminRequest(req, "manage_mcq_content")
   if (!admin) return adminAccessDenied(req)
-  const body = await req.json() as { ids?: string[]; action?: "status" | "move" | "tags" | "duplicate" | "delete"; status?: ManagedStatus; module?: string; subject?: string; tags?: string[]; confirmation?: string }
+  const body = await req.json() as { ids?: string[]; scope?: { module?: string; subject?: string }; action?: "status" | "move" | "tags" | "duplicate" | "delete"; status?: ManagedQuestionStatus; module?: string; subject?: string; tags?: string[]; confirmation?: string }
   const ids = [...new Set((body.ids ?? []).filter(Boolean))]
-  if (!ids.length) return NextResponse.json({ error: "Select at least one question." }, { status: 400 })
+  const scope = body.scope ? { module: normalizeCategory(body.scope.module), subject: normalizeCategory(body.scope.subject) } : null
+  if (!ids.length && !scope?.module) return NextResponse.json({ error: "Select questions, a module, or a discipline." }, { status: 400 })
   if (body.action === "delete" && body.confirmation !== "DELETE SELECTED MCQS") return NextResponse.json({ error: "Type DELETE SELECTED MCQS to confirm." }, { status: 400 })
   if (body.action === "status" && (!body.status || !statuses.has(body.status))) return NextResponse.json({ error: "Choose a valid status." }, { status: 400 })
   const pool = await runtimePool()
@@ -178,10 +188,17 @@ export async function PATCH(req: NextRequest) {
       `SELECT item.value AS question
        FROM mednexus_questions source
        CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) item(value)
-       WHERE source.id=1 AND item.value->>'id'=ANY($1::text[])`,
-      [ids],
+       WHERE source.id=1 AND (
+         (cardinality($1::text[])>0 AND item.value->>'id'=ANY($1::text[]))
+         OR (cardinality($1::text[])=0 AND BTRIM(COALESCE(item.value->>'module',''))=$2
+           AND ($3='' OR BTRIM(COALESCE(item.value->>'subject',''))=$3))
+       )`,
+      [ids, scope?.module ?? "", scope?.subject ?? ""],
     )
     const selectedQuestions = current.rows.map(row => row.question)
+    if (!selectedQuestions.length) { await client.query("ROLLBACK"); return NextResponse.json({ error: "No questions matched the selected category." }, { status: 404 }) }
+    const matchedIds = selectedQuestions.map(question => question.id)
+    const before = Object.fromEntries(managedQuestionStatuses.map(status => [status, selectedQuestions.filter(question => normalizeQuestionStatus(question) === status).length]))
     if (body.action === "status" && body.status === "live") {
       const blocked = selectedQuestions.filter((question) => issues(question).length > 0)
       if (blocked.length) {
@@ -195,13 +212,13 @@ export async function PATCH(req: NextRequest) {
     const upserts = selectedQuestions.flatMap<Question>((question) => {
       if (body.action === "delete") return []
       if (body.action === "duplicate") { additions.push({ ...question, id: randomUUID(), status: "draft", moduleStatus: "draft", vignette: question.vignette + " (Copy)", updatedAt: now }); return [question] }
-      if (body.action === "status") return [{ ...question, status: body.status, moduleStatus: body.status === "live" ? "live" : body.status === "offline" || body.status === "archived" ? "offline" : "draft", updatedAt: now }]
+      if (body.action === "status") return [applyQuestionStatus(question, body.status!, now)]
       if (body.action === "move") return [{ ...question, module: body.module?.trim() || question.module, subject: body.subject?.trim() || question.subject, updatedAt: now }]
       if (body.action === "tags") return [{ ...question, tags: [...new Set(body.tags ?? [])], updatedAt: now }]
       return [question]
     })
     const incoming = body.action === "duplicate" ? additions : upserts
-    const deletedIds = body.action === "delete" ? ids : []
+    const deletedIds = body.action === "delete" ? matchedIds : []
     await client.query(
       `WITH incoming AS (
          SELECT value, ordinality, value->>'id' AS id
@@ -229,8 +246,8 @@ export async function PATCH(req: NextRequest) {
        WHERE id=1`,
       [JSON.stringify(incoming), deletedIds],
     )
-    await auditAdmin(client, admin.uid, body.action ?? "bulk_update", "mcq_question", null, { ids, affected, created: additions.length, status: body.status, module: body.module, subject: body.subject })
+    await auditAdmin(client, admin.uid, body.action ?? "bulk_update", "mcq_question", null, { ids: matchedIds, scope, affected, created: additions.length, status: body.status, module: body.module, subject: body.subject })
     await client.query("COMMIT")
-    return NextResponse.json({ success: true, affected, created: additions.length })
+    return NextResponse.json({ success: true, matched: affected, affected, skipped: 0, failed: 0, created: additions.length, statusBreakdown: before })
   } catch (error) { await client.query("ROLLBACK"); console.error("[admin/mcq/questions PATCH]", error); return NextResponse.json({ error: "Bulk update failed without changing the bank." }, { status: 500 }) } finally { client.release() }
 }
