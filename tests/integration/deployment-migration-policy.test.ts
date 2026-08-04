@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process"
 import { describe, expect, it } from "vitest"
 
+import { migrationDatabaseUrl } from "../../scripts/migrate"
 import { deploymentBuildSteps, validateDeploymentEnvironment } from "../../scripts/vercel-build.mjs"
 
 describe("deployment migration policy", () => {
@@ -35,6 +36,18 @@ describe("deployment migration policy", () => {
     })).toEqual(["db:migrate", "build"])
   })
 
+  it("uses a release-owner database URL before the restricted runtime URL", () => {
+    expect(migrationDatabaseUrl({
+      MIGRATION_DATABASE_URL: "postgres://release.example/mednexus",
+      bright_DATABASE_URL_UNPOOLED: "postgres://integration.example/mednexus",
+      DATABASE_URL: "postgres://runtime.example/mednexus",
+    })).toBe("postgres://release.example/mednexus")
+    expect(migrationDatabaseUrl({
+      bright_DATABASE_URL_UNPOOLED: "postgres://integration.example/mednexus",
+      DATABASE_URL: "postgres://runtime.example/mednexus",
+    })).toBe("postgres://integration.example/mednexus")
+  })
+
   it("reports a missing connection variable without attempting localhost", () => {
     let output = ""
     try {
@@ -56,7 +69,7 @@ describe("deployment migration policy", () => {
     }
 
     expect(output).toContain("Database migration failed.")
-    expect(output).toContain("DATABASE_URL or POSTGRES_URL is not configured")
+    expect(output).toContain("A migration database URL is not configured")
     expect(output).not.toContain("ECONNREFUSED")
   })
 })

@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { bestAttempts, loadAttempts, median, percentage } from "@/lib/admin-results"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
+import { runtimePool } from "@/lib/runtime-db"
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdminRequest(req, "manage_assessments")) return adminAccessDenied(req)
   const { id } = await params
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const result = await pool.query(
     `SELECT id,title,module_name,question_count,pass_mark,grading_mode,status
      FROM mednexus_assessments WHERE id=$1`,

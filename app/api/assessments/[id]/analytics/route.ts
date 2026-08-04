@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { assessmentPercentage } from "@/lib/assessment-grading"
+import { bestAttempts, loadAttempts } from "@/lib/admin-results"
 import { optionalRuntimePool } from "@/lib/runtime-db"
+import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
 
 async function getPool() {
   return optionalRuntimePool()
@@ -21,51 +23,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!asmtRes.rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 })
     const { pass_mark, tries_allowed, grading_mode } = asmtRes.rows[0]
 
-    // ── Registered user attempts ──────────────────────────────────────────────
-    // Fetch all submitted attempts from the registered-user table.
-    const attRes = await pool.query(
-      `SELECT user_id, user_name, false AS is_guest, score, total, submitted_at
-       FROM mednexus_assessment_attempts
-       WHERE assessment_id = $1 AND submitted_at IS NOT NULL`,
-      [id]
-    )
-
-    // Deduplicate registered users: keep personal best only.
-    type RegRow = { user_id: string; user_name: string; is_guest: boolean; score: number; total: number; submitted_at: string }
-    const bestByUser = attRes.rows.reduce<Map<string, RegRow>>((acc, row) => {
-      const existing = acc.get(row.user_id)
-      if (!existing || row.score > existing.score) acc.set(row.user_id, row)
-      return acc
-    }, new Map())
-    const registeredRows = Array.from(bestByUser.values())
-
-    // ── Guest analytics ───────────────────────────────────────────────────────
-    // Deduplicate guests by name — keep only their personal best score.
-    // Guests who take multiple tries would otherwise appear once per attempt.
-    const guestRes = await pool.query(
-      `SELECT guest_name AS user_name, true AS is_guest, score, total, submitted_at
-       FROM mednexus_guest_analytics
-       WHERE assessment_id = $1`,
-      [id]
-    )
-    type GuestRow = { user_name: string; is_guest: boolean; score: number; total: number; submitted_at: string }
-    const bestByGuestName = guestRes.rows.reduce<Map<string, GuestRow>>((acc, row) => {
-      const existing = acc.get(row.user_name)
-      if (!existing || row.score > existing.score) acc.set(row.user_name, row)
-      return acc
-    }, new Map())
-    const guestRows: GuestRow[] = Array.from(bestByGuestName.values())
-
-    // ── Merge for aggregated stats ────────────────────────────────────────────
-    const allRows = [
-      ...registeredRows.map((r) => ({ userName: r.user_name, isGuest: false, score: r.score, total: r.total, submittedAt: r.submitted_at })),
-      ...guestRows.map((r) => ({ userName: r.user_name, isGuest: true, score: r.score, total: r.total, submittedAt: r.submitted_at })),
-    ]
+    // Modern registered and guest attempts share one authoritative table.
+    // The shared loader also folds in legacy guest rows without double counting.
+    const allRows = bestAttempts(await loadAttempts(pool, id)).map((attempt) => ({
+      userName: attempt.participantName,
+      isGuest: attempt.isGuest,
+      score: attempt.score,
+      total: attempt.total,
+      submittedAt: attempt.submittedAt,
+    }))
 
     const totalSubmitted  = allRows.length
-    const guestCount      = guestRows.length
-    const registeredCount = registeredRows.length
-    const uniqueUsers     = registeredRows.length + guestRows.length  // guests each count as unique
+    const guestCount = allRows.filter(row => row.isGuest).length
+    const registeredCount = allRows.length - guestCount
+    const uniqueUsers = allRows.length
 
     const scores = allRows.map((r) => assessmentPercentage(r.score, r.total))
     const averageScore  = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
@@ -113,6 +84,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     })
   } catch (err) {
     console.error("[analytics GET]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return assessmentErrorResponse(err)
   }
 }

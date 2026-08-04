@@ -5,6 +5,7 @@ import { measuredJson } from "@/lib/api-efficiency"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 import { isAssessmentGradingMode } from "@/lib/assessment-grading"
 import { optionalRuntimePool } from "@/lib/runtime-db"
+import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
 
 async function getPool() {
   return optionalRuntimePool()
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     })
   } catch (err) {
     console.error("[assessments/[id] GET]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return assessmentErrorResponse(err)
   }
 }
 
@@ -141,7 +142,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error("[assessments/[id] PUT]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return assessmentErrorResponse(err)
   }
 }
 
@@ -172,6 +173,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error("[assessments/[id] DELETE]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return assessmentErrorResponse(err)
   }
 }

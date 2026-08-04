@@ -499,16 +499,21 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
   const [optionsLoading, setOptionsLoading] = useState(true)
   const [optionsError, setOptionsError] = useState("")
   const [creationNotice, setCreationNotice] = useState("")
+  const [assessmentError, setAssessmentError] = useState("")
 
   const fetchAssessments = useCallback(async () => {
     setLoading(true)
+    setAssessmentError("")
     try {
       const res = await fetch("/api/assessments")
-      const data = await res.json()
+      const data = await readJsonResponse(res)
+      if (!res.ok || !Array.isArray(data.assessments)) {
+        throw new Error(typeof data.error === "string" ? data.error : "Unable to load assessments.")
+      }
       setAssessments(data.assessments ?? [])
-      if (data.defaults) setDefaults(data.defaults)
-    } catch {
-      setAssessments([])
+      if (data.defaults) setDefaults(data.defaults as AssessmentDefaults)
+    } catch (cause) {
+      setAssessmentError(cause instanceof Error ? cause.message : "Unable to load assessments.")
     } finally {
       setLoading(false)
     }
@@ -547,20 +552,32 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
 
   async function toggleStatus(asmt: LiveAssessment) {
     const newStatus = asmt.status === "live" ? "offline" : "live"
-    await fetch(`/api/assessments/${asmt.id}`, {
+    setAssessmentError("")
+    const response = await fetch(`/api/assessments/${asmt.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     })
-    fetchAssessments()
+    const body = await readJsonResponse(response)
+    if (!response.ok) {
+      setAssessmentError(typeof body.error === "string" ? body.error : "Unable to change assessment status.")
+      return
+    }
+    void fetchAssessments()
   }
 
   async function deleteAssessment(asmt: LiveAssessment) {
     if (!confirm(`Delete "${asmt.title}"? This also removes all attempts.`)) return
-    await fetch(`/api/assessments/${asmt.id}?confirm=true`, {
+    setAssessmentError("")
+    const response = await fetch(`/api/assessments/${asmt.id}?confirm=true`, {
       method: "DELETE",
     })
-    fetchAssessments()
+    const body = await readJsonResponse(response)
+    if (!response.ok) {
+      setAssessmentError(typeof body.error === "string" ? body.error : "Unable to delete the assessment.")
+      return
+    }
+    void fetchAssessments()
   }
 
   function copyLink(asmt: LiveAssessment) {
@@ -609,6 +626,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
       </div>
 
       {creationNotice && <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300"><span>{creationNotice}</span><button type="button" onClick={() => setCreationNotice("")} aria-label="Dismiss creation message" className="font-bold">×</button></div>}
+      {assessmentError && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"><span>{assessmentError}</span><button type="button" onClick={() => void fetchAssessments()} className="shrink-0 font-semibold underline">Retry</button></div>}
 
       {loading ? (
         <div className="flex flex-col gap-3">

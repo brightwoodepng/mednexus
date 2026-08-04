@@ -6,6 +6,7 @@ import { boundedPagination } from "@/lib/api-efficiency"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 import { gradeAssessment, isAssessmentGradingMode } from "@/lib/assessment-grading"
 import { optionalRuntimePool } from "@/lib/runtime-db"
+import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
 
 async function getPool() {
   return optionalRuntimePool()
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     })
   } catch (err) {
     console.error("[attempt GET]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return assessmentErrorResponse(err)
   }
 }
 
@@ -157,7 +158,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch (err) {
     if (client) await client.query("ROLLBACK").catch(() => undefined)
     console.error("[attempt POST]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return assessmentErrorResponse(err)
   } finally {
     client?.release()
   }
