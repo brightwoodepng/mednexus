@@ -44,6 +44,7 @@ export function LearnerWorkspaceShell({
     activeStudyHub,
     accountMenuOpen: accountOpen,
     setAccountMenuOpen: setAccountOpen,
+    setNotificationOpen,
   } = useApplicationShell()
   const accountRef = useRef<HTMLDivElement>(null)
 
@@ -57,6 +58,7 @@ export function LearnerWorkspaceShell({
   }, [accountOpen, setAccountOpen])
 
   const navigate = (next: Screen) => {
+    setNotificationOpen(false)
     onNavigate(next)
     setMobileNavigationOpen(false)
   }
