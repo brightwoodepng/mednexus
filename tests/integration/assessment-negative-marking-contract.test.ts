@@ -16,6 +16,7 @@ describe("negative-marking assessment contracts", () => {
   it("validates grading modes when assessments are created", () => {
     expect(createRoute).toContain("isAssessmentGradingMode(gradingMode)")
     expect(createRoute).toContain("_mednexusAssessment")
+    expect(createRoute).toContain("$8::text")
     expect(createRoute).not.toContain("pass_mark,grading_mode,status")
   })
 
