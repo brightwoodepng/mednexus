@@ -47,6 +47,12 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
   const { activeStudyHub, workspaceSwitcherOpen, setWorkspaceSwitcherOpen } = useApplicationShell()
   const navigation = useMemo(() => getHubNavigation(activeStudyHub), [activeStudyHub])
   const nav = (next: Screen) => { onNavigate(next); onCloseMobile() }
+  const selectStudyHub = (hub: StudyHubId) => {
+    onSelectStudyHub(hub)
+    // Let the atomic hub, home-screen, and URL update commit before the phone
+    // drawer unmounts its workspace selector.
+    if (mobileOpen) window.requestAnimationFrame(onCloseMobile)
+  }
 
   const firstName = user?.name?.split(" ")[0] ?? "Guest"
 
@@ -85,8 +91,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
         </p>
         <div data-tutorial-anchor={mobileOpen ? "drawer-workspace-switcher" : "desktop-workspace-switcher"}><StudyHubDropdown
           activeHub={activeStudyHub}
-          onSelect={onSelectStudyHub}
-          onAfterSelect={onCloseMobile}
+          onSelect={selectStudyHub}
           open={workspaceSwitcherOpen}
           onOpenChange={setWorkspaceSwitcherOpen}
         /></div>
