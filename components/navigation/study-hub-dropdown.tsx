@@ -26,13 +26,11 @@ function hubIconClasses(hub: StudyHubId) {
 export function StudyHubDropdown({
   activeHub,
   onSelect,
-  onAfterSelect,
   open: controlledOpen,
   onOpenChange,
 }: {
   activeHub: StudyHubId
   onSelect: (hub: StudyHubId) => void
-  onAfterSelect?: () => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
@@ -69,7 +67,6 @@ export function StudyHubDropdown({
   function handleSelect(id: StudyHubId) {
     onSelect(id)
     setOpen(false)
-    onAfterSelect?.()
   }
 
   const triggerCls = isGlassEnabled
