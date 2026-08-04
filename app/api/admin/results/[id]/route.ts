@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
   const result = await pool.query(
-    `SELECT id,title,module_name,question_count,pass_mark,status
+    `SELECT id,title,module_name,question_count,pass_mark,grading_mode,status
      FROM mednexus_assessments WHERE id=$1`,
     [id],
   )
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     topicMap.set(question.topic, current)
   }
   return NextResponse.json({
-    assessment: { id, title: assessment.title, moduleName: assessment.module_name, passMark: assessment.pass_mark, questionCount: assessment.question_count, status: assessment.status },
+    assessment: { id, title: assessment.title, moduleName: assessment.module_name, passMark: assessment.pass_mark, gradingMode: assessment.grading_mode ?? "standard", questionCount: assessment.question_count, status: assessment.status },
     view: mode,
     metrics: { participants: attempts.length, average: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0, median: median(scores), highest: scores.length ? Math.max(...scores) : 0, lowest: scores.length ? Math.min(...scores) : 0, passed: scores.filter((score) => score >= assessment.pass_mark).length, failed: scores.filter((score) => score < assessment.pass_mark).length },
     attempts: attempts.sort((a, b) => percentage(b) - percentage(a)).map((attempt) => ({ ...attempt, percentage: percentage(attempt), passed: percentage(attempt) >= assessment.pass_mark })),

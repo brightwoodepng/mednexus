@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { bestAttempts, loadAttempts, percentage } from "@/lib/admin-results"
 import { auditAdmin } from "@/lib/platform-settings"
+import { gradingModeLabel } from "@/lib/assessment-grading"
 
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
   const result = await pool.query(
-    "SELECT id,title,pass_mark FROM mednexus_assessments WHERE id=$1",
+    "SELECT id,title,pass_mark,grading_mode FROM mednexus_assessments WHERE id=$1",
     [id],
   )
   const assessment = result.rows[0]
@@ -28,9 +29,9 @@ export async function GET(req: NextRequest) {
 
   if (format === "csv") {
     const lines = [
-      ["Participant", "Account type", "Score", "Total", "Percentage", "Result", "Submitted"].map(csvCell).join(","),
+      ["Participant", "Account type", "Grading", "Score", "Total", "Percentage", "Result", "Submitted"].map(csvCell).join(","),
       ...attempts.map((attempt) => [
-        attempt.participantName, attempt.isGuest ? "Guest" : "Registered", attempt.score, attempt.total,
+        attempt.participantName, attempt.isGuest ? "Guest" : "Registered", gradingModeLabel(assessment.grading_mode ?? "standard"), attempt.score, attempt.total,
         percentage(attempt), percentage(attempt) >= assessment.pass_mark ? "Pass" : "Fail", attempt.submittedAt,
       ].map(csvCell).join(",")),
     ]
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
   document.fontSize(20).fillColor("#0f766e").text("MedNexus")
   document.moveDown(0.2).fontSize(16).fillColor("#111827").text(assessment.title)
   document.fontSize(9).fillColor("#6b7280").text(`${view === "best" ? "Best attempt" : "All attempts"} report · Generated ${new Date().toLocaleString()}`)
+  document.fontSize(9).fillColor("#6b7280").text(`Grading: ${gradingModeLabel(assessment.grading_mode ?? "standard")}`)
   document.moveDown()
   for (const attempt of attempts) {
     if (document.y > 735) document.addPage()

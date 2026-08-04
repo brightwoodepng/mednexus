@@ -3,6 +3,7 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
 import { measuredJson } from "@/lib/api-efficiency"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
+import { isAssessmentGradingMode } from "@/lib/assessment-grading"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
@@ -22,6 +23,7 @@ function rowToAssessment(row: Record<string, unknown>) {
     timeLimitMins: row.time_limit_mins,
     triesAllowed: row.tries_allowed,
     passMark: row.pass_mark,
+    gradingMode: row.grading_mode ?? "standard",
     status: row.status,
     shareToken: row.share_token,
     createdAt: row.created_at,
@@ -42,7 +44,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     let row: Record<string, unknown> | null = null
     const projection = `id,title,module_name,question_ids,question_count,
-      time_limit_mins,tries_allowed,pass_mark,status,share_token,created_at`
+      time_limit_mins,tries_allowed,pass_mark,grading_mode,status,share_token,created_at`
 
     if (canManageAssessments) {
       const res = await pool.query(`SELECT ${projection} FROM mednexus_assessments WHERE id = $1`, [id])
@@ -85,7 +87,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 // PUT /api/assessments/[id] — admin only
-// body: { status?, title?, timeLimitMins?, triesAllowed?, passMark? }
+// body: { status?, title?, timeLimitMins?, triesAllowed?, passMark?, gradingMode? }
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await requireAdminRequest(req, "manage_assessments")
@@ -100,6 +102,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const values: unknown[] = []
     let i = 1
 
+    if (body.gradingMode !== undefined) {
+      if (!isAssessmentGradingMode(body.gradingMode)) {
+        return NextResponse.json({ error: "Invalid grading mode" }, { status: 400 })
+      }
+      fields.push(`grading_mode = $${i++}`)
+      values.push(body.gradingMode)
+    }
+
     if (body.status !== undefined) { fields.push(`status = $${i++}`); values.push(body.status) }
     if (body.title !== undefined) { fields.push(`title = $${i++}`); values.push(body.title) }
     if (body.timeLimitMins !== undefined) { fields.push(`time_limit_mins = $${i++}`); values.push(body.timeLimitMins) }
@@ -112,6 +122,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
+      if (body.gradingMode !== undefined) {
+        await client.query("SELECT id FROM mednexus_assessments WHERE id = $1 FOR UPDATE", [id])
+        const submitted = await client.query(
+          "SELECT 1 FROM mednexus_assessment_attempts WHERE assessment_id = $1 AND submitted_at IS NOT NULL LIMIT 1",
+          [id],
+        )
+        if (submitted.rows.length) {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Grading cannot be changed after the first submission" }, { status: 409 })
+        }
+      }
       await client.query(`UPDATE mednexus_assessments SET ${fields.join(", ")} WHERE id = $${i}`, values)
       await auditAdmin(client, admin.uid, "update", "assessment", id, body)
       await client.query("COMMIT")
