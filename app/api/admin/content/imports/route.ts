@@ -9,8 +9,7 @@ export async function GET(req: NextRequest) {
   const canMcq = await requireAdminRequest(req, "manage_mcq_content")
   const canTheory = await requireAdminRequest(req, "manage_theory_content")
   if (!canMcq && !canTheory) return adminAccessDenied(req)
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const { default: pool } = await import("@/lib/db")
   const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
   const bank = req.nextUrl.searchParams.get("bank")
   const values: Array<string | number> = []
@@ -39,8 +38,7 @@ export async function POST(req: NextRequest) {
   const admin = await requireAdminRequest(req, permission)
   if (!admin) return adminAccessDenied(req)
   if (!Array.isArray(body.drafts) || body.drafts.length === 0 || body.drafts.length > 1000) return NextResponse.json({ error: "Provide 1–1000 parsed drafts." }, { status: 400 })
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const { default: pool } = await import("@/lib/db")
   const draftRecords = body.drafts.map((draft, index) => {
     const record = draft && typeof draft === "object" ? draft as Record<string, unknown> : {}
     return {

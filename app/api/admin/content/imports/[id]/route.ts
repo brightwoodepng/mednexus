@@ -4,8 +4,7 @@ import { auditAdmin } from "@/lib/platform-settings"
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const { default: pool } = await import("@/lib/db")
   const result = await pool.query(
     `SELECT id,bank,source_name,status,total_count,valid_count,error_count,
       validation_errors,draft_payload,created_at
@@ -21,8 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const { default: pool } = await import("@/lib/db")
   const found = await pool.query(
     "SELECT id,bank,status,total_count FROM mednexus_content_import_jobs WHERE id=$1",
     [id],
@@ -88,8 +86,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const { default: pool } = await import("@/lib/db")
   const found = await pool.query("SELECT bank FROM mednexus_content_import_jobs WHERE id=$1", [id])
   if (!found.rows[0]) return NextResponse.json({ error: "Import job not found" }, { status: 404 })
   const permission = found.rows[0].bank === "theory" ? "manage_theory_content" : "manage_mcq_content"

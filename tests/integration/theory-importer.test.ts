@@ -124,4 +124,14 @@ describe("Theory bulk importer", () => {
     expect(exportRoute).not.toContain("referencesMd")
     expect(db).toContain("jsonb_array_length(key_marking_points) * 2")
   })
+
+  it("parses text and Markdown files without document extraction", async () => {
+    const importer = await readFile(new URL("../../components/theory-bulk-importer.tsx", import.meta.url), "utf8")
+    expect(importer).toContain(".txt,.md")
+    expect(importer).toContain("text/plain,text/markdown")
+    expect(importer).toContain("readPlainTextImportFile(file)")
+    expect(importer).toMatch(/plainTextImportFileType\(file\.name\)[\s\S]*action: "parse"[\s\S]*images: \[\]/)
+    expect(importer).toContain("onDrop={handleDrop}")
+    expect(importer).toContain("Unsupported file type. Choose a .pdf, .docx, .json, .txt, or .md file.")
+  })
 })

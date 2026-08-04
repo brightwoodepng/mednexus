@@ -1,13 +1,19 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState, type DragEvent } from "react"
 import { AlertTriangle, CheckCircle2, FileJson, FileText, FileUp, ImageIcon, Loader2, Trash2, Upload } from "lucide-react"
 import { importAuthHeaders, importError } from "@/lib/import-client"
 import type { TheoryImportImage, TheoryImportItem, TheoryImportValidation } from "@/lib/theory-import"
 import { TheoryQuestionMedia } from "@/components/theory-question-media"
+import { plainTextImportFileType, readPlainTextImportFile } from "@/lib/plain-text-import"
 
 const card = "rounded-2xl border border-border bg-card p-5 shadow-sm"
 const button = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition"
+
+function supportedTheoryImportFile(fileName: string) {
+  const name = fileName.trim().toLowerCase()
+  return name.endsWith(".json") || name.endsWith(".pdf") || name.endsWith(".docx") || plainTextImportFileType(name) !== null
+}
 
 async function jsonRequest<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(url, {
@@ -43,6 +49,22 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
     return [...map.values()]
   }, [items])
 
+  const selectFile = (selected: File | null) => {
+    setFailure("")
+    if (selected && !supportedTheoryImportFile(selected.name)) {
+      setFile(null)
+      setFailure("Unsupported file type. Choose a .pdf, .docx, .json, .txt, or .md file.")
+      return
+    }
+    setFile(selected)
+  }
+
+  const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    if (stage !== "select") return
+    selectFile(event.dataTransfer.files?.[0] ?? null)
+  }
+
   const processFile = async () => {
     if (!file) return
     setFailure("")
@@ -54,6 +76,17 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
         setMessage("Validating Theory hierarchy and questions…")
         const payload = JSON.parse(await file.text()) as unknown
         const result = await jsonRequest<TheoryImportValidation>("/api/admin/theory/import", { action: "validate", payload })
+        setItems(result.items)
+        setErrors(result.errors)
+      } else if (plainTextImportFileType(file.name)) {
+        setStage("parsing")
+        setMessage("Reading text and building Theory questions…")
+        const text = await readPlainTextImportFile(file)
+        const result = await jsonRequest<TheoryImportValidation>("/api/admin/theory/import", {
+          action: "parse",
+          text,
+          images: [],
+        })
         setItems(result.items)
         setErrors(result.errors)
       } else {
@@ -124,11 +157,11 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
 
   return <div className="space-y-5">
     <section className={card}>
-      <div className="flex items-start gap-4"><span className="rounded-2xl bg-primary/10 p-3 text-primary"><FileUp size={24}/></span><div><h2 className="text-xl font-bold">Bulk Theory importer</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">Import PDF, Word, or structured JSON. Headings create collections, modules, and related disciplines. Questions remain unassigned so an administrator can divide them into sets after review.</p></div></div>
-      <input ref={inputRef} type="file" accept=".pdf,.docx,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json" className="sr-only" onChange={event => { setFile(event.target.files?.[0] ?? null); setFailure("") }}/>
-      <button type="button" onClick={() => inputRef.current?.click()} className="mt-5 flex min-h-40 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 p-6 text-center transition hover:bg-primary/10">
+      <div className="flex items-start gap-4"><span className="rounded-2xl bg-primary/10 p-3 text-primary"><FileUp size={24}/></span><div><h2 className="text-xl font-bold">Bulk Theory importer</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">Import PDF, Word, plain text, Markdown, or structured JSON. Headings create collections, modules, and related disciplines. Questions remain unassigned so an administrator can divide them into sets after review.</p></div></div>
+      <input ref={inputRef} type="file" accept=".pdf,.docx,.json,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json,text/plain,text/markdown" className="sr-only" onChange={event => selectFile(event.target.files?.[0] ?? null)}/>
+      <button type="button" onClick={() => inputRef.current?.click()} onDragOver={event => event.preventDefault()} onDrop={handleDrop} className="mt-5 flex min-h-40 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 p-6 text-center transition hover:bg-primary/10">
         <span className="flex gap-2 text-primary"><FileText/><FileJson/><ImageIcon/></span>
-        <b className="mt-3">{file ? file.name : "Choose a PDF, Word, or JSON file"}</b>
+        <b className="mt-3">{file ? file.name : "Choose or drop a PDF, Word, text, Markdown, or JSON file"}</b>
         <span className="mt-1 text-xs text-muted-foreground">{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "Maximum file size 25 MB · PNG, JPEG, and WebP images supported"}</span>
       </button>
       {failure && <div role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{failure}</div>}
@@ -139,7 +172,7 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
     <details className={card}>
       <summary className="cursor-pointer font-bold">Recommended document structure</summary>
       <div className="mt-4 grid gap-4 text-sm leading-6 text-muted-foreground md:grid-cols-2">
-        <div><b className="text-foreground">PDF or Word headings</b><pre className="mt-2 overflow-x-auto rounded-xl bg-muted p-3 text-xs text-foreground">{`COLLECTION: End of Module
+        <div><b className="text-foreground">Document or text headings</b><pre className="mt-2 overflow-x-auto rounded-xl bg-muted p-3 text-xs text-foreground">{`COLLECTION: End of Module
 MODULE: Cardiovascular Medicine
 DISCIPLINE: Cardiology
 QUESTION TITLE: Acute pulmonary oedema management

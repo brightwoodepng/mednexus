@@ -1,5 +1,6 @@
 import type { Question } from "@/lib/types"
 import type { ImportExtractionSummary } from "@/lib/import-types"
+import type { PlainTextImportFileType } from "@/lib/plain-text-import"
 
 export type ImportBatchStatus = "waiting" | "processing" | "completed" | "retrying" | "failed"
 
@@ -27,7 +28,7 @@ export interface ResumableImportSession {
   fingerprint: string
   fileName: string
   fileSize: number
-  fileType: "docx" | "pdf"
+  fileType: "docx" | "pdf" | PlainTextImportFileType
   usingQuestionBatches: boolean
   images: ImportSourceImage[]
   summary: ImportExtractionSummary | null

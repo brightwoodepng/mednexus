@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from "crypto"
-import sharp from "sharp"
 import type { Pool, PoolClient } from "pg"
 import type { Question, QuestionMedia } from "@/lib/types"
 import { publicMcqMediaUrl, putMcqMedia } from "@/lib/mcq-media-storage"
@@ -22,7 +21,12 @@ export async function externalizeLegacyQuestionMedia(
   questions: readonly Question[],
   createdBy: string,
 ): Promise<Question[]> {
-  if (!storageConfigured()) return [...questions]
+  if (!storageConfigured() || !questions.some(question => question.mediaBase64)) return [...questions]
+
+  // Sharp is a native optional dependency. Do not load it for ordinary
+  // text-only imports; doing so can reject an otherwise valid save when the
+  // deployment image does not include its native runtime.
+  const { default: sharp } = await import("sharp")
 
   return Promise.all(questions.map(async question => {
     if (!question.mediaBase64) return question
