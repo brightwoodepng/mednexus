@@ -18,10 +18,11 @@ describe("negative-marking assessment contracts", () => {
     expect(createRoute).toContain("grading_mode")
   })
 
-  it("advances and applies the schema migration before grading columns are used", () => {
+  it("defines the grading migration without running DDL in assessment requests", () => {
     expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-08-04-assessment-grading-v1"')
     expect(database).toContain("ADD COLUMN IF NOT EXISTS grading_mode")
-    expect(createRoute).toContain("await ensureSchema()")
+    expect(createRoute).toContain("optionalRuntimePool")
+    expect(createRoute).not.toContain("ensureSchema")
   })
 
   it("locks grading changes after the first submitted attempt", () => {

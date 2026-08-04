@@ -5,14 +5,10 @@ import { getRequestAuth, unauthorized } from "@/lib/request-auth"
 import { boundedPagination } from "@/lib/api-efficiency"
 import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 import { gradeAssessment, isAssessmentGradingMode } from "@/lib/assessment-grading"
+import { optionalRuntimePool } from "@/lib/runtime-db"
 
 async function getPool() {
-  if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
-  try {
-    const { default: pool, ensureSchema } = await import("@/lib/db")
-    await ensureSchema()
-    return pool
-  } catch { return null }
+  return optionalRuntimePool()
 }
 
 type AuthenticatedAccount = { uid: string; name: string; role: string; isGuest: boolean }

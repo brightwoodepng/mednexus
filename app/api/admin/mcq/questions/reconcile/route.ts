@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
+import { runtimePool } from "@/lib/runtime-db"
 import { auditAdmin } from "@/lib/platform-settings"
 import type { Question } from "@/lib/types"
 import { externalizeLegacyQuestionMedia } from "@/lib/mcq-media-normalization"
@@ -24,8 +25,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, updated: 0, deleted: 0 })
   }
 
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const client = await pool.connect()
   try {
     await client.query("BEGIN")

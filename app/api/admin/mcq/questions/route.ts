@@ -4,6 +4,7 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
 import type { Question } from "@/lib/types"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
+import { runtimePool } from "@/lib/runtime-db"
 
 export const dynamic = "force-dynamic"
 
@@ -53,8 +54,7 @@ export async function GET(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_mcq_content")) return adminAccessDenied(req)
   try {
     const queryStartedAt = performance.now()
-    const { default: pool, ensureSchema } = await import("@/lib/db")
-    await ensureSchema()
+    const pool = await runtimePool()
     const search = (req.nextUrl.searchParams.get("search") ?? "").trim().slice(0, 200)
     const moduleName = req.nextUrl.searchParams.get("module") ?? ""
     const subject = req.nextUrl.searchParams.get("subject") ?? ""
@@ -138,8 +138,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return adminAccessDenied(req)
   const body = await req.json() as Partial<Question>
   const question: Question = { id: body.id?.trim() || randomUUID(), module: body.module?.trim() || "", moduleStatus: "draft", subject: body.subject?.trim() || "", vignette: body.vignette?.trim() || "", questionType: body.questionType ?? "STANDARD_MCQ", options: body.options ?? [{ id: "A", text: "" }, { id: "B", text: "" }], correctAnswer: body.correctAnswer ?? null, explanation: body.explanation ?? null, media: body.media ?? [], tags: body.tags ?? [], status: "draft", updatedAt: new Date().toISOString() }
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
@@ -170,8 +169,7 @@ export async function PATCH(req: NextRequest) {
   if (!ids.length) return NextResponse.json({ error: "Select at least one question." }, { status: 400 })
   if (body.action === "delete" && body.confirmation !== "DELETE SELECTED MCQS") return NextResponse.json({ error: "Type DELETE SELECTED MCQS to confirm." }, { status: 400 })
   if (body.action === "status" && (!body.status || !statuses.has(body.status))) return NextResponse.json({ error: "Choose a valid status." }, { status: 400 })
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const client = await pool.connect()
   try {
     await client.query("BEGIN")

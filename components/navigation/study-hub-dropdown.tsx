@@ -26,11 +26,13 @@ function hubIconClasses(hub: StudyHubId) {
 export function StudyHubDropdown({
   activeHub,
   onSelect,
+  hrefForHub,
   open: controlledOpen,
   onOpenChange,
 }: {
   activeHub: StudyHubId
   onSelect: (hub: StudyHubId) => void
+  hrefForHub?: (hub: StudyHubId) => string
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
@@ -109,23 +111,15 @@ export function StudyHubDropdown({
           role="menu"
           className={`absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl ${menuCls}`}
         >
-          {STUDY_HUBS.map((hub) => (
-            <button
-              key={hub.id}
-              role="menuitem"
-              type="button"
-              disabled={!hub.available}
-              onClick={() => hub.available && hub.id !== activeHub && handleSelect(hub.id)}
-              aria-disabled={!hub.available}
-              aria-label={!hub.available ? `${hub.name} — coming soon` : hub.name}
-              className={`flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:cursor-not-allowed ${
-                hub.id === activeHub
-                  ? "bg-sidebar-accent text-sidebar-foreground"
-                  : hub.available
-                    ? `text-sidebar-foreground ${rowHoverCls}`
-                    : "text-sidebar-foreground/40"
-              }`}
-            >
+          {STUDY_HUBS.map((hub) => {
+            const rowClassName = `flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:cursor-not-allowed ${
+              hub.id === activeHub
+                ? "bg-sidebar-accent text-sidebar-foreground"
+                : hub.available
+                  ? `text-sidebar-foreground ${rowHoverCls}`
+                  : "text-sidebar-foreground/40"
+            }`
+            const content = <>
               <span className={`shrink-0 ${hub.available ? hubIconClasses(hub.id).text : "text-muted-foreground"}`}>
                 {hub.available ? <HubIcon hub={hub.id} size={18} /> : <LockKeyholeIcon size={18} aria-hidden />}
               </span>
@@ -135,8 +129,25 @@ export function StudyHubDropdown({
                   Coming Soon
                 </span>
               )}
+            </>
+
+            if (hrefForHub && hub.available && hub.id !== activeHub) {
+              return <a key={hub.id} role="menuitem" href={hrefForHub(hub.id)} className={rowClassName}>{content}</a>
+            }
+
+            return <button
+              key={hub.id}
+              role="menuitem"
+              type="button"
+              disabled={!hub.available}
+              onClick={() => hub.available && hub.id !== activeHub && handleSelect(hub.id)}
+              aria-disabled={!hub.available}
+              aria-label={!hub.available ? `${hub.name} — coming soon` : hub.name}
+              className={rowClassName}
+            >
+              {content}
             </button>
-          ))}
+          })}
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
 import type { Question } from "@/lib/types"
+import { runtimePool } from "@/lib/runtime-db"
 
 function publicationIssues(question: Question) {
   const issues: string[] = []
@@ -19,8 +20,7 @@ function publicationIssues(question: Question) {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdminRequest(req, "manage_mcq_content")) return adminAccessDenied(req)
   const { id } = await params
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const result = await pool.query(
     `SELECT item.value AS question,source.updated_at
      FROM mednexus_questions source
@@ -38,8 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!admin) return adminAccessDenied(req)
   const { id } = await params
   const body = await req.json() as Partial<Question> & { expectedUpdatedAt?: string }
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
@@ -86,8 +85,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!admin) return adminAccessDenied(req)
   if (req.nextUrl.searchParams.get("confirmation") !== "DELETE MCQ") return NextResponse.json({ error: "Type DELETE MCQ to confirm." }, { status: 400 })
   const { id } = await params
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  const pool = await runtimePool()
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
