@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
-import { learnerScreenFromUrl, learnerScreenUrl, studyHubFromUrl } from "@/lib/admin-hub-routing"
+import { learnerHomeScreen, learnerScreenFromUrl, learnerScreenUrl, studyHubFromUrl } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useQuestions } from "@/contexts/questions-context"
@@ -35,6 +35,7 @@ import {
   SearchIcon,
 } from "@/components/icons"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
+import type { StudyHubId } from "@/components/study-hub-switcher"
 import { LearnerWorkspaceShell } from "@/components/learner-workspace-shell"
 import { TheoryVault } from "@/components/theory-vault"
 import { TutorialProvider } from "@/components/onboarding"
@@ -514,6 +515,13 @@ export function MedNexusApp() {
     setScreen(nextScreen)
   }, [activeStudyHub])
 
+  const handleStudyHubNavigation = useCallback((hub: StudyHubId) => {
+    const homeScreen = learnerHomeScreen(hub)
+    setActiveStudyHub(hub)
+    setScreen(homeScreen)
+    window.history.replaceState(window.history.state, "", learnerScreenUrl(homeScreen, hub))
+  }, [setActiveStudyHub])
+
   const handleQuizSessionChange = useCallback((session: QuizSession) => {
     saveQuizSession(session)
     setActiveQuiz(current => current ? { ...current, session } : current)
@@ -693,6 +701,7 @@ export function MedNexusApp() {
     <LearnerWorkspaceShell
       screen={safeScreen}
       onNavigate={handleScreenNavigation}
+      onSelectStudyHub={handleStudyHubNavigation}
       onOpenAppearance={() => setThemeOpen(true)}
       modeControl={activeStudyHub === "mcq-qbank" ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
       headerSlot={activeStudyHub === "theory-vault" && !theoryQuestionOpen ? (

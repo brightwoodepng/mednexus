@@ -9,6 +9,7 @@ import { BottomNav } from "@/components/bottom-nav"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { useApp } from "@/contexts/app-context"
 import type { Screen } from "@/lib/view"
+import type { StudyHubId } from "@/components/study-hub-switcher"
 import { canShowAdminConsoleLink } from "@/lib/admin-console-link"
 
 /**
@@ -18,6 +19,7 @@ import { canShowAdminConsoleLink } from "@/lib/admin-console-link"
 export function LearnerWorkspaceShell({
   screen,
   onNavigate,
+  onSelectStudyHub,
   onOpenAppearance,
   modeControl,
   headerSlot,
@@ -26,6 +28,7 @@ export function LearnerWorkspaceShell({
 }: {
   screen: Screen
   onNavigate: (screen: Screen) => void
+  onSelectStudyHub: (hub: StudyHubId) => void
   onOpenAppearance: () => void
   modeControl?: ReactNode
   headerSlot?: ReactNode
@@ -39,7 +42,6 @@ export function LearnerWorkspaceShell({
     mobileNavigationOpen,
     setMobileNavigationOpen,
     activeStudyHub,
-    setActiveStudyHub,
     accountMenuOpen: accountOpen,
     setAccountMenuOpen: setAccountOpen,
   } = useApplicationShell()
@@ -64,6 +66,7 @@ export function LearnerWorkspaceShell({
       <Sidebar
         screen={screen}
         onNavigate={navigate}
+        onSelectStudyHub={onSelectStudyHub}
         onOpenThemes={onOpenAppearance}
         mobileOpen={mobileNavigationOpen}
         onCloseMobile={() => setMobileNavigationOpen(false)}

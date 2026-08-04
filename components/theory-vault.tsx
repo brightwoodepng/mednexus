@@ -202,7 +202,7 @@ export function TheoryVault({ initialView = "Dashboard", externalQuery, onExtern
   return <div data-tutorial-anchor="theory-home" className="mx-auto max-w-7xl space-y-5">
 
     {error && <div role="alert" className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
-    {loading ? <div className={`${card} py-14 text-center text-sm text-muted-foreground`}>Opening Theory Vault…</div>
+    {loading ? <div role="status" aria-live="polite" className={`${card} flex flex-col items-center justify-center gap-3 py-14 text-center text-sm text-muted-foreground`}><LoaderCircle className="animate-spin text-primary" size={24} aria-hidden/><span>Opening Theory Vault…</span></div>
       : questionId ? <StudyQuestion questionId={questionId} sessionQuestionIds={sessionQuestionIds} registered={Boolean(registered)} onBack={() => { setQuestionId(null); setSessionQuestionIds(null) }} onFinish={finishQuestion} onMove={setQuestionId}/>
       : setData ? <SetOverview data={setData} registered={Boolean(registered)} onBack={() => setSetData(null)} onOpen={openQuestion} onSession={openSession}/>
       : view === "Dashboard" ? <Dashboard data={dashboard} displayName={user?.name} onView={navigate} onCollection={id => { setCollectionId(id); setView("Browse Questions") }} onSet={openSet} onQuestion={openQuestion}/>

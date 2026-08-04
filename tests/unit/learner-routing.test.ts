@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { learnerScreenFromUrl, learnerScreenUrl } from "@/lib/admin-hub-routing"
+import { learnerHomeScreen, learnerScreenFromUrl, learnerScreenUrl } from "@/lib/admin-hub-routing"
 import type { Screen } from "@/lib/view"
 
 describe("learner URL routing", () => {
+  it("selects the canonical home screen for each study workspace", () => {
+    expect(learnerHomeScreen("mcq-qbank")).toBe("dashboard")
+    expect(learnerHomeScreen("theory-vault")).toBe("theory-dashboard")
+  })
+
   it("gives every ordinary MCQ destination a refresh-safe canonical URL", () => {
     const screens: Screen[] = [
       "dashboard", "modules", "weak-areas", "leaderboard", "live-assessments",
