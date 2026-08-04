@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 const attemptRoute = readFileSync("app/api/assessments/[id]/attempt/route.ts", "utf8")
 const assessmentRoute = readFileSync("app/api/assessments/[id]/route.ts", "utf8")
 const createRoute = readFileSync("app/api/assessments/route.ts", "utf8")
+const database = readFileSync("lib/db.ts", "utf8")
 
 describe("negative-marking assessment contracts", () => {
   it("grades only on the server and returns the authoritative breakdown", () => {
@@ -15,6 +16,12 @@ describe("negative-marking assessment contracts", () => {
   it("validates grading modes when assessments are created", () => {
     expect(createRoute).toContain("isAssessmentGradingMode(gradingMode)")
     expect(createRoute).toContain("grading_mode")
+  })
+
+  it("advances and applies the schema migration before grading columns are used", () => {
+    expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-08-04-assessment-grading-v1"')
+    expect(database).toContain("ADD COLUMN IF NOT EXISTS grading_mode")
+    expect(createRoute).toContain("await ensureSchema()")
   })
 
   it("locks grading changes after the first submitted attempt", () => {
