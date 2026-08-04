@@ -10,7 +10,8 @@ describe("admin navigation layout", () => {
     expect(source).toMatch(/data-testid="admin-navigation-scroll-region"[\s\S]*?className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"/)
     expect(source).toMatch(/admin-navigation-scroll-region[\s\S]*?>\s*\{navigation\}/)
     expect(source).toMatch(/mb-6 flex shrink-0 items-center justify-between/)
-    expect(source).toMatch(/shrink-0 border-t border-sidebar-border[\s\S]*?← Return to Learner Workspace\s*<\/Link>/)
+    expect(source).toMatch(/shrink-0 space-y-2 border-t border-sidebar-border[\s\S]*?SidebarProfileFooter/)
+    expect(source).toMatch(/href="\/"[\s\S]*?Return to Learner Workspace\s*<\/Link>/)
   })
 
   it("sends the labelled notification bell to the notifications console", async () => {
