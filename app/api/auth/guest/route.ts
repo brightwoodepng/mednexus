@@ -114,6 +114,13 @@ export async function POST(req: NextRequest) {
     )
   } catch (err) {
     console.error("[auth/guest]", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    const code = (err as { code?: string }).code
+    if (code === "42703" || code === "42P01") {
+      return NextResponse.json({ error: "Guest access is being upgraded. Please retry in a moment.", code: "GUEST_SCHEMA_OUTDATED" }, { status: 503 })
+    }
+    if (code === "42501") {
+      return NextResponse.json({ error: "Guest access cannot update its database. Please contact an administrator.", code: "GUEST_DATABASE_PERMISSION" }, { status: 503 })
+    }
+    return NextResponse.json({ error: "Unable to create the guest session. Please try again.", code: "GUEST_SESSION_ERROR" }, { status: 500 })
   }
 }
