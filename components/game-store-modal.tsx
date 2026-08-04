@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { ChevronDown, CircleUserRound, Filter, Frame, PackageOpen, ShieldCheck, ShoppingBag, Sparkles, Tag, X } from "lucide-react"
+import { ChevronDown, CircleUserRound, Coins, Filter, Frame, PackageOpen, ShieldCheck, ShoppingBag, Sparkles, Tag, X } from "lucide-react"
 import { useEconomy } from "@/contexts/economy-context"
 import { useApp } from "@/contexts/app-context"
 import { SELLABLE_STORE_ITEMS, SOLO_SUPPLY_MODE_LABELS, STORE_ITEMS, TITLE_LABELS, type CosmeticRarity, type StoreItem } from "@/lib/economy"
@@ -9,6 +9,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import { CosmeticPreviewStage, getCosmeticPresentation } from "@/components/cosmetics"
 import { AvatarImage } from "@/components/avatar-image"
+import { ECONOMY_ICON, ECONOMY_ROW } from "@/components/economy-ui"
 
 type CosmeticSection = "title" | "frame" | "highlight" | "avatar"
 type CosmeticPreview = Record<CosmeticSection, string | null>
@@ -16,8 +17,8 @@ const rarities = ["all", "common", "rare", "epic", "legendary", "mythic"] as con
 const emptyPreview: CosmeticPreview = { title: null, frame: null, highlight: null, avatar: null }
 
 function BalancePill({ balance }: { balance: number }) {
-  return <div aria-label={`${balance.toLocaleString()} Nexus Points`} className="flex min-w-0 shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1.5 text-amber-800 dark:bg-amber-950/70 dark:text-amber-200 sm:px-4 sm:py-2">
-    <span aria-hidden="true">●</span><span className="max-w-[5.5rem] truncate text-xs font-extrabold tabular-nums sm:max-w-none sm:text-base">{balance.toLocaleString()}</span><span className="text-[10px] font-black sm:text-xs">NP</span>
+  return <div aria-label={`${balance.toLocaleString()} Nexus Points`} className="flex h-11 min-w-0 shrink-0 items-center gap-1.5 rounded-xl border border-border/80 bg-card/80 px-2.5 text-foreground shadow-sm sm:px-3">
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-500"><Coins size={15} aria-hidden /></span><span className="max-w-[5.5rem] truncate text-xs font-extrabold tabular-nums sm:max-w-none">{balance.toLocaleString()}</span><span className="text-[10px] font-bold text-muted-foreground">NP</span>
   </div>
 }
 
@@ -81,19 +82,19 @@ export function NexusStoreHub({ onNavigate }: { onNavigate: (screen: Screen) => 
   useEffect(() => { const main = document.querySelector("main"); const saved = Number(sessionStorage.getItem("nexus-store-scroll") || 0); if (main && saved) requestAnimationFrame(() => { main.scrollTop = saved }) }, [])
   const navigate = (screen: Screen) => { const main = document.querySelector("main"); sessionStorage.setItem("nexus-store-scroll", String(main?.scrollTop ?? 0)); onNavigate(screen) }
   const departments = [
-    { screen: "store-supply" as Screen, title: "Supply Closet", description: "Consumable lifelines for solo MCQ games.", count: `${STORE_ITEMS.filter(i => i.category === "lifeline").length} items`, Icon: PackageOpen, style: "border-cyan-200/70 bg-cyan-50/70 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-300" },
-    { screen: "store-cosmetics" as Screen, title: "Cosmetics", description: "Titles, frames, highlights, and avatars for multiplayer.", count: `${SELLABLE_STORE_ITEMS.filter(i => i.category === "cosmetic").length} items`, Icon: Sparkles, style: "border-violet-200/70 bg-violet-50/70 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-300" },
+    { screen: "store-supply" as Screen, title: "Supply Closet", description: "Consumable lifelines for solo MCQ games.", count: `${STORE_ITEMS.filter(i => i.category === "lifeline").length} items`, Icon: PackageOpen, iconStyle: "bg-cyan-500/12 text-cyan-600 dark:text-cyan-300" },
+    { screen: "store-cosmetics" as Screen, title: "Cosmetics", description: "Titles, frames, highlights, and avatars for multiplayer.", count: `${SELLABLE_STORE_ITEMS.filter(i => i.category === "cosmetic").length} items`, Icon: Sparkles, iconStyle: "bg-violet-500/12 text-violet-600 dark:text-violet-300" },
   ]
   const vaultSellable = SELLABLE_STORE_ITEMS.some(i => i.category === "vault")
   return <div className="mx-auto min-h-full w-full max-w-2xl min-w-0 overflow-x-clip pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-6">
     <header className="sticky top-0 z-50 -mx-3 mb-4 flex min-h-16 items-center justify-between gap-3 border-b border-border/80 bg-background/95 px-3 py-2 pt-[max(.5rem,env(safe-area-inset-top,0px))] backdrop-blur-md sm:static sm:mx-0 sm:mb-6 sm:border-0 sm:bg-transparent sm:p-0">
-      <div className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white"><ShoppingBag size={23} /></span><h1 className="truncate text-lg font-extrabold sm:text-xl">Nexus Store</h1></div><BalancePill balance={balance} />
+      <div className="flex min-w-0 items-center gap-3"><span className={`${ECONOMY_ICON} bg-violet-500/12 text-violet-600 dark:text-violet-300`}><ShoppingBag size={19} /></span><h1 className="truncate text-lg font-extrabold sm:text-xl">Nexus Store</h1></div><BalancePill balance={balance} />
     </header>
     <div className="flex flex-col gap-3 sm:gap-4">
-      {departments.map(({ Icon, ...department }) => <button key={department.screen} type="button" onClick={() => navigate(department.screen)} className={`flex min-h-[72px] w-full min-w-0 items-center gap-3 rounded-2xl border p-4 text-left transition hover:shadow-md sm:gap-5 sm:p-6 ${department.style}`}>
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-current/10"><Icon size={23} /></span><span className="min-w-0 flex-1"><span className="flex min-w-0 items-center gap-2"><strong className="truncate text-sm text-foreground sm:text-base">{department.title}</strong><span className="shrink-0 rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] text-muted-foreground">{department.count}</span></span><span className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground sm:text-sm">{department.description}</span></span><ChevronRightIcon className="shrink-0" size={20} />
+      {departments.map(({ Icon, ...department }) => <button key={department.screen} type="button" onClick={() => navigate(department.screen)} className={`flex min-h-[72px] w-full items-center gap-3 text-left hover:border-primary/30 hover:bg-card hover:shadow-sm ${ECONOMY_ROW}`}>
+        <span className={`${ECONOMY_ICON} ${department.iconStyle}`}><Icon size={18} /></span><span className="min-w-0 flex-1"><span className="flex min-w-0 items-center gap-2"><strong className="truncate text-sm text-foreground">{department.title}</strong><span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{department.count}</span></span><span className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">{department.description}</span></span><ChevronRightIcon className="shrink-0 text-muted-foreground" size={18} />
       </button>)}
-      {!vaultSellable && <div aria-disabled="true" className="flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/35 p-4 opacity-75 sm:gap-5 sm:p-6"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted"><ShieldCheck size={23} /></span><span className="min-w-0 flex-1"><span className="flex items-center gap-2"><strong className="truncate text-sm sm:text-base">The Vault</strong><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold">Coming soon</span></span><span className="mt-1 block line-clamp-2 text-xs text-muted-foreground sm:text-sm">New clinical simulations are being prepared.</span></span></div>}
+      {!vaultSellable && <div aria-disabled="true" className={`flex min-h-[72px] w-full items-center gap-3 border-dashed opacity-65 ${ECONOMY_ROW}`}><span className={`${ECONOMY_ICON} bg-muted text-muted-foreground`}><ShieldCheck size={18} /></span><span className="min-w-0 flex-1"><span className="flex min-w-0 items-center gap-2"><strong className="truncate text-sm">The Vault</strong><span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">Coming soon</span></span><span className="mt-0.5 block line-clamp-2 text-xs leading-4 text-muted-foreground">New clinical simulations are being prepared.</span></span></div>}
     </div>
   </div>
 }

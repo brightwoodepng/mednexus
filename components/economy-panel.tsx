@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Coins } from "lucide-react"
+import { BookOpen, CalendarDays, Check, ClipboardCheck, Clock3, Coins, Compass, Flame, Gamepad2, Target, Trophy, type LucideIcon } from "lucide-react"
 import { useEconomy } from "@/contexts/economy-context"
 import { SELLABLE_STORE_ITEMS, BOUNTY_POOL } from "@/lib/economy"
+import { ECONOMY_ICON, ECONOMY_PROGRESS_TRACK, ECONOMY_ROW, ECONOMY_SECTION, ECONOMY_SECTION_HEADER } from "@/components/economy-ui"
 
 // ── Wallet Badge ───────────────────────────────────────────────────────────────
 export function WalletBadge({ onOpenStore }: { onOpenStore: () => void }) {
@@ -107,100 +108,77 @@ export function DailyBountiesPanel() {
 
   if (loading && bounties.length === 0) return null
 
-  return (
-    <div className="grid gap-3">
-      <div className="overflow-hidden rounded-3xl border border-violet-200/70 bg-card dark:border-violet-800/40">
-        <div className="flex items-center justify-between bg-violet-500/10 px-4 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-violet-700 dark:text-violet-300">Weekly rounds</p>
-          <span className="text-[10px] font-semibold text-muted-foreground">Monday reset</span>
-        </div>
-        <div className="grid gap-3 p-4">
-          {weeklyGoals.map(goal => {
-            const labels = {
-              answers: "Complete 100 eligible questions",
-              accuracy: "Reach 70% accuracy across 100+ answers",
-              exam_dates: "Complete 3 qualifying exams on separate days",
-            }
-            const pct = Math.min(goal.progress / Math.max(goal.target, 1) * 100, 100)
-            return (
-              <div key={goal.id} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1">
-                <p className="text-xs font-semibold text-foreground">{labels[goal.type]}</p>
-                <span className={`text-[10px] font-bold ${goal.credited ? "text-emerald-600 dark:text-emerald-400" : "text-violet-600 dark:text-violet-300"}`}>
-                  {goal.credited ? "✓ Credited" : `+${goal.reward} NP`}
+  const bountyIcons: Record<(typeof bounties)[number]["type"], LucideIcon> = {
+    practice: BookOpen, exam: ClipboardCheck, accuracy: Target, game: Trophy,
+    streak: Flame, discipline_variety: Compass, game_variety: Gamepad2,
+  }
+  const weeklyIcons = { answers: BookOpen, accuracy: Target, exam_dates: CalendarDays } satisfies Record<(typeof weeklyGoals)[number]["type"], LucideIcon>
+  const weeklyLabels = {
+    answers: "Complete 100 eligible questions",
+    accuracy: "Reach 70% accuracy across 100+ answers",
+    exam_dates: "Complete 3 qualifying exams on separate days",
+  }
+
+  return <div className="grid gap-3">
+    <section className={ECONOMY_SECTION} aria-labelledby="weekly-rounds-title">
+      <div className={ECONOMY_SECTION_HEADER}>
+        <p id="weekly-rounds-title" className="text-[10px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-300">Weekly rounds</p>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground"><CalendarDays size={13} aria-hidden />Monday reset</span>
+      </div>
+      <div className="grid gap-2 p-3">{weeklyGoals.map(goal => {
+        const pct = Math.min(goal.progress / Math.max(goal.target, 1) * 100, 100)
+        const GoalIcon = weeklyIcons[goal.type]
+        return <div key={goal.id} className={ECONOMY_ROW}>
+          <div className="flex min-w-0 items-start gap-3">
+            <span className={`${ECONOMY_ICON} bg-violet-500/12 text-violet-600 dark:text-violet-300`}><GoalIcon size={17} aria-hidden /></span>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-start justify-between gap-2">
+                <p className="min-w-0 text-xs font-bold leading-5 text-foreground">{weeklyLabels[goal.type]}</p>
+                <span className={`shrink-0 text-[10px] font-bold tabular-nums ${goal.credited ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                  {goal.credited ? <span className="inline-flex items-center gap-1"><Check size={12} aria-hidden />Credited</span> : `+${goal.reward} NP`}
                 </span>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className={`h-full rounded-full transition-all duration-500 ${goal.completed ? "bg-emerald-500" : "bg-violet-500"}`} style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-[10px] tabular-nums text-muted-foreground">{Math.min(goal.progress, goal.target)}/{goal.target}{goal.type === "accuracy" ? "%" : ""}</span>
               </div>
-            )
-          })}
-        </div>
-      </div>
-    <div className="rounded-3xl border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Daily Bounties</p>
-        <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
-          🪙 Resets midnight
-        </span>
-      </div>
-      <div className="grid gap-2">
-        {bounties.map(b => {
-          const pct = Math.min((b.progress / b.target) * 100, 100)
-          const complete = b.progress >= b.target
-          const isFlashing = flash?.id === b.id
-          return (
-            <div
-              key={b.id}
-              className={`rounded-2xl border p-3 transition-all ${
-                b.claimed
-                  ? "border-muted bg-muted/30 opacity-60"
-                  : complete
-                  ? "border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/60 dark:bg-emerald-950/20"
-                  : "border-border bg-muted/20"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-xl">{b.icon}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2 mb-0.5">
-                    <p className="text-xs font-bold text-foreground truncate">{b.label}</p>
-                    <span className="shrink-0 text-[10px] font-bold text-amber-600 dark:text-amber-400">+{b.reward} NP</span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mb-2">{b.desc}</p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${complete ? "bg-emerald-500" : "bg-primary"}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                      {Math.min(b.progress, b.target)}/{b.target}
-                    </span>
-                    {complete && !b.claimed && (
-                      <button
-                        type="button"
-                        disabled={claiming === b.id}
-                        onClick={() => handleClaim(b.id)}
-                        className="shrink-0 rounded-full bg-emerald-500 px-3 py-0.5 text-[11px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-60"
-                      >
-                        {claiming === b.id ? "…" : isFlashing ? `+${flash?.earned}!` : "Claim"}
-                      </button>
-                    )}
-                    {b.claimed && (
-                      <span className="shrink-0 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Done</span>
-                    )}
-                  </div>
-                </div>
+              <div className="mt-2 flex items-center gap-2">
+                <div className={ECONOMY_PROGRESS_TRACK}><div className={`h-full rounded-full transition-[width,background-color] duration-500 ${goal.completed ? "bg-emerald-500" : "bg-violet-500"}`} style={{ width: `${pct}%` }} /></div>
+                <span className="w-10 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">{Math.min(goal.progress, goal.target)}/{goal.target}{goal.type === "accuracy" ? "%" : ""}</span>
               </div>
             </div>
-          )
-        })}
+          </div>
+        </div>
+      })}</div>
+    </section>
+
+    <section className={ECONOMY_SECTION} aria-labelledby="daily-bounties-title">
+      <div className={ECONOMY_SECTION_HEADER}>
+        <p id="daily-bounties-title" className="text-[10px] font-bold uppercase tracking-widest text-cyan-600 dark:text-cyan-300">Daily bounties</p>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground"><Clock3 size={13} aria-hidden />Resets midnight</span>
       </div>
-    </div>
-    </div>
-  )
+      <div className="grid gap-2 p-3">{bounties.map(bounty => {
+        const pct = Math.min((bounty.progress / bounty.target) * 100, 100)
+        const complete = bounty.progress >= bounty.target
+        const isFlashing = flash?.id === bounty.id
+        const BountyIcon = bountyIcons[bounty.type]
+        return <div key={bounty.id} className={`${ECONOMY_ROW} ${bounty.claimed ? "bg-muted/30 opacity-65" : complete ? "border-emerald-500/35 bg-emerald-500/5 shadow-sm" : ""}`}>
+          <div className="flex items-start gap-3">
+            <span className={`${ECONOMY_ICON} bg-cyan-500/12 text-cyan-600 dark:text-cyan-300`}><BountyIcon size={17} aria-hidden /></span>
+            <div className="min-w-0 flex-1">
+              <div className="mb-0.5 flex min-w-0 items-start justify-between gap-2">
+                <p className="min-w-0 truncate text-xs font-bold leading-5 text-foreground">{bounty.label}</p>
+                <span className="shrink-0 text-[10px] font-bold tabular-nums text-amber-600 dark:text-amber-400">+{bounty.reward} NP</span>
+              </div>
+              <p className="mb-2 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{bounty.desc}</p>
+              <div className="flex items-center gap-2">
+                <div className={ECONOMY_PROGRESS_TRACK}><div className={`h-full rounded-full transition-[width,background-color] duration-500 ${complete ? "bg-emerald-500" : "bg-cyan-500"}`} style={{ width: `${pct}%` }} /></div>
+                <span className="w-10 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">{Math.min(bounty.progress, bounty.target)}/{bounty.target}</span>
+                {complete && !bounty.claimed && <button type="button" disabled={claiming === bounty.id} onClick={() => handleClaim(bounty.id)} className="min-h-7 w-[4.25rem] shrink-0 rounded-lg bg-emerald-600 px-2 text-[10px] font-bold text-white transition-[background-color,box-shadow] hover:bg-emerald-500 hover:shadow-sm disabled:opacity-60">{claiming === bounty.id ? "Claiming" : isFlashing ? `+${flash?.earned} NP` : "Claim"}</button>}
+                {bounty.claimed && <span className="inline-flex w-[4.25rem] shrink-0 items-center justify-end gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400"><Check size={12} aria-hidden />Done</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      })}</div>
+    </section>
+  </div>
 }
 
 // ── Store Modal ────────────────────────────────────────────────────────────────

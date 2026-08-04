@@ -1,0 +1,5 @@
+export const ECONOMY_SECTION = "overflow-hidden rounded-2xl border border-border/80 bg-card/80 shadow-sm"
+export const ECONOMY_SECTION_HEADER = "flex min-h-11 items-center justify-between gap-3 border-b border-border/70 px-3.5 py-2.5"
+export const ECONOMY_ROW = "min-w-0 rounded-2xl border border-border/70 bg-background/55 p-3 transition-[background-color,border-color,box-shadow] duration-200"
+export const ECONOMY_ICON = "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+export const ECONOMY_PROGRESS_TRACK = "h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
