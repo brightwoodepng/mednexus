@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft, ArrowRight, BookOpen, Bookmark, Check, CheckCircle2, ChevronDown, ChevronRight,
   Clock3, Download, FileText, FolderOpen, ListChecks, LoaderCircle, Mic, NotebookPen,
@@ -78,6 +78,15 @@ function Empty({ icon: Icon = FileText, title, text }: { icon?: typeof FileText;
 
 function ProgressBar({ value }: { value: number }) {
   return <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${Math.max(0, Math.min(100, value))}%` }}/></div>
+}
+
+function useAutosizeTextarea(ref: React.RefObject<HTMLTextAreaElement | null>, value: string, enabled: boolean) {
+  useLayoutEffect(() => {
+    const textarea = ref.current
+    if (!textarea || !enabled) return
+    textarea.style.height = "auto"
+    textarea.style.height = `${Math.max(88, textarea.scrollHeight)}px`
+  }, [enabled, ref, value])
 }
 
 function KeyPointsList({ points }: { points: string[] }) {
@@ -278,26 +287,6 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
       </div>
     </section>
 
-    <section aria-labelledby="recently-studied-heading">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen size={16}/></div>
-          <h2 id="recently-studied-heading" className="text-lg font-bold tracking-tight">Recently Studied</h2>
-        </div>
-        <button type="button" onClick={() => onView("Progress")} className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline">View all <ChevronRight size={12}/></button>
-      </div>
-      {data.recentSets.length ? <div className="grid gap-3 lg:grid-cols-2">
-        {data.recentSets.slice(0, 4).map(item => <article key={`${item.setId}-${item.lastStudiedAt}`} className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/35 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-primary">{item.collection} · {item.groupName}</p><h3 className="mt-1 truncate font-bold text-foreground">{item.setLabel}</h3><p className="mt-1 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p></div>
-            <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{item.progressPercent}%</span>
-          </div>
-          <div className="mt-3"><ProgressBar value={item.progressPercent}/></div>
-          <button type="button" onClick={() => onSet(item.setId)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-border bg-background px-4 text-sm font-semibold transition-colors hover:border-primary/40 hover:text-primary sm:min-h-10 sm:w-auto">Continue <ChevronRight size={14}/></button>
-        </article>)}
-      </div> : <div className="rounded-2xl border border-dashed border-border bg-card/50 px-4 py-6 text-sm text-muted-foreground">No sets studied yet. Start a theory set to track your progress here.</div>}
-    </section>
-
     {/* ── Study Categories ── */}
     <section>
       <div className="mb-4 flex items-center gap-3">
@@ -341,6 +330,26 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
           )
         })}
       </div>
+    </section>
+
+    <section aria-labelledby="recently-studied-heading">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen size={16}/></div>
+          <h2 id="recently-studied-heading" className="text-lg font-bold tracking-tight">Recently Studied</h2>
+        </div>
+        <button type="button" onClick={() => onView("Progress")} className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline">View all <ChevronRight size={12}/></button>
+      </div>
+      {data.recentSets.length ? <div className="grid gap-3 lg:grid-cols-2">
+        {data.recentSets.slice(0, 4).map(item => <article key={`${item.setId}-${item.lastStudiedAt}`} className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/35 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-primary">{item.collection} · {item.groupName}</p><h3 className="mt-1 truncate font-bold text-foreground">{item.setLabel}</h3><p className="mt-1 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p></div>
+            <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{item.progressPercent}%</span>
+          </div>
+          <div className="mt-3"><ProgressBar value={item.progressPercent}/></div>
+          <button type="button" onClick={() => onSet(item.setId)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-border bg-background px-4 text-sm font-semibold transition-colors hover:border-primary/40 hover:text-primary sm:min-h-10 sm:w-auto">Continue <ChevronRight size={14}/></button>
+        </article>)}
+      </div> : <div className="rounded-2xl border border-dashed border-border bg-card/50 px-4 py-6 text-sm text-muted-foreground">No sets studied yet. Start a theory set to track your progress here.</div>}
     </section>
 
   </div>
@@ -443,18 +452,16 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
   return <div className="space-y-5">
     <button onClick={onBack} className="flex min-h-11 items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Back to sets</button>
     {!registered && <SignInNotice/>}
-    <section aria-label="Set study summary" className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <section aria-label="Set study summary" className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wider text-primary">{data.collectionTitle}</p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">{data.setLabel}</h1>
-          {data.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{data.description}</p>}
+          <p className="text-xs font-semibold text-primary">{data.collectionTitle}</p>
+          <h1 className="truncate text-lg font-bold tracking-tight sm:text-xl">{data.setLabel}</h1>
+          <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground"><span>{data.total} questions</span><span>{data.completed} completed</span><span className="font-semibold text-primary">{data.progressPercent}%</span></div>
         </div>
-        <span className="w-fit shrink-0 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">{data.progressPercent}% complete</span>
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
       </div>
-      <div className="mt-4"><ProgressBar value={data.progressPercent}/></div>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground"><span><b className="text-foreground">{data.total}</b> questions</span><span><b className="text-foreground">{data.completed}</b> completed</span></div>
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
+      <div className="mt-3"><ProgressBar value={data.progressPercent}/></div>
     </section>
     <section aria-labelledby="set-questions-heading">
       <div className="mb-3"><h2 id="set-questions-heading" className="text-lg font-bold">Questions</h2><p className="text-sm text-muted-foreground">Choose a question to review or practise.</p></div>
@@ -482,6 +489,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
   const reviewRecorded = useRef(false)
   const restored = useRef(false)
   const answerRef = useRef<HTMLTextAreaElement>(null)
+  useAutosizeTextarea(answerRef, answer, mode === "practice" && !submitted)
 
   const load = useCallback(async () => {
     setMessage(""); setSubmitted(false); setRevealed(false); reviewRecorded.current = false; restored.current = false
@@ -666,17 +674,13 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
       )}
       {aiMessage && <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">{aiMessage}</div>}
 
-      {/* ── Question card — theme-coloured full border, title in pill ── */}
-      <article className="rounded-2xl border-2 border-primary/30 bg-card shadow-sm">
-        <div className="px-4 py-4 sm:px-6 sm:py-5">
-          <div className="inline-block max-w-full rounded-xl border border-border/50 bg-muted/60 px-3 py-2.5 sm:px-4">
-            <h1 className="break-words text-lg font-bold leading-snug sm:text-xl">{question.title || question.prompt}</h1>
-          </div>
+      {/* Focused question prompt */}
+      <article className="rounded-2xl border border-border bg-card px-4 py-4 shadow-sm sm:px-5">
+          <h1 className="break-words text-lg font-bold leading-snug sm:text-xl">{question.title || question.prompt}</h1>
           {question.title && (
-            <p className="mt-4 leading-7 text-foreground/75">{question.prompt}</p>
+            <p className="mt-3 leading-7 text-foreground/80">{question.prompt}</p>
           )}
-          {question.media.length > 0 && <div className="mt-5"><TheoryQuestionMedia media={question.media}/></div>}
-        </div>
+          {question.media.length > 0 && <div className="mt-4"><TheoryQuestionMedia media={question.media}/></div>}
       </article>
 
       {/* ── Review mode ── */}
@@ -715,15 +719,14 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
       ) : (
         /* ── Practice mode ── */
         <div className="space-y-4">
-          {!submitted && <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-3 sm:px-5">
+          {!submitted && <article className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-bold">My Answer</h2>
               <span className="text-xs text-muted-foreground">{words} words · {saving === "saving" ? "Saving…" : saving === "saved" ? "Draft saved" : saving === "error" ? "Autosave failed" : "Unsaved"}</span>
             </div>
-            <div className="p-4 sm:p-5">
-              <textarea ref={answerRef} value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={12}
-                placeholder="Build a structured answer…"
-                className="w-full resize-y rounded-xl border border-border bg-background p-3 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70 sm:p-4"/>
+              <textarea ref={answerRef} value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={3}
+                placeholder="Write your answer…"
+                className="w-full resize-none overflow-hidden rounded-xl border border-border bg-background p-3 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70 sm:p-4"/>
               <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 <button onClick={() => personalized({ action: "draft", answer })} disabled={!registered || submitted} className={`${button} w-full border border-border disabled:opacity-50 sm:w-auto`}><Save size={15}/> Save Draft</button>
                 {registered && <DictationControl
@@ -737,7 +740,6 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
                 <button onClick={submit} disabled={!registered || submitted} className={`${button} w-full bg-primary text-primary-foreground disabled:opacity-50 sm:w-auto`}>Submit Answer</button>
                 <button onClick={reveal} className={`${button} w-full border border-border sm:w-auto`}>Reveal Answer</button>
               </div>
-            </div>
           </article>}
 
           {(revealed || submitted) && <>
