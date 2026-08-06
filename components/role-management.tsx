@@ -1,59 +1,37 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Check, Search, ShieldCheck, UserCog } from "lucide-react"
 
 type Role = "STUDENT" | "ADMIN" | "SUPER_ADMIN"
 type Permission = "manage_mcq_content" | "manage_theory_content" | "manage_assessments" | "manage_users" | "manage_broadcasts" | "manage_system"
 type ManagedUser = { uid: string; name: string; index_number: string; role: Role; permission_overrides: Partial<Record<Permission, boolean>> }
+type Draft = { role: Role; permissions: Partial<Record<Permission, boolean>> }
 
-const labels: Record<Permission, string> = {
-  manage_mcq_content: "MCQ content", manage_theory_content: "Theory content",
-  manage_assessments: "Assessments", manage_users: "Users",
-  manage_broadcasts: "Broadcasts", manage_system: "System administration",
+const labels: Record<Permission, [string,string]> = {
+  manage_mcq_content:["MCQ content","Review, edit, import, and publish MCQs"], manage_theory_content:["Theory content","Manage Theory hierarchy and questions"],
+  manage_assessments:["Assessments","Create assessments and inspect results"], manage_users:["Students","Approve and manage registered students"],
+  manage_broadcasts:["Communications","Send broadcasts and notifications"], manage_system:["Platform","Manage roles, settings, and recovery tools"],
 }
+const roleCopy: Record<Role,string> = { STUDENT:"Learner access only", ADMIN:"Operational administrator baseline", SUPER_ADMIN:"All permissions; protected break-glass role" }
+const control = "min-h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
 
 export default function RoleManagement() {
-  const [users, setUsers] = useState<ManagedUser[]>([])
-  const [permissions, setPermissions] = useState<Permission[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<string | null>(null)
-  const [error, setError] = useState("")
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-
-  const load = useCallback(async () => {
-    setLoading(true); setError("")
-    try {
-      const response = await fetch(`/api/admin/roles?page=${page}&pageSize=20`)
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error ?? "Unable to load role assignments")
-      setUsers(data.users); setPermissions(data.permissions); setTotal(data.pagination?.total ?? data.users.length)
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to load role assignments") }
-    finally { setLoading(false) }
-  }, [page])
-  useEffect(() => { void load() }, [load])
-
-  async function save(uid: string, update: { role?: Role; permissions?: Partial<Record<Permission, boolean>> }) {
-    setSaving(uid); setError("")
-    try {
-      if (!window.confirm("Confirm this role or permission change? This action is audited.")) return
-      const response = await fetch("/api/admin/roles", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid, ...update, confirmed: true }) })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error ?? "Unable to save changes")
-      await load()
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to save changes") }
-    finally { setSaving(null) }
-  }
-
-  return <section className="max-w-6xl">
-    <p className="text-sm text-primary">SYSTEM ACCESS</p>
-    <h1 className="mt-2 text-3xl font-bold">Roles &amp; permissions</h1>
-    <p className="mt-3 max-w-3xl text-sm text-muted-foreground">SUPER_ADMIN always has every permission. ADMIN receives the standard operational baseline; an explicit setting below grants or removes an individual capability.</p>
-    {error && <p role="alert" className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-    {loading ? <p className="mt-8 text-muted-foreground">Loading access assignments…</p> : <div className="mt-8 overflow-x-auto rounded-xl border border-border">
-      <table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-4">User</th><th className="p-4">Role</th>{permissions.map((permission) => <th key={permission} className="p-4 font-medium">{labels[permission]}</th>)}</tr></thead>
-      <tbody>{users.map((user) => <tr key={user.uid} className="border-t border-border align-top"><td className="p-4"><p className="font-semibold">{user.name}</p><p className="mt-1 text-xs text-muted-foreground">{user.index_number}</p></td><td className="p-4"><select aria-label={`Role for ${user.name}`} value={user.role} disabled={saving === user.uid} onChange={(event) => void save(user.uid, { role: event.target.value as Role })} className="rounded-lg border border-border bg-background px-2 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"><option>STUDENT</option><option>ADMIN</option><option>SUPER_ADMIN</option></select></td>{permissions.map((permission) => { const override = user.permission_overrides[permission]; const locked = user.role === "SUPER_ADMIN"; return <td key={permission} className="p-4"><label className="flex cursor-pointer items-center gap-2"><input className="accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" type="checkbox" checked={locked ? true : override ?? false} disabled={locked || saving === user.uid} onChange={(event) => void save(user.uid, { permissions: { [permission]: event.target.checked } })} /><span className="text-xs text-muted-foreground">{locked ? "Always" : override === undefined ? "Baseline" : override ? "Granted" : "Removed"}</span></label></td> })}</tr>)}</tbody></table>
-    </div>}
-    {!loading && total > 20 && <div className="mt-4 flex items-center justify-between text-sm"><span className="text-muted-foreground">Page {page} of {Math.ceil(total / 20)}</span><div className="flex gap-2"><button disabled={page === 1} onClick={() => setPage(value => value - 1)} className="rounded-lg border border-border px-3 py-2 disabled:opacity-40">Previous</button><button disabled={page * 20 >= total} onClick={() => setPage(value => value + 1)} className="rounded-lg border border-border px-3 py-2 disabled:opacity-40">Next</button></div></div>}
+  const [users,setUsers]=useState<ManagedUser[]>([]), [permissions,setPermissions]=useState<Permission[]>([])
+  const [baselines,setBaselines]=useState<Record<Role,Permission[]>>({STUDENT:[],ADMIN:[],SUPER_ADMIN:[]})
+  const [selected,setSelected]=useState(""), [draft,setDraft]=useState<Draft|null>(null), [search,setSearch]=useState("")
+  const [loading,setLoading]=useState(true), [saving,setSaving]=useState(false), [error,setError]=useState(""), [notice,setNotice]=useState("")
+  const [page,setPage]=useState(1), [total,setTotal]=useState(0)
+  const load=useCallback(async(signal?:AbortSignal)=>{setLoading(true);setError("");try{const p=new URLSearchParams({page:String(page),pageSize:"20",search});const response=await fetch(`/api/admin/roles?${p}`,{signal});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error??"Unable to load access assignments.");setUsers(data.users);setPermissions(data.permissions);setBaselines(data.baselines);setTotal(data.pagination?.total??0);setSelected(current=>data.users.some((user:ManagedUser)=>user.uid===current)?current:data.users[0]?.uid??"")}catch(cause){if(!(cause instanceof DOMException&&cause.name==="AbortError"))setError(cause instanceof Error?cause.message:"Unable to load access assignments.")}finally{setLoading(false)}},[page,search])
+  useEffect(()=>{const controller=new AbortController();const timer=setTimeout(()=>void load(controller.signal),250);return()=>{clearTimeout(timer);controller.abort()}},[load])
+  const user=users.find(item=>item.uid===selected)
+  useEffect(()=>{if(user)setDraft({role:user.role,permissions:{...user.permission_overrides}})},[user])
+  const dirty=useMemo(()=>!!user&&!!draft&&(draft.role!==user.role||JSON.stringify(draft.permissions)!==JSON.stringify(user.permission_overrides)),[draft,user])
+  const effective=(permission:Permission)=>draft?.role==="SUPER_ADMIN" || (draft?.permissions[permission] ?? baselines[draft?.role??"STUDENT"].includes(permission))
+  const save=async()=>{if(!user||!draft||!dirty)return;setSaving(true);setError("");setNotice("");try{const response=await fetch("/api/admin/roles",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({uid:user.uid,role:draft.role,permissions:draft.permissions,confirmed:true})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error??"Unable to save access changes.");setNotice(`Access updated for ${user.name}.`);await load()}catch(cause){setError(cause instanceof Error?cause.message:"Unable to save access changes.")}finally{setSaving(false)}}
+  return <section className="max-w-7xl space-y-5"><header><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Platform access</p><h1 className="mt-1 text-3xl font-bold">Roles &amp; Permissions</h1><p className="mt-2 text-sm text-muted-foreground">Choose a person, stage all access changes, then confirm once.</p></header>
+    {error&&<div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}{notice&&<div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700">{notice}</div>}
+    <div className="grid gap-5 lg:grid-cols-[340px_1fr]"><aside className="overflow-hidden rounded-2xl border border-border bg-card"><label className="m-3 flex items-center gap-2 rounded-xl border border-border px-3"><Search size={16}/><input value={search} onChange={event=>{setSearch(event.target.value);setPage(1)}} placeholder="Search name or index" className="min-h-11 min-w-0 flex-1 bg-transparent text-sm outline-none"/></label><div className="max-h-[620px] divide-y divide-border overflow-y-auto">{loading?<p className="p-5 text-sm text-muted-foreground">Loading people…</p>:users.map(item=><button key={item.uid} onClick={()=>setSelected(item.uid)} className={`flex w-full items-center gap-3 p-4 text-left ${selected===item.uid?"bg-primary/10":"hover:bg-muted/50"}`}><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted font-bold">{item.name.slice(0,2).toUpperCase()}</span><span className="min-w-0"><b className="block truncate text-sm">{item.name}</b><span className="block truncate text-xs text-muted-foreground">{item.index_number} · {item.role}</span></span></button>)}</div>{total>20&&<div className="flex justify-between border-t border-border p-3 text-xs"><button disabled={page===1} onClick={()=>setPage(page-1)}>Previous</button><span>{page}/{Math.ceil(total/20)}</span><button disabled={page*20>=total} onClick={()=>setPage(page+1)}>Next</button></div>}</aside>
+      <main className="rounded-2xl border border-border bg-card p-5">{user&&draft?<><div className="flex items-start gap-3 border-b border-border pb-5"><span className="rounded-xl bg-primary/10 p-3 text-primary"><UserCog size={22}/></span><div><h2 className="font-bold">{user.name}</h2><p className="text-xs text-muted-foreground">{user.index_number}</p></div></div><label className="mt-5 block text-xs font-bold uppercase tracking-wide text-muted-foreground">Role<select value={draft.role} disabled={user.role==="SUPER_ADMIN"} onChange={event=>setDraft({...draft,role:event.target.value as Role})} className={`${control} mt-2 w-full`}><option value="STUDENT">Student</option><option value="ADMIN">Administrator</option><option value="SUPER_ADMIN">Super administrator</option></select><span className="mt-2 block font-normal normal-case tracking-normal">{roleCopy[draft.role]}</span></label><div className="mt-6 space-y-2"><h3 className="text-sm font-bold">Effective permissions</h3>{permissions.map(permission=>{const locked=draft.role==="SUPER_ADMIN";const baseline=baselines[draft.role].includes(permission);const override=draft.permissions[permission];return <label key={permission} className="flex min-h-16 items-center gap-3 rounded-xl border border-border p-3"><input type="checkbox" checked={effective(permission)} disabled={locked} onChange={event=>setDraft({...draft,permissions:{...draft.permissions,[permission]:event.target.checked}})} className="size-4 accent-primary"/><span className="min-w-0 flex-1"><b className="block text-sm">{labels[permission][0]}</b><span className="text-xs text-muted-foreground">{labels[permission][1]}</span></span><span className="text-xs text-muted-foreground">{locked?"Always":override===undefined?(baseline?"Baseline: on":"Baseline: off"):override?"Override: granted":"Override: removed"}</span></label>})}</div><div className="mt-5 flex items-center justify-between border-t border-border pt-5"><span className="text-xs text-muted-foreground">{dirty?"Unsaved access changes":"No pending changes"}</span><button disabled={!dirty||saving} onClick={()=>void save()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-40"><Check size={16}/>{saving?"Saving…":"Confirm changes"}</button></div></>:<div className="grid min-h-80 place-items-center text-center text-muted-foreground"><div><ShieldCheck className="mx-auto mb-3"/><p>Select a person to review effective access.</p></div></div>}</main></div>
   </section>
 }

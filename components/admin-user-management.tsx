@@ -13,6 +13,9 @@ interface RegisteredUser {
   status: string
   must_change_password: boolean
   created_at: string
+  last_login_date: string | null
+  assessment_attempts: number
+  theory_attempts: number
 }
 
 interface GuestUser {
@@ -130,18 +133,20 @@ function ConfirmModal({ message, onConfirm, onCancel, busy }: { message: string;
   )
 }
 
-function EditLevelModal({
+function EditProfileModal({
   user,
   onSave,
   onCancel,
   busy,
 }: {
   user: RegisteredUser
-  onSave: (uid: string, level: string) => void
+  onSave: (uid: string, values: { name: string; indexNumber: string; level: string }) => void
   onCancel: () => void
   busy: boolean
 }) {
   const [level, setLevel] = useState(user.level || "")
+  const [name, setName] = useState(user.name)
+  const [indexNumber, setIndexNumber] = useState(user.index_number)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
@@ -152,10 +157,10 @@ function EditLevelModal({
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
         </div>
-        <h3 className="mb-1 font-bold text-lg">Edit Level</h3>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Assign a new class level for <span className="font-semibold text-foreground">{user.name}</span>.
-        </p>
+        <h3 className="mb-1 font-bold text-lg">Edit student profile</h3>
+        <p className="mb-4 text-sm text-muted-foreground">Update the registered student record. Index numbers must remain unique.</p>
+        <label className="mb-3 flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">Name<input value={name} onChange={event=>setName(event.target.value)} className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground"/></label>
+        <label className="mb-3 flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">Index Number<input value={indexNumber} onChange={event=>setIndexNumber(event.target.value)} className="rounded-xl border border-input bg-background px-4 py-3 text-sm font-mono text-foreground"/></label>
         <div className="mb-5 flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">Class Level</label>
           <select
@@ -173,8 +178,8 @@ function EditLevelModal({
           <button type="button" onClick={onCancel} disabled={busy} className="flex-1 rounded-xl border border-border py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50">Cancel</button>
           <button
             type="button"
-            onClick={() => onSave(user.uid, level)}
-            disabled={busy || !level}
+            onClick={() => onSave(user.uid, { name:name.trim(), indexNumber:indexNumber.trim(), level })}
+            disabled={busy || !level || !name.trim() || !indexNumber.trim()}
             className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {busy ? <SpinnerIcon /> : null}
@@ -191,6 +196,9 @@ function EditLevelModal({
 function RegisteredTable() {
   const [users, setUsers] = useState<RegisteredUser[]>([])
   const [totalCount, setTotalCount] = useState(0)
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  const [canDelete, setCanDelete] = useState(false)
+  const [error, setError] = useState("")
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -199,11 +207,12 @@ function RegisteredTable() {
   const [order, setOrder] = useState("desc")
   const [otpModal, setOtpModal] = useState<{ otp: string; name: string } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<RegisteredUser | null>(null)
-  const [editLevelUser, setEditLevelUser] = useState<RegisteredUser | null>(null)
+  const [editProfileUser, setEditProfileUser] = useState<RegisteredUser | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
+    setError("")
     try {
       const p = new URLSearchParams()
       if (search) p.set("search", search)
@@ -212,19 +221,18 @@ function RegisteredTable() {
       p.set("order", order)
       p.set("page", String(page))
       p.set("pageSize", "20")
-      const res = await fetch(`/api/admin/users?${p}`)
-      if (res.ok) {
-        const data = await res.json()
-        setUsers(data.users)
-        setTotalCount(data.total)
-      }
-    } catch {}
+      const res = await fetch(`/api/admin/users?${p}`, { signal })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? "Unable to load students.")
+      setUsers(data.users); setTotalCount(data.total); setCounts(data.counts ?? {}); setCanDelete(data.canDelete === true)
+    } catch (cause) { if (!(cause instanceof DOMException && cause.name === "AbortError")) setError(cause instanceof Error ? cause.message : "Unable to load students.") }
     setLoading(false)
   }, [search, statusFilter, sort, order, page])
 
   useEffect(() => {
-    const t = setTimeout(fetchUsers, 300)
-    return () => clearTimeout(t)
+    const controller = new AbortController()
+    const t = setTimeout(() => void fetchUsers(controller.signal), 300)
+    return () => { clearTimeout(t); controller.abort() }
   }, [fetchUsers])
   useEffect(() => { setPage(1) }, [search, statusFilter, sort, order])
 
@@ -242,10 +250,10 @@ function RegisteredTable() {
           const user = users.find((u) => u.uid === uid)
           setOtpModal({ otp: data.otp, name: user?.name ?? "User" })
         }
-        if (action === "edit-level") setEditLevelUser(null)
+        if (action === "edit-profile") setEditProfileUser(null)
         await fetchUsers()
-      }
-    } catch {}
+      } else setError(data.error ?? "Unable to update the student.")
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to update the student.") }
     setActionLoading(null)
   }
 
@@ -270,13 +278,13 @@ function RegisteredTable() {
     exportCSV(`registered-students-${Date.now()}.csv`, rows)
   }
 
-  const approved = users.filter((u) => u.status === "approved").length
-  const pending = users.filter((u) => u.status === "pending").length
+  const approved = counts.approved ?? 0
+  const pending = counts.pending ?? 0
 
   return (
     <>
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Total</p>
           <p className="mt-1 text-2xl font-bold">{totalCount}</p>
@@ -289,7 +297,13 @@ function RegisteredTable() {
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pending</p>
           <p className="mt-1 text-2xl font-bold text-amber-600">{pending}</p>
         </div>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Suspended</p>
+          <p className="mt-1 text-2xl font-bold text-destructive">{counts.suspended ?? 0}</p>
+        </div>
       </div>
+
+      {error && <div role="alert" className="flex items-center justify-between rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><span>{error}</span><button onClick={() => void fetchUsers()} className="font-bold underline">Retry</button></div>}
 
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -311,6 +325,8 @@ function RegisteredTable() {
           <option value="">All Status</option>
           <option value="approved">Approved</option>
           <option value="pending">Pending</option>
+          <option value="suspended">Suspended</option>
+          <option value="rejected">Rejected</option>
         </select>
         <select
           value={`${sort}-${order}`}
@@ -376,6 +392,7 @@ function RegisteredTable() {
                     {user.level && <> · <span className="font-medium text-foreground/70">{user.level}</span></>}
                     {" · "}<span>Joined {fmtDate(user.created_at)}</span>
                   </p>
+                  <p className="mt-2 text-xs text-muted-foreground">Last login: {user.last_login_date ? fmtRelative(user.last_login_date) : "Never"} · {user.assessment_attempts} assessments · {user.theory_attempts} Theory answers</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {user.status === "pending" && (
@@ -390,18 +407,19 @@ function RegisteredTable() {
                       </button>
                     </>
                   )}
-                  <button type="button" disabled={!!actionLoading} onClick={() => setEditLevelUser(user)}
+                  <button type="button" disabled={!!actionLoading} onClick={() => setEditProfileUser(user)}
                     className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50">
-                    Edit Level
+                    Edit profile
                   </button>
                   <button type="button" disabled={!!actionLoading} onClick={() => doAction(user.uid, "reset-password")}
                     className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50">
                     {actionLoading === user.uid + "reset-password" ? "…" : "Reset Password"}
                   </button>
-                  <button type="button" disabled={!!actionLoading} onClick={() => setConfirmDelete(user)}
+                  {user.status === "suspended" ? <button type="button" disabled={!!actionLoading} onClick={() => doAction(user.uid, "reactivate")} className="rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs font-semibold text-emerald-700">Reactivate</button> : user.status === "approved" ? <button type="button" disabled={!!actionLoading} onClick={() => doAction(user.uid, "suspend")} className="rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs font-semibold text-amber-700">Suspend</button> : null}
+                  {canDelete && <button type="button" disabled={!!actionLoading} onClick={() => setConfirmDelete(user)}
                     className="rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50">
-                    Delete
-                  </button>
+                    Permanently delete
+                  </button>}
                 </div>
               </div>
             </div>
@@ -427,12 +445,12 @@ function RegisteredTable() {
           busy={actionLoading === confirmDelete.uid + "delete"}
         />
       )}
-      {editLevelUser && (
-        <EditLevelModal
-          user={editLevelUser}
-          onSave={(uid, level) => doAction(uid, "edit-level", { level })}
-          onCancel={() => setEditLevelUser(null)}
-          busy={actionLoading === editLevelUser.uid + "edit-level"}
+      {editProfileUser && (
+        <EditProfileModal
+          user={editProfileUser}
+          onSave={(uid, values) => doAction(uid, "edit-profile", values)}
+          onCancel={() => setEditProfileUser(null)}
+          busy={actionLoading === editProfileUser.uid + "edit-profile"}
         />
       )}
     </>
@@ -625,7 +643,7 @@ export function AdminUserManagement() {
       {/* Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
-        <p className="text-sm text-muted-foreground">Manage registered students and active guest sessions</p>
+        <p className="text-sm text-muted-foreground">Manage registered students and temporary in-app guest sessions. External assessment-link participants are not user accounts.</p>
       </div>
 
       {/* Toggle */}
@@ -650,7 +668,7 @@ export function AdminUserManagement() {
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Guest Users
+          Temporary App Guests
         </button>
       </div>
 

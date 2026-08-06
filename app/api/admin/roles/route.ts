@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   try {
     const queryStartedAt = performance.now()
     const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
+    const search = (req.nextUrl.searchParams.get("search") ?? "").trim().slice(0, 160)
     const pool = await getPool()
     const result = await pool.query(
       `SELECT u.uid, u.name, u.index_number, u.role,
@@ -24,13 +25,15 @@ export async function GET(req: NextRequest) {
               COUNT(*) OVER()::int AS total_count
        FROM mednexus_registered_users u
        LEFT JOIN mednexus_user_permissions p ON p.user_id = u.uid
+       WHERE ($3='' OR u.name ILIKE '%'||$3||'%' OR u.index_number ILIKE '%'||$3||'%')
        GROUP BY u.uid, u.name, u.index_number, u.role
        ORDER BY u.name ASC
        LIMIT $1 OFFSET $2`,
-      [pageSize, offset],
+      [pageSize, offset, search],
     )
     const payload = {
       permissions: ADMIN_PERMISSIONS,
+      baselines: { STUDENT: [], ADMIN: ADMIN_PERMISSIONS.filter(permission => permission !== "manage_system"), SUPER_ADMIN: ADMIN_PERMISSIONS },
       users: result.rows.map(({ total_count: _total, ...user }) => user),
       pagination: { page, pageSize, total: Number(result.rows[0]?.total_count ?? 0) },
     }
