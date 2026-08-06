@@ -27,9 +27,14 @@ export async function GET(request: NextRequest) {
     const { page, pageSize, offset } = pagination(request.nextUrl)
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? ""
     const collectionId = request.nextUrl.searchParams.get("collectionId")
+    const moduleId = request.nextUrl.searchParams.get("moduleId")
+    const disciplineId = request.nextUrl.searchParams.get("disciplineId")
+    const setId = request.nextUrl.searchParams.get("setId")
     const status = request.nextUrl.searchParams.get("status")
     const unassigned = request.nextUrl.searchParams.get("unassigned") === "true"
-    const [collections, modules, disciplines, sets, questions, settings, audit] = await Promise.all([
+    const sort = request.nextUrl.searchParams.get("sort") === "oldest" ? "oldest" : request.nextUrl.searchParams.get("sort") === "title" ? "title" : "updated"
+    const orderBy = sort === "title" ? "q.title ASC" : sort === "oldest" ? "q.updated_at ASC" : "q.updated_at DESC"
+    const [collections, modules, disciplines, sets, questions, settings, audit, counts] = await Promise.all([
       pool.query(`SELECT id,slug,title,kind,status,sort_order AS "sortOrder"
         FROM mednexus_theory_collections ORDER BY sort_order,title`),
       pool.query(`SELECT id,collection_id AS "collectionId",name,description,sort_order AS "sortOrder"
@@ -53,12 +58,16 @@ export async function GET(request: NextRequest) {
           AND ($2::text IS NULL OR q.collection_id=$2)
           AND ($3::text IS NULL OR q.status=$3)
           AND ($4::boolean=FALSE OR q.set_id IS NULL)
-        ORDER BY q.updated_at DESC LIMIT $5 OFFSET $6`, [query, collectionId, status, unassigned, pageSize, offset]),
+          AND ($5::text IS NULL OR q.module_id=$5)
+          AND ($6::text IS NULL OR q.discipline_id=$6)
+          AND ($7::text IS NULL OR q.set_id=$7)
+        ORDER BY ${orderBy} LIMIT $8 OFFSET $9`, [query, collectionId, status, unassigned, moduleId, disciplineId, setId, pageSize, offset]),
       pool.query(`SELECT default_set_size AS "defaultSetSize",updated_at AS "updatedAt"
         FROM mednexus_theory_settings WHERE id=1`),
       pool.query(`SELECT id,action,resource_type AS "resourceType",resource_id AS "resourceId",
         details,created_at AS "createdAt" FROM mednexus_theory_audit_log
         ORDER BY created_at DESC LIMIT 20`),
+      pool.query(`SELECT status,COUNT(*)::int AS count FROM mednexus_theory_questions GROUP BY status`),
     ])
     return NextResponse.json({
       collections: collections.rows,
@@ -69,6 +78,8 @@ export async function GET(request: NextRequest) {
       page,
       pageSize,
       total: questions.rows[0]?.totalCount ?? 0,
+      counts: Object.fromEntries(counts.rows.map(row => [row.status, Number(row.count)])),
+      updatedAt: new Date().toISOString(),
       settings: settings.rows[0] ?? { defaultSetSize: 20 },
       audit: audit.rows,
     })
@@ -179,7 +190,7 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json() as Record<string, unknown>
     const action = String(body.action ?? "update")
     const pool = await theoryPool()
-    await withTransaction(pool, async client => {
+    const summary = await withTransaction(pool, async client => {
       if (action === "settings") {
         const defaultSetSize = intInRange(body.defaultSetSize, 15, 20, 20)
         await client.query(`UPDATE mednexus_theory_settings SET default_set_size=$1,updated_at=NOW() WHERE id=1`, [defaultSetSize])
@@ -218,6 +229,48 @@ export async function PATCH(request: NextRequest) {
           WHERE id=ANY($5::text[])`, [setId, set.rows[0].collection_id, set.rows[0].module_id, set.rows[0].discipline_id, questionIds])
         await auditTheory(client, auth.uid, "move", "question", null, { questionIds, setId })
         return
+      }
+      if (action === "bulk") {
+        const scope = body.scope && typeof body.scope === "object" ? body.scope as Record<string, unknown> : {}
+        const explicitIds = stringArray(scope.ids, 500)
+        const clauses: string[] = []
+        const values: unknown[] = []
+        const add = (column: string, value: unknown) => { if (typeof value === "string" && value) { values.push(value); clauses.push(`${column}=$${values.length}`) } }
+        if (explicitIds.length) { values.push(explicitIds); clauses.push(`id=ANY($${values.length}::text[])`) }
+        else {
+          add("collection_id", scope.collectionId); add("module_id", scope.moduleId)
+          add("discipline_id", scope.disciplineId); add("set_id", scope.setId); add("status", scope.status)
+          if (typeof scope.query === "string" && scope.query.trim()) { values.push(`%${scope.query.trim()}%`); clauses.push(`(prompt ILIKE $${values.length} OR title ILIKE $${values.length})`) }
+        }
+        if (!clauses.length && scope.all === true) clauses.push("TRUE")
+        if (!clauses.length) throw new Error("Choose a page, hierarchy, or filtered scope first.")
+        const where = clauses.join(" AND ")
+        const matchedResult = await client.query(`SELECT status,COUNT(*)::int AS count FROM mednexus_theory_questions WHERE ${where} GROUP BY status`, values)
+        const matched = matchedResult.rows.reduce((sum, row) => sum + Number(row.count), 0)
+        if (!matched) return
+        const operation = String(body.operation ?? "")
+        let updated = 0
+        if (["draft", "review", "published", "archived"].includes(operation)) {
+          if (operation === "published") {
+            values.push(operation)
+            const result = await client.query(`UPDATE mednexus_theory_questions SET status=$${values.length},updated_at=NOW()
+              WHERE ${where} AND set_id IS NOT NULL AND trim(model_answer)<>'' AND cardinality(key_marking_points)>0 RETURNING id`, values)
+            updated = result.rowCount ?? 0
+          } else {
+            values.push(operation)
+            const result = await client.query(`UPDATE mednexus_theory_questions SET status=$${values.length},updated_at=NOW() WHERE ${where} RETURNING id`, values)
+            updated = result.rowCount ?? 0
+          }
+        } else if (operation === "move") {
+          const destinationSetId = requiredText(body.setId, "Destination set", 100)
+          const destination = await client.query(`SELECT collection_id,module_id,discipline_id,question_limit FROM mednexus_theory_sets WHERE id=$1 AND status<>'archived'`, [destinationSetId])
+          if (!destination.rows[0]) throw new Error("Destination set not found.")
+          values.push(destinationSetId, destination.rows[0].collection_id, destination.rows[0].module_id, destination.rows[0].discipline_id)
+          const result = await client.query(`UPDATE mednexus_theory_questions SET set_id=$${values.length-3},collection_id=$${values.length-2},module_id=$${values.length-1},discipline_id=$${values.length},status=CASE WHEN status='published' THEN 'review' ELSE status END,updated_at=NOW() WHERE ${where} RETURNING id`, values)
+          updated = result.rowCount ?? 0
+        } else throw new Error("Unsupported bulk action.")
+        await auditTheory(client, auth.uid, `bulk_${operation}`, "question", null, { scope, matched, updated, skipped: matched - updated })
+        return { matched, updated, skipped: matched - updated, failed: 0, statusBreakdown: Object.fromEntries(matchedResult.rows.map(row => [row.status, Number(row.count)])) }
       }
       const resource = String(body.resource ?? "")
       const id = requiredText(body.id, "Resource id", 100)
@@ -262,7 +315,7 @@ export async function PATCH(request: NextRequest) {
       } else throw new Error("Unknown Theory resource.")
       await auditTheory(client, auth.uid, "update", resource, id, {})
     })
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, ...(summary ?? {}) })
   } catch (error) {
     console.error("[admin theory PATCH]", error)
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to update Theory content." }, { status: 400 })

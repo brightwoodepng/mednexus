@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { ArrowDown, ArrowUp, BookOpen, Database, FileUp, FolderTree, History, ImagePlus, Link2, Plus, Save, Search, Settings2, Trash2, X } from "lucide-react"
+import { ArrowDown, ArrowUp, BookOpen, Database, FileUp, FolderTree, Grid2X2, History, ImagePlus, LayoutList, Link2, Plus, RefreshCw, Save, Search, Settings2, Trash2, X } from "lucide-react"
 import { TheoryBulkImporter } from "@/components/theory-bulk-importer"
 import { TheoryQuestionMedia } from "@/components/theory-question-media"
 import type { TheoryMediaItem } from "@/lib/theory-media"
@@ -19,6 +19,7 @@ type QuestionRow = {
 type AdminData = {
   collections: Collection[]; modules: Group[]; disciplines: Group[]; sets: SetRow[]; questions: QuestionRow[]
   total: number; settings: { defaultSetSize: number }
+  page: number; pageSize: number; counts: Record<Status, number>; updatedAt: string
   audit: Array<{ id: number; action: string; resourceType: string; resourceId: string | null; createdAt: string }>
 }
 type Tab = "hierarchy" | "questions" | "import" | "settings" | "audit"
@@ -41,22 +42,40 @@ export function TheoryAdminManager({ initialTab = "questions" }: { initialTab?: 
   const [status, setStatus] = useState("")
   const [collectionFilter, setCollectionFilter] = useState("")
   const [unassigned, setUnassigned] = useState(false)
+  const [mode, setMode] = useState<"manager" | "legacy">("manager")
+  const [moduleFilter, setModuleFilter] = useState("")
+  const [disciplineFilter, setDisciplineFilter] = useState("")
+  const [setFilter, setSetFilter] = useState("")
+  const [sort, setSort] = useState("updated")
+  const [page, setPage] = useState(1)
+  const [layout, setLayout] = useState<"list" | "grid">("list")
   const [notice, setNotice] = useState("")
   const [error, setError] = useState("")
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    const saved = window.localStorage.getItem("mednexus-admin-theory-layout")
+    if (saved === "grid" || saved === "list") setLayout(saved)
+  }, [])
+  useEffect(() => { window.localStorage.setItem("mednexus-admin-theory-layout", layout) }, [layout])
+
+  const load = useCallback(async (signal?: AbortSignal) => {
     setError("")
     const params = new URLSearchParams({ q: query })
     if (status) params.set("status", status)
     if (collectionFilter) params.set("collectionId", collectionFilter)
+    if (moduleFilter) params.set("moduleId", moduleFilter)
+    if (disciplineFilter) params.set("disciplineId", disciplineFilter)
+    if (setFilter) params.set("setId", setFilter)
+    params.set("sort", sort); params.set("page", String(page)); params.set("pageSize", "25")
     if (unassigned) params.set("unassigned", "true")
-    try { setData(await request<AdminData>(`/api/admin/theory?${params}`)) }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to load Theory administration.") }
-  }, [collectionFilter, query, status, unassigned])
+    try { setData(await request<AdminData>(`/api/admin/theory?${params}`, { signal })) }
+    catch (cause) { if (!(cause instanceof DOMException && cause.name === "AbortError")) setError(cause instanceof Error ? cause.message : "Unable to load Theory administration.") }
+  }, [collectionFilter, disciplineFilter, moduleFilter, page, query, setFilter, sort, status, unassigned])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 200)
-    return () => window.clearTimeout(timer)
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => void load(controller.signal), 200)
+    return () => { window.clearTimeout(timer); controller.abort() }
   }, [load])
 
   const change = async (method: "POST" | "PATCH" | "DELETE", body: Record<string, unknown>, success: string) => {
@@ -70,16 +89,19 @@ export function TheoryAdminManager({ initialTab = "questions" }: { initialTab?: 
   if (!data) return <div className={`${card} py-16 text-center text-sm text-muted-foreground`}>{error || "Loading Theory administrationâ€¦"}</div>
   const tabs: Array<[Tab, string, typeof BookOpen]> = [["hierarchy","Curriculum",FolderTree],["questions","Questions",BookOpen],["import","Import",FileUp],["settings","Settings",Settings2],["audit","Audit",History]]
   return <div className="space-y-5 pb-12">
-    <header className="rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-700 to-emerald-800 p-6 text-white shadow-lg sm:p-8"><p className="text-xs font-bold uppercase tracking-[.18em] text-teal-100">Theory Vault Administration</p><h1 className="mt-2 text-3xl font-bold">Build the long-answer curriculum.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-teal-50/90">Manage categories, modules, disciplines, sets, Markdown answers, publishing, ordering, and migration-safe placement.</p></header>
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[["Collections",data.collections.length],["Modules",data.modules.length],["Disciplines",data.disciplines.length],["Sets",data.sets.length],["Questions",data.total]].map(([label,value]) => <div key={label} className={card}><p className="text-2xl font-bold text-primary">{value}</p><p className="mt-1 text-sm text-muted-foreground">{label}</p></div>)}</section>
-    <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2">{tabs.map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`${button} shrink-0 ${tab===id ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}><Icon size={16}/>{label}</button>)}</nav>
+    <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Content</p><h1 className="mt-1 text-3xl font-bold">Theory Vault</h1><p className="mt-1 text-sm text-muted-foreground">Manage the authoritative long-answer question bank.</p></div><div className="grid grid-cols-2 rounded-xl border border-border bg-muted/40 p-1"><button onClick={() => setMode("manager")} className={`${button} min-h-9 px-4 ${mode==="manager"?"bg-background shadow-sm":"text-muted-foreground"}`}>Manager</button><button onClick={() => setMode("legacy")} className={`${button} min-h-9 px-4 ${mode==="legacy"?"bg-background shadow-sm":"text-muted-foreground"}`}>Legacy</button></div></header>
+    {mode === "manager" && <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">{[["All",Object.values(data.counts).reduce((a,b)=>a+b,0)],["Draft",data.counts.draft||0],["In review",data.counts.review||0],["Published",data.counts.published||0],["Archived",data.counts.archived||0]].map(([label,value]) => <button key={label} onClick={() => {setStatus(label==="All"?"":label==="In review"?"review":String(label).toLowerCase());setPage(1)}} className={`${card} p-4 text-left ${status===(label==="All"?"":label==="In review"?"review":String(label).toLowerCase())?"border-primary ring-1 ring-primary/20":""}`}><p className="text-2xl font-bold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></button>)}</section>}
+    {mode === "legacy" && <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2">{tabs.map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`${button} shrink-0 ${tab===id ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}><Icon size={16}/>{label}</button>)}</nav>}
     {error && <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
     {notice && <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100">{notice}</div>}
-    {tab === "hierarchy" && <HierarchyAdmin data={data} change={change}/>}
-    {tab === "questions" && <QuestionAdmin data={data} query={query} setQuery={setQuery} status={status} setStatus={setStatus} collectionFilter={collectionFilter} setCollectionFilter={setCollectionFilter} unassigned={unassigned} setUnassigned={setUnassigned} change={change}/>}
-    {tab === "import" && <TheoryBulkImporter onImported={load} onReviewUnassigned={() => { setUnassigned(true); setStatus("draft"); setTab("questions") }}/>}
-    {tab === "settings" && <SettingsAdmin value={data.settings.defaultSetSize} change={change}/>}
-    {tab === "audit" && <Audit items={data.audit}/>}
+    {mode === "manager" && <QuestionAdmin data={data} query={query} setQuery={value=>{setQuery(value);setPage(1)}} status={status} setStatus={setStatus} collectionFilter={collectionFilter} setCollectionFilter={setCollectionFilter} unassigned={unassigned} setUnassigned={setUnassigned} moduleFilter={moduleFilter} setModuleFilter={setModuleFilter} disciplineFilter={disciplineFilter} setDisciplineFilter={setDisciplineFilter} setFilter={setFilter} setSetFilter={setSetFilter} sort={sort} setSort={setSort} page={page} setPage={setPage} layout={layout} setLayout={setLayout} refresh={()=>load()} change={change}/>}
+    {mode === "legacy" && tab === "hierarchy" && <HierarchyAdmin data={data} change={change}/>}
+    {mode === "legacy" && tab === "questions" && <QuestionAdmin data={data} query={query} setQuery={setQuery} status={status} setStatus={setStatus} collectionFilter={collectionFilter} setCollectionFilter={setCollectionFilter} unassigned={unassigned} setUnassigned={setUnassigned} moduleFilter={moduleFilter} setModuleFilter={setModuleFilter} disciplineFilter={disciplineFilter} setDisciplineFilter={setDisciplineFilter} setFilter={setFilter} setSetFilter={setSetFilter} sort={sort} setSort={setSort} page={page} setPage={setPage} layout={layout} setLayout={setLayout} refresh={()=>load()} change={change}/>}
+    {mode === "legacy" && tab === "import" && (
+      <TheoryBulkImporter onImported={load} onReviewUnassigned={() => { setUnassigned(true); setStatus("draft"); setTab("questions") }}/>
+    )}
+    {mode === "legacy" && tab === "settings" && <SettingsAdmin value={data.settings.defaultSetSize} change={change}/>}
+    {mode === "legacy" && tab === "audit" && <Audit items={data.audit}/>}
   </div>
 }
 
@@ -115,16 +137,21 @@ function SetEditor({ set, change }: { set: SetRow; change: (method: "POST" | "PA
   return <article className={card}><p className="text-xs font-semibold text-primary">{set.questionCount} questions</p><input value={name} onChange={event => setName(event.target.value)} className={`${control} mt-3 w-full font-bold`}/><textarea value={description} onChange={event => setDescription(event.target.value)} rows={3} className={`${control} mt-2 w-full py-3`}/><select value={status} onChange={event => setStatus(event.target.value as Status)} className={`${control} mt-2 w-full`}><option value="draft">Draft</option><option value="review">In review</option><option value="published">Published</option><option value="archived">Archived</option></select><button onClick={() => change("PATCH",{resource:"set",id:set.id,name,description,status},"Set updated.")} className={`${button} mt-3 w-full border border-border`}><Save size={16}/>Save set</button></article>
 }
 
-function QuestionAdmin({ data, query, setQuery, status, setStatus, collectionFilter, setCollectionFilter, unassigned, setUnassigned, change }: {
+function QuestionAdmin({ data, query, setQuery, status, setStatus, collectionFilter, setCollectionFilter, unassigned, setUnassigned, moduleFilter, setModuleFilter, disciplineFilter, setDisciplineFilter, setFilter, setSetFilter, sort, setSort, page, setPage, layout, setLayout, refresh, change }: {
   data: AdminData; query: string; setQuery: (value: string) => void; status: string; setStatus: (value: string) => void
   collectionFilter: string; setCollectionFilter: (value: string) => void
   unassigned: boolean; setUnassigned: (value: boolean) => void
+  moduleFilter: string; setModuleFilter: (value: string) => void; disciplineFilter: string; setDisciplineFilter: (value: string) => void
+  setFilter: string; setSetFilter: (value: string) => void; sort: string; setSort: (value: string) => void
+  page: number; setPage: (value: number) => void; layout: "list" | "grid"; setLayout: (value: "list" | "grid") => void; refresh: () => void
   change: (method: "POST" | "PATCH" | "DELETE", body: Record<string, unknown>, success: string) => Promise<boolean>
 }) {
   const [active, setActive] = useState<QuestionRow | null>(null)
   const [creating, setCreating] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [destinationSetId, setDestinationSetId] = useState("")
+  const [bulkStatus, setBulkStatus] = useState("")
+  const [scope, setScope] = useState<"page" | "filtered">("page")
   const move = async (question: QuestionRow, direction: -1 | 1) => {
     const siblings = data.questions.filter(item => item.setId === question.setId).sort((a,b) => a.sortOrder-b.sortOrder)
     const index = siblings.findIndex(item => item.id === question.id), target = siblings[index+direction]
@@ -139,10 +166,16 @@ function QuestionAdmin({ data, query, setQuery, status, setStatus, collectionFil
       setDestinationSetId("")
     }
   }
-  return <div className="space-y-5"><section className={card}><div className="grid gap-3 xl:grid-cols-[1fr_180px_170px_170px_auto]"><label className="flex items-center gap-2 rounded-xl border border-border px-3"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search questions" className="min-h-11 w-full bg-transparent text-sm outline-none"/></label><select value={collectionFilter} onChange={event => setCollectionFilter(event.target.value)} className={control}><option value="">All categories</option>{data.collections.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value)} className={control}><option value="">All statuses</option><option value="draft">Draft</option><option value="review">In review</option><option value="published">Published</option><option value="archived">Archived</option></select><select value={unassigned ? "unassigned" : "all"} onChange={event => { setUnassigned(event.target.value === "unassigned"); setSelected([]) }} className={control}><option value="all">All assignments</option><option value="unassigned">Unassigned only</option></select><button onClick={() => { setCreating(true); setActive(null) }} className={`${button} bg-primary text-primary-foreground`}><Plus size={16}/>New question</button></div></section>
-    <section className={`${card} flex flex-wrap items-center gap-3`}><label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={data.questions.length > 0 && selected.length === data.questions.length} onChange={event => setSelected(event.target.checked ? data.questions.map(item => item.id) : [])} className="size-4 accent-primary"/>Select all shown</label><span className="text-sm text-muted-foreground">{selected.length} selected</span><select value={destinationSetId} onChange={event => setDestinationSetId(event.target.value)} className={`${control} min-w-64 flex-1`}><option value="">Choose destination set</option>{data.sets.filter(item => item.status !== "archived").map(item => <option key={item.id} value={item.id}>{item.name} ({item.questionCount}/{item.questionLimit})</option>)}</select><button disabled={!selected.length || !destinationSetId} onClick={assignSelected} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}>Assign selected to set</button></section>
+  const applyBulk = async () => {
+    const selectedScope = scope === "page" ? { ids: selected } : { all:true, query, status, collectionId:collectionFilter, moduleId:moduleFilter, disciplineId:disciplineFilter, setId:setFilter }
+    if (await change("PATCH", { action:"bulk", operation:bulkStatus, scope:selectedScope }, "Bulk action completed.")) { setSelected([]); setBulkStatus("") }
+  }
+  const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize))
+  return <div className="space-y-5"><section className={card}><div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4"><label className="flex items-center gap-2 rounded-xl border border-border px-3 lg:col-span-2"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search title or question text" className="min-h-11 w-full bg-transparent text-sm outline-none"/></label><select value={collectionFilter} onChange={event => {setCollectionFilter(event.target.value);setModuleFilter("");setDisciplineFilter("");setSetFilter("")}} className={control}><option value="">All collections</option>{data.collections.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select><select value={status} onChange={event => setStatus(event.target.value)} className={control}><option value="">All statuses</option><option value="draft">Draft</option><option value="review">In review</option><option value="published">Published</option><option value="archived">Archived</option></select><select value={moduleFilter} onChange={event => setModuleFilter(event.target.value)} className={control}><option value="">All modules</option>{data.modules.filter(item=>!collectionFilter||item.collectionId===collectionFilter).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select value={disciplineFilter} onChange={event => setDisciplineFilter(event.target.value)} className={control}><option value="">All disciplines</option>{data.disciplines.filter(item=>!collectionFilter||item.collectionId===collectionFilter).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select value={setFilter} onChange={event => setSetFilter(event.target.value)} className={control}><option value="">All sets</option>{data.sets.filter(item=>!collectionFilter||item.collectionId===collectionFilter).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><select value={sort} onChange={event => setSort(event.target.value)} className={control}><option value="updated">Recently updated</option><option value="oldest">Oldest updated</option><option value="title">Title A-Z</option></select></div><div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-muted-foreground">{data.total} matching · Updated {new Date(data.updatedAt).toLocaleTimeString()}</p><div className="flex gap-2"><button onClick={refresh} aria-label="Refresh questions" className="rounded-lg border border-border p-2"><RefreshCw size={16}/></button><button onClick={()=>setLayout("list")} aria-label="List view" className={`rounded-lg border p-2 ${layout==="list"?"border-primary text-primary":"border-border"}`}><LayoutList size={16}/></button><button onClick={()=>setLayout("grid")} aria-label="Grid view" className={`rounded-lg border p-2 ${layout==="grid"?"border-primary text-primary":"border-border"}`}><Grid2X2 size={16}/></button><button onClick={() => { setCreating(true); setActive(null) }} className={`${button} bg-primary text-primary-foreground`}><Plus size={16}/>New question</button></div></div></section>
+    <section className={`${card} flex flex-wrap items-center gap-3`}><label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={data.questions.length > 0 && selected.length === data.questions.length} onChange={event => setSelected(event.target.checked ? data.questions.map(item => item.id) : [])} className="size-4 accent-primary"/>Select page</label><select value={scope} onChange={event=>setScope(event.target.value as "page"|"filtered")} className={control}><option value="page">Selected page ({selected.length})</option><option value="filtered">All filtered results ({data.total})</option></select><select value={bulkStatus} onChange={event=>setBulkStatus(event.target.value)} className={control}><option value="">Bulk status</option><option value="draft">Draft</option><option value="review">In review</option><option value="published">Published / restore</option><option value="archived">Archive</option></select><button disabled={!bulkStatus||(scope==="page"&&!selected.length)} onClick={applyBulk} className={`${button} border border-border disabled:opacity-40`}>Apply</button><select value={destinationSetId} onChange={event => setDestinationSetId(event.target.value)} className={`${control} min-w-56 flex-1`}><option value="">Destination set</option>{data.sets.filter(item => item.status !== "archived").map(item => <option key={item.id} value={item.id}>{item.name} ({item.questionCount}/{item.questionLimit})</option>)}</select><button disabled={!selected.length || !destinationSetId} onClick={assignSelected} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}>Assign selected to set</button></section>
     {(creating || active) && <QuestionForm question={active} data={data} onClose={() => {setActive(null);setCreating(false)}} change={change}/>}
-    <section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="hidden grid-cols-[36px_1fr_150px_110px_100px] gap-3 border-b border-border bg-muted/50 px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground lg:grid"><span/><span>Question</span><span>Set</span><span>Status</span><span>Order</span></div><div className="divide-y divide-border">{data.questions.map(question => <article key={question.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[36px_1fr_150px_110px_100px] lg:items-center"><input type="checkbox" aria-label={`Select ${question.title}`} checked={selected.includes(question.id)} onChange={event => setSelected(current => event.target.checked ? [...new Set([...current, question.id])] : current.filter(id => id !== question.id))} className="size-4 accent-primary"/><button onClick={() => { setActive(question); setCreating(false) }} className="text-left"><p className="font-semibold">{question.title}</p><p className="mt-1 text-xs text-muted-foreground">{question.collectionTitle} · {[question.moduleName,question.disciplineName].filter(Boolean).join(" · ")} · {question.marks ?? 0} marks</p></button><span className="text-sm text-muted-foreground">{question.setTitle ?? "Unassigned"}</span><span className="w-fit rounded-full bg-primary/10 px-2 py-1 text-xs font-bold text-primary">{question.status}</span><span className="flex gap-1"><button onClick={() => move(question,-1)} aria-label="Move up" className="rounded-lg border border-border p-2"><ArrowUp size={15}/></button><button onClick={() => move(question,1)} aria-label="Move down" className="rounded-lg border border-border p-2"><ArrowDown size={15}/></button></span></article>)}</div></section>
+    <section className={`overflow-hidden rounded-2xl border border-border bg-card ${layout==="grid"?"p-3":""}`}><div className={layout==="list"?"hidden grid-cols-[36px_1fr_150px_110px_100px] gap-3 border-b border-border bg-muted/50 px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground lg:grid":"hidden"}><span/><span>Question</span><span>Set</span><span>Status</span><span>Order</span></div><div className={layout==="grid"?"grid gap-3 sm:grid-cols-2 xl:grid-cols-3":"divide-y divide-border"}>{data.questions.map(question => <article key={question.id} className={layout==="grid"?"grid gap-3 rounded-xl border border-border p-4":"grid gap-3 px-4 py-4 lg:grid-cols-[36px_1fr_150px_110px_100px] lg:items-center"}><input type="checkbox" aria-label={`Select ${question.title}`} checked={selected.includes(question.id)} onChange={event => setSelected(current => event.target.checked ? [...new Set([...current, question.id])] : current.filter(id => id !== question.id))} className="size-4 accent-primary"/><button onClick={() => { setActive(question); setCreating(false) }} className="text-left"><p className="font-semibold">{question.title}</p><p className="mt-1 text-xs text-muted-foreground">{question.collectionTitle} · {[question.moduleName,question.disciplineName].filter(Boolean).join(" · ")} · {question.marks ?? 0} marks</p></button><span className="text-sm text-muted-foreground">{question.setTitle ?? "Unassigned"}</span><span className="w-fit rounded-full bg-primary/10 px-2 py-1 text-xs font-bold text-primary">{question.status}</span><span className="flex gap-1"><button onClick={() => move(question,-1)} aria-label="Move up" className="rounded-lg border border-border p-2"><ArrowUp size={15}/></button><button onClick={() => move(question,1)} aria-label="Move down" className="rounded-lg border border-border p-2"><ArrowDown size={15}/></button></span></article>)}</div></section>
+    <nav aria-label="Question pages" className="flex items-center justify-between"><button disabled={page<=1} onClick={()=>setPage(page-1)} className={`${button} border border-border disabled:opacity-40`}>Previous</button><span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span><button disabled={page>=totalPages} onClick={()=>setPage(page+1)} className={`${button} border border-border disabled:opacity-40`}>Next</button></nav>
   </div>
 }
 
