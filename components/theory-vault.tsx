@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft, ArrowRight, BookOpen, Bookmark, Check, CheckCircle2, ChevronDown, ChevronRight,
   Clock3, Download, FileText, FolderOpen, ListChecks, LoaderCircle, Mic, NotebookPen,
@@ -80,6 +80,15 @@ function ProgressBar({ value }: { value: number }) {
   return <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${Math.max(0, Math.min(100, value))}%` }}/></div>
 }
 
+function useAutosizeTextarea(ref: React.RefObject<HTMLTextAreaElement | null>, value: string, enabled: boolean) {
+  useLayoutEffect(() => {
+    const textarea = ref.current
+    if (!textarea || !enabled) return
+    textarea.style.height = "auto"
+    textarea.style.height = `${Math.max(88, textarea.scrollHeight)}px`
+  }, [enabled, ref, value])
+}
+
 function KeyPointsList({ points }: { points: string[] }) {
   return <ul className="space-y-2">
     {points.map(point => (
@@ -93,28 +102,17 @@ function KeyPointsList({ points }: { points: string[] }) {
 
 function KeyPointsSection({ points }: { points: string[] }) {
   if (!points.length) return null
-  return <>
-    <details className="group mt-5 overflow-hidden rounded-xl border border-primary/20 bg-primary/5 sm:hidden">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-primary [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground"><CheckCircle2 size={13}/></span>
-          Key Points
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px]">{points.length}</span>
-        </span>
-        <ChevronDown size={17} className="transition-transform group-open:rotate-180"/>
-      </summary>
-      <div className="border-t border-primary/15 p-3"><KeyPointsList points={points}/></div>
-    </details>
-    <div className="mt-5 hidden sm:block">
-      <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <CheckCircle2 size={12}/>
-        </div>
-        <h3 className="text-xs font-bold uppercase tracking-widest text-primary">Key Points</h3>
-      </div>
-      <KeyPointsList points={points}/>
-    </div>
-  </>
+  return <details className="group mt-5 overflow-hidden rounded-xl border border-primary/20 bg-primary/5">
+    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
+      <span className="flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground"><CheckCircle2 size={13}/></span>
+        Key Points
+        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px]">{points.length}</span>
+      </span>
+      <ChevronDown size={17} className="transition-transform group-open:rotate-180"/>
+    </summary>
+    <div className="border-t border-primary/15 p-3 sm:p-4"><KeyPointsList points={points}/></div>
+  </details>
 }
 
 function SignInNotice() {
@@ -334,59 +332,26 @@ function Dashboard({ data, displayName, onView, onCollection, onSet, onQuestion 
       </div>
     </section>
 
-    {/* ── Recently Studied ── */}
-    <div className="rounded-2xl border border-border bg-card shadow-sm">
-      {/* Header — matches MCQ section header style */}
-      <div className="flex items-center gap-3 px-4 pt-4 sm:px-6 sm:pt-5">
-        <div className="flex items-center gap-2 flex-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <BookOpen size={16} />
-          </div>
-          <h2 className="text-lg font-bold tracking-tight">Recently Studied</h2>
+    <section aria-labelledby="recently-studied-heading">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen size={16}/></div>
+          <h2 id="recently-studied-heading" className="text-lg font-bold tracking-tight">Recently Studied</h2>
         </div>
-        <button
-          type="button"
-          onClick={() => onView("Progress")}
-          className="shrink-0 text-xs font-medium text-primary hover:underline flex items-center gap-1"
-        >
-          View all <ChevronRight size={12} />
-        </button>
+        <button type="button" onClick={() => onView("Progress")} className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline">View all <ChevronRight size={12}/></button>
       </div>
-      {/* List */}
-      <div className="mt-4 divide-y divide-border">
-        {data.recentSets.length ? data.recentSets.slice(0, 4).map(item => (
-          <div key={`${item.setId}-${item.lastStudiedAt}`} className="flex flex-col items-stretch gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-6 sm:px-6">
-            {/* Left: breadcrumb + title + date */}
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-primary">{item.collection} · {item.groupName}</p>
-              <p className="mt-0.5 font-bold text-foreground">{item.setLabel}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p>
-            </div>
-            {/* Right: progress + continue */}
-            <div className="flex w-full shrink-0 flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
-              <div className="w-full sm:w-36">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">Progress</span>
-                  <span className="text-xs font-bold text-foreground">{item.progressPercent}%</span>
-                </div>
-                <div className="mt-1.5"><ProgressBar value={item.progressPercent} /></div>
-              </div>
-              <button
-                type="button"
-                onClick={() => onSet(item.setId)}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:text-primary sm:min-h-0 sm:w-auto sm:rounded-full"
-              >
-                Continue
-              </button>
-            </div>
+      {data.recentSets.length ? <div className="grid gap-3 lg:grid-cols-2">
+        {data.recentSets.slice(0, 4).map(item => <article key={`${item.setId}-${item.lastStudiedAt}`} className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/35 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-primary">{item.collection} · {item.groupName}</p><h3 className="mt-1 truncate font-bold text-foreground">{item.setLabel}</h3><p className="mt-1 text-xs text-muted-foreground">Last studied {dateLabel(item.lastStudiedAt)}</p></div>
+            <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{item.progressPercent}%</span>
           </div>
-        )) : (
-          <div className="px-4 py-8 text-sm text-muted-foreground sm:px-6">
-            No sets studied yet. Start a theory set to track your progress here.
-          </div>
-        )}
-      </div>
-    </div>
+          <div className="mt-3"><ProgressBar value={item.progressPercent}/></div>
+          <button type="button" onClick={() => onSet(item.setId)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-border bg-background px-4 text-sm font-semibold transition-colors hover:border-primary/40 hover:text-primary sm:min-h-10 sm:w-auto">Continue <ChevronRight size={14}/></button>
+        </article>)}
+      </div> : <div className="rounded-2xl border border-dashed border-border bg-card/50 px-4 py-6 text-sm text-muted-foreground">No sets studied yet. Start a theory set to track your progress here.</div>}
+    </section>
+
   </div>
 }
 
@@ -456,18 +421,18 @@ function Catalog({ data, collectionId, groupId, onCollection, onGroup, onBack, o
   return <div className="space-y-4">
     <button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> {selectedCollection.title}</button>
     <div><p className="text-sm text-primary">{selectedCollection.title}</p><h1 className="text-2xl font-bold">{groupName}</h1></div>
-    {sets.length ? <div className="grid gap-4 md:grid-cols-2">{sets.map(set => {
+    {sets.length ? <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">{sets.map(set => {
       const progress = set.totalQuestions ? Math.round(set.completedQuestions / set.totalQuestions * 100) : 0
       return <article key={set.id} className={`group relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 ${groupPalette.ring}`}>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-1 opacity-80" style={{ background: groupPalette.bar }}/>
         <div className="p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div><p className="text-xs font-bold uppercase tracking-wider" style={{ color: groupPalette.bar }}>{progressStatus(set.completedQuestions, set.totalQuestions)}</p><h2 className="mt-2 text-lg font-bold">{set.setLabel}</h2></div>
-            <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: `${groupPalette.bar}18`, color: groupPalette.bar }}>{progress}%</span>
+          <div className="mb-3 mt-1 flex items-start justify-between gap-2">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${groupPalette.icon}`}><FileText size={18}/></div>
+            <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: `${groupPalette.bar}18`, color: groupPalette.bar }}>{progress}%</span>
           </div>
-          <p className="mt-2 text-sm text-muted-foreground">{set.totalQuestions} {set.totalQuestions === 1 ? "question" : "questions"}</p>
-          <div className="mt-4"><ProgressBar value={progress}/></div>
-          <button onClick={() => onSet(set.id)} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition-all" style={{ background: groupPalette.bar }}>{set.completedQuestions ? "Continue Set" : "Start Set"}<ArrowRight size={16}/></button>
+          <h2 className="font-bold leading-snug text-foreground">{set.setLabel}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{progressStatus(set.completedQuestions, set.totalQuestions)} · {set.totalQuestions} {set.totalQuestions === 1 ? "question" : "questions"}</p>
+          <button onClick={() => onSet(set.id)} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition-colors" style={{ background: `${groupPalette.bar}18`, color: groupPalette.bar }}>{set.completedQuestions ? "Continue Set" : "Start Set"}<ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5"/></button>
         </div>
       </article>
     })}</div> : <Empty title="No published sets" text="This section does not have a published question set yet."/>}
@@ -484,21 +449,28 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
     }
     if (data.questions[0]) onOpen(data.questions.find(item => !item.completed)?.id ?? data.questions[0].id)
   }
-  return <div className="space-y-5"><button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Back to sets</button>
+  return <div className="space-y-5">
+    <button onClick={onBack} className="flex min-h-11 items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Back to sets</button>
     {!registered && <SignInNotice/>}
-    <section aria-label="Set study summary" className="space-y-3">
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="rounded-xl border border-border bg-card p-3 text-center shadow-sm"><b className="text-xl sm:text-2xl">{data.total}</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Questions</span></div>
-        <div className="rounded-xl border border-border bg-card p-3 text-center shadow-sm"><b className="text-xl sm:text-2xl">{data.completed}</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Completed</span></div>
-        <div className="rounded-xl border border-border bg-card p-3 text-center shadow-sm"><b className="text-xl sm:text-2xl">{data.progressPercent}%</b><span className="block text-[10px] text-muted-foreground sm:text-xs">Progress</span></div>
+    <section aria-label="Set study summary" className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-primary">{data.collectionTitle}</p>
+          <h1 className="truncate text-lg font-bold tracking-tight sm:text-xl">{data.setLabel}</h1>
+          <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground"><span>{data.total} questions</span><span>{data.completed} completed</span><span className="font-semibold text-primary">{data.progressPercent}%</span></div>
+        </div>
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
       </div>
-      <ProgressBar value={data.progressPercent}/>
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
+      <div className="mt-3"><ProgressBar value={data.progressPercent}/></div>
     </section>
-    <section className={`${card} p-0`}><div className="border-b border-border px-4 py-4 sm:px-5"><h2 className="font-bold">Questions</h2><p className="text-sm text-muted-foreground">Jump to any question in the set.</p></div><div className="divide-y divide-border">{data.questions.map((question, index) => <button key={question.id} onClick={() => onOpen(question.id)} className="grid w-full grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-2.5 px-3 py-4 text-left hover:bg-muted/50 sm:grid-cols-[36px_1fr_auto] sm:gap-3 sm:px-5">
-      <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${question.completed ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{question.completed ? <Check size={15}/> : index + 1}</span>
-      <span><b className="line-clamp-1">{question.title || question.prompt}</b><small className="mt-1 flex flex-wrap gap-2 text-muted-foreground">{question.marks != null && <span>{question.marks} marks</span>}{question.bookmarked && <span>Bookmarked</span>}{question.revision && <span>Revision</span>}{question.draft && <span>Draft saved</span>}</small></span><ChevronRight className="text-muted-foreground" size={18}/>
-    </button>)}</div></section>
+    <section aria-labelledby="set-questions-heading">
+      <div className="mb-3"><h2 id="set-questions-heading" className="text-lg font-bold">Questions</h2><p className="text-sm text-muted-foreground">Choose a question to review or practise.</p></div>
+      <div className="space-y-2">{data.questions.map((question, index) => <button key={question.id} onClick={() => onOpen(question.id)} className="grid min-h-16 w-full grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:px-4">
+        <span className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold ${question.completed ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{question.completed ? <Check size={16}/> : index + 1}</span>
+        <span className="min-w-0"><b className="line-clamp-2 text-sm sm:text-base">{question.title || question.prompt}</b><small className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground">{question.marks != null && <span>{question.marks} marks</span>}{question.completed && <span>Completed</span>}{question.bookmarked && <span>Bookmarked</span>}{question.revision && <span>Revision</span>}{question.draft && <span>Draft saved</span>}</small></span>
+        <ChevronRight className="shrink-0 text-muted-foreground" size={18}/>
+      </button>)}</div>
+    </section>
   </div>
 }
 
@@ -517,9 +489,10 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
   const reviewRecorded = useRef(false)
   const restored = useRef(false)
   const answerRef = useRef<HTMLTextAreaElement>(null)
+  useAutosizeTextarea(answerRef, answer, mode === "practice" && !submitted)
 
   const load = useCallback(async () => {
-    setMessage(""); reviewRecorded.current = false; restored.current = false
+    setMessage(""); setSubmitted(false); setRevealed(false); reviewRecorded.current = false; restored.current = false
     try {
       const next = await api<TheoryQuestionDetail>(`/api/theory?mode=question&id=${encodeURIComponent(questionId)}`)
       const sessionIndex = sessionQuestionIds?.indexOf(questionId) ?? -1
@@ -701,17 +674,13 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
       )}
       {aiMessage && <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">{aiMessage}</div>}
 
-      {/* ── Question card — theme-coloured full border, title in pill ── */}
-      <article className="rounded-2xl border-2 border-primary/30 bg-card shadow-sm">
-        <div className="px-4 py-4 sm:px-6 sm:py-5">
-          <div className="inline-block max-w-full rounded-xl border border-border/50 bg-muted/60 px-3 py-2.5 sm:px-4">
-            <h1 className="break-words text-lg font-bold leading-snug sm:text-xl">{question.title || question.prompt}</h1>
-          </div>
+      {/* Focused question prompt */}
+      <article className="rounded-2xl border border-border bg-card px-4 py-4 shadow-sm sm:px-5">
+          <h1 className="break-words text-lg font-bold leading-snug sm:text-xl">{question.title || question.prompt}</h1>
           {question.title && (
-            <p className="mt-4 leading-7 text-foreground/75">{question.prompt}</p>
+            <p className="mt-3 leading-7 text-foreground/80">{question.prompt}</p>
           )}
-          {question.media.length > 0 && <div className="mt-5"><TheoryQuestionMedia media={question.media}/></div>}
-        </div>
+          {question.media.length > 0 && <div className="mt-4"><TheoryQuestionMedia media={question.media}/></div>}
       </article>
 
       {/* ── Review mode ── */}
@@ -731,7 +700,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
               <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-4 sm:px-5">
                 <TheoryMarkdown children={question.modelAnswer}/>
               </div>
-              <KeyPointsSection points={question.keyMarkingPoints}/>
+              <KeyPointsSection key={question.id} points={question.keyMarkingPoints}/>
             </div>
           </article>
 
@@ -750,15 +719,14 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
       ) : (
         /* ── Practice mode ── */
         <div className="space-y-4">
-          <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-3 sm:px-5">
+          {!submitted && <article className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-bold">My Answer</h2>
               <span className="text-xs text-muted-foreground">{words} words · {saving === "saving" ? "Saving…" : saving === "saved" ? "Draft saved" : saving === "error" ? "Autosave failed" : "Unsaved"}</span>
             </div>
-            <div className="p-4 sm:p-5">
-              <textarea ref={answerRef} value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={12}
-                placeholder="Build a structured answer…"
-                className="w-full resize-y rounded-xl border border-border bg-background p-3 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70 sm:p-4"/>
+              <textarea ref={answerRef} value={answer} onChange={event => setAnswer(event.target.value)} disabled={submitted} rows={3}
+                placeholder="Write your answer…"
+                className="w-full resize-none overflow-hidden rounded-xl border border-border bg-background p-3 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-70 sm:p-4"/>
               <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 <button onClick={() => personalized({ action: "draft", answer })} disabled={!registered || submitted} className={`${button} w-full border border-border disabled:opacity-50 sm:w-auto`}><Save size={15}/> Save Draft</button>
                 {registered && <DictationControl
@@ -772,18 +740,17 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
                 <button onClick={submit} disabled={!registered || submitted} className={`${button} w-full bg-primary text-primary-foreground disabled:opacity-50 sm:w-auto`}>Submit Answer</button>
                 <button onClick={reveal} className={`${button} w-full border border-border sm:w-auto`}>Reveal Answer</button>
               </div>
-            </div>
-          </article>
+          </article>}
 
           {(revealed || submitted) && <>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className={`grid gap-4 ${submitted ? "lg:grid-cols-2" : ""}`}>
+              {submitted && <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-5"><h2 className="font-bold">My Answer</h2></div>
                 <div className="overflow-hidden p-4 sm:p-5">{answer ? <TheoryMarkdown children={answer}/> : <p className="text-sm text-muted-foreground">No answer submitted.</p>}</div>
-              </article>
+              </article>}
               <article className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
                 <div className="border-b border-primary/15 bg-primary/5 px-4 py-3 sm:px-5"><h2 className="font-bold text-primary">Model Answer</h2></div>
-                <div className="overflow-hidden p-4 sm:p-5"><TheoryMarkdown children={question.modelAnswer}/><KeyPointsSection points={question.keyMarkingPoints}/></div>
+                <div className="overflow-hidden p-4 sm:p-5"><TheoryMarkdown children={question.modelAnswer}/><KeyPointsSection key={question.id} points={question.keyMarkingPoints}/></div>
               </article>
             </div>
             <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
