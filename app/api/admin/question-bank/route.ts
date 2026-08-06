@@ -22,11 +22,17 @@ export async function GET(req: NextRequest) {
   const admin = await requireAdminRequest(req, "manage_system")
   if (!admin || admin.role !== "SUPER_ADMIN") return await adminAccessDenied(req)
   const status = await getQuestionBankDiagnostics()
+  let recentActions: unknown[] = []
+  try {
+    const { default: pool } = await import("@/lib/db")
+    const auditRows = await pool.query(`SELECT action,source,affected_count AS "affectedCount",created_at AS "createdAt" FROM mednexus_question_bank_audit_log ORDER BY created_at DESC LIMIT 5`)
+    recentActions = auditRows.rows
+  } catch { /* The audit table is created on the first recovery action. */ }
   return measuredJson({
     route: "GET /api/admin/question-bank",
     queryStartedAt,
     rowCount: 1,
-    payload: { ...status, confirmation },
+    payload: { ...status, confirmation, recentActions },
   })
 }
 

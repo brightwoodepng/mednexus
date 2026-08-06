@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { AlertTriangle, CheckCircle2, Loader2, Save } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Database, History, Loader2, RotateCcw, Save } from "lucide-react"
 
 type Settings = {
   registrationEnabled: boolean
@@ -33,6 +33,9 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (val
 
 export function SystemSettingsWorkspace() {
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [current, setCurrent] = useState<Settings | null>(null)
+  const [health, setHealth] = useState<{ database: string; checkedAt: string } | null>(null)
+  const [audit, setAudit] = useState<Array<{ action: string; createdAt: string; actorId: string }>>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
@@ -41,7 +44,7 @@ export function SystemSettingsWorkspace() {
     fetch("/api/admin/settings").then(async (response) => {
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || "Unable to load settings")
-      setSettings(body.settings)
+      setSettings(body.settings); setCurrent(body.settings); setHealth(body.health); setAudit(body.audit ?? [])
     }).catch((error) => setMessage(error.message)).finally(() => setLoading(false))
   }, [])
 
@@ -59,6 +62,7 @@ export function SystemSettingsWorkspace() {
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || "Settings were not changed")
       setSettings(body.settings)
+      setCurrent(body.settings)
       setMessage("Settings saved. The active platform configuration is now updated.")
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Settings were not changed")
@@ -69,6 +73,12 @@ export function SystemSettingsWorkspace() {
   if (!settings) return <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive">{message || "Settings are unavailable."}</div>
 
   const inputClass = "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+  const dirty = JSON.stringify(settings) !== JSON.stringify(current)
+  const errors = [
+    settings.maintenanceEnabled && !settings.maintenanceMessage.trim() ? "Add a learner-facing maintenance message." : "",
+    settings.assessmentDefaultPassMark < 1 || settings.assessmentDefaultPassMark > 100 ? "Pass mark must be between 1 and 100." : "",
+    settings.theoryDefaultSetSize < 15 || settings.theoryDefaultSetSize > 20 ? "Theory set size must be between 15 and 20." : "",
+  ].filter(Boolean)
   return <div className="max-w-5xl space-y-5">
     <div><p className="text-sm font-semibold tracking-wide text-primary">SYSTEM</p><h1 className="mt-2 text-3xl font-bold">System Settings</h1><p className="mt-2 text-sm text-muted-foreground">Server-enforced platform controls. Changes are atomic and recorded in the audit trail.</p></div>
 
@@ -92,9 +102,13 @@ export function SystemSettingsWorkspace() {
 
     <section className="rounded-xl border border-border bg-card p-5"><h2 className="font-semibold">{sections[3].title}</h2><p className="mt-1 text-sm text-muted-foreground">{sections[3].description}</p><label className="mt-4 block max-w-xs"><span className="mb-1.5 block text-sm font-medium">Default set size</span><input type="number" min={15} max={20} className={inputClass} value={settings.theoryDefaultSetSize} onChange={(event) => setSettings({ ...settings, theoryDefaultSetSize: Number(event.target.value) })} /></label></section>
 
+    <section className="grid gap-4 lg:grid-cols-2"><div className="rounded-xl border border-border bg-card p-5"><div className="flex items-center gap-2"><Database size={18} className="text-emerald-500"/><h2 className="font-semibold">Platform status</h2></div><p className="mt-3 text-sm">Database <b className="capitalize text-emerald-600">{health?.database ?? "unknown"}</b></p><p className="mt-1 text-xs text-muted-foreground">Checked {health?.checkedAt ? new Date(health.checkedAt).toLocaleString() : "—"}</p></div><div className="rounded-xl border border-border bg-card p-5"><div className="flex items-center gap-2"><History size={18} className="text-primary"/><h2 className="font-semibold">Recent settings audit</h2></div>{audit.length?<div className="mt-3 space-y-2">{audit.map((item,index)=><div key={`${item.createdAt}-${index}`} className="flex justify-between gap-3 text-xs"><span className="capitalize">{item.action}</span><time className="text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</time></div>)}</div>:<p className="mt-3 text-sm text-muted-foreground">No recent settings changes.</p>}</div></section>
+
+    {errors.length>0&&<div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><b>Review these settings:</b><ul className="mt-2 list-disc pl-5">{errors.map(error=><li key={error}>{error}</li>)}</ul></div>}
+
     <div className="sticky bottom-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur">
-      <span className="flex items-center gap-2 text-xs text-muted-foreground">{message ? <CheckCircle2 size={15} className="text-emerald-500" /> : <AlertTriangle size={15} />}{message || (settings.updatedAt ? `Last updated ${new Date(settings.updatedAt).toLocaleString()}` : "Using platform defaults")}</span>
-      <button type="button" disabled={saving} onClick={save} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}Save Settings</button>
+      <span className="flex items-center gap-2 text-xs text-muted-foreground">{message ? <CheckCircle2 size={15} className="text-emerald-500" /> : <AlertTriangle size={15} />}{message || (dirty ? "Unsaved changes" : settings.updatedAt ? `Last updated ${new Date(settings.updatedAt).toLocaleString()}` : "Using platform defaults")}</span>
+      <div className="flex gap-2"><button type="button" disabled={!dirty||saving} onClick={()=>current&&setSettings({...current})} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold disabled:opacity-40"><RotateCcw size={15}/>Reset to current</button><button type="button" disabled={saving||!dirty||errors.length>0} onClick={save} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}Save Settings</button></div>
     </div>
   </div>
 }
