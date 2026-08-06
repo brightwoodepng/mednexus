@@ -109,7 +109,7 @@ describe("Theory Vault phone experience", () => {
   it("includes phone reflow and unobscured question navigation contracts", async () => {
     const source = await readFile("components/theory-vault.tsx", "utf8")
     expect(source).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2")
-    expect(source).toContain("flex flex-col items-stretch gap-3 px-4 py-4 sm:flex-row")
+    expect(source).toContain("grid gap-3 lg:grid-cols-2")
     expect(source).toContain("fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))]")
     expect(source).toContain("space-y-2.5 pb-24")
     expect(source).toContain('role="dialog" aria-label="PDF export options"')
@@ -117,7 +117,7 @@ describe("Theory Vault phone experience", () => {
     expect(source).toContain("onQuestionViewChange")
     expect(source).not.toContain("[question.collectionTitle, question.moduleName, question.disciplineName, question.setTitle]")
     expect(source).toContain("sm:hidden")
-    expect(source).toContain("hidden sm:block")
+    expect(source).toContain('focus-visible:ring-inset focus-visible:ring-primary/40')
   })
 
   it("uses a focused phone question header and finishes back at the current set", async () => {
@@ -159,5 +159,22 @@ describe("Theory Vault phone experience", () => {
     expect(source).not.toContain("{data.name}</h1>")
     expect(source).toContain('colored={view === "Bookmarks"}')
     expect(source).toContain('item.setLabel ?? "Unassigned"')
+  })
+
+  it("keeps the dashboard, set browser, and study review compact", async () => {
+    const source = await readFile("components/theory-vault.tsx", "utf8")
+    const recentHeading = source.indexOf('id="recently-studied-heading"')
+    const categoriesHeading = source.indexOf(">Study Categories</h2>")
+
+    expect(recentHeading).toBeGreaterThan(-1)
+    expect(categoriesHeading).toBeGreaterThan(recentHeading)
+    expect(source).toContain('grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3')
+    expect(source).toContain('aria-labelledby="set-questions-heading"')
+    expect(source).toContain('Choose a question to review or practise.')
+    expect(source).toContain('<details className="group mt-5')
+    expect(source).not.toContain('bg-primary/5 sm:hidden')
+    expect(source).toContain('setSubmitted(false); setRevealed(false)')
+    expect(source).toContain('{!submitted && <article')
+    expect(source).toContain('{submitted && <article')
   })
 })
