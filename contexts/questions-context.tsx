@@ -159,6 +159,32 @@ async function fetchFromDb(
   }
 }
 
+/** Administrative compatibility loader. Unlike the learner runtime endpoint,
+ * this deliberately includes draft, review, offline, and archived records. */
+async function fetchAdminQuestionBank(signal: AbortSignal): Promise<{ questions: Question[] | null; updatedAt: string | null }> {
+  try {
+    const pageResults: Question[][] = []
+    let page = 1
+    let pages = 1
+    let updatedAt: string | null = null
+    do {
+      const response = await fetch(`/api/admin/mcq/questions?page=${page}&pageSize=100&status=all`, {
+        cache: "no-store", headers: storedAuthHeaders(), signal,
+      })
+      if (!response.ok) return { questions: null, updatedAt: null }
+      const data = await response.json() as { questions?: Question[]; updatedAt?: string | null; pagination?: { pages?: number } }
+      pageResults.push(Array.isArray(data.questions) ? data.questions : [])
+      pages = Math.max(1, Number(data.pagination?.pages ?? 1))
+      updatedAt = data.updatedAt ?? updatedAt
+      page += 1
+    } while (page <= pages)
+    return { questions: pageResults.flat(), updatedAt }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error
+    return { questions: null, updatedAt: null }
+  }
+}
+
 async function reconcileWithDb(previous: Question[], questions: Question[]): Promise<boolean> {
   try {
     const previousById = new Map(previous.map(question => [question.id, question]))
@@ -391,7 +417,22 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     return loaded
   }, [userId])
 
-  const loadFullQuestionBank = useCallback(() => loadQuestionSet({}), [loadQuestionSet])
+  const loadFullQuestionBank = useCallback(async () => {
+    questionSetRequest.current?.abort()
+    const controller = new AbortController()
+    questionSetRequest.current = controller
+    setIsLoading(true)
+    const result = await fetchAdminQuestionBank(controller.signal)
+    const loaded = result.questions ?? questionsRef.current
+    if (result.questions !== null) {
+      persist(loaded, true)
+      setQuestionCount(loaded.length)
+    }
+    if (result.updatedAt) setLastUpdated(new Date(result.updatedAt))
+    setIsLoading(false)
+    if (questionSetRequest.current === controller) questionSetRequest.current = null
+    return loaded
+  }, [])
 
   const loadGameQuestionPool = useCallback(async (filter: QuestionSetFilter, quantity: number) => {
     const controller = new AbortController()

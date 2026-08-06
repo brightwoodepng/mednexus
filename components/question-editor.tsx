@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { useQuestions } from "@/contexts/questions-context"
 import { PdfImportModal } from "@/components/pdf-import-modal"
 import { WordImportModal } from "@/components/word-import-modal"
-import type { Question, QuestionOption, ModuleStatus } from "@/lib/types"
+import type { Question, QuestionOption } from "@/lib/types"
+import { applyQuestionStatus, managedQuestionStatuses, normalizeQuestionStatus, type ManagedQuestionStatus } from "@/lib/mcq-status"
 import { findImportQuestionDuplicates } from "@/lib/game-question-pool"
 import {
   TrashIcon, PencilIcon, PlusIcon, XIcon, CheckIcon, DatabaseIcon,
@@ -324,20 +325,24 @@ function QuestionForm({ initial, questionId, defaultModule, defaultSubject, onSa
 // ─────────────────────────────────────────────────────────────────────────────
 interface QItem { q: Question; isDraft: boolean }
 interface DiscGroup { name: string; items: QItem[] }
-interface ModGroup { name: string; disciplines: DiscGroup[]; total: number; draftCount: number; moduleStatus: ModuleStatus }
+interface ModGroup { name: string; disciplines: DiscGroup[]; total: number; draftCount: number; moduleStatus: ManagedQuestionStatus }
 
 function getModuleKey(q: Question): string { return q.module?.trim() || q.subject }
-function getModuleStatus(qs: Question[]): ModuleStatus { return qs[0]?.moduleStatus ?? "live" }
+function getModuleStatus(qs: Question[]): ManagedQuestionStatus {
+  const found = new Set(qs.map(normalizeQuestionStatus))
+  return found.size === 1 ? normalizeQuestionStatus(qs[0] ?? {}) : "review"
+}
 
-function buildHierarchy(live: Question[], drafts: Question[], search: string, filter: "all" | "live" | "draft"): ModGroup[] {
+function buildHierarchy(live: Question[], drafts: Question[], search: string, filter: FilterMode): ModGroup[] {
   const combined: QItem[] = [
     ...live.map((q) => ({ q, isDraft: false })),
     ...drafts.map((q) => ({ q, isDraft: true })),
   ]
   const q = search.trim().toLowerCase()
   const filtered = combined.filter(({ q: item, isDraft }) => {
-    if (filter === "live" && isDraft) return false
-    if (filter === "draft" && !isDraft) return false
+    const status = isDraft ? "draft" : normalizeQuestionStatus(item)
+    if (filter === "all" && status === "archived") return false
+    if (filter !== "all" && status !== filter) return false
     if (!q) return true
     const num = String(live.indexOf(item) + 1)
     return (
@@ -365,7 +370,7 @@ function buildHierarchy(live: Question[], drafts: Question[], search: string, fi
     .map(([mod, dm]) => {
       const disciplines = Array.from(dm.entries()).map(([disc, items]) => ({ name: disc, items })).sort((a, b) => a.name.localeCompare(b.name))
       const total = disciplines.reduce((s, d) => s + d.items.length, 0)
-      const draftCount = disciplines.reduce((s, d) => s + d.items.filter((i) => i.isDraft).length, 0)
+      const draftCount = disciplines.reduce((s, d) => s + d.items.filter((i) => i.isDraft || normalizeQuestionStatus(i.q) === "draft").length, 0)
       const allQs = disciplines.flatMap((d) => d.items.map((i) => i.q))
       const moduleStatus = getModuleStatus(allQs)
       return { name: mod, disciplines, total, draftCount, moduleStatus }
@@ -699,6 +704,8 @@ function QuestionCard({ item, questionNumber, isSelected, onToggle, onEdit, onDe
   onToggle: () => void; onEdit: () => void; onDelete: () => void; onReview: () => void
 }) {
   const { q, isDraft } = item
+  const status = isDraft ? "draft" : normalizeQuestionStatus(q)
+  const statusConfig = STATUS_CONFIG[status]
   return (
     <div className={`flex items-start gap-3 border-b border-border/50 px-6 py-3.5 transition-colors last:border-b-0 ${isSelected ? "bg-primary/4" : "hover:bg-muted/30"} ${isDraft ? "bg-amber-50/40 dark:bg-amber-900/10" : ""}`}>
       <button type="button" onClick={onToggle}
@@ -711,13 +718,7 @@ function QuestionCard({ item, questionNumber, isSelected, onToggle, onEdit, onDe
       <button type="button" onClick={onReview} className="flex-1 min-w-0 text-left">
         <div className="mb-1 flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Q{questionNumber}</span>
-          {isDraft ? (
-            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Draft</span>
-          ) : (
-            <span className="flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-              <span className="h-1 w-1 rounded-full bg-emerald-500" /> Live
-            </span>
-          )}
+          <span className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] font-bold ${statusConfig.cls}`}><span className={`h-1 w-1 rounded-full ${statusConfig.dotCls}`} />{statusConfig.label}</span>
           {q.correctAnswer && (
             <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">{displayCorrectAnswer(q.correctAnswer)}</span>
           )}
@@ -840,13 +841,15 @@ function DisciplineSection({ group, moduleName, selectedIds, onToggleItem, onTog
 // ─────────────────────────────────────────────────────────────────────────────
 // Module Status Badge & Picker
 // ─────────────────────────────────────────────────────────────────────────────
-const STATUS_CONFIG: Record<ModuleStatus, { label: string; cls: string; dotCls: string }> = {
+const STATUS_CONFIG: Record<ManagedQuestionStatus, { label: string; cls: string; dotCls: string }> = {
   live:    { label: "Live",    cls: "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/40", dotCls: "bg-emerald-500" },
   draft:   { label: "Draft",  cls: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/40",          dotCls: "bg-amber-500"   },
   offline: { label: "Offline", cls: "bg-muted text-muted-foreground border-border",                                                                             dotCls: "bg-muted-foreground" },
+  review:  { label: "In review", cls: "bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800/40", dotCls: "bg-sky-500" },
+  archived:{ label: "Archived", cls: "bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800/40", dotCls: "bg-rose-500" },
 }
 
-function ModuleStatusPicker({ status, onChange }: { status: ModuleStatus; onChange: (s: ModuleStatus) => void }) {
+function ModuleStatusPicker({ status, onChange }: { status: ManagedQuestionStatus; onChange: (s: ManagedQuestionStatus) => void }) {
   const [open, setOpen] = useState(false)
   const cfg = STATUS_CONFIG[status]
   return (
@@ -865,7 +868,7 @@ function ModuleStatusPicker({ status, onChange }: { status: ModuleStatus; onChan
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full z-20 mt-1 w-28 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
-            {(["live", "draft", "offline"] as ModuleStatus[]).map((s) => {
+            {managedQuestionStatuses.map((s) => {
               const c = STATUS_CONFIG[s]
               return (
                 <button key={s} type="button"
@@ -894,7 +897,7 @@ function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, 
   onReview: (q: Question, isDraft: boolean) => void
   onAddQuestion: (mod: string, disc: string) => void; onRename: (mod: string) => void
   onRenameDiscipline: (mod: string, disc: string) => void
-  onDeleteModule: (mod: string) => void; onSetStatus: (mod: string, status: ModuleStatus) => void
+  onDeleteModule: (mod: string) => void; onSetStatus: (mod: string, status: ManagedQuestionStatus) => void
   forceExpand: boolean; isExpanded: boolean; onToggleExpand: () => void
 }) {
   const [expandedDisc, setExpandedDisc] = useState<string | null>(null)
@@ -977,7 +980,7 @@ function ModuleSection({ group, selectedIds, onToggleItem, onToggleAll, onEdit, 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main QuestionEditor
 // ─────────────────────────────────────────────────────────────────────────────
-type FilterMode = "all" | "live" | "draft"
+type FilterMode = "all" | ManagedQuestionStatus
 
 interface EditTarget { question: Question | null; moduleName: string; disciplineName: string; isDraft: boolean }
 
@@ -1057,7 +1060,8 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
     [questions, draftQuestions, searchQuery, filterMode]
   )
 
-  const totalLive = questions.length
+  const persistedStatusCounts = useMemo(() => Object.fromEntries(managedQuestionStatuses.map(status => [status, questions.filter(question => normalizeQuestionStatus(question) === status).length])), [questions])
+  const totalLive = persistedStatusCounts.live ?? 0
   const totalDrafts = draftQuestions.length
   const totalModules = useMemo(() => new Set(questions.map(getModuleKey)).size, [questions])
   const isSearching = searchQuery.trim().length > 0
@@ -1273,8 +1277,8 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
   }
 
   // ── Module status ──
-  function handleSetModuleStatus(moduleName: string, status: ModuleStatus) {
-    questions.filter((q) => getModuleKey(q) === moduleName).forEach((q) => updateQuestion({ ...q, moduleStatus: status }))
+  function handleSetModuleStatus(moduleName: string, status: ManagedQuestionStatus) {
+    questions.filter((q) => getModuleKey(q) === moduleName).forEach((q) => updateQuestion(applyQuestionStatus(q, status)))
   }
 
   // ── Draft import from PDF or Word ──
@@ -1321,8 +1325,13 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
   }, [hierarchy, selectedIds])
 
   // ── Bulk module status ──
-  function handleBulkSetModuleStatus(status: ModuleStatus) {
+  function handleBulkSetModuleStatus(status: ManagedQuestionStatus) {
     selectedModules.forEach((m) => handleSetModuleStatus(m.name, status))
+    clearSelection()
+  }
+
+  function handleBulkSetSelectedStatus(status: ManagedQuestionStatus) {
+    questions.filter(question => selectedIds.has(question.id)).forEach(question => updateQuestion(applyQuestionStatus(question, status)))
     clearSelection()
   }
 
@@ -1351,7 +1360,8 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
     clearSelection()
   }
 
-  const emptyState = hierarchy.length === 0 && totalLive === 0 && totalDrafts === 0
+  const activePersistedCount = questions.filter(question => normalizeQuestionStatus(question) !== "archived").length
+  const emptyState = hierarchy.length === 0 && questions.length === 0 && totalDrafts === 0
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col" style={{ height: "calc(100vh - 9rem)" }}>
@@ -1366,9 +1376,12 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
               onChange={(e) => setFilterMode(e.target.value as FilterMode)}
               className="h-9 appearance-none rounded-xl border border-border bg-muted pl-8 pr-3 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
             >
-              <option value="all">All ({totalLive + totalDrafts})</option>
+              <option value="all">All ({activePersistedCount + totalDrafts})</option>
               <option value="live">Live ({totalLive})</option>
-              <option value="draft">Drafts ({totalDrafts})</option>
+              <option value="draft">Drafts ({(persistedStatusCounts.draft ?? 0) + totalDrafts})</option>
+              <option value="review">In review ({persistedStatusCounts.review ?? 0})</option>
+              <option value="offline">Offline ({persistedStatusCounts.offline ?? 0})</option>
+              <option value="archived">Archived ({persistedStatusCounts.archived ?? 0})</option>
             </select>
             <div className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
               <FilterIcon size={13} />
@@ -1439,6 +1452,10 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
         {selectedIds.size > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border bg-primary/5 px-4 py-2.5">
             <span className="text-xs font-semibold text-foreground">{selectedIds.size} selected</span>
+            <select defaultValue="" onChange={(event) => { if (event.target.value) handleBulkSetSelectedStatus(event.target.value as ManagedQuestionStatus) }} aria-label="Set selected question status" className="h-8 rounded-lg border border-border bg-card px-2 text-xs font-semibold">
+              <option value="" disabled>Set question status…</option>
+              {managedQuestionStatuses.map(status => <option key={status} value={status}>{STATUS_CONFIG[status].label}</option>)}
+            </select>
 
             {/* Module bulk status — shown when ≥1 whole module is checked */}
             {selectedModules.length > 0 && (
@@ -1461,6 +1478,14 @@ export function QuestionEditor({ pendingImport, onPendingImportConsumed, onOpenI
                   className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground shrink-0" /> Offline
+                </button>
+                <button type="button" onClick={() => handleBulkSetModuleStatus("review")}
+                  className="flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100 transition-colors dark:border-sky-800/40 dark:bg-sky-900/20 dark:text-sky-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500 shrink-0" /> In review
+                </button>
+                <button type="button" onClick={() => handleBulkSetModuleStatus("archived")}
+                  className="flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" /> Archived
                 </button>
                 <span className="border-l border-border h-4 self-center" />
               </>

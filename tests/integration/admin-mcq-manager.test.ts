@@ -55,6 +55,30 @@ describe("professional admin MCQ manager", () => {
     expect(exportRoute).toContain("selectedIds: ids.length")
   })
 
+  it("selects entire canonical categories and keeps archived questions restorable", async () => {
+    const [manager, route, legacy, context, statusHelper] = await Promise.all([
+      read("components/admin/mcq-modern-workspace.tsx"),
+      read("app/api/admin/mcq/questions/route.ts"),
+      read("components/question-editor.tsx"),
+      read("contexts/questions-context.tsx"),
+      read("lib/mcq-status.ts"),
+    ])
+    expect(manager).toContain("Select an entire module")
+    expect(manager).toContain("All disciplines in module")
+    expect(manager).toContain('scope: { module: scope.module, subject: scope.subject }')
+    expect(manager).toContain('bulk("status", { status: "review" })')
+    expect(manager).toContain('bulk("status", { status: "archived" })')
+    expect(route).toContain("cardinality($1::text[])=0")
+    expect(route).toContain("statusBreakdown: before")
+    expect(route).toContain("statusExpression}<>'archived'")
+    expect(context).toContain("fetchAdminQuestionBank")
+    expect(context).toContain("status=all")
+    for (const status of ["draft", "review", "live", "offline", "archived"]) {
+      expect(legacy).toContain(`<option value="${status}">`)
+      expect(statusHelper).toContain(`"${status}"`)
+    }
+  })
+
   it("uses a task-based sidebar, one access snapshot, and persistent professional identity", async () => {
     const [shell, layout, access] = await Promise.all([
       read("components/admin-shell.tsx"),

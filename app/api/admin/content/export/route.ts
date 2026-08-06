@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   if (!admin) return adminAccessDenied(req)
   const format = req.nextUrl.searchParams.get("format") === "csv" ? "csv" : "json"
   const moduleFilter = (req.nextUrl.searchParams.get("module") ?? "").trim()
+  const disciplineFilter = (req.nextUrl.searchParams.get("discipline") ?? "").trim()
   const statusFilter = (req.nextUrl.searchParams.get("status") ?? "").trim()
   const ids = [...new Set(req.nextUrl.searchParams.getAll("id").map((id) => id.trim()).filter(Boolean))].slice(0, 500)
   const { default: pool, ensureSchema } = await import("@/lib/db")
@@ -19,7 +20,8 @@ export async function GET(req: NextRequest) {
   if (bank === "mcq") {
     const result = await pool.query("SELECT data FROM mednexus_questions WHERE id=1")
     records = (result.rows[0]?.data ?? []).filter((question: Record<string, unknown>) =>
-      (!moduleFilter || question.module === moduleFilter || question.subject === moduleFilter)
+      (!moduleFilter || String(question.module ?? "").trim() === moduleFilter || String(question.subject ?? "").trim() === moduleFilter)
+      && (!disciplineFilter || String(question.subject ?? "").trim() === disciplineFilter)
       && (!statusFilter || question.status === statusFilter || question.moduleStatus === statusFilter)
       && (!ids.length || ids.includes(String(question.id))))
   } else {
@@ -34,7 +36,7 @@ export async function GET(req: NextRequest) {
       ORDER BY c.sort_order,COALESCE(m.sort_order,d.sort_order),s.sort_order,q.sort_order`, [moduleFilter, statusFilter])
     records = result.rows
   }
-  await auditAdmin(pool, admin.uid, "export", `${bank}_content`, null, { format, records: records.length, moduleFilter, statusFilter, selectedIds: ids.length })
+  await auditAdmin(pool, admin.uid, "export", `${bank}_content`, null, { format, records: records.length, moduleFilter, disciplineFilter, statusFilter, selectedIds: ids.length })
   if (format === "json") return new Response(JSON.stringify({ bank, exportedAt: new Date().toISOString(), records }, null, 2), { headers: { "content-type": "application/json", "content-disposition": `attachment; filename="mednexus-${bank}-export.json"` } })
   const columns = bank === "mcq" ? ["id", "module", "subject", "vignette", "correctAnswer", "moduleStatus"] : ["id", "collection", "group_name", "set_name", "title", "prompt", "model_answer", "marks", "status"]
   const csv = [columns.map(cell).join(","), ...records.map((record) => columns.map((column) => cell(typeof record[column] === "object" ? JSON.stringify(record[column]) : record[column])).join(","))].join("\r\n")
