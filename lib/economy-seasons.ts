@@ -54,7 +54,7 @@ export async function provisionActiveSeasonWallet(db: PoolClient, userId: string
       userId,
       season.id,
       `${season.id}:${userId}`,
-      SEASON_OPENING_GRANT,
+      season.openingGrant,
       JSON.stringify({ economyVersion: season.economyVersion, seasonId: season.id, migrationId }),
     ],
   )
@@ -64,7 +64,7 @@ export async function provisionActiveSeasonWallet(db: PoolClient, userId: string
           SET balance = balance + $3, lifetime_earned = lifetime_earned + $3,
               rank_points = rank_points + $4, updated_at = NOW()
         WHERE season_id = $1 AND user_id = $2`,
-      [season.id, userId, SEASON_OPENING_GRANT, REGISTRATION_GRANT_RANK_POINTS],
+      [season.id, userId, season.openingGrant, REGISTRATION_GRANT_RANK_POINTS],
     )
   }
   return { granted: Boolean(grant.rowCount), season }
