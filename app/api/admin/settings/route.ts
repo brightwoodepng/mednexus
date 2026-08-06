@@ -11,7 +11,12 @@ export async function GET(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_system")) return adminAccessDenied(req)
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
-  return NextResponse.json({ settings: await getPlatformSettings(pool) })
+  const [settings, audit, database] = await Promise.all([
+    getPlatformSettings(pool),
+    pool.query(`SELECT action,created_at AS "createdAt",actor_id AS "actorId" FROM mednexus_admin_audit_log WHERE resource_type='system_settings' ORDER BY created_at DESC LIMIT 5`),
+    pool.query("SELECT NOW() AS checked_at"),
+  ])
+  return NextResponse.json({ settings, health: { database: "operational", checkedAt: database.rows[0]?.checked_at ?? new Date().toISOString() }, audit: audit.rows })
 }
 
 export async function PATCH(req: NextRequest) {
