@@ -79,6 +79,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ui
       return NextResponse.json({ success: true })
     }
 
+    if (action === "edit-profile") {
+      const name = typeof body.name === "string" ? body.name.trim() : ""
+      const indexNumber = typeof body.indexNumber === "string" ? body.indexNumber.trim() : ""
+      const level = typeof body.level === "string" ? body.level.trim() : ""
+      if (!name || !indexNumber || !level) return NextResponse.json({ error: "Name, index number, and class level are required." }, { status: 400 })
+      try {
+        await pool.query(`UPDATE mednexus_registered_users SET name=$1,index_number=$2,level=$3,class_level=$3 WHERE uid=$4`, [name, indexNumber, level, uid])
+      } catch (error) {
+        if (error && typeof error === "object" && "code" in error && error.code === "23505") return NextResponse.json({ error: "That index number is already assigned." }, { status: 409 })
+        throw error
+      }
+      await auditAdmin(pool, admin.uid, "edit_profile", "user", uid, { name, indexNumber, level })
+      return NextResponse.json({ success: true })
+    }
+
+    if (action === "suspend" || action === "reactivate") {
+      const nextStatus = action === "suspend" ? "suspended" : "approved"
+      const target = await pool.query("SELECT role FROM mednexus_registered_users WHERE uid=$1", [uid])
+      if (!target.rowCount) return NextResponse.json({ error: "User not found." }, { status: 404 })
+      if (target.rows[0].role === "SUPER_ADMIN") return NextResponse.json({ error: "SUPER_ADMIN accounts cannot be suspended here." }, { status: 409 })
+      await pool.query("UPDATE mednexus_registered_users SET status=$1 WHERE uid=$2", [nextStatus, uid])
+      await auditAdmin(pool, admin.uid, action, "user", uid)
+      return NextResponse.json({ success: true })
+    }
+
     return NextResponse.json({ error: "Unknown action" }, { status: 400 })
   } catch (err) {
     console.error("[admin/users PATCH]", err)
@@ -94,6 +119,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ u
 
   const { uid } = await params
   if (!uid) return NextResponse.json({ error: "Missing uid" }, { status: 400 })
+  if (actor.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Only a super administrator can permanently delete accounts." }, { status: 403 })
   if (req.nextUrl.searchParams.get("confirm") !== "true") return NextResponse.json({ error: "Confirmation required." }, { status: 400 })
 
   const pool = await getPool()
