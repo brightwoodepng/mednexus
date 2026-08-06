@@ -9,14 +9,18 @@ import {
 
 export async function GET(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_system")) return adminAccessDenied(req)
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
-  const [settings, audit, database] = await Promise.all([
-    getPlatformSettings(pool),
-    pool.query(`SELECT action,created_at AS "createdAt",actor_id AS "actorId" FROM mednexus_admin_audit_log WHERE resource_type='system_settings' ORDER BY created_at DESC LIMIT 5`),
-    pool.query("SELECT NOW() AS checked_at"),
-  ])
-  return NextResponse.json({ settings, health: { database: "operational", checkedAt: database.rows[0]?.checked_at ?? new Date().toISOString() }, audit: audit.rows })
+  try {
+    const { default: pool, ensureSchema } = await import("@/lib/db")
+    await ensureSchema()
+    const settings = await getPlatformSettings(pool)
+    const database = await pool.query("SELECT NOW() AS checked_at")
+    let audit: unknown[] = []
+    try { audit = (await pool.query(`SELECT action,created_at AS "createdAt",actor_id AS "actorId" FROM mednexus_admin_audit_log WHERE resource_type='system_settings' ORDER BY created_at DESC LIMIT 5`)).rows } catch { /* Settings remain available if audit history is unavailable. */ }
+    return NextResponse.json({ settings, health: { database: "operational", checkedAt: database.rows[0]?.checked_at ?? new Date().toISOString() }, audit })
+  } catch (error) {
+    console.error("[admin/settings GET]", error)
+    return NextResponse.json({ error: "System settings are temporarily unavailable. Retry after checking the database connection." }, { status: 503 })
+  }
 }
 
 export async function PATCH(req: NextRequest) {

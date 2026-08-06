@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { AlertTriangle, CheckCircle2, Database, History, Loader2, RotateCcw, Save } from "lucide-react"
 
 type Settings = {
@@ -40,13 +40,13 @@ export function SystemSettingsWorkspace() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
 
-  useEffect(() => {
-    fetch("/api/admin/settings").then(async (response) => {
-      const body = await response.json()
-      if (!response.ok) throw new Error(body.error || "Unable to load settings")
-      setSettings(body.settings); setCurrent(body.settings); setHealth(body.health); setAudit(body.audit ?? [])
-    }).catch((error) => setMessage(error.message)).finally(() => setLoading(false))
+  const load = useCallback(async () => {
+    setLoading(true); setMessage("")
+    try { const response = await fetch("/api/admin/settings", { cache: "no-store" }); const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.error || "Unable to load settings"); setSettings(body.settings); setCurrent(body.settings); setHealth(body.health); setAudit(body.audit ?? []) }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Unable to load settings") }
+    finally { setLoading(false) }
   }, [])
+  useEffect(() => { void load() }, [load])
 
   async function save() {
     if (!settings) return
@@ -64,13 +64,14 @@ export function SystemSettingsWorkspace() {
       setSettings(body.settings)
       setCurrent(body.settings)
       setMessage("Settings saved. The active platform configuration is now updated.")
+      window.setTimeout(() => void load(), 400)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Settings were not changed")
     } finally { setSaving(false) }
   }
 
   if (loading) return <div className="flex min-h-56 items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>
-  if (!settings) return <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive">{message || "Settings are unavailable."}</div>
+  if (!settings) return <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive"><p>{message || "Settings are unavailable."}</p><button onClick={() => void load()} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-destructive/30 px-4 font-bold"><RotateCcw size={15}/>Retry</button></div>
 
   const inputClass = "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
   const dirty = JSON.stringify(settings) !== JSON.stringify(current)
