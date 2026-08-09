@@ -692,12 +692,26 @@
 
   /* ── Auth landing — secondary ghost button ── */
   .auth-btn-secondary {
-    background: light-dark(rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.05));
-    border: 1px solid light-dark(rgba(0, 0, 0, 0.10), rgba(255, 255, 255, 0.10));
+    background: color-mix(in oklab, var(--primary) 18%, var(--card));
+    border: 1px solid color-mix(in oklab, var(--primary) 52%, var(--border));
     color: var(--foreground);
+    box-shadow: inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.10)), 0 8px 22px -18px var(--primary);
   }
   .auth-btn-secondary:hover {
-    background: light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.09));
+    background: color-mix(in oklab, var(--primary) 24%, var(--card));
+    border-color: color-mix(in oklab, var(--primary) 68%, var(--border));
+    box-shadow: inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.11)), 0 8px 22px -14px var(--primary);
+  }
+
+  .auth-link {
+    color: light-dark(#0369a1, #38bdf8);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+    transition: color 160ms ease, text-decoration-color 160ms ease;
+  }
+  .auth-link:hover {
+    color: light-dark(#075985, #7dd3fc);
   }
 
   /* ── Auth logo glow pulse ── */

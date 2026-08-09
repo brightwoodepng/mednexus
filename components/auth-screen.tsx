@@ -70,42 +70,26 @@ function LevelSelect({ id, value, onChange, required, levels = CLASS_LEVELS }: {
 // ── Brand ─────────────────────────────────────────────────────────────────────
 function Brand() {
   return (
-    <div className="mb-6 flex flex-col items-center text-center lg:hidden">
-      <div className="relative mb-3">
+    <div className="mb-5 flex items-center justify-center gap-3 lg:hidden">
+      <div className="relative">
         <div
           aria-hidden="true"
           className="absolute inset-0 scale-[1.4] rounded-2xl bg-primary/25 blur-xl auth-logo-glow"
         />
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl ring-1 ring-primary/20">
-          <StethoscopeIcon size={28} />
+        <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg ring-1 ring-primary/20">
+          <StethoscopeIcon size={24} />
         </div>
       </div>
-      <h1 className="text-3xl font-bold leading-none tracking-tight">MedNexus</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Your medical learning workspace</p>
+      <h1 className="text-2xl font-bold leading-none tracking-tight">MedNexus</h1>
     </div>
   )
 }
 
 function ValuePanel() {
   return (
-    <section className="relative hidden overflow-hidden rounded-[2rem] border border-border/80 bg-card/90 p-8 text-foreground shadow-[0_32px_90px_-44px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:block">
+    <section aria-label="MedNexus product preview" className="relative hidden overflow-hidden rounded-[2rem] border border-border/80 bg-card/90 p-4 text-foreground shadow-[0_32px_90px_-44px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:block">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-primary" />
-      <div aria-hidden="true" className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
-
-      <header className="relative flex items-center justify-between gap-6">
-        <div className="flex items-center gap-3.5">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20">
-            <StethoscopeIcon size={23} />
-          </span>
-          <div>
-            <p className="text-lg font-bold tracking-tight">MedNexus</p>
-            <p className="text-xs text-muted-foreground">Medical learning workspace</p>
-          </div>
-        </div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Rankings preview</p>
-      </header>
-
-      <div className="relative mt-7 aspect-[1080/700] overflow-hidden rounded-[1.5rem] border border-border/80 bg-background shadow-[0_20px_55px_-30px_rgba(15,23,42,0.7)]">
+      <div className="relative aspect-[1080/700] overflow-hidden rounded-[1.4rem] border border-border/80 bg-background shadow-[0_20px_55px_-30px_rgba(15,23,42,0.7)]">
         <Image
           src="/auth/leaderboard-preview.png"
           alt="MedNexus monthly rankings showing the top three learners"
@@ -115,6 +99,13 @@ function ValuePanel() {
           className="select-none object-cover object-top"
           draggable={false}
         />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/25 to-transparent" />
+        <div className="absolute left-5 top-5 flex items-center gap-2.5 rounded-2xl border border-white/20 bg-slate-950/70 px-3 py-2.5 text-white shadow-lg backdrop-blur-xl">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <StethoscopeIcon size={19} />
+          </span>
+          <span className="text-sm font-bold tracking-tight">MedNexus</span>
+        </div>
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
       </div>
     </section>
@@ -124,16 +115,12 @@ function ValuePanel() {
 // ── Footer ────────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <div className="mt-7 flex flex-col items-center gap-2">
-      <div className="h-px w-16 bg-border/60" />
-      <p className="text-xs text-muted-foreground">
-        Created by <span className="font-semibold text-foreground">Britechinc</span>
-      </p>
+    <div className="mt-6 flex justify-center">
       <a
         href="https://wa.me/233543982307"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs text-[#25D366] hover:underline font-medium"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-[#25D366] transition-colors hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40"
       >
         <WhatsAppIcon size={13} />
         Contact support
@@ -348,7 +335,7 @@ function LoginFields({
             value={indexNumber}
             onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
             placeholder="sm/sms/22/0092"
-            className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+            className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -362,7 +349,7 @@ function LoginFields({
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError("") }}
               placeholder="Your password"
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+              className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
             />
             <button
               type="button"
@@ -380,7 +367,7 @@ function LoginFields({
         <button
           type="submit"
           disabled={loading || !indexNumber.trim() || !password.trim()}
-          className="mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:opacity-90 hover:shadow-primary/20 active:scale-[0.988] disabled:opacity-50 disabled:shadow-none"
+          className="auth-btn-primary mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-semibold transition-[background-color,box-shadow,opacity] disabled:opacity-50 disabled:shadow-none"
         >
           {loading ? "Signing in…" : "Log In"}
           {!loading && <ArrowRightIcon size={15} />}
@@ -389,17 +376,17 @@ function LoginFields({
         <button
           type="button"
           onClick={onOtp}
-          className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="text-center text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           Forgot password?{" "}
-          <span className="font-semibold text-primary">Enter with OTP</span>
+          <span className="auth-link font-semibold">Enter with OTP</span>
         </button>
 
         {guestAccessEnabled && (
           <button
             type="button"
             onClick={onGuest}
-            className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+            className="auth-btn-secondary flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -412,7 +399,7 @@ function LoginFields({
         {registrationEnabled && (
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <button type="button" onClick={onRegister} className="font-semibold text-primary hover:underline">
+            <button type="button" onClick={onRegister} className="auth-link min-h-11 rounded-md px-1 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
               Create an account
             </button>
           </p>
@@ -591,7 +578,7 @@ export function AuthScreen({
   }, [guestAccessEnabled, registrationEnabled, view])
 
   return (
-    <main className="relative min-h-screen px-4 py-16 safe-area-inset sm:px-6 lg:flex lg:items-center lg:px-8 lg:py-8">
+    <main className="relative min-h-screen overflow-hidden px-4 py-14 safe-area-inset sm:px-6 lg:flex lg:items-center lg:px-10 lg:py-8">
       <button
         type="button"
         onClick={() => setThemeOpen(true)}
@@ -605,12 +592,15 @@ export function AuthScreen({
         Theme
       </button>
 
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.08fr_0.92fr]">
+      <div aria-hidden="true" className="pointer-events-none absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-40 bottom-0 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+
+      <div className="relative mx-auto grid w-full max-w-[1240px] items-center gap-10 lg:grid-cols-[1.18fr_0.82fr]">
         <ValuePanel />
 
         <div className="mx-auto w-full max-w-[440px]">
           <Brand />
-          <section className="glass-auth-card rounded-3xl p-5 shadow-xl sm:p-7" aria-labelledby="auth-title">
+          <section className="glass-auth-card rounded-[2rem] p-5 shadow-xl sm:p-8" aria-labelledby="auth-title">
             {view === "login" && (
               <>
                 <div className="mb-6">
