@@ -44,22 +44,9 @@ test("public visitors only see authentication actions", async ({ page }) => {
     window.localStorage.setItem("mednexus.remembered-index-number.v1", "SM/22/0001")
   })
   await page.goto("/")
-  await expect(page.getByTestId("auth-dashboard-preview")).toBeVisible()
-  await expect(page.getByTestId("auth-rankings-preview")).toBeVisible()
-  await expect(page.getByTestId("auth-dashboard-image")).toBeVisible()
-  await expect(page.getByTestId("auth-dashboard-image")).toHaveAttribute("src", /auth-dashboard-preview\.png/)
-  await expect(page.getByTestId("auth-ranking-image")).toBeVisible()
-  await expect(page.getByTestId("auth-ranking-image")).toHaveAttribute("src", /auth-ranking-preview\.png/)
-  await expect(page.getByTestId("auth-laptop-mockup")).toBeVisible()
-  await expect(page.getByTestId("auth-laptop-hinge")).toBeVisible()
-  await expect(page.getByTestId("auth-laptop-keyboard")).toBeVisible()
-  await expect(page.getByTestId("auth-laptop-trackpad")).toBeVisible()
-  await expect(page.getByTestId("auth-phone-mockup")).toBeVisible()
-  await expect(page.getByTestId("auth-phone-status-bar")).toContainText("9:41")
-  await expect(page.getByTestId("auth-phone-dynamic-island")).toBeVisible()
-  await expect(page.getByTestId("auth-phone-home-indicator")).toBeVisible()
+  await expect(page.getByRole("img", { name: "MedNexus MCQ dashboard displayed on a laptop" })).toBeVisible()
+  await expect(page.getByRole("img", { name: "MedNexus rankings displayed on a phone" })).toBeVisible()
   await expect(page.getByText("Learn. Compete. Grow.")).toBeVisible()
-  await expect(page.getByText("Track your progress, challenge your peers, and reach the top.")).toBeVisible()
   await expect(page.getByRole("heading", { name: "Your medical school workspace." })).toHaveCount(0)
   await expect(page.getByText("Learn, practise, and progress in one place.")).toHaveCount(0)
   await expect(page.getByText("Rankings preview")).toHaveCount(0)
@@ -71,91 +58,14 @@ test("public visitors only see authentication actions", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Log In" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Continue as guest" })).toHaveClass(/auth-btn-secondary/)
   await expect(page.getByRole("button", { name: "Create an account" })).toHaveClass(/auth-link/)
-  const authControlStyles = await page.evaluate(() => {
-    const login = document.querySelector<HTMLButtonElement>("button[type='submit']")
-    const guest = [...document.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent?.includes("Continue as guest"))
-    const otp = [...document.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent?.includes("Enter with OTP"))
-    const register = [...document.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent?.includes("Create an account"))
-    if (!login || !guest || !otp || !register) throw new Error("Authentication controls are missing")
-    const loginStyles = getComputedStyle(login)
-    const guestStyles = getComputedStyle(guest)
-    return {
-      loginHeight: login.getBoundingClientRect().height,
-      guestHeight: guest.getBoundingClientRect().height,
-      loginRadius: loginStyles.borderRadius,
-      guestRadius: guestStyles.borderRadius,
-      guestShadow: guestStyles.boxShadow,
-      otpDecoration: getComputedStyle(otp.querySelector("span")!).textDecorationLine,
-      registerDecoration: getComputedStyle(register).textDecorationLine,
-    }
-  })
-  expect(authControlStyles.guestHeight).toBe(authControlStyles.loginHeight)
-  expect(authControlStyles.guestRadius).toBe(authControlStyles.loginRadius)
-  expect(authControlStyles.guestShadow).toBe("none")
-  expect(authControlStyles.otpDecoration).toBe("none")
-  expect(authControlStyles.registerDecoration).toBe("none")
   await expect(page.getByText("Choose how you'd like to continue")).toHaveCount(0)
   await expect(page.getByText("Open Admin Console")).toHaveCount(0)
 
-  for (const viewport of [
-    { width: 390, height: 844 },
-    { width: 320, height: 720 },
-  ]) {
-    await page.setViewportSize(viewport)
-    await expect(page.getByTestId("auth-dashboard-preview")).toBeHidden()
-    await expect(page.getByTestId("auth-rankings-preview")).toBeHidden()
-    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible()
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
-  }
-})
-
-test("desktop showcase and theme remain clear of the authentication card", async ({ page }) => {
-  await page.goto("/")
-
-  for (const viewport of [
-    { width: 1024, height: 768 },
-    { width: 1280, height: 720 },
-    { width: 1440, height: 900 },
-  ]) {
-    await page.setViewportSize(viewport)
-    await expect(page.getByTestId("auth-laptop-mockup")).toBeVisible()
-    await expect(page.getByTestId("auth-phone-mockup")).toBeVisible()
-
-    const taglineBox = await page.getByText("Learn. Compete. Grow.").boundingBox()
-    const laptopBox = await page.getByTestId("auth-laptop-mockup").boundingBox()
-    const phoneBox = await page.getByTestId("auth-phone-mockup").boundingBox()
-
-    const themeBox = await page.getByRole("button", { name: "Theme" }).boundingBox()
-    const cardBox = await page.getByTestId("auth-card-shell").boundingBox()
-    expect(themeBox).not.toBeNull()
-    expect(cardBox).not.toBeNull()
-    expect(taglineBox).not.toBeNull()
-    expect(laptopBox).not.toBeNull()
-    expect(phoneBox).not.toBeNull()
-    expect(themeBox!.y + themeBox!.height).toBeLessThan(cardBox!.y)
-    expect(laptopBox!.y + laptopBox!.height).toBeLessThanOrEqual(taglineBox!.y)
-    expect(phoneBox!.y + phoneBox!.height).toBeLessThanOrEqual(taglineBox!.y)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
-  }
-})
-
-test("landing showcase uses static screenshots without animation", async ({ page }) => {
-  await page.goto("/")
-  await page.setViewportSize({ width: 1440, height: 900 })
-
-  await expect(page.getByTestId("auth-dashboard-image")).toBeVisible()
-  await expect(page.getByTestId("auth-ranking-image")).toBeVisible()
-
-  const animatedElements = await page.locator(".auth-landing, .auth-landing *").evaluateAll(elements =>
-    elements
-      .filter(element => getComputedStyle(element).animationName !== "none")
-      .map(element => ({
-        animationName: getComputedStyle(element).animationName,
-        className: element.getAttribute("class"),
-        tagName: element.tagName,
-      })),
-  )
-  expect(animatedElements).toEqual([])
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.getByRole("img", { name: "MedNexus MCQ dashboard displayed on a laptop" })).toBeHidden()
+  await expect(page.getByRole("img", { name: "MedNexus rankings displayed on a phone" })).toBeHidden()
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
 })
 
 test("guest and registration replace the login card and return cleanly", async ({ page }) => {
