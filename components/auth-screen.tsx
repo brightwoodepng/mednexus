@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
-import { ArrowRightIcon, BookOpenIcon, ListChecksIcon, RadioIcon, StethoscopeIcon } from "@/components/icons"
+import { ArrowRightIcon, StethoscopeIcon } from "@/components/icons"
 import { CLASS_LEVELS, ALL_LEVELS } from "@/lib/levels"
 import { readRememberedIndexNumber } from "@/lib/auth-preferences"
 
@@ -86,14 +87,8 @@ function Brand() {
 }
 
 function ValuePanel() {
-  const features = [
-    { title: "MCQ Q-Bank", detail: "Practice questions", icon: ListChecksIcon },
-    { title: "Theory Vault", detail: "Long-answer revision", icon: BookOpenIcon },
-    { title: "Live Assessments", detail: "Timed sessions", icon: RadioIcon },
-  ]
-
   return (
-    <section className="relative hidden min-h-[34rem] overflow-hidden rounded-[2rem] border border-border/80 bg-card/90 p-10 text-foreground shadow-[0_32px_90px_-44px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:flex lg:flex-col lg:justify-between">
+    <section className="relative hidden overflow-hidden rounded-[2rem] border border-border/80 bg-card/90 p-8 text-foreground shadow-[0_32px_90px_-44px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:block">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-primary" />
       <div aria-hidden="true" className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
 
@@ -107,27 +102,20 @@ function ValuePanel() {
             <p className="text-xs text-muted-foreground">Medical learning workspace</p>
           </div>
         </div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Built for medical school</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Rankings preview</p>
       </header>
 
-      <div className="relative max-w-xl py-12">
-        <p className="text-sm font-semibold text-primary">MCQs · Theory · Assessments</p>
-        <h1 className="mt-4 text-[3.4rem] font-bold leading-[1.02] tracking-[-0.045em]">Your medical school workspace.</h1>
-        <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
-          Practise questions, review theory, and join live assessments from one focused workspace.
-        </p>
-      </div>
-
-      <div className="relative grid grid-cols-3 divide-x divide-border/80 border-y border-border/80">
-        {features.map(({ title, detail, icon: Icon }, index) => (
-          <div key={title} className={`flex items-start gap-3 py-5 ${index === 0 ? "pr-5" : index === features.length - 1 ? "pl-5" : "px-5"}`}>
-            <Icon size={19} className="mt-0.5 shrink-0 text-primary" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold leading-5">{title}</p>
-              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{detail}</p>
-            </div>
-          </div>
-        ))}
+      <div className="relative mt-7 aspect-[1080/700] overflow-hidden rounded-[1.5rem] border border-border/80 bg-background shadow-[0_20px_55px_-30px_rgba(15,23,42,0.7)]">
+        <Image
+          src="/auth/leaderboard-preview.png"
+          alt="MedNexus monthly rankings showing the top three learners"
+          fill
+          priority
+          sizes="(min-width: 1024px) 52vw, 0px"
+          className="select-none object-cover object-top"
+          draggable={false}
+        />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
       </div>
     </section>
   )
