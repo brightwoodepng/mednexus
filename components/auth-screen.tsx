@@ -87,26 +87,64 @@ function Brand() {
 
 function ValuePanel() {
   return (
-    <section aria-label="MedNexus product preview" className="relative hidden overflow-hidden rounded-[2rem] border border-border/80 bg-card/90 p-4 text-foreground shadow-[0_32px_90px_-44px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:block">
-      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-primary" />
-      <div className="relative aspect-[1080/700] overflow-hidden rounded-[1.4rem] border border-border/80 bg-background shadow-[0_20px_55px_-30px_rgba(15,23,42,0.7)]">
-        <Image
-          src="/auth/leaderboard-preview.png"
-          alt="MedNexus monthly rankings showing the top three learners"
-          fill
-          priority
-          sizes="(min-width: 1024px) 52vw, 0px"
-          className="select-none object-cover object-top"
-          draggable={false}
-        />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/25 to-transparent" />
-        <div className="absolute left-5 top-5 flex items-center gap-2.5 rounded-2xl border border-white/20 bg-slate-950/70 px-3 py-2.5 text-white shadow-lg backdrop-blur-xl">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <StethoscopeIcon size={19} />
-          </span>
-          <span className="text-sm font-bold tracking-tight">MedNexus</span>
+    <section aria-label="MedNexus product showcase" className="relative hidden min-h-[640px] text-foreground lg:block">
+      <header className="absolute left-0 top-0 z-20 flex items-center gap-3.5">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl ring-1 ring-primary/25">
+          <StethoscopeIcon size={24} />
+        </span>
+        <div>
+          <p className="text-xl font-black tracking-tight">MedNexus</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Medical learning workspace</p>
         </div>
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
+      </header>
+
+      <div className="absolute inset-x-0 bottom-14 top-20">
+        <div className="absolute left-0 top-8 w-[82%] -rotate-[1.2deg] drop-shadow-[0_32px_30px_rgba(0,0,0,0.38)]">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] border-[6px] border-slate-800 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
+            <span aria-hidden="true" className="absolute left-1/2 top-0 z-20 h-3 w-20 -translate-x-1/2 rounded-b-xl bg-slate-950" />
+            <div className="relative h-full w-full overflow-hidden rounded-[1.05rem] bg-slate-950">
+              <Image
+                src="/auth/dashboard-preview.png"
+                alt="MedNexus MCQ dashboard displayed on a laptop"
+                fill
+                priority
+                unoptimized
+                sizes="(min-width: 1280px) 760px, (min-width: 1024px) 50vw, 0px"
+                className="select-none object-cover object-top"
+                draggable={false}
+              />
+            </div>
+          </div>
+          <div aria-hidden="true" className="relative mx-auto h-5 w-[108%] rounded-b-[55%] bg-gradient-to-b from-slate-400 via-slate-600 to-slate-900 shadow-xl">
+            <span className="absolute left-1/2 top-0 h-1.5 w-24 -translate-x-1/2 rounded-b-lg bg-slate-300/70" />
+          </div>
+        </div>
+
+        <div className="absolute bottom-1 right-[1%] z-10 w-[25%] rotate-[2deg] drop-shadow-[0_28px_25px_rgba(0,0,0,0.45)]">
+          <div className="relative aspect-[390/844] overflow-hidden rounded-[2rem] border-[6px] border-slate-800 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]">
+            <span aria-hidden="true" className="absolute left-1/2 top-2 z-20 h-3.5 w-14 -translate-x-1/2 rounded-full bg-black" />
+            <div className="relative h-full w-full overflow-hidden rounded-[1.45rem] bg-slate-950">
+              <Image
+                src="/auth/rankings-phone-preview.png"
+                alt="MedNexus rankings displayed on a phone"
+                fill
+                priority
+                unoptimized
+                sizes="(min-width: 1280px) 230px, (min-width: 1024px) 16vw, 0px"
+                className="select-none object-cover object-top"
+                draggable={false}
+              />
+            </div>
+            <span aria-hidden="true" className="absolute bottom-2 left-1/2 z-20 h-1 w-14 -translate-x-1/2 rounded-full bg-white/70" />
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute bottom-0 left-1 flex items-center gap-3">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-lg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" width={21} height={21} aria-hidden="true"><path d="m4 16 5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg>
+        </span>
+        <p className="text-base font-bold tracking-tight">Learn. Compete. Grow.</p>
       </div>
     </section>
   )
@@ -595,7 +633,7 @@ export function AuthScreen({
       <div aria-hidden="true" className="pointer-events-none absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
       <div aria-hidden="true" className="pointer-events-none absolute -right-40 bottom-0 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
 
-      <div className="relative mx-auto grid w-full max-w-[1240px] items-center gap-10 lg:grid-cols-[1.18fr_0.82fr]">
+      <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-8 xl:grid-cols-[minmax(0,1fr)_440px] xl:gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(390px,440px)]">
         <ValuePanel />
 
         <div className="mx-auto w-full max-w-[440px]">
