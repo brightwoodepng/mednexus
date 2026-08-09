@@ -44,11 +44,13 @@ test("public visitors only see authentication actions", async ({ page }) => {
     window.localStorage.setItem("mednexus.remembered-index-number.v1", "SM/22/0001")
   })
   await page.goto("/")
-  await expect(page.getByRole("img", { name: "MedNexus monthly rankings showing the top three learners" })).toBeVisible()
+  await expect(page.getByRole("img", { name: "MedNexus MCQ dashboard displayed on a laptop" })).toBeVisible()
+  await expect(page.getByRole("img", { name: "MedNexus rankings displayed on a phone" })).toBeVisible()
+  await expect(page.getByText("Learn. Compete. Grow.")).toBeVisible()
   await expect(page.getByRole("heading", { name: "Your medical school workspace." })).toHaveCount(0)
   await expect(page.getByText("Learn, practise, and progress in one place.")).toHaveCount(0)
   await expect(page.getByText("Rankings preview")).toHaveCount(0)
-  await expect(page.getByText("Medical learning workspace")).toHaveCount(0)
+  await expect(page.getByText("Medical learning workspace")).toBeVisible()
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible()
   await expect(page.locator("#login-index")).toHaveValue("SM/22/0001")
   await expect(page.locator("#login-pw")).toHaveValue("")
@@ -58,6 +60,12 @@ test("public visitors only see authentication actions", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Create an account" })).toHaveClass(/auth-link/)
   await expect(page.getByText("Choose how you'd like to continue")).toHaveCount(0)
   await expect(page.getByText("Open Admin Console")).toHaveCount(0)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.getByRole("img", { name: "MedNexus MCQ dashboard displayed on a laptop" })).toBeHidden()
+  await expect(page.getByRole("img", { name: "MedNexus rankings displayed on a phone" })).toBeHidden()
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
 })
 
 test("guest and registration replace the login card and return cleanly", async ({ page }) => {
