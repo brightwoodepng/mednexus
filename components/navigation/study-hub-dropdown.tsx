@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { BookOpenIcon, ChevronDownIcon, LockKeyholeIcon, ScrollTextIcon, StethoscopeIcon } from "lucide-react"
-import { STUDY_HUBS, type StudyHubId } from "@/components/study-hub-switcher"
+import { getStudyHubMenuOptions, STUDY_HUBS, type StudyHubId } from "@/components/study-hub-switcher"
 import { useTheme } from "@/contexts/theme-context"
 
 function HubIcon({ hub, size = 16 }: { hub: StudyHubId; size?: number }) {
@@ -47,6 +47,7 @@ export function StudyHubDropdown({
   const { isGlassEnabled } = useTheme()
 
   const activeHubDef = STUDY_HUBS.find((h) => h.id === activeHub)!
+  const menuOptions = getStudyHubMenuOptions(activeHub)
 
   useEffect(() => {
     if (!open) return
@@ -117,13 +118,11 @@ export function StudyHubDropdown({
           role="menu"
           className={`absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl ${menuCls}`}
         >
-          {STUDY_HUBS.map((hub) => {
+          {menuOptions.map((hub) => {
             const rowClassName = `flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring disabled:cursor-not-allowed ${
-              hub.id === activeHub
-                ? "bg-sidebar-accent text-sidebar-foreground"
-                : hub.available
-                  ? `text-sidebar-foreground ${rowHoverCls}`
-                  : "text-sidebar-foreground/40"
+              hub.available
+                ? `text-sidebar-foreground ${rowHoverCls}`
+                : "text-sidebar-foreground/40"
             }`
             const content = <>
               <span className={`shrink-0 ${hub.available ? hubIconClasses(hub.id).text : "text-muted-foreground"}`}>
@@ -137,7 +136,7 @@ export function StudyHubDropdown({
               )}
             </>
 
-            if (hrefForHub && hub.available && hub.id !== activeHub) {
+            if (hrefForHub && hub.available) {
               return <a key={hub.id} role="menuitem" href={hrefForHub(hub.id)} className={rowClassName}>{content}</a>
             }
 
@@ -146,7 +145,7 @@ export function StudyHubDropdown({
               role="menuitem"
               type="button"
               disabled={!hub.available}
-              onClick={() => hub.available && hub.id !== activeHub && handleSelect(hub.id)}
+              onClick={() => hub.available && handleSelect(hub.id)}
               aria-disabled={!hub.available}
               aria-label={!hub.available ? `${hub.name} — coming soon` : hub.name}
               className={rowClassName}
@@ -172,6 +171,7 @@ export function StudyHubDropdownIcon({
   const ref = useRef<HTMLDivElement>(null)
   const { isGlassEnabled } = useTheme()
   const activeHubDef = STUDY_HUBS.find((hub) => hub.id === activeHub)!
+  const menuOptions = getStudyHubMenuOptions(activeHub)
 
   useEffect(() => {
     if (!open) return
@@ -185,7 +185,7 @@ export function StudyHubDropdownIcon({
   return <div ref={ref} className="relative">
     <button type="button" onClick={() => setOpen((value) => !value)} title={activeHubDef.name} aria-label={`Study hub: ${activeHubDef.name}`} aria-haspopup="menu" aria-expanded={open} className={`flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-primary transition-colors ${isGlassEnabled ? "glass-pill-hover" : "border border-sidebar-border hover:bg-sidebar-accent"}`}><HubIcon hub={activeHub} size={16} /></button>
     {open && <div role="menu" className={`absolute left-full top-0 z-50 ml-2 w-56 overflow-hidden rounded-xl ${isGlassEnabled ? "glass-card" : "border border-sidebar-border bg-card shadow-xl"}`}>
-      {STUDY_HUBS.map((hub) => <button key={hub.id} role="menuitem" type="button" disabled={!hub.available} onClick={() => { if (!hub.available) return; onSelect(hub.id); setOpen(false) }} className={`flex min-h-11 w-full items-center gap-3 px-3 text-left text-sm font-medium ${hub.id === activeHub ? "bg-sidebar-accent" : ""} ${hub.available ? "hover:bg-sidebar-accent" : "cursor-not-allowed text-muted-foreground"}`}><HubIcon hub={hub.id} size={17} /><span className="flex-1">{hub.name}</span>{!hub.available && <span className="text-[10px] font-bold uppercase">Coming Soon</span>}</button>)}
+      {menuOptions.map((hub) => <button key={hub.id} role="menuitem" type="button" disabled={!hub.available} onClick={() => { if (!hub.available) return; onSelect(hub.id); setOpen(false) }} className={`flex min-h-11 w-full items-center gap-3 px-3 text-left text-sm font-medium ${hub.available ? "hover:bg-sidebar-accent" : "cursor-not-allowed text-muted-foreground"}`}><HubIcon hub={hub.id} size={17} /><span className="flex-1">{hub.name}</span>{!hub.available && <span className="text-[10px] font-bold uppercase">Coming Soon</span>}</button>)}
     </div>}
   </div>
 }

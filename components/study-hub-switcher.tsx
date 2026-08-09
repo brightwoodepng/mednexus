@@ -12,3 +12,7 @@ export const STUDY_HUBS: ReadonlyArray<{
   { id: "theory-vault", name: "Theory Vault", description: "Core notes and revision guides", available: true },
   { id: "osce-hub", name: "OSCE Hub", description: "Clinical stations and feedback", available: false },
 ]
+
+export function getStudyHubMenuOptions(activeHub: StudyHubId) {
+  return STUDY_HUBS.filter((hub) => hub.id !== activeHub)
+}
