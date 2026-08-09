@@ -11,6 +11,7 @@ import {
 } from "react"
 import type { HistoryEntry, UserProgress, ExamScore } from "@/lib/types"
 import { updateSrsFromHistory } from "@/lib/srs"
+import { rememberIndexNumber } from "@/lib/auth-preferences"
 
 export type UserRole = "guest" | "user"
 
@@ -400,6 +401,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!res.ok) return { ok: false, error: data.error ?? "Login failed" }
 
       const { uid, name, requiresPasswordUpdate: needsPw, sessionToken: userToken } = data
+      rememberIndexNumber(data.indexNumber)
       try {
         localStorage.setItem(LS_UID, uid)
         localStorage.setItem(LS_NAME, name)

@@ -433,7 +433,12 @@ export function MedNexusApp() {
   const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
-  const [platformConfig, setPlatformConfig] = useState<{ maintenanceEnabled: boolean; maintenanceMessage: string } | null>(null)
+  const [platformConfig, setPlatformConfig] = useState<{
+    registrationEnabled: boolean
+    guestAccessEnabled: boolean
+    maintenanceEnabled: boolean
+    maintenanceMessage: string
+  } | null>(null)
 
 
 
@@ -466,7 +471,15 @@ export function MedNexusApp() {
   } | null>(null)
 
   useEffect(() => {
-    fetch("/api/platform/config").then((response) => response.json()).then((body) => setPlatformConfig(body.config ?? body ?? null)).catch(() => setPlatformConfig(null))
+    fetch("/api/platform/config")
+      .then((response) => response.json())
+      .then((body) => setPlatformConfig(body.config ?? body ?? null))
+      .catch(() => setPlatformConfig({
+        registrationEnabled: true,
+        guestAccessEnabled: true,
+        maintenanceEnabled: false,
+        maintenanceMessage: "",
+      }))
   }, [])
 
   // Resume data fetches only the original ordered IDs; the compact catalog is
@@ -612,7 +625,14 @@ export function MedNexusApp() {
   }
 
   // Admins bypass the user login flow entirely
-  if (!user) return <AuthScreen />
+  if (!user) {
+    return (
+      <AuthScreen
+        registrationEnabled={platformConfig?.registrationEnabled ?? false}
+        guestAccessEnabled={platformConfig?.guestAccessEnabled ?? false}
+      />
+    )
+  }
 
   // These checks only apply to regular users
   if (user) {
