@@ -44,8 +44,10 @@ test("public visitors only see authentication actions", async ({ page }) => {
     window.localStorage.setItem("mednexus.remembered-index-number.v1", "SM/22/0001")
   })
   await page.goto("/")
-  await expect(page.getByRole("img", { name: "MedNexus MCQ dashboard displayed on a laptop" })).toBeVisible()
-  await expect(page.getByRole("img", { name: "MedNexus rankings displayed on a phone" })).toBeVisible()
+  await expect(page.getByTestId("auth-dashboard-preview")).toBeVisible()
+  await expect(page.getByTestId("auth-rankings-preview")).toBeVisible()
+  await expect(page.locator("[data-testid='auth-laptop-mockup'] img")).toHaveCount(0)
+  await expect(page.locator("[data-testid='auth-phone-mockup'] img")).toHaveCount(0)
   await expect(page.getByTestId("auth-laptop-mockup")).toBeVisible()
   await expect(page.getByTestId("auth-laptop-hinge")).toBeVisible()
   await expect(page.getByTestId("auth-laptop-keyboard")).toBeVisible()
@@ -99,8 +101,8 @@ test("public visitors only see authentication actions", async ({ page }) => {
     { width: 320, height: 720 },
   ]) {
     await page.setViewportSize(viewport)
-    await expect(page.getByRole("img", { name: "MedNexus MCQ dashboard displayed on a laptop" })).toBeHidden()
-    await expect(page.getByRole("img", { name: "MedNexus rankings displayed on a phone" })).toBeHidden()
+    await expect(page.getByTestId("auth-dashboard-preview")).toBeHidden()
+    await expect(page.getByTestId("auth-rankings-preview")).toBeHidden()
     await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
   }
@@ -118,13 +120,36 @@ test("desktop showcase and theme remain clear of the authentication card", async
     await expect(page.getByTestId("auth-laptop-mockup")).toBeVisible()
     await expect(page.getByTestId("auth-phone-mockup")).toBeVisible()
 
+    const taglineBox = await page.getByText("Learn. Compete. Grow.").boundingBox()
+    const laptopBox = await page.getByTestId("auth-laptop-mockup").boundingBox()
+    const phoneBox = await page.getByTestId("auth-phone-mockup").boundingBox()
+
     const themeBox = await page.getByRole("button", { name: "Theme" }).boundingBox()
     const cardBox = await page.getByTestId("auth-card-shell").boundingBox()
     expect(themeBox).not.toBeNull()
     expect(cardBox).not.toBeNull()
+    expect(taglineBox).not.toBeNull()
+    expect(laptopBox).not.toBeNull()
+    expect(phoneBox).not.toBeNull()
     expect(themeBox!.y + themeBox!.height).toBeLessThan(cardBox!.y)
+    expect(laptopBox!.y + laptopBox!.height).toBeLessThanOrEqual(taglineBox!.y)
+    expect(phoneBox!.y + phoneBox!.height).toBeLessThanOrEqual(taglineBox!.y)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
   }
+})
+
+test("live showcase animation respects reduced motion", async ({ page }) => {
+  await page.goto("/")
+  await page.setViewportSize({ width: 1440, height: 900 })
+
+  const progress = page.locator(".auth-preview-overall-track span")
+  const alternatingCard = page.locator(".auth-preview-study-card").first()
+  await expect(progress).toHaveCSS("animation-name", "auth-preview-progress")
+  await expect(alternatingCard).toHaveCSS("animation-name", "auth-preview-card-glow")
+
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await expect(progress).toHaveCSS("animation-name", "none")
+  await expect(alternatingCard).toHaveCSS("animation-name", "none")
 })
 
 test("guest and registration replace the login card and return cleanly", async ({ page }) => {

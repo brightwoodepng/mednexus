@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Image from "next/image"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
@@ -87,22 +86,68 @@ function Brand() {
 
 const LAPTOP_KEY_ROWS = [13, 13, 12, 11, 8] as const
 
+const DASHBOARD_STATS = [
+  { label: "Questions", value: "1,248", tone: "violet" },
+  { label: "Accuracy", value: "84%", tone: "cyan" },
+  { label: "Study streak", value: "12 days", tone: "amber" },
+] as const
+
+const STUDY_CARDS = [
+  { title: "Cardiovascular", detail: "36 of 50 questions", progress: 72 },
+  { title: "Pharmacology", detail: "18 of 40 questions", progress: 45 },
+  { title: "Clinical anatomy", detail: "42 of 48 questions", progress: 88 },
+] as const
+
+const RANKING_ROWS = [
+  { rank: 4, initials: "KA", name: "Kojo A.", points: "2,940" },
+  { rank: 5, initials: "NM", name: "Nana M.", points: "2,815" },
+  { rank: 6, initials: "ES", name: "Esi S.", points: "2,760" },
+] as const
+
+function DashboardPreview() {
+  return (
+    <div className="auth-dashboard-preview" data-testid="auth-dashboard-preview" aria-hidden="true">
+      <aside className="auth-preview-sidebar">
+        <span className="auth-preview-mark">M</span>
+        {Array.from({ length: 5 }, (_, index) => <span className={`auth-preview-nav-dot${index === 0 ? " is-active" : ""}`} key={index} />)}
+      </aside>
+      <div className="auth-preview-dashboard-body">
+        <header className="auth-preview-dashboard-header">
+          <div><small>Good morning, Ama</small><strong>Ready for today&apos;s study?</strong></div>
+          <span className="auth-preview-avatar">AD</span>
+        </header>
+        <div className="auth-preview-stats">
+          {DASHBOARD_STATS.map(stat => (
+            <article className={`auth-preview-stat auth-preview-stat-${stat.tone}`} key={stat.label}>
+              <span>{stat.label}</span><strong>{stat.value}</strong>
+            </article>
+          ))}
+        </div>
+        <section className="auth-preview-progress-panel">
+          <div className="auth-preview-section-heading"><strong>Continue studying</strong><span>This week · 68%</span></div>
+          <div className="auth-preview-overall-track"><span /></div>
+          <div className="auth-preview-study-grid">
+            {STUDY_CARDS.map((card, index) => (
+              <article className={`auth-preview-study-card auth-preview-highlight-${index % 2}`} key={card.title}>
+                <span className="auth-preview-card-icon">{index + 1}</span>
+                <strong>{card.title}</strong><small>{card.detail}</small>
+                <div className="auth-preview-card-track"><span style={{ "--preview-progress": `${card.progress}%` } as React.CSSProperties} /></div>
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
+
 function LaptopMockup() {
   return (
     <div className="auth-laptop" data-testid="auth-laptop-mockup">
       <div className="auth-laptop-lid">
         <span className="auth-laptop-webcam" aria-hidden="true" />
         <div className="auth-laptop-screen">
-          <Image
-            src="/auth/dashboard-preview.png"
-            alt="MedNexus MCQ dashboard displayed on a laptop"
-            fill
-            priority
-            unoptimized
-            sizes="(min-width: 1440px) 760px, (min-width: 1280px) 660px, (min-width: 1024px) 500px, 0px"
-            className="select-none object-cover object-top"
-            draggable={false}
-          />
+          <DashboardPreview />
         </div>
       </div>
 
@@ -166,16 +211,19 @@ function PhoneMockup() {
         </div>
         <span className="auth-phone-island" data-testid="auth-phone-dynamic-island" aria-hidden="true" />
         <div className="auth-phone-content">
-          <Image
-            src="/auth/rankings-phone-preview.png"
-            alt="MedNexus rankings displayed on a phone"
-            fill
-            priority
-            unoptimized
-            sizes="(min-width: 1440px) 210px, (min-width: 1280px) 185px, (min-width: 1024px) 145px, 0px"
-            className="select-none object-cover object-top"
-            draggable={false}
-          />
+          <div className="auth-rankings-preview" data-testid="auth-rankings-preview" aria-hidden="true">
+            <header><small>Community</small><strong>Rankings</strong></header>
+            <div className="auth-ranking-periods"><span className="is-active">Weekly</span><span>Monthly</span><span>All time</span></div>
+            <div className="auth-ranking-podium">
+              <div className="auth-podium-place is-second"><span>2</span><b>YA</b><small>Yaw A.</small></div>
+              <div className="auth-podium-place is-first"><span>1</span><b>AB</b><small>Abena B.</small></div>
+              <div className="auth-podium-place is-third"><span>3</span><b>KM</b><small>Kofi M.</small></div>
+            </div>
+            <div className="auth-ranking-list">
+              {RANKING_ROWS.map(row => <div className="auth-ranking-row" key={row.rank}><span>{row.rank}</span><b>{row.initials}</b><strong>{row.name}</strong><small>{row.points}</small></div>)}
+            </div>
+            <div className="auth-viewer-rank"><span>12</span><b>YOU</b><strong>Your rank</strong><small>2,120</small></div>
+          </div>
         </div>
         <span className="auth-phone-home-indicator" data-testid="auth-phone-home-indicator" aria-hidden="true" />
       </div>
@@ -185,7 +233,7 @@ function PhoneMockup() {
 
 function ValuePanel() {
   return (
-    <section aria-label="MedNexus product showcase" className="relative hidden min-h-[590px] text-foreground lg:block xl:min-h-[640px]">
+    <section aria-label="Animated preview of the MedNexus study dashboard and community rankings" className="relative hidden min-h-[590px] text-foreground lg:block xl:min-h-[640px]">
       <header className="absolute left-0 top-0 z-20 flex items-center gap-3.5">
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl ring-1 ring-primary/25">
           <StethoscopeIcon size={24} />
