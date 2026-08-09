@@ -87,65 +87,19 @@ function Brand() {
 
 function ValuePanel() {
   return (
-    <section aria-label="MedNexus product showcase" className="relative hidden min-h-[640px] text-foreground lg:block">
-      <header className="absolute left-0 top-0 z-20 flex items-center gap-3.5">
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl ring-1 ring-primary/25">
-          <StethoscopeIcon size={24} />
-        </span>
-        <div>
-          <p className="text-xl font-black tracking-tight">MedNexus</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Medical learning workspace</p>
-        </div>
-      </header>
-
-      <div className="absolute inset-x-0 bottom-14 top-20">
-        <div className="absolute left-0 top-8 w-[82%] -rotate-[1.2deg] drop-shadow-[0_32px_30px_rgba(0,0,0,0.38)]">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] border-[6px] border-slate-800 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
-            <span aria-hidden="true" className="absolute left-1/2 top-0 z-20 h-3 w-20 -translate-x-1/2 rounded-b-xl bg-slate-950" />
-            <div className="relative h-full w-full overflow-hidden rounded-[1.05rem] bg-slate-950">
-              <Image
-                src="/auth/dashboard-preview.png"
-                alt="MedNexus MCQ dashboard displayed on a laptop"
-                fill
-                priority
-                unoptimized
-                sizes="(min-width: 1280px) 760px, (min-width: 1024px) 50vw, 0px"
-                className="select-none object-cover object-top"
-                draggable={false}
-              />
-            </div>
-          </div>
-          <div aria-hidden="true" className="relative mx-auto h-5 w-[108%] rounded-b-[55%] bg-gradient-to-b from-slate-400 via-slate-600 to-slate-900 shadow-xl">
-            <span className="absolute left-1/2 top-0 h-1.5 w-24 -translate-x-1/2 rounded-b-lg bg-slate-300/70" />
-          </div>
-        </div>
-
-        <div className="absolute bottom-1 right-[1%] z-10 w-[25%] rotate-[2deg] drop-shadow-[0_28px_25px_rgba(0,0,0,0.45)]">
-          <div className="relative aspect-[390/844] overflow-hidden rounded-[2rem] border-[6px] border-slate-800 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]">
-            <span aria-hidden="true" className="absolute left-1/2 top-2 z-20 h-3.5 w-14 -translate-x-1/2 rounded-full bg-black" />
-            <div className="relative h-full w-full overflow-hidden rounded-[1.45rem] bg-slate-950">
-              <Image
-                src="/auth/rankings-phone-preview.png"
-                alt="MedNexus rankings displayed on a phone"
-                fill
-                priority
-                unoptimized
-                sizes="(min-width: 1280px) 230px, (min-width: 1024px) 16vw, 0px"
-                className="select-none object-cover object-top"
-                draggable={false}
-              />
-            </div>
-            <span aria-hidden="true" className="absolute bottom-2 left-1/2 z-20 h-1 w-14 -translate-x-1/2 rounded-full bg-white/70" />
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute bottom-0 left-1 flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-lg">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" width={21} height={21} aria-hidden="true"><path d="m4 16 5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg>
-        </span>
-        <p className="text-base font-bold tracking-tight">Learn. Compete. Grow.</p>
-      </div>
+    <section aria-label="MedNexus dashboard on a laptop with Rankings on a phone" className="auth-reference-showcase">
+      <Image
+        src="/auth/landing-reference.png"
+        alt=""
+        width={1680}
+        height={945}
+        data-testid="auth-reference-art"
+        priority
+        unoptimized
+        sizes="(min-width: 1180px) 100vw, 0px"
+        className="auth-reference-art"
+        draggable={false}
+      />
     </section>
   )
 }
@@ -153,12 +107,13 @@ function ValuePanel() {
 // ── Footer ────────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <div className="mt-6 flex justify-center">
+    <div className="auth-footer">
+      <p>Created by <strong>Britechinc</strong></p>
       <a
         href="https://wa.me/233543982307"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-[#25D366] transition-colors hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-[#25D366] transition-colors hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40"
       >
         <WhatsAppIcon size={13} />
         Contact support
@@ -362,23 +317,31 @@ function LoginFields({
   }
 
   return (
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground" htmlFor="login-index">Index Number</label>
-          <input
-            id="login-index"
-            ref={indexRef}
-            type="text"
-            autoComplete="username"
-            value={indexNumber}
-            onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
-            placeholder="sm/sms/22/0092"
-            className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground" htmlFor="login-pw">Password</label>
+      <form onSubmit={handleSubmit} className="auth-login-form flex flex-col gap-4">
+        <div className="auth-login-field flex flex-col gap-1.5">
+          <label className="text-sm font-medium" htmlFor="login-index">Index Number</label>
           <div className="relative">
+            <span className="auth-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={20} height={20}><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+            </span>
+            <input
+              id="login-index"
+              ref={indexRef}
+              type="text"
+              autoComplete="username"
+              value={indexNumber}
+              onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
+              placeholder="SM/22/0092"
+              className="auth-login-input min-h-[58px] w-full rounded-xl border px-14 py-3 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+        </div>
+        <div className="auth-login-field flex flex-col gap-1.5">
+          <label className="text-sm font-medium" htmlFor="login-pw">Password</label>
+          <div className="relative">
+            <span className="auth-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={20} height={20}><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            </span>
             <input
               id="login-pw"
               ref={passwordRef}
@@ -387,7 +350,7 @@ function LoginFields({
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError("") }}
               placeholder="Your password"
-              className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+              className="auth-login-input min-h-[58px] w-full rounded-xl border py-3 pl-14 pr-12 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
             />
             <button
               type="button"
@@ -405,7 +368,7 @@ function LoginFields({
         <button
           type="submit"
           disabled={loading || !indexNumber.trim() || !password.trim()}
-          className="auth-btn-primary mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-semibold transition-[background-color,box-shadow,opacity] disabled:opacity-50 disabled:shadow-none"
+          className="auth-btn-primary auth-login-submit mt-1 flex min-h-[60px] items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-base font-semibold transition-[background-color,box-shadow,opacity] disabled:opacity-50 disabled:shadow-none"
         >
           {loading ? "Signing in…" : "Log In"}
           {!loading && <ArrowRightIcon size={15} />}
@@ -414,28 +377,31 @@ function LoginFields({
         <button
           type="button"
           onClick={onOtp}
-          className="text-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="auth-otp-action text-center text-sm transition-colors"
         >
           Forgot password?{" "}
           <span className="auth-link font-semibold">Enter with OTP</span>
         </button>
 
         {guestAccessEnabled && (
-          <button
-            type="button"
-            onClick={onGuest}
-            className="auth-btn-secondary flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              <line x1="17" x2="22" y1="8" y2="8"/>
-            </svg>
-            Continue as guest
-          </button>
+          <>
+            <div className="auth-or-divider" aria-hidden="true"><span>or</span></div>
+            <button
+              type="button"
+              onClick={onGuest}
+              className="auth-btn-secondary auth-guest-action flex min-h-[58px] items-center justify-center gap-2 rounded-xl px-5 py-3 text-base font-semibold transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                <line x1="17" x2="22" y1="8" y2="8"/>
+              </svg>
+              Continue as guest
+            </button>
+          </>
         )}
 
         {registrationEnabled && (
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="auth-register-prompt text-center text-sm">
             Don&apos;t have an account?{" "}
             <button type="button" onClick={onRegister} className="auth-link min-h-11 rounded-md px-1 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40">
               Create an account
@@ -616,12 +582,12 @@ export function AuthScreen({
   }, [guestAccessEnabled, registrationEnabled, view])
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 py-14 safe-area-inset sm:px-6 lg:flex lg:items-center lg:px-10 lg:py-8">
+    <main className="auth-landing safe-area-inset">
       <button
         type="button"
         onClick={() => setThemeOpen(true)}
         title="Change theme"
-        className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-card hover:text-foreground"
+        className="auth-theme-control"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
           <circle cx="12" cy="12" r="10"/>
@@ -630,20 +596,17 @@ export function AuthScreen({
         Theme
       </button>
 
-      <div aria-hidden="true" className="pointer-events-none absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -right-40 bottom-0 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-
-      <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-8 xl:grid-cols-[minmax(0,1fr)_440px] xl:gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(390px,440px)]">
+      <div className="auth-landing-grid">
         <ValuePanel />
 
-        <div className="mx-auto w-full max-w-[440px]">
+        <div className="auth-card-shell" data-testid="auth-card-shell">
           <Brand />
-          <section className="glass-auth-card rounded-[2rem] p-5 shadow-xl sm:p-8" aria-labelledby="auth-title">
+          <section className="glass-auth-card auth-card-panel" aria-labelledby="auth-title">
             {view === "login" && (
               <>
-                <div className="mb-6">
-                  <h2 id="auth-title" className="text-2xl font-bold tracking-tight">Welcome back</h2>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Sign in to continue to your workspace.</p>
+                <div className="auth-card-heading">
+                  <h2 id="auth-title">Welcome back</h2>
+                  <p>Sign in to continue to your workspace.</p>
                 </div>
                 <LoginFields
                   guestAccessEnabled={guestAccessEnabled}
