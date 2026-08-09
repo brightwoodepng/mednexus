@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -84,65 +85,20 @@ function Brand() {
   )
 }
 
-const LAPTOP_KEY_ROWS = [13, 13, 12, 11, 8] as const
-
-const DASHBOARD_STATS = [
-  { label: "Answered", value: "94", detail: "trial questions", icon: "▤", tone: "sky" },
-  { label: "Accuracy", value: "100%", detail: "94 correct", icon: "◎", tone: "emerald" },
-  { label: "Flagged", value: "0", detail: "for review", icon: "⚑", tone: "amber" },
-  { label: "Streak", value: "4d", detail: "last: Aug 1", icon: "◆", tone: "rose" },
-] as const
-
-const STUDY_CARDS = [
-  { title: "Integument II OSCE", detail: "1 discipline · 30Q", progress: 72, action: "Open Module", tone: "rose" },
-  { title: "MED 418 Integument II", detail: "4 disciplines · 306Q", progress: 48, action: "Open Module", tone: "sky" },
-] as const
-
-const DASHBOARD_NAV = [
-  ["▦", "Dashboard"], ["▱", "Study Modules"], ["⌁", "Weak Areas"],
-  ["◉", "Live Assessments"], ["▣", "Game Mode"], ["▤", "Nexus Store"], ["♜", "Leaderboard"],
-] as const
+const LAPTOP_KEY_ROWS = [14, 14, 13, 12, 10] as const
 
 function DashboardPreview() {
   return (
     <div className="auth-dashboard-preview" data-testid="auth-dashboard-preview" aria-hidden="true">
-      <aside className="auth-preview-sidebar">
-        <div className="auth-preview-brand"><span>◡</span><b>MedNexus</b></div>
-        <div className="auth-preview-workspace"><small>WORKSPACE</small><strong>▱ MCQ Q-Bank</strong><span>Switch study workspace</span></div>
-        <nav>{DASHBOARD_NAV.map(([icon, label], index) => <span className={index === 0 ? "is-active" : ""} key={label}><i>{icon}</i>{label}</span>)}</nav>
-        <div className="auth-preview-user"><b>BK</b><span><strong>Bright</strong><small>Student</small></span></div>
-        <div className="auth-preview-admin"><span>⌘</span> Admin Console</div>
-      </aside>
-      <div className="auth-preview-main">
-        <div className="auth-preview-mainbar"><span className="is-active">⚡ Trial</span><span>◷ Exam</span><i>♧</i><i>♙</i></div>
-        <div className="auth-preview-dashboard-body">
-          <header className="auth-preview-dashboard-hero">
-            <div><small>Good afternoon,</small><strong>Bright 👋</strong><span>Commit to the process — excellence follows.</span></div>
-            <div className="auth-preview-streak"><span>🔥</span><b>4</b><small>day streak</small></div>
-          </header>
-          <div className="auth-preview-stats">
-            {DASHBOARD_STATS.map(stat => (
-              <article className={`auth-preview-stat auth-preview-stat-${stat.tone}`} key={stat.label}>
-                <span className="auth-preview-stat-icon">{stat.icon}</span>
-                <div><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.detail}</small></div>
-              </article>
-            ))}
-          </div>
-          <section className="auth-preview-progress-panel">
-            <div className="auth-preview-section-heading"><div><strong>Study Modules</strong></div><b>View all →</b></div>
-            <div className="auth-preview-study-grid">
-              {STUDY_CARDS.map((card, index) => (
-                <article className={`auth-preview-study-card auth-preview-module-${card.tone} auth-preview-highlight-${index % 2}`} key={card.title}>
-                  <span className="auth-preview-card-icon">▱</span>
-                  <strong>{card.title}</strong><small>{card.detail}</small>
-                  <div className="auth-preview-card-track"><span style={{ "--preview-progress": `${card.progress}%` } as React.CSSProperties} /></div>
-                  <b>{card.action} →</b>
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
-      </div>
+      <Image
+        alt=""
+        data-testid="auth-dashboard-image"
+        draggable={false}
+        fill
+        priority
+        sizes="(min-width: 1024px) 60vw, 1px"
+        src="/auth-dashboard-preview.png"
+      />
     </div>
   )
 }
@@ -165,7 +121,7 @@ function LaptopMockup() {
             <div className="auth-laptop-key-row" key={rowIndex}>
               {Array.from({ length: keyCount }, (_, keyIndex) => (
                 <span
-                  className={`auth-laptop-key${rowIndex === 4 && keyIndex === 3 ? " auth-laptop-key-space" : ""}`}
+                  className={`auth-laptop-key${rowIndex === 4 && keyIndex === 4 ? " auth-laptop-key-space" : ""}`}
                   key={keyIndex}
                 />
               ))}
@@ -219,17 +175,15 @@ function PhoneMockup() {
         <span className="auth-phone-island" data-testid="auth-phone-dynamic-island" aria-hidden="true" />
         <div className="auth-phone-content">
           <div className="auth-rankings-preview" data-testid="auth-rankings-preview" aria-hidden="true">
-            <header><i>☰</i><div><strong>♜ Rankings</strong><span>Nexus Points earned in the last 30 days</span></div><b>↻</b></header>
-            <div className="auth-ranking-periods"><span>Weekly</span><span className="is-active">Monthly</span><span>Season</span></div>
-            <div className="auth-ranking-podium">
-              <div className="auth-podium-place is-second"><span>2</span><b>E</b><small>Enoch Ebu</small><em>2.6K NP</em></div>
-              <div className="auth-podium-place is-first"><i>♛</i><span>1</span><b>E</b><small>Edwin</small><em>2.7K NP</em></div>
-              <div className="auth-podium-place is-third"><span>3</span><b>B</b><small>Bright Kwesi</small><em>2.3K NP</em></div>
-            </div>
-            <p className="auth-ranking-note">Accuracy appears after 50 questions in this ranking period.</p>
-            <strong className="auth-ranking-competitors">COMPETITORS</strong>
-            <div className="auth-viewer-rank"><span>3</span><div><small>YOUR RANKING</small><strong>2.3K NP earned</strong></div><b>Start studying →</b></div>
-            <div className="auth-ranking-nav"><span>▦<small>Dashboard</small></span><span>▱<small>Modules</small></span><span>▣<small>Game</small></span><span className="is-active">♜<small>Rank</small></span></div>
+            <Image
+              alt=""
+              data-testid="auth-ranking-image"
+              draggable={false}
+              fill
+              priority
+              sizes="(min-width: 1024px) 16vw, 1px"
+              src="/auth-ranking-preview.png"
+            />
           </div>
         </div>
         <span className="auth-phone-home-indicator" data-testid="auth-phone-home-indicator" aria-hidden="true" />
@@ -240,7 +194,7 @@ function PhoneMockup() {
 
 function ValuePanel() {
   return (
-    <section aria-label="Animated preview of the MedNexus study dashboard and community rankings" className="auth-value-panel">
+    <section aria-label="Preview of the MedNexus dashboard on a laptop and Rankings on a phone" className="auth-value-panel">
       <header className="auth-brand-lockup">
         <span>
           <StethoscopeIcon size={28} />
