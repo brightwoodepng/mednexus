@@ -1,7 +1,7 @@
 "use client"
 
-import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
@@ -85,141 +85,66 @@ function Brand() {
   )
 }
 
-const LAPTOP_KEY_ROWS = [14, 14, 13, 12, 10] as const
-
-function DashboardPreview() {
-  return (
-    <div className="auth-dashboard-preview" data-testid="auth-dashboard-preview" aria-hidden="true">
-      <Image
-        alt=""
-        data-testid="auth-dashboard-image"
-        draggable={false}
-        fill
-        priority
-        sizes="(min-width: 1024px) 60vw, 1px"
-        src="/auth-dashboard-preview.png"
-      />
-    </div>
-  )
-}
-
-function LaptopMockup() {
-  return (
-    <div className="auth-laptop">
-      <span className="auth-laptop-bounds" data-testid="auth-laptop-mockup" aria-hidden="true" />
-      <div className="auth-laptop-lid">
-        <span className="auth-laptop-webcam" aria-hidden="true" />
-        <div className="auth-laptop-screen">
-          <DashboardPreview />
-        </div>
-      </div>
-
-      <span className="auth-laptop-hinge" data-testid="auth-laptop-hinge" aria-hidden="true" />
-      <div className="auth-laptop-deck" aria-hidden="true">
-        <div className="auth-laptop-keyboard" data-testid="auth-laptop-keyboard">
-          {LAPTOP_KEY_ROWS.map((keyCount, rowIndex) => (
-            <div className="auth-laptop-key-row" key={rowIndex}>
-              {Array.from({ length: keyCount }, (_, keyIndex) => (
-                <span
-                  className={`auth-laptop-key${rowIndex === 4 && keyIndex === 4 ? " auth-laptop-key-space" : ""}`}
-                  key={keyIndex}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-        <span className="auth-laptop-trackpad" data-testid="auth-laptop-trackpad" />
-      </div>
-      <div className="auth-laptop-front-edge" aria-hidden="true">
-        <span className="auth-laptop-lip" />
-      </div>
-      <span className="auth-laptop-ports" data-testid="auth-laptop-ports" aria-hidden="true" />
-    </div>
-  )
-}
-
-function PhoneStatusIcons() {
-  return (
-    <span className="auth-phone-status-icons" aria-hidden="true">
-      <svg viewBox="0 0 16 12" width="12" height="9" fill="currentColor">
-        <rect x="1" y="8" width="2" height="3" rx="0.7" />
-        <rect x="5" y="6" width="2" height="5" rx="0.7" />
-        <rect x="9" y="3" width="2" height="8" rx="0.7" />
-        <rect x="13" width="2" height="11" rx="0.7" />
-      </svg>
-      <svg viewBox="0 0 18 13" width="13" height="10" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7">
-        <path d="M1.5 4.5a11.2 11.2 0 0 1 15 0" />
-        <path d="M4.2 7.2a7.2 7.2 0 0 1 9.6 0" />
-        <path d="M7.2 10a2.7 2.7 0 0 1 3.6 0" />
-      </svg>
-      <svg viewBox="0 0 25 12" width="18" height="9" fill="none" stroke="currentColor" strokeWidth="1.3">
-        <rect x="1" y="1" width="20" height="10" rx="2.4" />
-        <path d="M23 4v4" />
-        <rect x="3" y="3" width="15.5" height="6" rx="1" fill="currentColor" stroke="none" />
-      </svg>
-    </span>
-  )
-}
-
-function PhoneMockup() {
-  return (
-    <div className="auth-phone" data-testid="auth-phone-mockup">
-      <span className="auth-phone-silent-button" aria-hidden="true" />
-      <span className="auth-phone-volume-buttons" aria-hidden="true" />
-      <span className="auth-phone-power-button" aria-hidden="true" />
-      <div className="auth-phone-glass">
-        <div className="auth-phone-status" data-testid="auth-phone-status-bar">
-          <span>9:41</span>
-          <PhoneStatusIcons />
-        </div>
-        <span className="auth-phone-island" data-testid="auth-phone-dynamic-island" aria-hidden="true" />
-        <div className="auth-phone-content">
-          <div className="auth-rankings-preview" data-testid="auth-rankings-preview" aria-hidden="true">
-            <Image
-              alt=""
-              data-testid="auth-ranking-image"
-              draggable={false}
-              fill
-              priority
-              sizes="(min-width: 1024px) 16vw, 1px"
-              src="/auth-ranking-preview.png"
-            />
-          </div>
-        </div>
-        <span className="auth-phone-home-indicator" data-testid="auth-phone-home-indicator" aria-hidden="true" />
-      </div>
-    </div>
-  )
-}
-
 function ValuePanel() {
   return (
-    <section aria-label="Preview of the MedNexus dashboard on a laptop and Rankings on a phone" className="auth-value-panel">
-      <header className="auth-brand-lockup">
-        <span>
-          <StethoscopeIcon size={28} />
+    <section aria-label="MedNexus product showcase" className="relative hidden min-h-[640px] text-foreground lg:block">
+      <header className="absolute left-0 top-0 z-20 flex items-center gap-3.5">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl ring-1 ring-primary/25">
+          <StethoscopeIcon size={24} />
         </span>
         <div>
-          <p>MedNexus</p>
-          <small>Medical learning workspace</small>
+          <p className="text-xl font-black tracking-tight">MedNexus</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Medical learning workspace</p>
         </div>
       </header>
 
-      <div className="auth-showcase-stage">
-        <LaptopMockup />
-        <PhoneMockup />
+      <div className="absolute inset-x-0 bottom-14 top-20">
+        <div className="absolute left-0 top-8 w-[82%] -rotate-[1.2deg] drop-shadow-[0_32px_30px_rgba(0,0,0,0.38)]">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] border-[6px] border-slate-800 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
+            <span aria-hidden="true" className="absolute left-1/2 top-0 z-20 h-3 w-20 -translate-x-1/2 rounded-b-xl bg-slate-950" />
+            <div className="relative h-full w-full overflow-hidden rounded-[1.05rem] bg-slate-950">
+              <Image
+                src="/auth/dashboard-preview.png"
+                alt="MedNexus MCQ dashboard displayed on a laptop"
+                fill
+                priority
+                unoptimized
+                sizes="(min-width: 1280px) 760px, (min-width: 1024px) 50vw, 0px"
+                className="select-none object-cover object-top"
+                draggable={false}
+              />
+            </div>
+          </div>
+          <div aria-hidden="true" className="relative mx-auto h-5 w-[108%] rounded-b-[55%] bg-gradient-to-b from-slate-400 via-slate-600 to-slate-900 shadow-xl">
+            <span className="absolute left-1/2 top-0 h-1.5 w-24 -translate-x-1/2 rounded-b-lg bg-slate-300/70" />
+          </div>
+        </div>
+
+        <div className="absolute bottom-1 right-[1%] z-10 w-[25%] rotate-[2deg] drop-shadow-[0_28px_25px_rgba(0,0,0,0.45)]">
+          <div className="relative aspect-[390/844] overflow-hidden rounded-[2rem] border-[6px] border-slate-800 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]">
+            <span aria-hidden="true" className="absolute left-1/2 top-2 z-20 h-3.5 w-14 -translate-x-1/2 rounded-full bg-black" />
+            <div className="relative h-full w-full overflow-hidden rounded-[1.45rem] bg-slate-950">
+              <Image
+                src="/auth/rankings-phone-preview.png"
+                alt="MedNexus rankings displayed on a phone"
+                fill
+                priority
+                unoptimized
+                sizes="(min-width: 1280px) 230px, (min-width: 1024px) 16vw, 0px"
+                className="select-none object-cover object-top"
+                draggable={false}
+              />
+            </div>
+            <span aria-hidden="true" className="absolute bottom-2 left-1/2 z-20 h-1 w-14 -translate-x-1/2 rounded-full bg-white/70" />
+          </div>
+        </div>
       </div>
 
-      <div className="auth-value-copy">
-        <span>
+      <div className="absolute bottom-0 left-1 flex items-center gap-3">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-lg">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" width={21} height={21} aria-hidden="true"><path d="m4 16 5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg>
         </span>
-        <div>
-          <p>Learn. Compete. Grow.</p>
-          <small>
-            Track your progress, challenge your peers, and reach the top.
-          </small>
-        </div>
+        <p className="text-base font-bold tracking-tight">Learn. Compete. Grow.</p>
       </div>
     </section>
   )
@@ -228,13 +153,12 @@ function ValuePanel() {
 // ── Footer ────────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <div className="auth-footer">
-      <p>Created by <strong>Britechinc</strong></p>
+    <div className="mt-6 flex justify-center">
       <a
         href="https://wa.me/233543982307"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-[#25D366] transition-colors hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-[#25D366] transition-colors hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40"
       >
         <WhatsAppIcon size={13} />
         Contact support
@@ -441,32 +365,20 @@ function LoginFields({
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground" htmlFor="login-index">Index Number</label>
-          <div className="relative">
-            <span className="auth-field-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={21} height={21}>
-                <path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-            </span>
-            <input
-              id="login-index"
-              ref={indexRef}
-              type="text"
-              autoComplete="username"
-              value={indexNumber}
-              onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
-              placeholder="SM/22/0092"
-              className="auth-login-input min-h-[58px] w-full rounded-2xl border border-input bg-background/85 py-3 pl-14 pr-5 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-            />
-          </div>
+          <input
+            id="login-index"
+            ref={indexRef}
+            type="text"
+            autoComplete="username"
+            value={indexNumber}
+            onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
+            placeholder="sm/sms/22/0092"
+            className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground" htmlFor="login-pw">Password</label>
           <div className="relative">
-            <span className="auth-field-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={21} height={21}>
-                <rect width="15" height="11" x="4.5" y="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>
-              </svg>
-            </span>
             <input
               id="login-pw"
               ref={passwordRef}
@@ -475,7 +387,7 @@ function LoginFields({
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError("") }}
               placeholder="Your password"
-              className="auth-login-input min-h-[58px] w-full rounded-2xl border border-input bg-background/85 py-3 pl-14 pr-12 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+              className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
             />
             <button
               type="button"
@@ -493,7 +405,7 @@ function LoginFields({
         <button
           type="submit"
           disabled={loading || !indexNumber.trim() || !password.trim()}
-          className="auth-btn-primary mt-2 flex min-h-[60px] items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-base font-semibold transition-[background-color,box-shadow,opacity] disabled:opacity-50 disabled:shadow-none"
+          className="auth-btn-primary mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-semibold transition-[background-color,box-shadow,opacity] disabled:opacity-50 disabled:shadow-none"
         >
           {loading ? "Signing in…" : "Log In"}
           {!loading && <ArrowRightIcon size={15} />}
@@ -509,20 +421,17 @@ function LoginFields({
         </button>
 
         {guestAccessEnabled && (
-          <>
-            <div className="auth-or-divider"><span>or</span></div>
-            <button
-              type="button"
-              onClick={onGuest}
-              className="auth-btn-secondary flex min-h-[60px] items-center justify-center gap-2 rounded-2xl px-5 py-3 text-base font-semibold transition-[background-color,border-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}>
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                <line x1="17" x2="22" y1="8" y2="8"/>
-              </svg>
-              Continue as guest
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={onGuest}
+            className="auth-btn-secondary flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              <line x1="17" x2="22" y1="8" y2="8"/>
+            </svg>
+            Continue as guest
+          </button>
         )}
 
         {registrationEnabled && (
@@ -707,39 +616,34 @@ export function AuthScreen({
   }, [guestAccessEnabled, registrationEnabled, view])
 
   return (
-    <main className="auth-landing safe-area-inset">
-      <div
-        className="absolute inset-x-4 top-4 z-30 flex justify-end sm:inset-x-6 lg:inset-x-8"
-        data-testid="auth-theme-band"
+    <main className="relative min-h-screen overflow-hidden px-4 py-14 safe-area-inset sm:px-6 lg:flex lg:items-center lg:px-10 lg:py-8">
+      <button
+        type="button"
+        onClick={() => setThemeOpen(true)}
+        title="Change theme"
+        className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-card hover:text-foreground"
       >
-        <button
-          type="button"
-          onClick={() => setThemeOpen(true)}
-          title="Change theme"
-          className="flex min-h-10 items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-          Theme
-        </button>
-      </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        Theme
+      </button>
 
       <div aria-hidden="true" className="pointer-events-none absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
       <div aria-hidden="true" className="pointer-events-none absolute -right-40 bottom-0 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
 
-      <div className="auth-landing-grid">
+      <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-8 xl:grid-cols-[minmax(0,1fr)_440px] xl:gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(390px,440px)]">
         <ValuePanel />
 
-        <div className="auth-card-shell" data-testid="auth-card-shell">
+        <div className="mx-auto w-full max-w-[440px]">
           <Brand />
-          <section className="glass-auth-card auth-card-panel" aria-labelledby="auth-title">
+          <section className="glass-auth-card rounded-[2rem] p-5 shadow-xl sm:p-8" aria-labelledby="auth-title">
             {view === "login" && (
               <>
-                <div className="auth-card-heading">
-                  <h2 id="auth-title">Welcome back</h2>
-                  <p>Sign in to continue to your workspace.</p>
+                <div className="mb-6">
+                  <h2 id="auth-title" className="text-2xl font-bold tracking-tight">Welcome back</h2>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Sign in to continue to your workspace.</p>
                 </div>
                 <LoginFields
                   guestAccessEnabled={guestAccessEnabled}
