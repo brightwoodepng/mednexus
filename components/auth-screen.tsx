@@ -87,34 +87,35 @@ function Brand() {
 const LAPTOP_KEY_ROWS = [13, 13, 12, 11, 8] as const
 
 const DASHBOARD_STATS = [
-  { label: "Answered", value: "248", detail: "trial questions", icon: "Q", tone: "sky" },
-  { label: "Accuracy", value: "84%", detail: "208 correct", icon: "%", tone: "emerald" },
-  { label: "Flagged", value: "12", detail: "for review", icon: "!", tone: "amber" },
-  { label: "Streak", value: "12d", detail: "studied today", icon: "↗", tone: "rose" },
+  { label: "Answered", value: "94", detail: "trial questions", icon: "▤", tone: "sky" },
+  { label: "Accuracy", value: "100%", detail: "94 correct", icon: "◎", tone: "emerald" },
+  { label: "Flagged", value: "0", detail: "for review", icon: "⚑", tone: "amber" },
+  { label: "Streak", value: "4d", detail: "last: Aug 1", icon: "◆", tone: "rose" },
 ] as const
 
 const STUDY_CARDS = [
-  { title: "Clinical Sciences", detail: "Medicine · Surgery · Paediatrics", progress: 72, action: "Continue" },
-  { title: "Basic Sciences", detail: "Anatomy · Physiology · Biochemistry", progress: 45, action: "Study now" },
+  { title: "Integument II OSCE", detail: "1 discipline · 30Q", progress: 72, action: "Open Module", tone: "rose" },
+  { title: "MED 418 Integument II", detail: "4 disciplines · 306Q", progress: 48, action: "Open Module", tone: "sky" },
 ] as const
 
-const RANKING_ROWS = [
-  { rank: 4, initials: "BW", name: "Bright Woode", points: "9,740 NP" },
-  { rank: 5, initials: "NY", name: "Nana Yeboah", points: "8,610 NP" },
-  { rank: 6, initials: "AN", name: "Adwoa Nyarko", points: "7,950 NP" },
+const DASHBOARD_NAV = [
+  ["▦", "Dashboard"], ["▱", "Study Modules"], ["⌁", "Weak Areas"],
+  ["◉", "Live Assessments"], ["▣", "Game Mode"], ["▤", "Nexus Store"], ["♜", "Leaderboard"],
 ] as const
 
 function DashboardPreview() {
   return (
     <div className="auth-dashboard-preview" data-testid="auth-dashboard-preview" aria-hidden="true">
       <aside className="auth-preview-sidebar">
-        <span className="auth-preview-mark">M</span>
-        {Array.from({ length: 5 }, (_, index) => <span className={`auth-preview-nav-dot${index === 0 ? " is-active" : ""}`} key={index} />)}
+        <div className="auth-preview-brand"><span>◡</span><b>MedNexus</b></div>
+        <div className="auth-preview-workspace"><small>WORKSPACE</small><strong>▱ MCQ Q-Bank</strong><span>Switch study workspace</span></div>
+        <nav>{DASHBOARD_NAV.map(([icon, label], index) => <span className={index === 0 ? "is-active" : ""} key={label}><i>{icon}</i>{label}</span>)}</nav>
+        <div className="auth-preview-user"><b>BK</b><span><strong>Bright</strong><small>Student</small></span></div>
       </aside>
       <div className="auth-preview-dashboard-body">
         <header className="auth-preview-dashboard-hero">
-          <div><small>Good morning,</small><strong>Ama 👋</strong><span>Your future patients are counting on today&apos;s study.</span></div>
-          <div className="auth-preview-streak"><b>12</b><small>day streak</small></div>
+          <div><small>Good afternoon,</small><strong>Bright 👋</strong><span>Commit to the process — excellence follows.</span></div>
+          <div className="auth-preview-streak"><span>🔥</span><b>4</b><small>day streak</small></div>
         </header>
         <div className="auth-preview-stats">
           {DASHBOARD_STATS.map(stat => (
@@ -125,11 +126,11 @@ function DashboardPreview() {
           ))}
         </div>
         <section className="auth-preview-progress-panel">
-          <div className="auth-preview-section-heading"><div><strong>Choose a module</strong><span>Build your next practice set</span></div><b>View all →</b></div>
+          <div className="auth-preview-section-heading"><div><strong>Study Modules</strong></div><b>View all →</b></div>
           <div className="auth-preview-study-grid">
             {STUDY_CARDS.map((card, index) => (
-              <article className={`auth-preview-study-card auth-preview-highlight-${index % 2}`} key={card.title}>
-                <span className="auth-preview-card-icon">{index + 1}</span>
+              <article className={`auth-preview-study-card auth-preview-module-${card.tone} auth-preview-highlight-${index % 2}`} key={card.title}>
+                <span className="auth-preview-card-icon">▱</span>
                 <strong>{card.title}</strong><small>{card.detail}</small>
                 <div className="auth-preview-card-track"><span style={{ "--preview-progress": `${card.progress}%` } as React.CSSProperties} /></div>
                 <b>{card.action} →</b>
@@ -213,17 +214,17 @@ function PhoneMockup() {
         <span className="auth-phone-island" data-testid="auth-phone-dynamic-island" aria-hidden="true" />
         <div className="auth-phone-content">
           <div className="auth-rankings-preview" data-testid="auth-rankings-preview" aria-hidden="true">
-            <header><small>Community leaderboard</small><strong>Rankings</strong><span>Nexus Points earned this month</span></header>
-            <div className="auth-ranking-periods"><span>Weekly</span><span className="is-active">Monthly</span><span>All time</span></div>
+            <header><strong>♜ Rankings</strong><span>Nexus Points earned in the last 30 days</span></header>
+            <div className="auth-ranking-periods"><span>Weekly</span><span className="is-active">Monthly</span><span>Season</span></div>
             <div className="auth-ranking-podium">
-              <div className="auth-podium-place is-second"><span>2</span><b>KA</b><small>Kojo Asare</small><em>11,320</em></div>
-              <div className="auth-podium-place is-first"><span>1</span><b>AM</b><small>Ama Mensah</small><em>12,840</em></div>
-              <div className="auth-podium-place is-third"><span>3</span><b>EO</b><small>Esi Owusu</small><em>10,890</em></div>
+              <div className="auth-podium-place is-second"><span>2</span><b>E</b><small>Enoch Ebu</small><em>2.6K NP</em></div>
+              <div className="auth-podium-place is-first"><span>1</span><b>E</b><small>Edwin</small><em>2.7K NP</em></div>
+              <div className="auth-podium-place is-third"><span>3</span><b>B</b><small>Bright Kwesi</small><em>2.3K NP</em></div>
             </div>
-            <div className="auth-ranking-list">
-              {RANKING_ROWS.map(row => <div className="auth-ranking-row" key={row.rank}><span>{row.rank}</span><b>{row.initials}</b><strong>{row.name}</strong><small>{row.points}</small></div>)}
-            </div>
-            <div className="auth-viewer-rank"><span>12</span><b>YOU</b><strong>Your rank</strong><small>6,120 NP</small></div>
+            <p className="auth-ranking-note">Accuracy appears after 50 questions in this ranking period.</p>
+            <strong className="auth-ranking-competitors">COMPETITORS</strong>
+            <div className="auth-viewer-rank"><span>3</span><div><small>YOUR RANKING</small><strong>2.3K NP earned</strong></div><b>Start studying →</b></div>
+            <div className="auth-ranking-nav"><span>▦<small>Dashboard</small></span><span>▱<small>Modules</small></span><span>▣<small>Game</small></span><span className="is-active">♜<small>Rank</small></span></div>
           </div>
         </div>
         <span className="auth-phone-home-indicator" data-testid="auth-phone-home-indicator" aria-hidden="true" />
