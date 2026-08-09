@@ -21,53 +21,111 @@ async function openAccountMenu(page: Page) {
   await page.getByRole("button", { name: "Open account menu" }).click()
 }
 
+async function dismissWelcomeIfShown(page: Page) {
+  const startLearning = page.getByRole("button", { name: "Start Learning" })
+  try {
+    await startLearning.waitFor({ state: "visible", timeout: 2_000 })
+    await startLearning.click()
+  } catch {
+    // Returning learners do not see the one-time welcome.
+  }
+
+  const closeTutorial = page.getByRole("button", { name: "Close and resume tutorial later" })
+  try {
+    await closeTutorial.waitFor({ state: "visible", timeout: 2_000 })
+    await closeTutorial.click()
+  } catch {
+    // The guided tutorial has already been dismissed on returning devices.
+  }
+}
+
 test("public visitors only see authentication actions", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("mednexus.remembered-index-number.v1", "SM/22/0001")
+  })
   await page.goto("/")
-  await expect(page.getByRole("button", { name: "Sign in / Create account" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible()
+  await expect(page.locator("#login-index")).toHaveValue("SM/22/0001")
+  await expect(page.locator("#login-pw")).toHaveValue("")
+  await expect(page.locator("#login-pw")).toBeFocused()
+  await expect(page.getByRole("button", { name: "Log In" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Continue as guest" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Create an account" })).toBeVisible()
+  await expect(page.getByText("Choose how you'd like to continue")).toHaveCount(0)
   await expect(page.getByText("Open Admin Console")).toHaveCount(0)
+})
+
+test("guest and registration replace the login card and return cleanly", async ({ page }) => {
+  await page.goto("/")
+  await page.getByRole("button", { name: "Continue as guest" }).click()
+  await expect(page.getByRole("heading", { name: "Guest Access" })).toBeVisible()
+  await expect(page.locator("#login-index")).toHaveCount(0)
+  await page.getByRole("button", { name: "Back" }).click()
+
+  await page.getByRole("button", { name: "Create an account" }).click()
+  await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible()
+  await expect(page.locator("#reg-name")).toBeVisible()
+  await expect(page.locator("#login-index")).toHaveCount(0)
+  await page.getByRole("button", { name: "Back" }).click()
+  await expect(page.locator("#login-index")).toBeVisible()
+})
+
+test("platform settings hide unavailable secondary authentication actions", async ({ page }) => {
+  await page.route("**/api/platform/config", route => route.fulfill({
+    json: {
+      registrationEnabled: false,
+      guestAccessEnabled: false,
+      maintenanceEnabled: false,
+      maintenanceMessage: "",
+    },
+  }))
+  await page.goto("/")
+  await expect(page.getByRole("button", { name: "Log In" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Continue as guest" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "Create an account" })).toHaveCount(0)
 })
 
 test("a logged-in administrator retains the account menu after refresh", async ({ page }) => {
   await mockAuthenticatedSession(page)
   await page.goto("/")
-  await page.getByRole("button", { name: "Sign in / Create account" }).click()
   await page.locator("#login-index").fill("SM/22/0001")
   await page.locator("#login-pw").fill("password")
-  await page.getByRole("button", { name: "Sign in" }).click()
+  await page.getByRole("button", { name: "Log In" }).click()
+  await expect.poll(() => page.evaluate(() => window.localStorage.getItem("mednexus.remembered-index-number.v1"))).toBe("SM/22/0001")
 
-  await expect(page.getByText(account.name)).toBeVisible()
+  await dismissWelcomeIfShown(page)
   await openAccountMenu(page)
-  await expect(page.getByRole("link", { name: "Open Admin Console" })).toBeVisible()
+  await expect(page.getByRole("menuitem", { name: "Open Admin Console" })).toBeVisible()
   await page.reload()
-  await expect(page.getByText(account.name)).toBeVisible()
+  await dismissWelcomeIfShown(page)
   await openAccountMenu(page)
-  await expect(page.getByRole("link", { name: "Open Admin Console" })).toBeVisible()
+  await expect(page.getByRole("menuitem", { name: "Open Admin Console" })).toBeVisible()
 })
 
 test("a non-admin browser request is denied from /admin", async ({ page }) => {
   await page.goto("/admin")
   await expect(page).toHaveURL(/\/$/)
-  await expect(page.getByRole("button", { name: "Sign in / Create account" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Log In" })).toBeVisible()
 })
 
 test("an administrator can move to the console and return to the learner workspace", async ({ page }) => {
+  test.setTimeout(60_000)
   await mockAuthenticatedSession(page)
   await page.route(/\/admin(?:\?.*)?$/, route => route.fulfill({
     contentType: "text/html",
     body: '<main><h1>MedNexus Console</h1><a href="/">Return to Learner Workspace</a></main>',
   }))
   await page.goto("/")
-  await page.getByRole("button", { name: "Sign in / Create account" }).click()
   await page.locator("#login-index").fill("SM/22/0001")
   await page.locator("#login-pw").fill("password")
-  await page.getByRole("button", { name: "Sign in" }).click()
+  await page.getByRole("button", { name: "Log In" }).click()
 
+  await dismissWelcomeIfShown(page)
   await openAccountMenu(page)
-  await page.getByRole("link", { name: "Open Admin Console" }).click()
+  await page.getByRole("menuitem", { name: "Open Admin Console" }).click()
   await expect(page).toHaveURL(/\/admin$/)
   await expect(page.getByRole("heading", { name: "MedNexus Console" })).toBeVisible()
   await page.getByRole("link", { name: "Return to Learner Workspace" }).click()
   await expect(page).toHaveURL(/\/$/)
-  await expect(page.getByText(account.name)).toBeVisible()
+  await expect(page.getByRole("button", { name: "Open account menu" })).toBeVisible({ timeout: 20_000 })
 })

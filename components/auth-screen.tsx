@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
 import { StethoscopeIcon, ArrowRightIcon } from "@/components/icons"
 import { CLASS_LEVELS, ALL_LEVELS } from "@/lib/levels"
+import { readRememberedIndexNumber } from "@/lib/auth-preferences"
 
 function WhatsAppIcon({ size = 14 }: { size?: number }) {
   return (
@@ -68,33 +69,45 @@ function LevelSelect({ id, value, onChange, required, levels = CLASS_LEVELS }: {
 // ── Brand ─────────────────────────────────────────────────────────────────────
 function Brand() {
   return (
-    <div className="mb-8 flex flex-col items-center text-center">
-      {/* Logo mark */}
-      <div className="relative mb-5">
-        {/* Ambient glow halo */}
+    <div className="mb-6 flex flex-col items-center text-center lg:hidden">
+      <div className="relative mb-3">
         <div
           aria-hidden="true"
-          className="absolute inset-0 rounded-[2.25rem] bg-primary/25 blur-2xl scale-[1.45] auth-logo-glow"
+          className="absolute inset-0 scale-[1.4] rounded-2xl bg-primary/25 blur-xl auth-logo-glow"
         />
-        {/* Icon container */}
-        <div className="relative flex h-[88px] w-[88px] items-center justify-center rounded-[2.25rem] bg-primary text-primary-foreground shadow-2xl ring-1 ring-primary/20">
-          <StethoscopeIcon size={42} />
-          {/* Inner top-edge highlight */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[2.25rem]"
-            style={{ background: "linear-gradient(160deg, rgba(255,255,255,0.22) 0%, transparent 55%)" }}
-          />
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl ring-1 ring-primary/20">
+          <StethoscopeIcon size={28} />
         </div>
       </div>
-
-      {/* Wordmark */}
-      <h1 className="text-4xl font-bold tracking-tight leading-none">MedNexus</h1>
-      <p className="mt-2.5 text-sm text-muted-foreground leading-relaxed whitespace-nowrap">
-        Premium clinical Q-Bank for medical learners
-      </p>
-
+      <h1 className="text-3xl font-bold leading-none tracking-tight">MedNexus</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Your medical learning workspace</p>
     </div>
+  )
+}
+
+function ValuePanel() {
+  const features = [
+    ["MCQ Q-Bank", "Practice and exam preparation"],
+    ["Theory Vault", "Structured long-answer revision"],
+    ["Live Assessments", "Join timed assessments securely"],
+  ]
+  return (
+    <section className="relative hidden min-h-[36rem] overflow-hidden rounded-[2rem] border border-primary/20 bg-primary p-10 text-primary-foreground shadow-2xl lg:flex lg:flex-col lg:justify-between">
+      <div aria-hidden="true" className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+      <div aria-hidden="true" className="absolute -bottom-28 -left-16 h-72 w-72 rounded-full bg-black/15 blur-3xl" />
+      <div className="relative">
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/20"><StethoscopeIcon size={25} /></span>
+          <span className="text-xl font-bold tracking-tight">MedNexus</span>
+        </div>
+        <p className="mt-16 text-xs font-bold uppercase tracking-[0.2em] text-primary-foreground/70">Study with purpose</p>
+        <h1 className="mt-4 max-w-lg text-5xl font-bold leading-[1.05] tracking-tight">Learn, practise, and progress in one place.</h1>
+        <p className="mt-5 max-w-md text-base leading-7 text-primary-foreground/75">A focused clinical learning platform built for medical students.</p>
+      </div>
+      <div className="relative grid gap-3">
+        {features.map(([title, description]) => <div key={title} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm"><p className="text-sm font-bold">{title}</p><p className="mt-0.5 text-xs text-primary-foreground/65">{description}</p></div>)}
+      </div>
+    </section>
   )
 }
 
@@ -119,69 +132,6 @@ function Footer() {
   )
 }
 
-// ── Entry choices ─────────────────────────────────────────────────────────────
-function RoleSelect({ onSelect }: { onSelect: (tab: "guest" | "student") => void }) {
-  return (
-    <div className="glass-auth-card rounded-3xl p-7">
-      {/* Card header */}
-      <div className="mb-6 text-center">
-        <h2 className="text-xl font-bold tracking-tight">Welcome</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Choose how you'd like to continue</p>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {/* Primary CTA — Sign in / Register */}
-        <button
-          onClick={() => onSelect("student")}
-          className="group flex items-center gap-4 rounded-2xl bg-primary px-5 py-4 text-left text-primary-foreground shadow-lg transition-all hover:opacity-90 active:scale-[0.988]"
-          style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.16), 0 4px 20px rgba(0,0,0,0.18)" }}
-        >
-          {/* Icon cell */}
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/15">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={17} height={17}>
-              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
-          </div>
-          {/* Text */}
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold leading-snug">Sign in / Create account</div>
-            <div className="mt-0.5 text-xs font-normal opacity-65">Cloud sync · Full features</div>
-          </div>
-          {/* Arrow */}
-          <ArrowRightIcon
-            size={15}
-            className="shrink-0 opacity-55 transition-all group-hover:opacity-90 group-hover:translate-x-0.5"
-          />
-        </button>
-
-        {/* Secondary CTA — Guest */}
-        <button
-          onClick={() => onSelect("guest")}
-          className="group flex items-center gap-4 rounded-2xl border border-border/70 bg-background/50 px-5 py-4 text-left transition-all hover:bg-background/80 active:scale-[0.988]"
-        >
-          {/* Icon cell */}
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={17} height={17}>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              <line x1="17" x2="22" y1="8" y2="8"/>
-            </svg>
-          </div>
-          {/* Text */}
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-foreground leading-snug">Continue as guest</div>
-            <div className="mt-0.5 text-xs font-normal text-muted-foreground">Saves locally on this device</div>
-          </div>
-          {/* Arrow */}
-          <ArrowRightIcon
-            size={15}
-            className="shrink-0 text-muted-foreground opacity-40 transition-all group-hover:opacity-70 group-hover:translate-x-0.5"
-          />
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // ── Guest Form ────────────────────────────────────────────────────────────────
 function GuestForm({ onBack }: { onBack: () => void }) {
   const { enterApp } = useApp()
@@ -198,9 +148,9 @@ function GuestForm({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="glass-auth-card rounded-3xl p-7">
+    <div>
       <BackButton onClick={onBack} />
-      <h2 className="text-xl font-bold tracking-tight">Guest Access</h2>
+      <h2 id="auth-title" className="text-xl font-bold tracking-tight">Guest Access</h2>
       <p className="mt-1.5 mb-6 text-sm text-muted-foreground leading-relaxed">
         Progress saves on this device only. Sign out to clear your session.
       </p>
@@ -227,115 +177,10 @@ function GuestForm({ onBack }: { onBack: () => void }) {
           disabled={loading || !name.trim() || !classLevel}
           className="mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:opacity-90 hover:shadow-primary/20 active:scale-[0.988] disabled:opacity-50 disabled:shadow-none"
         >
-          {loading ? "Setting up…" : "Enter MedNexus"}
+          {loading ? "Setting up…" : "Continue as Guest"}
           {!loading && <ArrowRightIcon size={15} />}
         </button>
       </form>
-    </div>
-  )
-}
-
-// ── Guest Modal (inline from Login) ──────────────────────────────────────────
-function GuestModal({ onClose }: { onClose: () => void }) {
-  const { enterApp } = useApp()
-  const [name, setName] = useState("")
-  const [classLevel, setClassLevel] = useState("")
-  const [loading, setLoading] = useState(false)
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name.trim() || !classLevel) return
-    setLoading(true)
-    await enterApp(name, classLevel)
-    setLoading(false)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-sm glass-auth-card rounded-3xl p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight">Continue as Guest</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Progress saves locally on this device only.</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-xl p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
-              <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-            </svg>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="gm-name">Your name</label>
-            <input
-              id="gm-name"
-              type="text"
-              autoFocus
-              autoComplete="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Dr. Jane Doe"
-              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="gm-level">Level / Year</label>
-            <LevelSelect id="gm-level" value={classLevel} onChange={setClassLevel} required levels={ALL_LEVELS} />
-          </div>
-          <button
-            type="submit"
-            disabled={loading || !name.trim() || !classLevel}
-            className="mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all hover:opacity-90 hover:shadow-primary/20 active:scale-[0.988] disabled:opacity-50 disabled:shadow-none"
-          >
-            {loading ? "Setting up…" : "Enter MedNexus"}
-            {!loading && <ArrowRightIcon size={15} />}
-          </button>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// ── Student Form (Login + Register toggled) ────────────────────────────────────
-function StudentForm({ onBack }: { onBack: () => void }) {
-  const [mode, setMode] = useState<"login" | "register">("register")
-
-  return (
-    <div className="glass-auth-card rounded-3xl overflow-hidden">
-      {/* Tab toggle */}
-      <div className="flex border-b border-border/60">
-        <button
-          type="button"
-          onClick={() => setMode("register")}
-          className={`flex-1 py-3.5 text-sm font-semibold tracking-tight transition-colors ${
-            mode === "register"
-              ? "bg-transparent text-foreground border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Create Account
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("login")}
-          className={`flex-1 py-3.5 text-sm font-semibold tracking-tight transition-colors ${
-            mode === "login"
-              ? "bg-transparent text-foreground border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Log In
-        </button>
-      </div>
-
-      <div className="p-7">
-        <BackButton onClick={onBack} />
-        {mode === "login" ? <LoginFields /> : <RegisterFields onRegistered={() => setMode("login")} />}
-      </div>
     </div>
   )
 }
@@ -428,7 +273,7 @@ function OtpResetFields({ onBack }: { onBack: () => void }) {
 // ── Error alert ───────────────────────────────────────────────────────────────
 function ErrorAlert({ message }: { message: string }) {
   return (
-    <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+    <div role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15} className="mt-0.5 shrink-0">
         <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
         <path d="M12 9v4"/><path d="M12 17h.01"/>
@@ -439,19 +284,37 @@ function ErrorAlert({ message }: { message: string }) {
 }
 
 // ── Login Fields ──────────────────────────────────────────────────────────────
-function LoginFields() {
+function LoginFields({
+  guestAccessEnabled,
+  registrationEnabled,
+  onGuest,
+  onRegister,
+  onOtp,
+}: {
+  guestAccessEnabled: boolean
+  registrationEnabled: boolean
+  onGuest: () => void
+  onRegister: () => void
+  onOtp: () => void
+}) {
   const { loginUser } = useApp()
-  const [mode, setMode] = useState<"login" | "otp">("login")
   const [indexNumber, setIndexNumber] = useState("")
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [guestModalOpen, setGuestModalOpen] = useState(false)
+  const indexRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
-  if (mode === "otp") {
-    return <OtpResetFields onBack={() => setMode("login")} />
-  }
+  useEffect(() => {
+    const rememberedIndex = readRememberedIndexNumber()
+    if (rememberedIndex) {
+      setIndexNumber(rememberedIndex)
+      window.requestAnimationFrame(() => passwordRef.current?.focus())
+      return
+    }
+    indexRef.current?.focus()
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -464,15 +327,14 @@ function LoginFields() {
   }
 
   return (
-    <>
-      {guestModalOpen && <GuestModal onClose={() => setGuestModalOpen(false)} />}
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground" htmlFor="login-index">Index Number</label>
           <input
             id="login-index"
+            ref={indexRef}
             type="text"
-            autoFocus
+            autoComplete="username"
             value={indexNumber}
             onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
             placeholder="sm/sms/22/0092"
@@ -484,13 +346,20 @@ function LoginFields() {
           <div className="relative">
             <input
               id="login-pw"
+              ref={passwordRef}
               type={showPw ? "text" : "password"}
+              autoComplete="current-password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError("") }}
               placeholder="Your password"
               className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
             />
-            <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              type="button"
+              onClick={() => setShowPw((v) => !v)}
+              aria-label={showPw ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
               <EyeIcon open={showPw} />
             </button>
           </div>
@@ -509,26 +378,36 @@ function LoginFields() {
 
         <button
           type="button"
-          onClick={() => setGuestModalOpen(true)}
-          className="flex items-center justify-center gap-2 rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            <line x1="17" x2="22" y1="8" y2="8"/>
-          </svg>
-          Continue as Guest
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMode("otp")}
+          onClick={onOtp}
           className="text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           Forgot password?{" "}
           <span className="font-semibold text-primary">Enter with OTP</span>
         </button>
+
+        {guestAccessEnabled && (
+          <button
+            type="button"
+            onClick={onGuest}
+            className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-border px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              <line x1="17" x2="22" y1="8" y2="8"/>
+            </svg>
+            Continue as guest
+          </button>
+        )}
+
+        {registrationEnabled && (
+          <p className="text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <button type="button" onClick={onRegister} className="font-semibold text-primary hover:underline">
+              Create an account
+            </button>
+          </p>
+        )}
       </form>
-    </>
   )
 }
 
@@ -646,7 +525,12 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
             placeholder="Min. 6 characters"
             className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
           />
-          <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+          <button
+            type="button"
+            onClick={() => setShowPw((v) => !v)}
+            aria-label={showPw ? "Hide password" : "Show password"}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
             <EyeIcon open={showPw} />
           </button>
         </div>
@@ -678,13 +562,26 @@ function RegisterFields({ onRegistered }: { onRegistered: () => void }) {
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
-export function AuthScreen() {
-  const [view, setView] = useState<"role-select" | "guest" | "student">("role-select")
+type AuthView = "login" | "register" | "guest" | "otp"
+
+export function AuthScreen({
+  registrationEnabled = true,
+  guestAccessEnabled = true,
+}: {
+  registrationEnabled?: boolean
+  guestAccessEnabled?: boolean
+}) {
+  const [view, setView] = useState<AuthView>("login")
   const [themeOpen, setThemeOpen] = useState(false)
 
+  useEffect(() => {
+    if ((view === "guest" && !guestAccessEnabled) || (view === "register" && !registrationEnabled)) {
+      setView("login")
+    }
+  }, [guestAccessEnabled, registrationEnabled, view])
+
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center px-5 py-14 safe-area-inset">
-      {/* Theme button — top right */}
+    <main className="relative min-h-screen px-4 py-16 safe-area-inset sm:px-6 lg:flex lg:items-center lg:px-8 lg:py-8">
       <button
         type="button"
         onClick={() => setThemeOpen(true)}
@@ -698,12 +595,49 @@ export function AuthScreen() {
         Theme
       </button>
 
-      <div className="w-full max-w-[420px]">
-        <Brand />
-        {view === "role-select" && <RoleSelect onSelect={setView} />}
-        {view === "guest" && <GuestForm onBack={() => setView("role-select")} />}
-        {view === "student" && <StudentForm onBack={() => setView("role-select")} />}
-        <Footer />
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.08fr_0.92fr]">
+        <ValuePanel />
+
+        <div className="mx-auto w-full max-w-[440px]">
+          <Brand />
+          <section className="glass-auth-card rounded-3xl p-5 shadow-xl sm:p-7" aria-labelledby="auth-title">
+            {view === "login" && (
+              <>
+                <div className="mb-6">
+                  <h2 id="auth-title" className="text-2xl font-bold tracking-tight">Welcome back</h2>
+                  <p className="mt-1.5 text-sm text-muted-foreground">Sign in to continue to your workspace.</p>
+                </div>
+                <LoginFields
+                  guestAccessEnabled={guestAccessEnabled}
+                  registrationEnabled={registrationEnabled}
+                  onGuest={() => setView("guest")}
+                  onRegister={() => setView("register")}
+                  onOtp={() => setView("otp")}
+                />
+              </>
+            )}
+
+            {view === "guest" && guestAccessEnabled && <GuestForm onBack={() => setView("login")} />}
+
+            {view === "register" && registrationEnabled && (
+              <div>
+                <BackButton onClick={() => setView("login")} />
+                <h2 id="auth-title" className="text-xl font-bold tracking-tight">Create your account</h2>
+                <p className="mb-6 mt-1.5 text-sm text-muted-foreground">Save your progress and use MedNexus across devices.</p>
+                <RegisterFields onRegistered={() => setView("login")} />
+              </div>
+            )}
+
+            {view === "otp" && (
+              <div>
+                <h2 id="auth-title" className="text-xl font-bold tracking-tight">Reset access</h2>
+                <p className="mb-6 mt-1.5 text-sm text-muted-foreground">Request a one-time reset token, then use it to sign in.</p>
+                <OtpResetFields onBack={() => setView("login")} />
+              </div>
+            )}
+          </section>
+          <Footer />
+        </div>
       </div>
 
       <ThemeModal open={themeOpen} onClose={() => setThemeOpen(false)} />
