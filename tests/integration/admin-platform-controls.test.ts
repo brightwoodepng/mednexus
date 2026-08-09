@@ -7,6 +7,8 @@ const settings=read("components/admin/system-settings-workspace.tsx")
 const settingsApi=read("app/api/admin/settings/route.ts")
 const source=read("components/question-bank-source-manager.tsx")
 const sourceApi=read("app/api/admin/question-bank/route.ts")
+const taxonomyApi=read("app/api/admin/taxonomy/route.ts")
+const database=read("lib/db.ts")
 
 describe("admin platform controls",()=>{
   it("stages and validates settings with health and audit feedback",()=>{
@@ -28,5 +30,12 @@ describe("admin platform controls",()=>{
     expect(sourceApi).toContain("body.confirmation !== confirmation")
     expect(sourceApi).toContain("invalidated: true")
     expect(sourceApi).toContain("backup")
+  })
+
+  it("migrates admin platform tables and binds taxonomy actions safely",()=>{
+    expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-08-09-admin-platform-controls-v1"')
+    expect(taxonomyApi).toContain('const updateParameters = action === "move_discipline"')
+    expect(taxonomyApi).toContain(': [body.module, discipline, body.newName?.trim() ?? null]')
+    expect(taxonomyApi).toContain("Modules and disciplines are temporarily unavailable")
   })
 })

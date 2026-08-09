@@ -6,36 +6,44 @@ import { measuredJson } from "@/lib/api-efficiency"
 export async function GET(req: NextRequest) {
   const queryStartedAt = performance.now()
   if (!await requireAdminRequest(req, "manage_mcq_content")) return adminAccessDenied(req)
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
-  const result = await pool.query<{ module_name: string; discipline: string; question_count: number }>(
-    `SELECT
-       COALESCE(NULLIF(BTRIM(question.value->>'module'), ''), 'Unassigned') AS module_name,
-       COALESCE(NULLIF(BTRIM(question.value->>'subject'), ''), 'Unassigned') AS discipline,
-       COUNT(*)::int AS question_count
-     FROM mednexus_questions source
-     CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
-     WHERE source.id=1
-     GROUP BY 1,2
-     ORDER BY 1,2`,
-  )
-  const grouped = new Map<string, Array<{ name: string; questionCount: number }>>()
-  for (const row of result.rows) {
-    const disciplines = grouped.get(row.module_name) ?? []
-    disciplines.push({ name: row.discipline, questionCount: Number(row.question_count) })
-    grouped.set(row.module_name, disciplines)
+  try {
+    const { default: pool, ensureSchema } = await import("@/lib/db")
+    await ensureSchema()
+    const result = await pool.query<{ module_name: string; discipline: string; question_count: number }>(
+      `SELECT
+         COALESCE(NULLIF(BTRIM(question.value->>'module'), ''), 'Unassigned') AS module_name,
+         COALESCE(NULLIF(BTRIM(question.value->>'subject'), ''), 'Unassigned') AS discipline,
+         COUNT(*)::int AS question_count
+       FROM mednexus_questions source
+       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
+       WHERE source.id=1
+       GROUP BY 1,2
+       ORDER BY 1,2`,
+    )
+    const grouped = new Map<string, Array<{ name: string; questionCount: number }>>()
+    for (const row of result.rows) {
+      const disciplines = grouped.get(row.module_name) ?? []
+      disciplines.push({ name: row.discipline, questionCount: Number(row.question_count) })
+      grouped.set(row.module_name, disciplines)
+    }
+    const modules = [...grouped].map(([name, disciplines]) => ({
+      name,
+      questionCount: disciplines.reduce((sum, item) => sum + item.questionCount, 0),
+      disciplines,
+    }))
+    return measuredJson({
+      route: "GET /api/admin/taxonomy",
+      queryStartedAt,
+      rowCount: result.rows.length,
+      payload: { modules },
+    }, { headers: { "Cache-Control": "private, max-age=60" } })
+  } catch (error) {
+    console.error("[admin/taxonomy GET]", error)
+    return NextResponse.json(
+      { error: "Modules and disciplines are temporarily unavailable. Retry after checking the database connection." },
+      { status: 503 },
+    )
   }
-  const modules = [...grouped].map(([name, disciplines]) => ({
-    name,
-    questionCount: disciplines.reduce((sum, item) => sum + item.questionCount, 0),
-    disciplines,
-  }))
-  return measuredJson({
-    route: "GET /api/admin/taxonomy",
-    queryStartedAt,
-    rowCount: result.rows.length,
-    payload: { modules },
-  }, { headers: { "Cache-Control": "private, max-age=60" } })
 }
 
 export async function PATCH(req: NextRequest) {
@@ -74,6 +82,9 @@ export async function PATCH(req: NextRequest) {
           ? `jsonb_set(item.value, '{subject}', to_jsonb($3::text), true)`
           : `jsonb_set(jsonb_set(item.value, '{module}', to_jsonb($4::text), true),
               '{subject}', to_jsonb(COALESCE(NULLIF($5::text,''), item.value->>'subject')), true)`
+      const updateParameters = action === "move_discipline"
+        ? [body.module, discipline, null, body.destinationModule?.trim() ?? null, body.destinationDiscipline?.trim() ?? null]
+        : [body.module, discipline, body.newName?.trim() ?? null]
       await client.query(
         `UPDATE mednexus_questions source
          SET data=(
@@ -85,7 +96,7 @@ export async function PATCH(req: NextRequest) {
              WITH ORDINALITY item(value,ordinality)
          ),updated_at=NOW()
          WHERE source.id=1`,
-        [body.module, discipline, body.newName?.trim() ?? null, body.destinationModule?.trim() ?? null, body.destinationDiscipline?.trim() ?? null],
+        updateParameters,
       )
     }
     await auditAdmin(client, admin.uid, action!, "mcq_taxonomy", body.discipline || body.module || null, { ...body, confirm: undefined, affected })
