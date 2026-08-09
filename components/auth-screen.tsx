@@ -111,33 +111,37 @@ function DashboardPreview() {
         <div className="auth-preview-workspace"><small>WORKSPACE</small><strong>▱ MCQ Q-Bank</strong><span>Switch study workspace</span></div>
         <nav>{DASHBOARD_NAV.map(([icon, label], index) => <span className={index === 0 ? "is-active" : ""} key={label}><i>{icon}</i>{label}</span>)}</nav>
         <div className="auth-preview-user"><b>BK</b><span><strong>Bright</strong><small>Student</small></span></div>
+        <div className="auth-preview-admin"><span>⌘</span> Admin Console</div>
       </aside>
-      <div className="auth-preview-dashboard-body">
-        <header className="auth-preview-dashboard-hero">
-          <div><small>Good afternoon,</small><strong>Bright 👋</strong><span>Commit to the process — excellence follows.</span></div>
-          <div className="auth-preview-streak"><span>🔥</span><b>4</b><small>day streak</small></div>
-        </header>
-        <div className="auth-preview-stats">
-          {DASHBOARD_STATS.map(stat => (
-            <article className={`auth-preview-stat auth-preview-stat-${stat.tone}`} key={stat.label}>
-              <span className="auth-preview-stat-icon">{stat.icon}</span>
-              <div><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.detail}</small></div>
-            </article>
-          ))}
-        </div>
-        <section className="auth-preview-progress-panel">
-          <div className="auth-preview-section-heading"><div><strong>Study Modules</strong></div><b>View all →</b></div>
-          <div className="auth-preview-study-grid">
-            {STUDY_CARDS.map((card, index) => (
-              <article className={`auth-preview-study-card auth-preview-module-${card.tone} auth-preview-highlight-${index % 2}`} key={card.title}>
-                <span className="auth-preview-card-icon">▱</span>
-                <strong>{card.title}</strong><small>{card.detail}</small>
-                <div className="auth-preview-card-track"><span style={{ "--preview-progress": `${card.progress}%` } as React.CSSProperties} /></div>
-                <b>{card.action} →</b>
+      <div className="auth-preview-main">
+        <div className="auth-preview-mainbar"><span className="is-active">⚡ Trial</span><span>◷ Exam</span><i>♧</i><i>♙</i></div>
+        <div className="auth-preview-dashboard-body">
+          <header className="auth-preview-dashboard-hero">
+            <div><small>Good afternoon,</small><strong>Bright 👋</strong><span>Commit to the process — excellence follows.</span></div>
+            <div className="auth-preview-streak"><span>🔥</span><b>4</b><small>day streak</small></div>
+          </header>
+          <div className="auth-preview-stats">
+            {DASHBOARD_STATS.map(stat => (
+              <article className={`auth-preview-stat auth-preview-stat-${stat.tone}`} key={stat.label}>
+                <span className="auth-preview-stat-icon">{stat.icon}</span>
+                <div><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.detail}</small></div>
               </article>
             ))}
           </div>
-        </section>
+          <section className="auth-preview-progress-panel">
+            <div className="auth-preview-section-heading"><div><strong>Study Modules</strong></div><b>View all →</b></div>
+            <div className="auth-preview-study-grid">
+              {STUDY_CARDS.map((card, index) => (
+                <article className={`auth-preview-study-card auth-preview-module-${card.tone} auth-preview-highlight-${index % 2}`} key={card.title}>
+                  <span className="auth-preview-card-icon">▱</span>
+                  <strong>{card.title}</strong><small>{card.detail}</small>
+                  <div className="auth-preview-card-track"><span style={{ "--preview-progress": `${card.progress}%` } as React.CSSProperties} /></div>
+                  <b>{card.action} →</b>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   )
@@ -145,7 +149,8 @@ function DashboardPreview() {
 
 function LaptopMockup() {
   return (
-    <div className="auth-laptop" data-testid="auth-laptop-mockup">
+    <div className="auth-laptop">
+      <span className="auth-laptop-bounds" data-testid="auth-laptop-mockup" aria-hidden="true" />
       <div className="auth-laptop-lid">
         <span className="auth-laptop-webcam" aria-hidden="true" />
         <div className="auth-laptop-screen">
@@ -214,11 +219,11 @@ function PhoneMockup() {
         <span className="auth-phone-island" data-testid="auth-phone-dynamic-island" aria-hidden="true" />
         <div className="auth-phone-content">
           <div className="auth-rankings-preview" data-testid="auth-rankings-preview" aria-hidden="true">
-            <header><strong>♜ Rankings</strong><span>Nexus Points earned in the last 30 days</span></header>
+            <header><i>☰</i><div><strong>♜ Rankings</strong><span>Nexus Points earned in the last 30 days</span></div><b>↻</b></header>
             <div className="auth-ranking-periods"><span>Weekly</span><span className="is-active">Monthly</span><span>Season</span></div>
             <div className="auth-ranking-podium">
               <div className="auth-podium-place is-second"><span>2</span><b>E</b><small>Enoch Ebu</small><em>2.6K NP</em></div>
-              <div className="auth-podium-place is-first"><span>1</span><b>E</b><small>Edwin</small><em>2.7K NP</em></div>
+              <div className="auth-podium-place is-first"><i>♛</i><span>1</span><b>E</b><small>Edwin</small><em>2.7K NP</em></div>
               <div className="auth-podium-place is-third"><span>3</span><b>B</b><small>Bright Kwesi</small><em>2.3K NP</em></div>
             </div>
             <p className="auth-ranking-note">Accuracy appears after 50 questions in this ranking period.</p>
@@ -235,14 +240,14 @@ function PhoneMockup() {
 
 function ValuePanel() {
   return (
-    <section aria-label="Animated preview of the MedNexus study dashboard and community rankings" className="relative hidden min-h-[590px] text-foreground lg:block xl:min-h-[640px]">
-      <header className="absolute left-0 top-0 z-20 flex items-center gap-3.5">
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl ring-1 ring-primary/25">
-          <StethoscopeIcon size={24} />
+    <section aria-label="Animated preview of the MedNexus study dashboard and community rankings" className="auth-value-panel">
+      <header className="auth-brand-lockup">
+        <span>
+          <StethoscopeIcon size={28} />
         </span>
         <div>
-          <p className="text-xl font-black tracking-tight">MedNexus</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Medical learning workspace</p>
+          <p>MedNexus</p>
+          <small>Medical learning workspace</small>
         </div>
       </header>
 
@@ -251,15 +256,15 @@ function ValuePanel() {
         <PhoneMockup />
       </div>
 
-      <div className="absolute bottom-0 left-1 flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-lg">
+      <div className="auth-value-copy">
+        <span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" width={21} height={21} aria-hidden="true"><path d="m4 16 5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg>
         </span>
-        <div className="pt-0.5">
-          <p className="text-base font-bold tracking-tight xl:text-lg">Learn. Compete. Grow.</p>
-          <p className="mt-1 max-w-[440px] text-xs leading-relaxed text-muted-foreground xl:text-sm">
+        <div>
+          <p>Learn. Compete. Grow.</p>
+          <small>
             Track your progress, challenge your peers, and reach the top.
-          </p>
+          </small>
         </div>
       </div>
     </section>
@@ -269,12 +274,13 @@ function ValuePanel() {
 // ── Footer ────────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <div className="mt-6 flex justify-center">
+    <div className="auth-footer">
+      <p>Created by <strong>Britechinc</strong></p>
       <a
         href="https://wa.me/233543982307"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-[#25D366] transition-colors hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40"
+        className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-[#25D366] transition-colors hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40"
       >
         <WhatsAppIcon size={13} />
         Contact support
@@ -481,20 +487,32 @@ function LoginFields({
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground" htmlFor="login-index">Index Number</label>
-          <input
-            id="login-index"
-            ref={indexRef}
-            type="text"
-            autoComplete="username"
-            value={indexNumber}
-            onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
-            placeholder="sm/sms/22/0092"
-            className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
-          />
+          <div className="relative">
+            <span className="auth-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={21} height={21}>
+                <path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <input
+              id="login-index"
+              ref={indexRef}
+              type="text"
+              autoComplete="username"
+              value={indexNumber}
+              onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
+              placeholder="SM/22/0092"
+              className="auth-login-input min-h-[58px] w-full rounded-2xl border border-input bg-background/85 py-3 pl-14 pr-5 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground" htmlFor="login-pw">Password</label>
           <div className="relative">
+            <span className="auth-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={21} height={21}>
+                <rect width="15" height="11" x="4.5" y="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+              </svg>
+            </span>
             <input
               id="login-pw"
               ref={passwordRef}
@@ -503,7 +521,7 @@ function LoginFields({
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError("") }}
               placeholder="Your password"
-              className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+              className="auth-login-input min-h-[58px] w-full rounded-2xl border border-input bg-background/85 py-3 pl-14 pr-12 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
             />
             <button
               type="button"
@@ -521,7 +539,7 @@ function LoginFields({
         <button
           type="submit"
           disabled={loading || !indexNumber.trim() || !password.trim()}
-          className="auth-btn-primary mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-semibold transition-[background-color,box-shadow,opacity] disabled:opacity-50 disabled:shadow-none"
+          className="auth-btn-primary mt-2 flex min-h-[60px] items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-base font-semibold transition-[background-color,box-shadow,opacity] disabled:opacity-50 disabled:shadow-none"
         >
           {loading ? "Signing in…" : "Log In"}
           {!loading && <ArrowRightIcon size={15} />}
@@ -537,17 +555,20 @@ function LoginFields({
         </button>
 
         {guestAccessEnabled && (
-          <button
-            type="button"
-            onClick={onGuest}
-            className="auth-btn-secondary flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-[background-color,border-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              <line x1="17" x2="22" y1="8" y2="8"/>
-            </svg>
-            Continue as guest
-          </button>
+          <>
+            <div className="auth-or-divider"><span>or</span></div>
+            <button
+              type="button"
+              onClick={onGuest}
+              className="auth-btn-secondary flex min-h-[60px] items-center justify-center gap-2 rounded-2xl px-5 py-3 text-base font-semibold transition-[background-color,border-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={18} height={18}>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                <line x1="17" x2="22" y1="8" y2="8"/>
+              </svg>
+              Continue as guest
+            </button>
+          </>
         )}
 
         {registrationEnabled && (
@@ -732,7 +753,7 @@ export function AuthScreen({
   }, [guestAccessEnabled, registrationEnabled, view])
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 pb-10 pt-20 safe-area-inset sm:px-6 lg:flex lg:items-center lg:px-8 lg:pb-4 lg:pt-16">
+    <main className="auth-landing safe-area-inset">
       <div
         className="absolute inset-x-4 top-4 z-30 flex justify-end sm:inset-x-6 lg:inset-x-8"
         data-testid="auth-theme-band"
@@ -754,17 +775,17 @@ export function AuthScreen({
       <div aria-hidden="true" className="pointer-events-none absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
       <div aria-hidden="true" className="pointer-events-none absolute -right-40 bottom-0 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
 
-      <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,410px)] xl:grid-cols-[minmax(0,1fr)_440px] xl:gap-12">
+      <div className="auth-landing-grid">
         <ValuePanel />
 
-        <div className="mx-auto w-full max-w-[440px]" data-testid="auth-card-shell">
+        <div className="auth-card-shell" data-testid="auth-card-shell">
           <Brand />
-          <section className="glass-auth-card rounded-[2rem] p-5 shadow-xl sm:p-8" aria-labelledby="auth-title">
+          <section className="glass-auth-card auth-card-panel" aria-labelledby="auth-title">
             {view === "login" && (
               <>
-                <div className="mb-6">
-                  <h2 id="auth-title" className="text-2xl font-bold tracking-tight">Welcome back</h2>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Sign in to continue to your workspace.</p>
+                <div className="auth-card-heading">
+                  <h2 id="auth-title">Welcome back</h2>
+                  <p>Sign in to continue to your workspace.</p>
                 </div>
                 <LoginFields
                   guestAccessEnabled={guestAccessEnabled}
