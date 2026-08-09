@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
-import { StethoscopeIcon, ArrowRightIcon } from "@/components/icons"
+import { ArrowRightIcon, BookOpenIcon, ListChecksIcon, RadioIcon, StethoscopeIcon } from "@/components/icons"
 import { CLASS_LEVELS, ALL_LEVELS } from "@/lib/levels"
 import { readRememberedIndexNumber } from "@/lib/auth-preferences"
 
@@ -87,25 +87,47 @@ function Brand() {
 
 function ValuePanel() {
   const features = [
-    ["MCQ Q-Bank", "Practice and exam preparation"],
-    ["Theory Vault", "Structured long-answer revision"],
-    ["Live Assessments", "Join timed assessments securely"],
+    { title: "MCQ Q-Bank", detail: "Practice questions", icon: ListChecksIcon },
+    { title: "Theory Vault", detail: "Long-answer revision", icon: BookOpenIcon },
+    { title: "Live Assessments", detail: "Timed sessions", icon: RadioIcon },
   ]
+
   return (
-    <section className="relative hidden min-h-[36rem] overflow-hidden rounded-[2rem] border border-primary/20 bg-primary p-10 text-primary-foreground shadow-2xl lg:flex lg:flex-col lg:justify-between">
-      <div aria-hidden="true" className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
-      <div aria-hidden="true" className="absolute -bottom-28 -left-16 h-72 w-72 rounded-full bg-black/15 blur-3xl" />
-      <div className="relative">
-        <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/20"><StethoscopeIcon size={25} /></span>
-          <span className="text-xl font-bold tracking-tight">MedNexus</span>
+    <section className="relative hidden min-h-[34rem] overflow-hidden rounded-[2rem] border border-border/80 bg-card/90 p-10 text-foreground shadow-[0_32px_90px_-44px_rgba(15,23,42,0.55)] backdrop-blur-xl lg:flex lg:flex-col lg:justify-between">
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-primary" />
+      <div aria-hidden="true" className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
+
+      <header className="relative flex items-center justify-between gap-6">
+        <div className="flex items-center gap-3.5">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20">
+            <StethoscopeIcon size={23} />
+          </span>
+          <div>
+            <p className="text-lg font-bold tracking-tight">MedNexus</p>
+            <p className="text-xs text-muted-foreground">Medical learning workspace</p>
+          </div>
         </div>
-        <p className="mt-16 text-xs font-bold uppercase tracking-[0.2em] text-primary-foreground/70">Study with purpose</p>
-        <h1 className="mt-4 max-w-lg text-5xl font-bold leading-[1.05] tracking-tight">Learn, practise, and progress in one place.</h1>
-        <p className="mt-5 max-w-md text-base leading-7 text-primary-foreground/75">A focused clinical learning platform built for medical students.</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Built for medical school</p>
+      </header>
+
+      <div className="relative max-w-xl py-12">
+        <p className="text-sm font-semibold text-primary">MCQs · Theory · Assessments</p>
+        <h1 className="mt-4 text-[3.4rem] font-bold leading-[1.02] tracking-[-0.045em]">Your medical school workspace.</h1>
+        <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
+          Practise questions, review theory, and join live assessments from one focused workspace.
+        </p>
       </div>
-      <div className="relative grid gap-3">
-        {features.map(([title, description]) => <div key={title} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm"><p className="text-sm font-bold">{title}</p><p className="mt-0.5 text-xs text-primary-foreground/65">{description}</p></div>)}
+
+      <div className="relative grid grid-cols-3 divide-x divide-border/80 border-y border-border/80">
+        {features.map(({ title, detail, icon: Icon }, index) => (
+          <div key={title} className={`flex items-start gap-3 py-5 ${index === 0 ? "pr-5" : index === features.length - 1 ? "pl-5" : "px-5"}`}>
+            <Icon size={19} className="mt-0.5 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-5">{title}</p>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{detail}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   )

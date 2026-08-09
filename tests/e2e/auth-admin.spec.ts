@@ -44,6 +44,8 @@ test("public visitors only see authentication actions", async ({ page }) => {
     window.localStorage.setItem("mednexus.remembered-index-number.v1", "SM/22/0001")
   })
   await page.goto("/")
+  await expect(page.getByRole("heading", { name: "Your medical school workspace." })).toBeVisible()
+  await expect(page.getByText("Learn, practise, and progress in one place.")).toHaveCount(0)
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible()
   await expect(page.locator("#login-index")).toHaveValue("SM/22/0001")
   await expect(page.locator("#login-pw")).toHaveValue("")
