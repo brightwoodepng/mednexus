@@ -46,8 +46,10 @@ test("public visitors only see authentication actions", async ({ page }) => {
   await page.goto("/")
   await expect(page.getByTestId("auth-dashboard-preview")).toBeVisible()
   await expect(page.getByTestId("auth-rankings-preview")).toBeVisible()
-  await expect(page.locator("[data-testid='auth-laptop-mockup'] img")).toHaveCount(0)
-  await expect(page.locator("[data-testid='auth-phone-mockup'] img")).toHaveCount(0)
+  await expect(page.getByTestId("auth-dashboard-image")).toBeVisible()
+  await expect(page.getByTestId("auth-dashboard-image")).toHaveAttribute("src", /auth-dashboard-preview\.png/)
+  await expect(page.getByTestId("auth-ranking-image")).toBeVisible()
+  await expect(page.getByTestId("auth-ranking-image")).toHaveAttribute("src", /auth-ranking-preview\.png/)
   await expect(page.getByTestId("auth-laptop-mockup")).toBeVisible()
   await expect(page.getByTestId("auth-laptop-hinge")).toBeVisible()
   await expect(page.getByTestId("auth-laptop-keyboard")).toBeVisible()
@@ -137,21 +139,23 @@ test("desktop showcase and theme remain clear of the authentication card", async
   }
 })
 
-test("live showcase animation respects reduced motion", async ({ page }) => {
+test("landing showcase uses static screenshots without animation", async ({ page }) => {
   await page.goto("/")
   await page.setViewportSize({ width: 1440, height: 900 })
 
-  const progress = page.locator(".auth-preview-card-track span").first()
-  const screenEntrance = page.locator(".auth-preview-dashboard-hero")
-  const alternatingCard = page.locator(".auth-preview-study-card").first()
-  await expect(progress).toHaveCSS("animation-name", "auth-preview-progress")
-  await expect(screenEntrance).toHaveCSS("animation-name", "auth-preview-screen-in")
-  await expect(alternatingCard).toHaveCSS("animation-name", "auth-preview-card-glow")
+  await expect(page.getByTestId("auth-dashboard-image")).toBeVisible()
+  await expect(page.getByTestId("auth-ranking-image")).toBeVisible()
 
-  await page.emulateMedia({ reducedMotion: "reduce" })
-  await expect(progress).toHaveCSS("animation-name", "none")
-  await expect(screenEntrance).toHaveCSS("animation-name", "none")
-  await expect(alternatingCard).toHaveCSS("animation-name", "none")
+  const animatedElements = await page.locator(".auth-landing, .auth-landing *").evaluateAll(elements =>
+    elements
+      .filter(element => getComputedStyle(element).animationName !== "none")
+      .map(element => ({
+        animationName: getComputedStyle(element).animationName,
+        className: element.getAttribute("class"),
+        tagName: element.tagName,
+      })),
+  )
+  expect(animatedElements).toEqual([])
 })
 
 test("guest and registration replace the login card and return cleanly", async ({ page }) => {
