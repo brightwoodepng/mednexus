@@ -87,21 +87,21 @@ function Brand() {
 const LAPTOP_KEY_ROWS = [13, 13, 12, 11, 8] as const
 
 const DASHBOARD_STATS = [
-  { label: "Questions", value: "1,248", tone: "violet" },
-  { label: "Accuracy", value: "84%", tone: "cyan" },
-  { label: "Study streak", value: "12 days", tone: "amber" },
+  { label: "Answered", value: "248", detail: "trial questions", icon: "Q", tone: "sky" },
+  { label: "Accuracy", value: "84%", detail: "208 correct", icon: "%", tone: "emerald" },
+  { label: "Flagged", value: "12", detail: "for review", icon: "!", tone: "amber" },
+  { label: "Streak", value: "12d", detail: "studied today", icon: "↗", tone: "rose" },
 ] as const
 
 const STUDY_CARDS = [
-  { title: "Cardiovascular", detail: "36 of 50 questions", progress: 72 },
-  { title: "Pharmacology", detail: "18 of 40 questions", progress: 45 },
-  { title: "Clinical anatomy", detail: "42 of 48 questions", progress: 88 },
+  { title: "Clinical Sciences", detail: "Medicine · Surgery · Paediatrics", progress: 72, action: "Continue" },
+  { title: "Basic Sciences", detail: "Anatomy · Physiology · Biochemistry", progress: 45, action: "Study now" },
 ] as const
 
 const RANKING_ROWS = [
-  { rank: 4, initials: "KA", name: "Kojo A.", points: "2,940" },
-  { rank: 5, initials: "NM", name: "Nana M.", points: "2,815" },
-  { rank: 6, initials: "ES", name: "Esi S.", points: "2,760" },
+  { rank: 4, initials: "BW", name: "Bright Woode", points: "9,740 NP" },
+  { rank: 5, initials: "NY", name: "Nana Yeboah", points: "8,610 NP" },
+  { rank: 6, initials: "AN", name: "Adwoa Nyarko", points: "7,950 NP" },
 ] as const
 
 function DashboardPreview() {
@@ -112,26 +112,27 @@ function DashboardPreview() {
         {Array.from({ length: 5 }, (_, index) => <span className={`auth-preview-nav-dot${index === 0 ? " is-active" : ""}`} key={index} />)}
       </aside>
       <div className="auth-preview-dashboard-body">
-        <header className="auth-preview-dashboard-header">
-          <div><small>Good morning, Ama</small><strong>Ready for today&apos;s study?</strong></div>
-          <span className="auth-preview-avatar">AD</span>
+        <header className="auth-preview-dashboard-hero">
+          <div><small>Good morning,</small><strong>Ama 👋</strong><span>Your future patients are counting on today&apos;s study.</span></div>
+          <div className="auth-preview-streak"><b>12</b><small>day streak</small></div>
         </header>
         <div className="auth-preview-stats">
           {DASHBOARD_STATS.map(stat => (
             <article className={`auth-preview-stat auth-preview-stat-${stat.tone}`} key={stat.label}>
-              <span>{stat.label}</span><strong>{stat.value}</strong>
+              <span className="auth-preview-stat-icon">{stat.icon}</span>
+              <div><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.detail}</small></div>
             </article>
           ))}
         </div>
         <section className="auth-preview-progress-panel">
-          <div className="auth-preview-section-heading"><strong>Continue studying</strong><span>This week · 68%</span></div>
-          <div className="auth-preview-overall-track"><span /></div>
+          <div className="auth-preview-section-heading"><div><strong>Choose a module</strong><span>Build your next practice set</span></div><b>View all →</b></div>
           <div className="auth-preview-study-grid">
             {STUDY_CARDS.map((card, index) => (
               <article className={`auth-preview-study-card auth-preview-highlight-${index % 2}`} key={card.title}>
                 <span className="auth-preview-card-icon">{index + 1}</span>
                 <strong>{card.title}</strong><small>{card.detail}</small>
                 <div className="auth-preview-card-track"><span style={{ "--preview-progress": `${card.progress}%` } as React.CSSProperties} /></div>
+                <b>{card.action} →</b>
               </article>
             ))}
           </div>
@@ -212,17 +213,17 @@ function PhoneMockup() {
         <span className="auth-phone-island" data-testid="auth-phone-dynamic-island" aria-hidden="true" />
         <div className="auth-phone-content">
           <div className="auth-rankings-preview" data-testid="auth-rankings-preview" aria-hidden="true">
-            <header><small>Community</small><strong>Rankings</strong></header>
-            <div className="auth-ranking-periods"><span className="is-active">Weekly</span><span>Monthly</span><span>All time</span></div>
+            <header><small>Community leaderboard</small><strong>Rankings</strong><span>Nexus Points earned this month</span></header>
+            <div className="auth-ranking-periods"><span>Weekly</span><span className="is-active">Monthly</span><span>All time</span></div>
             <div className="auth-ranking-podium">
-              <div className="auth-podium-place is-second"><span>2</span><b>YA</b><small>Yaw A.</small></div>
-              <div className="auth-podium-place is-first"><span>1</span><b>AB</b><small>Abena B.</small></div>
-              <div className="auth-podium-place is-third"><span>3</span><b>KM</b><small>Kofi M.</small></div>
+              <div className="auth-podium-place is-second"><span>2</span><b>KA</b><small>Kojo Asare</small><em>11,320</em></div>
+              <div className="auth-podium-place is-first"><span>1</span><b>AM</b><small>Ama Mensah</small><em>12,840</em></div>
+              <div className="auth-podium-place is-third"><span>3</span><b>EO</b><small>Esi Owusu</small><em>10,890</em></div>
             </div>
             <div className="auth-ranking-list">
               {RANKING_ROWS.map(row => <div className="auth-ranking-row" key={row.rank}><span>{row.rank}</span><b>{row.initials}</b><strong>{row.name}</strong><small>{row.points}</small></div>)}
             </div>
-            <div className="auth-viewer-rank"><span>12</span><b>YOU</b><strong>Your rank</strong><small>2,120</small></div>
+            <div className="auth-viewer-rank"><span>12</span><b>YOU</b><strong>Your rank</strong><small>6,120 NP</small></div>
           </div>
         </div>
         <span className="auth-phone-home-indicator" data-testid="auth-phone-home-indicator" aria-hidden="true" />

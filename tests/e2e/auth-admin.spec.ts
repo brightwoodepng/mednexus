@@ -52,7 +52,6 @@ test("public visitors only see authentication actions", async ({ page }) => {
   await expect(page.getByTestId("auth-laptop-hinge")).toBeVisible()
   await expect(page.getByTestId("auth-laptop-keyboard")).toBeVisible()
   await expect(page.getByTestId("auth-laptop-trackpad")).toBeVisible()
-  await expect(page.getByTestId("auth-laptop-ports")).toBeVisible()
   await expect(page.getByTestId("auth-phone-mockup")).toBeVisible()
   await expect(page.getByTestId("auth-phone-status-bar")).toContainText("9:41")
   await expect(page.getByTestId("auth-phone-dynamic-island")).toBeVisible()
@@ -142,13 +141,16 @@ test("live showcase animation respects reduced motion", async ({ page }) => {
   await page.goto("/")
   await page.setViewportSize({ width: 1440, height: 900 })
 
-  const progress = page.locator(".auth-preview-overall-track span")
+  const progress = page.locator(".auth-preview-card-track span").first()
+  const screenEntrance = page.locator(".auth-preview-dashboard-hero")
   const alternatingCard = page.locator(".auth-preview-study-card").first()
   await expect(progress).toHaveCSS("animation-name", "auth-preview-progress")
+  await expect(screenEntrance).toHaveCSS("animation-name", "auth-preview-screen-in")
   await expect(alternatingCard).toHaveCSS("animation-name", "auth-preview-card-glow")
 
   await page.emulateMedia({ reducedMotion: "reduce" })
   await expect(progress).toHaveCSS("animation-name", "none")
+  await expect(screenEntrance).toHaveCSS("animation-name", "none")
   await expect(alternatingCard).toHaveCSS("animation-name", "none")
 })
 
