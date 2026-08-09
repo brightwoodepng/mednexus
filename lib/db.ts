@@ -26,7 +26,10 @@ const pool = new Pool({
 })
 
 let initialized = false
-export const CURRENT_SCHEMA_VERSION = "2026-08-04-assessment-grading-v1"
+// Keep this marker in step with every deployed DDL change. The previous
+// assessment-grading marker predated the admin platform/settings and economy
+// season tables, which let existing databases skip those additions entirely.
+export const CURRENT_SCHEMA_VERSION = "2026-08-09-admin-platform-controls-v1"
 
 export async function ensureSchema() {
   if (initialized) return
