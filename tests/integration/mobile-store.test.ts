@@ -21,6 +21,9 @@ describe("mobile Nexus Store contracts", () => {
     expect(store).not.toContain("overflow-x-auto no-scrollbar")
     expect(store).toContain("grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2")
     expect(store).not.toContain("min-[380px]:grid-cols-2")
+    expect(store).toContain("min-[360px]:grid-cols-2")
+    expect(store).toContain("View details")
+    expect(store).toContain("Nexus Protocol")
     expect(store).toContain('role="dialog" aria-modal="true"')
     expect(store).toContain('event.key === "Escape"')
     expect(store).toContain("returnFocus.current?.focus()")
@@ -46,13 +49,14 @@ describe("mobile Nexus Store contracts", () => {
     expect(economy).toContain("setInventory(data.inventory ?? {})")
   })
 
-  it("keeps phone product cards compact without removing inline actions", async () => {
+  it("moves phone cosmetic actions into an accessible detail sheet", async () => {
     const store = await readFile("components/game-store-modal.tsx", "utf8")
     expect(store).toContain('options.length === 1 ? "hidden sm:grid sm:grid-cols-1"')
     expect(store).toContain("Buy ${selected.quantity} · ${selected.price.toLocaleString()} NP")
     expect(store).toContain('aria-label="Open dressing room"')
     expect(store).toContain('Filter · {rarity==="all"?"All rarities":rarity}')
     expect(store).toContain("sm:h-[72px] sm:w-[72px]")
+    expect(store).toContain("Try in room")
     expect(store).not.toContain("transition-all")
   })
 })

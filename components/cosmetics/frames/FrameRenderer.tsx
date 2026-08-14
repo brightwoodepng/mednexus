@@ -22,6 +22,10 @@ function Geometry({ definition }: { definition: FrameDefinition }) {
     {definition.geometry === "culture" && <><circle {...common} cx="50" cy="50" r="47" strokeWidth="4"/>{orbitDots.map((angle, i) => <g key={angle} transform={`rotate(${angle + i * 9} 50 50)`}><circle cx="50" cy={8 + i % 2 * 7} r={3 + i % 3} fill={i % 2 ? accent : light} opacity=".8"/><circle cx="48" cy={7 + i % 2 * 7} r="1" fill={dark}/></g>)}</>}
     {definition.geometry === "conduction" && <><path {...common} strokeWidth="5" d="M50 4C22 4 5 22 5 50s17 46 45 46 45-18 45-46S78 4 50 4Z"/><path className="clinical-frame__signal" {...common} strokeWidth="2.5" d="M14 27c17-12 26 4 36 23s22 33 37 20"/><circle cx="15" cy="27" r="4" fill={light}/><circle cx="50" cy="50" r="4" fill={accent}/><circle cx="87" cy="70" r="4" fill={light}/></>}
     {definition.geometry === "resuscitator" && <><rect {...common} x="4" y="4" width="92" height="92" rx="24" strokeWidth="6"/><path className="clinical-frame__signal" {...common} strokeWidth="3" d="M5 55h22l7-17 9 30 11-40 10 27h31"/><path fill={accent} d="m53 6-10 17h8l-5 13 15-20h-9l6-10Z"/></>}
+    {definition.geometry === "dna" && <><circle {...common} cx="50" cy="50" r="47" strokeWidth="3"/>{[-28,-14,0,14,28].map((y,i)=><g key={y} className="clinical-frame__dna-rung"><path {...common} strokeWidth="2.5" d={`M18 ${50+y} C36 ${35+y},64 ${65+y},82 ${50+y}`}/><path {...common} strokeWidth="2.5" d={`M18 ${50+y} C36 ${65+y},64 ${35+y},82 ${50+y}`}/>{i%2===0&&<path stroke={light} strokeWidth="1.5" d={`M34 ${50+y}h32`}/>}</g>)}</>}
+    {definition.geometry === "pharmacology" && <><circle {...common} cx="50" cy="50" r="45" strokeWidth="2"/>{orbitDots.map((angle,i)=><g key={angle} className="clinical-frame__molecule" transform={`rotate(${angle} 50 50)`}><circle cx="50" cy="6" r={i%2?4:3} fill={i%2?accent:light}/><path stroke={accent} strokeWidth="1.6" d="M50 10v12"/></g>)}<path {...common} strokeWidth="4" d="M38 10q12 15 24 0M38 90q12-15 24 0"/></>}
+    {definition.geometry === "drone" && <><rect {...common} x="5" y="5" width="90" height="90" rx="26" strokeWidth="3"/>{[0,90,180,270].map(angle=><g key={angle} className="clinical-frame__drone" transform={`rotate(${angle} 50 50)`}><path {...common} strokeWidth="5" d="M50 3v13l-9 8 9 8"/><circle cx="50" cy="4" r="3" fill={light}/></g>)}<circle {...common} cx="50" cy="50" r="39" strokeWidth="1.5" strokeDasharray="4 6"/></>}
+    {definition.geometry === "anatomy" && <><circle {...common} cx="50" cy="50" r="47" strokeWidth="2"/><ellipse className="clinical-frame__anatomy-layer" {...common} cx="50" cy="50" rx="31" ry="46" strokeWidth="3"/><ellipse className="clinical-frame__anatomy-layer" {...common} cx="50" cy="50" rx="45" ry="24" strokeWidth="2"/><path className="clinical-frame__signal" {...common} strokeWidth="2" d="M8 50h21l6-11 8 22 8-28 9 17h32"/></>}
   </svg>
 }
 
@@ -47,3 +51,7 @@ export const CellCultureFrame = renderer("frame_cell_culture")
 export const CardiacConductionFrame = renderer("frame_cardiac_conduction")
 export const RadiologyContrastFrame = renderer("frame_radiology_contrast")
 export const TheResuscitatorFrame = renderer("frame_the_resuscitator")
+export const DNASequencerFrame = renderer("frame_dna_sequencer")
+export const PharmacologyOrbitFrame = renderer("frame_pharmacology_orbit")
+export const SurgicalDroneFrame = renderer("frame_surgical_drone")
+export const HoloAnatomyFrame = renderer("frame_holo_anatomy")

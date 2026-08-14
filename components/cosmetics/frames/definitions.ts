@@ -4,10 +4,11 @@ export const FRAME_IDS = [
   "frame_vital_ring", "frame_surgical_steel", "frame_chart_grid", "frame_ct_gantry",
   "frame_microscope_iris", "frame_neural_synapse", "frame_code_blue", "frame_operating_theatre",
   "frame_cell_culture", "frame_cardiac_conduction", "frame_radiology_contrast", "frame_the_resuscitator",
+  "frame_dna_sequencer", "frame_pharmacology_orbit", "frame_surgical_drone", "frame_holo_anatomy",
 ] as const
 
 export type ClinicalFrameId = (typeof FRAME_IDS)[number]
-export type FrameGeometry = "ring" | "steel" | "grid" | "gantry" | "iris" | "synapse" | "code" | "theatre" | "culture" | "conduction" | "contrast" | "resuscitator"
+export type FrameGeometry = "ring" | "steel" | "grid" | "gantry" | "iris" | "synapse" | "code" | "theatre" | "culture" | "conduction" | "contrast" | "resuscitator" | "dna" | "pharmacology" | "drone" | "anatomy"
 
 export interface FrameStateDefinition {
   motion: "none" | "breathe" | "drift" | "scan" | "conduct" | "celebrate"
@@ -45,4 +46,8 @@ export const FRAME_DEFINITIONS: Readonly<Record<ClinicalFrameId, FrameDefinition
   frame_cardiac_conduction: { id: "frame_cardiac_conduction", name: "Cardiac Conduction", accessibleLabel: "Cardiac conduction pathway frame", geometry: "conduction", palette: ["#fecdd3", "#e11d48", "#881337"], states: states(4200) },
   frame_radiology_contrast: { id: "frame_radiology_contrast", name: "Radiology Contrast", accessibleLabel: "Radiology contrast frame", geometry: "contrast", palette: ["#ffffff", "#a5b4fc", "#1e1b4b"], states: states(5800) },
   frame_the_resuscitator: { id: "frame_the_resuscitator", name: "The Resuscitator", accessibleLabel: "Defibrillator Resuscitator frame", geometry: "resuscitator", palette: ["#fef08a", "#f97316", "#7c2d12"], states: states(3200) },
+  frame_dna_sequencer: { id: "frame_dna_sequencer", name: "DNA Sequencer", accessibleLabel: "Interactive DNA sequencing frame", geometry: "dna", palette: ["#cffafe", "#06b6d4", "#1e3a8a"], states: states(5200) },
+  frame_pharmacology_orbit: { id: "frame_pharmacology_orbit", name: "Pharmacology Orbit", accessibleLabel: "Interactive molecular pharmacology frame", geometry: "pharmacology", palette: ["#d1fae5", "#10b981", "#134e4a"], states: states(6400) },
+  frame_surgical_drone: { id: "frame_surgical_drone", name: "Surgical Drone", accessibleLabel: "Interactive robotic surgery frame", geometry: "drone", palette: ["#f8fafc", "#60a5fa", "#1e3a8a"], states: states(4400) },
+  frame_holo_anatomy: { id: "frame_holo_anatomy", name: "Holo Anatomy", accessibleLabel: "Interactive holographic anatomy frame", geometry: "anatomy", palette: ["#fecdd3", "#22d3ee", "#4338ca"], states: states(5800) },
 }

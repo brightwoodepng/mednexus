@@ -4,9 +4,11 @@ import {
   CardiacConductionFrame, CellCultureFrame, ChartGridFrame, CodeBlueFrame, CTGantryFrame,
   MicroscopeIrisFrame, NeuralSynapseFrame, OperatingTheatreFrame, RadiologyContrastFrame,
   SurgicalSteelFrame, TheResuscitatorFrame, VitalRingFrame,
+  DNASequencerFrame, PharmacologyOrbitFrame, SurgicalDroneFrame, HoloAnatomyFrame,
 } from "./frames"
 import { AnatomyPlate, BloodFlow, MonitorSweep, NeuralField, PrescriptionLabel, RadiologyLightbox, SterileField, TriagePriority } from "./highlights"
 import { AvatarImage } from "@/components/avatar-image"
+import { ReactiveTitleRenderer } from "./titles"
 
 function PresentationRenderer({ children, avatarImage }: CosmeticRendererProps) {
   return <>{avatarImage ?? children}</>
@@ -37,11 +39,17 @@ export const COSMETIC_RENDERER_REGISTRY: Readonly<Record<string, RegistryEntry>>
   title_department_chair: entry({ kind: "title", label: "Department Chair", title: "Department Chair" }),
   title_chief_of_surgery: entry({ kind: "title", label: "Chief of Surgery", title: "Chief of Surgery" }),
   title_dean_of_medicine: entry({ kind: "title", label: "Dean of Medicine", title: "Dean of Medicine" }),
-  frame_gold: entry({ kind: "frame", label: "Gold frame", className: "cosmetic-frame cosmetic-frame--gold", legacy: true }),
+  title_night_consult: renderedEntry({ kind: "title", label: "Night Consult", title: "Night Consult", className: "reactive-title" }, ReactiveTitleRenderer),
+  title_diagnostician: renderedEntry({ kind: "title", label: "The Diagnostician", title: "The Diagnostician", className: "reactive-title" }, ReactiveTitleRenderer),
+  title_anatomy_architect: renderedEntry({ kind: "title", label: "Anatomy Architect", title: "Anatomy Architect", className: "reactive-title" }, ReactiveTitleRenderer),
+  title_code_commander: renderedEntry({ kind: "title", label: "Code Commander", title: "Code Commander", className: "reactive-title" }, ReactiveTitleRenderer),
+  title_synapse_specialist: renderedEntry({ kind: "title", label: "Synapse Specialist", title: "Synapse Specialist", className: "reactive-title" }, ReactiveTitleRenderer),
+  title_nexus_laureate: renderedEntry({ kind: "title", label: "Nexus Laureate", title: "Nexus Laureate", className: "reactive-title" }, ReactiveTitleRenderer),
+  frame_gold: renderedEntry({ kind: "frame", label: "Golden Ratio precision frame", className: "clinical-frame clinical-frame--steel", legacy: true }, SurgicalSteelFrame),
   frame_neon: renderedEntry({ kind: "frame", label: "Vital Ring (Neon Pulse remaster)", className: "clinical-frame clinical-frame--vital", legacy: true }, VitalRingFrame),
   frame_fire: entry({ kind: "frame", label: "Fire frame", className: "cosmetic-frame cosmetic-frame--fire", legacy: true }),
   frame_legendary_diamond: renderedEntry({ kind: "frame", label: "Surgical Steel (Legendary Diamond remaster)", className: "clinical-frame clinical-frame--steel", legacy: true }, SurgicalSteelFrame),
-  frame_legendary_biohazard: entry({ kind: "frame", label: "Biohazard frame", className: "cosmetic-frame cosmetic-frame--biohazard", legacy: true }),
+  frame_legendary_biohazard: renderedEntry({ kind: "frame", label: "Containment Seal frame", className: "clinical-frame clinical-frame--ct", legacy: true }, CTGantryFrame),
   frame_mythic_nebula: entry({ kind: "frame", label: "Nebula frame", className: "cosmetic-frame cosmetic-frame--nebula", legacy: true }),
   frame_mythic_heartbeat: entry({ kind: "frame", label: "Heartbeat frame", className: "cosmetic-frame cosmetic-frame--heartbeat", legacy: true }),
   frame_lightning: entry({ kind: "frame", label: "Lightning frame", className: "cosmetic-frame cosmetic-frame--lightning", legacy: true }),
@@ -58,6 +66,10 @@ export const COSMETIC_RENDERER_REGISTRY: Readonly<Record<string, RegistryEntry>>
   frame_cardiac_conduction: renderedEntry({ kind: "frame", label: "Cardiac Conduction", className: "clinical-frame clinical-frame--cardiac" }, CardiacConductionFrame),
   frame_radiology_contrast: renderedEntry({ kind: "frame", label: "Radiology Contrast", className: "clinical-frame clinical-frame--contrast" }, RadiologyContrastFrame),
   frame_the_resuscitator: renderedEntry({ kind: "frame", label: "The Resuscitator", className: "clinical-frame clinical-frame--resuscitator" }, TheResuscitatorFrame),
+  frame_dna_sequencer: renderedEntry({ kind: "frame", label: "DNA Sequencer", className: "clinical-frame clinical-frame--dna" }, DNASequencerFrame),
+  frame_pharmacology_orbit: renderedEntry({ kind: "frame", label: "Pharmacology Orbit", className: "clinical-frame clinical-frame--pharmacology" }, PharmacologyOrbitFrame),
+  frame_surgical_drone: renderedEntry({ kind: "frame", label: "Surgical Drone", className: "clinical-frame clinical-frame--drone" }, SurgicalDroneFrame),
+  frame_holo_anatomy: renderedEntry({ kind: "frame", label: "Holo Anatomy", className: "clinical-frame clinical-frame--anatomy" }, HoloAnatomyFrame),
   highlight_neon: renderedEntry({ kind: "highlight", label: "Monitor Sweep", className: "clinical-highlight clinical-highlight--monitor", legacy: true }, MonitorSweep),
   highlight_gold: renderedEntry({ kind: "highlight", label: "Prescription Label", className: "clinical-highlight clinical-highlight--prescription", legacy: true }, PrescriptionLabel),
   highlight_amethyst: renderedEntry({ kind: "highlight", label: "Anatomy Plate", className: "clinical-highlight clinical-highlight--anatomy", legacy: true }, AnatomyPlate),
@@ -83,6 +95,10 @@ export const COSMETIC_RENDERER_REGISTRY: Readonly<Record<string, RegistryEntry>>
   avatar_ascended: renderedEntry({ kind: "avatar", label: "Ascended avatar" }, AvatarRenderer),
   avatar_marble: renderedEntry({ kind: "avatar", label: "Marble avatar" }, AvatarRenderer),
   avatar_vital_sign: renderedEntry({ kind: "avatar", label: "Vital Sign avatar" }, AvatarRenderer),
+  avatar_pulse_runner: renderedEntry({ kind: "avatar", label: "Pulse Runner avatar" }, AvatarRenderer),
+  avatar_neurocartographer: renderedEntry({ kind: "avatar", label: "Neurocartographer avatar" }, AvatarRenderer),
+  avatar_robotic_surgery_fellow: renderedEntry({ kind: "avatar", label: "Robotic Surgery Fellow avatar" }, AvatarRenderer),
+  avatar_nexus_laureate: renderedEntry({ kind: "avatar", label: "Nexus Laureate avatar" }, AvatarRenderer),
 }
 
 export function getCosmeticPresentation(id?: string | null, kind?: CosmeticPresentationMetadata["kind"]): RegistryEntry {
