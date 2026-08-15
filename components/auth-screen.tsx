@@ -158,7 +158,7 @@ function Footer() {
         href="https://wa.me/233543982307"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-[#25D366] transition-colors hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40"
+        className="auth-link inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <WhatsAppIcon size={13} />
         Contact support
@@ -414,10 +414,9 @@ function LoginFields({
         <button
           type="button"
           onClick={onOtp}
-          className="text-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="auth-link min-h-11 rounded-md px-2 text-center text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         >
-          Forgot password?{" "}
-          <span className="auth-link font-semibold">Enter with OTP</span>
+          Forgot password? Enter with OTP
         </button>
 
         {guestAccessEnabled && (
