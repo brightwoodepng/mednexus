@@ -52,6 +52,8 @@ test("public visitors only see authentication actions", async ({ page }) => {
   await expect(page.getByText("Rankings preview")).toHaveCount(0)
   await expect(page.getByText("Medical learning workspace")).toBeVisible()
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible()
+  await expect(page.getByText("Secure student access")).toBeVisible()
+  await expect(page.getByText("Sign in to continue your medical learning journey.")).toBeVisible()
   await expect(page.locator("#login-index")).toHaveValue("SM/22/0001")
   await expect(page.locator("#login-pw")).toHaveValue("")
   await expect(page.locator("#login-pw")).toBeFocused()

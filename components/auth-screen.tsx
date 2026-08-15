@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { useApp } from "@/contexts/app-context"
-import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
 import { ArrowRightIcon, StethoscopeIcon } from "@/components/icons"
 import { CLASS_LEVELS, ALL_LEVELS } from "@/lib/levels"
@@ -373,7 +372,7 @@ function LoginFields({
             value={indexNumber}
             onChange={(e) => { setIndexNumber(e.target.value); setError("") }}
             placeholder="sm/sms/22/0092"
-            className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+            className="auth-field min-h-[52px] w-full rounded-xl border px-4 py-3 text-sm outline-none"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -387,7 +386,7 @@ function LoginFields({
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError("") }}
               placeholder="Your password"
-              className="min-h-[52px] w-full rounded-xl border border-input bg-background/85 px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+              className="auth-field min-h-[52px] w-full rounded-xl border px-4 py-3 pr-11 text-sm outline-none"
             />
             <button
               type="button"
@@ -420,17 +419,24 @@ function LoginFields({
         </button>
 
         {guestAccessEnabled && (
-          <button
-            type="button"
-            onClick={onGuest}
-            className="auth-btn-secondary flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              <line x1="17" x2="22" y1="8" y2="8"/>
-            </svg>
-            Continue as guest
-          </button>
+          <>
+            <div className="flex items-center gap-3 py-0.5" aria-hidden="true">
+              <span className="h-px flex-1 bg-border/70" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">or</span>
+              <span className="h-px flex-1 bg-border/70" />
+            </div>
+            <button
+              type="button"
+              onClick={onGuest}
+              className="auth-btn-secondary flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                <line x1="17" x2="22" y1="8" y2="8"/>
+              </svg>
+              Continue as guest
+            </button>
+          </>
         )}
 
         {registrationEnabled && (
@@ -615,12 +621,12 @@ export function AuthScreen({
   }, [guestAccessEnabled, registrationEnabled, view])
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 py-14 safe-area-inset sm:px-6 lg:flex lg:items-center lg:px-10 lg:py-8">
+    <main className="auth-shell relative min-h-screen overflow-hidden px-4 py-14 safe-area-inset sm:px-6 lg:flex lg:items-center lg:px-10 lg:py-8">
       <button
         type="button"
         onClick={() => setThemeOpen(true)}
         title="Change theme"
-        className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-card hover:text-foreground"
+        className="auth-theme-trigger absolute right-4 top-4 z-20 flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold text-muted-foreground backdrop-blur-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
           <circle cx="12" cy="12" r="10"/>
@@ -637,12 +643,17 @@ export function AuthScreen({
 
         <div className="mx-auto w-full max-w-[440px]">
           <Brand />
-          <section className="glass-auth-card rounded-[2rem] p-5 shadow-xl sm:p-8" aria-labelledby="auth-title">
+          <section className="glass-auth-card overflow-hidden rounded-[2rem] p-5 sm:p-8" aria-labelledby="auth-title">
+            <span className="auth-card-accent" aria-hidden="true" />
             {view === "login" && (
               <>
                 <div className="mb-6">
-                  <h2 id="auth-title" className="text-2xl font-bold tracking-tight">Welcome back</h2>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Sign in to continue to your workspace.</p>
+                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.07] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+                    Secure student access
+                  </div>
+                  <h2 id="auth-title" className="text-[1.75rem] font-black leading-tight tracking-[-0.035em]">Welcome back</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">Sign in to continue your medical learning journey.</p>
                 </div>
                 <LoginFields
                   guestAccessEnabled={guestAccessEnabled}
