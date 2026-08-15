@@ -92,7 +92,7 @@ export type EconomyConfig = {
 
 export const ECONOMY_CONFIG = {
   economyVersion: "2.0.0",
-  catalogVersion: "2.5.0",
+    catalogVersion: "2.6.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
@@ -227,6 +227,20 @@ export const ECONOMY_CONFIG = {
       avatar_gold_steth: { price: 2_000, productGroup: "premium_cosmetic" }, avatar_plague_doctor: { price: 2_500, productGroup: "premium_cosmetic" },
       avatar_cyber_surgeon: { price: 2_500, productGroup: "premium_cosmetic" }, avatar_ascended: { price: 5_000, productGroup: "prestige_cosmetic" },
       avatar_marble: { price: 5_000, productGroup: "prestige_cosmetic" }, avatar_vital_sign: { price: 7_500, productGroup: "prestige_cosmetic" },
+      frame_dna_sequencer: { price: 500, productGroup: "basic_cosmetic" },
+      frame_pharmacology_orbit: { price: 1_200, productGroup: "premium_cosmetic" },
+      frame_surgical_drone: { price: 2_200, productGroup: "premium_cosmetic" },
+      frame_holo_anatomy: { price: 5_200, productGroup: "prestige_cosmetic" },
+      avatar_pulse_runner: { price: 600, productGroup: "basic_cosmetic" },
+      avatar_neurocartographer: { price: 1_200, productGroup: "premium_cosmetic" },
+      avatar_robotic_surgery_fellow: { price: 2_400, productGroup: "premium_cosmetic" },
+      avatar_nexus_laureate: { price: 6_000, productGroup: "prestige_cosmetic" },
+      title_night_consult: { price: 400, productGroup: "basic_cosmetic" },
+      title_diagnostician: { price: 550, productGroup: "basic_cosmetic" },
+      title_anatomy_architect: { price: 1_200, productGroup: "premium_cosmetic" },
+      title_code_commander: { price: 2_000, productGroup: "premium_cosmetic" },
+      title_synapse_specialist: { price: 4_200, productGroup: "prestige_cosmetic" },
+      title_nexus_laureate: { price: 6_500, productGroup: "prestige_cosmetic" },
     },
   },
   // Reset stays disabled until a mastery-reset period and timestamp storage are approved.

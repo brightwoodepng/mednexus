@@ -20,6 +20,14 @@
 .clinical-frame--cardiac { --clinical-accent: #e11d48; --clinical-duration: 4.2s; }
 .clinical-frame--contrast { --clinical-accent: #a5b4fc; --clinical-duration: 5.8s; }
 .clinical-frame--resuscitator { --clinical-accent: #f97316; --clinical-duration: 3.2s; }
+.clinical-frame--dna { --clinical-accent: #06b6d4; --clinical-duration: 5.2s; }
+.clinical-frame--pharmacology { --clinical-accent: #10b981; --clinical-duration: 6.4s; }
+.clinical-frame--drone { --clinical-accent: #60a5fa; --clinical-duration: 4.4s; }
+.clinical-frame--anatomy { --clinical-accent: #22d3ee; --clinical-duration: 5.8s; }
+.clinical-frame[data-motion-state="focused"] .clinical-frame__dna-rung { transform: translateX(var(--cosmetic-pointer-x, 0px)); transition: transform 180ms ease-out; }
+.clinical-frame[data-motion-state="focused"] .clinical-frame__molecule { transform-origin: 50px 50px; animation: clinical-frame-scan var(--clinical-duration) linear infinite; }
+.clinical-frame[data-motion-state="focused"] .clinical-frame__drone { transform-box: fill-box; transform-origin: center; filter: drop-shadow(0 0 3px var(--clinical-accent)); }
+.clinical-frame[data-motion-state="focused"] .clinical-frame__anatomy-layer { transform: translate(var(--cosmetic-pointer-x, 0px),var(--cosmetic-pointer-y, 0px)); transition: transform 180ms ease-out; }
 .clinical-frame[data-motion-state="ambient"] .clinical-frame__geometry { animation: clinical-frame-breathe var(--clinical-duration, 5s) ease-in-out infinite; }
 .clinical-frame[data-motion-state="focused"] .clinical-frame__geometry { animation: clinical-frame-scan var(--clinical-duration, 5s) linear infinite; }
 .clinical-frame[data-motion-state="focused"] .clinical-frame__signal { animation: clinical-frame-signal 1.5s linear infinite; }

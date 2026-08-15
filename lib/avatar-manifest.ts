@@ -51,6 +51,10 @@ export const AVATAR_MANIFEST = {
   avatar_ascended: avatar("avatar_ascended", "ascended", "Ethereal ascended healer", "mythic", "dark", "AH"),
   avatar_marble: avatar("avatar_marble", "marble", "Classical marble physician figure", "mythic", "dark", "MH"),
   avatar_vital_sign: avatar("avatar_vital_sign", "vital-sign", "Living electrocardiogram waveform", "mythic", "dark", "VS"),
+  avatar_pulse_runner: avatar("avatar_pulse_runner", "pulse-runner", "Emergency clinician wearing compact med-tech equipment", "rare", "dark", "PR"),
+  avatar_neurocartographer: avatar("avatar_neurocartographer", "neurocartographer", "Neuroscience specialist mapping a holographic neural network", "epic", "dark", "NC"),
+  avatar_robotic_surgery_fellow: avatar("avatar_robotic_surgery_fellow", "robotic-surgery-fellow", "Robotic surgery fellow at a precision control interface", "legendary", "dark", "RF"),
+  avatar_nexus_laureate: avatar("avatar_nexus_laureate", "nexus-laureate", "Nexus Laureate physician-scholar", "mythic", "dark", "NL"),
 } as const satisfies Readonly<Record<string, AvatarManifestEntry>>
 
 export function getAvatarManifestEntry(id: string): AvatarManifestEntry | undefined {

@@ -5,6 +5,7 @@ export type CosmeticInteractionState = "idle" | "hovered" | "focused" | "selecte
 /** Shared cosmetic motion vocabulary. `focused` is the full interactive treatment. */
 export type CosmeticMotionState = "static" | "ambient" | "focused" | "celebrating" | "reduced"
 export type CosmeticKind = "avatar" | "frame" | "highlight" | "title"
+export type CosmeticActivationEvent = "correct-answer" | "rank-change" | "winner-reveal" | null
 
 export interface CosmeticRendererProps {
   cosmeticId?: string | null
@@ -13,6 +14,10 @@ export interface CosmeticRendererProps {
   reducedMotion?: boolean
   /** Call sites must opt into motion; cosmetics are static by default. */
   motionState?: CosmeticMotionState
+  /** Normalized input position from -1 to 1; presentation-only and optional. */
+  pointer?: Readonly<{ x: number; y: number }>
+  /** Semantic app moment used to choose an appropriate visual response. */
+  activationEvent?: CosmeticActivationEvent
   active?: boolean
   playerScore?: number
   playerRank?: number | string

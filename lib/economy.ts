@@ -149,11 +149,11 @@ export const COSMETIC_CATALOG_METADATA = {
   title_chief_of_surgery: { status: "active", rarity: "mythic", sortOrder: 80, previewTheme: "surgical-flare", featured: true },
   title_dean_of_medicine: { status: "active", rarity: "mythic", sortOrder: 90, previewTheme: "dean-gold", featured: true },
   title_caffeine_dependent: { status: "active", rarity: "common", sortOrder: 15, previewTheme: "coffee-amber" },
-  frame_gold: { status: "retired", rarity: "rare", sortOrder: 10, previewTheme: "gold-ring", legacyRenderer: "frame_gold", releasedAt: "2025-01-15", collection: "Founders Wardrobe" },
+  frame_gold: { status: "remastered", rarity: "rare", sortOrder: 10, previewTheme: "golden-ratio", legacyRenderer: "frame_gold", releasedAt: "2025-01-15", collection: "Founders Wardrobe", upgradeAnnouncement: "Gold Frame is now Golden Ratio, rebuilt as a segmented precision frame while preserving ownership." },
   frame_neon: { status: "remastered", rarity: "epic", sortOrder: 20, previewTheme: "neon-pulse", releasedAt: "2025-02-01", collection: "Night Shift", upgradeAnnouncement: "Neon Frame has been visually upgraded with a sharper clinical glow while preserving its signature neon ring." },
   frame_fire: { status: "retired", rarity: "legendary", sortOrder: 30, previewTheme: "live-hellfire", legacyRenderer: "frame_fire" },
   frame_legendary_diamond: { status: "remastered", rarity: "legendary", sortOrder: 40, previewTheme: "surgical-steel", legacyRenderer: "frame_legendary_diamond", upgradeAnnouncement: "Legendary Diamond is now Surgical Steel. Existing owners keep access through the original product ID." },
-  frame_legendary_biohazard: { status: "active", rarity: "legendary", sortOrder: 50, previewTheme: "biohazard" },
+  frame_legendary_biohazard: { status: "remastered", rarity: "legendary", sortOrder: 50, previewTheme: "containment-seal", upgradeAnnouncement: "Legendary Biohazard is now Containment Seal, with locking clinical safety segments and preserved ownership." },
   frame_mythic_nebula: { status: "retired", rarity: "mythic", sortOrder: 60, previewTheme: "deep-nebula", legacyRenderer: "frame_mythic_nebula" },
   frame_mythic_heartbeat: { status: "retired", rarity: "mythic", sortOrder: 70, previewTheme: "heartbeat", legacyRenderer: "frame_mythic_heartbeat" },
   frame_lightning: { status: "retired", rarity: "mythic", sortOrder: 80, previewTheme: "high-voltage", legacyRenderer: "frame_lightning" },
@@ -195,6 +195,20 @@ export const COSMETIC_CATALOG_METADATA = {
   avatar_ascended: { status: "active", rarity: "mythic", sortOrder: 80, previewTheme: "ascended-healer", featured: true },
   avatar_marble: { status: "active", rarity: "mythic", sortOrder: 90, previewTheme: "marble-statue" },
   avatar_vital_sign: { status: "active", rarity: "mythic", sortOrder: 100, previewTheme: "living-ekg", featured: true },
+  frame_dna_sequencer: { status: "active", rarity: "rare", sortOrder: 220, previewTheme: "dna-sequencer", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  frame_pharmacology_orbit: { status: "active", rarity: "epic", sortOrder: 230, previewTheme: "pharmacology-orbit", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  frame_surgical_drone: { status: "active", rarity: "legendary", sortOrder: 240, previewTheme: "surgical-drone", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  frame_holo_anatomy: { status: "active", rarity: "mythic", sortOrder: 250, previewTheme: "holo-anatomy", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  avatar_pulse_runner: { status: "active", rarity: "rare", sortOrder: 110, previewTheme: "pulse-runner", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  avatar_neurocartographer: { status: "active", rarity: "epic", sortOrder: 120, previewTheme: "neurocartographer", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  avatar_robotic_surgery_fellow: { status: "active", rarity: "legendary", sortOrder: 130, previewTheme: "robotic-surgery", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  avatar_nexus_laureate: { status: "active", rarity: "mythic", sortOrder: 140, previewTheme: "nexus-laureate", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  title_night_consult: { status: "active", rarity: "common", sortOrder: 100, previewTheme: "night-consult", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  title_diagnostician: { status: "active", rarity: "common", sortOrder: 110, previewTheme: "diagnostician", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  title_anatomy_architect: { status: "active", rarity: "epic", sortOrder: 120, previewTheme: "anatomy-architect", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  title_code_commander: { status: "active", rarity: "legendary", sortOrder: 130, previewTheme: "code-commander", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  title_synapse_specialist: { status: "active", rarity: "mythic", sortOrder: 140, previewTheme: "synapse-specialist", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
+  title_nexus_laureate: { status: "active", rarity: "mythic", sortOrder: 150, previewTheme: "nexus-laureate-title", featured: true, releasedAt: "2026-08-14", collection: "Nexus Protocol" },
 } as const satisfies Record<string, CosmeticCatalogMetadata>
 
 export type SoloSupplyMode = "rapid" | "sudden" | "timeatk" | "streak" | "double"
@@ -252,6 +266,12 @@ export const TITLE_LABELS: Record<string, string> = {
   title_department_chair:  "Department Chair",
   title_chief_of_surgery:  "Chief of Surgery",
   title_dean_of_medicine:  "Dean of Medicine",
+  title_night_consult: "Night Consult",
+  title_diagnostician: "The Diagnostician",
+  title_anatomy_architect: "Anatomy Architect",
+  title_code_commander: "Code Commander",
+  title_synapse_specialist: "Synapse Specialist",
+  title_nexus_laureate: "Nexus Laureate",
 }
 
 /** Dedicated frame classes keep motion on decorative pseudo-elements. */
@@ -786,6 +806,20 @@ const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [
     cosmeticType: "avatar",
     imagePath: "/avatars/vital-sign.png",
   },
+  { id: "frame_dna_sequencer", name: "DNA Sequencer", desc: "Helix segments align into a diagnostic sequence as you interact.", icon: "DNA", category: "cosmetic", maxQuantity: 1, gradient: "from-cyan-500 to-blue-700", cosmeticType: "frame" },
+  { id: "frame_pharmacology_orbit", name: "Pharmacology Orbit", desc: "Molecular nodes orbit your profile and dock into receptor sites.", icon: "Rx", category: "cosmetic", maxQuantity: 1, gradient: "from-emerald-400 to-teal-700", cosmeticType: "frame" },
+  { id: "frame_surgical_drone", name: "Surgical Drone", desc: "Precision instrument arms track movement and retract safely.", icon: "SD", category: "cosmetic", maxQuantity: 1, gradient: "from-slate-300 to-blue-700", cosmeticType: "frame" },
+  { id: "frame_holo_anatomy", name: "Holo Anatomy", desc: "Anatomical layers shift, inspect, and assemble around your avatar.", icon: "HA", category: "cosmetic", maxQuantity: 1, gradient: "from-rose-400 via-cyan-500 to-indigo-700", cosmeticType: "frame" },
+  { id: "avatar_pulse_runner", name: "Pulse Runner", desc: "Emergency-ready and always one beat ahead.", icon: "PR", category: "cosmetic", maxQuantity: 1, gradient: "from-cyan-500 to-slate-950", cosmeticType: "avatar", imagePath: "/avatars/pulse-runner.png" },
+  { id: "avatar_neurocartographer", name: "Neurocartographer", desc: "Maps the pathways no one else can see.", icon: "NC", category: "cosmetic", maxQuantity: 1, gradient: "from-violet-500 to-indigo-950", cosmeticType: "avatar", imagePath: "/avatars/neurocartographer.png" },
+  { id: "avatar_robotic_surgery_fellow", name: "Robotic Surgery Fellow", desc: "Precision at the edge of human and machine.", icon: "RF", category: "cosmetic", maxQuantity: 1, gradient: "from-slate-400 to-blue-950", cosmeticType: "avatar", imagePath: "/avatars/robotic-surgery-fellow.png" },
+  { id: "avatar_nexus_laureate", name: "Nexus Laureate", desc: "Clinical excellence, recognized across the Nexus.", icon: "NL", category: "cosmetic", maxQuantity: 1, gradient: "from-amber-300 to-slate-950", cosmeticType: "avatar", imagePath: "/avatars/nexus-laureate.png" },
+  { id: "title_night_consult", name: '"Night Consult"', desc: "For the clinician who answers after hours.", icon: "NC", category: "cosmetic", maxQuantity: 1, gradient: "from-slate-700 to-indigo-950", cosmeticType: "title" },
+  { id: "title_diagnostician", name: '"The Diagnostician"', desc: "Every clue resolves into a sharper differential.", icon: "Dx", category: "cosmetic", maxQuantity: 1, gradient: "from-cyan-600 to-blue-800", cosmeticType: "title" },
+  { id: "title_anatomy_architect", name: '"Anatomy Architect"', desc: "Builds understanding layer by layer.", icon: "AA", category: "cosmetic", maxQuantity: 1, gradient: "from-rose-500 to-violet-700", cosmeticType: "title" },
+  { id: "title_code_commander", name: '"Code Commander"', desc: "Calm structure when every second matters.", icon: "CC", category: "cosmetic", maxQuantity: 1, gradient: "from-blue-600 to-slate-950", cosmeticType: "title" },
+  { id: "title_synapse_specialist", name: '"Synapse Specialist"', desc: "Connects knowledge at the speed of thought.", icon: "SS", category: "cosmetic", maxQuantity: 1, gradient: "from-fuchsia-500 to-indigo-950", cosmeticType: "title" },
+  { id: "title_nexus_laureate", name: '"Nexus Laureate"', desc: "The highest distinction in the clinical Nexus.", icon: "NL", category: "cosmetic", maxQuantity: 1, gradient: "from-amber-400 to-slate-950", cosmeticType: "title" },
 ]
 
 

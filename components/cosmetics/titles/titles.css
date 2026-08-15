@@ -1,0 +1,17 @@
+@keyframes title-trace { from { transform: scaleX(.08); opacity: .35 } to { transform: scaleX(1); opacity: 1 } }
+@keyframes title-celebrate { 50% { transform: translateY(-2px) scale(1.035); filter: brightness(1.25) } }
+.reactive-title { --title-accent:#38bdf8; display:inline-flex; border-radius:999px; }
+.reactive-title__plate { position:relative; display:inline-flex; min-height:1.75rem; align-items:center; gap:.35rem; overflow:hidden; border:1px solid color-mix(in srgb,var(--title-accent) 48%,transparent); border-radius:999px; padding:.25rem .65rem; background:linear-gradient(120deg,color-mix(in srgb,var(--title-accent) 18%,#020617),#0f172a); color:#fff; box-shadow:inset 0 1px 0 rgba(255,255,255,.12); }
+.reactive-title__mark { width:.42rem; height:.42rem; flex:none; border:1px solid var(--title-accent); border-radius:2px; transform:rotate(45deg); }
+.reactive-title__text { position:relative; z-index:1; font-size:.625rem; font-weight:900; letter-spacing:.035em; white-space:nowrap; }
+.reactive-title__trace { position:absolute; right:.45rem; bottom:.18rem; left:.45rem; height:1px; transform-origin:left; background:linear-gradient(90deg,transparent,var(--title-accent),transparent); }
+[data-cosmetic-id="title_night_consult"] { --title-accent:#818cf8 }
+[data-cosmetic-id="title_diagnostician"] { --title-accent:#22d3ee }
+[data-cosmetic-id="title_anatomy_architect"] { --title-accent:#fb7185 }
+[data-cosmetic-id="title_code_commander"] { --title-accent:#60a5fa }
+[data-cosmetic-id="title_synapse_specialist"] { --title-accent:#e879f9 }
+[data-cosmetic-id="title_nexus_laureate"] { --title-accent:#fbbf24 }
+.reactive-title[data-motion-state="focused"] .reactive-title__trace { animation:title-trace .65s ease-out both }
+.reactive-title[data-motion-state="celebrating"] .reactive-title__plate { animation:title-celebrate .8s ease-in-out 2 }
+.reactive-title[data-motion-state="reduced"] *, .reactive-title[data-motion-state="static"] * { animation:none }
+@media (prefers-reduced-motion:reduce){.reactive-title *{animation:none!important;transform:none!important}}

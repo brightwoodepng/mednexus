@@ -1,6 +1,6 @@
 "use client"
 
-import { createElement, useRef, type ElementType } from "react"
+import { createElement, useRef, type CSSProperties, type ElementType } from "react"
 import { getCosmeticPresentation } from "./registry"
 import { useCosmeticMotion } from "./motion"
 import type { CosmeticKind, CosmeticRendererProps } from "./types"
@@ -26,6 +26,12 @@ function CosmeticWrapper({ as = "div", kind, ...props }: WrapperProps & { kind: 
     "data-motion-state": stable ? "static" : motionState,
     "data-player-score": props.playerScore,
     "data-player-rank": props.playerRank,
+    "data-activation-event": props.activationEvent ?? undefined,
+    style: {
+      ...((props.wrapperProps?.style ?? {}) as CSSProperties),
+      "--cosmetic-pointer-x": `${(props.pointer?.x ?? 0) * 7}px`,
+      "--cosmetic-pointer-y": `${(props.pointer?.y ?? 0) * 7}px`,
+    } as CSSProperties,
   }, <Renderer {...props}>{props.avatarImage ?? props.children}</Renderer>)
 }
 
