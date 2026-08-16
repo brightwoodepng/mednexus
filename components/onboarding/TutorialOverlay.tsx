@@ -15,16 +15,16 @@ function visibleAnchor(id?: string) {
   }) ?? null
 }
 
-export function TutorialOverlay({ tutorial, stepIndex, isPhone, measureEpoch, interactionComplete, onStep, onComplete, onPause, onDismiss }: { tutorial: TutorialDefinition; stepIndex: number; isPhone: boolean; measureEpoch: number; interactionComplete: boolean; onStep: (step: number) => void; onComplete: () => void; onPause: () => void; onDismiss: () => void }) {
+export function TutorialOverlay({ tutorial, stepIndex, isPhone, measureEpoch, interactionComplete, interactionAnchorId, onStep, onComplete, onPause, onDismiss }: { tutorial: TutorialDefinition; stepIndex: number; isPhone: boolean; measureEpoch: number; interactionComplete: boolean; interactionAnchorId?: string; onStep: (step: number) => void; onComplete: () => void; onPause: () => void; onDismiss: () => void }) {
   const step = tutorial.steps[stepIndex]
   const [rect, setRect] = useState<DOMRect | null>(null)
   const [confirmSkip, setConfirmSkip] = useState(false)
   const previousFocus = useRef<HTMLElement | null>(null)
   const dialog = useRef<HTMLDivElement>(null)
-  const anchorId = step.navigationAction?.type === "open-appearance" ? "appearance-modal" : isPhone ? ((step.mobileDrawerTargetAnchorId && visibleAnchor(step.mobileDrawerTargetAnchorId)) ? step.mobileDrawerTargetAnchorId : step.mobileTargetAnchorId) : step.desktopTargetAnchorId
+  const anchorId = interactionAnchorId ?? (isPhone ? ((step.mobileDrawerTargetAnchorId && visibleAnchor(step.mobileDrawerTargetAnchorId)) ? step.mobileDrawerTargetAnchorId : step.mobileTargetAnchorId) : step.desktopTargetAnchorId)
   const bottomTarget = isPhone && anchorId?.startsWith("mobile-bottom")
-  const tryIt = Boolean(step.interaction && isPhone)
-  const allowTargetInteraction = tryIt || step.navigationAction?.type === "open-appearance"
+  const tryIt = Boolean(step.interaction)
+  const allowTargetInteraction = tryIt
 
   const measure = useCallback(() => {
     const target = visibleAnchor(anchorId)

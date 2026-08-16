@@ -222,7 +222,7 @@ function ThemeSection({
       <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div data-tutorial-anchor="appearance-theme-grid" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {themes.map((t) => (
           <ThemeCard
             key={t.id}
@@ -249,7 +249,7 @@ function ThemeCard({
   return (
     <button
       type="button"
-      onClick={() => onSelect(theme.id)}
+      onClick={() => { onSelect(theme.id); window.dispatchEvent(new CustomEvent("mednexus:tutorial-theme-selected", { detail: { themeId: theme.id } })) }}
       className={cn(
         "group flex items-center gap-3 rounded-2xl border p-3.5 text-left transition-all",
         isActive

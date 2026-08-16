@@ -2,6 +2,11 @@ import type { Question, QuestionExplanation, QuestionMedia, QuestionOption } fro
 
 export const GROUP_STUDY_CAPACITY = 10
 export const GROUP_STUDY_RECONNECT_MINUTES = 10
+export const GROUP_STUDY_NAVIGATION_MODES = ["browse_ahead", "answer_ahead", "anyone_advances"] as const
+export type GroupStudyNavigationMode = typeof GROUP_STUDY_NAVIGATION_MODES[number]
+export function isGroupStudyNavigationMode(value: unknown): value is GroupStudyNavigationMode {
+  return typeof value === "string" && GROUP_STUDY_NAVIGATION_MODES.includes(value as GroupStudyNavigationMode)
+}
 export const GROUP_STUDY_TIMER_OPTIONS = [30, 45, 60, 90] as const
 export const GROUP_STUDY_DIFFICULTIES = ["mixed", "easy", "medium", "hard"] as const
 

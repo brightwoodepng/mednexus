@@ -22,7 +22,7 @@ export type TutorialStep = {
   mobilePresentation: "sheet"
   navigationAction?: TutorialNavigationAction
   restoreUiAfterStep?: boolean
-  interaction?: { type: "try-it"; expectedAction: "open-mobile-drawer" | "open-workspace-switcher" }
+  interaction?: { type: "try-it"; expectedAction: "open-mobile-drawer" | "open-workspace-switcher" | "select-theme" }
 }
 export type TutorialDefinition = { id: TutorialId; name: string; finishLabel: string; device: "desktop" | "phone"; steps: TutorialStep[] }
 
@@ -44,7 +44,7 @@ const desktopShared = (hub: string): TutorialStep[] => [
   { ...baseStep, id: `desktop-${hub}-workspace`, title: "Switch study workspaces", body: "Use this switcher to move between MCQ Q-Bank and Theory Vault.", desktopTargetAnchorId: "desktop-workspace-switcher", navigationAction: { type: "open-workspace-switcher" }, restoreUiAfterStep: true },
   { ...baseStep, id: `desktop-${hub}-navigation`, title: "Desktop navigation", body: "The desktop sidebar keeps every destination visible. It expands during this tour when a full label needs to be shown.", desktopTargetAnchorId: "desktop-navigation", navigationAction: { type: "none" } },
   { ...baseStep, id: `desktop-${hub}-profile`, title: "Profile and notifications", body: "Notifications are in the header. Your account menu contains profile settings and sign out; this tour never signs you out.", desktopTargetAnchorId: "header-account-menu", preferredPlacement: "bottom", navigationAction: { type: "open-account-menu" }, restoreUiAfterStep: true },
-  { ...baseStep, id: `desktop-${hub}-appearance`, title: "Appearance and themes", body: "Open appearance settings to preview themes. Pausing the tour restores the appearance you started with.", desktopTargetAnchorId: "header-appearance", preferredPlacement: "bottom", navigationAction: { type: "open-appearance" }, restoreUiAfterStep: true },
+  { ...baseStep, id: `desktop-${hub}-appearance`, title: "Appearance and themes", body: "Tap Appearance, then choose a theme to continue. Pausing the tour restores the appearance you started with.", desktopTargetAnchorId: "header-appearance", preferredPlacement: "bottom", navigationAction: { type: "none" }, interaction: { type: "try-it", expectedAction: "select-theme" }, restoreUiAfterStep: true },
 ]
 
 const phoneShared = (hub: string): TutorialStep[] => [
@@ -52,7 +52,7 @@ const phoneShared = (hub: string): TutorialStep[] => [
   { ...baseStep, id: `phone-${hub}-bottom-navigation`, title: "Phone navigation bar", body: "The four main destinations stay in the bottom navigation bar within thumb reach.", mobileTargetAnchorId: "mobile-bottom-navigation", navigationAction: { type: "none" } },
   { ...baseStep, id: `phone-${hub}-more`, title: "The full phone menu", body: "Open the menu for every destination that does not fit in the four-tab phone bar.", mobileTargetAnchorId: "mobile-menu-button", mobileDrawerTargetAnchorId: "drawer-navigation", interaction: { type: "try-it", expectedAction: "open-mobile-drawer" }, restoreUiAfterStep: true },
   { ...baseStep, id: `phone-${hub}-profile`, title: "Profile and notifications", body: "Notifications and your account menu remain in the phone header. The tutorial never signs you out.", mobileTargetAnchorId: "header-account-menu", preferredPlacement: "bottom", navigationAction: { type: "open-account-menu" }, restoreUiAfterStep: true },
-  { ...baseStep, id: `phone-${hub}-appearance`, title: "Appearance and themes", body: "Appearance settings live inside the phone menu. Pausing restores the appearance you started with.", mobileTargetAnchorId: "mobile-menu-button", mobileDrawerTargetAnchorId: "drawer-appearance", preferredPlacement: "bottom", navigationAction: { type: "open-appearance" }, restoreUiAfterStep: true },
+  { ...baseStep, id: `phone-${hub}-appearance`, title: "Appearance and themes", body: "Open the phone menu, tap Appearance, then choose a theme to continue. Pausing restores the appearance you started with.", mobileTargetAnchorId: "mobile-menu-button", mobileDrawerTargetAnchorId: "drawer-appearance", preferredPlacement: "bottom", navigationAction: { type: "none" }, interaction: { type: "try-it", expectedAction: "select-theme" }, restoreUiAfterStep: true },
 ]
 
 const mcqDestinations = [
