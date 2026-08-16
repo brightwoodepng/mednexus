@@ -17,7 +17,7 @@ import {
   type GroupStudyQuestionSnapshot,
 } from "@/lib/group-study"
 import { applyNPCredits, dailyRewardRemaining, recordDailyActivity } from "@/lib/np-ledger"
-import { requireRegisteredUser } from "@/lib/request-auth"
+import { requireAuthenticatedUser } from "@/lib/request-auth"
 import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
 
 type RoomRow = {
@@ -47,6 +47,7 @@ async function closeAnswering(client: PoolClient, room: RoomRow) {
   const unanswered = await client.query<{ user_id: string }>(
     `SELECT m.user_id FROM mednexus_group_study_memberships m
      WHERE m.room_id=$1 AND m.first_eligible_question<=$2 AND m.connection_status<>'left'
+       AND NOT m.is_guest
        AND NOT EXISTS(SELECT 1 FROM mednexus_group_study_answers a WHERE a.room_question_id=$3 AND a.user_id=m.user_id)`,
     [room.id, room.current_question_index, question.rows[0].id],
   )
@@ -70,12 +71,16 @@ async function closeAnswering(client: PoolClient, room: RoomRow) {
       })],
     )
   }
-  const submitted = await client.query<{ id: string; user_id: string; selected_answer: unknown; is_correct: boolean }>(
-    `SELECT id,user_id,selected_answer,is_correct FROM mednexus_group_study_answers
-     WHERE room_question_id=$1 AND score_processing_status='pending' FOR UPDATE`, [question.rows[0].id],
+  const submitted = await client.query<{ id: string; user_id: string; selected_answer: unknown; is_correct: boolean; is_guest: boolean }>(
+    `SELECT a.id,a.user_id,a.selected_answer,a.is_correct,m.is_guest
+     FROM mednexus_group_study_answers a
+     JOIN mednexus_group_study_memberships m ON m.room_id=a.room_id AND m.user_id=a.user_id
+     WHERE a.room_question_id=$1 AND a.score_processing_status='pending' FOR UPDATE OF a`, [question.rows[0].id],
   )
   for (const answer of submitted.rows) {
-    const reward = await rewardAnswer(client, room, question.rows[0], answer.user_id, answer.is_correct)
+    const reward = answer.is_guest
+      ? { earned: 0, eventId: `group-study:${room.id}:${question.rows[0].id}:${answer.user_id}` }
+      : await rewardAnswer(client, room, question.rows[0], answer.user_id, answer.is_correct)
     await client.query(
       `UPDATE mednexus_group_study_answers SET score_processing_status='processed',progress_processing_status='processed',
        np_processing_status='processed',np_earned=$2 WHERE id=$1`, [answer.id, reward.earned],
@@ -88,16 +93,18 @@ async function closeAnswering(client: PoolClient, room: RoomRow) {
        room_score=room_score+$4,session_np_earned=session_np_earned+$5 WHERE room_id=$1 AND user_id=$6`,
       [room.id, answer.is_correct ? 1 : 0, answer.is_correct ? 0 : 1, groupStudyRoomScore(answer.is_correct), reward.earned, answer.user_id],
     )
-    await client.query(
-      `INSERT INTO mednexus_progress_history(uid,event_id,occurred_at,mode,question_id,payload)
-       VALUES($1,$2,NOW(),'trial',$3,$4::jsonb) ON CONFLICT DO NOTHING`,
-      [answer.user_id, reward.eventId, question.rows[0].question_id, JSON.stringify({
-        id: reward.eventId, questionId: question.rows[0].question_id, module: question.rows[0].question_snapshot.module,
-        subject: question.rows[0].question_snapshot.subject, vignetteSnippet: question.rows[0].question_snapshot.vignette.slice(0, 160),
-        mode: "trial", groupStudy: true, selectedOption: answer.selected_answer,
-        correctOption: question.rows[0].question_snapshot.correctAnswer, isCorrect: answer.is_correct, timestamp: Date.now(),
-      })],
-    )
+    if (!answer.is_guest) {
+      await client.query(
+        `INSERT INTO mednexus_progress_history(uid,event_id,occurred_at,mode,question_id,payload)
+         VALUES($1,$2,NOW(),'trial',$3,$4::jsonb) ON CONFLICT DO NOTHING`,
+        [answer.user_id, reward.eventId, question.rows[0].question_id, JSON.stringify({
+          id: reward.eventId, questionId: question.rows[0].question_id, module: question.rows[0].question_snapshot.module,
+          subject: question.rows[0].question_snapshot.subject, vignetteSnippet: question.rows[0].question_snapshot.vignette.slice(0, 160),
+          mode: "trial", groupStudy: true, selectedOption: answer.selected_answer,
+          correctOption: question.rows[0].question_snapshot.correctAnswer, isCorrect: answer.is_correct, timestamp: Date.now(),
+        })],
+      )
+    }
   }
   await client.query(
     `UPDATE mednexus_progress_history
@@ -150,7 +157,7 @@ async function maintainRoom(client: PoolClient, room: RoomRow) {
   if (room.host_disconnected_at && room.host_disconnected_at.getTime() + GROUP_STUDY_HOST_RECONNECT_SECONDS * 1000 <= Date.now()) {
     const replacement = await client.query<{ user_id: string }>(
       `SELECT user_id FROM mednexus_group_study_memberships
-       WHERE room_id=$1 AND user_id<>$2 AND connection_status='online'
+       WHERE room_id=$1 AND user_id<>$2 AND connection_status='online' AND NOT is_guest
        ORDER BY joined_at,user_id LIMIT 1`, [room.id, room.host_user_id],
     )
     if (replacement.rows[0]) {
@@ -176,14 +183,15 @@ async function membership(client: PoolClient, roomId: string, userId: string, lo
 
 async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string) {
   const memberRows = await client.query(
-    `SELECT m.*,r.name,c.equipped_avatar
+    `SELECT m.*,COALESCE(r.name,g.name,'Guest') AS name,c.equipped_avatar
      FROM mednexus_group_study_memberships m
-     JOIN mednexus_registered_users r ON r.uid=m.user_id
-     LEFT JOIN mednexus_user_cosmetics c ON c.uid=m.user_id
+     LEFT JOIN mednexus_registered_users r ON r.uid=m.user_id AND NOT m.is_guest
+     LEFT JOIN mednexus_guest_users g ON g.uid=m.user_id AND m.is_guest
+     LEFT JOIN mednexus_user_cosmetics c ON c.uid=m.user_id AND NOT m.is_guest
      WHERE m.room_id=$1 ORDER BY m.joined_at,m.user_id`, [room.id],
   )
   const leaderboardInput: GroupStudyLeaderboardMember[] = memberRows.rows.map(row => ({
-    userId: row.user_id, name: row.name, avatar: row.equipped_avatar, role: row.role,
+    userId: row.user_id, name: row.name, avatar: row.equipped_avatar, role: row.role, isGuest: Boolean(row.is_guest),
     firstEligibleQuestion: row.first_eligible_question, questionsAttempted: Number(row.questions_attempted),
     correctAnswers: Number(row.correct_answers), incorrectAnswers: Number(row.incorrect_answers),
     eligibleUnanswered: Number(row.eligible_unanswered), currentStreak: Number(row.current_streak),
@@ -320,6 +328,7 @@ async function awardCompletion(client: PoolClient, room: RoomRow) {
   const members = await client.query("SELECT * FROM mednexus_group_study_memberships WHERE room_id=$1 FOR UPDATE", [room.id])
   if (members.rows.length < ECONOMY_CONFIG.gameRewards.multiplayer.minimumPlayers) return
   for (const member of members.rows) {
+    if (member.is_guest) continue
     if (Number(member.questions_attempted) < ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers) continue
     const remaining = await dailyRewardRemaining(client, member.user_id, "multiplayer", season.id)
     const credit = await applyNPCredits(client, member.user_id, [{
@@ -368,8 +377,8 @@ async function saveReviewItems(client: PoolClient, room: RoomRow, userId: string
 }
 
 export async function GET(req: Request, context: { params: Promise<{ pin: string }> }) {
-  const auth = await requireRegisteredUser(req)
-  if (!auth) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
+  const auth = await requireAuthenticatedUser(req)
+  if (!auth) return fail("Sign in or continue as a guest to join Group Study", 401, "AUTHENTICATION_REQUIRED")
   try { await ensureGroupStudySchema() } catch (error) { console.error("[group-study schema GET]", error); return fail("Group Study is temporarily unavailable", 503, "SCHEMA_UNAVAILABLE") }
   const { pin } = await context.params
   const client = await pool.connect()
@@ -394,8 +403,8 @@ export async function GET(req: Request, context: { params: Promise<{ pin: string
 }
 
 export async function POST(req: Request, context: { params: Promise<{ pin: string }> }) {
-  const auth = await requireRegisteredUser(req)
-  if (!auth) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
+  const auth = await requireAuthenticatedUser(req)
+  if (!auth) return fail("Sign in or continue as a guest to join Group Study", 401, "AUTHENTICATION_REQUIRED")
   try { await ensureGroupStudySchema() } catch (error) { console.error("[group-study schema POST]", error); return fail("Group Study is temporarily unavailable", 503, "SCHEMA_UNAVAILABLE") }
   const { pin } = await context.params
   const body = await req.json().catch(() => ({})) as { action?: string; answer?: unknown; ready?: unknown; force?: unknown; targetUserId?: unknown }
@@ -414,8 +423,8 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         if (Number(count.rows[0].count) >= GROUP_STUDY_CAPACITY) { await client.query("ROLLBACK"); return fail("This room is full", 409, "ROOM_FULL") }
         const eligible = room.current_phase === "lobby" ? 0 : firstEligibleQuestionIndex(room.current_question_index, room.current_phase)
         const inserted = await client.query(
-          `INSERT INTO mednexus_group_study_memberships(id,room_id,user_id,role,first_eligible_question,connection_status)
-           VALUES($1,$2,$3,'member',$4,'online') RETURNING *`, [`gsm-${crypto.randomUUID()}`, room.id, auth.uid, eligible],
+          `INSERT INTO mednexus_group_study_memberships(id,room_id,user_id,is_guest,role,first_eligible_question,connection_status)
+           VALUES($1,$2,$3,$4,'member',$5,'online') RETURNING *`, [`gsm-${crypto.randomUUID()}`, room.id, auth.uid, auth.isGuest, eligible],
         )
         member = inserted.rows[0]
       } else {
@@ -439,6 +448,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         await client.query("UPDATE mednexus_group_study_memberships SET ready=$2 WHERE id=$1", [member.id, body.ready === true])
         await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
       } else if (body.action === "bookmark" || body.action === "revision" || body.action === "missed-revision") {
+        if (auth.isGuest) { await client.query("ROLLBACK"); return fail("Create an account to save personal review items", 403, "REGISTERED_ACCOUNT_REQUIRED") }
         if (body.action === "missed-revision" && room.current_phase !== "completed") { await client.query("ROLLBACK"); return fail("Finish the session before adding missed questions", 409, "INVALID_PHASE") }
         await saveReviewItems(client, room, auth.uid, body.action)
       } else if (body.action === "start") {
@@ -516,7 +526,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
       } else if (body.action === "transfer") {
         if (!isHost || typeof body.targetUserId !== "string") { await client.query("ROLLBACK"); return fail("Only the host can transfer control", 403, "HOST_REQUIRED") }
         const target = await membership(client, room.id, body.targetUserId, true)
-        if (!target || target.connection_status === "left") { await client.query("ROLLBACK"); return fail("Select an active room member", 422) }
+        if (!target || target.connection_status === "left" || target.is_guest) { await client.query("ROLLBACK"); return fail("Select an active registered member", 422) }
         await client.query("UPDATE mednexus_group_study_memberships SET role='member' WHERE id=$1", [member.id])
         await client.query("UPDATE mednexus_group_study_memberships SET role='host' WHERE id=$1", [target.id])
         const transferred = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET host_user_id=$2,host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id, target.user_id])

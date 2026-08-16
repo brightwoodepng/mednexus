@@ -17,7 +17,7 @@ const question: GroupStudyQuestionSnapshot = {
 }
 
 function member(overrides: Partial<GroupStudyLeaderboardMember>): GroupStudyLeaderboardMember {
-  return { userId: crypto.randomUUID(), name: "Member", role: "member", firstEligibleQuestion: 0,
+  return { userId: crypto.randomUUID(), name: "Member", role: "member", isGuest: false, firstEligibleQuestion: 0,
     questionsAttempted: 0, correctAnswers: 0, incorrectAnswers: 0, eligibleUnanswered: 0,
     currentStreak: 0, highestStreak: 0, roomScore: 0, sessionNpEarned: 0,
     connectionStatus: "online", ...overrides }

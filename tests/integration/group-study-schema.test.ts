@@ -5,6 +5,8 @@ const schema = readFileSync("lib/db.ts", "utf8")
 const route = readFileSync("app/api/group-study/[pin]/route.ts", "utf8")
 const creationRoute = readFileSync("app/api/group-study/route.ts", "utf8")
 const home = readFileSync("components/group-study/group-study-home.tsx", "utf8")
+const room = readFileSync("components/group-study/group-study-room.tsx", "utf8")
+const dashboard = readFileSync("components/dashboard.tsx", "utf8")
 
 describe("Group Study persistence and authorization gates", () => {
   it("enforces membership, answer, host and reward idempotency in PostgreSQL", () => {
@@ -19,7 +21,28 @@ describe("Group Study persistence and authorization gates", () => {
     expect(route).toContain("WHERE pin=$1 FOR UPDATE")
     expect(route).toContain('if (!isHost)')
     expect(route).toContain('room.current_phase !== "question_open"')
-    expect(route).toContain("requireRegisteredUser")
+    expect(route).toContain("requireAuthenticatedUser")
+  })
+
+  it("allows verified guest participants without granting host or economy privileges", () => {
+    expect(schema).toContain("is_guest BOOLEAN NOT NULL DEFAULT FALSE")
+    expect(schema).toContain("DROP CONSTRAINT IF EXISTS mednexus_group_study_memberships_user_id_fkey")
+    expect(schema).toContain("DROP CONSTRAINT IF EXISTS mednexus_group_study_answers_user_id_fkey")
+    expect(route).toContain("auth.isGuest")
+    expect(route).toContain("if (member.is_guest) continue")
+    expect(route).toContain("target.is_guest")
+    expect(route).toContain("LEFT JOIN mednexus_guest_users")
+    expect(creationRoute).toContain("canCreate: !auth.isGuest")
+    expect(home).toContain("Registered and guest accounts can join")
+  })
+
+  it("keeps the dashboard shortcut between statistics and study modules and optimizes the lobby for phones", () => {
+    expect(dashboard.indexOf("Group Study")).toBeGreaterThan(dashboard.indexOf("Stats row"))
+    expect(dashboard.indexOf("Group Study")).toBeLessThan(dashboard.indexOf("Study Modules"))
+    expect(room).toContain("sticky bottom-3")
+    expect(room).toContain("min-h-12 w-full")
+    expect(room).toContain("Invite at least one participant")
+    expect(room).toContain("member.isGuest")
   })
 
   it("keeps answer keys behind reveal serialization", () => {
