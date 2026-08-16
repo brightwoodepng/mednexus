@@ -47,3 +47,4 @@ Correct answers use the existing repeat schedule, discipline-fatigue limit, mult
 - A configured PostgreSQL database is required for Group Study; local browser-only progress cannot provide shared rooms.
 - Room creation accepts a question count bounded by the selected module/discipline total. Per-user, per-selection history shuffles unseen questions first; after the unseen pool is exhausted, the least recently selected questions are recycled first.
 - Group Study endpoints initialize the idempotent schema before accessing feature tables so existing deployments do not fail when the feature is first used.
+- Deployments whose runtime role cannot create tables must configure an owner-level `DATABASE_ADMIN_URL` and run `pnpm db:migrate-group-study` once. The command verifies all required objects after applying the focused migration.
