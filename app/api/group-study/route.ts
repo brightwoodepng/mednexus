@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import pool, { ensureGroupStudySchema, groupStudySchemaStatus } from "@/lib/db"
+import pool, { ensureGroupStudySchema } from "@/lib/db"
 import { isSupportedSoloQuestion } from "@/lib/game-question-pool"
 import {
   GROUP_STUDY_EXPIRY_HOURS,
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
       disciplines.set(discipline, (disciplines.get(discipline) ?? 0) + 1)
       modules.set(moduleId, disciplines)
     }
-    return NextResponse.json({ schemaStatus: await groupStudySchemaStatus(), modules: [...modules.entries()].map(([id, disciplines]) => ({
+    return NextResponse.json({ modules: [...modules.entries()].map(([id, disciplines]) => ({
       id,
       total: [...disciplines.values()].reduce((sum, count) => sum + count, 0),
       disciplines: [...disciplines.entries()]
@@ -147,8 +147,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[group-study POST]", error)
     const databaseCode = typeof (error as { code?: unknown }).code === "string" ? (error as { code: string }).code : null
-    const status = databaseCode === "42501" ? await groupStudySchemaStatus().catch(() => null) : null
-    const missing = status?.missing.length ? `; missing ${status.missing.join(", ")}` : ""
-    return fail(databaseCode ? `Unable to create Group Study room (database ${databaseCode}${missing})` : "Unable to create Group Study room", 500, "SERVER_ERROR")
+    if (databaseCode === "42501") return fail("Group Study database migration is required", 503, "SCHEMA_PERMISSION_REQUIRED")
+    return fail(databaseCode ? `Unable to create Group Study room (database ${databaseCode})` : "Unable to create Group Study room", 500, "SERVER_ERROR")
   }
 }

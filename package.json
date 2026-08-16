@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "postinstall": "node scripts/copy-pdf-worker.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
+    "db:migrate-group-study": "tsx scripts/migrate-group-study.ts",
     "db:migrate-mcq-media": "tsx scripts/migrate-mcq-media-to-object-storage.ts",
     "db:migrate-inline-mcq-media": "tsx scripts/migrate-inline-mcq-media.ts",
     "db:audit-economy": "tsx scripts/audit-economy-readiness.ts",
