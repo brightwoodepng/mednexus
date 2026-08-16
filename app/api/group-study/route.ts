@@ -7,7 +7,7 @@ import {
   prioritizeGroupStudyQuestions,
   type GroupStudyQuestionSnapshot,
 } from "@/lib/group-study"
-import { requireRegisteredUser } from "@/lib/request-auth"
+import { requireAuthenticatedUser, requireRegisteredUser } from "@/lib/request-auth"
 import type { Question } from "@/lib/types"
 
 const fail = (message: string, status = 400, code = "INVALID_REQUEST") =>
@@ -37,7 +37,8 @@ async function questionBank() {
 }
 
 export async function GET(req: Request) {
-  if (!await requireRegisteredUser(req)) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
+  const auth = await requireAuthenticatedUser(req)
+  if (!auth) return fail("Sign in or continue as a guest to use Group Study", 401, "AUTHENTICATION_REQUIRED")
   try {
     const questions = await questionBank()
     const modules = new Map<string, Map<string, number>>()
@@ -48,7 +49,7 @@ export async function GET(req: Request) {
       disciplines.set(discipline, (disciplines.get(discipline) ?? 0) + 1)
       modules.set(moduleId, disciplines)
     }
-    return NextResponse.json({ modules: [...modules.entries()].map(([id, disciplines]) => ({
+    return NextResponse.json({ canCreate: !auth.isGuest, modules: [...modules.entries()].map(([id, disciplines]) => ({
       id,
       total: [...disciplines.values()].reduce((sum, count) => sum + count, 0),
       disciplines: [...disciplines.entries()]

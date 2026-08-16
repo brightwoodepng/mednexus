@@ -53,6 +53,7 @@ export async function groupStudySchemaStatus() {
   const result = await pool.query<{
     rooms: boolean; room_questions: boolean; question_history: boolean
     memberships: boolean; answers: boolean; reward_events: boolean; discipline: boolean
+    guest_memberships: boolean; membership_identity_ready: boolean; answer_identity_ready: boolean
   }>(`
     SELECT
       to_regclass('public.mednexus_group_study_rooms') IS NOT NULL AS rooms,
@@ -64,7 +65,21 @@ export async function groupStudySchemaStatus() {
       EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema='public' AND table_name='mednexus_group_study_rooms' AND column_name='discipline'
-      ) AS discipline
+      ) AS discipline,
+      EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='mednexus_group_study_memberships' AND column_name='is_guest'
+      ) AS guest_memberships,
+      NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_schema='public' AND table_name='mednexus_group_study_memberships'
+          AND constraint_name='mednexus_group_study_memberships_user_id_fkey'
+      ) AS membership_identity_ready,
+      NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_schema='public' AND table_name='mednexus_group_study_answers'
+          AND constraint_name='mednexus_group_study_answers_user_id_fkey'
+      ) AS answer_identity_ready
   `)
   const status = result.rows[0]
   const missing = Object.entries(status).filter(([, present]) => !present).map(([name]) => name)
@@ -140,7 +155,8 @@ export async function ensureGroupStudySchema() {
       CREATE TABLE IF NOT EXISTS mednexus_group_study_memberships (
         id TEXT PRIMARY KEY,
         room_id TEXT NOT NULL REFERENCES mednexus_group_study_rooms(id) ON DELETE CASCADE,
-        user_id TEXT NOT NULL REFERENCES mednexus_registered_users(uid),
+        user_id TEXT NOT NULL,
+        is_guest BOOLEAN NOT NULL DEFAULT FALSE,
         role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('host','member')),
         ready BOOLEAN NOT NULL DEFAULT FALSE,
         joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -158,6 +174,8 @@ export async function ensureGroupStudySchema() {
         session_np_earned INTEGER NOT NULL DEFAULT 0,
         UNIQUE (room_id, user_id)
       );
+      ALTER TABLE mednexus_group_study_memberships ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE mednexus_group_study_memberships DROP CONSTRAINT IF EXISTS mednexus_group_study_memberships_user_id_fkey;
       CREATE UNIQUE INDEX IF NOT EXISTS mednexus_group_study_single_host_idx
         ON mednexus_group_study_memberships (room_id) WHERE role = 'host';
       CREATE INDEX IF NOT EXISTS mednexus_group_study_members_room_idx
@@ -167,7 +185,7 @@ export async function ensureGroupStudySchema() {
         id TEXT PRIMARY KEY,
         room_id TEXT NOT NULL REFERENCES mednexus_group_study_rooms(id) ON DELETE CASCADE,
         room_question_id TEXT NOT NULL REFERENCES mednexus_group_study_room_questions(id) ON DELETE CASCADE,
-        user_id TEXT NOT NULL REFERENCES mednexus_registered_users(uid),
+        user_id TEXT NOT NULL,
         selected_answer JSONB NOT NULL,
         is_correct BOOLEAN NOT NULL,
         submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -177,6 +195,7 @@ export async function ensureGroupStudySchema() {
         np_earned INTEGER NOT NULL DEFAULT 0,
         UNIQUE (room_question_id, user_id)
       );
+      ALTER TABLE mednexus_group_study_answers DROP CONSTRAINT IF EXISTS mednexus_group_study_answers_user_id_fkey;
       CREATE INDEX IF NOT EXISTS mednexus_group_study_answers_room_idx
         ON mednexus_group_study_answers (room_id, room_question_id);
 
@@ -720,7 +739,8 @@ export async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS mednexus_group_study_memberships (
       id                        TEXT        PRIMARY KEY,
       room_id                   TEXT        NOT NULL REFERENCES mednexus_group_study_rooms(id) ON DELETE CASCADE,
-      user_id                   TEXT        NOT NULL REFERENCES mednexus_registered_users(uid),
+      user_id                   TEXT        NOT NULL,
+      is_guest                 BOOLEAN     NOT NULL DEFAULT FALSE,
       role                      TEXT        NOT NULL DEFAULT 'member' CHECK (role IN ('host','member')),
       ready                     BOOLEAN     NOT NULL DEFAULT FALSE,
       joined_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -738,6 +758,8 @@ export async function ensureSchema() {
       session_np_earned         INTEGER     NOT NULL DEFAULT 0,
       UNIQUE (room_id, user_id)
     );
+    ALTER TABLE mednexus_group_study_memberships ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE mednexus_group_study_memberships DROP CONSTRAINT IF EXISTS mednexus_group_study_memberships_user_id_fkey;
     CREATE UNIQUE INDEX IF NOT EXISTS mednexus_group_study_single_host_idx
       ON mednexus_group_study_memberships (room_id) WHERE role = 'host';
     CREATE INDEX IF NOT EXISTS mednexus_group_study_members_room_idx
@@ -747,7 +769,7 @@ export async function ensureSchema() {
       id                         TEXT        PRIMARY KEY,
       room_id                    TEXT        NOT NULL REFERENCES mednexus_group_study_rooms(id) ON DELETE CASCADE,
       room_question_id           TEXT        NOT NULL REFERENCES mednexus_group_study_room_questions(id) ON DELETE CASCADE,
-      user_id                    TEXT        NOT NULL REFERENCES mednexus_registered_users(uid),
+      user_id                    TEXT        NOT NULL,
       selected_answer            JSONB       NOT NULL,
       is_correct                 BOOLEAN     NOT NULL,
       submitted_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -757,6 +779,7 @@ export async function ensureSchema() {
       np_earned                  INTEGER     NOT NULL DEFAULT 0,
       UNIQUE (room_question_id, user_id)
     );
+    ALTER TABLE mednexus_group_study_answers DROP CONSTRAINT IF EXISTS mednexus_group_study_answers_user_id_fkey;
     CREATE INDEX IF NOT EXISTS mednexus_group_study_answers_room_idx
       ON mednexus_group_study_answers (room_id, room_question_id);
 

@@ -29,6 +29,7 @@ export type GroupStudyLeaderboardMember = {
   name: string
   avatar?: string | null
   role: "host" | "member"
+  isGuest: boolean
   firstEligibleQuestion: number | null
   questionsAttempted: number
   correctAnswers: number
