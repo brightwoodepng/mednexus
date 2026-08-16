@@ -12,8 +12,10 @@ function authHeaders(json: boolean): HeadersInit {
   if (typeof window === "undefined") return headers
   const session = localStorage.getItem("mednexus-user-token")
   const guest = localStorage.getItem("mednexus-guest-token")
-  if (session) headers["x-session-token"] = session
-  else if (guest) headers["x-guest-token"] = guest
+  // Guest mode is the active identity whenever its token exists. A previous
+  // registered token can remain stored when users switch modes on one device.
+  if (guest) headers["x-guest-token"] = guest
+  else if (session) headers["x-session-token"] = session
   return headers
 }
 

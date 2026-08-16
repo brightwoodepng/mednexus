@@ -32,6 +32,16 @@ describe("server request auth", () => {
     expect(await requireRegisteredUser(guest)).toBeNull()
     expect(await requireAuthenticatedUser(guest)).toMatchObject({ uid: "guest-1", isGuest: true })
   })
+  it("prefers the explicitly selected guest identity over a stale registered token", async () => {
+    const { requireAuthenticatedUser } = await import("@/lib/request-auth")
+    const { createSessionToken } = await import("@/lib/session-auth")
+    const { createGuestToken } = await import("@/lib/guest-auth")
+    const mixed = new Request("http://x", { headers: {
+      "x-session-token": createSessionToken("learner-1", "STUDENT"),
+      "x-guest-token": createGuestToken("guest-1"),
+    } })
+    expect(await requireAuthenticatedUser(mixed)).toMatchObject({ uid: "guest-1", isGuest: true })
+  })
   it("reuses a bounded account lookup for high-frequency authenticated polling", async () => {
     const { requireAuthenticatedUser } = await import("@/lib/request-auth")
     const { createSessionToken } = await import("@/lib/session-auth")

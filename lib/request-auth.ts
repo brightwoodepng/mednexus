@@ -40,6 +40,22 @@ async function registeredToken(req: Request) {
 
 /** Resolves a signed session to a currently approved database account. */
 export async function getRequestAuth(req: Request, options: { allowGuest?: boolean; cacheMs?: number } = {}): Promise<RequestAuth | null> {
+  // An explicit guest credential represents the account currently selected in
+  // the client. Prefer it over a stale registered cookie/token that may still
+  // exist after the user switches to Guest mode on the same browser.
+  const explicitGuest = options.allowGuest ? verifyGuestToken(req.headers.get("x-guest-token") ?? "") : null
+  if (explicitGuest) {
+    const cacheKey = `guest:${explicitGuest.uid}`
+    const cached = options.cacheMs ? requestAuthCache.get(cacheKey) : undefined
+    if (cached && cached.expiresAt > Date.now()) return cached.value
+    const { default: pool } = await import("@/lib/db")
+    const result = await pool.query("SELECT uid FROM mednexus_guest_users WHERE uid = $1 AND expires_at > NOW()", [explicitGuest.uid])
+    const value = result.rows.length
+      ? { uid: explicitGuest.uid, role: "GUEST" as const, permissions: new Set<AdminPermission>(), isGuest: true }
+      : null
+    cacheRequestAuth(cacheKey, options.cacheMs, value)
+    return value
+  }
   const session = verifySessionToken((await registeredToken(req)) ?? "")
   if (session) {
     const cacheKey = `registered:${session.uid}`
@@ -65,18 +81,7 @@ export async function getRequestAuth(req: Request, options: { allowGuest?: boole
     return value
   }
   if (!options.allowGuest) return null
-  const guest = verifyGuestToken(req.headers.get("x-guest-token") ?? "")
-  if (!guest) return null
-  const cacheKey = `guest:${guest.uid}`
-  const cached = options.cacheMs ? requestAuthCache.get(cacheKey) : undefined
-  if (cached && cached.expiresAt > Date.now()) return cached.value
-  const { default: pool } = await import("@/lib/db")
-  const result = await pool.query("SELECT uid FROM mednexus_guest_users WHERE uid = $1 AND expires_at > NOW()", [guest.uid])
-  const value = result.rows.length
-    ? { uid: guest.uid, role: "GUEST" as const, permissions: new Set<AdminPermission>(), isGuest: true }
-    : null
-  cacheRequestAuth(cacheKey, options.cacheMs, value)
-  return value
+  return null
 }
 
 export async function requireRegisteredUser(req: Request) {
