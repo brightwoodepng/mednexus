@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { PoolClient } from "pg"
-import pool from "@/lib/db"
+import pool, { ensureSchema } from "@/lib/db"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getActiveSeason } from "@/lib/economy-seasons"
 import {
@@ -370,6 +370,7 @@ async function saveReviewItems(client: PoolClient, room: RoomRow, userId: string
 export async function GET(req: Request, context: { params: Promise<{ pin: string }> }) {
   const auth = await requireRegisteredUser(req)
   if (!auth) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
+  try { await ensureSchema() } catch (error) { console.error("[group-study schema GET]", error); return fail("Group Study is temporarily unavailable", 503, "SCHEMA_UNAVAILABLE") }
   const { pin } = await context.params
   const client = await pool.connect()
   try {
@@ -395,6 +396,7 @@ export async function GET(req: Request, context: { params: Promise<{ pin: string
 export async function POST(req: Request, context: { params: Promise<{ pin: string }> }) {
   const auth = await requireRegisteredUser(req)
   if (!auth) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
+  try { await ensureSchema() } catch (error) { console.error("[group-study schema POST]", error); return fail("Group Study is temporarily unavailable", 503, "SCHEMA_UNAVAILABLE") }
   const { pin } = await context.params
   const body = await req.json().catch(() => ({})) as { action?: string; answer?: unknown; ready?: unknown; force?: unknown; targetUserId?: unknown }
   const client = await pool.connect()

@@ -45,4 +45,5 @@ Correct answers use the existing repeat schedule, discipline-fatigue limit, mult
 
 - V1 uses the existing polling convention and does not introduce WebSockets.
 - A configured PostgreSQL database is required for Group Study; local browser-only progress cannot provide shared rooms.
-- Room creation includes every eligible question in the selected module and, when supplied, limits the fixed snapshot to the selected discipline.
+- Room creation accepts a question count bounded by the selected module/discipline total. Per-user, per-selection history shuffles unseen questions first; after the unseen pool is exhausted, the least recently selected questions are recycled first.
+- Group Study endpoints initialize the idempotent schema before accessing feature tables so existing deployments do not fail when the feature is first used.

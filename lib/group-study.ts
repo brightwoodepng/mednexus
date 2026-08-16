@@ -112,3 +112,20 @@ export function rankGroupStudyMembers(members: GroupStudyLeaderboardMember[]): R
 export function groupStudyRoomScore(correct: boolean) {
   return correct ? 100 : 0
 }
+
+/** Unseen questions are shuffled first; repeats are oldest-selected first only after that pool is exhausted. */
+export function prioritizeGroupStudyQuestions<T extends { id: string }>(
+  questions: T[],
+  lastSelected: ReadonlyMap<string, number>,
+  random: () => number = Math.random,
+) {
+  const unseen = questions.filter(question => !lastSelected.has(question.id))
+  for (let index = unseen.length - 1; index > 0; index--) {
+    const swap = Math.floor(random() * (index + 1))
+    ;[unseen[index], unseen[swap]] = [unseen[swap], unseen[index]]
+  }
+  const seen = questions.filter(question => lastSelected.has(question.id)).sort((left, right) =>
+    (lastSelected.get(left.id) ?? 0) - (lastSelected.get(right.id) ?? 0) || left.id.localeCompare(right.id),
+  )
+  return [...unseen, ...seen]
+}

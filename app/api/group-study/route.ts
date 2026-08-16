@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
-import pool from "@/lib/db"
+import pool, { ensureSchema } from "@/lib/db"
 import { isSupportedSoloQuestion } from "@/lib/game-question-pool"
 import {
   GROUP_STUDY_EXPIRY_HOURS,
   isGroupStudyTimer,
+  prioritizeGroupStudyQuestions,
   type GroupStudyQuestionSnapshot,
 } from "@/lib/group-study"
 import { requireRegisteredUser } from "@/lib/request-auth"
@@ -30,15 +31,6 @@ function snapshot(question: Question): GroupStudyQuestionSnapshot {
   }
 }
 
-function shuffled<T>(values: T[]) {
-  const next = [...values]
-  for (let index = next.length - 1; index > 0; index--) {
-    const swap = Math.floor(Math.random() * (index + 1))
-    ;[next[index], next[swap]] = [next[swap], next[index]]
-  }
-  return next
-}
-
 async function questionBank() {
   const result = await pool.query<{ data: Question[] }>("SELECT data FROM mednexus_questions WHERE id=1")
   return (result.rows[0]?.data ?? []).filter(question => question.moduleStatus !== "offline" && question.status !== "offline" && isSupportedSoloQuestion(question))
@@ -47,6 +39,7 @@ async function questionBank() {
 export async function GET(req: Request) {
   if (!await requireRegisteredUser(req)) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
   try {
+    await ensureSchema()
     const questions = await questionBank()
     const modules = new Map<string, Map<string, number>>()
     for (const question of questions) {
@@ -73,11 +66,13 @@ export async function POST(req: Request) {
   const auth = await requireRegisteredUser(req)
   if (!auth) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
   try {
-    const body = await req.json() as { moduleId?: unknown; discipline?: unknown; timerSeconds?: unknown }
+    await ensureSchema()
+    const body = await req.json() as { moduleId?: unknown; discipline?: unknown; questionCount?: unknown; timerSeconds?: unknown }
     const moduleId = typeof body.moduleId === "string" ? body.moduleId.trim() : ""
     const discipline = typeof body.discipline === "string" ? body.discipline.trim() : ""
+    const questionCount = Number(body.questionCount)
     const timerSeconds = body.timerSeconds === undefined ? null : body.timerSeconds
-    if (!moduleId) return fail("A valid module is required")
+    if (!moduleId || !Number.isInteger(questionCount) || questionCount < 1) return fail("A valid module and question count are required")
     if (!isGroupStudyTimer(timerSeconds)) return fail("Timer must be off, 30, 45, 60 or 90 seconds")
 
     const available = (await questionBank()).filter(question => {
@@ -85,11 +80,12 @@ export async function POST(req: Request) {
       return questionModule === moduleId && (!discipline || question.subject.trim() === discipline)
     })
     if (!available.length) return fail("No eligible questions are available for this selection", 422, "INSUFFICIENT_QUESTIONS")
-    const selected = shuffled(available).map(snapshot)
-    const questionCount = selected.length
+    if (questionCount > available.length) return fail(`Only ${available.length} eligible questions are available for this selection`, 422, "INSUFFICIENT_QUESTIONS")
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
+      const disciplineScope = discipline || ""
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:group-study-rotation:${auth.uid}:${moduleId}:${disciplineScope}`])
       await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:group-study-pin'))")
       const user = await client.query<{ name: string; avatar: string | null }>(
         `SELECT r.name, c.equipped_avatar AS avatar
@@ -98,6 +94,13 @@ export async function POST(req: Request) {
          WHERE r.uid=$1 FOR UPDATE OF r`, [auth.uid],
       )
       if (!user.rows.length) throw new Error("Registered user not found")
+      const history = await client.query<{ question_id: string; last_selected_at: Date }>(
+        `SELECT question_id,last_selected_at FROM mednexus_group_study_question_history
+         WHERE user_id=$1 AND module_id=$2 AND discipline_scope=$3`,
+        [auth.uid, moduleId, disciplineScope],
+      )
+      const lastSelected = new Map(history.rows.map(row => [row.question_id, row.last_selected_at.getTime()]))
+      const selected = prioritizeGroupStudyQuestions(available, lastSelected).slice(0, questionCount).map(snapshot)
       const roomId = `gsr-${crypto.randomUUID()}`
       let pin = ""
       for (let attempt = 0; attempt < 20; attempt++) {
@@ -118,6 +121,14 @@ export async function POST(req: Request) {
           `INSERT INTO mednexus_group_study_room_questions(id,room_id,question_id,position,question_snapshot)
            VALUES($1,$2,$3,$4,$5::jsonb)`,
           [`gsq-${crypto.randomUUID()}`, roomId, question.id, position, JSON.stringify(question)],
+        )
+        await client.query(
+          `INSERT INTO mednexus_group_study_question_history
+            (user_id,module_id,discipline_scope,question_id,last_selected_at,selection_count)
+           VALUES($1,$2,$3,$4,NOW(),1)
+           ON CONFLICT(user_id,module_id,discipline_scope,question_id) DO UPDATE
+           SET last_selected_at=NOW(),selection_count=mednexus_group_study_question_history.selection_count+1`,
+          [auth.uid, moduleId, disciplineScope, question.id],
         )
       }
       await client.query(
