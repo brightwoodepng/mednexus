@@ -9,7 +9,7 @@ Group Study is a registered-account-only collaborative MCQ mode. It reuses the M
 - `mednexus_group_study_memberships` stores durable membership, late-join eligibility, connectivity, scores, streaks, and session NP.
 - `mednexus_group_study_answers` enforces one answer per registered user and room question.
 - `mednexus_group_study_reward_events` and the existing NP ledger provide independent idempotency boundaries.
-- `POST /api/group-study` creates rooms. `GET /api/group-study` returns authoritative module/difficulty counts.
+- `POST /api/group-study` creates rooms. `GET /api/group-study` returns authoritative modules and their discipline counts.
 - `GET` and `POST /api/group-study/[pin]` implement join/rejoin, polling, ready, start, submit, close, next, leave, end, host transfer, bookmarks, revision, leaderboard, and final results.
 
 Room and question mutations lock the room row. That lock serializes simultaneous joins, submissions, timer closure, and host controls. Correctness, scores, progress, and NP are calculated only from the stored question snapshot. Score/progress/NP processing is deferred until answering closes, so leaderboard changes or wallet changes cannot reveal correctness during the open phase.
@@ -30,7 +30,7 @@ Correct answers use the existing repeat schedule, discipline-fatigue limit, mult
 ## Manual test checklist
 
 1. Sign in as two approved registered users in separate browser profiles.
-2. Create a room for each difficulty and timer setting; verify the PIN and copied invitation link.
+2. Create rooms using all disciplines and a specific discipline with each timer setting; verify the PIN and copied invitation link.
 3. Join concurrently up to ten accounts and confirm an eleventh account receives `ROOM_FULL`.
 4. Mark members ready; verify the host can confirm starting with unready members.
 5. Submit different answers and verify only submission status—not choices, correctness, score, or NP—changes before reveal.
@@ -45,4 +45,4 @@ Correct answers use the existing repeat schedule, discipline-fatigue limit, mult
 
 - V1 uses the existing polling convention and does not introduce WebSockets.
 - A configured PostgreSQL database is required for Group Study; local browser-only progress cannot provide shared rooms.
-- Difficulty filtering honors explicit MCQ difficulty fields/tags. Questions without difficulty metadata remain eligible as a compatibility fallback so legacy modules can still use all four selections.
+- Room creation includes every eligible question in the selected module and, when supplied, limits the fixed snapshot to the selected discipline.

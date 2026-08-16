@@ -21,7 +21,7 @@ import { requireRegisteredUser } from "@/lib/request-auth"
 import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
 
 type RoomRow = {
-  id: string; pin: string; host_user_id: string; module_id: string; difficulty: string
+  id: string; pin: string; host_user_id: string; module_id: string; discipline: string | null; difficulty: string
   question_count: number; timer_seconds: number | null; status: string; current_question_index: number
   current_phase: GroupStudyPhase; question_opened_at: Date | null; answer_closes_at: Date | null
   answer_closed_at: Date | null; host_disconnected_at: Date | null; version: number
@@ -225,7 +225,7 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
   return {
     room: {
       id: room.id, pin: room.pin, hostUserId: room.host_user_id, moduleId: room.module_id,
-      difficulty: room.difficulty, questionCount: room.question_count, timerSeconds: room.timer_seconds,
+      discipline: room.discipline, difficulty: room.difficulty, questionCount: room.question_count, timerSeconds: room.timer_seconds,
       status: room.status, phase: room.current_phase, currentQuestionIndex: room.current_question_index,
       questionOpenedAt: room.question_opened_at?.toISOString() ?? null,
       answerClosesAt: room.answer_closes_at?.toISOString() ?? null,
