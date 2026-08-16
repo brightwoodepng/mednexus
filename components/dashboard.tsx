@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
+import { Users } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -212,6 +214,15 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           </div>
         </div>
       )}
+
+      <Link
+        href="/group-study"
+        className="group flex min-h-20 items-center gap-4 rounded-2xl border border-primary/25 bg-primary/8 px-5 py-4 shadow-sm transition-all hover:border-primary/45 hover:bg-primary/12 hover:shadow-md sm:rounded-3xl sm:px-6"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><Users size={21}/></span>
+        <span className="min-w-0 flex-1"><span className="block font-bold">Group Study</span><span className="block text-xs text-muted-foreground sm:text-sm">Create or join a synchronized MCQ room with up to 10 members.</span></span>
+        <ArrowRightIcon size={17} className="shrink-0 text-primary transition-transform group-hover:translate-x-1"/>
+      </Link>
 
       {/* Hero */}
       <div className="relative">

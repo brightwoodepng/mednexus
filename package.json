@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/pdf.worker.min.mjs",
+    "postinstall": "node scripts/copy-pdf-worker.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:migrate-mcq-media": "tsx scripts/migrate-mcq-media-to-object-storage.ts",
     "db:migrate-inline-mcq-media": "tsx scripts/migrate-inline-mcq-media.ts",
