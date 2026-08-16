@@ -29,7 +29,7 @@ let initialized = false
 // Keep this marker in step with every deployed DDL change. The previous
 // assessment-grading marker predated the admin platform/settings and economy
 // season tables, which let existing databases skip those additions entirely.
-export const CURRENT_SCHEMA_VERSION = "2026-08-09-admin-platform-controls-v1"
+export const CURRENT_SCHEMA_VERSION = "2026-08-15-group-study-mcq-v1"
 
 export async function ensureSchema() {
   if (initialized) return
@@ -489,6 +489,103 @@ export async function ensureSchema() {
       created_at    TIMESTAMPTZ DEFAULT NOW(),
       expires_at    TIMESTAMPTZ DEFAULT NOW() + INTERVAL '4 hours'
     );
+
+    -- Group Study uses normalized, server-authoritative state. Unlike the
+    -- legacy game-room JSON document, these constraints make membership,
+    -- answers, eligibility and reward processing safe under concurrent calls.
+    CREATE TABLE IF NOT EXISTS mednexus_group_study_rooms (
+      id                       TEXT        PRIMARY KEY,
+      pin                      TEXT        NOT NULL UNIQUE CHECK (pin ~ '^[0-9]{6}$'),
+      host_user_id             TEXT        NOT NULL REFERENCES mednexus_registered_users(uid),
+      module_id                TEXT        NOT NULL,
+      difficulty               TEXT        NOT NULL DEFAULT 'mixed'
+        CHECK (difficulty IN ('mixed','easy','medium','hard')),
+      question_count           INTEGER     NOT NULL CHECK (question_count > 0),
+      timer_seconds            INTEGER     CHECK (timer_seconds IS NULL OR timer_seconds IN (30,45,60,90)),
+      status                   TEXT        NOT NULL DEFAULT 'lobby'
+        CHECK (status IN ('lobby','active','completed','ended','expired')),
+      current_question_index   INTEGER     NOT NULL DEFAULT 0 CHECK (current_question_index >= 0),
+      current_phase            TEXT        NOT NULL DEFAULT 'lobby'
+        CHECK (current_phase IN ('lobby','question_open','answer_closed','reveal','discussion','completed','ended','expired')),
+      question_opened_at       TIMESTAMPTZ,
+      answer_closes_at         TIMESTAMPTZ,
+      answer_closed_at         TIMESTAMPTZ,
+      host_disconnected_at     TIMESTAMPTZ,
+      version                  BIGINT      NOT NULL DEFAULT 0,
+      created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at               TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '4 hours',
+      completed_at             TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_group_study_rooms_expiry_idx
+      ON mednexus_group_study_rooms (expires_at) WHERE status NOT IN ('completed','ended','expired');
+
+    CREATE TABLE IF NOT EXISTS mednexus_group_study_room_questions (
+      id                TEXT        PRIMARY KEY,
+      room_id           TEXT        NOT NULL REFERENCES mednexus_group_study_rooms(id) ON DELETE CASCADE,
+      question_id       TEXT        NOT NULL,
+      position          INTEGER     NOT NULL CHECK (position >= 0),
+      question_snapshot JSONB       NOT NULL,
+      opened_at         TIMESTAMPTZ,
+      closed_at         TIMESTAMPTZ,
+      UNIQUE (room_id, position),
+      UNIQUE (room_id, question_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS mednexus_group_study_memberships (
+      id                        TEXT        PRIMARY KEY,
+      room_id                   TEXT        NOT NULL REFERENCES mednexus_group_study_rooms(id) ON DELETE CASCADE,
+      user_id                   TEXT        NOT NULL REFERENCES mednexus_registered_users(uid),
+      role                      TEXT        NOT NULL DEFAULT 'member' CHECK (role IN ('host','member')),
+      ready                     BOOLEAN     NOT NULL DEFAULT FALSE,
+      joined_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      left_at                   TIMESTAMPTZ,
+      last_seen_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      connection_status         TEXT        NOT NULL DEFAULT 'online' CHECK (connection_status IN ('online','disconnected','left')),
+      first_eligible_question   INTEGER     CHECK (first_eligible_question IS NULL OR first_eligible_question >= 0),
+      questions_attempted       INTEGER     NOT NULL DEFAULT 0,
+      correct_answers           INTEGER     NOT NULL DEFAULT 0,
+      incorrect_answers         INTEGER     NOT NULL DEFAULT 0,
+      eligible_unanswered       INTEGER     NOT NULL DEFAULT 0,
+      current_streak            INTEGER     NOT NULL DEFAULT 0,
+      highest_streak            INTEGER     NOT NULL DEFAULT 0,
+      room_score                INTEGER     NOT NULL DEFAULT 0,
+      session_np_earned         INTEGER     NOT NULL DEFAULT 0,
+      UNIQUE (room_id, user_id)
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS mednexus_group_study_single_host_idx
+      ON mednexus_group_study_memberships (room_id) WHERE role = 'host';
+    CREATE INDEX IF NOT EXISTS mednexus_group_study_members_room_idx
+      ON mednexus_group_study_memberships (room_id, joined_at);
+
+    CREATE TABLE IF NOT EXISTS mednexus_group_study_answers (
+      id                         TEXT        PRIMARY KEY,
+      room_id                    TEXT        NOT NULL REFERENCES mednexus_group_study_rooms(id) ON DELETE CASCADE,
+      room_question_id           TEXT        NOT NULL REFERENCES mednexus_group_study_room_questions(id) ON DELETE CASCADE,
+      user_id                    TEXT        NOT NULL REFERENCES mednexus_registered_users(uid),
+      selected_answer            JSONB       NOT NULL,
+      is_correct                 BOOLEAN     NOT NULL,
+      submitted_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      score_processing_status    TEXT        NOT NULL DEFAULT 'pending' CHECK (score_processing_status IN ('pending','processed','failed')),
+      progress_processing_status TEXT        NOT NULL DEFAULT 'pending' CHECK (progress_processing_status IN ('pending','processed','failed')),
+      np_processing_status       TEXT        NOT NULL DEFAULT 'pending' CHECK (np_processing_status IN ('pending','processed','failed')),
+      np_earned                  INTEGER     NOT NULL DEFAULT 0,
+      UNIQUE (room_question_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_group_study_answers_room_idx
+      ON mednexus_group_study_answers (room_id, room_question_id);
+
+    CREATE TABLE IF NOT EXISTS mednexus_group_study_reward_events (
+      id               TEXT        PRIMARY KEY,
+      user_id          TEXT        NOT NULL REFERENCES mednexus_registered_users(uid),
+      room_id          TEXT        NOT NULL REFERENCES mednexus_group_study_rooms(id) ON DELETE CASCADE,
+      room_question_id TEXT        REFERENCES mednexus_group_study_room_questions(id) ON DELETE CASCADE,
+      event_type       TEXT        NOT NULL CHECK (event_type IN ('participation','correct_answer','completion','streak','achievement')),
+      transaction_id   TEXT,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS mednexus_group_study_reward_idempotency_idx
+      ON mednexus_group_study_reward_events
+      (user_id, room_id, COALESCE(room_question_id, '__room__'), event_type);
     CREATE TABLE IF NOT EXISTS mednexus_wallet (
       uid              TEXT    PRIMARY KEY,
       balance          INTEGER NOT NULL DEFAULT 0,
