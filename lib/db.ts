@@ -47,12 +47,12 @@ let groupStudyInitialized = false
 // Keep this marker in step with every deployed DDL change. The previous
 // assessment-grading marker predated the admin platform/settings and economy
 // season tables, which let existing databases skip those additions entirely.
-export const CURRENT_SCHEMA_VERSION = "2026-08-16-group-study-navigation-modes-v1"
+export const CURRENT_SCHEMA_VERSION = "2026-08-16-group-study-navigation-compat-v2"
 
 export async function groupStudySchemaStatus() {
   const result = await pool.query<{
     rooms: boolean; room_questions: boolean; question_history: boolean
-    memberships: boolean; answers: boolean; reward_events: boolean; discipline: boolean; navigation_mode: boolean
+    memberships: boolean; answers: boolean; reward_events: boolean; discipline: boolean
     guest_memberships: boolean; membership_flags: boolean; host_identity_ready: boolean; membership_identity_ready: boolean; answer_identity_ready: boolean
   }>(`
     SELECT
@@ -66,10 +66,6 @@ export async function groupStudySchemaStatus() {
         SELECT 1 FROM information_schema.columns
         WHERE table_schema='public' AND table_name='mednexus_group_study_rooms' AND column_name='discipline'
       ) AS discipline,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema='public' AND table_name='mednexus_group_study_rooms' AND column_name='navigation_mode'
-      ) AS navigation_mode,
       EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema='public' AND table_name='mednexus_group_study_memberships' AND column_name='is_guest'
@@ -127,7 +123,6 @@ export async function ensureGroupStudySchema() {
         timer_seconds INTEGER CHECK (timer_seconds IS NULL OR timer_seconds IN (30,45,60,90)),
         status TEXT NOT NULL DEFAULT 'lobby' CHECK (status IN ('lobby','active','completed','ended','expired')),
         current_question_index INTEGER NOT NULL DEFAULT 0 CHECK (current_question_index >= 0),
-        navigation_mode TEXT NOT NULL DEFAULT 'browse_ahead' CHECK (navigation_mode IN ('browse_ahead','answer_ahead','anyone_advances')),
         current_phase TEXT NOT NULL DEFAULT 'lobby' CHECK (current_phase IN ('lobby','question_open','answer_closed','reveal','discussion','completed','ended','expired')),
         question_opened_at TIMESTAMPTZ,
         answer_closes_at TIMESTAMPTZ,
@@ -140,7 +135,6 @@ export async function ensureGroupStudySchema() {
       );
       ALTER TABLE mednexus_group_study_rooms DROP CONSTRAINT IF EXISTS mednexus_group_study_rooms_host_user_id_fkey;
       ALTER TABLE mednexus_group_study_rooms ADD COLUMN IF NOT EXISTS discipline TEXT;
-      ALTER TABLE mednexus_group_study_rooms ADD COLUMN IF NOT EXISTS navigation_mode TEXT NOT NULL DEFAULT 'browse_ahead';
       CREATE INDEX IF NOT EXISTS mednexus_group_study_rooms_expiry_idx
         ON mednexus_group_study_rooms (expires_at) WHERE status NOT IN ('completed','ended','expired');
 
@@ -715,7 +709,6 @@ export async function ensureSchema() {
       status                   TEXT        NOT NULL DEFAULT 'lobby'
         CHECK (status IN ('lobby','active','completed','ended','expired')),
       current_question_index   INTEGER     NOT NULL DEFAULT 0 CHECK (current_question_index >= 0),
-      navigation_mode         TEXT        NOT NULL DEFAULT 'browse_ahead' CHECK (navigation_mode IN ('browse_ahead','answer_ahead','anyone_advances')),
       current_phase            TEXT        NOT NULL DEFAULT 'lobby'
         CHECK (current_phase IN ('lobby','question_open','answer_closed','reveal','discussion','completed','ended','expired')),
       question_opened_at       TIMESTAMPTZ,
@@ -729,7 +722,6 @@ export async function ensureSchema() {
     );
     ALTER TABLE mednexus_group_study_rooms DROP CONSTRAINT IF EXISTS mednexus_group_study_rooms_host_user_id_fkey;
     ALTER TABLE mednexus_group_study_rooms ADD COLUMN IF NOT EXISTS discipline TEXT;
-    ALTER TABLE mednexus_group_study_rooms ADD COLUMN IF NOT EXISTS navigation_mode TEXT NOT NULL DEFAULT 'browse_ahead';
     CREATE INDEX IF NOT EXISTS mednexus_group_study_rooms_expiry_idx
       ON mednexus_group_study_rooms (expires_at) WHERE status NOT IN ('completed','ended','expired');
 
