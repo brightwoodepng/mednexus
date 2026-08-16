@@ -29,7 +29,7 @@ let initialized = false
 // Keep this marker in step with every deployed DDL change. The previous
 // assessment-grading marker predated the admin platform/settings and economy
 // season tables, which let existing databases skip those additions entirely.
-export const CURRENT_SCHEMA_VERSION = "2026-08-16-group-study-discipline-v1"
+export const CURRENT_SCHEMA_VERSION = "2026-08-16-group-study-question-rotation-v1"
 
 export async function ensureSchema() {
   if (initialized) return
@@ -532,6 +532,18 @@ export async function ensureSchema() {
       UNIQUE (room_id, position),
       UNIQUE (room_id, question_id)
     );
+
+    CREATE TABLE IF NOT EXISTS mednexus_group_study_question_history (
+      user_id          TEXT        NOT NULL REFERENCES mednexus_registered_users(uid) ON DELETE CASCADE,
+      module_id        TEXT        NOT NULL,
+      discipline_scope TEXT        NOT NULL DEFAULT '',
+      question_id      TEXT        NOT NULL,
+      last_selected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      selection_count  INTEGER     NOT NULL DEFAULT 1 CHECK (selection_count > 0),
+      PRIMARY KEY (user_id, module_id, discipline_scope, question_id)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_group_study_question_history_rotation_idx
+      ON mednexus_group_study_question_history (user_id, module_id, discipline_scope, last_selected_at);
 
     CREATE TABLE IF NOT EXISTS mednexus_group_study_memberships (
       id                        TEXT        PRIMARY KEY,

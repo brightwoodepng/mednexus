@@ -3,6 +3,7 @@ import {
   firstEligibleQuestionIndex,
   isValidGroupStudyAnswer,
   publicGroupStudyQuestion,
+  prioritizeGroupStudyQuestions,
   rankGroupStudyMembers,
   sameGroupStudyAnswer,
   type GroupStudyLeaderboardMember,
@@ -49,5 +50,13 @@ describe("Group Study domain rules", () => {
     ])
     expect(ranked.map(row => [row.userId, row.rank])).toEqual([["early", 1], ["tie", 1], ["late", 3]])
     expect(ranked.find(row => row.userId === "late")?.eligibleQuestions).toBe(3)
+  })
+
+  it("shuffles unseen questions before recycling the oldest previously selected questions", () => {
+    const questions = [{ id: "seen-new" }, { id: "unseen-a" }, { id: "seen-old" }, { id: "unseen-b" }]
+    const history = new Map([["seen-old", 100], ["seen-new", 200]])
+    const ordered = prioritizeGroupStudyQuestions(questions, history, () => 0)
+    expect(ordered.slice(0, 2).map(item => item.id).sort()).toEqual(["unseen-a", "unseen-b"])
+    expect(ordered.slice(2).map(item => item.id)).toEqual(["seen-old", "seen-new"])
   })
 })

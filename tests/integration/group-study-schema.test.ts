@@ -29,12 +29,18 @@ describe("Group Study persistence and authorization gates", () => {
     expect(route.indexOf("score_processing_status='pending' FOR UPDATE")).toBeLessThan(route.indexOf("SET current_phase='reveal'"))
   })
 
-  it("creates rooms by module and optional discipline without difficulty or question-count inputs", () => {
+  it("creates rooms by module, optional discipline, and a bounded question count", () => {
     expect(schema).toContain("discipline               TEXT")
+    expect(schema).toContain("mednexus_group_study_question_history")
     expect(creationRoute).toContain('question.subject.trim() === discipline')
-    expect(creationRoute).toContain("const questionCount = selected.length")
+    expect(creationRoute).toContain("questionCount > available.length")
+    expect(creationRoute).toContain("prioritizeGroupStudyQuestions(available, lastSelected)")
+    expect(creationRoute).toContain("pg_advisory_xact_lock(hashtext($1))")
+    expect(creationRoute).toContain("await ensureSchema()")
+    expect(route).toContain("await ensureSchema()")
     expect(home).toContain("All disciplines")
     expect(home).not.toContain("Difficulty<select")
-    expect(home).not.toContain('type="number"')
+    expect(home).toContain('type="number"')
+    expect(home).toContain("Unseen questions are selected first")
   })
 })
