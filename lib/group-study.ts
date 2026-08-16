@@ -1,8 +1,7 @@
 import type { Question, QuestionExplanation, QuestionMedia, QuestionOption } from "@/lib/types"
 
 export const GROUP_STUDY_CAPACITY = 10
-export const GROUP_STUDY_EXPIRY_HOURS = 4
-export const GROUP_STUDY_HOST_RECONNECT_SECONDS = 45
+export const GROUP_STUDY_RECONNECT_MINUTES = 10
 export const GROUP_STUDY_TIMER_OPTIONS = [30, 45, 60, 90] as const
 export const GROUP_STUDY_DIFFICULTIES = ["mixed", "easy", "medium", "hard"] as const
 

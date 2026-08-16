@@ -25,17 +25,39 @@ describe("Group Study persistence and authorization gates", () => {
     expect(route).toContain("requireAuthenticatedUser")
   })
 
-  it("allows verified guest participants without granting host or economy privileges", () => {
+  it("allows verified guests to create, join, and host without economy privileges", () => {
     expect(schema).toContain("is_guest BOOLEAN NOT NULL DEFAULT FALSE")
     expect(schema).toContain("DROP CONSTRAINT IF EXISTS mednexus_group_study_memberships_user_id_fkey")
     expect(schema).toContain("DROP CONSTRAINT IF EXISTS mednexus_group_study_answers_user_id_fkey")
+    expect(schema).toContain("DROP CONSTRAINT IF EXISTS mednexus_group_study_rooms_host_user_id_fkey")
     expect(route).toContain("auth.isGuest")
     expect(route).toContain("if (member.is_guest) continue")
-    expect(route).toContain("target.is_guest")
     expect(route).toContain("LEFT JOIN mednexus_guest_users")
-    expect(creationRoute).toContain("canCreate: !auth.isGuest")
+    expect(creationRoute).toContain("canCreate: true")
+    expect(creationRoute).toContain("requireAuthenticatedUser(req)")
+    expect(creationRoute).toContain("auth.isGuest ? { rows: []")
     expect(home).toContain("Registered and guest accounts can join")
     expect(multiplayerApi.indexOf('if (guest) headers["x-guest-token"]')).toBeLessThan(multiplayerApi.indexOf('else if (session) headers["x-session-token"]'))
+  })
+
+  it("keeps rooms alive while occupied and expires an explicitly empty room", () => {
+    expect(route).toContain("GROUP_STUDY_RECONNECT_MINUTES")
+    expect(route).toContain("connection_status='online'")
+    expect(route).toContain("expires_at=NOW()+($2||' minutes')::interval")
+    expect(route).toContain("if (!remaining.rows.length)")
+    expect(route).toContain("status='expired',current_phase='expired'")
+    expect(route).toContain('return fail("This room has expired", 410, "ROOM_EXPIRED")')
+    expect(route).toContain("user_id<>$2 AND connection_status='online'")
+    expect(route).not.toContain("user_id<>$2 AND connection_status='online' AND NOT is_guest")
+  })
+
+  it("removes personal review actions and connection labels from the room UI", () => {
+    expect(route).not.toContain('body.action === "bookmark"')
+    expect(route).not.toContain('body.action === "revision"')
+    expect(route).not.toContain('body.action === "missed-revision"')
+    expect(room).toContain("<GroupReveal")
+    expect(room).toContain("<GroupFinalResults")
+    expect(room).not.toContain("· {member.connectionStatus}")
   })
 
   it("keeps the dashboard shortcut between statistics and study modules and optimizes the lobby for phones", () => {
@@ -68,7 +90,6 @@ describe("Group Study persistence and authorization gates", () => {
     expect(creationRoute).not.toContain("await ensureSchema()")
     expect(home).toContain("All disciplines")
     expect(home).not.toContain("Difficulty<select")
-    expect(home).toContain('type="number"')
-    expect(home).toContain("Unseen questions are selected first")
+    expect(home).not.toContain('type="number"')
   })
 })

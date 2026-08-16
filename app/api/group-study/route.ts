@@ -2,12 +2,12 @@ import { NextResponse } from "next/server"
 import pool, { ensureGroupStudySchema } from "@/lib/db"
 import { isSupportedSoloQuestion } from "@/lib/game-question-pool"
 import {
-  GROUP_STUDY_EXPIRY_HOURS,
+  GROUP_STUDY_RECONNECT_MINUTES,
   isGroupStudyTimer,
   prioritizeGroupStudyQuestions,
   type GroupStudyQuestionSnapshot,
 } from "@/lib/group-study"
-import { requireAuthenticatedUser, requireRegisteredUser } from "@/lib/request-auth"
+import { requireAuthenticatedUser } from "@/lib/request-auth"
 import type { Question } from "@/lib/types"
 
 const fail = (message: string, status = 400, code = "INVALID_REQUEST") =>
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
       disciplines.set(discipline, (disciplines.get(discipline) ?? 0) + 1)
       modules.set(moduleId, disciplines)
     }
-    return NextResponse.json({ canCreate: !auth.isGuest, modules: [...modules.entries()].map(([id, disciplines]) => ({
+    return NextResponse.json({ canCreate: true, modules: [...modules.entries()].map(([id, disciplines]) => ({
       id,
       total: [...disciplines.values()].reduce((sum, count) => sum + count, 0),
       disciplines: [...disciplines.entries()]
@@ -63,8 +63,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRegisteredUser(req)
-  if (!auth) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
+  const auth = await requireAuthenticatedUser(req)
+  if (!auth) return fail("Sign in or continue as a guest to create Group Study", 401, "AUTHENTICATION_REQUIRED")
   try {
     await ensureGroupStudySchema()
     const body = await req.json() as { moduleId?: unknown; discipline?: unknown; questionCount?: unknown; timerSeconds?: unknown }
@@ -88,13 +88,13 @@ export async function POST(req: Request) {
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:group-study-rotation:${auth.uid}:${moduleId}:${disciplineScope}`])
       await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:group-study-pin'))")
       const user = await client.query<{ name: string; avatar: string | null }>(
-        `SELECT r.name, c.equipped_avatar AS avatar
-         FROM mednexus_registered_users r
-         LEFT JOIN mednexus_user_cosmetics c ON c.uid=r.uid
-         WHERE r.uid=$1 FOR UPDATE OF r`, [auth.uid],
+        `SELECT COALESCE(r.name,g.name,'Guest') AS name,c.equipped_avatar AS avatar
+         FROM (SELECT $1::text AS uid) identity
+         LEFT JOIN mednexus_registered_users r ON r.uid=identity.uid AND NOT $2
+         LEFT JOIN mednexus_guest_users g ON g.uid=identity.uid AND $2
+         LEFT JOIN mednexus_user_cosmetics c ON c.uid=identity.uid AND NOT $2`, [auth.uid, auth.isGuest],
       )
-      if (!user.rows.length) throw new Error("Registered user not found")
-      const history = await client.query<{ question_id: string; last_selected_at: Date }>(
+      const history = auth.isGuest ? { rows: [] as Array<{ question_id: string; last_selected_at: Date }> } : await client.query<{ question_id: string; last_selected_at: Date }>(
         `SELECT question_id,last_selected_at FROM mednexus_group_study_question_history
          WHERE user_id=$1 AND module_id=$2 AND discipline_scope=$3`,
         [auth.uid, moduleId, disciplineScope],
@@ -112,8 +112,8 @@ export async function POST(req: Request) {
       await client.query(
         `INSERT INTO mednexus_group_study_rooms
           (id,pin,host_user_id,module_id,discipline,difficulty,question_count,timer_seconds,status,current_phase,expires_at)
-         VALUES($1,$2,$3,$4,$5,'mixed',$6,$7,'lobby','lobby',NOW()+($8||' hours')::interval)`,
-        [roomId, pin, auth.uid, moduleId, discipline || null, questionCount, timerSeconds, GROUP_STUDY_EXPIRY_HOURS],
+         VALUES($1,$2,$3,$4,$5,'mixed',$6,$7,'lobby','lobby',NOW()+($8||' minutes')::interval)`,
+        [roomId, pin, auth.uid, moduleId, discipline || null, questionCount, timerSeconds, GROUP_STUDY_RECONNECT_MINUTES],
       )
       for (let position = 0; position < selected.length; position++) {
         const question = selected[position]
@@ -122,7 +122,7 @@ export async function POST(req: Request) {
            VALUES($1,$2,$3,$4,$5::jsonb)`,
           [`gsq-${crypto.randomUUID()}`, roomId, question.id, position, JSON.stringify(question)],
         )
-        await client.query(
+        if (!auth.isGuest) await client.query(
           `INSERT INTO mednexus_group_study_question_history
             (user_id,module_id,discipline_scope,question_id,last_selected_at,selection_count)
            VALUES($1,$2,$3,$4,NOW(),1)
@@ -133,9 +133,9 @@ export async function POST(req: Request) {
       }
       await client.query(
         `INSERT INTO mednexus_group_study_memberships
-          (id,room_id,user_id,role,ready,connection_status,first_eligible_question)
-         VALUES($1,$2,$3,'host',TRUE,'online',0)`,
-        [`gsm-${crypto.randomUUID()}`, roomId, auth.uid],
+          (id,room_id,user_id,is_guest,role,ready,connection_status,first_eligible_question)
+         VALUES($1,$2,$3,$4,'host',TRUE,'online',0)`,
+        [`gsm-${crypto.randomUUID()}`, roomId, auth.uid, auth.isGuest],
       )
       await client.query("COMMIT")
       return NextResponse.json({ roomId, pin, invitationPath: `/group-study/${pin}` }, { status: 201 })
