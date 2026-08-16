@@ -43,7 +43,9 @@ describe("Group Study persistence and authorization gates", () => {
     expect(dashboard.indexOf("Group Study")).toBeLessThan(dashboard.indexOf("Study Modules"))
     expect(room).toContain("sticky bottom-3")
     expect(room).toContain("min-h-12 w-full")
-    expect(room).toContain("Invite at least one participant")
+    expect(room).toContain('isHost && <button disabled={busy}')
+    expect(route).not.toContain("NOT_ENOUGH_MEMBERS")
+    expect(multiplayerApi).toContain('cache: "no-store"')
     expect(room).toContain("member.isGuest")
   })
 

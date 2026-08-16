@@ -457,7 +457,6 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         const members = await client.query<{ count: number; unready: number }>(
           "SELECT COUNT(*)::int count,COUNT(*) FILTER(WHERE NOT ready)::int unready FROM mednexus_group_study_memberships WHERE room_id=$1 AND connection_status<>'left'", [room.id],
         )
-        if (Number(members.rows[0].count) < 2) { await client.query("ROLLBACK"); return fail("At least two participants are required", 409, "NOT_ENOUGH_MEMBERS") }
         if (Number(members.rows[0].unready) > 0 && body.force !== true) { await client.query("ROLLBACK"); return fail(`${members.rows[0].unready} participants are not ready`, 409, "UNREADY_MEMBERS") }
         const started = await client.query<RoomRow>(
           `UPDATE mednexus_group_study_rooms SET status='active',current_phase='question_open',current_question_index=0,
