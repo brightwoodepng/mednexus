@@ -25,6 +25,23 @@ const pool = new Pool({
   idleTimeoutMillis: 20000,
 })
 
+// Some hosted PostgreSQL integrations expose a privileged/unpooled URL for
+// release DDL while the regular runtime role intentionally cannot CREATE.
+const groupStudyMigrationConnectionString = [
+  process.env.DATABASE_ADMIN_URL,
+  process.env.DATABASE_URL_UNPOOLED,
+  process.env.POSTGRES_URL_NON_POOLING,
+].find(value => value?.trim()) ?? connectionString
+const groupStudyMigrationPool = groupStudyMigrationConnectionString === connectionString ? pool : new Pool({
+  connectionString: groupStudyMigrationConnectionString,
+  ssl: (!isReplit || groupStudyMigrationConnectionString.includes("sslmode=require") || groupStudyMigrationConnectionString.includes("neon.tech"))
+    ? { rejectUnauthorized: false }
+    : false,
+  max: 1,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 20000,
+})
+
 let initialized = false
 let groupStudyInitialized = false
 // Keep this marker in step with every deployed DDL change. The previous
@@ -66,7 +83,7 @@ export async function ensureGroupStudySchema() {
     groupStudyInitialized = true
     return
   }
-  const client = await pool.connect()
+  const client = await groupStudyMigrationPool.connect()
   try {
     await client.query("BEGIN")
     await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:group-study-schema'))")
