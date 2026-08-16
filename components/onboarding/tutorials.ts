@@ -24,41 +24,62 @@ export type TutorialStep = {
   restoreUiAfterStep?: boolean
   interaction?: { type: "try-it"; expectedAction: "open-mobile-drawer" | "open-workspace-switcher" }
 }
-export type TutorialDefinition = { id: TutorialId; name: string; finishLabel: string; steps: TutorialStep[] }
+export type TutorialDefinition = { id: TutorialId; name: string; finishLabel: string; device: "desktop" | "phone"; steps: TutorialStep[] }
 
 const nav = (hub: "mcq-qbank" | "theory-vault", id: string) => STUDY_HUB_NAVIGATION[hub].find(item => item.id === id)!
-const destination = (hub: "mcq-qbank" | "theory-vault", id: string, body: string, drawer = false, previewScreen?: Screen): TutorialStep => {
+const baseStep = { preferredPlacement: "right", desktopPresentation: "coachmark", mobilePresentation: "sheet" } as const
+
+const desktopDestination = (hub: "mcq-qbank" | "theory-vault", id: string, body: string, previewScreen?: Screen): TutorialStep => {
   const item = nav(hub, id)
-  return { id: `${hub}-${id}`, title: item.label, body, desktopTargetAnchorId: `desktop-nav-${id}`, mobileTargetAnchorId: item.bottomNav ? `mobile-bottom-nav-${id}` : undefined, mobileDrawerTargetAnchorId: drawer ? `drawer-nav-${id}` : undefined, preferredPlacement: "right", desktopPresentation: "coachmark", mobilePresentation: "sheet", navigationAction: previewScreen ? { type: "navigate-preview", screen: previewScreen } : drawer ? { type: "open-mobile-drawer" } : { type: "none" }, restoreUiAfterStep: drawer }
+  return { ...baseStep, id: `desktop-${hub}-${id}`, title: item.label, body, desktopTargetAnchorId: `desktop-nav-${id}`, navigationAction: previewScreen ? { type: "navigate-preview", screen: previewScreen } : { type: "none" } }
 }
-const shared = (hub: string): TutorialStep[] => [
-  { id: `${hub}-workspace`, title: "Switch study workspaces", body: "Move between MCQ Q-Bank and Theory Vault here. On a phone, open the menu first; the workspace switcher will then be highlighted inside it.", desktopTargetAnchorId: "desktop-workspace-switcher", mobileTargetAnchorId: "mobile-menu-button", mobileDrawerTargetAnchorId: "drawer-workspace-switcher", preferredPlacement: "right", desktopPresentation: "coachmark", mobilePresentation: "sheet", navigationAction: { type: "open-workspace-switcher" }, interaction: { type: "try-it", expectedAction: "open-mobile-drawer" }, restoreUiAfterStep: true },
-  { id: `${hub}-primary-nav`, title: "Your primary navigation", body: "On desktop, the sidebar holds every destination. On your phone, the four most useful destinations stay within thumb reach in the bottom bar.", desktopTargetAnchorId: "desktop-navigation", mobileTargetAnchorId: "mobile-bottom-navigation", preferredPlacement: "right", desktopPresentation: "coachmark", mobilePresentation: "sheet", navigationAction: { type: "none" } },
-  { id: `${hub}-more`, title: "More destinations", body: "The menu opens the full navigation drawer. Destinations not shown in the four-tab bar remain available here.", desktopTargetAnchorId: "desktop-navigation", mobileTargetAnchorId: "mobile-menu-button", mobileDrawerTargetAnchorId: "drawer-navigation", preferredPlacement: "right", desktopPresentation: "coachmark", mobilePresentation: "sheet", interaction: { type: "try-it", expectedAction: "open-mobile-drawer" }, restoreUiAfterStep: true },
-  { id: `${hub}-profile`, title: "Profile and notifications", body: "Notifications are in the header. Your account menu contains profile settings and sign out. The tour only explains sign out—it will never activate it.", desktopTargetAnchorId: "header-account-menu", mobileTargetAnchorId: "header-account-menu", preferredPlacement: "bottom", desktopPresentation: "coachmark", mobilePresentation: "sheet", navigationAction: { type: "open-account-menu" }, restoreUiAfterStep: true },
-  { id: `${hub}-appearance`, title: "Appearance and themes", body: "Preview a comfortable theme or Liquid Glass. Opening this panel does not save a new choice automatically; pausing or dismissing restores the appearance you started with.", desktopTargetAnchorId: "header-appearance", mobileTargetAnchorId: "mobile-menu-button", mobileDrawerTargetAnchorId: "drawer-appearance", preferredPlacement: "bottom", desktopPresentation: "coachmark", mobilePresentation: "sheet", navigationAction: { type: "open-appearance" }, restoreUiAfterStep: true },
+
+const phoneDestination = (hub: "mcq-qbank" | "theory-vault", id: string, body: string, previewScreen?: Screen): TutorialStep => {
+  const item = nav(hub, id)
+  const drawer = !item.bottomNav
+  return { ...baseStep, id: `phone-${hub}-${id}`, title: item.mobileLabel ?? item.label, body, mobileTargetAnchorId: item.bottomNav ? `mobile-bottom-nav-${id}` : "mobile-menu-button", mobileDrawerTargetAnchorId: drawer ? `drawer-nav-${id}` : undefined, navigationAction: previewScreen ? { type: "navigate-preview", screen: previewScreen } : drawer ? { type: "open-mobile-drawer" } : { type: "none" }, restoreUiAfterStep: drawer }
+}
+
+const desktopShared = (hub: string): TutorialStep[] => [
+  { ...baseStep, id: `desktop-${hub}-workspace`, title: "Switch study workspaces", body: "Use this switcher to move between MCQ Q-Bank and Theory Vault.", desktopTargetAnchorId: "desktop-workspace-switcher", navigationAction: { type: "open-workspace-switcher" }, restoreUiAfterStep: true },
+  { ...baseStep, id: `desktop-${hub}-navigation`, title: "Desktop navigation", body: "The desktop sidebar keeps every destination visible. It expands during this tour when a full label needs to be shown.", desktopTargetAnchorId: "desktop-navigation", navigationAction: { type: "none" } },
+  { ...baseStep, id: `desktop-${hub}-profile`, title: "Profile and notifications", body: "Notifications are in the header. Your account menu contains profile settings and sign out; this tour never signs you out.", desktopTargetAnchorId: "header-account-menu", preferredPlacement: "bottom", navigationAction: { type: "open-account-menu" }, restoreUiAfterStep: true },
+  { ...baseStep, id: `desktop-${hub}-appearance`, title: "Appearance and themes", body: "Open appearance settings to preview themes. Pausing the tour restores the appearance you started with.", desktopTargetAnchorId: "header-appearance", preferredPlacement: "bottom", navigationAction: { type: "open-appearance" }, restoreUiAfterStep: true },
 ]
 
+const phoneShared = (hub: string): TutorialStep[] => [
+  { ...baseStep, id: `phone-${hub}-workspace`, title: "Switch study workspaces", body: "On your phone, open the menu to reach the workspace switcher for MCQ Q-Bank and Theory Vault.", mobileTargetAnchorId: "mobile-menu-button", mobileDrawerTargetAnchorId: "drawer-workspace-switcher", navigationAction: { type: "open-workspace-switcher" }, interaction: { type: "try-it", expectedAction: "open-mobile-drawer" }, restoreUiAfterStep: true },
+  { ...baseStep, id: `phone-${hub}-bottom-navigation`, title: "Phone navigation bar", body: "The four main destinations stay in the bottom navigation bar within thumb reach.", mobileTargetAnchorId: "mobile-bottom-navigation", navigationAction: { type: "none" } },
+  { ...baseStep, id: `phone-${hub}-more`, title: "The full phone menu", body: "Open the menu for every destination that does not fit in the four-tab phone bar.", mobileTargetAnchorId: "mobile-menu-button", mobileDrawerTargetAnchorId: "drawer-navigation", interaction: { type: "try-it", expectedAction: "open-mobile-drawer" }, restoreUiAfterStep: true },
+  { ...baseStep, id: `phone-${hub}-profile`, title: "Profile and notifications", body: "Notifications and your account menu remain in the phone header. The tutorial never signs you out.", mobileTargetAnchorId: "header-account-menu", preferredPlacement: "bottom", navigationAction: { type: "open-account-menu" }, restoreUiAfterStep: true },
+  { ...baseStep, id: `phone-${hub}-appearance`, title: "Appearance and themes", body: "Appearance settings live inside the phone menu. Pausing restores the appearance you started with.", mobileTargetAnchorId: "mobile-menu-button", mobileDrawerTargetAnchorId: "drawer-appearance", preferredPlacement: "bottom", navigationAction: { type: "open-appearance" }, restoreUiAfterStep: true },
+]
+
+const mcqDestinations = [
+  ["dashboard", "See your overview, current activity, recent results, and the next useful place to study.", "dashboard"],
+  ["modules", "Choose a module and discipline, then choose Trial for guided feedback or Exam for results at the end."],
+  ["game", "Play solo MCQ games or join multiplayer. The tutorial never starts a game."],
+  ["leaderboard", "Follow seasonal ranking and rank points earned from eligible activity."],
+  ["weak-areas", "Incorrect MCQs identify weak disciplines and focused revision opportunities."],
+  ["live-assessments", "Join scheduled assessments only when you intend to; the tutorial never joins one."],
+  ["store", "Check your NP balance and browse supplies and cosmetics. The tutorial never purchases anything."],
+] as const
+
+const theoryDestinations = [
+  ["theory-dashboard", "See your Theory overview and recent study activity.", "theory-dashboard"],
+  ["theory-browse", "Browse the module → discipline → set → question hierarchy."],
+  ["theory-bookmarks", "Return to theory questions you intentionally saved."],
+  ["theory-notes", "Keep and revisit learner-created notes."],
+  ["theory-revision", "Deferred and weak questions collect in your revision queue."],
+  ["theory-progress", "Review progress that belongs specifically to Theory Vault."],
+  ["theory-search", "Locate concepts across Theory Vault without stepping through the browse hierarchy."],
+] as const
+
+const theoryStudy = (device: "desktop" | "phone"): TutorialStep => ({ ...baseStep, id: `${device}-theory-study-interface`, title: "The study interface", body: "This safe demonstration explains answer drafting, structured answers, confidence, and revision scheduling without opening a real question or changing progress.", desktopTargetAnchorId: device === "desktop" ? "theory-study-demo" : undefined, mobileTargetAnchorId: device === "phone" ? "theory-study-demo" : undefined, preferredPlacement: "center", desktopPresentation: "card", navigationAction: { type: "none" } })
+
 export const tutorials: Record<TutorialId, TutorialDefinition> = {
-  mcq_qbank_intro: { id: "mcq_qbank_intro", name: "MCQ Q-Bank", finishLabel: "Start practicing", steps: [
-    ...shared("mcq"),
-    destination("mcq-qbank", "dashboard", "This is your dashboard. See your overview, current activity, recent results, and the next useful place to study.", false, "dashboard"),
-    destination("mcq-qbank", "modules", "Choose a module, discipline, and question count, then choose Trial for guided feedback or Exam for results at the end."),
-    destination("mcq-qbank", "game", "Play safe solo MCQ games or join a multiplayer room. This tour never starts a game."),
-    destination("mcq-qbank", "leaderboard", "Follow seasonal ranking and the rank points earned from eligible activity."),
-    destination("mcq-qbank", "weak-areas", "Incorrect MCQs identify weak disciplines and create focused revision opportunities.", true),
-    destination("mcq-qbank", "live-assessments", "Join scheduled assessments here when you intend to. The tutorial never joins or starts one.", true),
-    destination("mcq-qbank", "store", "Check your NP balance and browse supplies and cosmetics. The tour never makes a purchase.", true),
-  ]},
-  theory_vault_intro: { id: "theory_vault_intro", name: "Theory Vault", finishLabel: "Explore Theory Vault", steps: [
-    ...shared("theory"),
-    destination("theory-vault", "theory-dashboard", "This is your Theory dashboard. See its overview and your recent study activity.", false, "theory-dashboard"),
-    destination("theory-vault", "theory-browse", "Browse the module → discipline → set → question hierarchy."),
-    destination("theory-vault", "theory-bookmarks", "Return to theory questions you intentionally saved."),
-    destination("theory-vault", "theory-notes", "Keep and revisit learner-created notes."),
-    destination("theory-vault", "theory-revision", "Deferred and weak questions collect in your revision queue.", true),
-    destination("theory-vault", "theory-progress", "Review progress that belongs specifically to Theory Vault.", true),
-    destination("theory-vault", "theory-search", "Locate concepts across Theory Vault without stepping through the browse hierarchy.", true),
-    { id: "theory-study-interface", title: "The study interface", body: "This non-mutating demonstration explains answer drafting, revealing structured answers, confidence rating, and revision scheduling. It never opens a real question, overwrites a draft, or changes confidence.", desktopTargetAnchorId: "theory-study-demo", mobileTargetAnchorId: "theory-study-demo", preferredPlacement: "center", desktopPresentation: "card", mobilePresentation: "sheet", navigationAction: { type: "none" } },
-  ]},
+  mcq_qbank_desktop_intro: { id: "mcq_qbank_desktop_intro", name: "MCQ Q-Bank · Desktop", finishLabel: "Start practicing", device: "desktop", steps: [...desktopShared("mcq"), ...mcqDestinations.map(([id, body, screen]) => desktopDestination("mcq-qbank", id, body, screen))] },
+  mcq_qbank_phone_intro: { id: "mcq_qbank_phone_intro", name: "MCQ Q-Bank · Phone", finishLabel: "Start practicing", device: "phone", steps: [...phoneShared("mcq"), ...mcqDestinations.map(([id, body, screen]) => phoneDestination("mcq-qbank", id, body, screen))] },
+  theory_vault_desktop_intro: { id: "theory_vault_desktop_intro", name: "Theory Vault · Desktop", finishLabel: "Explore Theory Vault", device: "desktop", steps: [...desktopShared("theory"), ...theoryDestinations.map(([id, body, screen]) => desktopDestination("theory-vault", id, body, screen)), theoryStudy("desktop")] },
+  theory_vault_phone_intro: { id: "theory_vault_phone_intro", name: "Theory Vault · Phone", finishLabel: "Explore Theory Vault", device: "phone", steps: [...phoneShared("theory"), ...theoryDestinations.map(([id, body, screen]) => phoneDestination("theory-vault", id, body, screen)), theoryStudy("phone")] },
 }

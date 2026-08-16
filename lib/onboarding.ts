@@ -1,5 +1,5 @@
-export const TUTORIAL_VERSION = 2 as const
-export const TUTORIAL_IDS = ["mcq_qbank_intro", "theory_vault_intro"] as const
+export const TUTORIAL_VERSION = 3 as const
+export const TUTORIAL_IDS = ["mcq_qbank_desktop_intro", "mcq_qbank_phone_intro", "theory_vault_desktop_intro", "theory_vault_phone_intro"] as const
 export type TutorialId = typeof TUTORIAL_IDS[number]
 export type TutorialStatus = "not_started" | "in_progress" | "completed" | "dismissed"
 
