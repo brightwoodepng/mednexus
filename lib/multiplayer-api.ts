@@ -22,7 +22,7 @@ function authHeaders(json: boolean): HeadersInit {
 /** The sole browser transport for multiplayer room endpoints. */
 export async function multiplayerApi<T>(url: string, init: RequestInit = {}): Promise<T> {
   const hasBody = init.body !== undefined
-  const response = await fetch(url, { ...init, headers: { ...authHeaders(hasBody), ...init.headers } })
+  const response = await fetch(url, { cache: "no-store", ...init, headers: { ...authHeaders(hasBody), ...init.headers } })
   const payload = await response.json().catch(() => null) as { error?: string; message?: string; code?: string } | null
   if (!response.ok) {
     throw new MultiplayerApiError(payload?.message ?? payload?.error ?? `Room request failed (${response.status})`, response.status, payload?.code)
