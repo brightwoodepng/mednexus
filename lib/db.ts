@@ -53,7 +53,7 @@ export async function groupStudySchemaStatus() {
   const result = await pool.query<{
     rooms: boolean; room_questions: boolean; question_history: boolean
     memberships: boolean; answers: boolean; reward_events: boolean; discipline: boolean
-    guest_memberships: boolean; membership_identity_ready: boolean; answer_identity_ready: boolean
+    guest_memberships: boolean; host_identity_ready: boolean; membership_identity_ready: boolean; answer_identity_ready: boolean
   }>(`
     SELECT
       to_regclass('public.mednexus_group_study_rooms') IS NOT NULL AS rooms,
@@ -70,6 +70,11 @@ export async function groupStudySchemaStatus() {
         SELECT 1 FROM information_schema.columns
         WHERE table_schema='public' AND table_name='mednexus_group_study_memberships' AND column_name='is_guest'
       ) AS guest_memberships,
+      NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_schema='public' AND table_name='mednexus_group_study_rooms'
+          AND constraint_name='mednexus_group_study_rooms_host_user_id_fkey'
+      ) AS host_identity_ready,
       NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints
         WHERE constraint_schema='public' AND table_name='mednexus_group_study_memberships'
@@ -106,7 +111,7 @@ export async function ensureGroupStudySchema() {
       CREATE TABLE IF NOT EXISTS mednexus_group_study_rooms (
         id TEXT PRIMARY KEY,
         pin TEXT NOT NULL UNIQUE CHECK (pin ~ '^[0-9]{6}$'),
-        host_user_id TEXT NOT NULL REFERENCES mednexus_registered_users(uid),
+        host_user_id TEXT NOT NULL,
         module_id TEXT NOT NULL,
         discipline TEXT,
         difficulty TEXT NOT NULL DEFAULT 'mixed' CHECK (difficulty IN ('mixed','easy','medium','hard')),
@@ -124,6 +129,7 @@ export async function ensureGroupStudySchema() {
         expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '4 hours',
         completed_at TIMESTAMPTZ
       );
+      ALTER TABLE mednexus_group_study_rooms DROP CONSTRAINT IF EXISTS mednexus_group_study_rooms_host_user_id_fkey;
       ALTER TABLE mednexus_group_study_rooms ADD COLUMN IF NOT EXISTS discipline TEXT;
       CREATE INDEX IF NOT EXISTS mednexus_group_study_rooms_expiry_idx
         ON mednexus_group_study_rooms (expires_at) WHERE status NOT IN ('completed','ended','expired');
@@ -687,7 +693,7 @@ export async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS mednexus_group_study_rooms (
       id                       TEXT        PRIMARY KEY,
       pin                      TEXT        NOT NULL UNIQUE CHECK (pin ~ '^[0-9]{6}$'),
-      host_user_id             TEXT        NOT NULL REFERENCES mednexus_registered_users(uid),
+      host_user_id             TEXT        NOT NULL,
       module_id                TEXT        NOT NULL,
       discipline               TEXT,
       difficulty               TEXT        NOT NULL DEFAULT 'mixed'
@@ -708,6 +714,7 @@ export async function ensureSchema() {
       expires_at               TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '4 hours',
       completed_at             TIMESTAMPTZ
     );
+    ALTER TABLE mednexus_group_study_rooms DROP CONSTRAINT IF EXISTS mednexus_group_study_rooms_host_user_id_fkey;
     ALTER TABLE mednexus_group_study_rooms ADD COLUMN IF NOT EXISTS discipline TEXT;
     CREATE INDEX IF NOT EXISTS mednexus_group_study_rooms_expiry_idx
       ON mednexus_group_study_rooms (expires_at) WHERE status NOT IN ('completed','ended','expired');
@@ -1620,3 +1627,4 @@ export async function ensureSchema() {
 }
 
 export default pool
+

@@ -6,7 +6,7 @@ import { getActiveSeason } from "@/lib/economy-seasons"
 import {
   firstEligibleQuestionIndex,
   GROUP_STUDY_CAPACITY,
-  GROUP_STUDY_HOST_RECONNECT_SECONDS,
+  GROUP_STUDY_RECONNECT_MINUTES,
   groupStudyRoomScore,
   isValidGroupStudyAnswer,
   publicGroupStudyQuestion,
@@ -132,32 +132,45 @@ async function closeAnswering(client: PoolClient, room: RoomRow) {
 }
 
 async function maintainRoom(client: PoolClient, room: RoomRow) {
-  if (!["completed", "ended", "expired"].includes(room.status) && room.expires_at.getTime() <= Date.now()) {
+  if (room.current_phase === "question_open" && room.answer_closes_at && room.answer_closes_at.getTime() <= Date.now()) {
+    room = await closeAnswering(client, room)
+  }
+  const disconnected = await client.query(
+    `UPDATE mednexus_group_study_memberships SET connection_status='disconnected'
+     WHERE room_id=$1 AND connection_status='online' AND last_seen_at < NOW()-INTERVAL '15 seconds' RETURNING id`, [room.id],
+  )
+  if (disconnected.rowCount) {
+    const updated = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1 RETURNING *", [room.id])
+    room = updated.rows[0]
+  }
+  const online = await client.query<{ user_id: string }>(
+    "SELECT user_id FROM mednexus_group_study_memberships WHERE room_id=$1 AND connection_status='online' ORDER BY joined_at,user_id", [room.id],
+  )
+  if (!["completed", "ended", "expired"].includes(room.status) && online.rows.length) {
+    const extended = await client.query<RoomRow>(
+      "UPDATE mednexus_group_study_rooms SET expires_at=NOW()+($2||' minutes')::interval WHERE id=$1 RETURNING *",
+      [room.id, GROUP_STUDY_RECONNECT_MINUTES],
+    )
+    room = extended.rows[0]
+  } else if (!["completed", "ended", "expired"].includes(room.status) && room.expires_at.getTime() <= Date.now()) {
     const expired = await client.query<RoomRow>(
       "UPDATE mednexus_group_study_rooms SET status='expired',current_phase='expired',version=version+1 WHERE id=$1 RETURNING *", [room.id],
     )
     return expired.rows[0]
   }
-  if (room.current_phase === "question_open" && room.answer_closes_at && room.answer_closes_at.getTime() <= Date.now()) {
-    room = await closeAnswering(client, room)
-  }
-  await client.query(
-    `UPDATE mednexus_group_study_memberships SET connection_status='disconnected'
-     WHERE room_id=$1 AND connection_status='online' AND last_seen_at < NOW()-INTERVAL '15 seconds'`, [room.id],
-  )
   const hostConnection = await client.query<{ connection_status: string }>(
     "SELECT connection_status FROM mednexus_group_study_memberships WHERE room_id=$1 AND user_id=$2", [room.id, room.host_user_id],
   )
-  if (hostConnection.rows[0]?.connection_status === "disconnected" && !room.host_disconnected_at) {
+  if (hostConnection.rows[0]?.connection_status !== "online" && !room.host_disconnected_at) {
     const disconnected = await client.query<RoomRow>(
       "UPDATE mednexus_group_study_rooms SET host_disconnected_at=NOW(),version=version+1 WHERE id=$1 RETURNING *", [room.id],
     )
     room = disconnected.rows[0]
   }
-  if (room.host_disconnected_at && room.host_disconnected_at.getTime() + GROUP_STUDY_HOST_RECONNECT_SECONDS * 1000 <= Date.now()) {
+  if (room.host_disconnected_at) {
     const replacement = await client.query<{ user_id: string }>(
       `SELECT user_id FROM mednexus_group_study_memberships
-       WHERE room_id=$1 AND user_id<>$2 AND connection_status='online' AND NOT is_guest
+       WHERE room_id=$1 AND user_id<>$2 AND connection_status='online'
        ORDER BY joined_at,user_id LIMIT 1`, [room.id, room.host_user_id],
     )
     if (replacement.rows[0]) {
@@ -182,7 +195,7 @@ async function membership(client: PoolClient, roomId: string, userId: string, lo
 }
 
 async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string) {
-  const memberRows = await client.query(
+  const allMemberRows = await client.query(
     `SELECT m.*,COALESCE(r.name,g.name,'Guest') AS name,c.equipped_avatar
      FROM mednexus_group_study_memberships m
      LEFT JOIN mednexus_registered_users r ON r.uid=m.user_id AND NOT m.is_guest
@@ -190,7 +203,10 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
      LEFT JOIN mednexus_user_cosmetics c ON c.uid=m.user_id AND NOT m.is_guest
      WHERE m.room_id=$1 ORDER BY m.joined_at,m.user_id`, [room.id],
   )
-  const leaderboardInput: GroupStudyLeaderboardMember[] = memberRows.rows.map(row => ({
+  const visibleRows = room.current_phase === "completed"
+    ? allMemberRows.rows.filter(row => Number(row.questions_attempted) > 0 || row.user_id === viewerId)
+    : allMemberRows.rows.filter(row => row.connection_status === "online")
+  const leaderboardInput: GroupStudyLeaderboardMember[] = visibleRows.map(row => ({
     userId: row.user_id, name: row.name, avatar: row.equipped_avatar, role: row.role, isGuest: Boolean(row.is_guest),
     firstEligibleQuestion: row.first_eligible_question, questionsAttempted: Number(row.questions_attempted),
     correctAnswers: Number(row.correct_answers), incorrectAnswers: Number(row.incorrect_answers),
@@ -215,7 +231,7 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
     for (const option of selected) if (typeof option === "string") optionCounts[option] = (optionCounts[option] ?? 0) + 1
   }
   const viewerAnswer = answers.rows.find(answer => answer.user_id === viewerId)
-  const eligibleCount = memberRows.rows.filter(row => row.first_eligible_question !== null && row.first_eligible_question <= room.current_question_index).length
+  const eligibleCount = visibleRows.filter(row => row.first_eligible_question !== null && row.first_eligible_question <= room.current_question_index).length
   const finalReview = room.current_phase === "completed"
     ? await client.query<{
         id: string; position: number; question_snapshot: GroupStudyQuestionSnapshot; selected_answer: unknown
@@ -239,10 +255,10 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
       answerClosesAt: room.answer_closes_at?.toISOString() ?? null,
       answerClosedAt: room.answer_closed_at?.toISOString() ?? null,
       expiresAt: room.expires_at.toISOString(), completedAt: room.completed_at?.toISOString() ?? null,
-      version: Number(room.version), capacity: GROUP_STUDY_CAPACITY, memberCount: memberRows.rows.length,
+      version: Number(room.version), capacity: GROUP_STUDY_CAPACITY, memberCount: visibleRows.length,
     },
     viewer: ranked.find(row => row.userId === viewerId) ?? null,
-    members: ranked.map(member => ({ ...member, ready: Boolean(memberRows.rows.find(row => row.user_id === member.userId)?.ready), hasSubmitted: answers.rows.some(answer => answer.user_id === member.userId) })),
+    members: ranked.map(member => ({ ...member, ready: Boolean(visibleRows.find(row => row.user_id === member.userId)?.ready), hasSubmitted: answers.rows.some(answer => answer.user_id === member.userId) })),
     question: question ? { roomQuestionId: question.id, position: question.position, ...publicGroupStudyQuestion(question.question_snapshot, reveal) } : null,
     answerState: {
       submitted: Boolean(viewerAnswer), selectedAnswer: viewerAnswer?.selected_answer ?? null,
@@ -344,38 +360,6 @@ async function awardCompletion(client: PoolClient, room: RoomRow) {
   }
 }
 
-async function saveReviewItems(client: PoolClient, room: RoomRow, userId: string, kind: "bookmark" | "revision" | "missed-revision") {
-  await client.query("INSERT INTO mednexus_progress(uid) VALUES($1) ON CONFLICT(uid) DO NOTHING", [userId])
-  const progress = await client.query<{ data: Record<string, unknown> }>("SELECT data FROM mednexus_progress WHERE uid=$1 FOR UPDATE", [userId])
-  const data = progress.rows[0]?.data ?? {}
-  let questionIds: string[] = []
-  if (kind === "missed-revision") {
-    const missed = await client.query<{ question_id: string }>(
-      `SELECT q.question_id FROM mednexus_group_study_room_questions q
-       JOIN mednexus_group_study_answers a ON a.room_question_id=q.id AND a.user_id=$2
-       WHERE q.room_id=$1 AND NOT a.is_correct`, [room.id, userId],
-    )
-    questionIds = missed.rows.map(row => row.question_id)
-  } else {
-    const current = await client.query<{ question_id: string }>(
-      "SELECT question_id FROM mednexus_group_study_room_questions WHERE room_id=$1 AND position=$2", [room.id, room.current_question_index],
-    )
-    questionIds = current.rows[0] ? [current.rows[0].question_id] : []
-  }
-  if (kind === "bookmark") {
-    const flagged = new Set(Array.isArray(data.flaggedQuestionIds) ? data.flaggedQuestionIds.filter((id): id is string => typeof id === "string") : [])
-    questionIds.forEach(id => flagged.add(id))
-    data.flaggedQuestionIds = [...flagged]
-  } else {
-    const srs = data.srsData && typeof data.srsData === "object" ? data.srsData as Record<string, unknown> : {}
-    const due = new Date().toISOString().slice(0, 10)
-    questionIds.forEach(id => { srs[id] = { interval: 1, ef: 2.5, due, reps: 0 } })
-    data.srsData = srs
-  }
-  await client.query("UPDATE mednexus_progress SET data=$2::jsonb,version=version+1,updated_at=NOW() WHERE uid=$1", [userId, JSON.stringify(data)])
-  return questionIds.length
-}
-
 export async function GET(req: Request, context: { params: Promise<{ pin: string }> }) {
   const auth = await requireAuthenticatedUser(req)
   if (!auth) return fail("Sign in or continue as a guest to join Group Study", 401, "AUTHENTICATION_REQUIRED")
@@ -387,10 +371,11 @@ export async function GET(req: Request, context: { params: Promise<{ pin: string
     let room = await lockedRoom(client, pin)
     if (!room) { await client.query("ROLLBACK"); return fail("Room not found", 404, "ROOM_NOT_FOUND") }
     room = await maintainRoom(client, room)
+    if (["ended", "expired"].includes(room.status)) { await client.query("ROLLBACK"); return fail("This room has expired", 410, "ROOM_EXPIRED") }
     const member = await membership(client, room.id, auth.uid, true)
     if (!member) { await client.query("ROLLBACK"); return fail("Join this room first", 403, "NOT_A_MEMBER") }
-    await client.query("UPDATE mednexus_group_study_memberships SET last_seen_at=NOW(),connection_status='online',left_at=NULL WHERE id=$1", [member.id])
-    if (room.host_user_id === auth.uid && room.host_disconnected_at) {
+    if (room.status !== "completed") await client.query("UPDATE mednexus_group_study_memberships SET last_seen_at=NOW(),connection_status='online',left_at=NULL WHERE id=$1", [member.id])
+    if (room.status !== "completed" && room.host_user_id === auth.uid && room.host_disconnected_at) {
       const restored = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id])
       room = restored.rows[0]
     }
@@ -417,9 +402,9 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
     let member = await membership(client, room.id, auth.uid, true)
 
     if (body.action === "join" || body.action === "rejoin") {
-      if (["completed", "ended", "expired"].includes(room.status) && !member) { await client.query("ROLLBACK"); return fail("This room is no longer accepting members", 409, "ROOM_CLOSED") }
+      if (["completed", "ended", "expired"].includes(room.status)) { await client.query("ROLLBACK"); return fail("This room is no longer accepting members", 409, "ROOM_CLOSED") }
       if (!member) {
-        const count = await client.query<{ count: number }>("SELECT COUNT(*)::int AS count FROM mednexus_group_study_memberships WHERE room_id=$1", [room.id])
+        const count = await client.query<{ count: number }>("SELECT COUNT(*)::int AS count FROM mednexus_group_study_memberships WHERE room_id=$1 AND connection_status='online'", [room.id])
         if (Number(count.rows[0].count) >= GROUP_STUDY_CAPACITY) { await client.query("ROLLBACK"); return fail("This room is full", 409, "ROOM_FULL") }
         const eligible = room.current_phase === "lobby" ? 0 : firstEligibleQuestionIndex(room.current_question_index, room.current_phase)
         const inserted = await client.query(
@@ -447,15 +432,11 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
       if (body.action === "ready") {
         await client.query("UPDATE mednexus_group_study_memberships SET ready=$2 WHERE id=$1", [member.id, body.ready === true])
         await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
-      } else if (body.action === "bookmark" || body.action === "revision" || body.action === "missed-revision") {
-        if (auth.isGuest) { await client.query("ROLLBACK"); return fail("Create an account to save personal review items", 403, "REGISTERED_ACCOUNT_REQUIRED") }
-        if (body.action === "missed-revision" && room.current_phase !== "completed") { await client.query("ROLLBACK"); return fail("Finish the session before adding missed questions", 409, "INVALID_PHASE") }
-        await saveReviewItems(client, room, auth.uid, body.action)
       } else if (body.action === "start") {
         if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can start", 403, "HOST_REQUIRED") }
         if (room.current_phase !== "lobby") { await client.query("ROLLBACK"); return fail("The session has already started", 409, "INVALID_PHASE") }
         const members = await client.query<{ count: number; unready: number }>(
-          "SELECT COUNT(*)::int count,COUNT(*) FILTER(WHERE NOT ready)::int unready FROM mednexus_group_study_memberships WHERE room_id=$1 AND connection_status<>'left'", [room.id],
+          "SELECT COUNT(*)::int count,COUNT(*) FILTER(WHERE NOT ready)::int unready FROM mednexus_group_study_memberships WHERE room_id=$1 AND connection_status='online'", [room.id],
         )
         if (Number(members.rows[0].unready) > 0 && body.force !== true) { await client.query("ROLLBACK"); return fail(`${members.rows[0].unready} participants are not ready`, 409, "UNREADY_MEMBERS") }
         const started = await client.query<RoomRow>(
@@ -520,12 +501,27 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         room = ended.rows[0]
       } else if (body.action === "leave") {
         await client.query("UPDATE mednexus_group_study_memberships SET connection_status='left',left_at=NOW(),last_seen_at=NOW(),ready=FALSE WHERE id=$1", [member.id])
-        if (isHost) await client.query("UPDATE mednexus_group_study_rooms SET host_disconnected_at=NOW(),version=version+1 WHERE id=$1", [room.id])
-        else await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
+        const remaining = await client.query<{ user_id: string }>(
+          "SELECT user_id FROM mednexus_group_study_memberships WHERE room_id=$1 AND connection_status='online' ORDER BY joined_at,user_id", [room.id],
+        )
+        if (!remaining.rows.length) {
+          const expired = await client.query<RoomRow>(
+            "UPDATE mednexus_group_study_rooms SET status='expired',current_phase='expired',host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id],
+          )
+          room = expired.rows[0]
+        } else if (isHost) {
+          const nextHost = remaining.rows[0].user_id
+          await client.query("UPDATE mednexus_group_study_memberships SET role='member' WHERE room_id=$1 AND role='host'", [room.id])
+          await client.query("UPDATE mednexus_group_study_memberships SET role='host' WHERE room_id=$1 AND user_id=$2", [room.id, nextHost])
+          const transferred = await client.query<RoomRow>(
+            "UPDATE mednexus_group_study_rooms SET host_user_id=$2,host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id, nextHost],
+          )
+          room = transferred.rows[0]
+        } else await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
       } else if (body.action === "transfer") {
         if (!isHost || typeof body.targetUserId !== "string") { await client.query("ROLLBACK"); return fail("Only the host can transfer control", 403, "HOST_REQUIRED") }
         const target = await membership(client, room.id, body.targetUserId, true)
-        if (!target || target.connection_status === "left" || target.is_guest) { await client.query("ROLLBACK"); return fail("Select an active registered member", 422) }
+        if (!target || target.connection_status !== "online") { await client.query("ROLLBACK"); return fail("Select an active room member", 422) }
         await client.query("UPDATE mednexus_group_study_memberships SET role='member' WHERE id=$1", [member.id])
         await client.query("UPDATE mednexus_group_study_memberships SET role='host' WHERE id=$1", [target.id])
         const transferred = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET host_user_id=$2,host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id, target.user_id])
@@ -540,3 +536,4 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
     await client.query("ROLLBACK"); console.error("[group-study POST]", error); return fail("Unable to update room", 500, "SERVER_ERROR")
   } finally { client.release() }
 }
+
