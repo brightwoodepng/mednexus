@@ -17,8 +17,9 @@ import { isValidLevel } from "@/lib/levels"
 import { defaultPlatformSettings, getPlatformSettings } from "@/lib/platform-settings"
 
 async function getPool() {
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  // Production uses explicit migrations and a restricted runtime role. Guest
+  // signup must not attempt the full DDL bootstrap on every cold start.
+  const { default: pool } = await import("@/lib/db")
   return pool
 }
 

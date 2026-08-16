@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { readFileSync } from "node:fs"
 
 const db = { role: "STUDENT", status: "approved", guest: true, permissions: [] as Array<{ permission: string; granted: boolean }> }
 const query = vi.fn(async (sql: string) => {
@@ -49,5 +50,12 @@ describe("server request auth", () => {
     expect(await requireAuthenticatedUser(poll, { cacheMs: 15_000 })).toMatchObject({ uid: "polling-learner" })
     expect(await requireAuthenticatedUser(poll, { cacheMs: 15_000 })).toMatchObject({ uid: "polling-learner" })
     expect(query).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("guest session production safety", () => {
+  it("does not run the full schema bootstrap with the restricted runtime role", () => {
+    const route = readFileSync("app/api/auth/guest/route.ts", "utf8")
+    expect(route).not.toContain("await ensureSchema()")
   })
 })
