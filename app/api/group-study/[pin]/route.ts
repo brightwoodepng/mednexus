@@ -206,6 +206,7 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
   const visibleRows = room.current_phase === "completed"
     ? allMemberRows.rows.filter(row => Number(row.questions_attempted) > 0 || row.user_id === viewerId)
     : allMemberRows.rows.filter(row => row.connection_status === "online")
+  const viewerMembership = allMemberRows.rows.find(row => row.user_id === viewerId)
   const leaderboardInput: GroupStudyLeaderboardMember[] = visibleRows.map(row => ({
     userId: row.user_id, name: row.name, avatar: row.equipped_avatar, role: row.role, isGuest: Boolean(row.is_guest),
     firstEligibleQuestion: row.first_eligible_question, questionsAttempted: Number(row.questions_attempted),
@@ -258,6 +259,9 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
       version: Number(room.version), capacity: GROUP_STUDY_CAPACITY, memberCount: visibleRows.length,
     },
     viewer: ranked.find(row => row.userId === viewerId) ?? null,
+    viewerFlags: Array.isArray(viewerMembership?.flagged_questions)
+      ? viewerMembership.flagged_questions.map(Number)
+      : [],
     members: ranked.map(member => ({ ...member, ready: Boolean(visibleRows.find(row => row.user_id === member.userId)?.ready), hasSubmitted: answers.rows.some(answer => answer.user_id === member.userId) })),
     question: question ? { roomQuestionId: question.id, position: question.position, ...publicGroupStudyQuestion(question.question_snapshot, reveal) } : null,
     answerState: {
@@ -431,6 +435,13 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
       const isHost = room.host_user_id === auth.uid && member.role === "host"
       if (body.action === "ready") {
         await client.query("UPDATE mednexus_group_study_memberships SET ready=$2 WHERE id=$1", [member.id, body.ready === true])
+        await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
+      } else if (body.action === "flag") {
+        if (room.current_phase === "lobby" || room.current_question_index < 0) { await client.query("ROLLBACK"); return fail("There is no active question to flag", 409, "INVALID_PHASE") }
+        const flags = new Set<number>(Array.isArray(member.flagged_questions) ? member.flagged_questions.map(Number) : [])
+        if (flags.has(room.current_question_index)) flags.delete(room.current_question_index)
+        else flags.add(room.current_question_index)
+        await client.query("UPDATE mednexus_group_study_memberships SET flagged_questions=$2::integer[] WHERE id=$1", [member.id, [...flags].sort((a, b) => a - b)])
         await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
       } else if (body.action === "start") {
         if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can start", 403, "HOST_REQUIRED") }

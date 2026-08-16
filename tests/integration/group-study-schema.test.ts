@@ -60,6 +60,15 @@ describe("Group Study persistence and authorization gates", () => {
     expect(room).not.toContain("· {member.connectionStatus}")
   })
 
+  it("persists per-participant flags and renders a non-interactive question navigator", () => {
+    expect(schema).toContain("flagged_questions INTEGER[] NOT NULL DEFAULT '{}'")
+    expect(route).toContain('body.action === "flag"')
+    expect(route).toContain("flagged_questions=$2::integer[]")
+    expect(room).toContain('aria-label="Question navigator"')
+    expect(room).toContain("questions cannot be skipped")
+    expect(room).toContain("type=\"button\" disabled aria-current")
+  })
+
   it("keeps the dashboard shortcut between statistics and study modules and optimizes the lobby for phones", () => {
     expect(dashboard.indexOf("Group Study")).toBeGreaterThan(dashboard.indexOf("Stats row"))
     expect(dashboard.indexOf("Group Study")).toBeLessThan(dashboard.indexOf("Study Modules"))

@@ -53,7 +53,7 @@ export async function groupStudySchemaStatus() {
   const result = await pool.query<{
     rooms: boolean; room_questions: boolean; question_history: boolean
     memberships: boolean; answers: boolean; reward_events: boolean; discipline: boolean
-    guest_memberships: boolean; host_identity_ready: boolean; membership_identity_ready: boolean; answer_identity_ready: boolean
+    guest_memberships: boolean; membership_flags: boolean; host_identity_ready: boolean; membership_identity_ready: boolean; answer_identity_ready: boolean
   }>(`
     SELECT
       to_regclass('public.mednexus_group_study_rooms') IS NOT NULL AS rooms,
@@ -70,6 +70,10 @@ export async function groupStudySchemaStatus() {
         SELECT 1 FROM information_schema.columns
         WHERE table_schema='public' AND table_name='mednexus_group_study_memberships' AND column_name='is_guest'
       ) AS guest_memberships,
+      EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='mednexus_group_study_memberships' AND column_name='flagged_questions'
+      ) AS membership_flags,
       NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints
         WHERE constraint_schema='public' AND table_name='mednexus_group_study_rooms'
@@ -178,9 +182,11 @@ export async function ensureGroupStudySchema() {
         highest_streak INTEGER NOT NULL DEFAULT 0,
         room_score INTEGER NOT NULL DEFAULT 0,
         session_np_earned INTEGER NOT NULL DEFAULT 0,
+        flagged_questions INTEGER[] NOT NULL DEFAULT '{}',
         UNIQUE (room_id, user_id)
       );
       ALTER TABLE mednexus_group_study_memberships ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE mednexus_group_study_memberships ADD COLUMN IF NOT EXISTS flagged_questions INTEGER[] NOT NULL DEFAULT '{}';
       ALTER TABLE mednexus_group_study_memberships DROP CONSTRAINT IF EXISTS mednexus_group_study_memberships_user_id_fkey;
       CREATE UNIQUE INDEX IF NOT EXISTS mednexus_group_study_single_host_idx
         ON mednexus_group_study_memberships (room_id) WHERE role = 'host';
@@ -763,9 +769,11 @@ export async function ensureSchema() {
       highest_streak            INTEGER     NOT NULL DEFAULT 0,
       room_score                INTEGER     NOT NULL DEFAULT 0,
       session_np_earned         INTEGER     NOT NULL DEFAULT 0,
+      flagged_questions         INTEGER[]   NOT NULL DEFAULT '{}',
       UNIQUE (room_id, user_id)
     );
     ALTER TABLE mednexus_group_study_memberships ADD COLUMN IF NOT EXISTS is_guest BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE mednexus_group_study_memberships ADD COLUMN IF NOT EXISTS flagged_questions INTEGER[] NOT NULL DEFAULT '{}';
     ALTER TABLE mednexus_group_study_memberships DROP CONSTRAINT IF EXISTS mednexus_group_study_memberships_user_id_fkey;
     CREATE UNIQUE INDEX IF NOT EXISTS mednexus_group_study_single_host_idx
       ON mednexus_group_study_memberships (room_id) WHERE role = 'host';
