@@ -146,6 +146,7 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error("[group-study POST]", error)
-    return fail("Unable to create Group Study room", 500, "SERVER_ERROR")
+    const databaseCode = typeof (error as { code?: unknown }).code === "string" ? (error as { code: string }).code : null
+    return fail(databaseCode ? `Unable to create Group Study room (database ${databaseCode})` : "Unable to create Group Study room", 500, "SERVER_ERROR")
   }
 }
