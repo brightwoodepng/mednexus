@@ -7,6 +7,8 @@ import {
   firstEligibleQuestionIndex,
   GROUP_STUDY_CAPACITY,
   GROUP_STUDY_RECONNECT_MINUTES,
+  groupStudyNavigationModeFromStorage,
+  groupStudyNavigationModeToStorage,
   groupStudyRoomScore,
   isGroupStudyNavigationMode,
   isValidGroupStudyAnswer,
@@ -14,7 +16,6 @@ import {
   rankGroupStudyMembers,
   sameGroupStudyAnswer,
   type GroupStudyLeaderboardMember,
-  type GroupStudyNavigationMode,
   type GroupStudyPhase,
   type GroupStudyQuestionSnapshot,
 } from "@/lib/group-study"
@@ -28,7 +29,6 @@ type RoomRow = {
   current_phase: GroupStudyPhase; question_opened_at: Date | null; answer_closes_at: Date | null
   answer_closed_at: Date | null; host_disconnected_at: Date | null; version: number
   created_at: Date; expires_at: Date; completed_at: Date | null
-  navigation_mode: GroupStudyNavigationMode
 }
 
 type RoomQuestionRow = { id: string; question_id: string; position: number; question_snapshot: GroupStudyQuestionSnapshot; opened_at: Date | null; closed_at: Date | null }
@@ -40,6 +40,8 @@ async function lockedRoom(client: PoolClient, pin: string) {
   const result = await client.query<RoomRow>("SELECT * FROM mednexus_group_study_rooms WHERE pin=$1 FOR UPDATE", [pin])
   return result.rows[0] ?? null
 }
+
+const navigationMode = (room: RoomRow) => groupStudyNavigationModeFromStorage(room.difficulty)
 
 async function closeAnswering(client: PoolClient, room: RoomRow) {
   if (room.current_phase !== "question_open") return room
@@ -242,7 +244,7 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
     for (const option of selected) if (typeof option === "string") optionCounts[option] = (optionCounts[option] ?? 0) + 1
   }
   const viewerAnswer = answers.rows.find(answer => answer.user_id === viewerId)
-  const reveal = viewedPosition < room.current_question_index || sharedReveal || (viewedPosition > room.current_question_index && room.navigation_mode === "answer_ahead" && Boolean(viewerAnswer))
+  const reveal = viewedPosition < room.current_question_index || sharedReveal || (viewedPosition > room.current_question_index && navigationMode(room) === "answer_ahead" && Boolean(viewerAnswer))
   const eligibleCount = visibleRows.filter(row => row.first_eligible_question !== null && row.first_eligible_question <= room.current_question_index).length
   const finalReview = room.current_phase === "completed"
     ? await client.query<{
@@ -263,7 +265,7 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
       id: room.id, pin: room.pin, hostUserId: room.host_user_id, moduleId: room.module_id,
       discipline: room.discipline, difficulty: room.difficulty, questionCount: room.question_count, timerSeconds: room.timer_seconds,
       status: room.status, phase: room.current_phase, currentQuestionIndex: room.current_question_index,
-      viewedQuestionIndex: viewedPosition, isLiveQuestion, navigationMode: room.navigation_mode,
+      viewedQuestionIndex: viewedPosition, isLiveQuestion, navigationMode: navigationMode(room),
       questionOpenedAt: room.question_opened_at?.toISOString() ?? null,
       answerClosesAt: room.answer_closes_at?.toISOString() ?? null,
       answerClosedAt: room.answer_closed_at?.toISOString() ?? null,
@@ -394,7 +396,7 @@ export async function GET(req: Request, context: { params: Promise<{ pin: string
     const requestedParam = new URL(req.url).searchParams.get("question")
     const requestedPosition = requestedParam === null ? room.current_question_index : Number(requestedParam)
     if (!Number.isInteger(requestedPosition) || requestedPosition < 0 || requestedPosition >= room.question_count) { await client.query("ROLLBACK"); return fail("Choose a valid question", 422, "INVALID_QUESTION") }
-    if (requestedPosition > room.current_question_index && room.navigation_mode === "anyone_advances") { await client.query("ROLLBACK"); return fail("Future questions are locked in this mode", 403, "FUTURE_LOCKED") }
+    if (requestedPosition > room.current_question_index && ["host_paced", "anyone_advances"].includes(navigationMode(room))) { await client.query("ROLLBACK"); return fail("Future questions are locked in this mode", 403, "FUTURE_LOCKED") }
     if (room.status !== "completed") await client.query("UPDATE mednexus_group_study_memberships SET last_seen_at=NOW(),connection_status='online',left_at=NULL WHERE id=$1", [member.id])
     if (room.status !== "completed" && room.host_user_id === auth.uid && room.host_disconnected_at) {
       const restored = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id])
@@ -465,7 +467,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
       } else if (body.action === "navigation-mode") {
         if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can change navigation", 403, "HOST_REQUIRED") }
         if (!isGroupStudyNavigationMode(body.navigationMode)) { await client.query("ROLLBACK"); return fail("Choose a valid navigation mode", 422, "INVALID_NAVIGATION_MODE") }
-        const updated = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET navigation_mode=$2,version=version+1 WHERE id=$1 RETURNING *", [room.id, body.navigationMode])
+        const updated = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET difficulty=$2,version=version+1 WHERE id=$1 RETURNING *", [room.id, groupStudyNavigationModeToStorage(body.navigationMode)])
         room = updated.rows[0]
       } else if (body.action === "start") {
         if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can start", 403, "HOST_REQUIRED") }
@@ -485,7 +487,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         const answerPosition = body.questionPosition === undefined ? room.current_question_index : Number(body.questionPosition)
         const answeringAhead = answerPosition > room.current_question_index
         if (!Number.isInteger(answerPosition) || answerPosition < room.current_question_index || answerPosition >= room.question_count) { await client.query("ROLLBACK"); return fail("This question cannot be answered", 409, "ANSWERING_CLOSED") }
-        if (answeringAhead && room.navigation_mode !== "answer_ahead") { await client.query("ROLLBACK"); return fail("Answering ahead is not enabled", 403, "FUTURE_LOCKED") }
+        if (answeringAhead && navigationMode(room) !== "answer_ahead") { await client.query("ROLLBACK"); return fail("Answering ahead is not enabled", 403, "FUTURE_LOCKED") }
         if (!answeringAhead && room.current_phase !== "question_open") { await client.query("ROLLBACK"); return fail("Answering is closed", 409, "ANSWERING_CLOSED") }
         if (member.first_eligible_question === null || Number(member.first_eligible_question) > answerPosition) { await client.query("ROLLBACK"); return fail("You are not eligible for this question", 409, "JOINED_LATE") }
         const current = await client.query<RoomQuestionRow>("SELECT * FROM mednexus_group_study_room_questions WHERE room_id=$1 AND position=$2 FOR UPDATE", [room.id, answerPosition])
@@ -518,7 +520,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         if (Number(remaining.rows[0].count) > 0 && body.force !== true) { await client.query("ROLLBACK"); return fail(`${remaining.rows[0].count} participants have not answered`, 409, "UNANSWERED_MEMBERS") }
         room = await closeAnswering(client, room)
       } else if (body.action === "next") {
-        if (!isHost && room.navigation_mode !== "anyone_advances") { await client.query("ROLLBACK"); return fail("Only the host can advance", 403, "HOST_REQUIRED") }
+        if (!isHost && navigationMode(room) !== "anyone_advances") { await client.query("ROLLBACK"); return fail("Only the host can advance", 403, "HOST_REQUIRED") }
         if (!revealPhases.has(room.current_phase)) { await client.query("ROLLBACK"); return fail("Reveal the current answer first", 409, "INVALID_PHASE") }
         const nextIndex = room.current_question_index + 1
         if (nextIndex >= room.question_count) {
@@ -569,7 +571,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
     }
     const fresh = (await lockedRoom(client, pin))!
     const responsePosition = Number.isInteger(Number(body.questionPosition)) ? Number(body.questionPosition) : fresh.current_question_index
-    const allowedPosition = responsePosition > fresh.current_question_index && fresh.navigation_mode === "anyone_advances" ? fresh.current_question_index : responsePosition
+    const allowedPosition = responsePosition > fresh.current_question_index && ["host_paced", "anyone_advances"].includes(navigationMode(fresh)) ? fresh.current_question_index : responsePosition
     const payload = await serializeRoom(client, fresh, auth.uid, allowedPosition)
     await client.query("COMMIT")
     return NextResponse.json(payload)

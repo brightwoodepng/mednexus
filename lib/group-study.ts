@@ -2,10 +2,35 @@ import type { Question, QuestionExplanation, QuestionMedia, QuestionOption } fro
 
 export const GROUP_STUDY_CAPACITY = 10
 export const GROUP_STUDY_RECONNECT_MINUTES = 10
-export const GROUP_STUDY_NAVIGATION_MODES = ["browse_ahead", "answer_ahead", "anyone_advances"] as const
+export const GROUP_STUDY_NAVIGATION_MODES = ["host_paced", "browse_ahead", "answer_ahead", "anyone_advances"] as const
 export type GroupStudyNavigationMode = typeof GROUP_STUDY_NAVIGATION_MODES[number]
 export function isGroupStudyNavigationMode(value: unknown): value is GroupStudyNavigationMode {
   return typeof value === "string" && GROUP_STUDY_NAVIGATION_MODES.includes(value as GroupStudyNavigationMode)
+}
+
+// The old difficulty setting is no longer exposed by Group Study. Reusing its
+// constrained values keeps navigation modes persistent on existing databases
+// without requiring the production application role to alter the room table.
+const NAVIGATION_MODE_BY_LEGACY_DIFFICULTY: Record<string, GroupStudyNavigationMode> = {
+  mixed: "host_paced",
+  easy: "browse_ahead",
+  medium: "answer_ahead",
+  hard: "anyone_advances",
+}
+
+const LEGACY_DIFFICULTY_BY_NAVIGATION_MODE: Record<GroupStudyNavigationMode, string> = {
+  host_paced: "mixed",
+  browse_ahead: "easy",
+  answer_ahead: "medium",
+  anyone_advances: "hard",
+}
+
+export function groupStudyNavigationModeFromStorage(value: unknown): GroupStudyNavigationMode {
+  return typeof value === "string" ? NAVIGATION_MODE_BY_LEGACY_DIFFICULTY[value] ?? "host_paced" : "host_paced"
+}
+
+export function groupStudyNavigationModeToStorage(mode: GroupStudyNavigationMode) {
+  return LEGACY_DIFFICULTY_BY_NAVIGATION_MODE[mode]
 }
 export const GROUP_STUDY_TIMER_OPTIONS = [30, 45, 60, 90] as const
 export const GROUP_STUDY_DIFFICULTIES = ["mixed", "easy", "medium", "hard"] as const

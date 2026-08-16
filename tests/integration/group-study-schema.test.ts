@@ -60,18 +60,22 @@ describe("Group Study persistence and authorization gates", () => {
     expect(room).not.toContain("· {member.connectionStatus}")
   })
 
-  it("persists flags and enforces the three navigation modes", () => {
+  it("persists flags and enforces all four navigation modes without a new database column", () => {
     expect(schema).toContain("flagged_questions INTEGER[] NOT NULL DEFAULT '{}'")
     expect(route).toContain('body.action === "flag"')
     expect(route).toContain("flagged_questions=$2::integer[]")
     expect(room).toContain('aria-label="Question navigator"')
-    expect(schema).toContain("navigation_mode")
+    expect(schema).not.toContain("navigation_mode")
     expect(creationRoute).toContain("isGroupStudyNavigationMode")
+    expect(creationRoute).toContain('body.navigationMode ?? "host_paced"')
+    expect(creationRoute).toContain("groupStudyNavigationModeToStorage(navigationMode)")
     expect(route).toContain('body.action === "navigation-mode"')
-    expect(route).toContain('room.navigation_mode !== "answer_ahead"')
-    expect(route).toContain('room.navigation_mode !== "anyone_advances"')
+    expect(route).toContain('navigationMode(room) !== "answer_ahead"')
+    expect(route).toContain('navigationMode(room) !== "anyone_advances"')
+    expect(route).toContain('["host_paced", "anyone_advances"].includes(navigationMode(room))')
     expect(room).toContain("Tap to open navigator")
     expect(room).toContain("Return to live question")
+    expect(home).toContain("Default (host-paced)")
     expect(home).toContain("Browse and answer ahead")
   })
 

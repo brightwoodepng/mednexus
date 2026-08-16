@@ -3,6 +3,7 @@ import pool, { ensureGroupStudySchema } from "@/lib/db"
 import { isSupportedSoloQuestion } from "@/lib/game-question-pool"
 import {
   GROUP_STUDY_RECONNECT_MINUTES,
+  groupStudyNavigationModeToStorage,
   isGroupStudyNavigationMode,
   isGroupStudyTimer,
   prioritizeGroupStudyQuestions,
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
     const discipline = typeof body.discipline === "string" ? body.discipline.trim() : ""
     const questionCount = Number(body.questionCount)
     const timerSeconds = body.timerSeconds === undefined ? null : body.timerSeconds
-    const navigationMode = body.navigationMode ?? "browse_ahead"
+    const navigationMode = body.navigationMode ?? "host_paced"
     if (!moduleId || !Number.isInteger(questionCount) || questionCount < 1) return fail("A valid module and question count are required")
     if (!isGroupStudyTimer(timerSeconds)) return fail("Timer must be off, 30, 45, 60 or 90 seconds")
     if (!isGroupStudyNavigationMode(navigationMode)) return fail("Choose a valid navigation mode")
@@ -114,9 +115,9 @@ export async function POST(req: Request) {
       if (!pin) throw new Error("Unable to reserve a room PIN")
       await client.query(
         `INSERT INTO mednexus_group_study_rooms
-          (id,pin,host_user_id,module_id,discipline,difficulty,question_count,timer_seconds,navigation_mode,status,current_phase,expires_at)
-         VALUES($1,$2,$3,$4,$5,'mixed',$6,$7,$8,'lobby','lobby',NOW()+($9||' minutes')::interval)`,
-        [roomId, pin, auth.uid, moduleId, discipline || null, questionCount, timerSeconds, navigationMode, GROUP_STUDY_RECONNECT_MINUTES],
+          (id,pin,host_user_id,module_id,discipline,difficulty,question_count,timer_seconds,status,current_phase,expires_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,'lobby','lobby',NOW()+($9||' minutes')::interval)`,
+        [roomId, pin, auth.uid, moduleId, discipline || null, groupStudyNavigationModeToStorage(navigationMode), questionCount, timerSeconds, GROUP_STUDY_RECONNECT_MINUTES],
       )
       for (let position = 0; position < selected.length; position++) {
         const question = selected[position]
@@ -151,7 +152,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[group-study POST]", error)
     const databaseCode = typeof (error as { code?: unknown }).code === "string" ? (error as { code: string }).code : null
-    if (databaseCode === "42501") return fail("Group Study database migration is required", 503, "SCHEMA_PERMISSION_REQUIRED")
+    if (databaseCode === "42501") return fail("Group Study is temporarily unavailable", 503, "SCHEMA_PERMISSION_REQUIRED")
     return fail(databaseCode ? `Unable to create Group Study room (database ${databaseCode})` : "Unable to create Group Study room", 500, "SERVER_ERROR")
   }
 }
