@@ -32,6 +32,28 @@ let groupStudyInitialized = false
 // season tables, which let existing databases skip those additions entirely.
 export const CURRENT_SCHEMA_VERSION = "2026-08-16-group-study-question-rotation-v1"
 
+export async function groupStudySchemaStatus() {
+  const result = await pool.query<{
+    rooms: boolean; room_questions: boolean; question_history: boolean
+    memberships: boolean; answers: boolean; reward_events: boolean; discipline: boolean
+  }>(`
+    SELECT
+      to_regclass('public.mednexus_group_study_rooms') IS NOT NULL AS rooms,
+      to_regclass('public.mednexus_group_study_room_questions') IS NOT NULL AS room_questions,
+      to_regclass('public.mednexus_group_study_question_history') IS NOT NULL AS question_history,
+      to_regclass('public.mednexus_group_study_memberships') IS NOT NULL AS memberships,
+      to_regclass('public.mednexus_group_study_answers') IS NOT NULL AS answers,
+      to_regclass('public.mednexus_group_study_reward_events') IS NOT NULL AS reward_events,
+      EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='mednexus_group_study_rooms' AND column_name='discipline'
+      ) AS discipline
+  `)
+  const status = result.rows[0]
+  const missing = Object.entries(status).filter(([, present]) => !present).map(([name]) => name)
+  return { ready: missing.length === 0, missing }
+}
+
 /**
  * Repairs only the small Group Study schema at request time. The full release
  * migration can contain unrelated legacy DDL that should never block this
@@ -39,6 +61,11 @@ export const CURRENT_SCHEMA_VERSION = "2026-08-16-group-study-question-rotation-
  */
 export async function ensureGroupStudySchema() {
   if (groupStudyInitialized) return
+  const existing = await groupStudySchemaStatus()
+  if (existing.ready) {
+    groupStudyInitialized = true
+    return
+  }
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
