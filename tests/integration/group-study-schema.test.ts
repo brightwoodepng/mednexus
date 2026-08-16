@@ -7,6 +7,7 @@ const creationRoute = readFileSync("app/api/group-study/route.ts", "utf8")
 const home = readFileSync("components/group-study/group-study-home.tsx", "utf8")
 const room = readFileSync("components/group-study/group-study-room.tsx", "utf8")
 const dashboard = readFileSync("components/dashboard.tsx", "utf8")
+const multiplayerApi = readFileSync("lib/multiplayer-api.ts", "utf8")
 
 describe("Group Study persistence and authorization gates", () => {
   it("enforces membership, answer, host and reward idempotency in PostgreSQL", () => {
@@ -34,6 +35,7 @@ describe("Group Study persistence and authorization gates", () => {
     expect(route).toContain("LEFT JOIN mednexus_guest_users")
     expect(creationRoute).toContain("canCreate: !auth.isGuest")
     expect(home).toContain("Registered and guest accounts can join")
+    expect(multiplayerApi.indexOf('if (guest) headers["x-guest-token"]')).toBeLessThan(multiplayerApi.indexOf('else if (session) headers["x-session-token"]'))
   })
 
   it("keeps the dashboard shortcut between statistics and study modules and optimizes the lobby for phones", () => {
