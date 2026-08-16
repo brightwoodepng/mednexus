@@ -29,7 +29,7 @@ let initialized = false
 // Keep this marker in step with every deployed DDL change. The previous
 // assessment-grading marker predated the admin platform/settings and economy
 // season tables, which let existing databases skip those additions entirely.
-export const CURRENT_SCHEMA_VERSION = "2026-08-15-group-study-mcq-v1"
+export const CURRENT_SCHEMA_VERSION = "2026-08-16-group-study-discipline-v1"
 
 export async function ensureSchema() {
   if (initialized) return
@@ -498,6 +498,7 @@ export async function ensureSchema() {
       pin                      TEXT        NOT NULL UNIQUE CHECK (pin ~ '^[0-9]{6}$'),
       host_user_id             TEXT        NOT NULL REFERENCES mednexus_registered_users(uid),
       module_id                TEXT        NOT NULL,
+      discipline               TEXT,
       difficulty               TEXT        NOT NULL DEFAULT 'mixed'
         CHECK (difficulty IN ('mixed','easy','medium','hard')),
       question_count           INTEGER     NOT NULL CHECK (question_count > 0),
@@ -516,6 +517,7 @@ export async function ensureSchema() {
       expires_at               TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '4 hours',
       completed_at             TIMESTAMPTZ
     );
+    ALTER TABLE mednexus_group_study_rooms ADD COLUMN IF NOT EXISTS discipline TEXT;
     CREATE INDEX IF NOT EXISTS mednexus_group_study_rooms_expiry_idx
       ON mednexus_group_study_rooms (expires_at) WHERE status NOT IN ('completed','ended','expired');
 

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest"
 
 const schema = readFileSync("lib/db.ts", "utf8")
 const route = readFileSync("app/api/group-study/[pin]/route.ts", "utf8")
+const creationRoute = readFileSync("app/api/group-study/route.ts", "utf8")
+const home = readFileSync("components/group-study/group-study-home.tsx", "utf8")
 
 describe("Group Study persistence and authorization gates", () => {
   it("enforces membership, answer, host and reward idempotency in PostgreSQL", () => {
@@ -25,5 +27,14 @@ describe("Group Study persistence and authorization gates", () => {
     expect(route).not.toContain("correctAnswer: question.question_snapshot.correctAnswer")
     expect(route).toContain("score_processing_status='pending' FOR UPDATE")
     expect(route.indexOf("score_processing_status='pending' FOR UPDATE")).toBeLessThan(route.indexOf("SET current_phase='reveal'"))
+  })
+
+  it("creates rooms by module and optional discipline without difficulty or question-count inputs", () => {
+    expect(schema).toContain("discipline               TEXT")
+    expect(creationRoute).toContain('question.subject.trim() === discipline')
+    expect(creationRoute).toContain("const questionCount = selected.length")
+    expect(home).toContain("All disciplines")
+    expect(home).not.toContain("Difficulty<select")
+    expect(home).not.toContain('type="number"')
   })
 })

@@ -2,11 +2,8 @@ import { NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { isSupportedSoloQuestion } from "@/lib/game-question-pool"
 import {
-  GROUP_STUDY_DIFFICULTIES,
   GROUP_STUDY_EXPIRY_HOURS,
-  isGroupStudyDifficulty,
   isGroupStudyTimer,
-  type GroupStudyDifficulty,
   type GroupStudyQuestionSnapshot,
 } from "@/lib/group-study"
 import { requireRegisteredUser } from "@/lib/request-auth"
@@ -14,17 +11,6 @@ import type { Question } from "@/lib/types"
 
 const fail = (message: string, status = 400, code = "INVALID_REQUEST") =>
   NextResponse.json({ error: message, code }, { status })
-
-function difficultyOf(question: Question): Exclude<GroupStudyDifficulty, "mixed"> | null {
-  const raw = (question as Question & { difficulty?: unknown }).difficulty
-  if (typeof raw === "string") {
-    const normalized = raw.toLowerCase()
-    if (normalized === "easy" || normalized === "medium" || normalized === "hard") return normalized
-  }
-  if (typeof raw === "number") return raw <= 2 ? "easy" : raw >= 4 ? "hard" : "medium"
-  const tags = question.tags?.map(tag => tag.toLowerCase()) ?? []
-  return GROUP_STUDY_DIFFICULTIES.find(value => value !== "mixed" && tags.includes(value)) as Exclude<GroupStudyDifficulty, "mixed"> | undefined ?? null
-}
 
 function snapshot(question: Question): GroupStudyQuestionSnapshot {
   if (question.correctAnswer === null) throw new Error("Question has no answer key")
@@ -62,19 +48,20 @@ export async function GET(req: Request) {
   if (!await requireRegisteredUser(req)) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
   try {
     const questions = await questionBank()
-    const modules = new Map<string, { total: number; easy: number; medium: number; hard: number; unclassified: number }>()
+    const modules = new Map<string, Map<string, number>>()
     for (const question of questions) {
       const moduleId = question.module?.trim() || question.subject.trim()
-      const row = modules.get(moduleId) ?? { total: 0, easy: 0, medium: 0, hard: 0, unclassified: 0 }
-      row.total++
-      const difficulty = difficultyOf(question)
-      if (difficulty) row[difficulty]++
-      else row.unclassified++
-      modules.set(moduleId, row)
+      const discipline = question.subject.trim()
+      const disciplines = modules.get(moduleId) ?? new Map<string, number>()
+      disciplines.set(discipline, (disciplines.get(discipline) ?? 0) + 1)
+      modules.set(moduleId, disciplines)
     }
-    return NextResponse.json({ modules: [...modules.entries()].map(([id, counts]) => ({
-      id, ...counts, easy: counts.easy + counts.unclassified,
-      medium: counts.medium + counts.unclassified, hard: counts.hard + counts.unclassified,
+    return NextResponse.json({ modules: [...modules.entries()].map(([id, disciplines]) => ({
+      id,
+      total: [...disciplines.values()].reduce((sum, count) => sum + count, 0),
+      disciplines: [...disciplines.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     })).sort((a, b) => a.id.localeCompare(b.id)) })
   } catch (error) {
     console.error("[group-study GET]", error)
@@ -86,22 +73,20 @@ export async function POST(req: Request) {
   const auth = await requireRegisteredUser(req)
   if (!auth) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
   try {
-    const body = await req.json() as { moduleId?: unknown; questionCount?: unknown; difficulty?: unknown; timerSeconds?: unknown }
+    const body = await req.json() as { moduleId?: unknown; discipline?: unknown; timerSeconds?: unknown }
     const moduleId = typeof body.moduleId === "string" ? body.moduleId.trim() : ""
-    const questionCount = Number(body.questionCount)
-    const difficulty = body.difficulty ?? "mixed"
+    const discipline = typeof body.discipline === "string" ? body.discipline.trim() : ""
     const timerSeconds = body.timerSeconds === undefined ? null : body.timerSeconds
-    if (!moduleId || !Number.isInteger(questionCount) || questionCount < 1 || questionCount > 200) return fail("A valid module and question count are required")
-    if (!isGroupStudyDifficulty(difficulty)) return fail("Difficulty must be Mixed, Easy, Medium or Hard")
+    if (!moduleId) return fail("A valid module is required")
     if (!isGroupStudyTimer(timerSeconds)) return fail("Timer must be off, 30, 45, 60 or 90 seconds")
 
     const available = (await questionBank()).filter(question => {
       const questionModule = question.module?.trim() || question.subject.trim()
-      const classified = difficultyOf(question)
-      return questionModule === moduleId && (difficulty === "mixed" || classified === difficulty || classified === null)
+      return questionModule === moduleId && (!discipline || question.subject.trim() === discipline)
     })
-    if (available.length < questionCount) return fail(`Only ${available.length} eligible questions are available for this selection`, 422, "INSUFFICIENT_QUESTIONS")
-    const selected = shuffled(available).slice(0, questionCount).map(snapshot)
+    if (!available.length) return fail("No eligible questions are available for this selection", 422, "INSUFFICIENT_QUESTIONS")
+    const selected = shuffled(available).map(snapshot)
+    const questionCount = selected.length
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
@@ -123,9 +108,9 @@ export async function POST(req: Request) {
       if (!pin) throw new Error("Unable to reserve a room PIN")
       await client.query(
         `INSERT INTO mednexus_group_study_rooms
-          (id,pin,host_user_id,module_id,difficulty,question_count,timer_seconds,status,current_phase,expires_at)
-         VALUES($1,$2,$3,$4,$5,$6,$7,'lobby','lobby',NOW()+($8||' hours')::interval)`,
-        [roomId, pin, auth.uid, moduleId, difficulty, questionCount, timerSeconds, GROUP_STUDY_EXPIRY_HOURS],
+          (id,pin,host_user_id,module_id,discipline,difficulty,question_count,timer_seconds,status,current_phase,expires_at)
+         VALUES($1,$2,$3,$4,$5,'mixed',$6,$7,'lobby','lobby',NOW()+($8||' hours')::interval)`,
+        [roomId, pin, auth.uid, moduleId, discipline || null, questionCount, timerSeconds, GROUP_STUDY_EXPIRY_HOURS],
       )
       for (let position = 0; position < selected.length; position++) {
         const question = selected[position]
