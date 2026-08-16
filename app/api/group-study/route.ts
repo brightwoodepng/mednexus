@@ -152,4 +152,3 @@ export async function POST(req: Request) {
     return fail(databaseCode ? `Unable to create Group Study room (database ${databaseCode})` : "Unable to create Group Study room", 500, "SERVER_ERROR")
   }
 }
-

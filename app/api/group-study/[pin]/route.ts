@@ -536,4 +536,3 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
     await client.query("ROLLBACK"); console.error("[group-study POST]", error); return fail("Unable to update room", 500, "SERVER_ERROR")
   } finally { client.release() }
 }
-

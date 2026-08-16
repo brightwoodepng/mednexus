@@ -1627,4 +1627,3 @@ export async function ensureSchema() {
 }
 
 export default pool
-

@@ -93,4 +93,3 @@ describe("Group Study persistence and authorization gates", () => {
     expect(home).not.toContain('type="number"')
   })
 })
-
