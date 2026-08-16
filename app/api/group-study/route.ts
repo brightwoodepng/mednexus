@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool, { ensureGroupStudySchema } from "@/lib/db"
 import { isSupportedSoloQuestion } from "@/lib/game-question-pool"
 import {
   GROUP_STUDY_EXPIRY_HOURS,
@@ -39,7 +39,6 @@ async function questionBank() {
 export async function GET(req: Request) {
   if (!await requireRegisteredUser(req)) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
   try {
-    await ensureSchema()
     const questions = await questionBank()
     const modules = new Map<string, Map<string, number>>()
     for (const question of questions) {
@@ -66,7 +65,7 @@ export async function POST(req: Request) {
   const auth = await requireRegisteredUser(req)
   if (!auth) return fail("Registered account required", 401, "AUTHENTICATION_REQUIRED")
   try {
-    await ensureSchema()
+    await ensureGroupStudySchema()
     const body = await req.json() as { moduleId?: unknown; discipline?: unknown; questionCount?: unknown; timerSeconds?: unknown }
     const moduleId = typeof body.moduleId === "string" ? body.moduleId.trim() : ""
     const discipline = typeof body.discipline === "string" ? body.discipline.trim() : ""
