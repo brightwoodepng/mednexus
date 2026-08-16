@@ -8,6 +8,7 @@ import { multiplayerApi, MultiplayerApiError } from "@/lib/multiplayer-api"
 
 type ModuleOption = { id: string; total: number; disciplines: { name: string; count: number }[] }
 type NavigationMode = "host_paced" | "browse_ahead" | "answer_ahead" | "anyone_advances"
+const SUGGESTED_QUESTION_COUNTS = [10, 20, 30, 50] as const
 
 export function GroupStudyHome() {
   const router = useRouter()
@@ -16,6 +17,8 @@ export function GroupStudyHome() {
   const [discipline, setDiscipline] = useState("")
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null)
   const [navigationMode, setNavigationMode] = useState<NavigationMode>("host_paced")
+  const [questionCount, setQuestionCount] = useState(30)
+  const [customQuestionCount, setCustomQuestionCount] = useState(false)
   const [pin, setPin] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -28,7 +31,15 @@ export function GroupStudyHome() {
   }, [])
   const selected = modules.find(module => module.id === moduleId)
   const available = discipline ? selected?.disciplines.find(item => item.name === discipline)?.count ?? 0 : selected?.total ?? 0
-  const questionCount = Math.min(30, available)
+
+  useEffect(() => {
+    if (!available) return
+    setQuestionCount(current => {
+      const next = Math.min(Math.max(1, current), available)
+      if (!SUGGESTED_QUESTION_COUNTS.includes(next as typeof SUGGESTED_QUESTION_COUNTS[number])) setCustomQuestionCount(true)
+      return next
+    })
+  }, [available])
 
   async function createRoom() {
     setBusy(true); setError("")
@@ -55,6 +66,7 @@ export function GroupStudyHome() {
       <section className="rounded-3xl border bg-card p-5 shadow-sm sm:p-7"><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Plus size={19}/></span><div><h2 className="font-bold">Create a room</h2><p className="text-xs text-muted-foreground">{canCreate ? "Host up to 10 registered or guest participants" : "Guests can join rooms; sign in to create one"}</p></div></div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2"><label className="space-y-2 text-sm font-semibold sm:col-span-2">Module<select value={moduleId} onChange={event => { setModuleId(event.target.value); setDiscipline("") }} className="h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="">Choose a module</option>{modules.map(module => <option key={module.id} value={module.id}>{module.id} ({module.total})</option>)}</select></label>
           {selected && <label className="space-y-2 text-sm font-semibold sm:col-span-2">Discipline<select value={discipline} onChange={event => setDiscipline(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="">All disciplines ({selected.total})</option>{selected.disciplines.map(item => <option key={item.name} value={item.name}>{item.name} ({item.count})</option>)}</select></label>}
+          {selected && <fieldset className="space-y-3 sm:col-span-2"><legend className="text-sm font-semibold">Number of questions</legend><div className="grid grid-cols-3 gap-2 sm:grid-cols-5">{SUGGESTED_QUESTION_COUNTS.map(count => <button key={count} type="button" disabled={count > available} aria-pressed={!customQuestionCount && questionCount === count} onClick={() => { setQuestionCount(count); setCustomQuestionCount(false) }} className={`h-11 rounded-xl border text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-35 ${!customQuestionCount && questionCount === count ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/50"}`}>{count}</button>)}<button type="button" aria-pressed={customQuestionCount} onClick={() => setCustomQuestionCount(true)} className={`col-span-2 h-11 rounded-xl border text-sm font-bold transition sm:col-span-1 ${customQuestionCount ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/50"}`}>Custom</button></div>{customQuestionCount && <label className="block space-y-2 text-sm font-medium"><span>Custom amount</span><input type="number" inputMode="numeric" min={1} max={available} value={questionCount} onChange={event => setQuestionCount(Math.max(0, Number(event.target.value)))} className="h-11 w-full rounded-xl border bg-background px-3 font-normal"/><span className="block text-xs font-normal text-muted-foreground">Choose between 1 and {available} available questions.</span></label>}<p className="text-xs text-muted-foreground">{questionCount} of {available} available questions selected</p></fieldset>}
           <label className="space-y-2 text-sm font-semibold sm:col-span-2">Navigation mode<select value={navigationMode} onChange={event => setNavigationMode(event.target.value as NavigationMode)} className="h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="host_paced">Default (host-paced)</option><option value="browse_ahead">Browse ahead only</option><option value="answer_ahead">Browse and answer ahead</option><option value="anyone_advances">Anyone can proceed</option></select><span className="block text-xs font-normal text-muted-foreground">{navigationMode === "host_paced" ? "Review previous questions; future questions stay locked until the host advances." : navigationMode === "browse_ahead" ? "Preview future questions; answer only the live question." : navigationMode === "answer_ahead" ? "Answer future questions and see private feedback immediately." : "Future questions stay locked; anyone may advance after reveal."}</span></label>
           <label className="space-y-2 text-sm font-semibold sm:col-span-2">Answer timer<select value={timerSeconds ?? ""} onChange={event => setTimerSeconds(event.target.value ? Number(event.target.value) : null)} className="h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="">No timer</option><option value="30">30 seconds</option><option value="45">45 seconds</option><option value="60">1 minute</option><option value="90">1 minute 30 seconds</option></select></label></div>
         <button disabled={busy || !canCreate || !moduleId || available < 1 || questionCount < 1 || questionCount > available} onClick={createRoom} className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-bold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"><Users size={18}/>{busy ? "Working…" : canCreate ? "Create Group Study room" : "Registered account required"}</button></section>
