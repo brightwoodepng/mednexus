@@ -7,8 +7,6 @@ import type { Screen } from "@/lib/view"
 import type { TutorialDefinition, TutorialNavigationAction, TutorialStep } from "./tutorials"
 import { TutorialOverlay } from "./TutorialOverlay"
 
-const phoneQuery = "(max-width: 767px)"
-
 export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCheckpoint, onNavigate, onPause, onDismiss, onComplete }: {
   tutorial: TutorialDefinition; stepIndex: number; onStep: (step: number) => void; onCheckpoint: () => void
   onNavigate: (screen: Screen) => void
@@ -25,7 +23,7 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
     setAppearanceOpen,
   } = useApplicationShell()
   const theme = useTheme()
-  const [isPhone, setIsPhone] = useState(false)
+  const isPhone = tutorial.device === "phone"
   const [measureEpoch, setMeasureEpoch] = useState(0)
   const [interactionComplete, setInteractionComplete] = useState(false)
   const initialTheme = useRef({ theme: theme.activeTheme, glass: theme.isGlassEnabled })
@@ -38,13 +36,6 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
   useEffect(() => { onNavigateRef.current = onNavigate }, [onNavigate])
   useEffect(() => { onCheckpointRef.current = onCheckpoint }, [onCheckpoint])
 
-  useEffect(() => {
-    const media = matchMedia(phoneQuery)
-    const sync = () => setIsPhone(media.matches)
-    sync(); media.addEventListener("change", sync)
-    return () => media.removeEventListener("change", sync)
-  }, [])
-
   const restoreUi = useCallback(() => {
     if (changed.current.drawer) setMobileNavigationOpen(false)
     if (changed.current.sidebar) setSidebarCollapsed(true)
@@ -55,6 +46,11 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
   }, [setAccountMenuOpen, setAppearanceOpen, setMobileNavigationOpen, setSidebarCollapsed, setWorkspaceSwitcherOpen])
 
   const apply = useCallback((action: TutorialNavigationAction | undefined, current: TutorialStep) => {
+    // Desktop tours must expose the full sidebar before measuring any target,
+    // including informational and preview steps whose action is otherwise none.
+    if (!isPhone && sidebarCollapsed && current.desktopTargetAnchorId?.startsWith("desktop-")) {
+      setSidebarCollapsed(false); changed.current.sidebar = true
+    }
     if (!action || action.type === "none") return
     if (action.type === "navigate-preview") { onNavigateRef.current(action.screen); return }
     if (action.type === "open-mobile-drawer" && isPhone) { setMobileNavigationOpen(true); changed.current.drawer = true }
@@ -65,10 +61,6 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
     if (action.type === "close-account-menu") setAccountMenuOpen(false)
     if (action.type === "open-appearance") { setAppearanceOpen(true); changed.current.appearance = true }
     if (action.type === "close-appearance") setAppearanceOpen(false)
-    // A collapsed rail is expanded only when its full-sidebar target is needed.
-    if (!isPhone && sidebarCollapsed && current.desktopTargetAnchorId?.startsWith("desktop-")) {
-      setSidebarCollapsed(false); changed.current.sidebar = true
-    }
   }, [isPhone, setAccountMenuOpen, setAppearanceOpen, setMobileNavigationOpen, setSidebarCollapsed, setWorkspaceSwitcherOpen, sidebarCollapsed])
 
   useEffect(() => {

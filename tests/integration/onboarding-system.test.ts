@@ -9,14 +9,25 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8")
 
 describe("coordinated onboarding contract", () => {
   it("keeps independent, versioned MCQ and Theory definitions", () => {
-    expect(TUTORIAL_VERSION).toBe(2)
-    expect(TUTORIAL_IDS).toEqual(["mcq_qbank_intro", "theory_vault_intro"])
-    expect(tutorials.mcq_qbank_intro.steps).toHaveLength(12)
-    expect(tutorials.theory_vault_intro.steps).toHaveLength(13)
-    expect(tutorials.mcq_qbank_intro.steps.find(step => step.id === "mcq-qbank-dashboard")?.navigationAction).toEqual({ type: "navigate-preview", screen: "dashboard" })
-    expect(tutorials.theory_vault_intro.steps.find(step => step.id === "theory-vault-theory-dashboard")?.navigationAction).toEqual({ type: "navigate-preview", screen: "theory-dashboard" })
-    expect(emptyOnboardingRecord("mcq_qbank_intro").status).toBe("not_started")
-    expect(emptyOnboardingRecord("theory_vault_intro").status).toBe("not_started")
+    expect(TUTORIAL_VERSION).toBe(3)
+    expect(TUTORIAL_IDS).toEqual(["mcq_qbank_desktop_intro", "mcq_qbank_phone_intro", "theory_vault_desktop_intro", "theory_vault_phone_intro"])
+    expect(tutorials.mcq_qbank_desktop_intro.steps).toHaveLength(11)
+    expect(tutorials.mcq_qbank_phone_intro.steps).toHaveLength(12)
+    expect(tutorials.theory_vault_desktop_intro.steps).toHaveLength(12)
+    expect(tutorials.theory_vault_phone_intro.steps).toHaveLength(13)
+    expect(tutorials.mcq_qbank_desktop_intro.steps.find(step => step.id === "desktop-mcq-qbank-dashboard")?.navigationAction).toEqual({ type: "navigate-preview", screen: "dashboard" })
+    expect(tutorials.theory_vault_phone_intro.steps.find(step => step.id === "phone-theory-vault-theory-dashboard")?.navigationAction).toEqual({ type: "navigate-preview", screen: "theory-dashboard" })
+    expect(emptyOnboardingRecord("mcq_qbank_desktop_intro").status).toBe("not_started")
+    expect(emptyOnboardingRecord("mcq_qbank_phone_intro").status).toBe("not_started")
+  })
+
+  it("gives every device-specific step a visible target for that layout", () => {
+    for (const tutorial of Object.values(tutorials)) {
+      expect(tutorial.steps.every(step => tutorial.device === "phone" ? Boolean(step.mobileTargetAnchorId) : Boolean(step.desktopTargetAnchorId))).toBe(true)
+    }
+    expect(tutorials.mcq_qbank_phone_intro.steps.some(step => step.mobileTargetAnchorId === "mobile-bottom-navigation")).toBe(true)
+    expect(tutorials.mcq_qbank_phone_intro.steps.some(step => step.mobileDrawerTargetAnchorId === "drawer-navigation")).toBe(true)
+    expect(tutorials.mcq_qbank_desktop_intro.steps.some(step => step.desktopTargetAnchorId === "desktop-navigation")).toBe(true)
   })
 
   it("persists onboarding separately from roles, economy and learning progress", () => {
@@ -76,12 +87,13 @@ describe("coordinated onboarding contract", () => {
     const controller = read("components/onboarding/TutorialNavigationController.tsx")
     expect(app).toContain("onNavigate={handleScreenNavigation}")
     expect(controller).toContain("onNavigateRef.current(action.screen)")
+    expect(controller.indexOf("setSidebarCollapsed(false)")).toBeLessThan(controller.indexOf('if (!action || action.type === "none") return'))
   })
 
   it("restarts replay from the matching workspace instead of remaining on profile", () => {
     const provider = read("components/onboarding/TutorialProvider.tsx")
     expect(provider).toContain("setPendingReplay(id)")
-    expect(provider).toContain('id === "mcq_qbank_intro" ? "dashboard" : "theory-dashboard"')
+    expect(provider).toContain('id.startsWith("mcq_qbank_")')
     expect(provider).toContain("setActiveStudyHub(targetHub)")
     expect(provider).toContain('window.history.pushState({}, "", withHubContext("/", targetHub))')
     expect(provider).toContain("onNavigate(targetScreen)")
@@ -96,5 +108,14 @@ describe("coordinated onboarding contract", () => {
     expect(controller).toContain("onCheckpointRef.current()")
     expect(controller).not.toContain("[onCheckpoint, shell.mobileNavigationOpen")
     expect(definitions).toContain('mobileDrawerTargetAnchorId: "drawer-workspace-switcher"')
+  })
+
+  it("tracks desktop and phone completion independently", () => {
+    const provider = read("components/onboarding/TutorialProvider.tsx")
+    const settings = read("components/onboarding/TutorialSettings.tsx")
+    expect(provider).toContain('isPhone ? "mcq_qbank_phone_intro" : "mcq_qbank_desktop_intro"')
+    expect(provider).toContain("if (!deviceReady")
+    expect(settings).toContain("MCQ desktop:")
+    expect(settings).toContain("Theory desktop:")
   })
 })

@@ -345,7 +345,7 @@ export async function ensureSchema() {
       WHERE data ? 'history' OR data ? 'examScores';
     CREATE TABLE IF NOT EXISTS mednexus_user_onboarding (
       user_id TEXT NOT NULL,
-      tutorial_id TEXT NOT NULL CHECK (tutorial_id IN ('mcq_qbank_intro', 'theory_vault_intro')),
+      tutorial_id TEXT NOT NULL CHECK (tutorial_id IN ('mcq_qbank_intro','theory_vault_intro','mcq_qbank_desktop_intro','mcq_qbank_phone_intro','theory_vault_desktop_intro','theory_vault_phone_intro')),
       tutorial_version INTEGER NOT NULL CHECK (tutorial_version > 0),
       status TEXT NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'in_progress', 'completed', 'dismissed')),
       current_step INTEGER NOT NULL DEFAULT 0 CHECK (current_step >= 0),
@@ -1025,7 +1025,7 @@ export async function ensureSchema() {
       LOOP EXECUTE format('ALTER TABLE mednexus_user_onboarding DROP CONSTRAINT %I', c.conname); END LOOP;
     END $$;
     ALTER TABLE mednexus_user_onboarding
-      ADD CONSTRAINT mednexus_user_onboarding_tutorial_id_check CHECK (tutorial_id IN ('mcq_qbank_intro','theory_vault_intro')),
+      ADD CONSTRAINT mednexus_user_onboarding_tutorial_id_check CHECK (tutorial_id IN ('mcq_qbank_intro','theory_vault_intro','mcq_qbank_desktop_intro','mcq_qbank_phone_intro','theory_vault_desktop_intro','theory_vault_phone_intro')),
       ADD CONSTRAINT mednexus_user_onboarding_version_check CHECK (tutorial_version > 0),
       ADD CONSTRAINT mednexus_user_onboarding_status_check CHECK (status IN ('not_started','in_progress','completed','dismissed')),
       ADD CONSTRAINT mednexus_user_onboarding_step_check CHECK (current_step >= 0);
@@ -1035,7 +1035,7 @@ export async function ensureSchema() {
       LOOP EXECUTE format('ALTER TABLE mednexus_onboarding_events DROP CONSTRAINT %I', c.conname); END LOOP;
     END $$;
     ALTER TABLE mednexus_onboarding_events
-      ADD CONSTRAINT mednexus_onboarding_events_tutorial_id_check CHECK (tutorial_id IN ('mcq_qbank_intro','theory_vault_intro')),
+      ADD CONSTRAINT mednexus_onboarding_events_tutorial_id_check CHECK (tutorial_id IN ('mcq_qbank_intro','theory_vault_intro','mcq_qbank_desktop_intro','mcq_qbank_phone_intro','theory_vault_desktop_intro','theory_vault_phone_intro')),
       ADD CONSTRAINT mednexus_onboarding_events_version_check CHECK (tutorial_version > 0),
       ADD CONSTRAINT mednexus_onboarding_events_event_type_check CHECK (event_type IN ('tutorial_started','step_viewed','tutorial_completed','tutorial_dismissed','resumed_from_step','replayed_from_help')),
       ADD CONSTRAINT mednexus_onboarding_events_step_check CHECK (step IS NULL OR step >= 0);
