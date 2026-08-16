@@ -20,6 +20,7 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
     workspaceSwitcherOpen,
     setWorkspaceSwitcherOpen,
     setAccountMenuOpen,
+    appearanceOpen,
     setAppearanceOpen,
   } = useApplicationShell()
   const theme = useTheme()
@@ -90,9 +91,24 @@ export function TutorialNavigationController({ tutorial, stepIndex, onStep, onCh
     }
   }, [apply, mobileNavigationOpen, step, workspaceSwitcherOpen])
 
+  useEffect(() => {
+    if (step.interaction?.expectedAction !== "select-theme") return
+    if (appearanceOpen) { changed.current.appearance = true; setMeasureEpoch(value => value + 1) }
+    const selected = () => {
+      if (checkpointedStep.current === step.id) return
+      checkpointedStep.current = step.id
+      setInteractionComplete(true)
+      onCheckpointRef.current()
+      setMeasureEpoch(value => value + 1)
+    }
+    window.addEventListener("mednexus:tutorial-theme-selected", selected)
+    return () => window.removeEventListener("mednexus:tutorial-theme-selected", selected)
+  }, [appearanceOpen, step])
+
   const leaveStep = (next: number) => { if (step.restoreUiAfterStep) restoreUi(); onStep(next) }
   const cancel = (callback: () => void) => { restoreUi(); theme.setActiveTheme(initialTheme.current.theme); theme.setIsGlassEnabled(initialTheme.current.glass); callback() }
   const finish = () => { restoreUi(); onComplete() }
 
-  return <TutorialOverlay tutorial={tutorial} stepIndex={stepIndex} isPhone={isPhone} measureEpoch={measureEpoch} interactionComplete={interactionComplete} onStep={leaveStep} onPause={() => cancel(onPause)} onDismiss={() => cancel(onDismiss)} onComplete={finish} />
+  const interactionAnchorId = step.interaction?.expectedAction === "select-theme" ? appearanceOpen ? "appearance-theme-grid" : isPhone && mobileNavigationOpen ? "drawer-appearance" : isPhone ? "mobile-menu-button" : "header-appearance" : undefined
+  return <TutorialOverlay tutorial={tutorial} stepIndex={stepIndex} isPhone={isPhone} measureEpoch={measureEpoch} interactionComplete={interactionComplete} interactionAnchorId={interactionAnchorId} onStep={leaveStep} onPause={() => cancel(onPause)} onDismiss={() => cancel(onDismiss)} onComplete={finish} />
 }

@@ -8,11 +8,13 @@ import {
   GROUP_STUDY_CAPACITY,
   GROUP_STUDY_RECONNECT_MINUTES,
   groupStudyRoomScore,
+  isGroupStudyNavigationMode,
   isValidGroupStudyAnswer,
   publicGroupStudyQuestion,
   rankGroupStudyMembers,
   sameGroupStudyAnswer,
   type GroupStudyLeaderboardMember,
+  type GroupStudyNavigationMode,
   type GroupStudyPhase,
   type GroupStudyQuestionSnapshot,
 } from "@/lib/group-study"
@@ -26,6 +28,7 @@ type RoomRow = {
   current_phase: GroupStudyPhase; question_opened_at: Date | null; answer_closes_at: Date | null
   answer_closed_at: Date | null; host_disconnected_at: Date | null; version: number
   created_at: Date; expires_at: Date; completed_at: Date | null
+  navigation_mode: GroupStudyNavigationMode
 }
 
 type RoomQuestionRow = { id: string; question_id: string; position: number; question_snapshot: GroupStudyQuestionSnapshot; opened_at: Date | null; closed_at: Date | null }
@@ -194,7 +197,7 @@ async function membership(client: PoolClient, roomId: string, userId: string, lo
   return result.rows[0] ?? null
 }
 
-async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string) {
+async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string, requestedPosition = room.current_question_index) {
   const allMemberRows = await client.query(
     `SELECT m.*,COALESCE(r.name,g.name,'Guest') AS name,c.equipped_avatar
      FROM mednexus_group_study_memberships m
@@ -207,6 +210,11 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
     ? allMemberRows.rows.filter(row => Number(row.questions_attempted) > 0 || row.user_id === viewerId)
     : allMemberRows.rows.filter(row => row.connection_status === "online")
   const viewerMembership = allMemberRows.rows.find(row => row.user_id === viewerId)
+  const viewerAnswered = await client.query<{ position: number }>(
+    `SELECT q.position FROM mednexus_group_study_answers a
+     JOIN mednexus_group_study_room_questions q ON q.id=a.room_question_id
+     WHERE a.room_id=$1 AND a.user_id=$2 ORDER BY q.position`, [room.id, viewerId],
+  )
   const leaderboardInput: GroupStudyLeaderboardMember[] = visibleRows.map(row => ({
     userId: row.user_id, name: row.name, avatar: row.equipped_avatar, role: row.role, isGuest: Boolean(row.is_guest),
     firstEligibleQuestion: row.first_eligible_question, questionsAttempted: Number(row.questions_attempted),
@@ -216,8 +224,9 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
     sessionNpEarned: Number(row.session_np_earned), connectionStatus: row.connection_status,
   }))
   const ranked = rankGroupStudyMembers(leaderboardInput)
+  const viewedPosition = Math.max(0, Math.min(room.question_count - 1, requestedPosition))
   const current = await client.query<RoomQuestionRow>(
-    "SELECT * FROM mednexus_group_study_room_questions WHERE room_id=$1 AND position=$2", [room.id, room.current_question_index],
+    "SELECT * FROM mednexus_group_study_room_questions WHERE room_id=$1 AND position=$2", [room.id, viewedPosition],
   )
   const question = current.rows[0]
   const answers = question
@@ -225,13 +234,15 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
         "SELECT user_id,selected_answer,is_correct,np_earned FROM mednexus_group_study_answers WHERE room_question_id=$1", [question.id],
       )
     : { rows: [] }
-  const reveal = revealPhases.has(room.current_phase)
+  const isLiveQuestion = viewedPosition === room.current_question_index
+  const sharedReveal = isLiveQuestion && revealPhases.has(room.current_phase)
   const optionCounts: Record<string, number> = {}
-  if (reveal) for (const answer of answers.rows) {
+  if (sharedReveal) for (const answer of answers.rows) {
     const selected = Array.isArray(answer.selected_answer) ? answer.selected_answer : [answer.selected_answer]
     for (const option of selected) if (typeof option === "string") optionCounts[option] = (optionCounts[option] ?? 0) + 1
   }
   const viewerAnswer = answers.rows.find(answer => answer.user_id === viewerId)
+  const reveal = viewedPosition < room.current_question_index || sharedReveal || (viewedPosition > room.current_question_index && room.navigation_mode === "answer_ahead" && Boolean(viewerAnswer))
   const eligibleCount = visibleRows.filter(row => row.first_eligible_question !== null && row.first_eligible_question <= room.current_question_index).length
   const finalReview = room.current_phase === "completed"
     ? await client.query<{
@@ -252,6 +263,7 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
       id: room.id, pin: room.pin, hostUserId: room.host_user_id, moduleId: room.module_id,
       discipline: room.discipline, difficulty: room.difficulty, questionCount: room.question_count, timerSeconds: room.timer_seconds,
       status: room.status, phase: room.current_phase, currentQuestionIndex: room.current_question_index,
+      viewedQuestionIndex: viewedPosition, isLiveQuestion, navigationMode: room.navigation_mode,
       questionOpenedAt: room.question_opened_at?.toISOString() ?? null,
       answerClosesAt: room.answer_closes_at?.toISOString() ?? null,
       answerClosedAt: room.answer_closed_at?.toISOString() ?? null,
@@ -262,15 +274,16 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
     viewerFlags: Array.isArray(viewerMembership?.flagged_questions)
       ? viewerMembership.flagged_questions.map(Number)
       : [],
-    members: ranked.map(member => ({ ...member, ready: Boolean(visibleRows.find(row => row.user_id === member.userId)?.ready), hasSubmitted: answers.rows.some(answer => answer.user_id === member.userId) })),
+    viewerAnsweredQuestions: viewerAnswered.rows.map(row => Number(row.position)),
+    members: ranked.map(member => ({ ...member, ready: Boolean(visibleRows.find(row => row.user_id === member.userId)?.ready), hasSubmitted: isLiveQuestion && answers.rows.some(answer => answer.user_id === member.userId) })),
     question: question ? { roomQuestionId: question.id, position: question.position, ...publicGroupStudyQuestion(question.question_snapshot, reveal) } : null,
     answerState: {
       submitted: Boolean(viewerAnswer), selectedAnswer: viewerAnswer?.selected_answer ?? null,
       isCorrect: reveal ? viewerAnswer?.is_correct ?? null : null, npEarned: reveal ? Number(viewerAnswer?.np_earned ?? 0) : 0,
-      correctCount: reveal ? answers.rows.filter(answer => answer.is_correct).length : null,
-      incorrectCount: reveal ? answers.rows.filter(answer => !answer.is_correct).length : null,
-      unansweredCount: reveal ? Math.max(0, eligibleCount - answers.rows.length) : null,
-      optionCounts: reveal ? optionCounts : null,
+      correctCount: sharedReveal ? answers.rows.filter(answer => answer.is_correct).length : null,
+      incorrectCount: sharedReveal ? answers.rows.filter(answer => !answer.is_correct).length : null,
+      unansweredCount: sharedReveal ? Math.max(0, eligibleCount - answers.rows.length) : null,
+      optionCounts: sharedReveal ? optionCounts : null,
     },
     finalReview: finalReview.rows.map(row => ({
       roomQuestionId: row.id, position: row.position,
@@ -378,12 +391,16 @@ export async function GET(req: Request, context: { params: Promise<{ pin: string
     if (["ended", "expired"].includes(room.status)) { await client.query("ROLLBACK"); return fail("This room has expired", 410, "ROOM_EXPIRED") }
     const member = await membership(client, room.id, auth.uid, true)
     if (!member) { await client.query("ROLLBACK"); return fail("Join this room first", 403, "NOT_A_MEMBER") }
+    const requestedParam = new URL(req.url).searchParams.get("question")
+    const requestedPosition = requestedParam === null ? room.current_question_index : Number(requestedParam)
+    if (!Number.isInteger(requestedPosition) || requestedPosition < 0 || requestedPosition >= room.question_count) { await client.query("ROLLBACK"); return fail("Choose a valid question", 422, "INVALID_QUESTION") }
+    if (requestedPosition > room.current_question_index && room.navigation_mode === "anyone_advances") { await client.query("ROLLBACK"); return fail("Future questions are locked in this mode", 403, "FUTURE_LOCKED") }
     if (room.status !== "completed") await client.query("UPDATE mednexus_group_study_memberships SET last_seen_at=NOW(),connection_status='online',left_at=NULL WHERE id=$1", [member.id])
     if (room.status !== "completed" && room.host_user_id === auth.uid && room.host_disconnected_at) {
       const restored = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id])
       room = restored.rows[0]
     }
-    const payload = await serializeRoom(client, room, auth.uid)
+    const payload = await serializeRoom(client, room, auth.uid, requestedPosition)
     await client.query("COMMIT")
     return NextResponse.json(payload)
   } catch (error) {
@@ -396,7 +413,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
   if (!auth) return fail("Sign in or continue as a guest to join Group Study", 401, "AUTHENTICATION_REQUIRED")
   try { await ensureGroupStudySchema() } catch (error) { console.error("[group-study schema POST]", error); return fail("Group Study is temporarily unavailable", 503, "SCHEMA_UNAVAILABLE") }
   const { pin } = await context.params
-  const body = await req.json().catch(() => ({})) as { action?: string; answer?: unknown; ready?: unknown; force?: unknown; targetUserId?: unknown }
+  const body = await req.json().catch(() => ({})) as { action?: string; answer?: unknown; ready?: unknown; force?: unknown; targetUserId?: unknown; questionPosition?: unknown; navigationMode?: unknown }
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
@@ -438,11 +455,18 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
       } else if (body.action === "flag") {
         if (room.current_phase === "lobby" || room.current_question_index < 0) { await client.query("ROLLBACK"); return fail("There is no active question to flag", 409, "INVALID_PHASE") }
+        const flagPosition = body.questionPosition === undefined ? room.current_question_index : Number(body.questionPosition)
+        if (!Number.isInteger(flagPosition) || flagPosition < 0 || flagPosition >= room.question_count) { await client.query("ROLLBACK"); return fail("Choose a valid question", 422, "INVALID_QUESTION") }
         const flags = new Set<number>(Array.isArray(member.flagged_questions) ? member.flagged_questions.map(Number) : [])
-        if (flags.has(room.current_question_index)) flags.delete(room.current_question_index)
-        else flags.add(room.current_question_index)
+        if (flags.has(flagPosition)) flags.delete(flagPosition)
+        else flags.add(flagPosition)
         await client.query("UPDATE mednexus_group_study_memberships SET flagged_questions=$2::integer[] WHERE id=$1", [member.id, [...flags].sort((a, b) => a - b)])
         await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
+      } else if (body.action === "navigation-mode") {
+        if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can change navigation", 403, "HOST_REQUIRED") }
+        if (!isGroupStudyNavigationMode(body.navigationMode)) { await client.query("ROLLBACK"); return fail("Choose a valid navigation mode", 422, "INVALID_NAVIGATION_MODE") }
+        const updated = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET navigation_mode=$2,version=version+1 WHERE id=$1 RETURNING *", [room.id, body.navigationMode])
+        room = updated.rows[0]
       } else if (body.action === "start") {
         if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can start", 403, "HOST_REQUIRED") }
         if (room.current_phase !== "lobby") { await client.query("ROLLBACK"); return fail("The session has already started", 409, "INVALID_PHASE") }
@@ -458,9 +482,13 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         room = started.rows[0]
         await client.query("UPDATE mednexus_group_study_room_questions SET opened_at=NOW() WHERE room_id=$1 AND position=0", [room.id])
       } else if (body.action === "submit") {
-        if (room.current_phase !== "question_open") { await client.query("ROLLBACK"); return fail("Answering is closed", 409, "ANSWERING_CLOSED") }
-        if (member.first_eligible_question === null || Number(member.first_eligible_question) > room.current_question_index) { await client.query("ROLLBACK"); return fail("You become eligible on the next question", 409, "JOINED_LATE") }
-        const current = await client.query<RoomQuestionRow>("SELECT * FROM mednexus_group_study_room_questions WHERE room_id=$1 AND position=$2 FOR UPDATE", [room.id, room.current_question_index])
+        const answerPosition = body.questionPosition === undefined ? room.current_question_index : Number(body.questionPosition)
+        const answeringAhead = answerPosition > room.current_question_index
+        if (!Number.isInteger(answerPosition) || answerPosition < room.current_question_index || answerPosition >= room.question_count) { await client.query("ROLLBACK"); return fail("This question cannot be answered", 409, "ANSWERING_CLOSED") }
+        if (answeringAhead && room.navigation_mode !== "answer_ahead") { await client.query("ROLLBACK"); return fail("Answering ahead is not enabled", 403, "FUTURE_LOCKED") }
+        if (!answeringAhead && room.current_phase !== "question_open") { await client.query("ROLLBACK"); return fail("Answering is closed", 409, "ANSWERING_CLOSED") }
+        if (member.first_eligible_question === null || Number(member.first_eligible_question) > answerPosition) { await client.query("ROLLBACK"); return fail("You are not eligible for this question", 409, "JOINED_LATE") }
+        const current = await client.query<RoomQuestionRow>("SELECT * FROM mednexus_group_study_room_questions WHERE room_id=$1 AND position=$2 FOR UPDATE", [room.id, answerPosition])
         const question = current.rows[0]
         if (!question || !isValidGroupStudyAnswer(body.answer, question.question_snapshot)) { await client.query("ROLLBACK"); return fail("Select a valid answer") }
         const correct = sameGroupStudyAnswer(body.answer, question.question_snapshot.correctAnswer)
@@ -474,9 +502,9 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
           `SELECT COUNT(*)::int count FROM mednexus_group_study_memberships m
            WHERE m.room_id=$1 AND m.first_eligible_question<=$2 AND m.connection_status<>'left'
            AND NOT EXISTS(SELECT 1 FROM mednexus_group_study_answers a WHERE a.room_question_id=$3 AND a.user_id=m.user_id)`,
-          [room.id, room.current_question_index, question.id],
+          [room.id, answerPosition, question.id],
         )
-        if (Number(remaining.rows[0].count) === 0) room = await closeAnswering(client, room)
+        if (!answeringAhead && Number(remaining.rows[0].count) === 0) room = await closeAnswering(client, room)
         else await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
       } else if (body.action === "close") {
         if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can close answering", 403, "HOST_REQUIRED") }
@@ -490,7 +518,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         if (Number(remaining.rows[0].count) > 0 && body.force !== true) { await client.query("ROLLBACK"); return fail(`${remaining.rows[0].count} participants have not answered`, 409, "UNANSWERED_MEMBERS") }
         room = await closeAnswering(client, room)
       } else if (body.action === "next") {
-        if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can advance", 403, "HOST_REQUIRED") }
+        if (!isHost && room.navigation_mode !== "anyone_advances") { await client.query("ROLLBACK"); return fail("Only the host can advance", 403, "HOST_REQUIRED") }
         if (!revealPhases.has(room.current_phase)) { await client.query("ROLLBACK"); return fail("Reveal the current answer first", 409, "INVALID_PHASE") }
         const nextIndex = room.current_question_index + 1
         if (nextIndex >= room.question_count) {
@@ -540,7 +568,9 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
       } else { await client.query("ROLLBACK"); return fail("Unknown Group Study action") }
     }
     const fresh = (await lockedRoom(client, pin))!
-    const payload = await serializeRoom(client, fresh, auth.uid)
+    const responsePosition = Number.isInteger(Number(body.questionPosition)) ? Number(body.questionPosition) : fresh.current_question_index
+    const allowedPosition = responsePosition > fresh.current_question_index && fresh.navigation_mode === "anyone_advances" ? fresh.current_question_index : responsePosition
+    const payload = await serializeRoom(client, fresh, auth.uid, allowedPosition)
     await client.query("COMMIT")
     return NextResponse.json(payload)
   } catch (error) {

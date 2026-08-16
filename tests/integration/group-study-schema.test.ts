@@ -60,13 +60,19 @@ describe("Group Study persistence and authorization gates", () => {
     expect(room).not.toContain("· {member.connectionStatus}")
   })
 
-  it("persists per-participant flags and renders a non-interactive question navigator", () => {
+  it("persists flags and enforces the three navigation modes", () => {
     expect(schema).toContain("flagged_questions INTEGER[] NOT NULL DEFAULT '{}'")
     expect(route).toContain('body.action === "flag"')
     expect(route).toContain("flagged_questions=$2::integer[]")
     expect(room).toContain('aria-label="Question navigator"')
-    expect(room).toContain("questions cannot be skipped")
-    expect(room).toContain("type=\"button\" disabled aria-current")
+    expect(schema).toContain("navigation_mode")
+    expect(creationRoute).toContain("isGroupStudyNavigationMode")
+    expect(route).toContain('body.action === "navigation-mode"')
+    expect(route).toContain('room.navigation_mode !== "answer_ahead"')
+    expect(route).toContain('room.navigation_mode !== "anyone_advances"')
+    expect(room).toContain("Tap to open navigator")
+    expect(room).toContain("Return to live question")
+    expect(home).toContain("Browse and answer ahead")
   })
 
   it("keeps the dashboard shortcut between statistics and study modules and optimizes the lobby for phones", () => {
@@ -85,6 +91,14 @@ describe("Group Study persistence and authorization gates", () => {
     expect(route).not.toContain("correctAnswer: question.question_snapshot.correctAnswer")
     expect(route).toContain("score_processing_status='pending' FOR UPDATE")
     expect(route.indexOf("score_processing_status='pending' FOR UPDATE")).toBeLessThan(route.indexOf("SET current_phase='reveal'"))
+  })
+
+  it("keeps early feedback private and shared statistics on the live reveal", () => {
+    const revealSection = room.slice(room.indexOf("function GroupReveal"), room.indexOf("function GroupFinalResults"))
+    expect(route).toContain("Boolean(viewerAnswer)")
+    expect(route).toContain("sharedReveal ? optionCounts : null")
+    expect(route).toContain("ON CONFLICT(room_question_id,user_id) DO NOTHING")
+    expect(revealSection.indexOf("Explanation")).toBeLessThan(revealSection.indexOf('Stat label="Correct"'))
   })
 
   it("creates rooms by module, optional discipline, and a bounded question count", () => {

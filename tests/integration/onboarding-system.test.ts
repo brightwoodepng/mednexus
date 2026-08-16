@@ -108,6 +108,9 @@ describe("coordinated onboarding contract", () => {
     expect(controller).toContain("onCheckpointRef.current()")
     expect(controller).not.toContain("[onCheckpoint, shell.mobileNavigationOpen")
     expect(definitions).toContain('mobileDrawerTargetAnchorId: "drawer-workspace-switcher"')
+    expect(definitions).toContain('expectedAction: "select-theme"')
+    expect(controller).toContain("mednexus:tutorial-theme-selected")
+    expect(controller).toContain('appearanceOpen ? "appearance-theme-grid"')
   })
 
   it("tracks desktop and phone completion independently", () => {
