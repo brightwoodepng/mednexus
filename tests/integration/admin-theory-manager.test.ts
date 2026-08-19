@@ -7,9 +7,10 @@ const manager = fs.readFileSync(path.join(root, "components/theory-admin-manager
 const api = fs.readFileSync(path.join(root, "app/api/admin/theory/route.ts"), "utf8")
 
 describe("admin Theory Manager", () => {
-  it("uses a compact Manager and Legacy workspace switch", () => {
-    expect(manager).toContain('setMode("manager")')
-    expect(manager).toContain('setMode("legacy")')
+  it("uses one category-aware Theory workspace", () => {
+    expect(manager).toContain('chooseKind("end_of_module")')
+    expect(manager).toContain('chooseKind("end_of_year")')
+    expect(manager).not.toContain('setMode("legacy")')
     expect(manager).not.toContain("bg-gradient-to-br from-teal-700")
   })
 
@@ -17,7 +18,7 @@ describe("admin Theory Manager", () => {
     for (const contract of ["data.counts", "moduleFilter", "disciplineFilter", "setFilter", "Recently updated", "Question pages", "mednexus-admin-theory-layout"]) {
       expect(manager).toContain(contract)
     }
-    for (const contract of ['searchParams.get("moduleId")', 'searchParams.get("disciplineId")', 'searchParams.get("setId")', 'searchParams.get("sort")', "GROUP BY status"]) {
+    for (const contract of ['searchParams.get("moduleId")', 'searchParams.get("disciplineId")', 'searchParams.get("setId")', 'searchParams.get("sort")', "GROUP BY q.status"]) {
       expect(api).toContain(contract)
     }
   })
