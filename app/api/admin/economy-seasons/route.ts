@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import pool, { ensureSchema } from "@/lib/db"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
-import { provisionActiveSeasonWallet } from "@/lib/economy-seasons"
 
 const confirmationFor=(name:string)=>`START ${name.trim().toUpperCase()}`
 const slug=(value:string)=>value.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60)
@@ -10,7 +9,8 @@ const slug=(value:string)=>value.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-")
 async function payload(){
   const [seasons,dryRun]=await Promise.all([
     pool.query(`SELECT s.id,s.name,s.economy_version,s.status,s.starts_at,s.ends_at,s.created_at,s.activated_at,s.opening_grant,
-      COUNT(w.user_id)::int member_count,COALESCE(SUM(w.lifetime_earned),0)::bigint currency_created,
+      COUNT(w.user_id)::int member_count,COALESCE(SUM(w.balance),0)::bigint currency_supply,
+      COALESCE(SUM(w.lifetime_earned),0)::bigint currency_earned,
       c.executed_at cutover_completed_at FROM mednexus_economy_seasons s
       LEFT JOIN mednexus_season_wallets w ON w.season_id=s.id LEFT JOIN mednexus_economy_cutovers c ON c.to_season_id=s.id
       GROUP BY s.id,c.executed_at ORDER BY s.starts_at DESC`),
@@ -36,8 +36,15 @@ export async function POST(req:NextRequest){
       const openingGrant=Number(body.openingGrant),startsAt=typeof body.startsAt==="string"?new Date(body.startsAt):new Date()
       if(name.length<3||!version||!Number.isInteger(openingGrant)||openingGrant<0||openingGrant>100000||Number.isNaN(startsAt.getTime()))return NextResponse.json({error:"Enter a valid name, economy version, start time, and opening grant."},{status:400})
       const id=`${slug(name)}-${Date.now().toString(36)}`
-      await pool.query(`INSERT INTO mednexus_economy_seasons(id,name,economy_version,status,starts_at,created_by,opening_grant) VALUES($1,$2,$3,'planned',$4,$5,$6)`,[id,name,version,startsAt.toISOString(),admin.uid,openingGrant])
-      await auditAdmin(pool,admin.uid,"create","economy_season",id,{name,version,openingGrant,startsAt:startsAt.toISOString()})
+      const client=await pool.connect()
+      try{
+        await client.query("BEGIN");await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:economy-season-plan'))")
+        const duplicate=await client.query("SELECT 1 FROM mednexus_economy_seasons WHERE status='planned' AND (LOWER(name)=LOWER($1) OR LOWER(economy_version)=LOWER($2))",[name,version])
+        if(duplicate.rowCount)throw new Error("A planned season already uses this name or economy version.")
+        await client.query(`INSERT INTO mednexus_economy_seasons(id,name,economy_version,status,starts_at,created_by,opening_grant) VALUES($1,$2,$3,'planned',$4,$5,$6)`,[id,name,version,startsAt.toISOString(),admin.uid,openingGrant])
+        await auditAdmin(client,admin.uid,"create","economy_season",id,{name,version,openingGrant,startsAt:startsAt.toISOString()})
+        await client.query("COMMIT")
+      }catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}
       return NextResponse.json({ok:true,...await payload()},{status:201})
     }
     if(action!=="activate")return NextResponse.json({error:"Unknown season action."},{status:400})
@@ -52,8 +59,6 @@ export async function POST(req:NextRequest){
       if(!current)throw new Error("No active season is available to close.")
       const migrationId=`season-cutover-${current.id}-to-${target.id}`
       const repeated=await client.query("SELECT 1 FROM mednexus_economy_cutovers WHERE migration_id=$1",[migrationId]);if(repeated.rowCount)throw new Error("This season reset was already completed.")
-      const previousMaintenance=await client.query("SELECT maintenance_enabled,maintenance_message FROM mednexus_system_settings WHERE id=1 FOR UPDATE")
-      await client.query("UPDATE mednexus_system_settings SET maintenance_enabled=TRUE,maintenance_message='Economy season reset is in progress.' WHERE id=1")
       const before=await client.query("SELECT COALESCE(SUM(balance),0)::bigint total FROM mednexus_season_wallets WHERE season_id=$1",[current.id])
       await client.query(`INSERT INTO mednexus_economy_season_archives(season_id,user_id,closing_balance,lifetime_np,rank_points,login_streak,longest_streak,mcq_activity,game_personal_bests,bounty_progress,weekly_goal_progress,inventory_value,closing_leaderboard_position,migration_id)
         SELECT $1,r.uid,COALESCE(w.balance,0),COALESCE(w.lifetime_earned,0),COALESCE(w.rank_points,0),r.login_streak,r.longest_streak,COALESCE(p.data,'{}'),
@@ -74,14 +79,24 @@ export async function POST(req:NextRequest){
       await client.query("DELETE FROM mednexus_discipline_np_log WHERE season_id=$1",[current.id])
       await client.query("DELETE FROM mednexus_user_question_progress WHERE season_id=$1",[current.id])
       const users=await client.query("SELECT uid FROM mednexus_registered_users WHERE status='approved' ORDER BY uid")
-      for(const user of users.rows)await provisionActiveSeasonWallet(client,user.uid,migrationId)
       const affectedUsers=users.rowCount??users.rows.length
-      const after=await client.query("SELECT COALESCE(SUM(balance),0)::bigint total FROM mednexus_season_wallets WHERE season_id=$1",[target.id]);const expected=affectedUsers*Number(target.opening_grant)
-      if(Number(after.rows[0].total)!==expected)throw new Error(`Opening balance verification failed: expected ${expected}, received ${after.rows[0].total}.`)
+      await client.query(`WITH grants AS (
+        INSERT INTO mednexus_np_transactions(id,user_id,season_id,source,source_id,amount,metadata)
+        SELECT 'season-grant-'||$1||'-'||uid,uid,$1,'season_opening_grant',$1||':'||uid,$2,
+          jsonb_build_object('economyVersion',$3::text,'seasonId',$1::text,'migrationId',$4::text)
+        FROM mednexus_registered_users WHERE status='approved'
+        ON CONFLICT(user_id,source,source_id) DO NOTHING RETURNING user_id,amount
+      ) INSERT INTO mednexus_season_wallets(season_id,user_id,balance,lifetime_earned,rank_points)
+        SELECT $1,user_id,amount,amount,0 FROM grants
+        ON CONFLICT(season_id,user_id) DO UPDATE SET
+          balance=mednexus_season_wallets.balance+EXCLUDED.balance,
+          lifetime_earned=mednexus_season_wallets.lifetime_earned+EXCLUDED.lifetime_earned,
+          updated_at=NOW()`,[target.id,target.opening_grant,target.economy_version,migrationId])
+      const after=await client.query("SELECT COALESCE(SUM(balance),0)::bigint total FROM mednexus_season_wallets WHERE season_id=$1",[target.id]);const expected=BigInt(affectedUsers)*BigInt(target.opening_grant)
+      if(BigInt(after.rows[0].total)!==expected)throw new Error(`Opening balance verification failed: expected ${expected}, received ${after.rows[0].total}.`)
       await client.query(`INSERT INTO mednexus_economy_cutovers(migration_id,from_season_id,to_season_id,affected_users,before_total,after_total,executed_by) VALUES($1,$2,$3,$4,$5,$6,$7)`,[migrationId,current.id,target.id,affectedUsers,before.rows[0].total,after.rows[0].total,admin.uid])
       await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message) SELECT $1||'-'||uid,uid,'economy',$2 FROM mednexus_registered_users WHERE status='approved' ON CONFLICT DO NOTHING`,[migrationId,`${target.name} has started. You received ${target.opening_grant} NP.`])
       await auditAdmin(client,admin.uid,"activate","economy_season",target.id,{fromSeasonId:current.id,migrationId,affectedUsers,beforeTotal:before.rows[0].total,afterTotal:after.rows[0].total})
-      await client.query("UPDATE mednexus_system_settings SET maintenance_enabled=$1,maintenance_message=$2 WHERE id=1",[previousMaintenance.rows[0]?.maintenance_enabled??false,previousMaintenance.rows[0]?.maintenance_message??""])
       await client.query("COMMIT")
     }catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}
     return NextResponse.json({ok:true,...await payload()})
