@@ -17,10 +17,22 @@ describe("economy season management",()=>{
     expect(api).toContain('admin.role!=="SUPER_ADMIN"')
     expect(api).toContain("confirmationFor(target.name)")
     expect(api).toContain("pg_advisory_xact_lock")
+    expect(api).toContain("A planned season already uses this name or economy version.")
   })
   it("archives the prior season and verifies every opening balance",()=>{
     for(const text of ["mednexus_economy_season_archives","status='closed'","status='active'","mednexus_economy_cutovers","Opening balance verification failed","auditAdmin"])expect(api).toContain(text)
     expect(economy).toContain("season.openingGrant")
     expect(ui).toContain("Purchases and cosmetics remain stored")
+    expect(api).toContain("WITH grants AS")
+    expect(api).toContain("BigInt(affectedUsers)")
+    expect(ui).toContain("Current spendable supply")
+    expect(ui).toContain("Total earned")
+  })
+
+  it("saves system and theory settings atomically with strict validation",()=>{
+    expect(settingsApi).toContain("Choose a valid registration approval mode.")
+    expect(settingsApi).toContain("SELECT id FROM mednexus_system_settings WHERE id=1 FOR UPDATE")
+    expect(settingsApi).toContain("ON CONFLICT(id) DO UPDATE")
+    expect(settingsApi).toContain("Send valid JSON settings.")
   })
 })
