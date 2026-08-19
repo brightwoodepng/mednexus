@@ -74,6 +74,26 @@ describe("Theory bulk importer", () => {
     expect(result.errors).toEqual([{ row: 1, message: "Module is required for End-of-Module content." }])
   })
 
+  it("locks every row to the administrator-selected Theory category", () => {
+    const result = normalizeTheoryImport([{
+      collectionTitle: "Final examination",
+      moduleName: "Cardiovascular Medicine",
+      prompt: "Discuss acute heart failure.",
+      keyMarkingPoints: ["Explains initial assessment"],
+    }], [], "end_of_module")
+    expect(result.errors).toEqual([])
+    expect(result.items[0]).toMatchObject({ collectionTitle: "End of Module", collectionKind: "end_of_module" })
+
+    const mixed = normalizeTheoryImport([{
+      collectionKind: "end_of_year",
+      moduleName: "Cardiovascular Medicine",
+      prompt: "Discuss acute heart failure.",
+      keyMarkingPoints: ["Explains initial assessment"],
+    }], [], "end_of_module")
+    expect(mixed.items).toEqual([])
+    expect(mixed.errors[0].message).toContain("importer is locked to End of Module")
+  })
+
   it("requires key points and generates bounded titles", () => {
     const missing = normalizeTheoryImport([{
       collectionKind: "end_of_year",
@@ -113,6 +133,9 @@ describe("Theory bulk importer", () => {
     ])
     expect(route).toContain('requireAdminPermission(request, "manage_theory_content")')
     expect(route).toContain('"bulk_import"')
+    expect(route).toContain("default_set_size")
+    expect(route).toContain('theoryId("theory-set")')
+    expect(route).toContain("collectionKind")
     expect(route).not.toContain("findOrCreateSet")
     expect(manager).toContain("<TheoryBulkImporter")
     expect(manager).toContain("<TheoryMediaEditor")
