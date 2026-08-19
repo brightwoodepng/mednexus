@@ -17,6 +17,7 @@ export type TheoryImportItem = {
   media: TheoryMediaItem[]
   difficulty: number
   estimatedStudyMinutes: number
+  sourceMetadata: { sourceTitle?: string; pastPaper?: string; year?: number; reference?: string }
   sourceOrder: number
 }
 
@@ -24,6 +25,8 @@ export type TheoryImportValidation = {
   items: TheoryImportItem[]
   errors: Array<{ row: number; message: string }>
 }
+
+export type TheoryCollectionKind = TheoryImportItem["collectionKind"]
 
 type Context = {
   collectionTitle?: string
@@ -118,7 +121,7 @@ function markerIds(...values: string[]) {
   return ids
 }
 
-export function normalizeTheoryImport(payload: unknown, images: TheoryImportImage[] = []): TheoryImportValidation {
+export function normalizeTheoryImport(payload: unknown, images: TheoryImportImage[] = [], expectedKind?: TheoryCollectionKind): TheoryImportValidation {
   const records = collect(payload)
   const imageMap = new Map(images.map(image => [image.id.toUpperCase(), image.dataUri]))
   const items: TheoryImportItem[] = []
@@ -127,12 +130,17 @@ export function normalizeTheoryImport(payload: unknown, images: TheoryImportImag
 
   records.forEach((record, index) => {
     try {
-      const collectionTitle = text(record.collectionTitle ?? record.collection ?? record.category, "End of Module")
+      const suppliedTitle = text(record.collectionTitle ?? record.collection ?? record.category)
       const explicitKind = text(record.collectionKind ?? record.kind)
-      const collectionKind: TheoryImportItem["collectionKind"] = explicitKind === "end_of_year"
-        || /end\s+of\s+year|past\s+paper|final/i.test(collectionTitle)
+      const inferredKind: TheoryImportItem["collectionKind"] = explicitKind === "end_of_year"
+        || /end\s+of\s+year|past\s+paper|final/i.test(suppliedTitle)
         ? "end_of_year"
         : "end_of_module"
+      if (expectedKind && explicitKind && explicitKind !== expectedKind) {
+        throw new Error(`This row is marked ${explicitKind === "end_of_year" ? "End of Year" : "End of Module"}, but the importer is locked to ${expectedKind === "end_of_year" ? "End of Year" : "End of Module"}.`)
+      }
+      const collectionKind = expectedKind ?? inferredKind
+      const collectionTitle = collectionKind === "end_of_year" ? "End of Year" : "End of Module"
       const moduleName = text(record.moduleName ?? record.module)
       const disciplineName = text(record.disciplineName ?? record.discipline ?? record.subject)
       if (collectionKind === "end_of_module" && !moduleName) throw new Error("Module is required for End-of-Module content.")
@@ -157,6 +165,9 @@ export function normalizeTheoryImport(payload: unknown, images: TheoryImportImag
         .filter((url): url is string => Boolean(url))
         .map((url, mediaIndex) => ({ type: "image" as const, url, alt: `Imported question image ${mediaIndex + 1}` }))
       const suppliedMedia = Array.isArray(record.media) ? record.media : []
+      const suppliedSource = record.sourceMetadata && typeof record.sourceMetadata === "object"
+        ? record.sourceMetadata as Record<string, unknown>
+        : {}
 
       items.push({
         collectionTitle,
@@ -172,6 +183,12 @@ export function normalizeTheoryImport(payload: unknown, images: TheoryImportImag
         media: sanitizeTheoryMedia([...suppliedMedia, ...importedMedia]),
         difficulty: Math.min(5, Math.max(1, Number(record.difficulty) || 3)),
         estimatedStudyMinutes: Math.min(180, Math.max(1, Number(record.estimatedStudyMinutes ?? record.studyMinutes) || 8)),
+        sourceMetadata: {
+          sourceTitle: text(record.sourceTitle ?? record.source ?? suppliedSource.sourceTitle),
+          pastPaper: text(record.pastPaper ?? record.exam ?? suppliedSource.pastPaper),
+          year: Number(record.year ?? suppliedSource.year) || undefined,
+          reference: text(record.reference ?? suppliedSource.reference),
+        },
         sourceOrder: Number(record.sourceOrder ?? record.order) || index + 1,
       })
     } catch (error) {
