@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const pool = await theoryPool()
     const { page, pageSize, offset } = pagination(request.nextUrl)
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? ""
+    const kind = request.nextUrl.searchParams.get("kind") === "end_of_year" ? "end_of_year" : "end_of_module"
     const collectionId = request.nextUrl.searchParams.get("collectionId")
     const moduleId = request.nextUrl.searchParams.get("moduleId")
     const disciplineId = request.nextUrl.searchParams.get("disciplineId")
@@ -36,16 +37,19 @@ export async function GET(request: NextRequest) {
     const orderBy = sort === "title" ? "q.title ASC" : sort === "oldest" ? "q.updated_at ASC" : "q.updated_at DESC"
     const [collections, modules, disciplines, sets, questions, settings, audit, counts] = await Promise.all([
       pool.query(`SELECT id,slug,title,kind,status,sort_order AS "sortOrder"
-        FROM mednexus_theory_collections ORDER BY sort_order,title`),
+        FROM mednexus_theory_collections WHERE kind=$1 ORDER BY sort_order,title`, [kind]),
       pool.query(`SELECT id,collection_id AS "collectionId",name,description,sort_order AS "sortOrder"
-        FROM mednexus_theory_modules ORDER BY sort_order,name`),
+        FROM mednexus_theory_modules WHERE collection_id IN (SELECT id FROM mednexus_theory_collections WHERE kind=$1)
+        ORDER BY sort_order,name`, [kind]),
       pool.query(`SELECT id,collection_id AS "collectionId",name,sort_order AS "sortOrder"
-        FROM mednexus_theory_disciplines ORDER BY sort_order,name`),
+        FROM mednexus_theory_disciplines WHERE collection_id IN (SELECT id FROM mednexus_theory_collections WHERE kind=$1)
+        ORDER BY sort_order,name`, [kind]),
       pool.query(`SELECT s.id,s.collection_id AS "collectionId",s.module_id AS "moduleId",
         s.discipline_id AS "disciplineId",s.name,s.description,s.status,s.question_limit AS "questionLimit",
         s.sort_order AS "sortOrder",COUNT(q.id)::int AS "questionCount"
         FROM mednexus_theory_sets s LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id AND q.status<>'archived'
-        GROUP BY s.id ORDER BY s.sort_order,s.name`),
+        WHERE s.collection_id IN (SELECT id FROM mednexus_theory_collections WHERE kind=$1)
+        GROUP BY s.id ORDER BY s.sort_order,s.name`, [kind]),
       pool.query(`SELECT ${theoryQuestionProjection},
         c.title AS "collectionTitle",m.name AS "moduleName",d.name AS "disciplineName",s.name AS "setTitle",
         COUNT(*) OVER()::int AS "totalCount"
@@ -54,20 +58,22 @@ export async function GET(request: NextRequest) {
         LEFT JOIN mednexus_theory_modules m ON m.id=q.module_id
         LEFT JOIN mednexus_theory_disciplines d ON d.id=q.discipline_id
         LEFT JOIN mednexus_theory_sets s ON s.id=q.set_id
-        WHERE ($1='' OR q.prompt ILIKE '%'||$1||'%' OR q.title ILIKE '%'||$1||'%')
-          AND ($2::text IS NULL OR q.collection_id=$2)
-          AND ($3::text IS NULL OR q.status=$3)
-          AND ($4::boolean=FALSE OR q.set_id IS NULL)
-          AND ($5::text IS NULL OR q.module_id=$5)
-          AND ($6::text IS NULL OR q.discipline_id=$6)
-          AND ($7::text IS NULL OR q.set_id=$7)
-        ORDER BY ${orderBy} LIMIT $8 OFFSET $9`, [query, collectionId, status, unassigned, moduleId, disciplineId, setId, pageSize, offset]),
+        WHERE c.kind=$1
+          AND ($2='' OR q.prompt ILIKE '%'||$2||'%' OR q.title ILIKE '%'||$2||'%')
+          AND ($3::text IS NULL OR q.collection_id=$3)
+          AND ($4::text IS NULL OR q.status=$4)
+          AND ($5::boolean=FALSE OR q.set_id IS NULL)
+          AND ($6::text IS NULL OR q.module_id=$6)
+          AND ($7::text IS NULL OR q.discipline_id=$7)
+          AND ($8::text IS NULL OR q.set_id=$8)
+        ORDER BY ${orderBy} LIMIT $9 OFFSET $10`, [kind, query, collectionId, status, unassigned, moduleId, disciplineId, setId, pageSize, offset]),
       pool.query(`SELECT default_set_size AS "defaultSetSize",updated_at AS "updatedAt"
         FROM mednexus_theory_settings WHERE id=1`),
       pool.query(`SELECT id,action,resource_type AS "resourceType",resource_id AS "resourceId",
         details,created_at AS "createdAt" FROM mednexus_theory_audit_log
         ORDER BY created_at DESC LIMIT 20`),
-      pool.query(`SELECT status,COUNT(*)::int AS count FROM mednexus_theory_questions GROUP BY status`),
+      pool.query(`SELECT q.status,COUNT(*)::int AS count FROM mednexus_theory_questions q
+        JOIN mednexus_theory_collections c ON c.id=q.collection_id WHERE c.kind=$1 GROUP BY q.status`, [kind]),
     ])
     return NextResponse.json({
       collections: collections.rows,
@@ -305,13 +311,18 @@ export async function PATCH(request: NextRequest) {
           title=$2,prompt=$3,model_answer=COALESCE($4,model_answer),
           key_marking_points=$5,marks=$6,tags=COALESCE($7,tags),
           status=COALESCE($8,status),collection_id=$9,module_id=$10,discipline_id=$11,set_id=$12,
-          media=COALESCE($13,media),updated_at=NOW() WHERE id=$1`,
+          media=COALESCE($13,media),difficulty=COALESCE($14,difficulty),
+          estimated_study_minutes=COALESCE($15,estimated_study_minutes),source_metadata=COALESCE($16,source_metadata),
+          updated_at=NOW() WHERE id=$1`,
         [id, title, prompt,
           typeof body.modelAnswer === "string" ? body.modelAnswer : null,
           keyMarkingPoints, marks,
           Array.isArray(body.tags) ? stringArray(body.tags) : null, nextStatus,
           collectionId, moduleId, disciplineId, setId,
-          Object.hasOwn(body, "media") ? sanitizeTheoryMedia(body.media) : null])
+          Object.hasOwn(body, "media") ? sanitizeTheoryMedia(body.media) : null,
+          Object.hasOwn(body, "difficulty") ? intInRange(body.difficulty, 1, 5, 3) : null,
+          Object.hasOwn(body, "estimatedStudyMinutes") ? intInRange(body.estimatedStudyMinutes, 1, 180, 8) : null,
+          body.sourceMetadata && typeof body.sourceMetadata === "object" ? body.sourceMetadata : null])
       } else throw new Error("Unknown Theory resource.")
       await auditTheory(client, auth.uid, "update", resource, id, {})
     })

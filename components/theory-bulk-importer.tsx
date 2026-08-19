@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, type DragEvent } from "react"
 import { AlertTriangle, CheckCircle2, FileJson, FileText, FileUp, ImageIcon, Loader2, Trash2, Upload } from "lucide-react"
 import { importAuthHeaders, importError } from "@/lib/import-client"
-import type { TheoryImportImage, TheoryImportItem, TheoryImportValidation } from "@/lib/theory-import"
+import type { TheoryCollectionKind, TheoryImportImage, TheoryImportItem, TheoryImportValidation } from "@/lib/theory-import"
 import { TheoryQuestionMedia } from "@/components/theory-question-media"
 import { plainTextImportFileType, readPlainTextImportFile } from "@/lib/plain-text-import"
 
@@ -25,9 +25,11 @@ async function jsonRequest<T>(url: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
+export function TheoryBulkImporter({ collectionKind, defaultSetSize = 20, onImported, onReviewImported }: {
+  collectionKind: TheoryCollectionKind
+  defaultSetSize?: number
   onImported: () => Promise<void> | void
-  onReviewUnassigned: () => void
+  onReviewImported: () => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -36,6 +38,7 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
   const [stage, setStage] = useState<"select" | "extracting" | "parsing" | "preview" | "committing" | "done">("select")
   const [message, setMessage] = useState("")
   const [failure, setFailure] = useState("")
+  const kindLabel = collectionKind === "end_of_module" ? "End of Module" : "End of Year"
 
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; count: number; images: number }>()
@@ -75,7 +78,7 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
         setStage("parsing")
         setMessage("Validating Theory hierarchy and questions…")
         const payload = JSON.parse(await file.text()) as unknown
-        const result = await jsonRequest<TheoryImportValidation>("/api/admin/theory/import", { action: "validate", payload })
+        const result = await jsonRequest<TheoryImportValidation>("/api/admin/theory/import", { action: "validate", collectionKind, payload })
         setItems(result.items)
         setErrors(result.errors)
       } else if (plainTextImportFileType(file.name)) {
@@ -84,6 +87,7 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
         const text = await readPlainTextImportFile(file)
         const result = await jsonRequest<TheoryImportValidation>("/api/admin/theory/import", {
           action: "parse",
+          collectionKind,
           text,
           images: [],
         })
@@ -102,6 +106,7 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
         setMessage(`Building modules, disciplines, and questions${extracted.images?.length ? ` from ${extracted.images.length} embedded images` : ""}…`)
         const result = await jsonRequest<TheoryImportValidation>("/api/admin/theory/import", {
           action: "parse",
+          collectionKind,
           text: extracted.text,
           images: extracted.images ?? [],
         })
@@ -126,7 +131,7 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
       })
       const result = await jsonRequest<{
         summary: { created: number; skipped: number; modules: number; disciplines: number; unassigned: number }
-      }>("/api/admin/theory/import", { action: "commit", items })
+      }>("/api/admin/theory/import", { action: "commit", collectionKind, items })
       await fetch(`/api/admin/content/imports/${staged.id}`, {
         method: "PATCH",
         headers: { ...importAuthHeaders(true), "Content-Type": "application/json" },
@@ -152,12 +157,12 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
   }
 
   if (stage === "done") {
-    return <section className={`${card} max-w-3xl py-12 text-center`}><CheckCircle2 className="mx-auto text-emerald-600" size={38}/><h2 className="mt-4 text-2xl font-bold">Theory import complete</h2><p className="mt-2 text-sm text-muted-foreground">{message}</p><p className="mt-2 text-sm text-muted-foreground">Imported questions are unassigned drafts. Place them into sets before publishing.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><button onClick={onReviewUnassigned} className={`${button} bg-primary text-primary-foreground`}><CheckCircle2 size={16}/>Review unassigned questions</button><button onClick={reset} className={`${button} border border-border`}><Upload size={16}/>Import another file</button></div></section>
+    return <section className={`${card} max-w-3xl py-12 text-center`}><CheckCircle2 className="mx-auto text-emerald-600" size={38}/><h2 className="mt-4 text-2xl font-bold">{kindLabel} import complete</h2><p className="mt-2 text-sm text-muted-foreground">{message}</p><p className="mt-2 text-sm text-muted-foreground">The system placed every imported draft into its numbered set. Review and publish when ready.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><button onClick={onReviewImported} className={`${button} bg-primary text-primary-foreground`}><CheckCircle2 size={16}/>Review imported questions</button><button onClick={reset} className={`${button} border border-border`}><Upload size={16}/>Import another file</button></div></section>
   }
 
   return <div className="space-y-5">
     <section className={card}>
-      <div className="flex items-start gap-4"><span className="rounded-2xl bg-primary/10 p-3 text-primary"><FileUp size={24}/></span><div><h2 className="text-xl font-bold">Bulk Theory importer</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">Import PDF, Word, plain text, Markdown, or structured JSON. Headings create collections, modules, and related disciplines. Questions remain unassigned so an administrator can divide them into sets after review.</p></div></div>
+      <div className="flex items-start gap-4"><span className="rounded-2xl bg-primary/10 p-3 text-primary"><FileUp size={24}/></span><div><p className="text-xs font-bold uppercase tracking-[.16em] text-primary">Importing into {kindLabel}</p><h2 className="mt-1 text-xl font-bold">Bulk Theory importer</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">Import PDF, Word, plain text, Markdown, or structured JSON. {collectionKind === "end_of_module" ? "Module headings are required; a related discipline is optional." : "Discipline headings are required."} Questions keep their source order and are automatically divided into numbered sets of up to {defaultSetSize}.</p></div></div>
       <input ref={inputRef} type="file" accept=".pdf,.docx,.json,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json,text/plain,text/markdown" className="sr-only" onChange={event => selectFile(event.target.files?.[0] ?? null)}/>
       <button type="button" onClick={() => inputRef.current?.click()} onDragOver={event => event.preventDefault()} onDrop={handleDrop} className="mt-5 flex min-h-40 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 p-6 text-center transition hover:bg-primary/10">
         <span className="flex gap-2 text-primary"><FileText/><FileJson/><ImageIcon/></span>
@@ -172,9 +177,7 @@ export function TheoryBulkImporter({ onImported, onReviewUnassigned }: {
     <details className={card}>
       <summary className="cursor-pointer font-bold">Recommended document structure</summary>
       <div className="mt-4 grid gap-4 text-sm leading-6 text-muted-foreground md:grid-cols-2">
-        <div><b className="text-foreground">Document or text headings</b><pre className="mt-2 overflow-x-auto rounded-xl bg-muted p-3 text-xs text-foreground">{`COLLECTION: End of Module
-MODULE: Cardiovascular Medicine
-DISCIPLINE: Cardiology
+        <div><b className="text-foreground">Recommended {kindLabel} headings</b><pre className="mt-2 overflow-x-auto rounded-xl bg-muted p-3 text-xs text-foreground">{`${collectionKind === "end_of_module" ? "MODULE: Cardiovascular Medicine\nDISCIPLINE: Cardiology" : "DISCIPLINE: Internal Medicine"}
 QUESTION TITLE: Acute pulmonary oedema management
 
 QUESTION:
@@ -188,16 +191,16 @@ KEY POINTS:
 - Performs an ABCDE assessment
 - Identifies likely precipitants
 - Describes appropriate initial management`}</pre></div>
-        <div><b className="text-foreground">Titles, images, and JSON</b><p className="mt-2">A question title is recommended, but the system generates one when it is absent. Place each image immediately beside or below its question. JSON may use a flat <code>questions</code> array or nested collections, modules, and disciplines. Do not include sets, marks, or references; marks are calculated as two per key point.</p></div>
+        <div><b className="text-foreground">Titles, images, and automatic sets</b><p className="mt-2">A question title is recommended, but the system generates one when it is absent. Place each image immediately beside or below its question. Do not include collections, sets, or marks. The destination is fixed as {kindLabel}, sets are generated by the system, and marks are calculated as two per key point.</p></div>
       </div>
     </details>
 
     {stage === "preview" && <section className={card}>
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold">Import preview</h2><p className="mt-1 text-sm text-muted-foreground">{items.length} valid questions across {groups.length} hierarchy paths. Review before committing.</p></div><button onClick={reset} className={`${button} border border-border`}>Start over</button></div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">{groups.map(group => <div key={group.label} className="rounded-xl border border-border bg-muted/20 p-3"><b className="text-sm">{group.label}</b><p className="mt-1 text-xs text-muted-foreground">{group.count} questions · {group.images} images</p></div>)}</div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">{groups.map(group => <div key={group.label} className="rounded-xl border border-border bg-muted/20 p-3"><b className="text-sm">{group.label}</b><p className="mt-1 text-xs text-muted-foreground">{group.count} questions · {Math.ceil(group.count/defaultSetSize)} set allocation{Math.ceil(group.count/defaultSetSize) === 1 ? "" : "s"} · {group.images} images</p></div>)}</div>
       {errors.length > 0 && <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4"><div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-200"><AlertTriangle size={17}/>{errors.length} rows need attention and will not be imported</div><ul className="mt-2 space-y-1 text-sm text-amber-900 dark:text-amber-100">{errors.slice(0, 10).map(error => <li key={`${error.row}-${error.message}`}>Row {error.row || "—"}: {error.message}</li>)}</ul></div>}
-      <div className="mt-5 max-h-[42rem] space-y-3 overflow-y-auto pr-1">{items.map((item, index) => <article key={`${item.prompt}-${index}`} className="rounded-xl border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{[item.collectionTitle,item.moduleName,item.disciplineName].filter(Boolean).join(" / ")}</p><h3 className="mt-1 font-bold">{item.title}</h3><p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{item.prompt}</p><p className="mt-2 text-xs font-semibold text-primary">{item.marks} marks · {item.keyMarkingPoints.length} key points · Unassigned draft</p></div><button onClick={() => setItems(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove from import" className="rounded-lg p-2 text-destructive hover:bg-destructive/10"><Trash2 size={16}/></button></div>{item.media.length > 0 && <div className="mt-3"><TheoryQuestionMedia media={item.media} compact/></div>}</article>)}</div>
-      <div className="mt-5 flex justify-end"><button disabled={!items.length} onClick={commit} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}><CheckCircle2 size={16}/>Import {items.length} draft questions</button></div>
+      <div className="mt-5 max-h-[42rem] space-y-3 overflow-y-auto pr-1">{items.map((item, index) => <article key={`${item.prompt}-${index}`} className="rounded-xl border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{[item.collectionTitle,item.moduleName,item.disciplineName].filter(Boolean).join(" / ")}</p><h3 className="mt-1 font-bold">{item.title}</h3><p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{item.prompt}</p><p className="mt-2 text-xs font-semibold text-primary">{item.marks} marks · {item.keyMarkingPoints.length} key points · Automatically allocated draft</p></div><button onClick={() => setItems(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove from import" className="rounded-lg p-2 text-destructive hover:bg-destructive/10"><Trash2 size={16}/></button></div>{item.media.length > 0 && <div className="mt-3"><TheoryQuestionMedia media={item.media} compact/></div>}</article>)}</div>
+      <div className="mt-5 flex justify-end"><button disabled={!items.length} onClick={commit} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}><CheckCircle2 size={16}/>Import and allocate {items.length} drafts</button></div>
     </section>}
   </div>
 }
