@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { PoolClient } from "pg"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import {
   DEFAULT_MAINTENANCE_MESSAGE,
@@ -26,32 +27,41 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const admin = await requireAdminRequest(req, "manage_system")
   if (!admin) return adminAccessDenied(req)
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
-  const body = await req.json() as Record<string, unknown>
-  if (body.confirm !== true) {
-    return NextResponse.json({ error: "Confirm this platform settings change." }, { status: 400 })
-  }
-
-  const current = await getPlatformSettings(pool)
-  const approvalMode = body.registrationApprovalMode === "manual" ? "manual" : "verified_index"
-  const next = {
-    registrationEnabled: typeof body.registrationEnabled === "boolean" ? body.registrationEnabled : current.registrationEnabled,
-    guestAccessEnabled: typeof body.guestAccessEnabled === "boolean" ? body.guestAccessEnabled : current.guestAccessEnabled,
-    registrationApprovalMode: approvalMode,
-    maintenanceEnabled: typeof body.maintenanceEnabled === "boolean" ? body.maintenanceEnabled : current.maintenanceEnabled,
-    maintenanceMessage: typeof body.maintenanceMessage === "string" && body.maintenanceMessage.trim()
-      ? body.maintenanceMessage.trim().slice(0, 500) : DEFAULT_MAINTENANCE_MESSAGE,
-    assessmentDefaultQuestionCount: integerSetting(body.assessmentDefaultQuestionCount, current.assessmentDefaultQuestionCount, 1, 200),
-    assessmentDefaultTimeLimitMins: integerSetting(body.assessmentDefaultTimeLimitMins, current.assessmentDefaultTimeLimitMins, 1, 360),
-    assessmentDefaultTriesAllowed: integerSetting(body.assessmentDefaultTriesAllowed, current.assessmentDefaultTriesAllowed, 1, 20),
-    assessmentDefaultPassMark: integerSetting(body.assessmentDefaultPassMark, current.assessmentDefaultPassMark, 1, 100),
-    theoryDefaultSetSize: integerSetting(body.theoryDefaultSetSize, current.theoryDefaultSetSize, 15, 20),
-  }
-
-  const client = await pool.connect()
+  let client: PoolClient | null = null
   try {
+    const { default: pool, ensureSchema } = await import("@/lib/db")
+    await ensureSchema()
+    const body = await req.json() as Record<string, unknown>
+    if (body.confirm !== true) {
+      return NextResponse.json({ error: "Confirm this platform settings change." }, { status: 400 })
+    }
+    if (body.registrationApprovalMode !== undefined && body.registrationApprovalMode !== "manual" && body.registrationApprovalMode !== "verified_index") {
+      return NextResponse.json({ error: "Choose a valid registration approval mode." }, { status: 400 })
+    }
+    client = await pool.connect()
     await client.query("BEGIN")
+    await client.query("SELECT id FROM mednexus_system_settings WHERE id=1 FOR UPDATE")
+    const current = await getPlatformSettings(client)
+    const maintenanceEnabled = typeof body.maintenanceEnabled === "boolean" ? body.maintenanceEnabled : current.maintenanceEnabled
+    const maintenanceMessage = typeof body.maintenanceMessage === "string"
+      ? body.maintenanceMessage.trim().slice(0, 500)
+      : current.maintenanceMessage
+    if (maintenanceEnabled && !maintenanceMessage) {
+      await client.query("ROLLBACK")
+      return NextResponse.json({ error: "Add a learner-facing maintenance message." }, { status: 400 })
+    }
+    const next = {
+      registrationEnabled: typeof body.registrationEnabled === "boolean" ? body.registrationEnabled : current.registrationEnabled,
+      guestAccessEnabled: typeof body.guestAccessEnabled === "boolean" ? body.guestAccessEnabled : current.guestAccessEnabled,
+      registrationApprovalMode: body.registrationApprovalMode === "manual" || body.registrationApprovalMode === "verified_index" ? body.registrationApprovalMode : current.registrationApprovalMode,
+      maintenanceEnabled,
+      maintenanceMessage: maintenanceMessage || DEFAULT_MAINTENANCE_MESSAGE,
+      assessmentDefaultQuestionCount: integerSetting(body.assessmentDefaultQuestionCount, current.assessmentDefaultQuestionCount, 1, 200),
+      assessmentDefaultTimeLimitMins: integerSetting(body.assessmentDefaultTimeLimitMins, current.assessmentDefaultTimeLimitMins, 1, 360),
+      assessmentDefaultTriesAllowed: integerSetting(body.assessmentDefaultTriesAllowed, current.assessmentDefaultTriesAllowed, 1, 20),
+      assessmentDefaultPassMark: integerSetting(body.assessmentDefaultPassMark, current.assessmentDefaultPassMark, 1, 100),
+      theoryDefaultSetSize: integerSetting(body.theoryDefaultSetSize, current.theoryDefaultSetSize, 15, 20),
+    }
     await client.query(
       `UPDATE mednexus_system_settings SET
         registration_enabled=$1,guest_access_enabled=$2,registration_approval_mode=$3,
@@ -66,10 +76,9 @@ export async function PATCH(req: NextRequest) {
         next.assessmentDefaultTriesAllowed, next.assessmentDefaultPassMark, admin.uid,
       ],
     )
-    await client.query(
-      "UPDATE mednexus_theory_settings SET default_set_size=$1,updated_at=NOW() WHERE id=1",
-      [next.theoryDefaultSetSize],
-    )
+    await client.query(`INSERT INTO mednexus_theory_settings(id,default_set_size,updated_at)
+      VALUES(1,$1,NOW()) ON CONFLICT(id) DO UPDATE
+      SET default_set_size=EXCLUDED.default_set_size,updated_at=NOW()`, [next.theoryDefaultSetSize])
     await auditAdmin(client, admin.uid, "update", "system_settings", "1", {
       registrationEnabled: next.registrationEnabled,
       guestAccessEnabled: next.guestAccessEnabled,
@@ -83,13 +92,15 @@ export async function PATCH(req: NextRequest) {
       },
       theoryDefaultSetSize: next.theoryDefaultSetSize,
     })
+    const saved = await getPlatformSettings(client)
     await client.query("COMMIT")
-    return NextResponse.json({ settings: await getPlatformSettings(pool) })
+    return NextResponse.json({ settings: saved })
   } catch (error) {
-    await client.query("ROLLBACK")
+    if (client) await client.query("ROLLBACK").catch(() => undefined)
     console.error("[admin/settings]", error)
-    return NextResponse.json({ error: "Settings were not changed." }, { status: 500 })
+    const malformed = error instanceof SyntaxError
+    return NextResponse.json({ error: malformed ? "Send valid JSON settings." : "Settings were not changed." }, { status: malformed ? 400 : 500 })
   } finally {
-    client.release()
+    client?.release()
   }
 }
