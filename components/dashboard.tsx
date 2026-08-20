@@ -264,11 +264,11 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
 
       <Link
         href="/group-study"
-        className="group flex min-h-20 items-center gap-4 rounded-2xl border border-primary bg-primary px-5 py-4 text-primary-foreground shadow-md transition-all hover:bg-primary/90 hover:shadow-lg active:translate-y-px active:shadow-sm sm:rounded-3xl sm:px-6"
+        className="group inline-flex min-h-12 w-fit items-center gap-3 rounded-xl border-2 border-primary bg-card px-4 py-2.5 font-bold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/15 text-primary-foreground ring-1 ring-primary-foreground/20"><Users size={21}/></span>
-        <span className="min-w-0 flex-1"><span className="block font-bold">Group Study</span><span className="block text-xs text-primary-foreground/80 sm:text-sm">Create or join a synchronized MCQ room with registered or guest participants.</span></span>
-        <ArrowRightIcon size={17} className="shrink-0 text-primary-foreground transition-transform group-hover:translate-x-1"/>
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors group-hover:bg-primary-foreground group-hover:text-primary"><Users size={18}/></span>
+        <span>Group Study</span>
+        <ArrowRightIcon size={16} className="shrink-0 transition-transform group-hover:translate-x-1"/>
       </Link>
 
       {/* Mode-specific content */}
