@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import Link from "next/link"
-import { Users } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -261,15 +259,6 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           </div>
         )}
       </section>
-
-      <Link
-        href="/group-study"
-        className="group inline-flex min-h-12 w-fit items-center gap-3 rounded-xl border-2 border-primary bg-card px-4 py-2.5 font-bold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-      >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors group-hover:bg-primary-foreground group-hover:text-primary"><Users size={18}/></span>
-        <span>Group Study</span>
-        <ArrowRightIcon size={16} className="shrink-0 transition-transform group-hover:translate-x-1"/>
-      </Link>
 
       {/* Mode-specific content */}
       {catalogLoading && catalog.length === 0 && (
