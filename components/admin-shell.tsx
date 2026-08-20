@@ -237,9 +237,11 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
         <SidebarProfileFooter><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">{initials}</span><span className="min-w-0"><span className="block truncate text-xs font-semibold text-sidebar-foreground">{identity.name}</span><span className="block truncate text-[10px] uppercase tracking-wide text-sidebar-foreground/50">{identity.role.replaceAll("_", " ")}</span></span></div></SidebarProfileFooter>
         <Link
           href="/"
-          className="flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          aria-label="Open learner workspace"
+          className="flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent px-3 py-2 text-sm font-semibold text-sidebar-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
-          ← Return to Learner Workspace
+          <ArrowLeft size={16} />
+          Learner View
         </Link>
       </div>
     </div>
@@ -252,8 +254,8 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
         <span title={`${identity.name} · ${identity.role.replaceAll("_", " ")}`} className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-xs font-bold text-primary-foreground">{initials}</span>
         <Link
           href="/"
-          aria-label="Return to Learner Workspace"
-          title="Return to Learner Workspace"
+          aria-label="Open learner workspace"
+          title="Learner View"
           className="flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
           <ArrowLeft size={17} />
