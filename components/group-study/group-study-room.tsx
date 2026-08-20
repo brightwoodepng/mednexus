@@ -47,7 +47,24 @@ export function GroupStudyRoom({ pin }: { pin: string }) {
     }
   }, [act, pin, viewedPosition])
   useEffect(() => {
-    void multiplayerApi<RoomState>(`/api/group-study/${pin}`, { method: "POST", body: JSON.stringify({ action: "join" }) }).then(setState).catch(() => undefined)
+    let cancelled = false
+    const join = async () => {
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
+        try {
+          const next = await multiplayerApi<RoomState>(`/api/group-study/${pin}`, { method: "POST", body: JSON.stringify({ action: "join" }) })
+          if (!cancelled) { setState(next); setError("") }
+          return
+        } catch (error) {
+          if (!(error instanceof MultiplayerApiError) || error.code !== "ROOM_NOT_FOUND" || attempt === 2) {
+            if (!cancelled) setError(error instanceof Error ? error.message : "Unable to join the room")
+            return
+          }
+          await new Promise(resolve => window.setTimeout(resolve, 350 * (attempt + 1)))
+        }
+      }
+    }
+    void join()
+    return () => { cancelled = true }
   }, [pin])
   useEffect(() => { const poll = window.setInterval(() => void load(), 2500); return () => window.clearInterval(poll) }, [load])
   useEffect(() => { const tick = window.setInterval(() => setNow(Date.now()), 250); return () => window.clearInterval(tick) }, [])

@@ -79,15 +79,20 @@ describe("Group Study persistence and authorization gates", () => {
     expect(home).toContain("Browse and answer ahead")
   })
 
-  it("keeps the dashboard shortcut between statistics and study modules and optimizes the lobby for phones", () => {
-    expect(dashboard.indexOf("Group Study")).toBeGreaterThan(dashboard.indexOf("Stats row"))
-    expect(dashboard.indexOf("Group Study")).toBeLessThan(dashboard.indexOf("Study Modules"))
+  it("keeps Group Study out of the dashboard and optimizes the lobby for phones", () => {
+    expect(dashboard).not.toContain('href="/group-study"')
     expect(room).toContain("sticky bottom-3")
     expect(room).toContain("min-h-12 w-full")
     expect(room).toContain('isHost && <button disabled={busy}')
     expect(route).not.toContain("NOT_ENOUGH_MEMBERS")
     expect(multiplayerApi).toContain('cache: "no-store"')
     expect(room).toContain("member.isGuest")
+  })
+
+  it("normalizes room PINs and retries a fresh room lookup before reporting it missing", () => {
+    expect(route).toContain('pin.replace(/\\D/g, "").slice(0, 6)')
+    expect(home).toContain('error.code !== "ROOM_NOT_FOUND"')
+    expect(room).toContain('error.code !== "ROOM_NOT_FOUND"')
   })
 
   it("keeps answer keys behind reveal serialization", () => {

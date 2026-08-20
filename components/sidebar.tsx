@@ -1,19 +1,20 @@
 "use client"
 
-import { useMemo } from "react"
-import { User } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { User, Users } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ChevronLeftIcon, ChevronRightIcon, LogOutIcon, PaletteIcon, StethoscopeIcon, LayoutDashboardIcon } from "@/components/icons"
 import type { Screen } from "@/lib/view"
 import type { StudyHubId } from "@/components/study-hub-switcher"
-import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton } from "@/components/navigation/sidebar-primitives"
+import { SidebarFrame, SidebarIconButton as IconButton, SidebarNavButton as NavButton, SidebarNavLink } from "@/components/navigation/sidebar-primitives"
 import { StudyHubDropdown, StudyHubDropdownIcon } from "@/components/navigation/study-hub-dropdown"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { getHubNavigation } from "@/components/navigation/study-hub-navigation"
 import Link from "next/link"
 import { canShowAdminConsoleLink } from "@/lib/admin-console-link"
 import { learnerHomeScreen, learnerScreenUrl } from "@/lib/admin-hub-routing"
+import { getWeakAreaQuestions } from "@/lib/modules"
 
 interface SidebarProps { screen: Screen; onNavigate: (screen: Screen) => void; onSelectStudyHub: (hub: StudyHubId) => void; onOpenThemes: () => void; onOpenImporter?: () => void; mobileOpen: boolean; onCloseMobile: () => void; onReadyForQuiz: (config: { module: string; discipline: string | null }) => void; onSelectModule: (module: string) => void; collapsed: boolean; onCollapse: () => void; onExpand: () => void }
 
@@ -43,10 +44,31 @@ function UserAvatar({ name, size = "md" }: { name?: string; size?: "sm" | "md" }
 
 /** Desktop projection of the learner shell navigation. */
 export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mobileOpen, onCloseMobile, collapsed, onCollapse, onExpand }: SidebarProps) {
-  const { user, signOutUser } = useApp()
+  const { user, progress, signOutUser } = useApp()
   const { isGlassEnabled } = useTheme()
   const { activeStudyHub, workspaceSwitcherOpen, setWorkspaceSwitcherOpen } = useApplicationShell()
-  const navigation = useMemo(() => getHubNavigation(activeStudyHub), [activeStudyHub])
+  const [hasLiveAssessments, setHasLiveAssessments] = useState(false)
+  const hasWeakAreas = getWeakAreaQuestions(progress.history).length > 0
+  useEffect(() => {
+    if (activeStudyHub !== "mcq-qbank") return
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const response = await fetch("/api/assessments?page=1&pageSize=20", { cache: "no-store" })
+        if (!response.ok) return
+        const data = await response.json()
+        if (!cancelled) setHasLiveAssessments((data.assessments ?? []).some((assessment: { status?: string }) => assessment.status === "live"))
+      } catch {}
+    }
+    void refresh()
+    const timer = window.setInterval(refresh, 60_000)
+    return () => { cancelled = true; window.clearInterval(timer) }
+  }, [activeStudyHub])
+  const navigation = useMemo(() => getHubNavigation(activeStudyHub).filter(item =>
+    item.id !== "weak-areas" || hasWeakAreas
+  ).filter(item =>
+    item.id !== "live-assessments" || hasLiveAssessments
+  ), [activeStudyHub, hasLiveAssessments, hasWeakAreas])
   const nav = (next: Screen) => { onNavigate(next); onCloseMobile() }
   const selectStudyHub = (hub: StudyHubId) => {
     onSelectStudyHub(hub)
@@ -114,6 +136,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
               /></div>
             )
           })}
+          {activeStudyHub === "mcq-qbank" && <SidebarNavLink active={false} href="/group-study" onClick={onCloseMobile} icon={<Users size={17} className="text-primary" />} label="Group Study" />}
         </div>
 
         <div className="mt-4 border-t border-sidebar-border pt-4 md:hidden">
@@ -185,6 +208,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
           </IconButton>
         )
       })}
+      {activeStudyHub === "mcq-qbank" && <Link href="/group-study" onClick={onCloseMobile} title="Group Study" aria-label="Group Study" className="flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><Users size={18} className="text-primary" /></Link>}
       {/* User avatar at bottom of compact rail */}
       <div className="mt-auto flex flex-col items-center gap-2 pb-1">
         <div className="h-px w-6 bg-sidebar-border/60" />
