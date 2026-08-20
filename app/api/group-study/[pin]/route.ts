@@ -37,7 +37,9 @@ const fail = (message: string, status = 400, code = "INVALID_REQUEST") => NextRe
 const revealPhases = new Set<GroupStudyPhase>(["answer_closed", "reveal", "discussion", "completed"])
 
 async function lockedRoom(client: PoolClient, pin: string) {
-  const result = await client.query<RoomRow>("SELECT * FROM mednexus_group_study_rooms WHERE pin=$1 FOR UPDATE", [pin])
+  const normalizedPin = pin.replace(/\D/g, "").slice(0, 6)
+  if (normalizedPin.length !== 6) return null
+  const result = await client.query<RoomRow>("SELECT * FROM mednexus_group_study_rooms WHERE pin=$1 FOR UPDATE", [normalizedPin])
   return result.rows[0] ?? null
 }
 
