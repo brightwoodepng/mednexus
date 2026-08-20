@@ -87,7 +87,7 @@ function Brand() {
 
 function ValuePanel() {
   return (
-    <section aria-label="MedNexus product showcase" className="relative hidden min-h-[640px] text-foreground lg:block">
+    <section aria-label="MedNexus product showcase" className="relative hidden min-h-[620px] min-w-0 overflow-hidden text-foreground xl:block">
       <header className="absolute left-0 top-0 z-20 flex items-center gap-3.5">
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl ring-1 ring-primary/25">
           <StethoscopeIcon size={24} />
@@ -98,18 +98,18 @@ function ValuePanel() {
         </div>
       </header>
 
-      <div className="absolute inset-x-0 bottom-14 top-20">
-        <div className="absolute left-[1%] top-10 w-[79%] -rotate-[1deg] drop-shadow-[0_32px_30px_rgba(0,0,0,0.38)]">
+      <div className="absolute inset-x-0 bottom-4 top-20 overflow-hidden">
+        <div className="absolute left-[2%] top-10 w-[77%] -rotate-[1deg] drop-shadow-[0_28px_28px_rgba(0,0,0,0.34)]">
           <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border-[12px] border-slate-900 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
             <span aria-hidden="true" className="absolute left-1/2 top-[3px] z-20 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-slate-600 ring-1 ring-black/80" />
             <div className="relative h-full w-full overflow-hidden rounded-[1.15rem] bg-slate-950">
               <Image
                 src="/auth/dashboard-preview.png"
-                alt="MedNexus MCQ dashboard displayed on an iPad"
+                alt="MedNexus dashboard displayed on an iPad"
                 fill
                 priority
                 unoptimized
-                sizes="(min-width: 1280px) 720px, (min-width: 1024px) 48vw, 0px"
+                sizes="(min-width: 1280px) 720px, 0px"
                 className="select-none object-cover object-top"
                 draggable={false}
               />
@@ -117,7 +117,7 @@ function ValuePanel() {
           </div>
         </div>
 
-        <div className="absolute bottom-1 right-[1%] z-10 w-[24%] rotate-[2deg] drop-shadow-[0_28px_25px_rgba(0,0,0,0.45)]">
+        <div className="absolute bottom-5 right-[3%] z-10 w-[23%] rotate-[2deg] drop-shadow-[0_24px_22px_rgba(0,0,0,0.42)]">
           <span aria-hidden="true" className="absolute -left-1 top-[21%] h-12 w-1 rounded-l bg-slate-700" />
           <span aria-hidden="true" className="absolute -right-1 top-[27%] h-16 w-1 rounded-r bg-slate-700" />
           <div className="relative aspect-[375/811] overflow-hidden rounded-[2.2rem] border-[8px] border-slate-900 bg-slate-950 p-[3px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
@@ -126,7 +126,7 @@ function ValuePanel() {
             <div className="relative h-full w-full overflow-hidden rounded-[1.65rem] bg-slate-950">
               <Image
                 src="/auth/rankings-phone-preview.png"
-                alt="MedNexus rankings displayed on a phone"
+                alt="MedNexus leaderboard displayed on an iPhone"
                 fill
                 priority
                 unoptimized
@@ -608,27 +608,29 @@ export function AuthScreen({
   }, [guestAccessEnabled, registrationEnabled, view])
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 py-14 safe-area-inset sm:px-6 lg:flex lg:items-center lg:px-10 lg:py-8">
-      <button
-        type="button"
-        onClick={() => setThemeOpen(true)}
-        title="Change theme"
-        className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-card hover:text-foreground"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-        </svg>
-        Theme
-      </button>
-
+    <main className="relative min-h-[100svh] overflow-x-hidden px-4 py-5 safe-area-inset sm:px-6 lg:px-10 lg:py-6">
       <div aria-hidden="true" className="pointer-events-none absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
       <div aria-hidden="true" className="pointer-events-none absolute -right-40 bottom-0 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
 
-      <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-8 xl:grid-cols-[minmax(0,1fr)_440px] xl:gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(390px,440px)]">
+      <div className="relative z-20 mx-auto flex w-full max-w-[1440px] justify-end">
+        <button
+          type="button"
+          onClick={() => setThemeOpen(true)}
+          title="Change theme"
+          className="flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          Theme
+        </button>
+      </div>
+
+      <div className="relative mx-auto mt-3 grid w-full max-w-[1440px] items-center gap-8 xl:min-h-[calc(100svh-5.75rem)] xl:grid-cols-[minmax(0,1fr)_minmax(400px,440px)] xl:gap-14">
         <ValuePanel />
 
-        <div className="mx-auto w-full max-w-[440px]">
+        <div className="mx-auto w-full max-w-[440px] pb-4 xl:pb-0">
           <Brand />
           <section className="glass-auth-card rounded-[2rem] p-5 shadow-xl sm:p-8" aria-labelledby="auth-title">
             {view === "login" && (
