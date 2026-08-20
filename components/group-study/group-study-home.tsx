@@ -53,7 +53,15 @@ export function GroupStudyHome() {
     if (normalized.length !== 6) return setError("Enter the six-digit room PIN.")
     setBusy(true); setError("")
     try {
-      await multiplayerApi(`/api/group-study/${normalized}`, { method: "POST", body: JSON.stringify({ action: "join" }) })
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await multiplayerApi(`/api/group-study/${normalized}`, { method: "POST", body: JSON.stringify({ action: "join" }) })
+          break
+        } catch (error) {
+          if (!(error instanceof MultiplayerApiError) || error.code !== "ROOM_NOT_FOUND" || attempt === 2) throw error
+          await new Promise(resolve => window.setTimeout(resolve, 350 * (attempt + 1)))
+        }
+      }
       router.push(`/group-study/${normalized}`)
     } catch (error) { setError(error instanceof Error ? error.message : "Unable to join room") } finally { setBusy(false) }
   }
