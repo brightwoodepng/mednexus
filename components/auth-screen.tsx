@@ -99,25 +99,21 @@ function ValuePanel() {
       </header>
 
       <div className="absolute inset-x-0 bottom-14 top-20">
-        <div className="absolute left-[1%] top-8 w-[82%] drop-shadow-[0_32px_30px_rgba(0,0,0,0.38)]">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-t-[1.35rem] rounded-b-md border-[9px] border-slate-900 bg-slate-950 pb-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]">
-            <span aria-hidden="true" className="absolute left-1/2 top-[3px] z-20 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-slate-500 ring-1 ring-black/80" />
-            <div className="relative mt-1 h-[calc(100%-0.25rem)] w-full overflow-hidden rounded-sm bg-slate-950">
+        <div className="absolute left-[1%] top-10 w-[79%] -rotate-[1deg] drop-shadow-[0_32px_30px_rgba(0,0,0,0.38)]">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border-[12px] border-slate-900 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
+            <span aria-hidden="true" className="absolute left-1/2 top-[3px] z-20 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-slate-600 ring-1 ring-black/80" />
+            <div className="relative h-full w-full overflow-hidden rounded-[1.15rem] bg-slate-950">
               <Image
                 src="/auth/dashboard-preview.png"
-                alt="MedNexus MCQ dashboard displayed on a laptop"
+                alt="MedNexus MCQ dashboard displayed on an iPad"
                 fill
                 priority
                 unoptimized
-                sizes="(min-width: 1280px) 760px, (min-width: 1024px) 50vw, 0px"
+                sizes="(min-width: 1280px) 720px, (min-width: 1024px) 48vw, 0px"
                 className="select-none object-cover object-top"
                 draggable={false}
               />
             </div>
-          </div>
-          <div aria-hidden="true" className="relative mx-auto h-7 w-[108%] origin-top [clip-path:polygon(3%_0,97%_0,100%_72%,97%_100%,3%_100%,0_72%)] bg-gradient-to-b from-slate-300 via-slate-500 to-slate-800 shadow-xl">
-            <span className="absolute left-1/2 top-0 h-1.5 w-28 -translate-x-1/2 rounded-b-lg bg-slate-200/80 shadow-inner" />
-            <span className="absolute bottom-0.5 left-1/2 h-1 w-[86%] -translate-x-1/2 rounded-full bg-slate-950/55" />
           </div>
         </div>
 
