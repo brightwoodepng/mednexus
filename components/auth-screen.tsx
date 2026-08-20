@@ -99,10 +99,10 @@ function ValuePanel() {
       </header>
 
       <div className="absolute inset-x-0 bottom-14 top-20">
-        <div className="absolute left-0 top-8 w-[82%] -rotate-[1.2deg] drop-shadow-[0_32px_30px_rgba(0,0,0,0.38)]">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] border-[6px] border-slate-800 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
-            <span aria-hidden="true" className="absolute left-1/2 top-0 z-20 h-3 w-20 -translate-x-1/2 rounded-b-xl bg-slate-950" />
-            <div className="relative h-full w-full overflow-hidden rounded-[1.05rem] bg-slate-950">
+        <div className="absolute left-[1%] top-8 w-[82%] drop-shadow-[0_32px_30px_rgba(0,0,0,0.38)]">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-t-[1.35rem] rounded-b-md border-[9px] border-slate-900 bg-slate-950 pb-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]">
+            <span aria-hidden="true" className="absolute left-1/2 top-[3px] z-20 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-slate-500 ring-1 ring-black/80" />
+            <div className="relative mt-1 h-[calc(100%-0.25rem)] w-full overflow-hidden rounded-sm bg-slate-950">
               <Image
                 src="/auth/dashboard-preview.png"
                 alt="MedNexus MCQ dashboard displayed on a laptop"
@@ -115,15 +115,19 @@ function ValuePanel() {
               />
             </div>
           </div>
-          <div aria-hidden="true" className="relative mx-auto h-5 w-[108%] rounded-b-[55%] bg-gradient-to-b from-slate-400 via-slate-600 to-slate-900 shadow-xl">
-            <span className="absolute left-1/2 top-0 h-1.5 w-24 -translate-x-1/2 rounded-b-lg bg-slate-300/70" />
+          <div aria-hidden="true" className="relative mx-auto h-7 w-[108%] origin-top [clip-path:polygon(3%_0,97%_0,100%_72%,97%_100%,3%_100%,0_72%)] bg-gradient-to-b from-slate-300 via-slate-500 to-slate-800 shadow-xl">
+            <span className="absolute left-1/2 top-0 h-1.5 w-28 -translate-x-1/2 rounded-b-lg bg-slate-200/80 shadow-inner" />
+            <span className="absolute bottom-0.5 left-1/2 h-1 w-[86%] -translate-x-1/2 rounded-full bg-slate-950/55" />
           </div>
         </div>
 
-        <div className="absolute bottom-1 right-[1%] z-10 w-[25%] rotate-[2deg] drop-shadow-[0_28px_25px_rgba(0,0,0,0.45)]">
-          <div className="relative aspect-[390/844] overflow-hidden rounded-[2rem] border-[6px] border-slate-800 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]">
-            <span aria-hidden="true" className="absolute left-1/2 top-2 z-20 h-3.5 w-14 -translate-x-1/2 rounded-full bg-black" />
-            <div className="relative h-full w-full overflow-hidden rounded-[1.45rem] bg-slate-950">
+        <div className="absolute bottom-1 right-[1%] z-10 w-[24%] rotate-[2deg] drop-shadow-[0_28px_25px_rgba(0,0,0,0.45)]">
+          <span aria-hidden="true" className="absolute -left-1 top-[21%] h-12 w-1 rounded-l bg-slate-700" />
+          <span aria-hidden="true" className="absolute -right-1 top-[27%] h-16 w-1 rounded-r bg-slate-700" />
+          <div className="relative aspect-[375/811] overflow-hidden rounded-[2.2rem] border-[8px] border-slate-900 bg-slate-950 p-[3px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
+            <span aria-hidden="true" className="absolute left-1/2 top-2 z-20 h-4 w-16 -translate-x-1/2 rounded-full bg-black ring-1 ring-white/10" />
+            <span aria-hidden="true" className="absolute left-[calc(50%+1.25rem)] top-[0.72rem] z-30 h-1.5 w-1.5 rounded-full bg-slate-700" />
+            <div className="relative h-full w-full overflow-hidden rounded-[1.65rem] bg-slate-950">
               <Image
                 src="/auth/rankings-phone-preview.png"
                 alt="MedNexus rankings displayed on a phone"
@@ -138,13 +142,6 @@ function ValuePanel() {
             <span aria-hidden="true" className="absolute bottom-2 left-1/2 z-20 h-1 w-14 -translate-x-1/2 rounded-full bg-white/70" />
           </div>
         </div>
-      </div>
-
-      <div className="absolute bottom-0 left-1 flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-lg">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" width={21} height={21} aria-hidden="true"><path d="m4 16 5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg>
-        </span>
-        <p className="text-base font-bold tracking-tight">Learn. Compete. Grow.</p>
       </div>
     </section>
   )
