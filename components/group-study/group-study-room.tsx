@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Check, ChevronDown, Clock3, Copy, Crown, Flag, LogOut, Play, ShieldCheck, SlidersHorizontal, Trophy, Users, X } from "lucide-react"
 import { multiplayerApi, MultiplayerApiError } from "@/lib/multiplayer-api"
+import { forgetGroupStudyPin, LAST_GROUP_STUDY_PIN_KEY, rememberGroupStudyPin } from "@/lib/group-study-client"
 import type { QuestionExplanation, QuestionMedia, QuestionOption } from "@/lib/types"
 import { useEconomy } from "@/contexts/economy-context"
 
@@ -65,6 +66,13 @@ export function GroupStudyRoom({ pin }: { pin: string }) {
       if (requestId === roomRequestRef.current) setError(error instanceof Error ? error.message : "Unable to load the question")
     }
   }, [pin])
+  useEffect(() => {
+    rememberGroupStudyPin(pin)
+  }, [pin])
+  useEffect(() => {
+    if (!state || !["completed", "ended", "expired"].includes(state.room.status)) return
+    if (window.localStorage.getItem(LAST_GROUP_STUDY_PIN_KEY) === pin) forgetGroupStudyPin()
+  }, [pin, state?.room.status])
   useEffect(() => {
     let cancelled = false
     const join = async () => {
