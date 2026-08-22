@@ -296,7 +296,7 @@ function LoginFields({
   }
 
   return (
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground" htmlFor="login-index">Index Number</label>
           <input
@@ -339,7 +339,7 @@ function LoginFields({
         <button
           type="submit"
           disabled={loading || !indexNumber.trim() || !password.trim()}
-          className="auth-btn-primary mt-1 flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-semibold transition-[background-color,box-shadow,opacity] disabled:opacity-50 disabled:shadow-none"
+          className="auth-btn-primary mt-1 flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-[background-color,box-shadow,opacity] disabled:opacity-50 disabled:shadow-none"
         >
           {loading ? "Signing in…" : "Log In"}
           {!loading && <ArrowRightIcon size={15} />}
@@ -357,7 +357,7 @@ function LoginFields({
           <button
             type="button"
             onClick={onGuest}
-            className="auth-btn-secondary flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="auth-btn-secondary flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={15} height={15}>
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -571,10 +571,10 @@ export function AuthScreen({
       <div className="relative mx-auto mt-3 flex min-h-[calc(100svh-5.75rem)] w-full max-w-[440px] items-center justify-center">
         <div className="w-full pb-4">
           <Brand />
-          <section className="glass-auth-card rounded-[2rem] p-5 shadow-xl sm:p-8" aria-labelledby="auth-title">
+          <section className="glass-auth-card rounded-[2rem] p-5 shadow-xl sm:p-6" aria-labelledby="auth-title">
             {view === "login" && (
               <>
-                <div className="mb-6">
+                <div className="mb-5">
                   <h2 id="auth-title" className="text-2xl font-bold tracking-tight">Welcome back</h2>
                   <p className="mt-1.5 text-sm text-muted-foreground">Sign in to continue to your workspace.</p>
                 </div>
