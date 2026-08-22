@@ -1224,21 +1224,17 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
   return (
     <div className="flex min-h-full flex-col p-3 sm:p-5 lg:p-6">
       <div className="mx-auto w-full max-w-2xl">
-        <div className="mb-3 grid w-full grid-cols-3 gap-2 sm:flex sm:justify-end">
-              <button
-                type="button" onClick={onOpenStore}
-                className={`${GAME_UTILITY_BUTTON} hover:border-violet-500/30`}
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-500"><ShoppingBag size={15} aria-hidden /></span>
-                <span>Store</span>
-              </button>
-              <button type="button" onClick={() => setQuestsOpen(true)} aria-label={questBadgeCount > 0 ? `Quests, ${questBadgeCount} rewards ready` : "Quests"} className={`${GAME_UTILITY_BUTTON} hover:border-cyan-500/30`}>
+        <div className="mb-3 flex w-full items-center justify-between gap-3">
+          <h1 className="text-lg font-extrabold tracking-tight text-foreground md:text-xl">Game Mode</h1>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <button type="button" onClick={() => setQuestsOpen(true)} aria-label={questBadgeCount > 0 ? `Quests, ${questBadgeCount} rewards ready` : "Quests"} className={`${GAME_UTILITY_BUTTON} hover:border-cyan-500/30`}>
                 <span className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-500"><ClipboardList size={15} aria-hidden />
                   {questBadgeCount > 0 && <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[9px] font-bold leading-none text-white">{questBadgeCount}</span>}
                 </span>
                 <span>Quests</span>
-              </button>
-              <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
+            </button>
+            <WalletBadge onOpenStore={onOpenStore ?? (() => {})} />
+          </div>
         </div>
 
         {/* Category tabs — Solo vs Multiplayer */}
