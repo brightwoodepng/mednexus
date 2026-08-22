@@ -9,14 +9,15 @@ import type { LeaderboardEntry } from "@/components/public-profile-modal"
 import type { Screen } from "@/lib/view"
 import { CosmeticHighlight, getCosmeticPresentation } from "@/components/cosmetics"
 
-type RankingTab = "weekly" | "monthly" | "alltime"
+type RankingTab = "season" | "monthly" | "alltime"
 type LeaderboardErrorCode = "ECONOMY_SEASON_MISSING" | "ECONOMY_SCHEMA_NOT_READY" | "LEADERBOARD_DATA_INVALID"
 type LeaderboardScreenProps = { onNavigate?: (screen: Screen) => void }
+type ActiveSeason = { id: string; name: string; startsAt: string }
 
 const ranges: Array<{ id: RankingTab; label: string; description: string }> = [
-  { id: "weekly", label: "Weekly", description: "Nexus Points earned in the last 7 days" },
   { id: "monthly", label: "Monthly", description: "Nexus Points earned in the last 30 days" },
-  { id: "alltime", label: "Season", description: "NP earned in the active season — spending does not lower your place" },
+  { id: "season", label: "Season", description: "Rank Points earned in the active season" },
+  { id: "alltime", label: "All-time", description: "Rank Points earned across every MedNexus season" },
 ]
 
 const podium = {
@@ -193,6 +194,7 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
   const [tab, setTab] = useState<RankingTab>("monthly")
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [viewerEntry, setViewerEntry] = useState<LeaderboardEntry | null>(null)
+  const [activeSeason, setActiveSeason] = useState<ActiveSeason | null>(null)
   const [selected, setSelected] = useState<LeaderboardEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -214,13 +216,14 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
       if (sessionToken) headers["x-session-token"] = sessionToken
       else if (guestToken) headers["x-guest-token"] = guestToken
       const response = await fetch(`/api/leaderboard?tab=${range}`, { headers })
-      const body = await response.json().catch(() => ({})) as { entries?: LeaderboardEntry[]; viewerEntry?: LeaderboardEntry | null; code?: LeaderboardErrorCode }
+      const body = await response.json().catch(() => ({})) as { entries?: LeaderboardEntry[]; viewerEntry?: LeaderboardEntry | null; season?: ActiveSeason; code?: LeaderboardErrorCode }
       if (!response.ok) {
         if (response.status === 401) throw new Error("AUTH_EXPIRED")
         throw new Error(body.code ?? "UNKNOWN")
       }
       setEntries(body.entries ?? [])
       setViewerEntry(body.viewerEntry ?? null)
+      if (body.season) setActiveSeason(body.season)
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : "UNKNOWN"
       setError(code === "ECONOMY_SEASON_MISSING" || code === "ECONOMY_SCHEMA_NOT_READY"
@@ -252,7 +255,7 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
           <Trophy className="text-primary" size={22} aria-hidden />
           <h1 className="text-xl font-black text-foreground sm:text-2xl">Rankings</h1>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{currentRange.description}</p>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{tab === "season" && activeSeason ? `${activeSeason.name} · ${currentRange.description}` : currentRange.description}</p>
         <button type="button" onClick={() => void fetchData(tab)} className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition hover:bg-muted" aria-label="Refresh rankings">
           <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
         </button>
@@ -285,7 +288,7 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
           <div className="pointer-events-none absolute inset-x-[4%] bottom-0 h-5 rounded-[50%] bg-foreground/10 blur-md" aria-hidden />
         </section>
 
-        {tab !== "alltime" && <p className="text-center text-[11px] text-muted-foreground">Accuracy appears after 50 questions in this ranking period.</p>}
+        {tab === "monthly" && <p className="text-center text-[11px] text-muted-foreground">Accuracy appears after 50 questions in this ranking period.</p>}
 
         {competitors.length > 0 && <section className="space-y-2" aria-label="Competitors">
           <h2 className="px-1 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Competitors</h2>
@@ -294,7 +297,7 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
       </>}
 
       {showViewer && viewerEntry && <ViewerCard entry={viewerEntry} onProfile={() => setSelected(viewerEntry)} onStudy={() => onNavigate?.("modules")} />}
-      {selected && <PublicProfileModal entry={selected} npLabel={tab === "alltime" ? "Lifetime NP" : "NP Earned This Period"} onClose={() => setSelected(null)} />}
+      {selected && <PublicProfileModal entry={selected} npLabel={tab === "alltime" ? "All-time Rank Points" : tab === "season" ? "Season Rank Points" : "NP Earned This Month"} onClose={() => setSelected(null)} />}
       </>}
     </div>
   )
