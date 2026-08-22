@@ -5,6 +5,39 @@ export const REGISTRATION_GRANT_RANK_POINTS = 0
 
 type Queryable = Pick<Pool | PoolClient, "query">
 
+export class EconomySeasonSchemaError extends Error {
+  readonly missing: string[]
+
+  constructor(missing: string[]) {
+    super(`Economy Seasons schema is incomplete: ${missing.join(", ")}`)
+    this.name = "EconomySeasonSchemaError"
+    this.missing = missing
+  }
+}
+
+/** Read-only feature preflight. Admin requests must not run the application's
+ * full migration bundle: an unrelated schema change should never make Economy
+ * Seasons report a false database-connection failure. */
+export async function assertEconomySeasonSchema(db: Queryable) {
+  const result = await db.query<Record<string, boolean>>(`
+    SELECT
+      to_regclass('public.mednexus_economy_seasons') IS NOT NULL AS seasons,
+      to_regclass('public.mednexus_season_wallets') IS NOT NULL AS wallets,
+      to_regclass('public.mednexus_economy_season_archives') IS NOT NULL AS archives,
+      to_regclass('public.mednexus_economy_cutovers') IS NOT NULL AS cutovers,
+      to_regclass('public.mednexus_registered_users') IS NOT NULL AS users,
+      to_regclass('public.mednexus_np_transactions') IS NOT NULL AS transactions,
+      to_regclass('public.mednexus_daily_activity') IS NOT NULL AS daily_activity,
+      to_regclass('public.mednexus_bounty_progress') IS NOT NULL AS bounty_progress,
+      to_regclass('public.mednexus_weekly_goal_progress') IS NOT NULL AS weekly_goals,
+      to_regclass('public.mednexus_game_personal_bests') IS NOT NULL AS personal_bests
+  `)
+  const missing = Object.entries(result.rows[0] ?? {})
+    .filter(([, ready]) => !ready)
+    .map(([name]) => name)
+  if (missing.length > 0) throw new EconomySeasonSchemaError(missing)
+}
+
 export interface EconomySeason {
   id: string
   name: string

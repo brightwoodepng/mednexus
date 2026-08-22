@@ -7,12 +7,17 @@ const navigationPath = new URL("../../components/mednexus-app.tsx", import.meta.
 const stylesPath = new URL("../../app/globals.css", import.meta.url)
 
 describe("MCQ leaderboard redesign", () => {
-  it("offers weekly, monthly, and all-time rankings", async () => {
+  it("offers monthly, season, and all-time rankings", async () => {
     const [component, api] = await Promise.all([readFile(componentPath, "utf8"), readFile(apiPath, "utf8")])
     expect(component).toContain('{ id: "monthly", label: "Monthly"')
+    expect(component).toContain('{ id: "season", label: "Season"')
+    expect(component).toContain('{ id: "alltime", label: "All-time"')
+    expect(component).not.toContain('{ id: "weekly", label: "Weekly"')
     expect(component).toContain('role="tablist"')
-    expect(api).toContain('type RankingTab = "weekly" | "monthly" | "alltime"')
-    expect(api).toContain('tab === "weekly" ? 7 : 30')
+    expect(api).toContain('type RankingTab = "season" | "monthly" | "alltime"')
+    expect(api).toContain("async function monthlyLeaderboard")
+    expect(api).toContain("async function seasonLeaderboard")
+    expect(api).toContain("async function allTimeLeaderboard")
   })
 
   it("uses an exact authenticated viewer rank and protects public entries", async () => {
@@ -52,11 +57,13 @@ describe("MCQ leaderboard redesign", () => {
     expect(component).toContain("Your ranking")
   })
 
-  it("ranks timed periods from the ledger and all-time from lifetime earnings", async () => {
+  it("ranks monthly from the ledger, season from its wallet, and all-time across seasons", async () => {
     const api = await readFile(apiPath, "utf8")
     expect(api).toContain("FROM mednexus_np_transactions")
     expect(api).toContain("created_at >= $1::timestamptz")
-    expect(api).toContain("w.lifetime_earned")
+    expect(api).toContain("COALESCE(w.rank_points, 0) AS total_np")
+    expect(api).toContain("SUM(rank_points)::bigint")
+    expect(api).toContain("LEFT JOIN mednexus_wallet legacy ON legacy.uid = r.uid")
     expect(api).not.toContain("ORDER BY COALESCE(w.balance")
   })
 })

@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
-import pool, { ensureSchema } from "@/lib/db"
+import pool from "@/lib/db"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
+import { assertEconomySeasonSchema, EconomySeasonSchemaError } from "@/lib/economy-seasons"
 
 const confirmationFor=(name:string)=>`START ${name.trim().toUpperCase()}`
 const slug=(value:string)=>value.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60)
+
+function databaseCode(error:unknown){return typeof error==="object"&&error!==null&&"code" in error?String((error as {code?:unknown}).code??""):""}
+function loadFailure(error:unknown){
+  if(error instanceof EconomySeasonSchemaError)return {error:"Economy Seasons needs the latest database migration before it can be managed.",code:"ECONOMY_SCHEMA_NOT_READY",missing:error.missing}
+  if(databaseCode(error).startsWith("08"))return {error:"The database could not be reached. Check the configured database URL and try again.",code:"DATABASE_UNREACHABLE"}
+  return {error:"Economy Seasons could not be loaded. The database responded, but the season data could not be verified.",code:"ECONOMY_SEASONS_INVALID"}
+}
 
 async function payload(){
   const [seasons,dryRun]=await Promise.all([
@@ -22,15 +30,15 @@ async function payload(){
 
 export async function GET(req:NextRequest){
   const admin=await requireAdminRequest(req,"manage_system");if(!admin)return adminAccessDenied(req)
-  try{await ensureSchema();const data=await payload();if(req.nextUrl.searchParams.get("download")==="1")return new NextResponse(JSON.stringify(data,null,2),{headers:{"content-type":"application/json","content-disposition":"attachment; filename=mednexus-season-dry-run.json"}});return NextResponse.json(data)}
-  catch(error){console.error("[economy seasons GET]",error);return NextResponse.json({error:"Economy seasons are temporarily unavailable. Retry after checking the database connection."},{status:503})}
+  try{await assertEconomySeasonSchema(pool);const data=await payload();if(req.nextUrl.searchParams.get("download")==="1")return new NextResponse(JSON.stringify(data,null,2),{headers:{"content-type":"application/json","content-disposition":"attachment; filename=mednexus-season-dry-run.json"}});return NextResponse.json(data)}
+  catch(error){console.error("[economy seasons GET]",error);return NextResponse.json(loadFailure(error),{status:503})}
 }
 
 export async function POST(req:NextRequest){
   const admin=await requireAdminRequest(req,"manage_system");if(!admin)return adminAccessDenied(req)
   if(admin.role!=="SUPER_ADMIN")return NextResponse.json({error:"Only a super administrator can reset an economy season."},{status:403})
   try{
-    await ensureSchema();const body=await req.json() as Record<string,unknown>;const action=String(body.action??"")
+    await assertEconomySeasonSchema(pool);const body=await req.json() as Record<string,unknown>;const action=String(body.action??"")
     if(action==="create"){
       const name=typeof body.name==="string"?body.name.trim():"",version=typeof body.economyVersion==="string"?body.economyVersion.trim():""
       const openingGrant=Number(body.openingGrant),startsAt=typeof body.startsAt==="string"?new Date(body.startsAt):new Date()
@@ -71,13 +79,9 @@ export async function POST(req:NextRequest){
       await client.query("UPDATE mednexus_economy_seasons SET status='closed',ends_at=NOW() WHERE id=$1",[current.id])
       await client.query("UPDATE mednexus_economy_seasons SET status='active',starts_at=NOW(),activated_at=NOW(),activated_by=$2,activation_migration_id=$3 WHERE id=$1",[target.id,admin.uid,migrationId])
       await client.query("UPDATE mednexus_registered_users SET login_streak=0,longest_streak=0,last_login_date=NULL WHERE status='approved'")
-      // Archived records remain available above; these season-scoped earning counters must start clean.
-      await client.query("DELETE FROM mednexus_game_personal_bests WHERE season_id=$1",[current.id])
-      await client.query("DELETE FROM mednexus_bounty_progress WHERE season_id=$1",[current.id])
-      await client.query("DELETE FROM mednexus_weekly_goal_progress WHERE season_id=$1",[current.id])
-      await client.query("DELETE FROM mednexus_daily_activity WHERE season_id=$1",[current.id])
-      await client.query("DELETE FROM mednexus_discipline_np_log WHERE season_id=$1",[current.id])
-      await client.query("DELETE FROM mednexus_user_question_progress WHERE season_id=$1",[current.id])
+      // Every earning/progress table is season-scoped. Keep the closed season's
+      // rows for lifetime rankings and audits; the new season starts clean
+      // naturally because all new writes use target.id.
       const users=await client.query("SELECT uid FROM mednexus_registered_users WHERE status='approved' ORDER BY uid")
       const affectedUsers=users.rowCount??users.rows.length
       await client.query(`WITH grants AS (
@@ -100,5 +104,9 @@ export async function POST(req:NextRequest){
       await client.query("COMMIT")
     }catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}
     return NextResponse.json({ok:true,...await payload()})
-  }catch(error){console.error("[economy seasons POST]",error);return NextResponse.json({error:error instanceof Error?error.message:"Unable to update economy seasons."},{status:400})}
+  }catch(error){
+    console.error("[economy seasons POST]",error)
+    if(error instanceof EconomySeasonSchemaError||databaseCode(error).startsWith("08"))return NextResponse.json(loadFailure(error),{status:503})
+    return NextResponse.json({error:error instanceof Error?error.message:"Unable to update economy seasons."},{status:400})
+  }
 }
