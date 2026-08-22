@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Check, ChevronDown, Clock3, Copy, Crown, Flag, LogOut, Menu, Play, ShieldCheck, Trophy, Users, X } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Check, ChevronDown, Clock3, Copy, Crown, Flag, LogOut, Play, ShieldCheck, Trophy, Users, X } from "lucide-react"
 import { multiplayerApi, MultiplayerApiError } from "@/lib/multiplayer-api"
 import type { QuestionExplanation, QuestionMedia, QuestionOption } from "@/lib/types"
 import { useEconomy } from "@/contexts/economy-context"
@@ -29,8 +29,10 @@ export function GroupStudyRoom({ pin }: { pin: string }) {
   const [panelOpen, setPanelOpen] = useState(false)
   const [viewedPosition, setViewedPosition] = useState<number | null>(null)
   const [now, setNow] = useState(Date.now())
+  const roomRequestRef = useRef(0)
 
   const act = useCallback(async (action: string, extra: Record<string, unknown> = {}) => {
+    roomRequestRef.current += 1
     setBusy(true); setError("")
     try {
       const next = await multiplayerApi<RoomState>(`/api/group-study/${pin}`, { method: "POST", body: JSON.stringify({ action, ...(viewedPosition === null ? {} : { questionPosition: viewedPosition }), ...extra }) })
@@ -40,12 +42,29 @@ export function GroupStudyRoom({ pin }: { pin: string }) {
     } catch (error) { setError(error instanceof Error ? error.message : "Unable to update the room"); throw error } finally { setBusy(false) }
   }, [pin, refreshEconomy, viewedPosition])
   const load = useCallback(async () => {
-    try { setState(await multiplayerApi<RoomState>(`/api/group-study/${pin}${viewedPosition === null ? "" : `?question=${viewedPosition}`}`)); setError("") }
+    const requestId = ++roomRequestRef.current
+    try {
+      const next = await multiplayerApi<RoomState>(`/api/group-study/${pin}${viewedPosition === null ? "" : `?question=${viewedPosition}`}`)
+      if (requestId !== roomRequestRef.current) return
+      setState(next); setError("")
+    }
     catch (error) {
+      if (requestId !== roomRequestRef.current) return
       if (error instanceof MultiplayerApiError && error.code === "NOT_A_MEMBER") await act("join").catch(() => undefined)
       else setError(error instanceof Error ? error.message : "Unable to load the room")
     }
   }, [act, pin, viewedPosition])
+  const navigateTo = useCallback(async (position: number | null) => {
+    setViewedPosition(position)
+    const requestId = ++roomRequestRef.current
+    try {
+      const next = await multiplayerApi<RoomState>(`/api/group-study/${pin}${position === null ? "" : `?question=${position}`}`)
+      if (requestId !== roomRequestRef.current) return
+      setState(next); setError("")
+    } catch (error) {
+      if (requestId === roomRequestRef.current) setError(error instanceof Error ? error.message : "Unable to load the question")
+    }
+  }, [pin])
   useEffect(() => {
     let cancelled = false
     const join = async () => {
@@ -84,12 +103,12 @@ export function GroupStudyRoom({ pin }: { pin: string }) {
   const invite = typeof window === "undefined" ? `/group-study/${pin}` : `${window.location.origin}/group-study/${pin}`
 
   return <main className="min-h-screen bg-background text-foreground">
-    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6"><Link href="/group-study" className="font-black tracking-tight">MedNexus <span className="text-primary">Group Study</span></Link><span className="ml-auto rounded-lg bg-muted px-2.5 py-1 font-mono text-sm font-bold">PIN {pin}</span>{secondsLeft !== null && state.room.phase === "question_open" && <span className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-bold ${secondsLeft <= 10 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}><Clock3 size={14}/>{secondsLeft}s</span>}<button onClick={() => setPanelOpen(value => !value)} className="flex h-9 w-9 items-center justify-center rounded-xl border lg:hidden" aria-label="Members and leaderboard"><Menu size={18}/></button></div></header>
+    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6"><Link href="/group-study" className="font-black tracking-tight">MedNexus <span className="text-primary">Group Study</span></Link><span className="ml-auto rounded-lg bg-muted px-2.5 py-1 font-mono text-sm font-bold">PIN {pin}</span>{secondsLeft !== null && state.room.phase === "question_open" && <span className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-bold ${secondsLeft <= 10 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}><Clock3 size={14}/>{secondsLeft}s</span>}<button onClick={() => setPanelOpen(value => !value)} className="flex h-9 w-9 items-center justify-center rounded-xl border text-primary lg:hidden" aria-label="Open leaderboard"><Trophy size={18}/></button></div></header>
     {error && <div role="alert" className="mx-auto mt-4 max-w-7xl px-4 sm:px-6"><div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div></div>}
     <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <section className="min-w-0">{state.room.phase === "lobby" ? <Lobby state={state} invite={invite} busy={busy} isHost={Boolean(isHost)} onReady={ready => act("ready", { ready })} onStart={start} onLeave={leave} onMode={navigationMode => act("navigation-mode", { navigationMode })}/>
         : ["completed", "ended", "expired"].includes(state.room.phase) ? <GroupFinalResults state={state}/>
-        : <Question state={state} reveal={reveal} eligible={Boolean(eligible)} selected={selected} busy={busy} onSelect={setSelected} onSubmit={() => act("submit", { answer: selected, questionPosition: state.room.viewedQuestionIndex })} isHost={Boolean(isHost)} onClose={close} onNext={() => { setViewedPosition(null); return act("next", { questionPosition: state.room.currentQuestionIndex }) }} onToggleFlag={() => act("flag", { questionPosition: state.room.viewedQuestionIndex })} onNavigate={position => setViewedPosition(position === state.room.currentQuestionIndex ? null : position)} onMode={navigationMode => act("navigation-mode", { navigationMode })}/>}</section>
+        : <Question state={state} reveal={reveal} eligible={Boolean(eligible)} selected={selected} busy={busy} onSelect={setSelected} onSubmit={() => act("submit", { answer: selected, questionPosition: state.room.viewedQuestionIndex })} isHost={Boolean(isHost)} onClose={close} onNext={() => { setViewedPosition(null); return act("next", { questionPosition: state.room.currentQuestionIndex }) }} onToggleFlag={() => act("flag", { questionPosition: state.room.viewedQuestionIndex })} onNavigate={position => void navigateTo(position === state.room.currentQuestionIndex ? null : position)} onMode={navigationMode => act("navigation-mode", { navigationMode })}/>}</section>
       <aside className={`${panelOpen ? "fixed inset-x-3 bottom-3 top-20 z-40 block overflow-auto rounded-3xl border bg-card p-4 shadow-2xl" : "hidden"} lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto lg:rounded-3xl lg:border lg:bg-card lg:p-4 lg:shadow-sm`}><div className="mb-3 flex items-center justify-between"><div><h2 className="font-bold">Leaderboard</h2><p className="text-xs text-muted-foreground">{state.room.memberCount} of {state.room.capacity} members joined</p></div><button className="lg:hidden" onClick={() => setPanelOpen(false)}><X size={20}/></button></div><Leaderboard members={state.members}/><button onClick={leave} className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold text-muted-foreground hover:bg-muted"><LogOut size={15}/>Leave room</button></aside>
     </div>
   </main>
@@ -121,7 +140,7 @@ function Question({ state, reveal, eligible, selected, busy, onSelect, onSubmit,
 }
 
 function QuestionNavigator({ state, onNavigate }: { state: RoomState; onNavigate: (position: number) => void }) {
-  return <details className="group relative min-w-0"><summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-xl px-2 py-2 text-xs font-bold uppercase tracking-widest text-primary transition hover:bg-primary/10"><span>Question {state.room.viewedQuestionIndex + 1} of {state.room.questionCount}</span><ChevronDown size={15} className="shrink-0 transition group-open:rotate-180"/></summary><nav aria-label="Question navigator" className="absolute left-0 top-full z-20 mt-2 flex w-[min(22rem,calc(100vw-3rem))] flex-wrap gap-2 rounded-2xl border bg-card p-4 shadow-xl">{Array.from({ length: state.room.questionCount }, (_, position) => { const live = position === state.room.currentQuestionIndex; const viewed = position === state.room.viewedQuestionIndex; const past = position < state.room.currentQuestionIndex; const answered = state.viewerAnsweredQuestions.includes(position); const locked = position > state.room.currentQuestionIndex && ["host_paced", "anyone_advances"].includes(state.room.navigationMode); const flagged = state.viewerFlags.includes(position); return <button key={position} type="button" disabled={locked} onClick={() => onNavigate(position)} aria-current={viewed ? "step" : undefined} aria-label={`Question ${position + 1}${flagged ? ", flagged" : ""}${answered ? ", answered" : ""}${live ? ", live" : ""}`} className={`relative flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-bold disabled:opacity-35 ${viewed ? "border-primary bg-primary text-primary-foreground" : answered ? "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : live ? "border-primary text-primary" : past ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-background text-muted-foreground"}`}>{position + 1}{flagged && <Flag size={10} fill="currentColor" className="absolute -right-1 -top-1 rounded-full bg-amber-500 p-0.5 text-white"/>}</button> })}</nav></details>
+  return <details className="group relative min-w-0"><summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-xl px-2 py-2 text-xs font-bold uppercase tracking-widest text-primary transition hover:bg-primary/10"><span>Question {state.room.viewedQuestionIndex + 1} of {state.room.questionCount}</span><ChevronDown size={15} className="shrink-0 transition group-open:rotate-180"/></summary><nav aria-label="Question navigator" className="absolute left-0 top-full z-20 mt-2 flex w-[min(22rem,calc(100vw-3rem))] flex-wrap gap-2 rounded-2xl border bg-card p-4 shadow-xl">{Array.from({ length: state.room.questionCount }, (_, position) => { const live = position === state.room.currentQuestionIndex; const viewed = position === state.room.viewedQuestionIndex; const past = position < state.room.currentQuestionIndex; const answered = state.viewerAnsweredQuestions.includes(position); const locked = position > state.room.currentQuestionIndex && ["host_paced", "anyone_advances"].includes(state.room.navigationMode); const flagged = state.viewerFlags.includes(position); return <button key={position} type="button" disabled={locked} onClick={event => { event.currentTarget.closest("details")?.removeAttribute("open"); onNavigate(position) }} aria-current={viewed ? "step" : undefined} aria-label={`Question ${position + 1}${flagged ? ", flagged" : ""}${answered ? ", answered" : ""}${live ? ", live" : ""}`} className={`relative flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-bold disabled:opacity-35 ${viewed ? "border-primary bg-primary text-primary-foreground" : answered ? "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : live ? "border-primary text-primary" : past ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-background text-muted-foreground"}`}>{position + 1}{flagged && <Flag size={10} fill="currentColor" className="absolute -right-1 -top-1 rounded-full bg-amber-500 p-0.5 text-white"/>}</button> })}</nav></details>
 }
 
 function GroupReveal({ state, onNext, canAdvance }: { state: RoomState; onNext: () => void; canAdvance: boolean }) {
