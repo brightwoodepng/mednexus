@@ -1062,7 +1062,10 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
       <div className="mx-auto w-full max-w-md sm:max-w-2xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-extrabold tracking-tight text-foreground md:text-xl">Game Mode</h1>
+            <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-500 text-xl shadow-lg shadow-fuchsia-500/20" aria-hidden>🎮</span>
+            <h1 className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-xl font-black tracking-tight text-transparent md:text-2xl">Game Mode</h1>
+          </div>
             <p className="hidden text-xs text-muted-foreground md:block">Choose your challenge</p>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
