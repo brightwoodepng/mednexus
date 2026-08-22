@@ -136,7 +136,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
   if (step === "gamification") {
     const count = pendingQuestions?.length ?? 0
     return (
-      <Modal open={open} onClose={handleClose} title="Enable Gamification?" widthClass="max-w-sm">
+      <Modal open={open} onClose={handleClose} title="Enable Gamification?" widthClass="max-w-sm" animated={false}>
         <div className="flex flex-col items-center gap-6 py-2">
           {/* Icon badge */}
           <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-500/20 via-primary/20 to-cyan-500/20 backdrop-blur-sm ring-1 ring-white/10">
@@ -189,7 +189,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title={label} widthClass="max-w-md">
+    <Modal open={open} onClose={handleClose} title={label} widthClass="max-w-md" animated={false}>
       <div className="space-y-5">
         {/* Context pill */}
         <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2.5">
