@@ -393,6 +393,12 @@ export async function GET(req: Request, context: { params: Promise<{ pin: string
     if (!room) { await client.query("ROLLBACK"); return fail("Room not found", 404, "ROOM_NOT_FOUND") }
     room = await maintainRoom(client, room)
     if (["ended", "expired"].includes(room.status)) { await client.query("ROLLBACK"); return fail("This room has expired", 410, "ROOM_EXPIRED") }
+    const statusCheck = new URL(req.url).searchParams.get("check") === "1"
+    if (statusCheck) {
+      if (!["lobby", "active"].includes(room.status)) { await client.query("ROLLBACK"); return fail("This room is no longer active", 410, "ROOM_CLOSED") }
+      await client.query("COMMIT")
+      return NextResponse.json({ active: true, pin: room.pin })
+    }
     const member = await membership(client, room.id, auth.uid, true)
     if (!member) { await client.query("ROLLBACK"); return fail("Join this room first", 403, "NOT_A_MEMBER") }
     const requestedParam = new URL(req.url).searchParams.get("question")
@@ -492,92 +498,3 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         if (answeringAhead && navigationMode(room) !== "answer_ahead") { await client.query("ROLLBACK"); return fail("Answering ahead is not enabled", 403, "FUTURE_LOCKED") }
         if (!answeringAhead && room.current_phase !== "question_open") { await client.query("ROLLBACK"); return fail("Answering is closed", 409, "ANSWERING_CLOSED") }
         if (member.first_eligible_question === null || Number(member.first_eligible_question) > answerPosition) { await client.query("ROLLBACK"); return fail("You are not eligible for this question", 409, "JOINED_LATE") }
-        const current = await client.query<RoomQuestionRow>("SELECT * FROM mednexus_group_study_room_questions WHERE room_id=$1 AND position=$2 FOR UPDATE", [room.id, answerPosition])
-        const question = current.rows[0]
-        if (!question || !isValidGroupStudyAnswer(body.answer, question.question_snapshot)) { await client.query("ROLLBACK"); return fail("Select a valid answer") }
-        const correct = sameGroupStudyAnswer(body.answer, question.question_snapshot.correctAnswer)
-        const inserted = await client.query(
-          `INSERT INTO mednexus_group_study_answers(id,room_id,room_question_id,user_id,selected_answer,is_correct)
-           VALUES($1,$2,$3,$4,$5::jsonb,$6) ON CONFLICT(room_question_id,user_id) DO NOTHING RETURNING id`,
-          [`gsa-${crypto.randomUUID()}`, room.id, question.id, auth.uid, JSON.stringify(body.answer), correct],
-        )
-        if (!inserted.rowCount) { await client.query("ROLLBACK"); return fail("Your answer is already locked", 409, "DUPLICATE_ANSWER") }
-        const remaining = await client.query<{ count: number }>(
-          `SELECT COUNT(*)::int count FROM mednexus_group_study_memberships m
-           WHERE m.room_id=$1 AND m.first_eligible_question<=$2 AND m.connection_status<>'left'
-           AND NOT EXISTS(SELECT 1 FROM mednexus_group_study_answers a WHERE a.room_question_id=$3 AND a.user_id=m.user_id)`,
-          [room.id, answerPosition, question.id],
-        )
-        if (!answeringAhead && Number(remaining.rows[0].count) === 0) room = await closeAnswering(client, room)
-        else await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
-      } else if (body.action === "close") {
-        if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can close answering", 403, "HOST_REQUIRED") }
-        if (room.current_phase !== "question_open") { await client.query("ROLLBACK"); return fail("Answering is already closed", 409, "INVALID_PHASE") }
-        const current = await client.query<{ id: string }>("SELECT id FROM mednexus_group_study_room_questions WHERE room_id=$1 AND position=$2", [room.id, room.current_question_index])
-        const remaining = await client.query<{ count: number }>(
-          `SELECT COUNT(*)::int count FROM mednexus_group_study_memberships m WHERE room_id=$1 AND first_eligible_question<=$2
-           AND connection_status<>'left' AND NOT EXISTS(SELECT 1 FROM mednexus_group_study_answers a WHERE a.room_question_id=$3 AND a.user_id=m.user_id)`,
-          [room.id, room.current_question_index, current.rows[0].id],
-        )
-        if (Number(remaining.rows[0].count) > 0 && body.force !== true) { await client.query("ROLLBACK"); return fail(`${remaining.rows[0].count} participants have not answered`, 409, "UNANSWERED_MEMBERS") }
-        room = await closeAnswering(client, room)
-      } else if (body.action === "next") {
-        if (!isHost && navigationMode(room) !== "anyone_advances") { await client.query("ROLLBACK"); return fail("Only the host can advance", 403, "HOST_REQUIRED") }
-        if (!revealPhases.has(room.current_phase)) { await client.query("ROLLBACK"); return fail("Reveal the current answer first", 409, "INVALID_PHASE") }
-        const nextIndex = room.current_question_index + 1
-        if (nextIndex >= room.question_count) {
-          const completed = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET status='completed',current_phase='completed',completed_at=NOW(),version=version+1 WHERE id=$1 RETURNING *", [room.id])
-          room = completed.rows[0]
-          await awardCompletion(client, room)
-        } else {
-          const advanced = await client.query<RoomRow>(
-            `UPDATE mednexus_group_study_rooms SET current_question_index=$2,current_phase='question_open',question_opened_at=NOW(),
-             answer_closes_at=CASE WHEN timer_seconds IS NULL THEN NULL ELSE NOW()+timer_seconds*INTERVAL '1 second' END,
-             answer_closed_at=NULL,version=version+1 WHERE id=$1 RETURNING *`, [room.id, nextIndex],
-          )
-          room = advanced.rows[0]
-          await client.query("UPDATE mednexus_group_study_room_questions SET opened_at=NOW() WHERE room_id=$1 AND position=$2", [room.id, nextIndex])
-        }
-      } else if (body.action === "end") {
-        if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can end the room", 403, "HOST_REQUIRED") }
-        const ended = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET status='ended',current_phase='ended',completed_at=COALESCE(completed_at,NOW()),version=version+1 WHERE id=$1 RETURNING *", [room.id])
-        room = ended.rows[0]
-      } else if (body.action === "leave") {
-        await client.query("UPDATE mednexus_group_study_memberships SET connection_status='left',left_at=NOW(),last_seen_at=NOW(),ready=FALSE WHERE id=$1", [member.id])
-        const remaining = await client.query<{ user_id: string }>(
-          "SELECT user_id FROM mednexus_group_study_memberships WHERE room_id=$1 AND connection_status='online' ORDER BY joined_at,user_id", [room.id],
-        )
-        if (!remaining.rows.length) {
-          const expired = await client.query<RoomRow>(
-            "UPDATE mednexus_group_study_rooms SET status='expired',current_phase='expired',host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id],
-          )
-          room = expired.rows[0]
-        } else if (isHost) {
-          const nextHost = remaining.rows[0].user_id
-          await client.query("UPDATE mednexus_group_study_memberships SET role='member' WHERE room_id=$1 AND role='host'", [room.id])
-          await client.query("UPDATE mednexus_group_study_memberships SET role='host' WHERE room_id=$1 AND user_id=$2", [room.id, nextHost])
-          const transferred = await client.query<RoomRow>(
-            "UPDATE mednexus_group_study_rooms SET host_user_id=$2,host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id, nextHost],
-          )
-          room = transferred.rows[0]
-        } else await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
-      } else if (body.action === "transfer") {
-        if (!isHost || typeof body.targetUserId !== "string") { await client.query("ROLLBACK"); return fail("Only the host can transfer control", 403, "HOST_REQUIRED") }
-        const target = await membership(client, room.id, body.targetUserId, true)
-        if (!target || target.connection_status !== "online") { await client.query("ROLLBACK"); return fail("Select an active room member", 422) }
-        await client.query("UPDATE mednexus_group_study_memberships SET role='member' WHERE id=$1", [member.id])
-        await client.query("UPDATE mednexus_group_study_memberships SET role='host' WHERE id=$1", [target.id])
-        const transferred = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET host_user_id=$2,host_disconnected_at=NULL,version=version+1 WHERE id=$1 RETURNING *", [room.id, target.user_id])
-        room = transferred.rows[0]
-      } else { await client.query("ROLLBACK"); return fail("Unknown Group Study action") }
-    }
-    const fresh = (await lockedRoom(client, pin))!
-    const responsePosition = Number.isInteger(Number(body.questionPosition)) ? Number(body.questionPosition) : fresh.current_question_index
-    const allowedPosition = responsePosition > fresh.current_question_index && ["host_paced", "anyone_advances"].includes(navigationMode(fresh)) ? fresh.current_question_index : responsePosition
-    const payload = await serializeRoom(client, fresh, auth.uid, allowedPosition)
-    await client.query("COMMIT")
-    return NextResponse.json(payload)
-  } catch (error) {
-    await client.query("ROLLBACK"); console.error("[group-study POST]", error); return fail("Unable to update room", 500, "SERVER_ERROR")
-  } finally { client.release() }
-}
