@@ -12,6 +12,8 @@ interface ModalProps {
   widthClass?: string
   /** When false, hides the default header. */
   showHeader?: boolean
+  /** When false, opens immediately without backdrop or sheet entrance effects. */
+  animated?: boolean
 }
 
 /** Accessible centered modal with backdrop, escape-to-close, and scroll lock. */
