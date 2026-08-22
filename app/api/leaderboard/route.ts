@@ -4,7 +4,7 @@ import { authenticateRequest, authError } from "@/lib/request-auth"
 import { getActiveSeason, type EconomySeason } from "@/lib/economy-seasons"
 import { measuredJson } from "@/lib/api-efficiency"
 
-type RankingTab = "weekly" | "monthly" | "alltime"
+type RankingTab = "season" | "monthly" | "alltime"
 
 type LeaderboardDiagnostic = "ECONOMY_SEASON_MISSING" | "ECONOMY_SCHEMA_NOT_READY" | "LEADERBOARD_DATA_INVALID"
 
@@ -74,8 +74,9 @@ function allTimeEntry(row: Record<string, unknown>) {
   }
 }
 
-async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | null, season: EconomySeason) {
-  const periodDays = tab === "weekly" ? 7 : 30
+async function monthlyLeaderboard(viewerUid: string | null, season: EconomySeason) {
+  const tab = "monthly" as const
+  const periodDays = 30
   const cutoff = new Date(Date.now() - periodDays * 86_400_000).toISOString()
   const commonCtes = `
     WITH np AS (
@@ -170,7 +171,7 @@ async function timedLeaderboard(tab: "weekly" | "monthly", viewerUid: string | n
   return { entries, viewerEntry, tab }
 }
 
-async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeason) {
+async function seasonLeaderboard(viewerUid: string | null, season: EconomySeason) {
   const accuracySql = `
     CASE
       WHEN COALESCE(activity.questions, 0) = 0 THEN 0
@@ -184,22 +185,22 @@ async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeaso
     WHERE season_id = $1
     GROUP BY user_id
   )`
-  const entries = await cachedPublicEntries(`${season.id}:alltime`, async () => {
+  const entries = await cachedPublicEntries(`${season.id}:season`, async () => {
     const publicResult = await pool.query(`
       ${activityCte}, ranked AS (
       SELECT r.uid, r.name, r.level, r.class_level,
-             COALESCE(w.lifetime_earned, 0) AS total_np,
+             COALESCE(w.rank_points, 0) AS total_np,
              COALESCE(w.rank_points, 0) AS rank_points,
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
              ${accuracySql} AS accuracy,
              ROW_NUMBER() OVER (
-               ORDER BY COALESCE(w.lifetime_earned, 0) DESC, ${accuracySql} DESC, r.uid ASC
+               ORDER BY COALESCE(w.rank_points, 0) DESC, ${accuracySql} DESC, r.uid ASC
              ) AS public_rank
       FROM mednexus_registered_users r
       LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
       LEFT JOIN activity ON activity.user_id = r.uid
-      WHERE r.is_private = FALSE AND r.status = 'approved'
+      WHERE r.is_private = FALSE AND r.status = 'approved' AND COALESCE(w.rank_points, 0) > 0
     )
       SELECT uid,name,level,class_level,total_np,rank_points,accuracy,
              equipped_title,equipped_frame,equipped_highlight,equipped_avatar,public_rank
@@ -214,7 +215,7 @@ async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeaso
     const viewerResult = await pool.query(`
       ${activityCte}
       SELECT r.uid, r.name, r.level, r.class_level,
-             COALESCE(w.lifetime_earned, 0) AS total_np,
+             COALESCE(w.rank_points, 0) AS total_np,
              COALESCE(w.rank_points, 0) AS rank_points,
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
              ${accuracySql} AS accuracy
@@ -230,7 +231,7 @@ async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeaso
         ${activityCte}
         SELECT 1 + COUNT(*)::int AS exact_rank
         FROM (
-          SELECT r.uid, COALESCE(w.lifetime_earned, 0) AS total_np, ${accuracySql} AS accuracy
+          SELECT r.uid, COALESCE(w.rank_points, 0) AS total_np, ${accuracySql} AS accuracy
           FROM mednexus_registered_users r
           LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
           LEFT JOIN activity ON activity.user_id = r.uid
@@ -240,6 +241,71 @@ async function allTimeLeaderboard(viewerUid: string | null, season: EconomySeaso
            OR (public.total_np = $2 AND public.accuracy > $3)
            OR (public.total_np = $2 AND public.accuracy = $3 AND public.uid < $4)
       `, [season.id, Number(viewer.total_np ?? 0), Number(viewer.accuracy ?? 0), viewerUid])
+      viewer.public_rank = Number(rankResult.rows[0]?.exact_rank ?? 1)
+      viewerEntry = allTimeEntry(viewer)
+    }
+  }
+
+  return { entries, viewerEntry, tab: "season" as const }
+}
+
+/** Lifetime competition is independent of the active season. Rank Points are
+ * summed across season wallets; the pre-season wallet is included once for
+ * learners whose history predates Economy Seasons. */
+async function allTimeLeaderboard(viewerUid: string | null) {
+  const commonCtes = `
+    WITH seasonal AS (
+      SELECT user_id, SUM(rank_points)::bigint AS rank_points
+      FROM mednexus_season_wallets
+      GROUP BY user_id
+    ), activity AS (
+      SELECT user_id, SUM(questions_answered)::bigint AS questions,
+             SUM(correct_answers)::bigint AS correct
+      FROM mednexus_daily_activity
+      GROUP BY user_id
+    ), lifetime AS (
+      SELECT r.uid, r.name, r.level, r.class_level,
+             COALESCE(seasonal.rank_points, 0) + COALESCE(legacy.rank_points, 0) AS total_np,
+             COALESCE(seasonal.rank_points, 0) + COALESCE(legacy.rank_points, 0) AS rank_points,
+             c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
+             CASE WHEN COALESCE(activity.questions, 0) = 0 THEN 0
+               ELSE ROUND(100.0 * activity.correct / NULLIF(activity.questions, 0)) END AS accuracy,
+             r.is_private, r.status
+      FROM mednexus_registered_users r
+      LEFT JOIN seasonal ON seasonal.user_id = r.uid
+      LEFT JOIN mednexus_wallet legacy ON legacy.uid = r.uid
+      LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
+      LEFT JOIN activity ON activity.user_id = r.uid
+    )
+  `
+  const entries = await cachedPublicEntries("alltime:v2", async () => {
+    const publicResult = await pool.query(`${commonCtes}, ranked AS (
+      SELECT lifetime.*,
+             ROW_NUMBER() OVER (ORDER BY total_np DESC, accuracy DESC, uid ASC) AS public_rank
+      FROM lifetime
+      WHERE is_private = FALSE AND status = 'approved' AND total_np > 0
+    )
+    SELECT uid,name,level,class_level,total_np,rank_points,accuracy,
+           equipped_title,equipped_frame,equipped_highlight,equipped_avatar,public_rank
+    FROM ranked WHERE public_rank <= 50 ORDER BY public_rank LIMIT 50`)
+    return publicResult.rows.map(allTimeEntry)
+  })
+  let viewerEntry = viewerUid ? entries.find((entry) => entry.uid === viewerUid) ?? null : null
+
+  if (viewerUid && !viewerEntry) {
+    const viewerResult = await pool.query(`${commonCtes}
+      SELECT uid,name,level,class_level,total_np,rank_points,accuracy,
+             equipped_title,equipped_frame,equipped_highlight,equipped_avatar
+      FROM lifetime WHERE uid = $1`, [viewerUid])
+    const viewer = viewerResult.rows[0]
+    if (viewer) {
+      const rankResult = await pool.query(`${commonCtes}
+        SELECT 1 + COUNT(*)::int AS exact_rank FROM lifetime
+        WHERE is_private = FALSE AND status = 'approved' AND total_np > 0 AND (
+          total_np > $1 OR
+          (total_np = $1 AND accuracy > $2) OR
+          (total_np = $1 AND accuracy = $2 AND uid < $3)
+        )`, [Number(viewer.total_np ?? 0), Number(viewer.accuracy ?? 0), viewerUid])
       viewer.public_rank = Number(rankResult.rows[0]?.exact_rank ?? 1)
       viewerEntry = allTimeEntry(viewer)
     }
@@ -255,16 +321,18 @@ export async function GET(req: NextRequest) {
   let seasonId: string | null = null
   try {
     const requested = req.nextUrl.searchParams.get("tab")
-    tab = requested === "weekly" || requested === "monthly" ? requested : "alltime"
+    tab = requested === "monthly" || requested === "season" ? requested : "alltime"
     const hasCredential = Boolean(req.headers.get("x-session-token") || req.headers.get("x-guest-token"))
     const auth = authenticateRequest(req.headers)
     if (hasCredential && !auth) return authError()
     viewerUid = auth?.uid ?? null
     const season = await getActiveSeason(pool)
     seasonId = season.id
-    const data = tab === "alltime"
-      ? await allTimeLeaderboard(viewerUid, season)
-      : await timedLeaderboard(tab, viewerUid, season)
+    const data = tab === "monthly"
+      ? await monthlyLeaderboard(viewerUid, season)
+      : tab === "season"
+        ? await seasonLeaderboard(viewerUid, season)
+        : await allTimeLeaderboard(viewerUid)
 
     if (viewerUid) {
       const viewerPrivacy = await pool.query(
