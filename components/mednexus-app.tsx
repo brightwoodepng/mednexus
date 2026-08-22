@@ -723,7 +723,7 @@ export function MedNexusApp() {
   if (safeScreen === "quiz" && activeQuiz) {
     return (
       <div className="h-screen">
-        <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} gamificationEnabled={activeQuiz.gamificationEnabled} session={activeQuiz.session} onSessionChange={handleQuizSessionChange} onExit={exitQuiz} onComplete={handleQuizComplete} />
+        <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} gamificationEnabled={activeQuiz.gamificationEnabled} session={activeQuiz.session} onSessionChange={handleQuizSessionChange} onExit={exitQuiz} onReturnToDashboard={() => { clearQuizSession(user.uid); setActiveQuiz(null); handleScreenNavigation("dashboard") }} onComplete={handleQuizComplete} />
         {discardQuizOpen && <QuizSessionChoice title="Discard this attempt?" description="Your answers and progress will be permanently removed." primaryLabel="Keep studying" secondaryLabel="Discard attempt" onPrimary={() => setDiscardQuizOpen(false)} onSecondary={() => { clearQuizSession(user.uid); setDiscardQuizOpen(false); setActiveQuiz(null); handleScreenNavigation("dashboard") }} />}
       </div>
     )
