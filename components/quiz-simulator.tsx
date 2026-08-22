@@ -48,6 +48,7 @@ interface QuizSimulatorProps {
   session: QuizSession
   onSessionChange: (session: QuizSession) => void
   onExit: () => void
+  onReturnToDashboard: () => void
   onComplete: (result: BlockResult, history: HistoryEntry[], earnedNP?: number, payoutError?: string) => void
 }
 
@@ -83,7 +84,7 @@ function NPFloatToast({
   )
 }
 
-export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled = false, session, onSessionChange, onExit, onComplete }: QuizSimulatorProps) {
+export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled = false, session, onSessionChange, onExit, onReturnToDashboard, onComplete }: QuizSimulatorProps) {
   const { user, progress, toggleFlag, recordHistory } = useApp()
   const { submitGameResult, startScoredActivity } = useEconomy()
   const { triggerError, isShaking, isFlashing } = useErrorFeedback()
@@ -379,7 +380,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   // Placed before the early-return guard so hook call order is stable.
   // answeredCount is computed inline to avoid a forward-reference issue.
   // History is recorded HERE (not only in submitBlock) so that weak areas clear
-  // immediately even when the user exits via "Return to Menu" without ever
+  // immediately even when the user returns to the dashboard without ever
   // pressing Submit Block.
   useEffect(() => {
     if (!gamificationEnabled || mode !== "trial" || questions.length === 0) return
@@ -629,7 +630,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           timeTakenSeconds={finaleTimeTaken}
           questions={questions}
           answers={answers}
-          onReturnToMenu={() => { void waitForPendingPayout().then(onExit) }}
+          onReturnToDashboard={() => { void waitForPendingPayout().then(onReturnToDashboard) }}
           onRetry={() => { void handleRetry() }}
         />
       )}
