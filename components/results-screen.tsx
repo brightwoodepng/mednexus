@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import type { BlockResult, ProficiencyRank, Question, QuizMode } from "@/lib/types"
 import { CheckIcon, XIcon, EyeOffIcon, TrophyIcon, RotateCcwIcon, LayoutDashboardIcon } from "@/components/icons"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
+import { Coins } from "lucide-react"
 
 interface ResultsScreenProps {
   result: BlockResult
@@ -98,19 +99,24 @@ export function ResultsScreen({ result, moduleName, mode, questions, answers, ea
 
         {/* Server-confirmed NP result for both Trial and Exam completions */}
         {earnedNP !== undefined && (
-          <div className="mb-6 w-full rounded-2xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-900/20 p-5 text-center">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-              Verified Nexus Points
-            </p>
-            <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
-              {earnedNP > 0 ? "+" : ""}<BountyCountup target={earnedNP} /> NP
-            </p>
-            {earnedNP === 0 && (
-              <p className="mt-2 text-xs text-emerald-700/80 dark:text-emerald-300/80">
-                No eligible NP this time. Repeated questions and daily limits can result in zero.
+          <section className="mb-6 flex w-full items-start gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm" aria-label={`${earnedNP} verified Nexus Points`}>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Coins size={19} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-muted-foreground">Verified Nexus Points</p>
+              <p className="mt-0.5 text-2xl font-bold text-foreground tabular-nums">
+                {earnedNP > 0 ? "+" : ""}<BountyCountup target={earnedNP} /> NP
               </p>
-            )}
-          </div>
+              {earnedNP === 0 ? (
+                <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+                  No points were awarded for this block. Repeated questions and daily limits may not be eligible.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">Added to your Nexus Points balance.</p>
+              )}
+            </div>
+          </section>
         )}
 
         {payoutError && (

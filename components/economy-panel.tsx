@@ -33,51 +33,59 @@ export function PayoutResult({
   bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean; reward?: number }[]
 }) {
   return (
-    <div className="rounded-3xl border-2 border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 p-4">
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm" aria-label={`${earned} Nexus Points earned`}>
       {/* Earned amount header */}
-      <div className="mb-3 flex items-center gap-2">
-        <span className="text-xl">🪙</span>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Nexus Points Earned</p>
-          <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-300">+{earned.toLocaleString()} NP</p>
+      <div className="flex items-center gap-3 border-b border-border pb-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Coins size={19} aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-muted-foreground">Nexus Points earned</p>
+          <p className="mt-0.5 text-2xl font-bold text-foreground tabular-nums">{earned > 0 ? "+" : ""}{earned.toLocaleString()} NP</p>
+          {earned === 0 && <p className="mt-1 text-xs text-muted-foreground">No eligible points were awarded for this round.</p>}
         </div>
       </div>
 
       {/* Breakdown lines */}
-      <div className="grid gap-1.5">
-        {breakdown.map(b => (
-          <div key={b.label} className="flex items-center justify-between">
-            <span className="text-xs text-amber-700/80 dark:text-amber-400/80">{b.label}</span>
-            <span className="text-xs font-bold text-amber-700 dark:text-amber-300">+{b.amount}</span>
-          </div>
-        ))}
-      </div>
+      {breakdown.length > 0 && (
+        <div className="grid gap-2 py-4">
+          {breakdown.map(b => (
+            <div key={b.label} className="flex items-center justify-between gap-4 text-sm">
+              <span className="min-w-0 text-muted-foreground">{b.label}</span>
+              <span className="shrink-0 font-semibold text-foreground tabular-nums">+{b.amount} NP</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Bounty progress — show every bounty that got a delta, with mini progress bar */}
       {bountyUpdates.length > 0 && (
-        <div className="mt-3 rounded-2xl border border-amber-300/60 dark:border-amber-700/40 bg-white/60 dark:bg-amber-950/40 p-3 space-y-2.5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">🎯 Bounty Progress</p>
+        <div className={`${breakdown.length > 0 ? "" : "mt-4"} space-y-3 rounded-xl border border-border bg-muted/25 p-3.5`}>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Target size={14} aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-wide">Bounty progress</p>
+          </div>
           {bountyUpdates.map(b => {
             const def = BOUNTY_POOL.find(p => p.id === b.id)
             const pct = Math.min((b.progress / b.target) * 100, 100)
             return (
               <div key={b.id}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1">
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-foreground">
                     <span>{def?.icon ?? "🎯"}</span>
-                    <span className="truncate max-w-[150px]">{def?.label ?? b.id}</span>
+                    <span className="truncate">{def?.label ?? b.id}</span>
                   </span>
                   {b.newlyComplete ? (
-                    <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">✓ +{b.reward ?? def?.reward ?? 0} NP awarded</span>
+                    <span className="shrink-0 text-[10px] font-semibold text-success">✓ +{b.reward ?? def?.reward ?? 0} NP</span>
                   ) : (
-                    <span className="text-[10px] tabular-nums font-bold text-amber-600 dark:text-amber-400">
+                    <span className="shrink-0 text-[10px] font-semibold text-muted-foreground tabular-nums">
                       {Math.min(b.progress, b.target)}/{b.target}
                     </span>
                   )}
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900/50">
+                <div className="h-1.5 overflow-hidden rounded-full bg-border">
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ${b.newlyComplete ? "bg-emerald-500" : "bg-gradient-to-r from-amber-400 to-orange-500"}`}
+                    className={`h-full rounded-full transition-[width,background-color] duration-700 ${b.newlyComplete ? "bg-success" : "bg-primary"}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -86,7 +94,7 @@ export function PayoutResult({
           })}
         </div>
       )}
-    </div>
+    </section>
   )
 }
 
