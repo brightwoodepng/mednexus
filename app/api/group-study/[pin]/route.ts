@@ -393,6 +393,12 @@ export async function GET(req: Request, context: { params: Promise<{ pin: string
     if (!room) { await client.query("ROLLBACK"); return fail("Room not found", 404, "ROOM_NOT_FOUND") }
     room = await maintainRoom(client, room)
     if (["ended", "expired"].includes(room.status)) { await client.query("ROLLBACK"); return fail("This room has expired", 410, "ROOM_EXPIRED") }
+    const statusCheck = new URL(req.url).searchParams.get("check") === "1"
+    if (statusCheck) {
+      if (!["lobby", "active"].includes(room.status)) { await client.query("ROLLBACK"); return fail("This room is no longer active", 410, "ROOM_CLOSED") }
+      await client.query("COMMIT")
+      return NextResponse.json({ active: true, pin: room.pin })
+    }
     const member = await membership(client, room.id, auth.uid, true)
     if (!member) { await client.query("ROLLBACK"); return fail("Join this room first", 403, "NOT_A_MEMBER") }
     const requestedParam = new URL(req.url).searchParams.get("question")
