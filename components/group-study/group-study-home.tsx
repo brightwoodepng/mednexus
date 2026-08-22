@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ArrowLeft, Clock3, Plus, Users, X } from "lucide-react"
 import { multiplayerApi, MultiplayerApiError } from "@/lib/multiplayer-api"
+import { forgetGroupStudyPin, LAST_GROUP_STUDY_PIN_KEY, rememberGroupStudyPin } from "@/lib/group-study-client"
 
 type ModuleOption = { id: string; total: number; disciplines: { name: string; count: number }[] }
 type NavigationMode = "host_paced" | "browse_ahead" | "answer_ahead" | "anyone_advances"
@@ -25,11 +26,19 @@ export function GroupStudyHome() {
   const [error, setError] = useState("")
   const [canCreate, setCanCreate] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [rejoinAvailable, setRejoinAvailable] = useState(false)
 
   useEffect(() => {
     multiplayerApi<{ modules: ModuleOption[]; canCreate: boolean }>("/api/group-study")
       .then(data => { setModules(data.modules); setModuleId(data.modules[0]?.id ?? ""); setCanCreate(data.canCreate) })
       .catch(error => setError(error instanceof MultiplayerApiError && error.status === 401 ? "Sign in or continue as a guest to use Group Study." : error.message))
+  }, [])
+  useEffect(() => {
+    const savedPin = window.localStorage.getItem(LAST_GROUP_STUDY_PIN_KEY)?.replace(/\D/g, "").slice(0, 6) ?? ""
+    if (savedPin.length !== 6) { forgetGroupStudyPin(); return }
+    multiplayerApi<{ active: boolean; pin: string }>(`/api/group-study/${savedPin}?check=1`)
+      .then(data => { if (data.active) { setPin(savedPin); setRejoinAvailable(true) } else forgetGroupStudyPin() })
+      .catch(error => { if (error instanceof MultiplayerApiError && error.code && ["ROOM_NOT_FOUND", "ROOM_EXPIRED", "ROOM_CLOSED"].includes(error.code)) forgetGroupStudyPin() })
   }, [])
   const selected = modules.find(module => module.id === moduleId)
   const available = discipline ? selected?.disciplines.find(item => item.name === discipline)?.count ?? 0 : selected?.total ?? 0
@@ -65,6 +74,7 @@ export function GroupStudyHome() {
     setBusy(true); setError("")
     try {
       const room = await multiplayerApi<{ pin: string }>("/api/group-study", { method: "POST", body: JSON.stringify({ moduleId, discipline, questionCount, timerSeconds, navigationMode }) })
+      rememberGroupStudyPin(room.pin)
       router.push(`/group-study/${room.pin}`)
     } catch (error) { setError(error instanceof Error ? error.message : "Unable to create room") } finally { setBusy(false) }
   }
@@ -82,6 +92,7 @@ export function GroupStudyHome() {
           await new Promise(resolve => window.setTimeout(resolve, 350 * (attempt + 1)))
         }
       }
+      rememberGroupStudyPin(normalized)
       router.push(`/group-study/${normalized}`)
     } catch (error) { setError(error instanceof Error ? error.message : "Unable to join room") } finally { setBusy(false) }
   }
@@ -99,7 +110,7 @@ export function GroupStudyHome() {
           <label className="space-y-2 text-sm font-semibold sm:col-span-2">Navigation mode<select value={navigationMode} onChange={event => setNavigationMode(event.target.value as NavigationMode)} className="h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="host_paced">Default (host-paced)</option><option value="browse_ahead">Browse ahead only</option><option value="answer_ahead">Browse and answer ahead</option><option value="anyone_advances">Anyone can proceed</option></select><span className="block text-xs font-normal text-muted-foreground">{navigationMode === "host_paced" ? "Review previous questions; future questions stay locked until the host advances." : navigationMode === "browse_ahead" ? "Preview future questions; answer only the live question." : navigationMode === "answer_ahead" ? "Answer future questions and see private feedback immediately." : "Future questions stay locked; anyone may advance after reveal."}</span></label>
           <label className="space-y-2 text-sm font-semibold sm:col-span-2">Answer timer<select value={timerSeconds ?? ""} onChange={event => setTimerSeconds(event.target.value ? Number(event.target.value) : null)} className="h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="">No timer</option><option value="30">30 seconds</option><option value="45">45 seconds</option><option value="60">1 minute</option><option value="90">1 minute 30 seconds</option></select></label></div>
         <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_2fr] md:block"><button type="button" disabled={busy} onClick={() => setCreateDialogOpen(false)} className="h-12 rounded-xl border font-bold transition hover:bg-muted disabled:opacity-50 md:hidden">Cancel</button><button disabled={busy || !canCreate || !moduleId || available < 1 || questionCount < 1 || questionCount > available} onClick={createRoom} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-bold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"><Users size={18}/>{busy ? "Working…" : "Create Group Study room"}</button></div></section></div>
-      <section className="self-start overflow-hidden rounded-3xl border border-border/70 bg-card/95 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.45)] ring-1 ring-foreground/[0.03]"><div className="border-b border-border/60 bg-gradient-to-br from-primary/[0.10] via-primary/[0.04] to-transparent p-5 sm:p-7"><span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20"><Users size={18}/></span><h2 className="text-lg font-black">Join a room</h2><p className="mt-1 text-xs text-muted-foreground">Enter the six-digit PIN shared by your host.</p></div><div className="p-5 sm:p-7"><label className="block space-y-2 text-sm font-semibold">Room PIN<input inputMode="numeric" maxLength={6} value={pin} onChange={event => setPin(event.target.value.replace(/\D/g, ""))} onKeyDown={event => { if (event.key === "Enter") void joinRoom() }} placeholder="000000" className="h-16 w-full rounded-2xl border border-border/80 bg-background/80 px-4 text-center text-2xl font-black tracking-[0.35em] shadow-inner outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"/></label><button disabled={busy} onClick={() => void joinRoom()} className="mt-4 h-12 w-full rounded-xl bg-primary font-bold text-primary-foreground shadow-md shadow-primary/15 transition hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:opacity-50">{busy ? "Joining…" : "Join with PIN"}</button><div className="mt-5 flex gap-3 rounded-2xl border border-border/50 bg-muted/45 p-4 text-xs leading-5 text-muted-foreground"><Clock3 className="mt-0.5 shrink-0 text-primary" size={16}/><p>Late joining is supported. Earlier questions will not count against your accuracy or streak.</p></div></div></section>
+      <section className="self-start overflow-hidden rounded-3xl border border-border/70 bg-card/95 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.45)] ring-1 ring-foreground/[0.03]"><div className="border-b border-border/60 bg-gradient-to-br from-primary/[0.10] via-primary/[0.04] to-transparent p-5 sm:p-7"><span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20"><Users size={18}/></span><div className="flex items-center gap-2"><h2 className="text-lg font-black">Join a room</h2>{rejoinAvailable && <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">Active room</span>}</div><p className="mt-1 text-xs text-muted-foreground">{rejoinAvailable ? "Your previous room is still active." : "Enter the six-digit PIN shared by your host."}</p></div><div className="p-5 sm:p-7"><label className="block space-y-2 text-sm font-semibold">Room PIN<input inputMode="numeric" maxLength={6} value={pin} onChange={event => { setPin(event.target.value.replace(/\D/g, "")); setRejoinAvailable(false) }} onKeyDown={event => { if (event.key === "Enter") void joinRoom() }} placeholder="000000" className="h-16 w-full rounded-2xl border border-border/80 bg-background/80 px-4 text-center text-2xl font-black tracking-[0.35em] shadow-inner outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"/></label><button disabled={busy} onClick={() => void joinRoom()} className="mt-4 h-12 w-full rounded-xl bg-primary font-bold text-primary-foreground shadow-md shadow-primary/15 transition hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:opacity-50">{busy ? "Joining…" : rejoinAvailable ? "Rejoin room" : "Join with PIN"}</button><div className="mt-5 flex gap-3 rounded-2xl border border-border/50 bg-muted/45 p-4 text-xs leading-5 text-muted-foreground"><Clock3 className="mt-0.5 shrink-0 text-primary" size={16}/><p>Late joining is supported. Earlier questions will not count against your accuracy or streak.</p></div></div></section>
     </div>
   </div></main>
 }
