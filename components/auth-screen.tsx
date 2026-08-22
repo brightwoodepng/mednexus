@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Image from "next/image"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ThemeModal } from "@/components/theme-modal"
@@ -70,7 +69,7 @@ function LevelSelect({ id, value, onChange, required, levels = CLASS_LEVELS }: {
 // ── Brand ─────────────────────────────────────────────────────────────────────
 function Brand() {
   return (
-    <div className="mb-5 flex items-center justify-center gap-3 lg:hidden">
+    <div className="mb-5 flex items-center justify-center gap-3">
       <div className="relative">
         <div
           aria-hidden="true"
@@ -82,64 +81,6 @@ function Brand() {
       </div>
       <h1 className="text-2xl font-bold leading-none tracking-tight">MedNexus</h1>
     </div>
-  )
-}
-
-function ValuePanel() {
-  return (
-    <section aria-label="MedNexus product showcase" className="relative hidden min-h-[620px] min-w-0 overflow-hidden text-foreground xl:block">
-      <header className="absolute left-0 top-0 z-20 flex items-center gap-3.5">
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-xl ring-1 ring-primary/25">
-          <StethoscopeIcon size={24} />
-        </span>
-        <div>
-          <p className="text-xl font-black tracking-tight">MedNexus</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Medical learning workspace</p>
-        </div>
-      </header>
-
-      <div className="absolute inset-x-0 bottom-4 top-20 overflow-hidden">
-        <div className="absolute left-[2%] top-10 w-[77%] -rotate-[1deg] drop-shadow-[0_28px_28px_rgba(0,0,0,0.34)]">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border-[12px] border-slate-900 bg-slate-950 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
-            <span aria-hidden="true" className="absolute left-1/2 top-[3px] z-20 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-slate-600 ring-1 ring-black/80" />
-            <div className="relative h-full w-full overflow-hidden rounded-[1.15rem] bg-slate-950">
-              <Image
-                src="/auth/dashboard-preview.png"
-                alt="MedNexus dashboard displayed on an iPad"
-                fill
-                priority
-                unoptimized
-                sizes="(min-width: 1280px) 720px, 0px"
-                className="select-none object-cover object-top"
-                draggable={false}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="absolute bottom-5 right-[3%] z-10 w-[23%] rotate-[2deg] drop-shadow-[0_24px_22px_rgba(0,0,0,0.42)]">
-          <span aria-hidden="true" className="absolute -left-1 top-[21%] h-12 w-1 rounded-l bg-slate-700" />
-          <span aria-hidden="true" className="absolute -right-1 top-[27%] h-16 w-1 rounded-r bg-slate-700" />
-          <div className="relative aspect-[375/811] overflow-hidden rounded-[2.2rem] border-[8px] border-slate-900 bg-slate-950 p-[3px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
-            <span aria-hidden="true" className="absolute left-1/2 top-2 z-20 h-4 w-16 -translate-x-1/2 rounded-full bg-black ring-1 ring-white/10" />
-            <span aria-hidden="true" className="absolute left-[calc(50%+1.25rem)] top-[0.72rem] z-30 h-1.5 w-1.5 rounded-full bg-slate-700" />
-            <div className="relative h-full w-full overflow-hidden rounded-[1.65rem] bg-slate-950">
-              <Image
-                src="/auth/rankings-phone-preview.png"
-                alt="MedNexus leaderboard displayed on an iPhone"
-                fill
-                priority
-                unoptimized
-                sizes="(min-width: 1280px) 230px, (min-width: 1024px) 16vw, 0px"
-                className="select-none object-cover object-top"
-                draggable={false}
-              />
-            </div>
-            <span aria-hidden="true" className="absolute bottom-2 left-1/2 z-20 h-1 w-14 -translate-x-1/2 rounded-full bg-white/70" />
-          </div>
-        </div>
-      </div>
-    </section>
   )
 }
 
@@ -627,10 +568,8 @@ export function AuthScreen({
         </button>
       </div>
 
-      <div className="relative mx-auto mt-3 grid w-full max-w-[1440px] items-center gap-8 xl:min-h-[calc(100svh-5.75rem)] xl:grid-cols-[minmax(0,1fr)_minmax(400px,440px)] xl:gap-14">
-        <ValuePanel />
-
-        <div className="mx-auto w-full max-w-[440px] pb-4 xl:pb-0">
+      <div className="relative mx-auto mt-3 flex min-h-[calc(100svh-5.75rem)] w-full max-w-[440px] items-center justify-center">
+        <div className="w-full pb-4">
           <Brand />
           <section className="glass-auth-card rounded-[2rem] p-5 shadow-xl sm:p-8" aria-labelledby="auth-title">
             {view === "login" && (
