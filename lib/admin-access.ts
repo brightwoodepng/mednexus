@@ -2,6 +2,7 @@ import "server-only"
 
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { cache } from "react"
 import { verifySessionToken, type SessionPayload } from "@/lib/session-auth"
 
 export type AdminRole = "STUDENT" | "ADMIN" | "SUPER_ADMIN"
@@ -20,7 +21,7 @@ const ADMIN_BASELINE = new Set<AdminPermission>([
   "manage_users", "manage_broadcasts",
 ])
 
-async function currentAccess(payload: SessionPayload): Promise<{ role: AdminRole; name: string; permissions: Map<AdminPermission, boolean> } | null> {
+const currentAccessForUser = cache(async (uid: string): Promise<{ role: AdminRole; name: string; permissions: Map<AdminPermission, boolean> } | null> => {
   const { default: pool } = await import("@/lib/db")
   // Role and individual permission overrides are read together after the token
   // has been verified. Never trust role or permissions supplied by a client.
@@ -29,7 +30,7 @@ async function currentAccess(payload: SessionPayload): Promise<{ role: AdminRole
      FROM mednexus_registered_users u
      LEFT JOIN mednexus_user_permissions p ON p.user_id = u.uid
      WHERE u.uid = $1`,
-    [payload.uid],
+    [uid],
   )
   const user = result.rows[0]
   if (!user || user.status !== "approved") return null
@@ -41,6 +42,10 @@ async function currentAccess(payload: SessionPayload): Promise<{ role: AdminRole
     }
   }
   return { role, name: user.name || "Administrator", permissions: permissionOverrides }
+})
+
+async function currentAccess(payload: SessionPayload) {
+  return currentAccessForUser(payload.uid)
 }
 
 function permissionAllowed(access: { role: AdminRole; permissions: Map<AdminPermission, boolean> }, candidate: AdminPermission) {
