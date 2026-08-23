@@ -14,6 +14,8 @@ describe("MCQ leaderboard redesign", () => {
     expect(component).toContain('{ id: "alltime", label: "All-time"')
     expect(component).not.toContain('{ id: "weekly", label: "Weekly"')
     expect(component).toContain('role="tablist"')
+    expect(component).not.toContain('aria-label="Refresh rankings"')
+    expect(component.match(/>Rankings<\/h1>/g)).toHaveLength(1)
     expect(api).toContain('type RankingTab = "season" | "monthly" | "alltime"')
     expect(api).toContain("async function monthlyLeaderboard")
     expect(api).toContain("async function seasonLeaderboard")
