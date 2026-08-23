@@ -1224,7 +1224,11 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
   return (
     <div className="flex min-h-full flex-col p-3 sm:p-5 lg:p-6">
       <div className="mx-auto w-full max-w-2xl">
-        <div className="mb-4 flex w-full justify-end sm:mb-3">
+        <div className="mb-4 flex w-full flex-col items-stretch gap-3 sm:mb-3 md:flex-row md:items-center md:justify-between">
+          <div className="hidden min-w-0 items-center gap-2.5 md:flex">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-500 text-xl shadow-lg shadow-fuchsia-500/20" aria-hidden>🎮</span>
+            <h1 className="whitespace-nowrap bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-xl font-black tracking-tight text-transparent md:text-2xl">Game Mode</h1>
+          </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex">
             <button type="button" onClick={() => setQuestsOpen(true)} aria-label={questBadgeCount > 0 ? `Quests, ${questBadgeCount} rewards ready` : "Quests"} className={`${GAME_UTILITY_BUTTON} hover:border-cyan-500/30`}>
                 <span className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-500"><ClipboardList size={15} aria-hidden />
