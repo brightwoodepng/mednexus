@@ -13,6 +13,7 @@ describe("MCQ workspace header", () => {
     const source = await readFile(new URL("../../components/mednexus-app.tsx", import.meta.url), "utf8")
 
     expect(source).toContain('leaderboard: "Rankings"')
+    expect(source).toContain('safeScreen === "leaderboard" ? <TrophyIcon')
     expect(source).toContain('game: "Game Mode"')
     expect(source).toContain('store: "Exam Store"')
     expect(source).toContain('MCQ_HEADER_TITLES[safeScreen]')
