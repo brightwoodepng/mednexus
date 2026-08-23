@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getSuddenDeathResultTotal } from "@/lib/sudden-death-result"
+import { getSuddenDeathOutcome, getSuddenDeathResultTotal } from "@/lib/sudden-death-result"
 
 describe("Sudden Death result totals", () => {
   it("includes an incorrect answer on question one", () => {
@@ -16,5 +16,15 @@ describe("Sudden Death result totals", () => {
 
   it("counts only correctly completed questions for a perfect pool", () => {
     expect(getSuddenDeathResultTotal("pool_completed", 5, 5)).toBe(5)
+  })
+})
+
+describe("Sudden Death outcome", () => {
+  it("declares a win after the selected question pool is completed", () => {
+    expect(getSuddenDeathOutcome("pool_completed")).toEqual({ emoji: "🏆", headline: "You Won!" })
+  })
+
+  it.each(["incorrect_answer", "timeout"])("declares game over for %s", completionReason => {
+    expect(getSuddenDeathOutcome(completionReason)).toEqual({ emoji: "💀", headline: "Game Over!" })
   })
 })
