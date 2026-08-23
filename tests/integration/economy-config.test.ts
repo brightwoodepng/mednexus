@@ -27,7 +27,7 @@ describe("versioned economy configuration", () => {
       completionThresholds: [{ minimumAnswered: 10, bonus: 15 }, { minimumAnswered: 25, bonus: 25 }],
       dailyCap: 200,
     })
-    expect(ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers).toEqual([1, 1, 0.5])
+    expect(ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers).toEqual([1, 0.5])
     expect(ECONOMY_CONFIG.antiFarming.masteryResetDays).toBeNull()
   })
 
