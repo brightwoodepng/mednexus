@@ -132,7 +132,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
               <div data-tutorial-anchor={`${mobileOpen ? "drawer" : "desktop"}-nav-${item.id}`}><NavButton
                 key={item.id}
                 glass={isGlassEnabled}
-                active={screen === item.screen}
+                active={!groupStudyActive && screen === item.screen}
                 onClick={() => nav(item.screen)}
                 icon={<Icon size={17} className={item.iconColor} />}
                 label={item.label}
@@ -206,7 +206,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
       {navigation.map((item) => {
         const Icon = item.id === "profile" ? User : item.icon
         return (
-          <IconButton key={item.id} glass={isGlassEnabled} active={screen === item.screen} onClick={() => nav(item.screen)} label={item.label}>
+          <IconButton key={item.id} glass={isGlassEnabled} active={!groupStudyActive && screen === item.screen} onClick={() => nav(item.screen)} label={item.label}>
             <Icon size={18} className={item.iconColor} />
           </IconButton>
         )
