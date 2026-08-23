@@ -87,9 +87,7 @@ export function NexusStoreHub({ onNavigate }: { onNavigate: (screen: Screen) => 
   ]
   const vaultSellable = SELLABLE_STORE_ITEMS.some(i => i.category === "vault")
   return <div className="mx-auto min-h-full w-full max-w-2xl min-w-0 overflow-x-clip pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-6">
-    <header className="sticky top-0 z-50 -mx-3 mb-4 flex min-h-16 items-center justify-between gap-3 border-b border-border/80 bg-background/95 px-3 py-2 pt-[max(.5rem,env(safe-area-inset-top,0px))] backdrop-blur-md sm:static sm:mx-0 sm:mb-6 sm:border-0 sm:bg-transparent sm:p-0">
-      <div className="flex min-w-0 items-center gap-3"><span className={`${ECONOMY_ICON} bg-violet-500/12 text-violet-600 dark:text-violet-300`}><ShoppingBag size={19} /></span><h1 className="truncate text-lg font-extrabold sm:text-xl">Nexus Store</h1></div><BalancePill balance={balance} />
-    </header>
+    <div className="mb-4 flex justify-end sm:mb-6"><BalancePill balance={balance} /></div>
     <div className="flex flex-col gap-3 sm:gap-4">
       {departments.map(({ Icon, ...department }) => <button key={department.screen} type="button" onClick={() => navigate(department.screen)} className={`flex min-h-[72px] w-full items-center gap-3 text-left hover:border-primary/30 hover:bg-card hover:shadow-sm ${ECONOMY_ROW}`}>
         <span className={`${ECONOMY_ICON} ${department.iconStyle}`}><Icon size={18} /></span><span className="min-w-0 flex-1"><span className="flex min-w-0 items-center gap-2"><strong className="truncate text-sm text-foreground">{department.title}</strong><span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{department.count}</span></span><span className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">{department.description}</span></span><ChevronRightIcon className="shrink-0 text-muted-foreground" size={18} />

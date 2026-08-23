@@ -10,7 +10,7 @@ describe("Game Mode utility buttons", () => {
     expect(source).toContain("const GAME_UTILITY_BUTTON")
     expect(source).toContain("ClipboardList, ShoppingBag")
     expect(hero).toContain("grid w-full grid-cols-2")
-    expect(selector).toContain("grid w-full grid-cols-3")
+    expect(selector).toContain("grid w-full grid-cols-2")
     expect(hero).toContain("GAME_UTILITY_BUTTON")
     expect(selector).toContain("GAME_UTILITY_BUTTON")
     expect(hero).not.toContain("🏪")
@@ -18,7 +18,7 @@ describe("Game Mode utility buttons", () => {
     expect(selector).not.toContain("📋")
   })
 
-  it("keeps store, quests, and wallet actions accessible and visually stable", async () => {
+  it("keeps quests and the store-linked wallet accessible and visually stable", async () => {
     const [game, economy] = await Promise.all([
       readFile("components/game-mode.tsx", "utf8"),
       readFile("components/economy-panel.tsx", "utf8"),
@@ -28,7 +28,8 @@ describe("Game Mode utility buttons", () => {
 
     expect(game).toContain("h-11 min-w-0")
     expect(game).toContain("transition-[background-color,border-color,box-shadow]")
-    expect(selector).toContain("onClick={onOpenStore}")
+    expect(selector).not.toContain("onClick={onOpenStore}")
+    expect(selector).toContain("<WalletBadge onOpenStore=")
     expect(selector).toContain("onClick={() => setQuestsOpen(true)}")
     expect(selector).toContain("rewards ready")
     expect(wallet).toContain("Open Nexus Store")
