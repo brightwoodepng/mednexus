@@ -13,7 +13,8 @@ import {
 } from "@/components/icons"
 import type { HistoryEntry, ExamScore, Question } from "@/lib/types"
 import { useEconomy } from "@/contexts/economy-context"
-import { STORE_ITEMS, TITLE_LABELS, CLINICAL_TIERS, getClinicalTierIndex } from "@/lib/economy"
+import { STORE_ITEMS, TITLE_LABELS } from "@/lib/economy"
+import { XP_CONFIG } from "@/lib/xp-config"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
 import type { StudyHubId } from "@/components/study-hub-switcher"
 import type { Screen } from "@/lib/view"
@@ -59,7 +60,8 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 
 function ProfileHeader() {
   const { user, cloudEnabled, updateName, signOutUser } = useApp()
-  const { balance, lifetimeEarned, rankPoints, equippedCosmetics, grantDevNP } = useEconomy()
+  const { balance, lifetimeEarned, lifetimeXP, equippedCosmetics, grantDevNP } = useEconomy()
+  const clinicalRank = [...XP_CONFIG.clinicalRanks].reverse().find(rank => lifetimeXP >= rank.minimumXP) ?? XP_CONFIG.clinicalRanks[0]
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
@@ -174,7 +176,7 @@ function ProfileHeader() {
               Lifetime NP <strong className="tabular-nums">{lifetimeEarned.toLocaleString()}</strong>
             </span>
             <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/30 bg-violet-400/10 px-2.5 py-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400">
-              Clinical Rank <strong>{CLINICAL_TIERS[getClinicalTierIndex(rankPoints)].name}</strong>
+              Lifetime XP <strong className="tabular-nums">{lifetimeXP.toLocaleString()}</strong> · <strong>{clinicalRank.name}</strong>
             </span>
           </div>
 
