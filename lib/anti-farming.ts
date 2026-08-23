@@ -18,6 +18,8 @@ import pool from "@/lib/db"
 import { applyNPCredits } from "@/lib/np-ledger"
 import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
 import { getActiveSeason } from "@/lib/economy-seasons"
+import { applyXPCredits } from "@/lib/xp-ledger"
+import { XP_CONFIG } from "@/lib/xp-config"
 import { countEconomyQueries, type EconomyQueryMetrics } from "@/lib/economy-api"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -470,6 +472,8 @@ export interface DailyLoginResult {
   /** The next one-time streak milestone, or null after completing day 30. */
   nextMilestone: DailyLoginMilestone | null
   breakdown:     { label: string; amount: number }[]
+  xpEarned?: number
+  lifetimeXP?: number
 }
 
 /**
@@ -574,6 +578,12 @@ export async function processDailyLogin(userId: string, metrics?: EconomyQueryMe
     }])
     earned = credit.credited
     breakdown.push(...credit.rankBreakdown)
+    const season = await getActiveSeason(client)
+    const milestoneXP = XP_CONFIG.dailyLogin.milestones[newStreak] ?? 0
+    const xp = await applyXPCredits(client, userId, [{
+      source: "daily_login", sourceId: `daily-login:${todayDate}`, amount: XP_CONFIG.dailyLogin.base + milestoneXP,
+      seasonId: season.id, metadata: { streak: newStreak, label: milestoneXP ? `Daily login · Day ${newStreak} milestone` : "Daily login" },
+    }])
 
     // ── Write: user notification (deterministic ID = idempotent) ─────────────
     const notifId     = `login-${userId}-${todayDate}`
@@ -599,6 +609,8 @@ export async function processDailyLogin(userId: string, metrics?: EconomyQueryMe
       milestoneName,
       nextMilestone: nextLoginMilestone(newStreak),
       breakdown,
+      xpEarned: xp.credited,
+      lifetimeXP: xp.lifetimeXP,
     }
   } catch (err) {
     await client.query("ROLLBACK")

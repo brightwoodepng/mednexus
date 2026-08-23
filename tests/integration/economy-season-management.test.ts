@@ -22,7 +22,7 @@ describe("economy season management",()=>{
   it("archives the prior season and verifies every opening balance",()=>{
     for(const text of ["mednexus_economy_season_archives","status='closed'","status='active'","mednexus_economy_cutovers","Opening balance verification failed","auditAdmin"])expect(api).toContain(text)
     expect(economy).toContain("season.openingGrant")
-    expect(ui).toContain("Purchases and cosmetics remain")
+    expect(ui).toContain("NP balances, purchases, cosmetics, and lifetime XP remain")
     expect(api).toContain("WITH grants AS")
     expect(api).toContain("BigInt(affectedUsers)")
     expect(ui).toContain('label="Supply"')

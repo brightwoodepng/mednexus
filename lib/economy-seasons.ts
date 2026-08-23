@@ -27,6 +27,7 @@ export async function assertEconomySeasonSchema(db: Queryable) {
       to_regclass('public.mednexus_economy_cutovers') IS NOT NULL AS cutovers,
       to_regclass('public.mednexus_registered_users') IS NOT NULL AS users,
       to_regclass('public.mednexus_np_transactions') IS NOT NULL AS transactions,
+      to_regclass('public.mednexus_xp_transactions') IS NOT NULL AS xp_transactions,
       to_regclass('public.mednexus_daily_activity') IS NOT NULL AS daily_activity,
       to_regclass('public.mednexus_bounty_progress') IS NOT NULL AS bounty_progress,
       to_regclass('public.mednexus_weekly_goal_progress') IS NOT NULL AS weekly_goals,
@@ -44,11 +45,14 @@ export interface EconomySeason {
   economyVersion: string
   startsAt: string
   openingGrant: number
+  minimumEligibleQuestions: number
+  monthlyRewards: number[]
+  seasonalRewards: number[]
 }
 
 export async function getActiveSeason(db: Queryable, lock = false): Promise<EconomySeason> {
   const result = await db.query(
-    `SELECT id, name, economy_version, starts_at, opening_grant
+    `SELECT id, name, economy_version, starts_at, opening_grant,minimum_eligible_questions,monthly_rewards,seasonal_rewards
        FROM mednexus_economy_seasons WHERE status = 'active'
        ORDER BY starts_at DESC LIMIT 1${lock ? " FOR SHARE" : ""}`,
   )
@@ -59,6 +63,9 @@ export async function getActiveSeason(db: Queryable, lock = false): Promise<Econ
     economyVersion: result.rows[0].economy_version,
     startsAt: new Date(result.rows[0].starts_at).toISOString(),
     openingGrant: Number(result.rows[0].opening_grant),
+    minimumEligibleQuestions: Number(result.rows[0].minimum_eligible_questions ?? 300),
+    monthlyRewards: result.rows[0].monthly_rewards ?? [],
+    seasonalRewards: result.rows[0].seasonal_rewards ?? [],
   }
 }
 

@@ -14,8 +14,8 @@ describe("quiz economy session lifecycle", () => {
     const quiz = await readFile("components/quiz-simulator.tsx", "utf8")
 
     expect(quiz).toContain('mode === "trial" && !gamificationEnabled')
-    expect(quiz).toContain("if (data) earnedNP = data.earned")
-    expect(quiz).toContain("onComplete(result, history, earnedNP, payoutError)")
+    expect(quiz).toContain("earnedNP = data.earned; earnedXP = data.xpEarned")
+    expect(quiz).toContain("onComplete(result, history, earnedNP, earnedXP, payoutError)")
     expect(quiz).not.toContain("earnedNP = data?.earned ?? 0")
   })
 

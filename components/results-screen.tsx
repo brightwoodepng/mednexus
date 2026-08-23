@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import type { BlockResult, ProficiencyRank, Question, QuizMode } from "@/lib/types"
 import { CheckIcon, XIcon, EyeOffIcon, TrophyIcon, RotateCcwIcon, LayoutDashboardIcon } from "@/components/icons"
 import { TrialReviewPanel } from "@/components/trial-review-panel"
-import { Coins } from "lucide-react"
+import { Coins, Sparkles } from "lucide-react"
 
 interface ResultsScreenProps {
   result: BlockResult
@@ -13,6 +13,7 @@ interface ResultsScreenProps {
   questions?: Question[]
   answers?: Record<string, string | string[] | null>
   earnedNP?: number
+  earnedXP?: number
   payoutError?: string
   onReturn: () => void
   onRetry: () => void
@@ -44,7 +45,7 @@ const RANK_STYLES: Record<ProficiencyRank, { text: string; ring: string; blurb: 
   Novice: { text: "text-destructive", ring: "text-destructive", blurb: "Review the explanations and try again." },
 }
 
-export function ResultsScreen({ result, moduleName, mode, questions, answers, earnedNP, payoutError, onReturn, onRetry }: ResultsScreenProps) {
+export function ResultsScreen({ result, moduleName, mode, questions, answers, earnedNP, earnedXP, payoutError, onReturn, onRetry }: ResultsScreenProps) {
   const [showReview, setShowReview] = useState(false)
   const rankStyle = RANK_STYLES[result.rank]
   // SVG circle geometry for the score ring.
@@ -98,6 +99,13 @@ export function ResultsScreen({ result, moduleName, mode, questions, answers, ea
         <p className="mb-8 text-center text-sm text-muted-foreground text-pretty">{rankStyle.blurb}</p>
 
         {/* Server-confirmed NP result for both Trial and Exam completions */}
+        {(earnedNP !== undefined || earnedXP !== undefined) && <div className="mb-6 grid w-full gap-3 sm:grid-cols-2">
+        {earnedXP !== undefined && (
+          <section className="flex items-start gap-3 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4 text-left shadow-sm" aria-label={`${earnedXP} experience points`}>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600"><Sparkles size={19} aria-hidden /></span>
+            <div><p className="text-xs font-semibold text-muted-foreground">Verified Experience</p><p className="mt-0.5 text-2xl font-bold tabular-nums text-violet-600 dark:text-violet-300">+<BountyCountup target={earnedXP}/> XP</p><p className="mt-1 text-xs text-muted-foreground">Counts toward monthly, seasonal, and lifetime rankings.</p></div>
+          </section>
+        )}
         {earnedNP !== undefined && (
           <section className="mb-6 flex w-full items-start gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm" aria-label={`${earnedNP} verified Nexus Points`}>
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -118,6 +126,7 @@ export function ResultsScreen({ result, moduleName, mode, questions, answers, ea
             </div>
           </section>
         )}
+        </div>}
 
         {payoutError && (
           <div role="alert" className="mb-6 w-full rounded-2xl border border-amber-300 bg-amber-50 p-4 text-center text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">

@@ -1,0 +1,25 @@
+export const XP_CONFIG = {
+  version: "1.0.0",
+  dailyCompetitiveCap: 1_500,
+  dailyIncorrectCap: 20,
+  repeatMultipliers: [1, 0.5] as const,
+  dailyLogin: { base: 5, milestones: { 3: 5, 7: 10, 14: 20, 30: 40 } as Record<number, number> },
+  trial: { correct: 10, incorrect: 1, streak5: 2, streak10: 3, completion10: 20, completion25: 40 },
+  exam: { correct: 12, incorrect: 1, completion: 30, accuracy70: 25, accuracy85: 50, accuracy95: 75 },
+  solo: { correct: 8, incorrect: 1, completion: 20, firstDailyCompletion: 10, accuracy70: 15, accuracy85: 30, accuracy95: 50, personalBest: 25 },
+  groupStudy: { correct: 10, incorrect: 1, completion: 20, accuracy80: 20 },
+  multiplayer: { correct: 8, incorrect: 1, participation: 20, places: [60, 40, 25] as const, firstDailyWin: 25 },
+  bounty: { practice_correct10: 50, practice_correct20: 80, exam_complete: 60, any_accuracy80: 60, discipline_variety3: 60, any_play3: 50, streak_8: 60, game_variety2: 60, rapid_newbest: 75 } as Record<string, number>,
+  weeklyGoal: { answer_100: 200, accuracy_70: 150, exam_dates_3: 150 } as Record<string, number>,
+  clinicalRanks: [
+    { name: "Medical Student", minimumXP: 0, npReward: 0 },
+    { name: "Clerkship", minimumXP: 5_000, npReward: 250 },
+    { name: "Intern", minimumXP: 15_000, npReward: 500 },
+    { name: "Resident", minimumXP: 40_000, npReward: 750 },
+    { name: "Fellow", minimumXP: 80_000, npReward: 1_000 },
+    { name: "Attending", minimumXP: 150_000, npReward: 1_500 },
+  ] as const,
+} as const
+
+export type XPSource = "daily_login" | "question" | "completion" | "accuracy" | "personal_best" | "first_daily_completion" | "participation" | "placement" | "first_daily_win" | "bounty" | "weekly_goal" | "admin_adjustment"
+

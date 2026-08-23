@@ -28,8 +28,9 @@ export async function GET(req: NextRequest) {
     const db = countEconomyQueries(pool, metrics)
     const today = TODAY_DATE()
     const weekId = economyWeekId()
-    const [walletResult, bountyResult, weeklyResult, inventoryResult, cosmeticsResult] = await Promise.all([
+    const [walletResult, xpResult, bountyResult, weeklyResult, inventoryResult, cosmeticsResult] = await Promise.all([
       db.query("SELECT balance, lifetime_earned, rank_points FROM mednexus_season_wallets WHERE user_id=$1 AND season_id=$2", [auth.uid, season.id]),
+      db.query("SELECT COALESCE(SUM(amount),0)::int lifetime_xp FROM mednexus_xp_transactions WHERE user_id=$1", [auth.uid]),
       db.query("SELECT bounty_id, progress, claimed FROM mednexus_bounty_progress WHERE season_id=$1 AND uid=$2 AND bounty_date=$3", [season.id, auth.uid, today]),
       db.query(`SELECT eligible_answered,eligible_correct,qualifying_exams,distinct_exam_dates,credited_goal_ids
         FROM mednexus_weekly_goal_progress WHERE season_id=$1 AND uid=$2 AND week_id=$3`, [season.id, auth.uid, weekId]),
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
     }
     const cosmetics = cosmeticsResult.rows[0] ?? {}
     return economyJson("economy.bootstrap", {
-      wallet: { balance: Number(wallet?.balance ?? 0), lifetimeEarned: Number(wallet?.lifetime_earned ?? 0), rankPoints: Number(wallet?.rank_points ?? 0) },
+      wallet: { balance: Number(wallet?.balance ?? 0), lifetimeEarned: Number(wallet?.lifetime_earned ?? 0), rankPoints: Number(wallet?.rank_points ?? 0), lifetimeXP: Number(xpResult.rows[0]?.lifetime_xp ?? 0) },
       bounties: getTodaysBounties().map(bounty => ({ ...bounty, progress: Number(bountyProgress[bounty.id]?.progress ?? 0), claimed: bountyProgress[bounty.id]?.claimed ?? false })),
       weeklyGoals: weeklyGoalView(progress),
       inventory: Object.fromEntries(inventoryResult.rows.map(row => [row.item_id, Number(row.quantity)])),

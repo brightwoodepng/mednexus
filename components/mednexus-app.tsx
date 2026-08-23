@@ -487,6 +487,7 @@ export function MedNexusApp() {
     questions: Question[]
     answers: Record<string, string | string[] | null>
     earnedNP?: number
+    earnedXP?: number
     payoutError?: string
   } | null>(null)
 
@@ -700,7 +701,7 @@ export function MedNexusApp() {
     setScreen("quiz")
   }
 
-  function handleQuizComplete(result: BlockResult, history: HistoryEntry[], earnedNP?: number, payoutError?: string) {
+  function handleQuizComplete(result: BlockResult, history: HistoryEntry[], earnedNP?: number, earnedXP?: number, payoutError?: string) {
     if (!activeQuiz) return
     if (activeQuiz.mode === "exam" && result.timeTakenMs !== undefined) {
       const score: ExamScore = {
@@ -729,6 +730,7 @@ export function MedNexusApp() {
       questions: activeQuiz.questions,
       answers,
       earnedNP,
+      earnedXP,
       payoutError,
     })
     if (user) clearQuizSession(user.uid)
@@ -798,7 +800,7 @@ export function MedNexusApp() {
           {safeScreen === "store-supply" && <NexusStoreSupplyPage onBack={() => handleScreenNavigation("store")} />}
           {safeScreen === "store-cosmetics" && <NexusStoreCosmeticsPage onBack={() => handleScreenNavigation("store")} />}
           {safeScreen === "store-vault" && <NexusStoreVaultPage onBack={() => handleScreenNavigation("store")} />}
-          {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} payoutError={lastResult.payoutError} onReturn={() => handleScreenNavigation("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
+          {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} earnedXP={lastResult.earnedXP} payoutError={lastResult.payoutError} onReturn={() => handleScreenNavigation("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
     </LearnerWorkspaceShell>
       <QuantityModal
         open={pendingQuiz !== null}

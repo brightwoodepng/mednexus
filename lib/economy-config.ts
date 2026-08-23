@@ -244,7 +244,7 @@ export const ECONOMY_CONFIG = {
     },
   },
   // Reset stays disabled until a mastery-reset period and timestamp storage are approved.
-  antiFarming: { repeatRewardMultipliers: [1, 1, 0.5], masteryResetDays: null, disciplineNPWindowLimit: 1_000, disciplineWindowDays: 7, abandonedExamMinutes: 480 },
+  antiFarming: { repeatRewardMultipliers: [1, 0.5], masteryResetDays: null, disciplineNPWindowLimit: 1_000, disciplineWindowDays: 7, abandonedExamMinutes: 480 },
 } as const satisfies EconomyConfig
 
 export const economyVersion = ECONOMY_CONFIG.economyVersion

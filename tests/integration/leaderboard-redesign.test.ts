@@ -60,13 +60,13 @@ describe("MCQ leaderboard redesign", () => {
     expect(component).toContain("Your ranking")
   })
 
-  it("ranks monthly from the ledger, season from its wallet, and all-time across seasons", async () => {
+  it("ranks monthly, seasonal, and lifetime competition from verified XP", async () => {
     const api = await readFile(apiPath, "utf8")
-    expect(api).toContain("FROM mednexus_np_transactions")
+    expect(api).toContain("FROM mednexus_xp_transactions")
     expect(api).toContain("created_at >= $1::timestamptz")
-    expect(api).toContain("COALESCE(w.rank_points, 0) AS total_np")
-    expect(api).toContain("SUM(rank_points)::bigint")
-    expect(api).toContain("LEFT JOIN mednexus_wallet legacy ON legacy.uid = r.uid")
+    expect(api).toContain("COALESCE(xp.total_xp, 0) AS total_xp")
+    expect(api).toContain("SUM(amount)::bigint AS total_xp")
+    expect(api).toContain("competitive=TRUE")
     expect(api).not.toContain("ORDER BY COALESCE(w.balance")
   })
 })

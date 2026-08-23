@@ -49,7 +49,7 @@ interface QuizSimulatorProps {
   onSessionChange: (session: QuizSession) => void
   onExit: () => void
   onReturnToDashboard: () => void
-  onComplete: (result: BlockResult, history: HistoryEntry[], earnedNP?: number, payoutError?: string) => void
+  onComplete: (result: BlockResult, history: HistoryEntry[], earnedNP?: number, earnedXP?: number, payoutError?: string) => void
 }
 
 const SECONDS_PER_QUESTION = 90
@@ -284,6 +284,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
     // ── NP payout ──────────────────────────────────────────────────────────
     let earnedNP: number | undefined
+    let earnedXP: number | undefined
     let payoutError: string | undefined
     if (!payoutCalledRef.current && user?.uid && !user.uid.startsWith("guest-")) {
       payoutCalledRef.current = true
@@ -325,7 +326,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
               primaryDiscipline,
             },
           })
-          if (data) earnedNP = data.earned
+          if (data) { earnedNP = data.earned; earnedXP = data.xpEarned }
           else payoutError = "Nexus Points could not be verified. Your quiz result was still saved."
         } catch {
           payoutError = "Nexus Points could not be verified. Your quiz result was still saved."
@@ -352,7 +353,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           selectedQuestionCount: questions.length,
           answeredQuestionCount: questions.length,
           })
-          if (data) earnedNP = data.earned
+          if (data) { earnedNP = data.earned; earnedXP = data.xpEarned }
           else payoutError = "Nexus Points could not be verified. Your quiz result was still saved."
         } catch {
           payoutError = "Nexus Points could not be verified. Your quiz result was still saved."
@@ -360,7 +361,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       }
     }
 
-    onComplete(result, history, earnedNP, payoutError)
+    onComplete(result, history, earnedNP, earnedXP, payoutError)
   }, [questions, answers, mode, gamificationEnabled, recordHistory, onComplete, submitGameResult, user])
 
   // Exam timer
@@ -642,7 +643,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           {/* Exit */}
           <button
             type="button"
-            onClick={onExit}
+            onClick={() => { void waitForPendingPayout().then(onExit) }}
             className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-muted"
             aria-label="Exit session"
           >
@@ -703,7 +704,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       <header className="hidden shrink-0 items-center gap-1 border-b border-border bg-card px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3 md:flex">
         <button
           type="button"
-          onClick={onExit}
+          onClick={() => { void waitForPendingPayout().then(onExit) }}
           className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <XIcon size={18} />

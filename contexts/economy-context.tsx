@@ -30,6 +30,9 @@ export interface EquippedCosmetics {
 
 export interface PayoutResponse {
   earned: number
+  xpEarned?: number
+  lifetimeXP?: number
+  xpBreakdown?: { label: string; amount: number }[]
   newBalance: number
   isNewHigh: boolean
   breakdown: { label: string; amount: number }[]
@@ -43,6 +46,7 @@ export interface EconomyContextValue {
   balance: number
   lifetimeEarned: number
   rankPoints: number
+  lifetimeXP: number
   bounties: BountyWithProgress[]
   weeklyGoals: WeeklyGoal[]
   inventory: Record<string, number>
@@ -106,6 +110,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const [balance, setBalance]                       = useState(0)
   const [lifetimeEarned, setLifetimeEarned]         = useState(0)
   const [rankPoints, setRankPoints]                 = useState(0)
+  const [lifetimeXP, setLifetimeXP]                 = useState(0)
   const [bounties, setBounties]                     = useState<BountyWithProgress[]>([])
   const [weeklyGoals, setWeeklyGoals]               = useState<WeeklyGoal[]>([])
   const [inventory, setInventory]                   = useState<Record<string, number>>({})
@@ -130,6 +135,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       setBalance(data.wallet?.balance ?? 0)
       setLifetimeEarned(data.wallet?.lifetimeEarned ?? 0)
       setRankPoints(data.wallet?.rankPoints ?? 0)
+      setLifetimeXP(data.wallet?.lifetimeXP ?? 0)
       setBounties(data.bounties ?? [])
       setWeeklyGoals(data.weeklyGoals ?? [])
       setInventory(data.inventory ?? {})
@@ -162,6 +168,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
               setLifetimeEarned(data.wallet.lifetimeEarned)
               setRankPoints(data.wallet.rankPoints)
               setDailyLoginReward(data)
+              if (typeof data.lifetimeXP === "number") setLifetimeXP(data.lifetimeXP)
             }
           })
           .catch(() => { /* silent — non-critical */ })
@@ -185,6 +192,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       setBalance(data.wallet.balance)
       setLifetimeEarned(data.wallet.lifetimeEarned)
       setRankPoints(data.wallet.rankPoints)
+      if (typeof data.lifetimeXP === "number") setLifetimeXP(data.lifetimeXP)
       setBounties(data.bounties)
       return { ok: true, earned: data.earned }
     } catch {
@@ -391,6 +399,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       setLifetimeEarned(data.wallet.lifetimeEarned)
       setRankPoints(data.wallet.rankPoints)
       setBounties(data.bounties)
+      if (typeof data.lifetimeXP === "number") setLifetimeXP(data.lifetimeXP)
       setWeeklyGoals(data.weeklyGoals)
       return data
     } catch {
@@ -428,7 +437,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
 
   return (
     <EconomyContext.Provider value={{
-      balance, lifetimeEarned, rankPoints, bounties, weeklyGoals, inventory, equippedCosmetics, loading,
+      balance, lifetimeEarned, rankPoints, lifetimeXP, bounties, weeklyGoals, inventory, equippedCosmetics, loading,
       isItemUsePending, isItemUsed,
       dailyLoginReward, clearDailyLoginReward,
       refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP,
