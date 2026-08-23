@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef, type ReactNode } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { learnerHomeScreen, learnerScreenFromUrl, learnerScreenUrl, studyHubFromUrl } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
@@ -34,7 +34,6 @@ import {
   HeartIcon,
   SearchIcon,
   TrophyIcon,
-  GamepadIcon,
   StoreIcon,
 } from "@/components/icons"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
@@ -374,8 +373,10 @@ const MCQ_HEADER_TITLES: Partial<Record<Screen, string>> = {
   "store-vault": "Nexus Store",
 }
 
-function WorkspaceHeaderTitle({ title, icon }: { title: string; icon?: ReactNode }) {
-  return <span className="flex min-w-0 items-center gap-2">{icon}<span className="truncate text-lg font-black tracking-tight text-foreground sm:text-xl">{title}</span></span>
+function WorkspaceHeaderTitle({ title, screen }: { title: string; screen: Screen }) {
+  if (screen === "game") return <span className="flex min-w-0 items-center gap-2 md:hidden"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-500 text-base shadow-sm" aria-hidden>🎮</span><span className="truncate bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-lg font-black tracking-tight text-transparent">Game Mode</span></span>
+  if (screen.startsWith("store")) return <span className="flex min-w-0 items-center gap-2 md:hidden"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-300"><StoreIcon size={18}/></span><span className="truncate text-lg font-black tracking-tight text-foreground">Nexus Store</span></span>
+  return <span className="flex min-w-0 items-center gap-2 md:hidden">{screen === "leaderboard" && <TrophyIcon size={20} className="shrink-0 text-primary"/>}<span className="truncate text-lg font-black tracking-tight text-foreground">{title}</span></span>
 }
 
 // ── Welcome Modal ─────────────────────────────────────────────────────────────
@@ -774,7 +775,7 @@ export function MedNexusApp() {
             </button>
           )}
         </label>
-      ) : activeStudyHub === "mcq-qbank" && MCQ_HEADER_TITLES[safeScreen] ? <WorkspaceHeaderTitle title={MCQ_HEADER_TITLES[safeScreen]} icon={safeScreen === "leaderboard" ? <TrophyIcon size={20} className="shrink-0 text-primary"/> : safeScreen === "game" ? <GamepadIcon size={20} className="shrink-0 text-primary"/> : safeScreen.startsWith("store") ? <StoreIcon size={20} className="shrink-0 text-primary"/> : undefined} /> : undefined}
+      ) : activeStudyHub === "mcq-qbank" && MCQ_HEADER_TITLES[safeScreen] ? <WorkspaceHeaderTitle title={MCQ_HEADER_TITLES[safeScreen]} screen={safeScreen} /> : undefined}
       hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
           {safeScreen === "dashboard" && (
