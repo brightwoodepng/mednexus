@@ -14,5 +14,6 @@ describe("Group Study learner workspace", () => {
     expect(shell).toContain("md:flex md:h-screen")
     expect(shell).toContain("<Sidebar")
     expect(sidebar).toContain('pathname.startsWith("/group-study")')
+    expect(sidebar).toContain("active={!groupStudyActive && screen === item.screen}")
   })
 })
