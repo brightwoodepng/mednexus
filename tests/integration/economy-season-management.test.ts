@@ -6,9 +6,9 @@ const api=read("app/api/admin/economy-seasons/route.ts"),ui=read("components/adm
 
 describe("economy season management",()=>{
   it("opens through resilient client APIs with retry states",()=>{
-    expect(api).toContain("temporarily unavailable")
+    expect(api).toContain("ECONOMY_SCHEMA_NOT_READY")
     expect(ui).toContain("Retry")
-    expect(settingsApi).toContain("temporarily unavailable")
+    expect(settingsApi).toContain("SYSTEM_SETTINGS_SCHEMA_NOT_READY")
     expect(settingsUi).toContain("Retry")
   })
   it("plans and activates seasons only through protected confirmed actions",()=>{

@@ -21,6 +21,31 @@ export interface PlatformSettings {
 
 type Queryable = Pick<Pool | PoolClient, "query">
 
+const REQUIRED_SYSTEM_TABLES = [
+  "mednexus_system_settings",
+  "mednexus_theory_settings",
+  "mednexus_admin_audit_log",
+] as const
+
+export class SystemSettingsSchemaError extends Error {
+  constructor(public readonly missing: string[]) {
+    super(`System Settings schema is incomplete: ${missing.join(", ")}`)
+    this.name = "SystemSettingsSchemaError"
+  }
+}
+
+/** Read-only, focused preflight for the settings workspace. It intentionally
+ * does not run the full MedNexus migration bundle during an admin page load. */
+export async function assertSystemSettingsSchema(db: Queryable) {
+  const result = await db.query(
+    `SELECT name FROM unnest($1::text[]) AS name
+     WHERE to_regclass('public.' || name) IS NULL`,
+    [REQUIRED_SYSTEM_TABLES],
+  )
+  const missing = result.rows.map((row: { name: string }) => row.name)
+  if (missing.length) throw new SystemSettingsSchemaError(missing)
+}
+
 export const DEFAULT_MAINTENANCE_MESSAGE =
   "MedNexus study workspaces are temporarily unavailable while scheduled maintenance is completed."
 
