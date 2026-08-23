@@ -540,6 +540,8 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
   const { submitGameResult } = useEconomy()
   const [payoutData, setPayoutData] = useState<{
     earned: number
+    xpEarned?: number
+    xpBreakdown?: { label: string; amount: number }[]
     breakdown: { label: string; amount: number }[]
     bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean }[]
   } | null>(null)
@@ -729,7 +731,11 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
             </div>
           )}
           {payoutData && (
-            <div className="mb-5">
+            <div className="mb-5 space-y-3">
+              <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4" aria-label={`${payoutData.xpEarned ?? 0} experience points earned`}>
+                <div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Experience earned</span><strong className="text-xl tabular-nums text-violet-600 dark:text-violet-300">+{payoutData.xpEarned ?? 0} XP</strong></div>
+                {payoutData.xpBreakdown && payoutData.xpBreakdown.length > 0 && <div className="mt-2 space-y-1">{payoutData.xpBreakdown.map(item => <div key={item.label} className="flex justify-between text-xs text-muted-foreground"><span>{item.label}</span><span>+{item.amount} XP</span></div>)}</div>}
+              </div>
               <PayoutResult earned={payoutData.earned} breakdown={payoutData.breakdown} bountyUpdates={payoutData.bountyUpdates} />
             </div>
           )}
