@@ -34,6 +34,8 @@ import {
   HeartIcon,
   SearchIcon,
   TrophyIcon,
+  GamepadIcon,
+  StoreIcon,
 } from "@/components/icons"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import type { StudyHubId } from "@/components/study-hub-switcher"
@@ -366,10 +368,10 @@ const MCQ_HEADER_TITLES: Partial<Record<Screen, string>> = {
   leaderboard: "Rankings",
   "live-assessments": "Live Assessments",
   game: "Game Mode",
-  store: "Exam Store",
-  "store-supply": "Exam Store",
-  "store-cosmetics": "Exam Store",
-  "store-vault": "Exam Store",
+  store: "Nexus Store",
+  "store-supply": "Nexus Store",
+  "store-cosmetics": "Nexus Store",
+  "store-vault": "Nexus Store",
 }
 
 function WorkspaceHeaderTitle({ title, icon }: { title: string; icon?: ReactNode }) {
@@ -772,7 +774,7 @@ export function MedNexusApp() {
             </button>
           )}
         </label>
-      ) : activeStudyHub === "mcq-qbank" && MCQ_HEADER_TITLES[safeScreen] ? <WorkspaceHeaderTitle title={MCQ_HEADER_TITLES[safeScreen]} icon={safeScreen === "leaderboard" ? <TrophyIcon size={20} className="shrink-0 text-primary"/> : undefined} /> : undefined}
+      ) : activeStudyHub === "mcq-qbank" && MCQ_HEADER_TITLES[safeScreen] ? <WorkspaceHeaderTitle title={MCQ_HEADER_TITLES[safeScreen]} icon={safeScreen === "leaderboard" ? <TrophyIcon size={20} className="shrink-0 text-primary"/> : safeScreen === "game" ? <GamepadIcon size={20} className="shrink-0 text-primary"/> : safeScreen.startsWith("store") ? <StoreIcon size={20} className="shrink-0 text-primary"/> : undefined} /> : undefined}
       hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
           {safeScreen === "dashboard" && (
