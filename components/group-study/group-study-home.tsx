@@ -1,9 +1,8 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { ArrowLeft, Clock3, Plus, Users, X } from "lucide-react"
+import { Clock3, Plus, Users, X } from "lucide-react"
 import { multiplayerApi, MultiplayerApiError } from "@/lib/multiplayer-api"
 import { forgetGroupStudyPin, LAST_GROUP_STUDY_PIN_KEY, rememberGroupStudyPin } from "@/lib/group-study-client"
 
@@ -98,8 +97,7 @@ export function GroupStudyHome() {
   }
 
   return <main className="relative min-h-screen overflow-hidden bg-background text-foreground"><div className="pointer-events-none absolute -left-32 top-20 h-80 w-80 rounded-full bg-primary/[0.06] blur-3xl"/><div className="pointer-events-none absolute -right-40 top-1/3 h-96 w-96 rounded-full bg-primary/[0.04] blur-3xl"/><div className="relative mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
-    <Link href="/" className="inline-flex items-center gap-2 rounded-xl border border-border/70 bg-card/70 px-3 py-2 text-sm font-medium text-muted-foreground shadow-sm transition hover:border-primary/25 hover:bg-card hover:text-foreground"><ArrowLeft size={16}/>MCQ dashboard</Link>
-    <header className="mt-7 flex items-center gap-4"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"><Users size={22}/></span><div><h1 className="text-2xl font-black tracking-tight sm:text-3xl">Group Study</h1><p className="mt-1 text-sm text-muted-foreground">Create a focused session or join your study group.</p></div></header>
+    <header className="flex items-center gap-4"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"><Users size={22}/></span><div><h1 className="text-2xl font-black tracking-tight sm:text-3xl">Group Study</h1><p className="mt-1 text-sm text-muted-foreground">Create a focused session or join your study group.</p></div></header>
     {error && <div role="alert" className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
     <div className="mt-6 grid gap-5 md:grid-cols-[1.5fr_1fr]">
       <button type="button" disabled={!canCreate} onClick={() => setCreateDialogOpen(true)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 font-bold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 md:hidden"><Plus size={20}/>{canCreate ? "Create a room" : "Sign in to create a room"}</button>
