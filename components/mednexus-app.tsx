@@ -359,6 +359,22 @@ function StudyModeToggle({ globalMode, setGlobalMode }: { globalMode: QuizMode; 
   )
 }
 
+const MCQ_MODE_SCREENS = new Set<Screen>(["dashboard", "modules", "weak-areas"])
+
+const MCQ_HEADER_TITLES: Partial<Record<Screen, string>> = {
+  leaderboard: "Rankings",
+  "live-assessments": "Live Assessments",
+  game: "Game Mode",
+  store: "Exam Store",
+  "store-supply": "Exam Store",
+  "store-cosmetics": "Exam Store",
+  "store-vault": "Exam Store",
+}
+
+function WorkspaceHeaderTitle({ title }: { title: string }) {
+  return <span className="block truncate text-sm font-bold text-foreground sm:text-base">{title}</span>
+}
+
 // ── Welcome Modal ─────────────────────────────────────────────────────────────
 function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) {
   return (
@@ -738,7 +754,7 @@ export function MedNexusApp() {
       onNavigate={handleScreenNavigation}
       onSelectStudyHub={handleStudyHubNavigation}
       onOpenAppearance={() => setThemeOpen(true)}
-      modeControl={activeStudyHub === "mcq-qbank" ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
+      modeControl={activeStudyHub === "mcq-qbank" && MCQ_MODE_SCREENS.has(safeScreen) ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
       headerSlot={activeStudyHub === "theory-vault" && !theoryQuestionOpen ? (
         <label className="mr-1 flex h-8 min-w-0 w-full max-w-[10.5rem] items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 text-sm transition-all focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/25 sm:mr-2 sm:h-9 sm:max-w-xl sm:gap-2 sm:rounded-xl sm:px-3 lg:max-w-2xl">
           <SearchIcon size={15} className="shrink-0 text-muted-foreground" />
@@ -755,7 +771,7 @@ export function MedNexusApp() {
             </button>
           )}
         </label>
-      ) : undefined}
+      ) : activeStudyHub === "mcq-qbank" && MCQ_HEADER_TITLES[safeScreen] ? <WorkspaceHeaderTitle title={MCQ_HEADER_TITLES[safeScreen]} /> : undefined}
       hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
           {safeScreen === "dashboard" && (
