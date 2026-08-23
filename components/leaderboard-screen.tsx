@@ -250,7 +250,8 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
     <div className="mx-auto max-w-3xl space-y-5 overflow-x-hidden pb-44 md:pb-10">
       {showDiagnostic && <CosmeticPerformanceDiagnostic />}
       {!showDiagnostic && <>
-      <p className="text-center text-xs text-muted-foreground sm:text-sm">{tab === "season" && activeSeason ? `${activeSeason.name} · ${currentRange.description}` : currentRange.description}</p>
+      <header className="hidden text-center md:block"><div className="flex items-center justify-center gap-2"><Trophy className="text-primary" size={22} aria-hidden/><h1 className="text-xl font-black text-foreground sm:text-2xl">Rankings</h1></div><p className="mt-1 text-sm text-muted-foreground">{tab === "season" && activeSeason ? `${activeSeason.name} · ${currentRange.description}` : currentRange.description}</p></header>
+      <p className="text-center text-xs text-muted-foreground md:hidden">{tab === "season" && activeSeason ? `${activeSeason.name} · ${currentRange.description}` : currentRange.description}</p>
 
       <div className="relative grid grid-cols-3 rounded-2xl bg-muted p-1" role="tablist" aria-label="Ranking period">
         <span className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-xl bg-card shadow-sm transition-transform duration-300 ease-out motion-reduce:transition-none" style={{ transform: `translateX(${selectedIndex * 100}%)` }} aria-hidden />
