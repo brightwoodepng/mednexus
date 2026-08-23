@@ -47,7 +47,7 @@ let groupStudyInitialized = false
 // Keep this marker in step with every deployed DDL change. The previous
 // assessment-grading marker predated the admin platform/settings and economy
 // season tables, which let existing databases skip those additions entirely.
-export const CURRENT_SCHEMA_VERSION = "2026-08-16-group-study-navigation-compat-v2"
+export const CURRENT_SCHEMA_VERSION = "2026-08-23-xp-ledger-and-leaderboard-v1"
 
 export async function groupStudySchemaStatus() {
   const result = await pool.query<{
@@ -1093,7 +1093,7 @@ export async function ensureSchema() {
       PRIMARY KEY (season_id, user_id)
     );
     ALTER TABLE mednexus_economy_seasons ADD COLUMN IF NOT EXISTS minimum_eligible_questions INTEGER NOT NULL DEFAULT 300;
-    ALTER TABLE mednexus_economy_seasons ADD COLUMN IF NOT EXISTS monthly_rewards JSONB NOT NULL DEFAULT '[500,300,200,100,100,100,100,100,100,100,100]';
+    ALTER TABLE mednexus_economy_seasons ADD COLUMN IF NOT EXISTS monthly_rewards JSONB NOT NULL DEFAULT '[500,300,200,100,100,100,100,100,100,100]';
     ALTER TABLE mednexus_economy_seasons ADD COLUMN IF NOT EXISTS seasonal_rewards JSONB NOT NULL DEFAULT '[3000,2000,1000,250,250,250,250,250,250,250]';
     CREATE TABLE IF NOT EXISTS mednexus_economy_season_archives (
       season_id TEXT NOT NULL REFERENCES mednexus_economy_seasons(id), user_id TEXT NOT NULL,
