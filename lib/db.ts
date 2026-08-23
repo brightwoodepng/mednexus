@@ -831,6 +831,20 @@ export async function ensureSchema() {
       ON mednexus_np_transactions (user_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS mednexus_np_transactions_date_idx
       ON mednexus_np_transactions (created_at DESC);
+    CREATE TABLE IF NOT EXISTS mednexus_xp_transactions (
+      id          TEXT        PRIMARY KEY,
+      user_id     TEXT        NOT NULL REFERENCES mednexus_registered_users(uid) ON DELETE CASCADE,
+      season_id   TEXT        NOT NULL,
+      source      TEXT        NOT NULL,
+      source_id   TEXT        NOT NULL,
+      amount      INTEGER     NOT NULL CHECK (amount >= 0),
+      competitive BOOLEAN     NOT NULL DEFAULT TRUE,
+      metadata    JSONB       NOT NULL DEFAULT '{}',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, source, source_id)
+    );
+    CREATE INDEX IF NOT EXISTS mednexus_xp_transactions_user_date_idx ON mednexus_xp_transactions(user_id,created_at DESC);
+    CREATE INDEX IF NOT EXISTS mednexus_xp_transactions_season_rank_idx ON mednexus_xp_transactions(season_id,competitive,amount);
     CREATE TABLE IF NOT EXISTS mednexus_game_personal_bests (
       user_id    TEXT        NOT NULL,
       mode       TEXT        NOT NULL,
@@ -1052,7 +1066,10 @@ export async function ensureSchema() {
       activated_by TEXT,
       activated_at TIMESTAMPTZ,
       activation_migration_id TEXT UNIQUE,
-      opening_grant INTEGER NOT NULL DEFAULT 500
+      opening_grant INTEGER NOT NULL DEFAULT 500,
+      minimum_eligible_questions INTEGER NOT NULL DEFAULT 300,
+      monthly_rewards JSONB NOT NULL DEFAULT '[500,300,200,100,100,100,100,100,100,100]',
+      seasonal_rewards JSONB NOT NULL DEFAULT '[3000,2000,1000,250,250,250,250,250,250,250]'
     );
     CREATE UNIQUE INDEX IF NOT EXISTS mednexus_one_active_economy_season
       ON mednexus_economy_seasons ((status)) WHERE status = 'active';
@@ -1075,6 +1092,9 @@ export async function ensureSchema() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (season_id, user_id)
     );
+    ALTER TABLE mednexus_economy_seasons ADD COLUMN IF NOT EXISTS minimum_eligible_questions INTEGER NOT NULL DEFAULT 300;
+    ALTER TABLE mednexus_economy_seasons ADD COLUMN IF NOT EXISTS monthly_rewards JSONB NOT NULL DEFAULT '[500,300,200,100,100,100,100,100,100,100,100]';
+    ALTER TABLE mednexus_economy_seasons ADD COLUMN IF NOT EXISTS seasonal_rewards JSONB NOT NULL DEFAULT '[3000,2000,1000,250,250,250,250,250,250,250]';
     CREATE TABLE IF NOT EXISTS mednexus_economy_season_archives (
       season_id TEXT NOT NULL REFERENCES mednexus_economy_seasons(id), user_id TEXT NOT NULL,
       closing_balance INTEGER NOT NULL, lifetime_np INTEGER NOT NULL, rank_points INTEGER NOT NULL,
