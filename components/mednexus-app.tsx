@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef, type ReactNode } from "react"
 import { learnerHomeScreen, learnerScreenFromUrl, learnerScreenUrl, studyHubFromUrl } from "@/lib/admin-hub-routing"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
@@ -33,6 +33,7 @@ import {
   XIcon,
   HeartIcon,
   SearchIcon,
+  TrophyIcon,
 } from "@/components/icons"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import type { StudyHubId } from "@/components/study-hub-switcher"
@@ -371,8 +372,8 @@ const MCQ_HEADER_TITLES: Partial<Record<Screen, string>> = {
   "store-vault": "Exam Store",
 }
 
-function WorkspaceHeaderTitle({ title }: { title: string }) {
-  return <span className="block truncate text-sm font-bold text-foreground sm:text-base">{title}</span>
+function WorkspaceHeaderTitle({ title, icon }: { title: string; icon?: ReactNode }) {
+  return <span className="flex min-w-0 items-center gap-2">{icon}<span className="truncate text-lg font-black tracking-tight text-foreground sm:text-xl">{title}</span></span>
 }
 
 // ── Welcome Modal ─────────────────────────────────────────────────────────────
@@ -771,7 +772,7 @@ export function MedNexusApp() {
             </button>
           )}
         </label>
-      ) : activeStudyHub === "mcq-qbank" && MCQ_HEADER_TITLES[safeScreen] ? <WorkspaceHeaderTitle title={MCQ_HEADER_TITLES[safeScreen]} /> : undefined}
+      ) : activeStudyHub === "mcq-qbank" && MCQ_HEADER_TITLES[safeScreen] ? <WorkspaceHeaderTitle title={MCQ_HEADER_TITLES[safeScreen]} icon={safeScreen === "leaderboard" ? <TrophyIcon size={20} className="shrink-0 text-primary"/> : undefined} /> : undefined}
       hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
           {safeScreen === "dashboard" && (
