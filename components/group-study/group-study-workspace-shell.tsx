@@ -67,7 +67,7 @@ export function GroupStudyWorkspaceShell({ children }: { children: ReactNode }) 
       <header className="sticky top-0 z-50 flex min-h-14 items-center justify-between gap-3 border-b border-border bg-card/95 px-3 py-2 backdrop-blur sm:px-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <button type="button" onClick={() => setMobileNavigationOpen(true)} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:hidden" aria-label="Open navigation menu"><MenuIcon size={20}/></button>
-          <Users size={18} className="shrink-0 text-primary"/><span className="truncate text-sm font-bold sm:text-base">Group Study</span>
+          <Users size={20} className="shrink-0 text-primary"/><span className="truncate text-lg font-black tracking-tight sm:text-xl">Group Study</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <button type="button" onClick={() => setAppearanceOpen(true)} className="hidden items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted md:flex" aria-label="Appearance"><PaletteIcon size={19}/></button>
