@@ -2,8 +2,10 @@
 
 import type { ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import { Users } from "lucide-react"
 import { AppearanceModal } from "@/components/appearance-modal"
 import { Sidebar } from "@/components/sidebar"
+import { MenuIcon } from "@/components/icons"
 import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { learnerHomeScreen, learnerScreenUrl } from "@/lib/admin-hub-routing"
 import type { Screen } from "@/lib/view"
@@ -18,6 +20,8 @@ export function GroupStudyWorkspaceShell({ children }: { children: ReactNode }) 
     setActiveStudyHub,
     sidebarCollapsed,
     setSidebarCollapsed,
+    mobileNavigationOpen,
+    setMobileNavigationOpen,
     appearanceOpen,
     setAppearanceOpen,
   } = useApplicationShell()
@@ -34,15 +38,21 @@ export function GroupStudyWorkspaceShell({ children }: { children: ReactNode }) 
       onNavigate={navigate}
       onSelectStudyHub={selectHub}
       onOpenThemes={() => setAppearanceOpen(true)}
-      mobileOpen={false}
-      onCloseMobile={() => undefined}
+      mobileOpen={mobileNavigationOpen}
+      onCloseMobile={() => setMobileNavigationOpen(false)}
       onReadyForQuiz={() => undefined}
       onSelectModule={() => undefined}
       collapsed={sidebarCollapsed}
       onCollapse={() => setSidebarCollapsed(true)}
       onExpand={() => setSidebarCollapsed(false)}
     />
-    <div className="min-w-0 flex-1 md:overflow-y-auto">{children}</div>
+    <div className="min-w-0 flex-1 md:overflow-y-auto">
+      <header className="sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-3 backdrop-blur md:hidden">
+        <button type="button" onClick={() => setMobileNavigationOpen(true)} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted" aria-label="Open navigation menu"><MenuIcon size={20}/></button>
+        <Users size={18} className="text-primary"/><span className="text-sm font-bold">Group Study</span>
+      </header>
+      {children}
+    </div>
     <AppearanceModal open={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
   </div>
 }
