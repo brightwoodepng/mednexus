@@ -32,6 +32,8 @@ import {
 import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
 import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
 import { getActiveSeason } from "@/lib/economy-seasons"
+import { applyXPCredits, type XPCredit } from "@/lib/xp-ledger"
+import { XP_CONFIG } from "@/lib/xp-config"
 
 interface AnswerEntry {
   /** Index into the room's question_pool */
@@ -341,9 +343,22 @@ export async function POST(
         })
       }
       const bountyCredit = await applyNPCredits(client, playerId, bountyCredits)
+      const xpCredits: XPCredit[] = [
+        { source: "question", sourceId: `${pin}:${playerId}:questions`, amount: correct * XP_CONFIG.multiplayer.correct + (total - correct) * XP_CONFIG.multiplayer.incorrect, seasonId: season.id, metadata: { mode: room.mode, label: "Multiplayer questions" } },
+        { source: "participation", sourceId: `${pin}:${playerId}:participation`, amount: XP_CONFIG.multiplayer.participation, seasonId: season.id, metadata: { mode: room.mode, label: "Multiplayer participation" } },
+      ]
+      const placeXP = XP_CONFIG.multiplayer.places[playerRank - 1] ?? 0
+      if (placeXP) xpCredits.push({ source: "placement", sourceId: `${pin}:${playerId}:place`, amount: placeXP, seasonId: season.id, metadata: { mode: room.mode, rank: playerRank, label: `Place ${playerRank}` } })
+      if (playerRank1) xpCredits.push({ source: "first_daily_win", sourceId: `${TODAY_DATE()}:${playerId}:multiplayer`, amount: XP_CONFIG.multiplayer.firstDailyWin, seasonId: season.id, metadata: { mode: room.mode, label: "First multiplayer win" } })
+      for (const bounty of bountyUpdates.filter(item => item.newlyComplete)) xpCredits.push({ source: "bounty", sourceId: `${today}:${bounty.id}`, amount: XP_CONFIG.bounty[bounty.id] ?? 0, seasonId: season.id, metadata: { bountyId: bounty.id, label: `Bounty: ${bounty.id}` } })
+      for (const goalId of weekly.newlyCompleted) xpCredits.push({ source: "weekly_goal", sourceId: `${weekly.progress.weekId}:${goalId}`, amount: XP_CONFIG.weeklyGoal[goalId] ?? 0, seasonId: season.id, metadata: { goalId, label: `Weekly goal: ${goalId}` } })
+      const xp = await applyXPCredits(client, playerId, xpCredits)
 
       const payload = {
         earned: credit.credited + bountyCredit.credited + weekly.credited.credited,
+        xpEarned: xp.credited,
+        lifetimeXP: xp.lifetimeXP,
+        xpBreakdown: xp.breakdown,
         newBalance: bountyCredit.credited > 0 ? bountyCredit.newBalance : weekly.credited.newBalance,
         breakdown: [
           ...(completionNP > 0 ? [{ label: "Participation", amount: completionNP }] : []),
