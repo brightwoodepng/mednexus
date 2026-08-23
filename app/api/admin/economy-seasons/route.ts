@@ -3,9 +3,51 @@ import pool from "@/lib/db"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
 import { assertEconomySeasonSchema, EconomySeasonSchemaError } from "@/lib/economy-seasons"
+import { applyNPCredits } from "@/lib/np-ledger"
 
 const confirmationFor=(name:string)=>`START ${name.trim().toUpperCase()}`
 const slug=(value:string)=>value.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60)
+
+async function awardSeasonWinners(client: import("pg").PoolClient, season: Record<string,unknown>) {
+  const rewards = Array.isArray(season.seasonal_rewards) ? season.seasonal_rewards.map(Number) : []
+  if (!rewards.length) return
+  const winners = await client.query(`WITH xp AS (
+      SELECT user_id,SUM(amount)::bigint total_xp FROM mednexus_xp_transactions WHERE season_id=$1 AND competitive=TRUE GROUP BY user_id
+    ),activity AS (
+      SELECT user_id,SUM(questions_answered)::bigint questions,SUM(correct_answers)::bigint correct FROM mednexus_daily_activity WHERE season_id=$1 GROUP BY user_id
+    ) SELECT r.uid,r.name,COALESCE(xp.total_xp,0) total_xp,ROW_NUMBER() OVER(ORDER BY COALESCE(xp.total_xp,0) DESC,
+      CASE WHEN COALESCE(activity.questions,0)>0 THEN activity.correct::numeric/activity.questions ELSE 0 END DESC,r.uid) place
+      FROM mednexus_registered_users r JOIN xp ON xp.user_id=r.uid JOIN activity ON activity.user_id=r.uid
+      WHERE r.status='approved' AND COALESCE(activity.questions,0)>=$2 ORDER BY place LIMIT $3`,
+    [season.id, Number(season.minimum_eligible_questions ?? 300), rewards.length])
+  for (const winner of winners.rows) {
+    const amount = rewards[Number(winner.place)-1] ?? 0
+    if (amount <= 0) continue
+    await applyNPCredits(client,winner.uid,[{source:"leaderboard_reward",sourceId:`season:${season.id}:place:${winner.place}`,amount,countsTowardClinicalRank:false,ceilingPolicy:"exempt",metadata:{seasonId:season.id,place:Number(winner.place),xp:Number(winner.total_xp),rewardCategory:"season_winner"}}])
+    await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message) VALUES($1,$2,'economy',$3) ON CONFLICT DO NOTHING`,[`season-winner-${season.id}-${winner.uid}`,winner.uid,`Season complete — you placed #${winner.place} and earned ${amount} NP.`])
+  }
+}
+
+async function awardMonthlyWinners(client: import("pg").PoolClient, season: Record<string,unknown>, month:string) {
+  if(!/^\d{4}-\d{2}$/.test(month))throw new Error("Choose a valid completed month.")
+  const start=new Date(`${month}-01T00:00:00Z`),end=new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+1,1))
+  if(Number.isNaN(start.getTime())||end>new Date(new Date().toISOString().slice(0,7)+"-01T00:00:00Z"))throw new Error("Only completed months can be finalized.")
+  const rewards=Array.isArray(season.monthly_rewards)?season.monthly_rewards.map(Number):[]
+  const winners=await client.query(`WITH xp AS (
+      SELECT user_id,SUM(amount)::bigint total_xp FROM mednexus_xp_transactions WHERE competitive=TRUE AND created_at>=$1 AND created_at<$2 GROUP BY user_id
+    ),activity AS (
+      SELECT user_id,SUM(questions_answered)::bigint questions,SUM(correct_answers)::bigint correct FROM mednexus_daily_activity WHERE activity_date>=$3 AND activity_date<$4 GROUP BY user_id
+    ) SELECT r.uid,COALESCE(xp.total_xp,0) total_xp,ROW_NUMBER() OVER(ORDER BY COALESCE(xp.total_xp,0) DESC,
+      CASE WHEN COALESCE(activity.questions,0)>0 THEN activity.correct::numeric/activity.questions ELSE 0 END DESC,r.uid) place
+      FROM mednexus_registered_users r JOIN xp ON xp.user_id=r.uid JOIN activity ON activity.user_id=r.uid
+      WHERE r.status='approved' AND COALESCE(activity.questions,0)>=$5 ORDER BY place LIMIT $6`,
+    [start.toISOString(),end.toISOString(),`${month}-01`,end.toISOString().slice(0,10),Number(season.minimum_eligible_questions??300),rewards.length])
+  for(const winner of winners.rows){const amount=rewards[Number(winner.place)-1]??0;if(amount<=0)continue
+    await applyNPCredits(client,winner.uid,[{source:"leaderboard_reward",sourceId:`month:${month}:place:${winner.place}`,amount,countsTowardClinicalRank:false,ceilingPolicy:"exempt",metadata:{month,place:Number(winner.place),xp:Number(winner.total_xp),rewardCategory:"monthly_winner"}}])
+    await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message) VALUES($1,$2,'economy',$3) ON CONFLICT DO NOTHING`,[`month-winner-${month}-${winner.uid}`,winner.uid,`Monthly rankings finalized — you placed #${winner.place} and earned ${amount} NP.`])
+  }
+  return winners.rowCount??winners.rows.length
+}
 
 function databaseCode(error:unknown){return typeof error==="object"&&error!==null&&"code" in error?String((error as {code?:unknown}).code??""):""}
 function loadFailure(error:unknown){
@@ -16,7 +58,7 @@ function loadFailure(error:unknown){
 
 async function payload(){
   const [seasons,dryRun]=await Promise.all([
-    pool.query(`SELECT s.id,s.name,s.economy_version,s.status,s.starts_at,s.ends_at,s.created_at,s.activated_at,s.opening_grant,
+    pool.query(`SELECT s.id,s.name,s.economy_version,s.status,s.starts_at,s.ends_at,s.created_at,s.activated_at,s.opening_grant,s.minimum_eligible_questions,s.monthly_rewards,s.seasonal_rewards,
       COUNT(w.user_id)::int member_count,COALESCE(SUM(w.balance),0)::bigint currency_supply,
       COALESCE(SUM(w.lifetime_earned),0)::bigint currency_earned,
       c.executed_at cutover_completed_at FROM mednexus_economy_seasons s
@@ -39,17 +81,23 @@ export async function POST(req:NextRequest){
   if(admin.role!=="SUPER_ADMIN")return NextResponse.json({error:"Only a super administrator can reset an economy season."},{status:403})
   try{
     await assertEconomySeasonSchema(pool);const body=await req.json() as Record<string,unknown>;const action=String(body.action??"")
+    if(action==="award_month"){
+      if(admin.role!=="SUPER_ADMIN")return NextResponse.json({error:"Only a super administrator can finalize monthly rewards."},{status:403})
+      const client=await pool.connect();try{await client.query("BEGIN");await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:monthly-leaderboard-award'))");const current=(await client.query("SELECT * FROM mednexus_economy_seasons WHERE status='active' FOR UPDATE")).rows[0];if(!current)throw new Error("No active season is available.");await awardMonthlyWinners(client,current,String(body.month??""));await auditAdmin(client,admin.uid,"award","monthly_leaderboard",String(body.month??""),{});await client.query("COMMIT")}catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}return NextResponse.json({ok:true,...await payload()})
+    }
     if(action==="create"){
       const name=typeof body.name==="string"?body.name.trim():"",version=typeof body.economyVersion==="string"?body.economyVersion.trim():""
-      const openingGrant=Number(body.openingGrant),startsAt=typeof body.startsAt==="string"?new Date(body.startsAt):new Date()
-      if(name.length<3||!version||!Number.isInteger(openingGrant)||openingGrant<0||openingGrant>100000||Number.isNaN(startsAt.getTime()))return NextResponse.json({error:"Enter a valid name, economy version, start time, and opening grant."},{status:400})
+      const openingGrant=Number(body.openingGrant),startsAt=typeof body.startsAt==="string"?new Date(body.startsAt):new Date(),minimumEligibleQuestions=Number(body.minimumEligibleQuestions)
+      const monthlyRewards=Array.isArray(body.monthlyRewards)?body.monthlyRewards.map(Number):[],seasonalRewards=Array.isArray(body.seasonalRewards)?body.seasonalRewards.map(Number):[]
+      const validRewards=(values:number[])=>values.length>0&&values.length<=100&&values.every(value=>Number.isInteger(value)&&value>=0&&value<=100000)
+      if(name.length<3||!version||!Number.isInteger(openingGrant)||openingGrant<0||openingGrant>100000||!Number.isInteger(minimumEligibleQuestions)||minimumEligibleQuestions<1||minimumEligibleQuestions>100000||!validRewards(monthlyRewards)||!validRewards(seasonalRewards)||Number.isNaN(startsAt.getTime()))return NextResponse.json({error:"Enter valid season details, eligibility, and winner rewards."},{status:400})
       const id=`${slug(name)}-${Date.now().toString(36)}`
       const client=await pool.connect()
       try{
         await client.query("BEGIN");await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:economy-season-plan'))")
         const duplicate=await client.query("SELECT 1 FROM mednexus_economy_seasons WHERE status='planned' AND (LOWER(name)=LOWER($1) OR LOWER(economy_version)=LOWER($2))",[name,version])
         if(duplicate.rowCount)throw new Error("A planned season already uses this name or economy version.")
-        await client.query(`INSERT INTO mednexus_economy_seasons(id,name,economy_version,status,starts_at,created_by,opening_grant) VALUES($1,$2,$3,'planned',$4,$5,$6)`,[id,name,version,startsAt.toISOString(),admin.uid,openingGrant])
+        await client.query(`INSERT INTO mednexus_economy_seasons(id,name,economy_version,status,starts_at,created_by,opening_grant,minimum_eligible_questions,monthly_rewards,seasonal_rewards) VALUES($1,$2,$3,'planned',$4,$5,$6,$7,$8::jsonb,$9::jsonb)`,[id,name,version,startsAt.toISOString(),admin.uid,openingGrant,minimumEligibleQuestions,JSON.stringify(monthlyRewards),JSON.stringify(seasonalRewards)])
         await auditAdmin(client,admin.uid,"create","economy_season",id,{name,version,openingGrant,startsAt:startsAt.toISOString()})
         await client.query("COMMIT")
       }catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}
@@ -67,13 +115,14 @@ export async function POST(req:NextRequest){
       if(!current)throw new Error("No active season is available to close.")
       const migrationId=`season-cutover-${current.id}-to-${target.id}`
       const repeated=await client.query("SELECT 1 FROM mednexus_economy_cutovers WHERE migration_id=$1",[migrationId]);if(repeated.rowCount)throw new Error("This season reset was already completed.")
+      await awardSeasonWinners(client,current)
       const before=await client.query("SELECT COALESCE(SUM(balance),0)::bigint total FROM mednexus_season_wallets WHERE season_id=$1",[current.id])
       await client.query(`INSERT INTO mednexus_economy_season_archives(season_id,user_id,closing_balance,lifetime_np,rank_points,login_streak,longest_streak,mcq_activity,game_personal_bests,bounty_progress,weekly_goal_progress,inventory_value,closing_leaderboard_position,migration_id)
-        SELECT $1,r.uid,COALESCE(w.balance,0),COALESCE(w.lifetime_earned,0),COALESCE(w.rank_points,0),r.login_streak,r.longest_streak,COALESCE(p.data,'{}'),
+        SELECT $1,r.uid,COALESCE(w.balance,0),COALESCE(w.lifetime_earned,0),COALESCE((SELECT SUM(x.amount) FROM mednexus_xp_transactions x WHERE x.season_id=$1 AND x.user_id=r.uid AND x.competitive=TRUE),0),r.login_streak,r.longest_streak,COALESCE(p.data,'{}'),
         COALESCE((SELECT jsonb_agg(to_jsonb(g)) FROM mednexus_game_personal_bests g WHERE g.user_id=r.uid AND g.season_id=$1),'[]'),
         COALESCE((SELECT jsonb_agg(to_jsonb(b)) FROM mednexus_bounty_progress b WHERE b.uid=r.uid AND b.season_id=$1),'[]'),
         COALESCE((SELECT jsonb_agg(to_jsonb(q)) FROM mednexus_weekly_goal_progress q WHERE q.uid=r.uid AND q.season_id=$1),'[]'),
-        COALESCE((SELECT SUM(i.quantity) FROM mednexus_user_inventory i WHERE i.uid=r.uid),0),ROW_NUMBER() OVER(ORDER BY COALESCE(w.lifetime_earned,0) DESC,r.uid),$2
+        COALESCE((SELECT SUM(i.quantity) FROM mednexus_user_inventory i WHERE i.uid=r.uid),0),ROW_NUMBER() OVER(ORDER BY COALESCE((SELECT SUM(x.amount) FROM mednexus_xp_transactions x WHERE x.season_id=$1 AND x.user_id=r.uid AND x.competitive=TRUE),0) DESC,r.uid),$2
         FROM mednexus_registered_users r LEFT JOIN mednexus_season_wallets w ON w.user_id=r.uid AND w.season_id=$1 LEFT JOIN mednexus_progress p ON p.uid=r.uid
         WHERE r.status='approved' ON CONFLICT(season_id,user_id) DO NOTHING`,[current.id,migrationId])
       await client.query("UPDATE mednexus_economy_seasons SET status='closed',ends_at=NOW() WHERE id=$1",[current.id])
@@ -91,12 +140,13 @@ export async function POST(req:NextRequest){
         FROM mednexus_registered_users WHERE status='approved'
         ON CONFLICT(user_id,source,source_id) DO NOTHING RETURNING user_id,amount
       ) INSERT INTO mednexus_season_wallets(season_id,user_id,balance,lifetime_earned,rank_points)
-        SELECT $1,user_id,amount,amount,0 FROM grants
+        SELECT $1,g.user_id,COALESCE(previous.balance,0)+g.amount,COALESCE(previous.lifetime_earned,0)+g.amount,0
+        FROM grants g LEFT JOIN mednexus_season_wallets previous ON previous.season_id=$5 AND previous.user_id=g.user_id
         ON CONFLICT(season_id,user_id) DO UPDATE SET
           balance=mednexus_season_wallets.balance+EXCLUDED.balance,
           lifetime_earned=mednexus_season_wallets.lifetime_earned+EXCLUDED.lifetime_earned,
-          updated_at=NOW()`,[target.id,target.opening_grant,target.economy_version,migrationId])
-      const after=await client.query("SELECT COALESCE(SUM(balance),0)::bigint total FROM mednexus_season_wallets WHERE season_id=$1",[target.id]);const expected=BigInt(affectedUsers)*BigInt(target.opening_grant)
+          updated_at=NOW()`,[target.id,target.opening_grant,target.economy_version,migrationId,current.id])
+      const after=await client.query("SELECT COALESCE(SUM(balance),0)::bigint total FROM mednexus_season_wallets WHERE season_id=$1",[target.id]);const expected=BigInt(before.rows[0].total)+BigInt(affectedUsers)*BigInt(target.opening_grant)
       if(BigInt(after.rows[0].total)!==expected)throw new Error(`Opening balance verification failed: expected ${expected}, received ${after.rows[0].total}.`)
       await client.query(`INSERT INTO mednexus_economy_cutovers(migration_id,from_season_id,to_season_id,affected_users,before_total,after_total,executed_by) VALUES($1,$2,$3,$4,$5,$6,$7)`,[migrationId,current.id,target.id,affectedUsers,before.rows[0].total,after.rows[0].total,admin.uid])
       await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message) SELECT $1||'-'||uid,uid,'economy',$2 FROM mednexus_registered_users WHERE status='approved' ON CONFLICT DO NOTHING`,[migrationId,`${target.name} has started. You received ${target.opening_grant} NP.`])
