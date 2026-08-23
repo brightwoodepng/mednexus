@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { AlertTriangle, CheckCircle2, Database, History, Loader2, RotateCcw, Save } from "lucide-react"
+import { Activity, AlertTriangle, CheckCircle2, Clock3, Database, History, Loader2, RotateCcw, Save, Server } from "lucide-react"
 
 type Settings = {
   registrationEnabled: boolean
@@ -34,7 +34,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (val
 export function SystemSettingsWorkspace() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [current, setCurrent] = useState<Settings | null>(null)
-  const [health, setHealth] = useState<{ database: string; checkedAt: string } | null>(null)
+  const [health, setHealth] = useState<{ database: string; responseTimeMs: number; schemaVersion: string; checkedAt: string } | null>(null)
   const [audit, setAudit] = useState<Array<{ action: string; createdAt: string; actorId: string }>>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -103,7 +103,14 @@ export function SystemSettingsWorkspace() {
 
     <section className="rounded-xl border border-border bg-card p-5"><h2 className="font-semibold">{sections[3].title}</h2><p className="mt-1 text-sm text-muted-foreground">{sections[3].description}</p><label className="mt-4 block max-w-xs"><span className="mb-1.5 block text-sm font-medium">Default set size</span><input type="number" min={15} max={20} className={inputClass} value={settings.theoryDefaultSetSize} onChange={(event) => setSettings({ ...settings, theoryDefaultSetSize: Number(event.target.value) })} /></label></section>
 
-    <section className="grid gap-4 lg:grid-cols-2"><div className="rounded-xl border border-border bg-card p-5"><div className="flex items-center gap-2"><Database size={18} className="text-emerald-500"/><h2 className="font-semibold">Platform status</h2></div><p className="mt-3 text-sm">Database <b className="capitalize text-emerald-600">{health?.database ?? "unknown"}</b></p><p className="mt-1 text-xs text-muted-foreground">Checked {health?.checkedAt ? new Date(health.checkedAt).toLocaleString() : "—"}</p></div><div className="rounded-xl border border-border bg-card p-5"><div className="flex items-center gap-2"><History size={18} className="text-primary"/><h2 className="font-semibold">Recent settings audit</h2></div>{audit.length?<div className="mt-3 space-y-2">{audit.map((item,index)=><div key={`${item.createdAt}-${index}`} className="flex justify-between gap-3 text-xs"><span className="capitalize">{item.action}</span><time className="text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</time></div>)}</div>:<p className="mt-3 text-sm text-muted-foreground">No recent settings changes.</p>}</div></section>
+    <section className="space-y-3"><div><h2 className="font-semibold">Operational overview</h2><p className="mt-1 text-sm text-muted-foreground">Live platform diagnostics for administrators.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="rounded-xl border border-border bg-card p-4"><Database size={18} className="text-emerald-500"/><p className="mt-3 text-xs text-muted-foreground">Database</p><p className="mt-1 font-bold capitalize text-emerald-600">{health?.database ?? "Unknown"}</p></div>
+      <div className="rounded-xl border border-border bg-card p-4"><Activity size={18} className="text-primary"/><p className="mt-3 text-xs text-muted-foreground">Response time</p><p className="mt-1 font-bold">{health ? `${health.responseTimeMs} ms` : "—"}</p></div>
+      <div className="rounded-xl border border-border bg-card p-4"><Server size={18} className="text-primary"/><p className="mt-3 text-xs text-muted-foreground">Schema version</p><p className="mt-1 truncate text-sm font-bold" title={health?.schemaVersion}>{health?.schemaVersion ?? "—"}</p></div>
+      <div className="rounded-xl border border-border bg-card p-4"><Clock3 size={18} className="text-primary"/><p className="mt-3 text-xs text-muted-foreground">Server checked</p><p className="mt-1 text-sm font-bold">{health?.checkedAt ? new Date(health.checkedAt).toLocaleString() : "—"}</p></div>
+    </div></section>
+
+    <section className="rounded-xl border border-border bg-card p-5"><div className="flex items-center gap-2"><History size={18} className="text-primary"/><h2 className="font-semibold">Recent settings activity</h2></div>{audit.length?<div className="mt-4 divide-y divide-border">{audit.map((item,index)=><div key={`${item.createdAt}-${index}`} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="capitalize">{item.action.replaceAll("_", " ")}</span><time className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</time></div>)}</div>:<p className="mt-3 text-sm text-muted-foreground">No recent settings changes.</p>}</section>
 
     {errors.length>0&&<div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><b>Review these settings:</b><ul className="mt-2 list-disc pl-5">{errors.map(error=><li key={error}>{error}</li>)}</ul></div>}
 

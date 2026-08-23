@@ -2,25 +2,51 @@ import { NextRequest, NextResponse } from "next/server"
 import type { PoolClient } from "pg"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import {
+  assertSystemSettingsSchema,
   DEFAULT_MAINTENANCE_MESSAGE,
+  SystemSettingsSchemaError,
   auditAdmin,
   getPlatformSettings,
   integerSetting,
 } from "@/lib/platform-settings"
+import pool, { CURRENT_SCHEMA_VERSION } from "@/lib/db"
+
+function databaseCode(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code ?? "")
+    : ""
+}
+
+function settingsFailure(error: unknown) {
+  if (error instanceof SystemSettingsSchemaError) return {
+    error: "System Settings needs the latest database migration before it can be managed.",
+    code: "SYSTEM_SETTINGS_SCHEMA_NOT_READY",
+    missing: error.missing,
+  }
+  if (databaseCode(error).startsWith("08")) return {
+    error: "The database could not be reached. Check the configured database URL and try again.",
+    code: "DATABASE_UNREACHABLE",
+  }
+  return {
+    error: "System Settings could not be loaded. The database responded, but the settings data could not be verified.",
+    code: "SYSTEM_SETTINGS_INVALID",
+  }
+}
 
 export async function GET(req: NextRequest) {
   if (!await requireAdminRequest(req, "manage_system")) return adminAccessDenied(req)
   try {
-    const { default: pool, ensureSchema } = await import("@/lib/db")
-    await ensureSchema()
+    await assertSystemSettingsSchema(pool)
+    const startedAt = Date.now()
     const settings = await getPlatformSettings(pool)
     const database = await pool.query("SELECT NOW() AS checked_at")
+    const responseTimeMs = Date.now() - startedAt
     let audit: unknown[] = []
     try { audit = (await pool.query(`SELECT action,created_at AS "createdAt",actor_id AS "actorId" FROM mednexus_admin_audit_log WHERE resource_type='system_settings' ORDER BY created_at DESC LIMIT 5`)).rows } catch { /* Settings remain available if audit history is unavailable. */ }
-    return NextResponse.json({ settings, health: { database: "operational", checkedAt: database.rows[0]?.checked_at ?? new Date().toISOString() }, audit })
+    return NextResponse.json({ settings, health: { database: "operational", responseTimeMs, schemaVersion: CURRENT_SCHEMA_VERSION, checkedAt: database.rows[0]?.checked_at ?? new Date().toISOString() }, audit })
   } catch (error) {
     console.error("[admin/settings GET]", error)
-    return NextResponse.json({ error: "System settings are temporarily unavailable. Retry after checking the database connection." }, { status: 503 })
+    return NextResponse.json(settingsFailure(error), { status: 503 })
   }
 }
 
@@ -29,8 +55,7 @@ export async function PATCH(req: NextRequest) {
   if (!admin) return adminAccessDenied(req)
   let client: PoolClient | null = null
   try {
-    const { default: pool, ensureSchema } = await import("@/lib/db")
-    await ensureSchema()
+    await assertSystemSettingsSchema(pool)
     const body = await req.json() as Record<string, unknown>
     if (body.confirm !== true) {
       return NextResponse.json({ error: "Confirm this platform settings change." }, { status: 400 })
