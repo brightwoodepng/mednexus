@@ -14,7 +14,7 @@ import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/econ
 import { buildGameQuestionPool, createQuestionContentFingerprint, deduplicateGameQuestions } from "@/lib/game-question-pool"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getPersonalBestUpdate } from "@/lib/game-personal-best"
-import { getSuddenDeathResultTotal } from "@/lib/sudden-death-result"
+import { getSuddenDeathOutcome, getSuddenDeathResultTotal } from "@/lib/sudden-death-result"
 import { getMultiplayerRewardRules } from "@/lib/multiplayer-reward-presentation"
 import { clearSoloGameSession, loadSoloGameSession, saveSoloGameSession, type HydratedSoloGameSession, type SoloGameMode } from "@/lib/solo-game-session"
 
@@ -1561,6 +1561,10 @@ function SuddenDeathMode({ onExit, resume }: { onExit: () => void; resume?: Hydr
     setAnswerHistory(prev => [...prev, assisted ? { question: q, selected: firstAttemptSD ?? null, secondAttempt: c, assisted: true } : { question: q, selected: c }])
     if (right) {
       const ns = assisted ? r.current.survived : r.current.survived + 1; setSurvived(ns); r.current.survived = ns
+      if (r.current.qi + 1 >= r.current.pool.length) {
+        round.finalize("pool_completed", 900)
+        return
+      }
       round.schedule(() => {
         if (!round.advanceOrFinalize()) return
         setFb(null); r.current.fb = null; setPicked(null); setEliminated([])
@@ -1636,7 +1640,11 @@ function SuddenDeathMode({ onExit, resume }: { onExit: () => void; resume?: Hydr
   if (phase === "over") {
     const score = survived * BASE_PTS
     const total = getSuddenDeathResultTotal(round.completionReason, survived, answerHistory.length)
-    return <GameOver emoji={survived >= 20 ? "💀🏆" : survived >= 10 ? "😤" : "💀"} headline={round.completionReason === "pool_completed" ? "Round Complete!" : survived === 0 ? "Out on Question 1!" : `${survived} Questions Survived`} scoreLabel="Score" score={score} stats={[{ label: "Survived", value: String(survived) }, { label: "Answered", value: String(total) }, { label: "Best", value: `${hs} questions` }]} isNewHigh={isNewHigh} gameResult={{ mode: "sudden", score, correct: survived, total, bestStreak: survived, isNewHigh, survivedCount: survived, lifelineUsed: lifelineUsedSD }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={() => start()} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
+    const outcome = getSuddenDeathOutcome(round.completionReason)
+    const headline = round.completionReason === "pool_completed"
+      ? outcome.headline
+      : survived === 0 ? "Out on Question 1!" : outcome.headline
+    return <GameOver emoji={outcome.emoji} headline={headline} scoreLabel="Score" score={score} stats={[{ label: "Survived", value: String(survived) }, { label: "Answered", value: String(total) }, { label: "Best", value: `${hs} questions` }]} isNewHigh={isNewHigh} gameResult={{ mode: "sudden", score, correct: survived, total, bestStreak: survived, isNewHigh, survivedCount: survived, lifelineUsed: lifelineUsedSD }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={() => start()} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
   }
   const q = pool[qi]; if (!q) return null
   const pct = (timeLeft / SUDDEN_TIME) * 100
