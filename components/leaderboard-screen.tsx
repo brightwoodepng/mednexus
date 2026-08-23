@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowRight, Crown, Medal, RefreshCw, Trophy } from "lucide-react"
+import { ArrowRight, Crown, Medal, Trophy } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { STORE_ITEMS, TITLE_LABELS, getCosmeticAccessibleLabel } from "@/lib/economy"
 import { PublicProfileModal } from "@/components/public-profile-modal"
@@ -250,16 +250,7 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
     <div className="mx-auto max-w-3xl space-y-5 overflow-x-hidden pb-44 md:pb-10">
       {showDiagnostic && <CosmeticPerformanceDiagnostic />}
       {!showDiagnostic && <>
-      <header className="relative text-center">
-        <div className="mx-auto flex items-center justify-center gap-2">
-          <Trophy className="text-primary" size={22} aria-hidden />
-          <h1 className="text-xl font-black text-foreground sm:text-2xl">Rankings</h1>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{tab === "season" && activeSeason ? `${activeSeason.name} · ${currentRange.description}` : currentRange.description}</p>
-        <button type="button" onClick={() => void fetchData(tab)} className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition hover:bg-muted" aria-label="Refresh rankings">
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-        </button>
-      </header>
+      <p className="text-center text-xs text-muted-foreground sm:text-sm">{tab === "season" && activeSeason ? `${activeSeason.name} · ${currentRange.description}` : currentRange.description}</p>
 
       <div className="relative grid grid-cols-3 rounded-2xl bg-muted p-1" role="tablist" aria-label="Ranking period">
         <span className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-xl bg-card shadow-sm transition-transform duration-300 ease-out motion-reduce:transition-none" style={{ transform: `translateX(${selectedIndex * 100}%)` }} aria-hidden />
