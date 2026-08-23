@@ -15,9 +15,9 @@ type LeaderboardScreenProps = { onNavigate?: (screen: Screen) => void }
 type ActiveSeason = { id: string; name: string; startsAt: string }
 
 const ranges: Array<{ id: RankingTab; label: string; description: string }> = [
-  { id: "monthly", label: "Monthly", description: "Nexus Points earned in the last 30 days" },
-  { id: "season", label: "Season", description: "Rank Points earned in the active season" },
-  { id: "alltime", label: "All-time", description: "Rank Points earned across every MedNexus season" },
+  { id: "monthly", label: "Monthly", description: "XP earned this calendar month" },
+  { id: "season", label: "Season", description: "XP earned in the active season" },
+  { id: "alltime", label: "All-time", description: "Lifetime XP earned across MedNexus" },
 ]
 
 const podium = {
@@ -109,7 +109,7 @@ function PodiumPlace({ entry, onSelect }: { entry: LeaderboardEntry; onSelect: (
         <span className={"leaderboard-pedestal-surface absolute inset-x-[10%] -top-3 h-7 rounded-[50%] bg-gradient-to-r shadow-inner " + style.surface} aria-hidden />
         <div className={"leaderboard-pedestal flex h-full w-full flex-col items-center overflow-hidden bg-gradient-to-b px-2 pt-5 shadow-xl " + style.tone}>
           <span className="leaderboard-pedestal-shine absolute inset-y-4 left-[18%] w-[14%] rounded-full bg-white/25 blur-sm" aria-hidden />
-          <span className="relative z-10 rounded-xl border border-white/25 bg-white/30 px-2.5 py-1 text-xs font-black tabular-nums text-slate-900 shadow-sm backdrop-blur-sm sm:text-sm">{formatNP(entry.np)} NP</span>
+          <span className="relative z-10 rounded-xl border border-white/25 bg-white/30 px-2.5 py-1 text-xs font-black tabular-nums text-slate-900 shadow-sm backdrop-blur-sm sm:text-sm">{formatNP(entry.np)} XP</span>
           {entry.rank === 1
             ? <Trophy className="relative z-10 mt-auto mb-5 text-white/95 drop-shadow-md" size={27} aria-hidden />
             : <Medal className="relative z-10 mt-auto mb-5 text-white/90 drop-shadow-md" size={22} aria-hidden />}
@@ -136,7 +136,7 @@ function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardE
         <span className="block truncate text-[11px] text-muted-foreground">{subtitle(entry)}</span>
       </span>
       {entry.accuracy > 0 && !entry.accuracySuppressed && <span className="hidden text-xs font-medium text-muted-foreground min-[390px]:inline">🎯 {entry.accuracy}%</span>}
-      <span className="shrink-0 text-sm font-black tabular-nums text-foreground sm:text-base">{formatNP(entry.np)} <span className="text-[10px] font-bold text-muted-foreground">NP</span></span>
+      <span className="shrink-0 text-sm font-black tabular-nums text-foreground sm:text-base">{formatNP(entry.np)} <span className="text-[10px] font-bold text-muted-foreground">XP</span></span>
     </CosmeticHighlight>
   )
 }
@@ -178,7 +178,7 @@ function ViewerCard({ entry, onProfile, onStudy }: { entry: LeaderboardEntry; on
           </span>
           <span className="min-w-0">
             <span className="block text-[10px] font-bold uppercase tracking-[0.15em] text-primary-foreground/70">Your ranking</span>
-            <span className="block truncate text-sm font-bold sm:text-base">{formatNP(entry.np)} NP earned</span>
+            <span className="block truncate text-sm font-bold sm:text-base">{formatNP(entry.np)} XP earned</span>
           </span>
         </button>
         <button type="button" onClick={onStudy} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-primary-foreground px-3 text-xs font-bold text-primary shadow-sm transition hover:scale-[1.02] sm:px-5 sm:text-sm">
@@ -289,7 +289,7 @@ export function LeaderboardScreen({ onNavigate }: LeaderboardScreenProps) {
       </>}
 
       {showViewer && viewerEntry && <ViewerCard entry={viewerEntry} onProfile={() => setSelected(viewerEntry)} onStudy={() => onNavigate?.("modules")} />}
-      {selected && <PublicProfileModal entry={selected} npLabel={tab === "alltime" ? "All-time Rank Points" : tab === "season" ? "Season Rank Points" : "NP Earned This Month"} onClose={() => setSelected(null)} />}
+      {selected && <PublicProfileModal entry={selected} npLabel={tab === "alltime" ? "Lifetime XP" : tab === "season" ? "Season XP" : "Monthly XP"} onClose={() => setSelected(null)} />}
       </>}
     </div>
   )
@@ -315,7 +315,7 @@ export function LeaderboardVisualPreview() {
       <div className="mx-auto max-w-3xl space-y-5 overflow-x-hidden pb-40">
         <header className="text-center">
           <div className="flex items-center justify-center gap-2"><Trophy className="text-primary" size={22} /><h1 className="text-xl font-black sm:text-2xl">Rankings</h1></div>
-          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Nexus Points earned in the last 30 days</p>
+          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">XP earned this calendar month</p>
         </header>
         <div className="relative grid grid-cols-3 rounded-2xl bg-muted p-1" role="tablist" aria-label="Preview ranking period">
           <span className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] translate-x-full rounded-xl bg-card shadow-sm" aria-hidden />
@@ -335,7 +335,7 @@ export function LeaderboardVisualPreview() {
           {competitors.map((entry, index) => <CompetitorRow key={entry.uid} entry={entry} viewer={entry.uid === viewer.uid} index={index} onSelect={() => setSelected(entry)} />)}
         </section>
         <ViewerCard entry={viewer} onProfile={() => setSelected(viewer)} onStudy={() => undefined} />
-        {selected && <PublicProfileModal entry={selected} npLabel="NP Earned This Period" onClose={() => setSelected(null)} />}
+        {selected && <PublicProfileModal entry={selected} npLabel="XP Earned This Period" onClose={() => setSelected(null)} />}
       </div>
     </main>
   )
