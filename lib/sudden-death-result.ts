@@ -10,3 +10,9 @@ export function getSuddenDeathResultTotal(
 ): number {
   return completionReason === "pool_completed" ? survivedCount : answeredCount
 }
+
+export function getSuddenDeathOutcome(completionReason: string | null) {
+  return completionReason === "pool_completed"
+    ? { emoji: "🏆", headline: "You Won!" }
+    : { emoji: "💀", headline: "Game Over!" }
+}
