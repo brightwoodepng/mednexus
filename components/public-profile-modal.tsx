@@ -4,9 +4,8 @@ import { useEffect, useRef } from "react"
 import {
   TITLE_LABELS,
   STORE_ITEMS,
-  CLINICAL_TIERS,
-  getClinicalTierIndex,
 } from "@/lib/economy"
+import { XP_CONFIG } from "@/lib/xp-config"
 import { XIcon } from "@/components/icons"
 import { CosmeticFrame } from "@/components/cosmetics"
 
@@ -45,7 +44,7 @@ function formatNP(n: number): string {
   return String(n)
 }
 
-export function PublicProfileModal({ entry, npLabel = "Lifetime NP", onClose }: PublicProfileModalProps) {
+export function PublicProfileModal({ entry, npLabel = "Lifetime XP", onClose }: PublicProfileModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -57,8 +56,7 @@ export function PublicProfileModal({ entry, npLabel = "Lifetime NP", onClose }: 
   const avatarItem   = entry.equippedAvatar ? STORE_ITEMS.find(i => i.id === entry.equippedAvatar) : null
   const titleLabel   = entry.equippedTitle  ? (TITLE_LABELS[entry.equippedTitle] ?? null) : null
 
-  const tierIdx  = getClinicalTierIndex(entry.rankPoints ?? 0)
-  const tierName = CLINICAL_TIERS[tierIdx].name
+  const tierName = [...XP_CONFIG.clinicalRanks].reverse().find(rank => (entry.rankPoints ?? 0) >= rank.minimumXP)?.name ?? XP_CONFIG.clinicalRanks[0].name
 
   const medal = MEDAL[entry.rank]
 
