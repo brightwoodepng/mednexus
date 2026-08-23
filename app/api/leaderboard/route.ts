@@ -44,7 +44,7 @@ function timedEntry(row: Record<string, unknown>) {
     name: String(row.name),
     level: row.level,
     classLevel: row.class_level,
-    np: Number(row.period_np ?? 0),
+    np: Number(row.period_xp ?? 0),
     accuracy: questions >= 50 ? Math.round((correct / questions) * 100) : 0,
     weeklyQuestions: questions,
     accuracySuppressed: questions > 0 && questions < 50,
@@ -62,8 +62,8 @@ function allTimeEntry(row: Record<string, unknown>) {
     name: String(row.name),
     level: row.level,
     classLevel: row.class_level,
-    np: Number(row.total_np ?? 0),
-    rankPoints: Number(row.rank_points ?? 0),
+    np: Number(row.total_xp ?? 0),
+    rankPoints: Number(row.total_xp ?? 0),
     accuracy: Number(row.accuracy ?? 0),
     weeklyQuestions: null,
     accuracySuppressed: false,
@@ -76,13 +76,13 @@ function allTimeEntry(row: Record<string, unknown>) {
 
 async function monthlyLeaderboard(viewerUid: string | null, season: EconomySeason) {
   const tab = "monthly" as const
-  const periodDays = 30
-  const cutoff = new Date(Date.now() - periodDays * 86_400_000).toISOString()
+  const now = new Date()
+  const cutoff = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
   const commonCtes = `
-    WITH np AS (
-      SELECT user_id, SUM(amount) AS period_np
-      FROM mednexus_np_transactions
-      WHERE amount > 0 AND season_id = $2
+    WITH xp AS (
+      SELECT user_id, SUM(amount) AS period_xp
+      FROM mednexus_xp_transactions
+      WHERE amount > 0 AND competitive=TRUE
         AND created_at >= $1::timestamptz
       GROUP BY user_id
     ), da AS (
@@ -99,26 +99,26 @@ async function monthlyLeaderboard(viewerUid: string | null, season: EconomySeaso
     const publicResult = await pool.query(`${commonCtes},
       ranked AS (
       SELECT r.uid, r.name, r.level, r.class_level,
-             COALESCE(np.period_np, 0) AS period_np,
+             COALESCE(xp.period_xp, 0) AS period_xp,
              COALESCE(da.period_questions, 0) AS period_questions,
              COALESCE(da.period_correct, 0) AS period_correct,
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
              ROW_NUMBER() OVER (
-               ORDER BY COALESCE(np.period_np, 0) DESC,
+               ORDER BY COALESCE(xp.period_xp, 0) DESC,
                  CASE WHEN COALESCE(da.period_questions, 0) >= 50
                    THEN COALESCE(da.period_correct, 0)::numeric / NULLIF(da.period_questions, 0)
                    ELSE 0 END DESC,
                  r.uid ASC
              ) AS public_rank
       FROM mednexus_registered_users r
-      LEFT JOIN np ON np.user_id = r.uid
+      LEFT JOIN xp ON xp.user_id = r.uid
       LEFT JOIN da ON da.user_id = r.uid
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
       WHERE r.is_private = FALSE
         AND r.status = 'approved'
-        AND COALESCE(np.period_np, 0) > 0
+        AND COALESCE(xp.period_xp, 0) > 0
       )
-      SELECT uid,name,level,class_level,period_np,period_questions,period_correct,
+      SELECT uid,name,level,class_level,period_xp,period_questions,period_correct,
              equipped_title,equipped_frame,equipped_highlight,equipped_avatar,public_rank
       FROM ranked WHERE public_rank <= 50 ORDER BY public_rank
       LIMIT 50`, [cutoff, season.id])
@@ -129,12 +129,12 @@ async function monthlyLeaderboard(viewerUid: string | null, season: EconomySeaso
   if (viewerUid && !viewerEntry) {
     const viewerResult = await pool.query(`${commonCtes}
       SELECT r.uid, r.name, r.level, r.class_level,
-             COALESCE(np.period_np, 0) AS period_np,
+             COALESCE(xp.period_xp, 0) AS period_xp,
              COALESCE(da.period_questions, 0) AS period_questions,
              COALESCE(da.period_correct, 0) AS period_correct,
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar
       FROM mednexus_registered_users r
-      LEFT JOIN np ON np.user_id = r.uid
+      LEFT JOIN xp ON xp.user_id = r.uid
       LEFT JOIN da ON da.user_id = r.uid
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
       WHERE r.uid = $3`, [cutoff, season.id, viewerUid])
@@ -147,22 +147,22 @@ async function monthlyLeaderboard(viewerUid: string | null, season: EconomySeaso
       const rankResult = await pool.query(`${commonCtes}
         SELECT 1 + COUNT(*)::int AS exact_rank
         FROM mednexus_registered_users r
-        LEFT JOIN np ON np.user_id = r.uid
+        LEFT JOIN xp ON xp.user_id = r.uid
         LEFT JOIN da ON da.user_id = r.uid
         WHERE r.is_private = FALSE
           AND r.status = 'approved'
-          AND COALESCE(np.period_np, 0) > 0
+          AND COALESCE(xp.period_xp, 0) > 0
           AND (
-            COALESCE(np.period_np, 0) > $3 OR
-            (COALESCE(np.period_np, 0) = $3 AND
+            COALESCE(xp.period_xp, 0) > $3 OR
+            (COALESCE(xp.period_xp, 0) = $3 AND
               CASE WHEN COALESCE(da.period_questions, 0) >= 50
                 THEN COALESCE(da.period_correct, 0)::numeric / NULLIF(da.period_questions, 0)
                 ELSE 0 END > $4) OR
-            (COALESCE(np.period_np, 0) = $3 AND
+            (COALESCE(xp.period_xp, 0) = $3 AND
               CASE WHEN COALESCE(da.period_questions, 0) >= 50
                 THEN COALESCE(da.period_correct, 0)::numeric / NULLIF(da.period_questions, 0)
                 ELSE 0 END = $4 AND r.uid < $5)
-          )`, [cutoff, season.id, Number(viewer.period_np ?? 0), viewerAccuracy, viewerUid])
+          )`, [cutoff, season.id, Number(viewer.period_xp ?? 0), viewerAccuracy, viewerUid])
       viewer.public_rank = Number(rankResult.rows[0]?.exact_rank ?? 1)
       viewerEntry = timedEntry(viewer)
     }
@@ -178,7 +178,10 @@ async function seasonLeaderboard(viewerUid: string | null, season: EconomySeason
       ELSE ROUND(100.0 * activity.correct / NULLIF(activity.questions, 0))
     END
   `
-  const activityCte = `WITH activity AS (
+  const activityCte = `WITH xp AS (
+    SELECT user_id,SUM(amount)::bigint AS total_xp FROM mednexus_xp_transactions
+    WHERE season_id=$1 AND competitive=TRUE GROUP BY user_id
+  ), activity AS (
     SELECT user_id, SUM(questions_answered)::bigint AS questions,
            SUM(correct_answers)::bigint AS correct
     FROM mednexus_daily_activity
@@ -189,24 +192,23 @@ async function seasonLeaderboard(viewerUid: string | null, season: EconomySeason
     const publicResult = await pool.query(`
       ${activityCte}, ranked AS (
       SELECT r.uid, r.name, r.level, r.class_level,
-             COALESCE(w.rank_points, 0) AS total_np,
-             COALESCE(w.rank_points, 0) AS rank_points,
+             COALESCE(xp.total_xp, 0) AS total_xp,
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
              ${accuracySql} AS accuracy,
              ROW_NUMBER() OVER (
-               ORDER BY COALESCE(w.rank_points, 0) DESC, ${accuracySql} DESC, r.uid ASC
+               ORDER BY COALESCE(xp.total_xp, 0) DESC, ${accuracySql} DESC, r.uid ASC
              ) AS public_rank
       FROM mednexus_registered_users r
-      LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
+      LEFT JOIN xp ON xp.user_id = r.uid
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
       LEFT JOIN activity ON activity.user_id = r.uid
-      WHERE r.is_private = FALSE AND r.status = 'approved' AND COALESCE(w.rank_points, 0) > 0
+      WHERE r.is_private = FALSE AND r.status = 'approved' AND COALESCE(xp.total_xp, 0) > 0 AND COALESCE(activity.questions,0) >= $2
     )
-      SELECT uid,name,level,class_level,total_np,rank_points,accuracy,
+      SELECT uid,name,level,class_level,total_xp,accuracy,
              equipped_title,equipped_frame,equipped_highlight,equipped_avatar,public_rank
       FROM ranked WHERE public_rank <= 50 ORDER BY public_rank
       LIMIT 50
-    `, [season.id])
+    `, [season.id, season.minimumEligibleQuestions])
     return publicResult.rows.map(allTimeEntry)
   })
   let viewerEntry = viewerUid ? entries.find((entry) => entry.uid === viewerUid) ?? null : null
@@ -215,12 +217,11 @@ async function seasonLeaderboard(viewerUid: string | null, season: EconomySeason
     const viewerResult = await pool.query(`
       ${activityCte}
       SELECT r.uid, r.name, r.level, r.class_level,
-             COALESCE(w.rank_points, 0) AS total_np,
-             COALESCE(w.rank_points, 0) AS rank_points,
+             COALESCE(xp.total_xp, 0) AS total_xp,
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
              ${accuracySql} AS accuracy
       FROM mednexus_registered_users r
-      LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
+      LEFT JOIN xp ON xp.user_id = r.uid
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
       LEFT JOIN activity ON activity.user_id = r.uid
       WHERE r.uid = $2
@@ -231,16 +232,16 @@ async function seasonLeaderboard(viewerUid: string | null, season: EconomySeason
         ${activityCte}
         SELECT 1 + COUNT(*)::int AS exact_rank
         FROM (
-          SELECT r.uid, COALESCE(w.rank_points, 0) AS total_np, ${accuracySql} AS accuracy
+          SELECT r.uid, COALESCE(xp.total_xp, 0) AS total_xp, ${accuracySql} AS accuracy
           FROM mednexus_registered_users r
-          LEFT JOIN mednexus_season_wallets w ON w.user_id = r.uid AND w.season_id = $1
+          LEFT JOIN xp ON xp.user_id = r.uid
           LEFT JOIN activity ON activity.user_id = r.uid
-          WHERE r.is_private = FALSE AND r.status = 'approved'
+          WHERE r.is_private = FALSE AND r.status = 'approved' AND COALESCE(activity.questions,0) >= $5
         ) public
-        WHERE public.total_np > $2
-           OR (public.total_np = $2 AND public.accuracy > $3)
-           OR (public.total_np = $2 AND public.accuracy = $3 AND public.uid < $4)
-      `, [season.id, Number(viewer.total_np ?? 0), Number(viewer.accuracy ?? 0), viewerUid])
+        WHERE public.total_xp > $2
+           OR (public.total_xp = $2 AND public.accuracy > $3)
+           OR (public.total_xp = $2 AND public.accuracy = $3 AND public.uid < $4)
+      `, [season.id, Number(viewer.total_xp ?? 0), Number(viewer.accuracy ?? 0), viewerUid, season.minimumEligibleQuestions])
       viewer.public_rank = Number(rankResult.rows[0]?.exact_rank ?? 1)
       viewerEntry = allTimeEntry(viewer)
     }
@@ -249,14 +250,12 @@ async function seasonLeaderboard(viewerUid: string | null, season: EconomySeason
   return { entries, viewerEntry, tab: "season" as const }
 }
 
-/** Lifetime competition is independent of the active season. Rank Points are
- * summed across season wallets; the pre-season wallet is included once for
- * learners whose history predates Economy Seasons. */
+/** Lifetime competition is the sum of all verified competitive XP. */
 async function allTimeLeaderboard(viewerUid: string | null) {
   const commonCtes = `
-    WITH seasonal AS (
-      SELECT user_id, SUM(rank_points)::bigint AS rank_points
-      FROM mednexus_season_wallets
+    WITH xp AS (
+      SELECT user_id, SUM(amount)::bigint AS total_xp
+      FROM mednexus_xp_transactions WHERE competitive=TRUE
       GROUP BY user_id
     ), activity AS (
       SELECT user_id, SUM(questions_answered)::bigint AS questions,
@@ -265,15 +264,13 @@ async function allTimeLeaderboard(viewerUid: string | null) {
       GROUP BY user_id
     ), lifetime AS (
       SELECT r.uid, r.name, r.level, r.class_level,
-             COALESCE(seasonal.rank_points, 0) + COALESCE(legacy.rank_points, 0) AS total_np,
-             COALESCE(seasonal.rank_points, 0) + COALESCE(legacy.rank_points, 0) AS rank_points,
+             COALESCE(xp.total_xp, 0) AS total_xp,
              c.equipped_title, c.equipped_frame, c.equipped_highlight, c.equipped_avatar,
              CASE WHEN COALESCE(activity.questions, 0) = 0 THEN 0
                ELSE ROUND(100.0 * activity.correct / NULLIF(activity.questions, 0)) END AS accuracy,
              r.is_private, r.status
       FROM mednexus_registered_users r
-      LEFT JOIN seasonal ON seasonal.user_id = r.uid
-      LEFT JOIN mednexus_wallet legacy ON legacy.uid = r.uid
+      LEFT JOIN xp ON xp.user_id = r.uid
       LEFT JOIN mednexus_user_cosmetics c ON c.uid = r.uid
       LEFT JOIN activity ON activity.user_id = r.uid
     )
@@ -281,11 +278,11 @@ async function allTimeLeaderboard(viewerUid: string | null) {
   const entries = await cachedPublicEntries("alltime:v2", async () => {
     const publicResult = await pool.query(`${commonCtes}, ranked AS (
       SELECT lifetime.*,
-             ROW_NUMBER() OVER (ORDER BY total_np DESC, accuracy DESC, uid ASC) AS public_rank
+             ROW_NUMBER() OVER (ORDER BY total_xp DESC, accuracy DESC, uid ASC) AS public_rank
       FROM lifetime
-      WHERE is_private = FALSE AND status = 'approved' AND total_np > 0
+      WHERE is_private = FALSE AND status = 'approved' AND total_xp > 0
     )
-    SELECT uid,name,level,class_level,total_np,rank_points,accuracy,
+    SELECT uid,name,level,class_level,total_xp,accuracy,
            equipped_title,equipped_frame,equipped_highlight,equipped_avatar,public_rank
     FROM ranked WHERE public_rank <= 50 ORDER BY public_rank LIMIT 50`)
     return publicResult.rows.map(allTimeEntry)
@@ -294,18 +291,18 @@ async function allTimeLeaderboard(viewerUid: string | null) {
 
   if (viewerUid && !viewerEntry) {
     const viewerResult = await pool.query(`${commonCtes}
-      SELECT uid,name,level,class_level,total_np,rank_points,accuracy,
+      SELECT uid,name,level,class_level,total_xp,accuracy,
              equipped_title,equipped_frame,equipped_highlight,equipped_avatar
       FROM lifetime WHERE uid = $1`, [viewerUid])
     const viewer = viewerResult.rows[0]
     if (viewer) {
       const rankResult = await pool.query(`${commonCtes}
         SELECT 1 + COUNT(*)::int AS exact_rank FROM lifetime
-        WHERE is_private = FALSE AND status = 'approved' AND total_np > 0 AND (
-          total_np > $1 OR
-          (total_np = $1 AND accuracy > $2) OR
-          (total_np = $1 AND accuracy = $2 AND uid < $3)
-        )`, [Number(viewer.total_np ?? 0), Number(viewer.accuracy ?? 0), viewerUid])
+        WHERE is_private = FALSE AND status = 'approved' AND total_xp > 0 AND (
+          total_xp > $1 OR
+          (total_xp = $1 AND accuracy > $2) OR
+          (total_xp = $1 AND accuracy = $2 AND uid < $3)
+        )`, [Number(viewer.total_xp ?? 0), Number(viewer.accuracy ?? 0), viewerUid])
       viewer.public_rank = Number(rankResult.rows[0]?.exact_rank ?? 1)
       viewerEntry = allTimeEntry(viewer)
     }
