@@ -33,12 +33,12 @@ export function SidebarNavButton({ active, onClick, icon, label, badge, trailing
 }
 
 /** A navigational counterpart to SidebarNavButton for route-based workspaces. */
-export function SidebarNavLink({ active, href, onClick, icon, label, trailing }: { active: boolean; href: string; onClick?: () => void; icon: ReactNode; label: string; trailing?: ReactNode }) {
+export function SidebarNavLink({ active, href, onClick, icon, label, trailing, prefetch = true }: { active: boolean; href: string; onClick?: () => void; icon: ReactNode; label: string; trailing?: ReactNode; prefetch?: boolean }) {
   const stateClass = active
     ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border"
     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
 
-  return <Link href={href} onClick={onClick} aria-current={active ? "page" : undefined} className={`flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${stateClass}`}>
+  return <Link href={href} prefetch={prefetch} onClick={onClick} aria-current={active ? "page" : undefined} className={`flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${stateClass}`}>
     {icon}<span className="flex-1 text-left">{label}</span>{trailing}
   </Link>
 }

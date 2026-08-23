@@ -193,6 +193,7 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
                 active={active}
                 icon={<item.icon size={17} />}
                 label={item.label}
+                prefetch
               />
             )
           })}
@@ -272,6 +273,7 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               title={item.label}
               aria-label={item.label}
               aria-current={active ? "page" : undefined}

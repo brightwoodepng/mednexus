@@ -11,7 +11,8 @@ describe("admin navigation layout", () => {
     expect(source).toMatch(/admin-navigation-scroll-region[\s\S]*?>\s*\{navigation\}/)
     expect(source).toMatch(/mb-6 flex shrink-0 items-center justify-between/)
     expect(source).toMatch(/shrink-0 space-y-2 border-t border-sidebar-border[\s\S]*?SidebarProfileFooter/)
-    expect(source).toMatch(/href="\/"[\s\S]*?Return to Learner Workspace\s*<\/Link>/)
+    expect(source).toMatch(/href="\/"[\s\S]*?Learner View\s*<\/Link>/)
+    expect(source).toContain("prefetch")
   })
 
   it("sends the labelled notification bell to the notifications console", async () => {
