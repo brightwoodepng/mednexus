@@ -62,6 +62,7 @@ export interface SessionNPResult {
   perQuestion: {
     questionId:       string
     awardedNP:        number
+    rewardMultiplier?: number
     suppressedReason: "repeat_cap" | "discipline_fatigue" | null
   }[]
 }
@@ -71,6 +72,17 @@ export interface SessionNPResult {
 const REPEAT_MULTIPLIERS = ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers
 const DISCIPLINE_NP_LIMIT = ECONOMY_CONFIG.antiFarming.disciplineNPWindowLimit
 const FATIGUE_DAYS = ECONOMY_CONFIG.antiFarming.disciplineWindowDays
+
+export type QuestionRewardScope = "trial" | "exam" | "solo_game" | "group_study" | "multiplayer"
+
+export function questionRewardScope(mode: string): QuestionRewardScope {
+  if ((ECONOMY_CONFIG.modeIds.trialTutor as readonly string[]).includes(mode)) return "trial"
+  if ((ECONOMY_CONFIG.modeIds.exam as readonly string[]).includes(mode)) return "exam"
+  if ((ECONOMY_CONFIG.modeIds.soloGames as readonly string[]).includes(mode)) return "solo_game"
+  if (mode === "group-study") return "group_study"
+  if ((ECONOMY_CONFIG.modeIds.multiplayerGames as readonly string[]).includes(mode)) return "multiplayer"
+  throw new Error(`Unknown question reward scope for mode: ${mode}`)
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -120,6 +132,7 @@ export async function calculateSessionNP(
     : (isEarningModeEnabled("mcq_trial_tutor") && (ECONOMY_CONFIG.modeIds.trialTutor as readonly string[]).includes(mode))
       || (isEarningModeEnabled("mcq_solo_game") && (ECONOMY_CONFIG.modeIds.soloGames as readonly string[]).includes(mode))
   if (!enabled) throw new Error(`Economy rewards are disabled for mode: ${mode}`)
+  const rewardScope = questionRewardScope(mode)
 
   // Serialize the complete anti-farming read/modify/write cycle. Row locks are
   // insufficient here because a question or discipline progress row might not
@@ -181,8 +194,8 @@ export async function calculateSessionNP(
   }>(
     `SELECT question_id, correct_count
        FROM mednexus_user_question_progress
-      WHERE user_id = $1 AND season_id = $2 AND question_id = ANY($3::text[])`,
-    [userId, seasonId, questionIds],
+      WHERE user_id = $1 AND season_id = $2 AND question_id = ANY($3::text[]) AND reward_scope = $4`,
+    [userId, seasonId, questionIds, rewardScope],
   )
   const correctCountMap = new Map<string, number>(
     progressRows.map((r) => [r.question_id, r.correct_count]),
@@ -288,7 +301,22 @@ export async function calculateSessionNP(
     const accuracy = correct * 100 / total
     const accuracyRule = [...ECONOMY_CONFIG.examRewards.accuracyMultipliers]
       .reverse().find((rule) => accuracy >= rule.minimumAccuracy)!
-    const baseReward = Math.min(total, ECONOMY_CONFIG.examRewards.baseCap)
+    let repeatSuppressedQuestions = 0
+    let weightedQuestionUnits = 0
+    for (const question of sessionData) {
+      if (!question.isCorrect) {
+        weightedQuestionUnits += 1
+        perQuestion.push({ questionId: question.questionId, awardedNP: 0, rewardMultiplier: 1, suppressedReason: null })
+        continue
+      }
+      const previousCorrect = correctCountMap.get(question.questionId) ?? 0
+      const multiplier = REPEAT_MULTIPLIERS[previousCorrect] ?? 0
+      weightedQuestionUnits += multiplier
+      if (multiplier < 1) repeatSuppressedQuestions++
+      perQuestion.push({ questionId: question.questionId, awardedNP: 0, rewardMultiplier: multiplier, suppressedReason: multiplier <= 0 ? "repeat_cap" : null })
+      correctCountMap.set(question.questionId, previousCorrect + 1)
+    }
+    const baseReward = Math.min(weightedQuestionUnits, ECONOMY_CONFIG.examRewards.baseCap)
     // Rewards are non-negative, so Math.round documents and implements
     // conventional half-up rounding (a .5 fractional NP rounds upward).
     const calculatedReward = Math.round(baseReward * accuracyRule.multiplier)
@@ -324,6 +352,7 @@ export async function calculateSessionNP(
     const capSuppression = eligibleReward - totalNP
     if (disc && totalNP > 0) disciplineNPThisSession.set(disc, totalNP)
     breakdown.push({ label: `📋 Exam Questions (${total} answered; base capped at ${ECONOMY_CONFIG.examRewards.baseCap})`, amount: baseReward })
+    if (repeatSuppressedQuestions > 0) breakdown.push({ label: `Exam repeat scaling (${repeatSuppressedQuestions} correct question${repeatSuppressedQuestions === 1 ? "" : "s"})`, amount: 0 })
     breakdown.push({ label: `🎯 Accuracy Band (${accuracyRule.band}; ×${accuracyRule.multiplier})`, amount: calculatedReward - baseReward })
     if (capSuppression > 0) breakdown.push({ label: "🚫 Daily Exam Cap Suppression", amount: -capSuppression })
     breakdown.push({ label: "💳 Final Exam Credit", amount: totalNP })
@@ -423,11 +452,11 @@ export async function calculateSessionNP(
   for (const [qId, { discipline, delta }] of correctIncrements) {
     await client.query(
       `INSERT INTO mednexus_user_question_progress
-         (season_id, user_id, question_id, correct_count, discipline)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (season_id, user_id, question_id) DO UPDATE
-         SET correct_count = mednexus_user_question_progress.correct_count + $4`,
-      [seasonId, userId, qId, delta, discipline],
+         (season_id, user_id, question_id, reward_scope, correct_count, discipline)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (season_id, user_id, question_id, reward_scope) DO UPDATE
+         SET correct_count = mednexus_user_question_progress.correct_count + $5`,
+      [seasonId, userId, qId, rewardScope, delta, discipline],
     )
   }
 
@@ -584,6 +613,8 @@ export async function processDailyLogin(userId: string, metrics?: EconomyQueryMe
       source: "daily_login", sourceId: `daily-login:${todayDate}`, amount: XP_CONFIG.dailyLogin.base + milestoneXP,
       seasonId: season.id, metadata: { streak: newStreak, label: milestoneXP ? `Daily login · Day ${newStreak} milestone` : "Daily login" },
     }])
+    earned += xp.rankNPCredited
+    breakdown.push(...xp.rankNPBreakdown)
 
     // ── Write: user notification (deterministic ID = idempotent) ─────────────
     const notifId     = `login-${userId}-${todayDate}`
@@ -682,6 +713,7 @@ export async function abandonStaleSessions(
   const season = await getActiveSeason(pool)
   const { rows: staleSessions } = await pool.query<{
     id: string
+    mode: string
     question_ids: string[]
     answered_ids: string[]
   }>(
@@ -691,7 +723,7 @@ export async function abandonStaleSessions(
         AND COALESCE(season_id, $3) = $3
         AND status   = 'active'
         AND started_at < NOW() - ($2 || ' minutes')::INTERVAL
-      RETURNING id, question_ids, answered_ids`,
+      RETURNING id, mode, question_ids, answered_ids`,
     [userId, staleMins, season.id],
   )
 
@@ -700,6 +732,7 @@ export async function abandonStaleSessions(
   let penalisedQuestions = 0
 
   for (const sess of staleSessions) {
+    const rewardScope = questionRewardScope(sess.mode)
     const allIds      = sess.question_ids as unknown as string[]
     const answeredSet = new Set(sess.answered_ids as unknown as string[])
     const unanswered  = allIds.filter((id) => !answeredSet.has(id))
@@ -710,10 +743,10 @@ export async function abandonStaleSessions(
       // row with correct_count will be incremented normally by calculateSessionNP.
       await pool.query(
         `INSERT INTO mednexus_user_question_progress
-           (season_id, user_id, question_id, correct_count, discipline)
-         VALUES ($1, $2, $3, 0, '')
-         ON CONFLICT (season_id, user_id, question_id) DO NOTHING`,
-        [season.id, userId, qId],
+           (season_id, user_id, question_id, reward_scope, correct_count, discipline)
+         VALUES ($1, $2, $3, $4, 0, '')
+         ON CONFLICT (season_id, user_id, question_id, reward_scope) DO NOTHING`,
+        [season.id, userId, qId, rewardScope],
       )
       penalisedQuestions++
     }
