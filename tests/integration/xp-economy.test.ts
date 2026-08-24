@@ -23,4 +23,12 @@ describe("XP economy", () => {
   it("keeps XP non-spendable by defining no conversion or store price", () => {
     expect("store" in XP_CONFIG).toBe(false)
   })
+
+  it("uses a long lifetime ladder with meaningful one-time NP milestones", () => {
+    expect(XP_CONFIG.clinicalRanks).toHaveLength(12)
+    expect(XP_CONFIG.clinicalRanks[0]).toEqual({ name: "Medical Student", minimumXP: 0, npReward: 0 })
+    expect(XP_CONFIG.clinicalRanks.at(-1)).toEqual({ name: "Consultant", minimumXP: 1_500_000, npReward: 7_500 })
+    expect(XP_CONFIG.clinicalRanks.slice(1).every((rank, index) => rank.minimumXP > XP_CONFIG.clinicalRanks[index].minimumXP)).toBe(true)
+    expect(XP_CONFIG.clinicalRanks.slice(1).every(rank => rank.npReward >= 500)).toBe(true)
+  })
 })
