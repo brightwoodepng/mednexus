@@ -113,7 +113,7 @@ function post(url: string, body: Record<string, string>) {
 
 describe("account entry schema initialization", () => {
   beforeEach(() => {
-    schemaInitialized = false
+    schemaInitialized = true
     registeredUsers.length = 0
     wallets.length = 0
     notifications.length = 0
@@ -127,6 +127,7 @@ describe("account entry schema initialization", () => {
   it.each([
     ["sm/sms/22/0092", "sm/sms/22/0092"],
     ["SM/SMS/31/8472", "sm/sms/31/8472"],
+    ["SM/SMS/22/0102", "sm/sms/22/0102"],
     ["sm/gem/22/0093", "sm/gem/22/0093"],
     ["smsms220092", "sm/sms/22/0092"],
     ["smgem318472", "sm/gem/31/8472"],
@@ -172,14 +173,14 @@ describe("account entry schema initialization", () => {
     expect(registeredUsers[0]).toMatchObject({ status: "pending", index_number: "sm/sms/31/8472" })
   })
 
-  it("registers against an uninitialized database and provisions all account records", async () => {
+  it("registers against the deployed schema without running migrations and provisions all account records", async () => {
     const { POST } = await import("@/app/api/auth/register/route")
     const response = await POST(post("/api/auth/register", {
       name: "Pending Learner", classLevel: "Level 400", indexNumber: "external-0001", password: "secure-password",
     }) as never)
 
     expect(response.status).toBe(200)
-    expect(ensureSchema).toHaveBeenCalledTimes(1)
+    expect(ensureSchema).not.toHaveBeenCalled()
     expect(registeredUsers).toHaveLength(1)
     expect(registeredUsers[0]).toMatchObject({ name: "Pending Learner", class_level: "Level 400", status: "pending" })
     expect(wallets).toEqual([])
@@ -243,7 +244,7 @@ describe("account entry schema initialization", () => {
     const guestResponse = await guest(post("/api/auth/guest", { name: "Guest Learner", classLevel: "Level 300" }) as never)
     expect(guestResponse.status).toBe(201)
     expect(guestUsers).toHaveLength(1)
-    expect(ensureSchema).toHaveBeenCalledTimes(1)
+    expect(ensureSchema).not.toHaveBeenCalled()
   })
 
   it("upgrades existing guest tables before class-level guest sessions are inserted", () => {
