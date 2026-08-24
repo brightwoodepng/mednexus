@@ -5,7 +5,7 @@ import { BOUNTY_POOL, STORE_ITEMS } from "@/lib/economy"
 
 describe("versioned economy configuration", () => {
   it("enables only the v1 MCQ earning families and daily login", () => {
-    expect(ECONOMY_CONFIG.economyVersion).toBe("2.0.0")
+    expect(ECONOMY_CONFIG.economyVersion).toBe("3.0.0")
     expect(Object.values(ECONOMY_CONFIG.enabledEarningModes).every(Boolean)).toBe(true)
     expect(ECONOMY_CONFIG.modeIds.trialTutor).toEqual(["trial", "tutor"])
     expect(ECONOMY_CONFIG.modeIds.exam).toEqual(["exam"])
@@ -25,7 +25,7 @@ describe("versioned economy configuration", () => {
       correct: 5,
       streakThresholds: [{ minimum: 5, bonus: 2 }, { minimum: 10, bonus: 3 }],
       completionThresholds: [{ minimumAnswered: 10, bonus: 15 }, { minimumAnswered: 25, bonus: 25 }],
-      dailyCap: 200,
+      dailyCap: 300,
     })
     expect(ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers).toEqual([1, 0.5])
     expect(ECONOMY_CONFIG.antiFarming.masteryResetDays).toBeNull()
@@ -35,7 +35,7 @@ describe("versioned economy configuration", () => {
     expect(ECONOMY_CONFIG.examRewards).toEqual({
       minimumAnswered: 10,
       baseCap: 50,
-      dailyCap: 250,
+      dailyCap: 350,
       accuracyMultipliers: [
         { minimumAccuracy: 0, band: "below 50%", multiplier: 1 },
         { minimumAccuracy: 50, band: "50%–69%", multiplier: 1.25 },
@@ -49,7 +49,7 @@ describe("versioned economy configuration", () => {
   it("centralizes the solo and multiplayer game payout policy", () => {
     expect(ECONOMY_CONFIG.gameRewards.solo).toMatchObject({
       completion: 10, correctAnswer: 3, personalBest: 25,
-      firstDailyCompletion: 15, dailyCap: 200,
+      firstDailyCompletion: 15, dailyCap: 300,
     })
     expect(ECONOMY_CONFIG.gameRewards.solo.accuracyBonuses).toEqual([
       { minimumAccuracy: 70, bonus: 10 },
@@ -57,10 +57,30 @@ describe("versioned economy configuration", () => {
       { minimumAccuracy: 95, bonus: 30 },
     ])
     expect(ECONOMY_CONFIG.gameRewards.multiplayer).toMatchObject({
-      participation: 10, placeBonuses: [40, 25, 15],
-      firstDailyWin: 25, dailyCap: 150,
+      correctAnswer: 5, participation: 15, placeBonuses: [60, 40, 25],
+      firstDailyWin: 30, dailyCap: 250,
+    })
+    expect(ECONOMY_CONFIG.gameRewards.groupStudy).toEqual({
+      correctAnswer: 5, completion: 20, accuracy80: 15,
+      dailyCap: 250, minimumAnswers: 3, minimumPlayers: 2,
     })
     expect(ECONOMY_CONFIG.gameRewards.multiplayer).not.toHaveProperty("studyGroupPerPlayer")
+    expect(ECONOMY_CONFIG.repeatableDailyCeiling).toBe(1_500)
+    expect(300 + 350 + 300 + 250 + 250).toBeLessThanOrEqual(ECONOMY_CONFIG.repeatableDailyCeiling)
+  })
+
+  it("isolates repeat history and daily caps by activity family", () => {
+    const antiFarming = readFileSync("lib/anti-farming.ts", "utf8")
+    const groupStudy = readFileSync("app/api/group-study/[pin]/route.ts", "utf8")
+    const multiplayer = readFileSync("app/api/game-rooms/[pin]/score/route.ts", "utf8")
+    const migration = readFileSync("migrations/2026-08-24-economy-v3-scoped-repeats.sql", "utf8")
+    expect(antiFarming).toContain('type QuestionRewardScope = "trial" | "exam" | "solo_game" | "group_study" | "multiplayer"')
+    expect(antiFarming).toContain("AND reward_scope = $4")
+    expect(groupStudy).toContain('reward_scope=\'group_study\'')
+    expect(multiplayer).toContain('reward_scope=\'multiplayer\'')
+    expect(groupStudy).toContain('dailyRewardRemaining(client, member.user_id, "group_study", season.id)')
+    expect(multiplayer).toContain('dailyRewardRemaining(client, playerId, "multiplayer", season.id)')
+    expect(migration).toContain("PRIMARY KEY (season_id, user_id, question_id, reward_scope)")
   })
 
   it("defines the finite daily-login reward program", () => {
@@ -123,22 +143,17 @@ describe("versioned economy configuration", () => {
   })
 
   it("defines complete, price-aligned presentation metadata for cosmetics", () => {
-    const expectedRarity = (price: number) => {
-      if (price >= 4_000) return "mythic"
-      if (price >= 1_000) return "legendary"
-      if (price >= 600) return "epic"
-      if (price >= 400) return "rare"
-      return "common"
-    }
-
     for (const item of STORE_ITEMS.filter(candidate => candidate.category === "cosmetic")) {
       expect(["active", "remastered", "retired", "legacy"], item.id).toContain(item.status)
-      expect(item.rarity, item.id).toBe(expectedRarity(item.price))
+      const band = ECONOMY_CONFIG.store.priceBands[item.productGroup]
+      expect(item.price, item.id).toBeGreaterThanOrEqual(band.minimum)
+      expect(item.price, item.id).toBeLessThanOrEqual(band.maximum)
+      expect(["common", "rare", "epic", "legendary", "mythic"], item.id).toContain(item.rarity)
       expect(item.sortOrder, item.id).toEqual(expect.any(Number))
       expect(item.previewTheme, item.id).toEqual(expect.any(String))
     }
     expect(STORE_ITEMS.find(item => item.id === "frame_gold")).toMatchObject({
-      status: "retired", legacyRenderer: "frame_gold",
+      status: "remastered", legacyRenderer: "frame_gold",
     })
     expect(STORE_ITEMS.find(item => item.id === "frame_neon")).toMatchObject({
       status: "remastered", upgradeAnnouncement: expect.any(String),
