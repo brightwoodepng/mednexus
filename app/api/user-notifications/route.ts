@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
+import { ensureNotificationSchema } from "@/lib/notification-schema"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
-  try { const { default: pool } = await import("@/lib/db"); return pool } catch { return null }
+  try { const { default: pool } = await import("@/lib/db"); await ensureNotificationSchema(pool); return pool } catch { return null }
 }
 
 // Personal notifications are registered-user data; guests never receive them.
