@@ -16,9 +16,16 @@ export async function GET(req: NextRequest) {
     const pool = await getPool(); if (!pool) return NextResponse.json({ notifications: [] })
     const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
     const res = await pool.query(
-      `SELECT id, type, message, is_read, created_at, COUNT(*) OVER()::int AS total_count
-       FROM mednexus_user_notifications
-       WHERE user_id = $1
+      `SELECT n.id, n.type, n.message, n.is_read, n.created_at, COUNT(*) OVER()::int AS total_count
+       FROM mednexus_user_notifications n
+       LEFT JOIN mednexus_notification_preferences p ON p.user_id=n.user_id
+       WHERE n.user_id = $1 AND (
+         p.user_id IS NULL
+         OR (n.type IN ('module_complete','discipline_mastery','qbank_milestone') AND p.study)
+         OR (n.type='group_study' AND p.group_study)
+         OR (n.type IN ('economy','store','streak') AND p.rewards)
+         OR (n.type='leaderboard' AND p.rankings)
+         OR n.type NOT IN ('module_complete','discipline_mastery','qbank_milestone','group_study','economy','store','streak','leaderboard'))
        ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
       [auth.uid, pageSize, offset],
     )
