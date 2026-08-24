@@ -8,7 +8,7 @@ import {
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { StethoscopeIcon } from "@/components/icons"
-import { SidebarCollapsedRail, SidebarFrame, SidebarGroup, SidebarNavLink, SidebarProfileFooter } from "@/components/navigation/sidebar-primitives"
+import { SidebarCollapsedRail, SidebarFrame, SidebarGroup, SidebarNavLink } from "@/components/navigation/sidebar-primitives"
 import { ThemeModal } from "@/components/theme-modal"
 import { useTheme } from "@/contexts/theme-context"
 
@@ -44,8 +44,10 @@ const groups: Array<{ label?: string; items: NavigationItem[] }> = [
 
 function AdminHeader({
   onOpenMobile,
+  identity,
 }: {
   onOpenMobile: () => void
+  identity: AdminShellProps["identity"]
 }) {
   const { activeTheme, isGlassEnabled } = useTheme()
   const router = useRouter()
@@ -56,6 +58,7 @@ function AdminHeader({
   const [searching, setSearching] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+  const initials = identity.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "A"
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -85,7 +88,7 @@ function AdminHeader({
   }, [query])
 
   return (
-    <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5">
+    <header className="flex h-16 min-h-16 shrink-0 items-center gap-3 border-b border-border bg-card px-3 sm:px-5">
       {/* Mobile hamburger */}
       <button
         type="button"
@@ -97,7 +100,7 @@ function AdminHeader({
       </button>
 
       {/* Search */}
-      <div className="relative flex flex-1 max-w-sm items-center">
+      <div className="relative flex min-w-0 max-w-2xl flex-1 items-center">
         <Search size={14} className="absolute left-3 text-muted-foreground pointer-events-none" aria-hidden />
         <input
           type="search"
@@ -137,6 +140,16 @@ function AdminHeader({
         <div className="hidden items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground sm:flex whitespace-nowrap">
           <span className="font-medium text-foreground">{today}</span>
         </div>
+
+        {/* The active administrator belongs in the shared header, not the
+            independently scrolling navigation footer. */}
+        <div className="flex h-10 items-center gap-2.5 rounded-xl border border-border bg-muted/50 p-1.5 pr-2.5" title={`${identity.name} · ${identity.role.replaceAll("_", " ")}`}>
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">{initials}</span>
+          <span className="hidden min-w-0 max-w-40 lg:block">
+            <span className="block truncate text-xs font-semibold leading-tight text-foreground">{identity.name}</span>
+            <span className="block truncate text-[9px] uppercase leading-tight tracking-wide text-muted-foreground">{identity.role.replaceAll("_", " ")}</span>
+          </span>
+        </div>
       </div>
       <ThemeModal open={themeModalOpen} onClose={() => setThemeModalOpen(false)} />
       {paletteOpen && <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/45 px-3 pt-[12vh]" onMouseDown={(event) => { if (event.currentTarget === event.target) setPaletteOpen(false) }}>
@@ -168,7 +181,6 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const closeMobile = () => setMobileOpen(false)
-  const initials = identity.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "A"
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem("mednexus.admin.sidebar-collapsed") === "true")
@@ -204,7 +216,7 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
 
   const fullSidebar = (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="mb-6 flex shrink-0 items-center justify-between border-b border-sidebar-border px-4 py-3.5">
+      <div className="mb-6 flex h-16 min-h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-4">
         <Link
           href="/admin"
           className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
@@ -235,7 +247,6 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
       </div>
 
       <div className="shrink-0 space-y-2 border-t border-sidebar-border px-3 py-3">
-        <SidebarProfileFooter><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">{initials}</span><span className="min-w-0"><span className="block truncate text-xs font-semibold text-sidebar-foreground">{identity.name}</span><span className="block truncate text-[10px] uppercase tracking-wide text-sidebar-foreground/50">{identity.role.replaceAll("_", " ")}</span></span></div></SidebarProfileFooter>
         <Link
           href="/"
           aria-label="Open learner workspace"
@@ -252,7 +263,6 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
     <SidebarCollapsedRail
       onExpand={() => setSidebarCollapsed(false)}
       footer={<>
-        <span title={`${identity.name} · ${identity.role.replaceAll("_", " ")}`} className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-xs font-bold text-primary-foreground">{initials}</span>
         <Link
           href="/"
           aria-label="Open learner workspace"
@@ -302,7 +312,7 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
       </SidebarFrame>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <AdminHeader onOpenMobile={() => setMobileOpen(true)} />
+        <AdminHeader identity={identity} onOpenMobile={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 pb-8 md:p-6 lg:p-8">{children}</main>
       </div>
     </div>
