@@ -25,8 +25,10 @@ describe("admin students and roles", () => {
   })
 
   it("stages effective permission changes and confirms once", () => {
-    for (const text of ["Effective permissions", "Unsaved access changes", "Confirm changes", "Role default", "Custom grant"]) expect(rolesUi).toContain(text)
+    for (const text of ["Administrators", "Learner access", "Effective permissions", "Unsaved access changes", "Confirm changes", "Role default", "Custom grant"]) expect(rolesUi).toContain(text)
     expect(rolesApi).toContain("baselines")
+    expect(rolesApi).toContain('requestedRole === "ALL"')
+    expect(rolesApi).toContain("u.role IN ('ADMIN', 'SUPER_ADMIN')")
     expect(rolesApi).toContain("final remaining SUPER_ADMIN")
     expect(rolesApi).toContain("ROLE_CHANGE")
     expect(rolesApi).toContain("PERMISSION_CHANGE")
