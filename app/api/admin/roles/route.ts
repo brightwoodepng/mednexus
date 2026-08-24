@@ -17,6 +17,10 @@ export async function GET(req: NextRequest) {
     const queryStartedAt = performance.now()
     const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
     const search = (req.nextUrl.searchParams.get("search") ?? "").trim().slice(0, 160)
+    const requestedRole = req.nextUrl.searchParams.get("role") ?? "ADMINISTRATORS"
+    const roleFilter = requestedRole === "ALL" || requestedRole === "ADMINISTRATORS" || roles.includes(requestedRole as ManagedRole)
+      ? requestedRole
+      : "ADMINISTRATORS"
     const pool = await getPool()
     const result = await pool.query(
       `SELECT u.uid, u.name, u.index_number, u.role,
@@ -26,10 +30,11 @@ export async function GET(req: NextRequest) {
        FROM mednexus_registered_users u
        LEFT JOIN mednexus_user_permissions p ON p.user_id = u.uid
        WHERE ($3='' OR u.name ILIKE '%'||$3||'%' OR u.index_number ILIKE '%'||$3||'%')
+         AND ($4='ALL' OR ($4='ADMINISTRATORS' AND u.role IN ('ADMIN', 'SUPER_ADMIN')) OR u.role=$4)
        GROUP BY u.uid, u.name, u.index_number, u.role
-       ORDER BY u.name ASC
+       ORDER BY CASE u.role WHEN 'SUPER_ADMIN' THEN 0 WHEN 'ADMIN' THEN 1 ELSE 2 END, u.name ASC
        LIMIT $1 OFFSET $2`,
-      [pageSize, offset, search],
+      [pageSize, offset, search, roleFilter],
     )
     const payload = {
       permissions: ADMIN_PERMISSIONS,
