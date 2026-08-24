@@ -7,7 +7,7 @@ import { useApplicationShell } from "@/components/authenticated-application-shel
 
 // Mutations in the overlay update the badge optimistically, so polling is only a
 // fallback for notifications created outside this browser session.
-const POLL_INTERVAL = 900_000
+const POLL_INTERVAL = 60_000
 const UNREAD_STALE_TIME = 15_000
 
 /** Read the stored auth token from localStorage (same keys as app-context). */
