@@ -9,8 +9,11 @@ describe("admin navigation layout", () => {
 
     expect(source).toMatch(/data-testid="admin-navigation-scroll-region"[\s\S]*?className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"/)
     expect(source).toMatch(/admin-navigation-scroll-region[\s\S]*?>\s*\{navigation\}/)
-    expect(source).toMatch(/mb-6 flex shrink-0 items-center justify-between/)
-    expect(source).toMatch(/shrink-0 space-y-2 border-t border-sidebar-border[\s\S]*?SidebarProfileFooter/)
+    expect(source).toMatch(/mb-6 flex h-16 min-h-16 shrink-0 items-center justify-between/)
+    expect(source).toMatch(/<header className="flex h-16 min-h-16/)
+    expect(source).not.toContain("SidebarProfileFooter")
+    expect(source).toContain('identity={identity}')
+    expect(source).toContain("max-w-2xl")
     expect(source).toMatch(/href="\/"[\s\S]*?Learner View\s*<\/Link>/)
     expect(source).toContain("prefetch")
   })
