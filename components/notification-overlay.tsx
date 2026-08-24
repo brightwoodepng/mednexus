@@ -213,7 +213,7 @@ interface BroadcastFeedData {
 }
 
 interface PersonalFeedData {
-  notifications?: Array<{ id: string; type: string; message: string; isRead: boolean; createdAt: string }>
+  notifications?: Array<{ id: string; type: string; message: string; isRead: boolean; createdAt: string; actionUrl?: string | null; actionLabel?: string | null }>
 }
 
 /** Load the feeds available to this credential without calling registered-only APIs for guests. */
@@ -404,7 +404,7 @@ const PERSONAL_TYPE_LABELS: Record<string, string> = {
 }
 
 function normalisePersonal(r: {
-  id: string; type: string; message: string; isRead: boolean; createdAt: string
+  id: string; type: string; message: string; isRead: boolean; createdAt: string; actionUrl?: string | null; actionLabel?: string | null
 }): OverlayItem {
   const title = PERSONAL_TYPE_LABELS[r.type] ?? "Notification"
   return {
@@ -415,6 +415,8 @@ function normalisePersonal(r: {
     createdAt: r.createdAt,
     isRead: r.isRead,
     source: "personal",
+    actionUrl: r.actionUrl,
+    actionLabel: r.actionLabel,
   }
 }
 

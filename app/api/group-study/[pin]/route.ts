@@ -24,6 +24,8 @@ import { requireAuthenticatedUser } from "@/lib/request-auth"
 import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
 import { applyXPCredits, type XPCredit } from "@/lib/xp-ledger"
 import { XP_CONFIG } from "@/lib/xp-config"
+import { ensureNotificationSchema } from "@/lib/notification-schema"
+import { notifyRoomMembers, notifyUser } from "@/lib/personal-notifications"
 
 type RoomRow = {
   id: string; pin: string; host_user_id: string; module_id: string; discipline: string | null; difficulty: string
@@ -441,7 +443,7 @@ export async function GET(req: Request, context: { params: Promise<{ pin: string
 export async function POST(req: Request, context: { params: Promise<{ pin: string }> }) {
   const auth = await requireAuthenticatedUser(req)
   if (!auth) return fail("Sign in or continue as a guest to join Group Study", 401, "AUTHENTICATION_REQUIRED")
-  try { await ensureGroupStudySchema() } catch (error) { console.error("[group-study schema POST]", error); return fail("Group Study is temporarily unavailable", 503, "SCHEMA_UNAVAILABLE") }
+  try { await Promise.all([ensureGroupStudySchema(), ensureNotificationSchema(pool)]) } catch (error) { console.error("[group-study schema POST]", error); return fail("Group Study is temporarily unavailable", 503, "SCHEMA_UNAVAILABLE") }
   const { pin } = await context.params
   const body = await req.json().catch(() => ({})) as { action?: string; answer?: unknown; ready?: unknown; force?: unknown; targetUserId?: unknown; questionPosition?: unknown; navigationMode?: unknown }
   const client = await pool.connect()
@@ -472,6 +474,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         room = restoredRoom.rows[0]
       }
       await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
+      if (auth.uid !== room.host_user_id) await notifyUser(client, { id:`group-join-${room.id}-${member.id}-${body.action}`, userId:room.host_user_id, type:"group_study", message:`A participant ${body.action === "rejoin" ? "rejoined" : "joined"} Group Study room ${room.pin}.`, actionUrl:`/group-study/${room.pin}`, actionLabel:"Open room" })
     } else {
       if (!member) { await client.query("ROLLBACK"); return fail("Join this room first", 403, "NOT_A_MEMBER") }
       await client.query("UPDATE mednexus_group_study_memberships SET last_seen_at=NOW(),connection_status='online',left_at=NULL WHERE id=$1", [member.id])
@@ -511,6 +514,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         )
         room = started.rows[0]
         await client.query("UPDATE mednexus_group_study_room_questions SET opened_at=NOW() WHERE room_id=$1 AND position=0", [room.id])
+        await notifyRoomMembers(client, room.id, `group-start-${room.id}`, `Group Study room ${room.pin} has started.`, `/group-study/${room.pin}`)
       } else if (body.action === "submit") {
         const answerPosition = body.questionPosition === undefined ? room.current_question_index : Number(body.questionPosition)
         const answeringAhead = answerPosition > room.current_question_index
@@ -555,6 +559,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
           const completed = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET status='completed',current_phase='completed',completed_at=NOW(),version=version+1 WHERE id=$1 RETURNING *", [room.id])
           room = completed.rows[0]
           await awardCompletion(client, room)
+          await notifyRoomMembers(client, room.id, `group-complete-${room.id}`, `Group Study room ${room.pin} is complete. Your results are ready.`, `/group-study/${room.pin}`)
         } else {
           const advanced = await client.query<RoomRow>(
             `UPDATE mednexus_group_study_rooms SET current_question_index=$2,current_phase='question_open',question_opened_at=NOW(),

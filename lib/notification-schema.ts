@@ -13,7 +13,13 @@ export function ensureNotificationSchema(pool: Pool) {
       ADD COLUMN IF NOT EXISTS action_label TEXT,
       ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ,
-      ADD COLUMN IF NOT EXISTS created_by TEXT`)
+      ADD COLUMN IF NOT EXISTS created_by TEXT,
+      ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`)
+    await pool.query(`ALTER TABLE mednexus_user_notifications
+      ADD COLUMN IF NOT EXISTS action_url TEXT,
+      ADD COLUMN IF NOT EXISTS action_label TEXT,
+      ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ`)
     await pool.query(`CREATE INDEX IF NOT EXISTS mednexus_notifications_delivery_idx
       ON mednexus_notifications (scheduled_at DESC, expires_at)`)
     await pool.query(`CREATE TABLE IF NOT EXISTS mednexus_notification_preferences (

@@ -7,6 +7,8 @@ import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import { processDailyLogin } from "@/lib/anti-farming"
 import pool from "@/lib/db"
 import { countEconomyQueries, economyJson, economyMetrics } from "@/lib/economy-api"
+import { ensureNotificationSchema } from "@/lib/notification-schema"
+import { notifyUser } from "@/lib/personal-notifications"
 
 export async function POST(req: NextRequest) {
   const metrics = economyMetrics()
@@ -21,6 +23,8 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await processDailyLogin(uid, metrics)
+    await ensureNotificationSchema(pool)
+    if (!result.alreadyDone && Number(result.earned) > 0) await notifyUser(pool, { id:`daily-login-${uid}-${new Date().toISOString().slice(0,10)}`, userId:uid, type:"streak", message:`Daily activity reward: +${result.earned} NP${result.newStreak ? ` · ${result.newStreak}-day streak` : ""}.`, actionUrl:"/", actionLabel:"View dashboard" }).catch(error => console.error("[daily-login notification]", error))
     const wallet = await countEconomyQueries(pool, metrics).query(`SELECT w.balance,w.lifetime_earned,w.rank_points
       FROM mednexus_season_wallets w JOIN mednexus_economy_seasons s ON s.id=w.season_id
       WHERE w.user_id=$1 AND s.status='active' ORDER BY s.starts_at DESC LIMIT 1`, [uid])

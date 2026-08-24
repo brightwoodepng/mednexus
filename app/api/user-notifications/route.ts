@@ -17,10 +17,10 @@ export async function GET(req: NextRequest) {
     const pool = await getPool(); if (!pool) return NextResponse.json({ notifications: [] })
     const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
     const res = await pool.query(
-      `SELECT n.id, n.type, n.message, n.is_read, n.created_at, COUNT(*) OVER()::int AS total_count
+      `SELECT n.id, n.type, n.message, n.action_url, n.action_label, n.is_read, n.created_at, COUNT(*) OVER()::int AS total_count
        FROM mednexus_user_notifications n
        LEFT JOIN mednexus_notification_preferences p ON p.user_id=n.user_id
-       WHERE n.user_id = $1 AND (
+       WHERE n.user_id = $1 AND n.archived_at IS NULL AND (
          p.user_id IS NULL
          OR (n.type IN ('module_complete','discipline_mastery','qbank_milestone') AND p.study)
          OR (n.type='group_study' AND p.group_study)
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       [auth.uid, pageSize, offset],
     )
     const payload = {
-      notifications: res.rows.map(r => ({ id:r.id, type:r.type, message:r.message, isRead:r.is_read, createdAt:r.created_at })),
+      notifications: res.rows.map(r => ({ id:r.id, type:r.type, message:r.message, actionUrl:r.action_url, actionLabel:r.action_label, isRead:r.is_read, createdAt:r.created_at })),
       pagination: { page, pageSize, total: Number(res.rows[0]?.total_count ?? 0) },
     }
     return measuredJson({
