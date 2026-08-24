@@ -15,6 +15,7 @@ vi.mock("@/lib/admin-access", () => ({
 }))
 vi.mock("@/lib/platform-settings", () => ({ auditAdmin: vi.fn() }))
 vi.mock("@/lib/db", () => ({ default: { query } }))
+vi.mock("@/lib/notification-schema", () => ({ ensureNotificationSchema: vi.fn() }))
 
 function bulkRequest(path: string, body: Record<string, unknown> = { markAllRead: true }) {
   return new NextRequest(`http://mednexus.test${path}`, {
