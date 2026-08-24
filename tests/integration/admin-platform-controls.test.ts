@@ -33,7 +33,7 @@ describe("admin platform controls",()=>{
   })
 
   it("migrates admin platform tables and binds taxonomy actions safely",()=>{
-    expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-08-24-notification-centre-v1"')
+    expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-08-23-xp-ledger-and-leaderboard-v1"')
     expect(taxonomyApi).toContain('const updateParameters = action === "move_discipline"')
     expect(taxonomyApi).toContain(': [body.module, discipline, body.newName?.trim() ?? null]')
     expect(taxonomyApi).toContain("Modules and disciplines are temporarily unavailable")
