@@ -32,6 +32,7 @@ export function PayoutResult({
   breakdown: { label: string; amount: number }[]
   bountyUpdates: { id: string; progress: number; target: number; newlyComplete: boolean; reward?: number }[]
 }) {
+  const limitedByCap = breakdown.some(item => item.amount < 0)
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm" aria-label={`${earned} Nexus Points earned`}>
       {/* Earned amount header */}
@@ -42,7 +43,11 @@ export function PayoutResult({
         <div className="min-w-0">
           <p className="text-xs font-semibold text-muted-foreground">Nexus Points earned</p>
           <p className="mt-0.5 text-2xl font-bold text-foreground tabular-nums">{earned > 0 ? "+" : ""}{earned.toLocaleString()} NP</p>
-          {earned === 0 && <p className="mt-1 text-xs text-muted-foreground">No eligible points were awarded for this round.</p>}
+          {earned === 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {limitedByCap ? "No additional NP was credited because a daily reward limit applied." : "No eligible points were awarded for this round."}
+            </p>
+          )}
         </div>
       </div>
 
@@ -52,7 +57,9 @@ export function PayoutResult({
           {breakdown.map(b => (
             <div key={b.label} className="flex items-center justify-between gap-4 text-sm">
               <span className="min-w-0 text-muted-foreground">{b.label}</span>
-              <span className="shrink-0 font-semibold text-foreground tabular-nums">+{b.amount} NP</span>
+              <span className={`shrink-0 font-semibold tabular-nums ${b.amount < 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+                {b.amount > 0 ? "+" : ""}{b.amount} NP
+              </span>
             </div>
           ))}
         </div>
