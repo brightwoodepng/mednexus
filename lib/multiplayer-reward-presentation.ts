@@ -20,6 +20,7 @@ export function getMultiplayerRewardPresentation() {
     .join(" · ")
 
   return {
+    correctAnswer: `Correct answer: +${formatNexusPoints(rewards.correctAnswer)} (new questions)`,
     participation: `Participation reward: ${formatNexusPoints(rewards.participation)}`,
     placeBonuses: `Place bonuses: ${placeBonuses}`,
     firstDailyWin: `First daily win: +${formatNexusPoints(rewards.firstDailyWin)}`,
@@ -29,5 +30,5 @@ export function getMultiplayerRewardPresentation() {
 
 export function getMultiplayerRewardRules(): string[] {
   const rewards = getMultiplayerRewardPresentation()
-  return [rewards.participation, rewards.placeBonuses, rewards.firstDailyWin, rewards.dailyCap]
+  return [rewards.correctAnswer, rewards.participation, rewards.placeBonuses, rewards.firstDailyWin, rewards.dailyCap]
 }
