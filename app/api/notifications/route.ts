@@ -3,11 +3,13 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { requireRegisteredUser } from "@/lib/request-auth"
 import { auditAdmin } from "@/lib/platform-settings"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
+import { ensureNotificationSchema } from "@/lib/notification-schema"
 
 async function getPool() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
   try {
     const { default: pool } = await import("@/lib/db")
+    await ensureNotificationSchema(pool)
     return pool
   } catch {
     return null
