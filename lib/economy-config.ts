@@ -61,7 +61,8 @@ export type EconomyConfig = {
   }
   gameRewards: {
     solo: { completion: number; correctAnswer: number; accuracyBonuses: readonly { minimumAccuracy: number; bonus: number }[]; personalBest: number; firstDailyCompletion: number; dailyCap: number; minimumAnswers: number; suddenDeathMinimumAnswers: number }
-    multiplayer: { participation: number; placeBonuses: readonly number[]; firstDailyWin: number; dailyCap: number; minimumAnswers: number; minimumPlayers: number }
+    groupStudy: { correctAnswer: number; completion: number; accuracy80: number; dailyCap: number; minimumAnswers: number; minimumPlayers: number }
+    multiplayer: { correctAnswer: number; participation: number; placeBonuses: readonly number[]; firstDailyWin: number; dailyCap: number; minimumAnswers: number; minimumPlayers: number }
   }
   earningCaps: { daily: number; weekly: number }
   /** Maximum NP created by repeatable MCQ activity per user/economy date. */
@@ -91,8 +92,8 @@ export type EconomyConfig = {
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "2.0.0",
-    catalogVersion: "2.6.0",
+  economyVersion: "3.0.0",
+  catalogVersion: "3.0.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
@@ -111,11 +112,11 @@ export const ECONOMY_CONFIG = {
     // day 60+ until product defines a recurring cycle or named monthly rewards.
     { day: 30, bonus: 250, name: "30-Day Streak" },
   ] },
-  questionRewards: { trialTutor: { correct: 5, streakThresholds: [{ minimum: 5, bonus: 2 }, { minimum: 10, bonus: 3 }], completionThresholds: [{ minimumAnswered: 10, bonus: 15 }, { minimumAnswered: 25, bonus: 25 }], dailyCap: 200 } },
+  questionRewards: { trialTutor: { correct: 5, streakThresholds: [{ minimum: 5, bonus: 2 }, { minimum: 10, bonus: 3 }], completionThresholds: [{ minimumAnswered: 10, bonus: 15 }, { minimumAnswered: 25, bonus: 25 }], dailyCap: 300 } },
   examRewards: {
     minimumAnswered: 10,
     baseCap: 50,
-    dailyCap: 250,
+    dailyCap: 350,
     accuracyMultipliers: [
       { minimumAccuracy: 0, band: "below 50%", multiplier: 1 },
       { minimumAccuracy: 50, band: "50%–69%", multiplier: 1.25 },
@@ -128,18 +129,22 @@ export const ECONOMY_CONFIG = {
     solo: {
       completion: 10, correctAnswer: 3,
       accuracyBonuses: [{ minimumAccuracy: 70, bonus: 10 }, { minimumAccuracy: 85, bonus: 20 }, { minimumAccuracy: 95, bonus: 30 }],
-      personalBest: 25, firstDailyCompletion: 15, dailyCap: 200,
+      personalBest: 25, firstDailyCompletion: 15, dailyCap: 300,
       minimumAnswers: 3,
       // Sudden Death legitimately finishes on the first incorrect answer.
       suddenDeathMinimumAnswers: 1,
     },
+    groupStudy: {
+      correctAnswer: 5, completion: 20, accuracy80: 15,
+      dailyCap: 250, minimumAnswers: 3, minimumPlayers: 2,
+    },
     multiplayer: {
-      participation: 10, placeBonuses: [40, 25, 15], firstDailyWin: 25,
-      dailyCap: 150, minimumAnswers: 3, minimumPlayers: 2,
+      correctAnswer: 5, participation: 15, placeBonuses: [60, 40, 25], firstDailyWin: 30,
+      dailyCap: 250, minimumAnswers: 3, minimumPlayers: 2,
     },
   },
   earningCaps: { daily: 5_000, weekly: 20_000 },
-  repeatableDailyCeiling: 750,
+  repeatableDailyCeiling: 1_500,
   bounties: [
     { id: "practice_correct10", target: 10, reward: 35, type: "practice" },
     { id: "practice_correct20", target: 20, reward: 35, type: "practice" },
@@ -156,11 +161,9 @@ export const ECONOMY_CONFIG = {
     { id: "accuracy_70", type: "accuracy", minimumAnswers: 100, minimumAccuracy: 70, reward: 75 },
     { id: "exam_dates_3", type: "exam_dates", qualifyingExams: 3, distinctExamDates: 3, reward: 75 },
   ],
-  rankUp: { reward: 1_000, thresholds: [
-    { name: "Medical Student", minPoints: 0 }, { name: "Clerkship", minPoints: 500 },
-    { name: "Intern", minPoints: 1_500 }, { name: "Resident", minPoints: 3_500 },
-    { name: "Fellow", minPoints: 7_000 }, { name: "Attending", minPoints: 12_000 },
-  ] },
+  // Kept for legacy report compatibility. Clinical rank now comes exclusively
+  // from the non-spendable lifetime-XP ladder in XP_CONFIG.
+  rankUp: { reward: 0, thresholds: [{ name: "Medical Student", minPoints: 0 }] },
   store: {
     inventoryQuantityLimit: 999,
     perQuestionLimits: {
@@ -168,29 +171,29 @@ export const ECONOMY_CONFIG = {
       lifeline_freeze: 1,
       lifeline_second_opinion: 1,
     },
-    dailyIncome: { casual: 100, active: 400 },
+    dailyIncome: { casual: 300, active: 900 },
     priceBands: {
-      basic_consumable: { minimum: 50, maximum: 100 },
-      strong_consumable: { minimum: 125, maximum: 200 },
-      basic_cosmetic: { minimum: 300, maximum: 600 },
-      premium_cosmetic: { minimum: 1_000, maximum: 2_500 },
-      prestige_cosmetic: { minimum: 4_000, maximum: 8_000 },
+      basic_consumable: { minimum: 150, maximum: 300 },
+      strong_consumable: { minimum: 400, maximum: 600 },
+      basic_cosmetic: { minimum: 1_000, maximum: 2_500 },
+      premium_cosmetic: { minimum: 4_000, maximum: 9_000 },
+      prestige_cosmetic: { minimum: 12_000, maximum: 30_000 },
       permanent_premium_mcq: { minimum: 1_500, maximum: 3_000 },
     },
     // Only consumables with authenticated inventory consumption and implemented
     // gameplay behavior belong in this sellable catalog.
     catalog: {
       lifeline_50_50: {
-        price: 150, productGroup: "strong_consumable", maxInventory: 10,
-        purchaseOptions: [{ id: "single", quantity: 1, price: 150 }, { id: "bundle_3", quantity: 3, price: 405 }],
+        price: 450, productGroup: "strong_consumable", maxInventory: 10,
+        purchaseOptions: [{ id: "single", quantity: 1, price: 450 }, { id: "bundle_3", quantity: 3, price: 1_200 }],
       },
       lifeline_freeze: {
-        price: 100, productGroup: "basic_consumable", maxInventory: 10,
-        purchaseOptions: [{ id: "single", quantity: 1, price: 100 }, { id: "bundle_3", quantity: 3, price: 270 }],
+        price: 250, productGroup: "basic_consumable", maxInventory: 10,
+        purchaseOptions: [{ id: "single", quantity: 1, price: 250 }, { id: "bundle_3", quantity: 3, price: 675 }],
       },
       lifeline_second_opinion: {
-        price: 200, productGroup: "strong_consumable", maxInventory: 5,
-        purchaseOptions: [{ id: "single", quantity: 1, price: 200 }],
+        price: 600, productGroup: "strong_consumable", maxInventory: 5,
+        purchaseOptions: [{ id: "single", quantity: 1, price: 600 }],
       },
       // Vault simulations remain unavailable until their content, launch route,
       // ownership checks, resume/completion flow, and member-facing entry exist.
@@ -199,48 +202,48 @@ export const ECONOMY_CONFIG = {
       vault_dka_peds: { price: 2_500, productGroup: "permanent_premium_mcq", sellable: false },
       vault_bacterial_meningitis: { price: 1_500, productGroup: "permanent_premium_mcq", sellable: false },
       vault_hepatic_failure: { price: 3_000, productGroup: "permanent_premium_mcq", sellable: false },
-      title_pre_med: { price: 300, productGroup: "basic_cosmetic" }, title_intern: { price: 350, productGroup: "basic_cosmetic" },
-      title_fellow: { price: 400, productGroup: "basic_cosmetic" }, title_attending: { price: 500, productGroup: "basic_cosmetic" },
-      title_chief_resident: { price: 600, productGroup: "basic_cosmetic" }, title_the_gunner: { price: 1_000, productGroup: "premium_cosmetic" },
-      title_department_chair: { price: 2_000, productGroup: "premium_cosmetic" }, title_chief_of_surgery: { price: 4_000, productGroup: "prestige_cosmetic" },
-      title_dean_of_medicine: { price: 8_000, productGroup: "prestige_cosmetic" }, title_caffeine_dependent: { price: 300, productGroup: "basic_cosmetic" },
-      frame_gold: { price: 400, productGroup: "basic_cosmetic" }, frame_neon: { price: 600, productGroup: "basic_cosmetic" },
-      frame_fire: { price: 2_500, productGroup: "premium_cosmetic" }, frame_legendary_diamond: { price: 1_500, productGroup: "premium_cosmetic" },
-      frame_legendary_biohazard: { price: 1_800, productGroup: "premium_cosmetic" }, frame_mythic_nebula: { price: 4_000, productGroup: "prestige_cosmetic" },
-      frame_mythic_heartbeat: { price: 5_000, productGroup: "prestige_cosmetic" }, frame_lightning: { price: 4_500, productGroup: "prestige_cosmetic" },
-      frame_toxic_drip: { price: 4_000, productGroup: "prestige_cosmetic" }, highlight_neon: { price: 300, productGroup: "basic_cosmetic" },
-      frame_vital_ring: { price: 600, productGroup: "basic_cosmetic" }, frame_surgical_steel: { price: 1_500, productGroup: "premium_cosmetic" },
-      frame_chart_grid: { price: 600, productGroup: "basic_cosmetic" }, frame_ct_gantry: { price: 1_700, productGroup: "premium_cosmetic" },
-      frame_microscope_iris: { price: 1_100, productGroup: "premium_cosmetic" }, frame_neural_synapse: { price: 4_000, productGroup: "prestige_cosmetic" },
-      frame_code_blue: { price: 1_800, productGroup: "premium_cosmetic" }, frame_operating_theatre: { price: 1_200, productGroup: "premium_cosmetic" },
-      frame_cell_culture: { price: 1_100, productGroup: "premium_cosmetic" }, frame_cardiac_conduction: { price: 4_200, productGroup: "prestige_cosmetic" },
-      frame_radiology_contrast: { price: 2_000, productGroup: "premium_cosmetic" }, frame_the_resuscitator: { price: 4_800, productGroup: "prestige_cosmetic" },
-      highlight_gold: { price: 350, productGroup: "basic_cosmetic" }, highlight_amethyst: { price: 600, productGroup: "basic_cosmetic" },
-      highlight_legendary_crimson: { price: 1_500, productGroup: "premium_cosmetic" }, highlight_legendary_emerald: { price: 1_800, productGroup: "premium_cosmetic" },
-      highlight_mythic_lightning: { price: 4_000, productGroup: "prestige_cosmetic" }, highlight_mythic_void_walker: { price: 5_000, productGroup: "prestige_cosmetic" },
-      highlight_monitor_sweep: { price: 450, productGroup: "basic_cosmetic" }, highlight_prescription_label: { price: 500, productGroup: "basic_cosmetic" },
-      highlight_anatomy_plate: { price: 600, productGroup: "basic_cosmetic" }, highlight_triage_priority: { price: 1_400, productGroup: "premium_cosmetic" },
-      highlight_sterile_field: { price: 1_600, productGroup: "premium_cosmetic" }, highlight_blood_flow: { price: 1_900, productGroup: "premium_cosmetic" },
-      highlight_neural_field: { price: 4_200, productGroup: "prestige_cosmetic" }, highlight_radiology_lightbox: { price: 4_600, productGroup: "prestige_cosmetic" },
-      avatar_scrub_tech: { price: 500, productGroup: "basic_cosmetic" }, avatar_coffee_drip: { price: 500, productGroup: "basic_cosmetic" },
-      avatar_lab_rat: { price: 600, productGroup: "basic_cosmetic" }, avatar_night_shift: { price: 600, productGroup: "basic_cosmetic" },
-      avatar_gold_steth: { price: 2_000, productGroup: "premium_cosmetic" }, avatar_plague_doctor: { price: 2_500, productGroup: "premium_cosmetic" },
-      avatar_cyber_surgeon: { price: 2_500, productGroup: "premium_cosmetic" }, avatar_ascended: { price: 5_000, productGroup: "prestige_cosmetic" },
-      avatar_marble: { price: 5_000, productGroup: "prestige_cosmetic" }, avatar_vital_sign: { price: 7_500, productGroup: "prestige_cosmetic" },
-      frame_dna_sequencer: { price: 500, productGroup: "basic_cosmetic" },
-      frame_pharmacology_orbit: { price: 1_200, productGroup: "premium_cosmetic" },
-      frame_surgical_drone: { price: 2_200, productGroup: "premium_cosmetic" },
-      frame_holo_anatomy: { price: 5_200, productGroup: "prestige_cosmetic" },
-      avatar_pulse_runner: { price: 600, productGroup: "basic_cosmetic" },
-      avatar_neurocartographer: { price: 1_200, productGroup: "premium_cosmetic" },
-      avatar_robotic_surgery_fellow: { price: 2_400, productGroup: "premium_cosmetic" },
-      avatar_nexus_laureate: { price: 6_000, productGroup: "prestige_cosmetic" },
-      title_night_consult: { price: 400, productGroup: "basic_cosmetic" },
-      title_diagnostician: { price: 550, productGroup: "basic_cosmetic" },
-      title_anatomy_architect: { price: 1_200, productGroup: "premium_cosmetic" },
-      title_code_commander: { price: 2_000, productGroup: "premium_cosmetic" },
-      title_synapse_specialist: { price: 4_200, productGroup: "prestige_cosmetic" },
-      title_nexus_laureate: { price: 6_500, productGroup: "prestige_cosmetic" },
+      title_pre_med: { price: 1_000, productGroup: "basic_cosmetic" }, title_intern: { price: 1_200, productGroup: "basic_cosmetic" },
+      title_fellow: { price: 1_400, productGroup: "basic_cosmetic" }, title_attending: { price: 1_800, productGroup: "basic_cosmetic" },
+      title_chief_resident: { price: 2_500, productGroup: "basic_cosmetic" }, title_the_gunner: { price: 4_000, productGroup: "premium_cosmetic" },
+      title_department_chair: { price: 8_000, productGroup: "premium_cosmetic" }, title_chief_of_surgery: { price: 12_000, productGroup: "prestige_cosmetic" },
+      title_dean_of_medicine: { price: 30_000, productGroup: "prestige_cosmetic" }, title_caffeine_dependent: { price: 1_000, productGroup: "basic_cosmetic" },
+      frame_gold: { price: 1_400, productGroup: "basic_cosmetic" }, frame_neon: { price: 2_500, productGroup: "basic_cosmetic" },
+      frame_fire: { price: 9_000, productGroup: "premium_cosmetic" }, frame_legendary_diamond: { price: 5_500, productGroup: "premium_cosmetic" },
+      frame_legendary_biohazard: { price: 7_000, productGroup: "premium_cosmetic" }, frame_mythic_nebula: { price: 12_000, productGroup: "prestige_cosmetic" },
+      frame_mythic_heartbeat: { price: 18_000, productGroup: "prestige_cosmetic" }, frame_lightning: { price: 16_000, productGroup: "prestige_cosmetic" },
+      frame_toxic_drip: { price: 12_000, productGroup: "prestige_cosmetic" }, highlight_neon: { price: 1_000, productGroup: "basic_cosmetic" },
+      frame_vital_ring: { price: 2_500, productGroup: "basic_cosmetic" }, frame_surgical_steel: { price: 5_500, productGroup: "premium_cosmetic" },
+      frame_chart_grid: { price: 2_500, productGroup: "basic_cosmetic" }, frame_ct_gantry: { price: 6_500, productGroup: "premium_cosmetic" },
+      frame_microscope_iris: { price: 4_000, productGroup: "premium_cosmetic" }, frame_neural_synapse: { price: 12_000, productGroup: "prestige_cosmetic" },
+      frame_code_blue: { price: 7_000, productGroup: "premium_cosmetic" }, frame_operating_theatre: { price: 4_000, productGroup: "premium_cosmetic" },
+      frame_cell_culture: { price: 4_000, productGroup: "premium_cosmetic" }, frame_cardiac_conduction: { price: 14_000, productGroup: "prestige_cosmetic" },
+      frame_radiology_contrast: { price: 8_000, productGroup: "premium_cosmetic" }, frame_the_resuscitator: { price: 18_000, productGroup: "prestige_cosmetic" },
+      highlight_gold: { price: 1_200, productGroup: "basic_cosmetic" }, highlight_amethyst: { price: 2_500, productGroup: "basic_cosmetic" },
+      highlight_legendary_crimson: { price: 5_500, productGroup: "premium_cosmetic" }, highlight_legendary_emerald: { price: 7_000, productGroup: "premium_cosmetic" },
+      highlight_mythic_lightning: { price: 12_000, productGroup: "prestige_cosmetic" }, highlight_mythic_void_walker: { price: 18_000, productGroup: "prestige_cosmetic" },
+      highlight_monitor_sweep: { price: 1_600, productGroup: "basic_cosmetic" }, highlight_prescription_label: { price: 1_800, productGroup: "basic_cosmetic" },
+      highlight_anatomy_plate: { price: 2_500, productGroup: "basic_cosmetic" }, highlight_triage_priority: { price: 5_000, productGroup: "premium_cosmetic" },
+      highlight_sterile_field: { price: 6_000, productGroup: "premium_cosmetic" }, highlight_blood_flow: { price: 7_500, productGroup: "premium_cosmetic" },
+      highlight_neural_field: { price: 14_000, productGroup: "prestige_cosmetic" }, highlight_radiology_lightbox: { price: 16_000, productGroup: "prestige_cosmetic" },
+      avatar_scrub_tech: { price: 1_800, productGroup: "basic_cosmetic" }, avatar_coffee_drip: { price: 1_800, productGroup: "basic_cosmetic" },
+      avatar_lab_rat: { price: 2_500, productGroup: "basic_cosmetic" }, avatar_night_shift: { price: 2_500, productGroup: "basic_cosmetic" },
+      avatar_gold_steth: { price: 8_000, productGroup: "premium_cosmetic" }, avatar_plague_doctor: { price: 9_000, productGroup: "premium_cosmetic" },
+      avatar_cyber_surgeon: { price: 9_000, productGroup: "premium_cosmetic" }, avatar_ascended: { price: 18_000, productGroup: "prestige_cosmetic" },
+      avatar_marble: { price: 18_000, productGroup: "prestige_cosmetic" }, avatar_vital_sign: { price: 28_000, productGroup: "prestige_cosmetic" },
+      frame_dna_sequencer: { price: 1_800, productGroup: "basic_cosmetic" },
+      frame_pharmacology_orbit: { price: 4_000, productGroup: "premium_cosmetic" },
+      frame_surgical_drone: { price: 8_500, productGroup: "premium_cosmetic" },
+      frame_holo_anatomy: { price: 18_000, productGroup: "prestige_cosmetic" },
+      avatar_pulse_runner: { price: 2_500, productGroup: "basic_cosmetic" },
+      avatar_neurocartographer: { price: 4_000, productGroup: "premium_cosmetic" },
+      avatar_robotic_surgery_fellow: { price: 9_000, productGroup: "premium_cosmetic" },
+      avatar_nexus_laureate: { price: 22_000, productGroup: "prestige_cosmetic" },
+      title_night_consult: { price: 1_400, productGroup: "basic_cosmetic" },
+      title_diagnostician: { price: 2_000, productGroup: "basic_cosmetic" },
+      title_anatomy_architect: { price: 4_000, productGroup: "premium_cosmetic" },
+      title_code_commander: { price: 8_000, productGroup: "premium_cosmetic" },
+      title_synapse_specialist: { price: 14_000, productGroup: "prestige_cosmetic" },
+      title_nexus_laureate: { price: 24_000, productGroup: "prestige_cosmetic" },
     },
   },
   // Reset stays disabled until a mastery-reset period and timestamp storage are approved.
