@@ -13,13 +13,18 @@ export const XP_CONFIG = {
   weeklyGoal: { answer_100: 200, accuracy_70: 150, exam_dates_3: 150 } as Record<string, number>,
   clinicalRanks: [
     { name: "Medical Student", minimumXP: 0, npReward: 0 },
-    { name: "Clerkship", minimumXP: 5_000, npReward: 250 },
-    { name: "Intern", minimumXP: 15_000, npReward: 500 },
-    { name: "Resident", minimumXP: 40_000, npReward: 750 },
-    { name: "Fellow", minimumXP: 80_000, npReward: 1_000 },
-    { name: "Attending", minimumXP: 150_000, npReward: 1_500 },
+    { name: "Clinical Student", minimumXP: 10_000, npReward: 500 },
+    { name: "Junior Clerk", minimumXP: 25_000, npReward: 750 },
+    { name: "Senior Clerk", minimumXP: 50_000, npReward: 1_000 },
+    { name: "Intern", minimumXP: 90_000, npReward: 1_250 },
+    { name: "House Officer", minimumXP: 150_000, npReward: 1_500 },
+    { name: "Medical Officer", minimumXP: 250_000, npReward: 2_000 },
+    { name: "Resident", minimumXP: 400_000, npReward: 2_500 },
+    { name: "Senior Resident", minimumXP: 600_000, npReward: 3_000 },
+    { name: "Fellow", minimumXP: 850_000, npReward: 4_000 },
+    { name: "Specialist", minimumXP: 1_150_000, npReward: 5_000 },
+    { name: "Consultant", minimumXP: 1_500_000, npReward: 7_500 },
   ] as const,
 } as const
 
 export type XPSource = "daily_login" | "question" | "completion" | "accuracy" | "personal_best" | "first_daily_completion" | "participation" | "placement" | "first_daily_win" | "bounty" | "weekly_goal" | "admin_adjustment"
-
