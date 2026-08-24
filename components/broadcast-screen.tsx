@@ -1,67 +1,61 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { MegaphoneIcon, SendIcon, TrashIcon } from "@/components/icons"
-import type { AppNotification } from "@/lib/types"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { BarChart3, BellRing, CalendarClock, CheckCircle2, ChevronRight, Clock3, Copy, Megaphone, Send, Sparkles, Trash2, Users } from "lucide-react"
 
-const typeConfig = {
-  info: { label: "Info", active: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300", dot: "bg-sky-500" },
-  update: { label: "Update", active: "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300", dot: "bg-violet-500" },
-  alert: { label: "Alert", active: "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300", dot: "bg-rose-500" },
-} as const
+type Tab = "compose" | "sent" | "automated"
+type Kind = "info" | "update" | "alert" | "reward" | "reminder"
+type Audience = "EVERYONE" | "STUDENTS" | "ADMINS" | "LEVEL" | "USERS"
+type Broadcast = { id:string;title:string;body:string;type:Kind;audience:Audience;audienceValue:string[];actionUrl:string|null;actionLabel:string|null;scheduledAt:string;expiresAt:string|null;createdAt:string;readCount:number;recipientCount:number;status:"sent"|"scheduled"|"expired" }
+type Automated = { id:string;type:string;message:string;created_at:string;name:string|null }
+type Level = { value:string;count:number }
+
+const typeOptions: Array<{ value:Kind;label:string }> = [{value:"info",label:"Info"},{value:"update",label:"Update"},{value:"alert",label:"Warning"},{value:"reward",label:"Reward"},{value:"reminder",label:"Reminder"}]
+const destinations = [{label:"No action",value:""},{label:"Dashboard",value:"/"},{label:"Group Study",value:"/group-study"},{label:"Game Mode",value:"/?hub=game"},{label:"Rankings",value:"/?hub=rankings"},{label:"Nexus Store",value:"/?hub=store"},{label:"Notifications",value:"/notifications"}]
+const input = "min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
 
 export function BroadcastScreen() {
-  const [title, setTitle] = useState("")
-  const [body, setBody] = useState("")
-  const [type, setType] = useState<keyof typeof typeConfig>("info")
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle")
-  const [notifications, setNotifications] = useState<AppNotification[]>([])
-  const [loadingList, setLoadingList] = useState(true)
+  const [tab,setTab]=useState<Tab>("compose"), [loading,setLoading]=useState(true), [busy,setBusy]=useState(false)
+  const [notifications,setNotifications]=useState<Broadcast[]>([]), [automated,setAutomated]=useState<Automated[]>([]), [levels,setLevels]=useState<Level[]>([])
+  const [summary,setSummary]=useState({sent:0,scheduled:0,expired:0}), [counts,setCounts]=useState({everyone:0,students:0,admins:0})
+  const [title,setTitle]=useState(""), [body,setBody]=useState(""), [type,setType]=useState<Kind>("info"), [audience,setAudience]=useState<Audience>("EVERYONE")
+  const [audienceValue,setAudienceValue]=useState<string[]>([]), [userIndexes,setUserIndexes]=useState(""), [actionUrl,setActionUrl]=useState(""), [schedule,setSchedule]=useState("")
+  const [expires,setExpires]=useState(""), [message,setMessage]=useState<{kind:"error"|"success";text:string}|null>(null)
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const response = await fetch("/api/notifications")
-      if (response.ok) { const data = await response.json(); setNotifications(data.notifications ?? []) }
-    } finally { setLoadingList(false) }
-  }, [])
+  const load=useCallback(async()=>{setLoading(true);try{const response=await fetch("/api/notifications?adminView=true&pageSize=50",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error??"Unable to load notifications.");setNotifications(data.notifications??[]);setAutomated(data.automated??[]);setLevels(data.levels??[]);setSummary(data.summary??{sent:0,scheduled:0,expired:0});setCounts(data.audienceCounts??{everyone:0,students:0,admins:0})}catch(cause){setMessage({kind:"error",text:cause instanceof Error?cause.message:"Unable to load notifications."})}finally{setLoading(false)}},[])
+  useEffect(()=>{void load()},[load])
 
-  useEffect(() => { void fetchNotifications() }, [fetchNotifications])
+  const recipientCount=useMemo(()=>audience==="EVERYONE"?counts.everyone:audience==="STUDENTS"?counts.students:audience==="ADMINS"?counts.admins:audience==="LEVEL"?levels.filter(level=>audienceValue.includes(level.value)).reduce((sum,level)=>sum+level.count,0):userIndexes.split(/[\n,]+/).map(value=>value.trim()).filter(Boolean).length,[audience,audienceValue,counts,levels,userIndexes])
+  const totalReads=notifications.reduce((sum,item)=>sum+Number(item.readCount||0),0), totalRecipients=notifications.reduce((sum,item)=>sum+Number(item.recipientCount||0),0)
+  const statCards:Array<{label:string;value:string|number;Icon:typeof CheckCircle2}>=[{label:"Sent",value:summary.sent,Icon:CheckCircle2},{label:"Scheduled",value:summary.scheduled,Icon:CalendarClock},{label:"Recipients",value:counts.everyone,Icon:Users},{label:"Read rate",value:totalRecipients?`${Math.round(totalReads/totalRecipients*100)}%`:"—",Icon:BarChart3}]
 
-  async function handleSend(event: React.FormEvent) {
-    event.preventDefault()
-    if (!title.trim() || !body.trim()) return
-    setStatus("sending")
-    try {
-      const response = await fetch("/api/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: title.trim(), body: body.trim(), type }) })
-      if (!response.ok) throw new Error()
-      setStatus("sent"); setTitle(""); setBody(""); setType("info")
-      await fetchNotifications()
-      window.setTimeout(() => setStatus("idle"), 2500)
-    } catch { setStatus("error"); window.setTimeout(() => setStatus("idle"), 3000) }
-  }
-
-  async function handleDelete(id: string) {
-    if (!window.confirm("Delete this notification permanently?")) return
-    const response = await fetch("/api/notifications", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, confirm: true }) })
-    if (response.ok) setNotifications((current) => current.filter((notification) => notification.id !== id))
-  }
+  const reset=()=>{setTitle("");setBody("");setType("info");setAudience("EVERYONE");setAudienceValue([]);setUserIndexes("");setActionUrl("");setSchedule("");setExpires("")}
+  const send=async(event:React.FormEvent)=>{event.preventDefault();setBusy(true);setMessage(null);try{const values=audience==="USERS"?userIndexes.split(/[\n,]+/).map(value=>value.trim()).filter(Boolean):audienceValue;const response=await fetch("/api/notifications",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,body,type,audience,audienceValue:values,actionUrl:actionUrl||null,actionLabel:actionUrl?"Open":null,scheduledAt:schedule?new Date(schedule).toISOString():null,expiresAt:expires?new Date(expires).toISOString():null})});const data=await response.json();if(!response.ok)throw new Error(data.error??"Unable to send notification.");setMessage({kind:"success",text:data.status==="scheduled"?"Notification scheduled.":"Notification sent."});reset();await load();setTab("sent")}catch(cause){setMessage({kind:"error",text:cause instanceof Error?cause.message:"Unable to send notification."})}finally{setBusy(false)}}
+  const remove=async(id:string)=>{if(!window.confirm("Delete this notification permanently?"))return;const response=await fetch("/api/notifications",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,confirm:true})});if(response.ok)setNotifications(current=>current.filter(item=>item.id!==id))}
+  const duplicate=(item:Broadcast)=>{setTitle(item.title);setBody(item.body);setType(item.type);setAudience(item.audience);setAudienceValue(item.audienceValue??[]);setActionUrl(item.actionUrl??"");setSchedule("");setExpires("");setTab("compose")}
 
   return <section className="max-w-7xl space-y-5">
-    <header className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400"><MegaphoneIcon size={21}/></span><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Notifications</h1></header>
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5"><h2 className="text-base font-bold">New notification</h2><form onSubmit={handleSend} className="mt-5 space-y-4">
-        <fieldset><legend className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Type</legend><div className="grid grid-cols-3 gap-2">{(Object.keys(typeConfig) as Array<keyof typeof typeConfig>).map((option) => { const config = typeConfig[option]; const active = type === option; return <button key={option} type="button" aria-pressed={active} onClick={() => setType(option)} className={`flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors ${active ? config.active : "border-border hover:bg-muted"}`}><span className={`size-2 rounded-full ${active ? config.dot : "bg-muted-foreground/40"}`}/>{config.label}</button> })}</div></fieldset>
-        <label className="block text-sm font-semibold">Title<input className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Notification title" required/></label>
-        <label className="block text-sm font-semibold">Message<textarea className="mt-2 w-full resize-none rounded-xl border border-border bg-background px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" rows={5} value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write your message" required/></label>
-        {status === "error" ? <p role="alert" className="text-sm text-destructive">The notification could not be sent. Try again.</p> : null}
-        {status === "sent" ? <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">Notification sent.</p> : null}
-        <button type="submit" disabled={status === "sending" || !title.trim() || !body.trim()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"><SendIcon size={15}/>{status === "sending" ? "Sending…" : "Send to all users"}</button>
-      </form></section>
-      <section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-5"><h2 className="font-bold">Recent notifications</h2><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{notifications.length}</span></div>
-        {loadingList ? <div className="grid min-h-48 place-items-center text-sm text-muted-foreground">Loading…</div> : notifications.length === 0 ? <div className="grid min-h-56 place-items-center px-5 text-center"><div><MegaphoneIcon size={28} className="mx-auto text-muted-foreground/40"/><p className="mt-3 text-sm text-muted-foreground">No notifications yet.</p></div></div> : <div className="divide-y divide-border">{notifications.map((notification) => { const config = typeConfig[notification.type as keyof typeof typeConfig] ?? typeConfig.info; return <article key={notification.id} className="flex items-start gap-3 px-4 py-4 transition-colors hover:bg-muted/25 sm:px-5"><span className={`mt-1.5 size-2.5 shrink-0 rounded-full ${config.dot}`}/><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-semibold">{notification.title}</h3><span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${config.active}`}>{config.label}</span></div><p className="mt-1 text-sm leading-6 text-muted-foreground">{notification.body}</p><time className="mt-2 block text-[11px] text-muted-foreground" dateTime={notification.createdAt}>{formatDate(notification.createdAt)}</time></div><button type="button" onClick={() => void handleDelete(notification.id)} className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${notification.title}`}><TrashIcon size={15}/></button></article> })}</div>}
-      </section>
-    </div>
+    <header className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary"><BellRing size={21}/></span><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Notifications</h1></header>
+    <div className="grid gap-3 sm:grid-cols-4">{statCards.map(({label,value,Icon})=><div key={label} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4"><span className="grid size-9 place-items-center rounded-xl bg-muted text-muted-foreground"><Icon size={17}/></span><div><p className="text-xs text-muted-foreground">{label}</p><p className="text-xl font-bold">{value}</p></div></div>)}</div>
+    <nav className="inline-flex rounded-xl border border-border bg-muted p-1">{(["compose","sent","automated"] as Tab[]).map(value=><button key={value} onClick={()=>setTab(value)} className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize transition ${tab===value?"bg-card shadow-sm":"text-muted-foreground hover:text-foreground"}`}>{value}</button>)}</nav>
+    {message?<div role={message.kind==="error"?"alert":"status"} className={`rounded-xl border p-3 text-sm ${message.kind==="error"?"border-destructive/30 bg-destructive/10 text-destructive":"border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"}`}>{message.text}</div>:null}
+
+    {tab==="compose"?<div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"><form onSubmit={send} className="space-y-5 rounded-2xl border border-border bg-card p-4 sm:p-6"><div><h2 className="font-bold">Compose notification</h2><p className="mt-1 text-xs text-muted-foreground">{recipientCount} estimated recipient{recipientCount===1?"":"s"}</p></div>
+      <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-semibold sm:col-span-2">Title<input value={title} onChange={event=>setTitle(event.target.value)} maxLength={100} required className={`${input} mt-2`} placeholder="What should people know?"/></label><label className="text-sm font-semibold sm:col-span-2">Message<textarea value={body} onChange={event=>setBody(event.target.value)} maxLength={500} required rows={4} className={`${input} mt-2 resize-none py-3`} placeholder="Write a clear, useful message"/></label>
+        <label className="text-sm font-semibold">Category<select value={type} onChange={event=>setType(event.target.value as Kind)} className={`${input} mt-2`}>{typeOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+        <label className="text-sm font-semibold">Audience<select value={audience} onChange={event=>{setAudience(event.target.value as Audience);setAudienceValue([])}} className={`${input} mt-2`}><option value="EVERYONE">All registered users</option><option value="STUDENTS">Students</option><option value="ADMINS">Administrators</option><option value="LEVEL">Class level</option><option value="USERS">Specific users</option></select></label>
+        {audience==="LEVEL"?<fieldset className="sm:col-span-2"><legend className="text-sm font-semibold">Select levels</legend><div className="mt-2 flex flex-wrap gap-2">{levels.map(level=><label key={level.value} className={`cursor-pointer rounded-full border px-3 py-2 text-xs font-semibold ${audienceValue.includes(level.value)?"border-primary bg-primary/10 text-primary":"border-border"}`}><input type="checkbox" className="sr-only" checked={audienceValue.includes(level.value)} onChange={()=>setAudienceValue(current=>current.includes(level.value)?current.filter(value=>value!==level.value):[...current,level.value])}/>{level.value} · {level.count}</label>)}</div></fieldset>:null}
+        {audience==="USERS"?<label className="text-sm font-semibold sm:col-span-2">Student index numbers<textarea value={userIndexes} onChange={event=>setUserIndexes(event.target.value)} rows={3} className={`${input} mt-2 resize-none py-3`} placeholder="sm/sms/22/0102, sm/sms/22/0092"/><span className="mt-1 block text-xs font-normal text-muted-foreground">Separate multiple index numbers with commas or new lines.</span></label>:null}
+        <label className="text-sm font-semibold">Action<select value={actionUrl} onChange={event=>setActionUrl(event.target.value)} className={`${input} mt-2`}>{destinations.map(option=><option key={option.label} value={option.value}>{option.label}</option>)}</select></label>
+        <label className="text-sm font-semibold">Deliver<select value={schedule?"schedule":"now"} onChange={event=>setSchedule(event.target.value==="schedule"?new Date(Date.now()+3600000).toISOString().slice(0,16):"")} className={`${input} mt-2`}><option value="now">Send now</option><option value="schedule">Schedule</option></select></label>
+        {schedule?<label className="text-sm font-semibold">Delivery time<input type="datetime-local" value={schedule} onChange={event=>setSchedule(event.target.value)} className={`${input} mt-2`}/></label>:null}<label className="text-sm font-semibold">Expiry <span className="font-normal text-muted-foreground">(optional)</span><input type="datetime-local" value={expires} onChange={event=>setExpires(event.target.value)} className={`${input} mt-2`}/></label>
+      </div><button disabled={busy||!title.trim()||!body.trim()||recipientCount===0} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-40"><Send size={16}/>{busy?"Sending…":schedule?"Schedule notification":"Send notification"}</button></form>
+      <aside className="rounded-2xl border border-border bg-card p-5"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Learner preview</p><div className="mt-4 rounded-2xl border border-border bg-background p-4 shadow-sm"><div className="flex gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Megaphone size={17}/></span><div className="min-w-0"><h3 className="font-bold">{title||"Notification title"}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{body||"Your message will appear here."}</p>{actionUrl?<span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary">Open <ChevronRight size={13}/></span>:null}</div></div></div></aside></div>:null}
+
+    {tab==="sent"?<section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="border-b border-border px-5 py-4"><h2 className="font-bold">Delivery history</h2></div>{loading?<p className="p-8 text-sm text-muted-foreground">Loading…</p>:notifications.length===0?<p className="p-8 text-sm text-muted-foreground">No notifications yet.</p>:<div className="divide-y divide-border">{notifications.map(item=>{const rate=item.recipientCount?Math.round(item.readCount/item.recipientCount*100):0;return <article key={item.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-5"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{item.title}</h3><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{item.status}</span><span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">{item.audience}</span></div><p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.body}</p><div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground"><span>{item.recipientCount} recipients</span><span>{item.readCount} read · {rate}%</span><span>{formatDate(item.scheduledAt)}</span></div></div><div className="flex items-center gap-1"><button onClick={()=>duplicate(item)} aria-label={`Duplicate ${item.title}`} className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted"><Copy size={15}/></button><button onClick={()=>void remove(item.id)} aria-label={`Delete ${item.title}`} className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 size={15}/></button></div></article>})}</div>}</section>:null}
+
+    {tab==="automated"?<section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="border-b border-border px-5 py-4"><h2 className="font-bold">Automated activity</h2></div>{loading?<p className="p-8 text-sm text-muted-foreground">Loading…</p>:automated.length===0?<p className="p-8 text-sm text-muted-foreground">No automated notifications yet.</p>:<div className="divide-y divide-border">{automated.map(item=><article key={item.id} className="flex gap-3 px-5 py-4"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-500/10 text-violet-600"><Sparkles size={16}/></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{item.name??"System event"}</p><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{item.type}</span></div><p className="mt-1 text-sm text-muted-foreground">{item.message}</p><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 size={11}/>{formatDate(item.created_at)}</p></div></article>)}</div>}</section>:null}
   </section>
 }
 
-function formatDate(iso: string) { return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }
+function formatDate(value:string){return new Date(value).toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}

@@ -468,10 +468,12 @@ export interface AppNotification {
   id: string
   title: string
   body: string
-  type: "info" | "update" | "alert"
+  type: "info" | "update" | "alert" | "reward" | "reminder"
   adminOnly?: boolean
   createdAt: string // ISO string
   isRead: boolean
+  actionUrl?: string | null
+  actionLabel?: string | null
 }
 
 /** A published live assessment (exam) created by admin. */
