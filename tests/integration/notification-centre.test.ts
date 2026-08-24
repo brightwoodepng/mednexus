@@ -7,6 +7,7 @@ const adminUi=read("components/broadcast-screen.tsx")
 const broadcastApi=read("app/api/notifications/route.ts")
 const preferenceApi=read("app/api/notification-preferences/route.ts")
 const database=read("lib/db.ts")
+const notificationSchema=read("lib/notification-schema.ts")
 const overlay=read("components/notification-overlay.tsx")
 const bell=read("components/notification-bell.tsx")
 
@@ -18,8 +19,9 @@ describe("notification centre",()=>{
   })
 
   it("keeps delivery targeting and preferences in the database",()=>{
-    expect(database).toContain("mednexus_notification_preferences")
-    expect(database).toContain("2026-08-24-notification-centre-v1")
+    expect(database).toContain("2026-08-23-xp-ledger-and-leaderboard-v1")
+    expect(notificationSchema).toContain("mednexus_notification_preferences")
+    expect(notificationSchema).not.toMatch(/^\s*(DROP|DELETE|TRUNCATE)\b/m)
     for(const field of ["group_study","rewards","rankings","announcements"])expect(preferenceApi).toContain(field)
   })
 
