@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
+import { ensureNotificationSchema } from "@/lib/notification-schema"
 
 const fields = ["study", "groupStudy", "rewards", "rankings", "announcements"] as const
 const columns = { study: "study", groupStudy: "group_study", rewards: "rewards", rankings: "rankings", announcements: "announcements" } as const
 
-async function getPool() { const { default: pool } = await import("@/lib/db"); return pool }
+async function getPool() { const { default: pool } = await import("@/lib/db"); await ensureNotificationSchema(pool); return pool }
 
 export async function GET(req: NextRequest) {
   const auth = await requireRegisteredUser(req); if (!auth) return unauthorized()
