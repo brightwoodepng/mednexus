@@ -1,6 +1,7 @@
 import type { PoolClient } from "pg"
 import { TODAY_DATE } from "@/lib/economy"
 import { XP_CONFIG, type XPSource } from "@/lib/xp-config"
+import { applyNPCredits } from "@/lib/np-ledger"
 
 export type XPCredit = {
   source: XPSource
@@ -11,11 +12,21 @@ export type XPCredit = {
   competitive?: boolean
 }
 
-export type XPCreditResult = { credited: number; suppressed: number; lifetimeXP: number; breakdown: { label: string; amount: number }[] }
+export type XPCreditResult = {
+  credited: number
+  suppressed: number
+  lifetimeXP: number
+  breakdown: { label: string; amount: number }[]
+  rankNPCredited: number
+  rankNPBalance: number
+  rankNPBreakdown: { label: string; amount: number }[]
+}
 
 export async function applyXPCredits(client: PoolClient, userId: string, credits: XPCredit[]): Promise<XPCreditResult> {
   const economyDate = TODAY_DATE()
   await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:xp:${userId}:${economyDate}`])
+  const previousLifetimeResult = await client.query<{ total: string }>("SELECT COALESCE(SUM(amount),0)::text total FROM mednexus_xp_transactions WHERE user_id=$1", [userId])
+  const previousLifetimeXP = Number(previousLifetimeResult.rows[0]?.total ?? 0)
   const daily = await client.query<{ total: string }>(
     `SELECT COALESCE(SUM(amount),0)::text total FROM mednexus_xp_transactions
      WHERE user_id=$1 AND competitive=TRUE AND created_at >= $2::date AND created_at < $2::date + INTERVAL '1 day'`,
@@ -55,7 +66,22 @@ export async function applyXPCredits(client: PoolClient, userId: string, credits
     breakdown.push({ label: String(credit.metadata?.label ?? credit.source), amount })
   }
   const lifetime = await client.query<{ total: string }>("SELECT COALESCE(SUM(amount),0)::text total FROM mednexus_xp_transactions WHERE user_id=$1", [userId])
-  return { credited, suppressed, lifetimeXP: Number(lifetime.rows[0]?.total ?? 0), breakdown }
+  const lifetimeXP = Number(lifetime.rows[0]?.total ?? 0)
+  const crossedRanks = XP_CONFIG.clinicalRanks.filter(rank => rank.npReward > 0 && previousLifetimeXP < rank.minimumXP && lifetimeXP >= rank.minimumXP)
+  const rankCredit = await applyNPCredits(client, userId, crossedRanks.map(rank => ({
+    source: "xp_rank_reward",
+    sourceId: rank.name,
+    amount: rank.npReward,
+    countsTowardClinicalRank: false,
+    ceilingPolicy: "exempt",
+    metadata: { rank: rank.name, minimumXP: rank.minimumXP, lifetimeXP, description: "Lifetime XP rank reward" },
+  })))
+  return {
+    credited, suppressed, lifetimeXP, breakdown,
+    rankNPCredited: rankCredit.credited,
+    rankNPBalance: rankCredit.newBalance,
+    rankNPBreakdown: crossedRanks.map(rank => ({ label: `Rank-Up: ${rank.name}`, amount: rank.npReward })),
+  }
 }
 
 export function accuracyXP(accuracy: number, rewards: { accuracy70: number; accuracy85: number; accuracy95: number }) {
