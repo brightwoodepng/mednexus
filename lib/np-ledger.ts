@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg"
-import { computeRankUpBonus, RANK_UP_BONUS_NP, TODAY_DATE } from "@/lib/economy"
+import { TODAY_DATE } from "@/lib/economy"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getActiveSeason, provisionActiveSeasonWallet } from "@/lib/economy-seasons"
 
@@ -30,6 +30,7 @@ const REPEATABLE_MCQ_SOURCES = new Set([
   "trial_tutor_question", "trial_tutor_streak", "trial_tutor_completion",
   "exam_reward", "question_reward", "game_completion", "game_achievement",
   "multiplayer_reward", "first_multiplayer_win", "bounty", "weekly_goal",
+  "multiplayer_question", "group_study_question", "group_study_completion", "group_study_accuracy",
 ])
 
 function isRepeatable(credit: NPCredit) {
@@ -132,55 +133,10 @@ export async function applyNPCredits(
   let newBalance = Number(walletResult.rows[0]?.balance ?? 0)
   let lifetimeEarned = Number(walletResult.rows[0]?.lifetime_earned ?? 0)
   const rankPoints = Number(walletResult.rows[0]?.rank_points ?? 0)
-  const oldRankPoints = Number(walletResult.rows[0]?.old_rank_points ?? rankPoints)
-  const rank = computeRankUpBonus(oldRankPoints, rankPoints)
-  let rankBonus = 0
+  // Clinical progression is lifetime-XP based. NP credits must never create a
+  // rank or recursively mint a rank reward.
+  const rankBonus = 0
   const rankBreakdown: { label: string; amount: number }[] = []
-
-  for (const tierName of rank.newTierNames) {
-    const sourceId = `${oldRankPoints}-${rankPoints}-${tierName}`
-    const bonus = await client.query(
-      `INSERT INTO mednexus_np_transactions
-         (id, user_id, season_id, source, source_id, amount, metadata)
-       VALUES ($1, $2, $6, 'rank_bonus', $3, $4, $5::jsonb)
-       ON CONFLICT (user_id, source, source_id) DO NOTHING
-       RETURNING amount`,
-      [
-        `np-${crypto.randomUUID()}`,
-        userId,
-        sourceId,
-        RANK_UP_BONUS_NP,
-        JSON.stringify({
-          tierName,
-          rewardCategory: "rank_bonus",
-          economyVersion: ECONOMY_CONFIG.economyVersion,
-          economyDate,
-          ceilingPolicy: "exempt",
-          requestedAmount: RANK_UP_BONUS_NP,
-          suppressedAmount: 0,
-          seasonId: season.id,
-        }),
-        season.id,
-      ],
-    )
-    if (!bonus.rowCount) continue
-    rankBonus += RANK_UP_BONUS_NP
-    rankBreakdown.push({ label: `Rank-Up: ${tierName}!`, amount: RANK_UP_BONUS_NP })
-  }
-
-  if (rankBonus) {
-    const bonusWallet = await client.query(
-      `UPDATE mednexus_season_wallets
-       SET balance = balance + $1,
-           lifetime_earned = lifetime_earned + $1,
-           updated_at = NOW()
-       WHERE user_id = $2 AND season_id = $3
-       RETURNING balance, lifetime_earned`,
-      [rankBonus, userId, season.id],
-    )
-    newBalance = Number(bonusWallet.rows[0]?.balance ?? newBalance)
-    lifetimeEarned = Number(bonusWallet.rows[0]?.lifetime_earned ?? lifetimeEarned)
-  }
 
   return {
     credited: balanceCredit + rankBonus,
@@ -244,12 +200,14 @@ export async function completionBonusAvailable(
 export async function dailyRewardRemaining(
   client: PoolClient,
   userId: string,
-  family: "solo" | "multiplayer",
+  family: "solo" | "multiplayer" | "group_study",
   seasonId: string,
 ) {
   const sources = family === "solo"
     ? ["question_reward", "game_completion", "game_achievement"]
-    : ["game_completion", "multiplayer_reward", "first_multiplayer_win"]
+    : family === "group_study"
+      ? ["group_study_question", "group_study_completion", "group_study_accuracy"]
+      : ["game_completion", "multiplayer_question", "multiplayer_reward", "first_multiplayer_win"]
   await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:${family}-cap:${userId}:${TODAY_DATE()}`])
   const result = await client.query(
     `SELECT COALESCE(SUM(amount), 0)::int AS total FROM mednexus_np_transactions
@@ -260,6 +218,8 @@ export async function dailyRewardRemaining(
        AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
     [userId, sources, TODAY_DATE(), family === "multiplayer", seasonId],
   )
-  const cap = family === "solo" ? ECONOMY_CONFIG.gameRewards.solo.dailyCap : ECONOMY_CONFIG.gameRewards.multiplayer.dailyCap
+  const cap = family === "solo" ? ECONOMY_CONFIG.gameRewards.solo.dailyCap
+    : family === "group_study" ? ECONOMY_CONFIG.gameRewards.groupStudy.dailyCap
+    : ECONOMY_CONFIG.gameRewards.multiplayer.dailyCap
   return Math.max(0, cap - Number(result.rows[0]?.total ?? 0))
 }

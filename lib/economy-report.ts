@@ -27,15 +27,17 @@ export async function buildEconomyReport(client: PoolClient, days = 30) {
         SELECT user_id, (created_at AT TIME ZONE '${ECONOMY_CONFIG.timezone}')::date AS day,
           SUM(amount) FILTER (WHERE metadata->>'ceilingPolicy'='repeatable_mcq') AS global_np,
           SUM(amount) FILTER (WHERE source IN ('question_reward','game_completion','game_achievement')) AS solo_np,
-          SUM(amount) FILTER (WHERE source IN ('game_completion','multiplayer_reward','first_multiplayer_win')) AS multiplayer_np
+          SUM(amount) FILTER (WHERE source IN ('game_completion','multiplayer_question','multiplayer_reward','first_multiplayer_win')) AS multiplayer_np,
+          SUM(amount) FILTER (WHERE source IN ('group_study_question','group_study_completion','group_study_accuracy')) AS group_study_np
         FROM mednexus_np_transactions WHERE created_at >= NOW() - $1 * INTERVAL '1 day' GROUP BY 1,2)
       SELECT COUNT(DISTINCT user_id) FILTER (WHERE global_np >= ${ECONOMY_CONFIG.repeatableDailyCeiling})::int AS global,
         COUNT(DISTINCT user_id) FILTER (WHERE solo_np >= ${ECONOMY_CONFIG.gameRewards.solo.dailyCap})::int AS solo,
-        COUNT(DISTINCT user_id) FILTER (WHERE multiplayer_np >= ${ECONOMY_CONFIG.gameRewards.multiplayer.dailyCap})::int AS multiplayer FROM daily`, params),
+        COUNT(DISTINCT user_id) FILTER (WHERE multiplayer_np >= ${ECONOMY_CONFIG.gameRewards.multiplayer.dailyCap})::int AS multiplayer,
+        COUNT(DISTINCT user_id) FILTER (WHERE group_study_np >= ${ECONOMY_CONFIG.gameRewards.groupStudy.dailyCap})::int AS group_study FROM daily`, params),
     client.query(`SELECT COALESCE(SUM(balance), 0)::bigint AS outstanding, COUNT(*)::int AS wallets FROM mednexus_wallet`),
-    client.query(`SELECT question_id AS "questionId", SUM(correct_count)::bigint AS attempts,
+    client.query(`SELECT question_id AS "questionId", reward_scope AS "rewardScope", SUM(correct_count)::bigint AS attempts,
         COUNT(*)::int AS users FROM mednexus_user_question_progress
-      GROUP BY question_id HAVING SUM(correct_count) > 1 ORDER BY attempts DESC LIMIT 20`),
+      GROUP BY question_id,reward_scope HAVING SUM(correct_count) > 1 ORDER BY attempts DESC LIMIT 20`),
     client.query(`SELECT id AS "sessionId", mode, user_id AS "userId", jsonb_array_length(question_ids)::int AS questions
       FROM mednexus_exam_sessions WHERE submitted_at >= NOW() - $1 * INTERVAL '1 day'
       ORDER BY jsonb_array_length(question_ids) DESC, submitted_at DESC LIMIT 20`, params),

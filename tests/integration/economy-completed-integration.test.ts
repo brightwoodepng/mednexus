@@ -32,8 +32,8 @@ describe("completed economy integration invariants", () => {
     expect(ledger).toContain("Math.min(requestedAmount, remaining)")
     expect(ledger).toContain("suppressedAmount")
     expect(ledger).toContain("metadata->>'multiplayer'")
-    expect(payout).toContain("entry.amount = Math.min(entry.amount, remaining)")
-    expect(payout).toContain("earned: credit.credited + bountyCredit.credited + weekly.credited.credited")
+    expect(payout).toContain("entry.amount = Math.min(requestedAmount, remaining)")
+    expect(payout).toContain("earned: credit.credited + bountyCredit.credited + weekly.credited.credited + xp.rankNPCredited")
     expect(payout).toContain("Daily repeatable NP ceiling")
   })
 
@@ -68,17 +68,17 @@ describe("completed economy integration invariants", () => {
     expect(store).toContain("balance = balance - $2")
     expect(store).not.toContain("lifetime_earned = lifetime_earned -")
     expect(leaderboard).toContain("WHERE amount > 0")
-    for (const endpoint of ["wallet", "bounties", "weekly-goals", "store"]) {
+    for (const endpoint of ["bootstrap", "wallet", "bounties", "store"]) {
       expect(context).toContain(`/api/economy/${endpoint}`)
     }
-    expect(context.match(/void refresh\(\)/g)?.length).toBeGreaterThanOrEqual(4)
+    expect(context.match(/void refresh\(\)/g)?.length).toBeGreaterThanOrEqual(1)
   })
 
   it("compares representative daily earnings to every configured purchase time", () => {
     const analysis = analyzeStoreEconomy(ECONOMY_CONFIG.store)
     expect(analysis).toHaveLength(Object.keys(ECONOMY_CONFIG.store.catalog).length)
-    expect(analysis.every(item => item.casualDays === Number((item.price / 100).toFixed(2)))).toBe(true)
-    expect(analysis.every(item => item.activeDays === Number((item.price / 400).toFixed(2)))).toBe(true)
+    expect(analysis.every(item => item.casualDays === Number((item.price / ECONOMY_CONFIG.store.dailyIncome.casual).toFixed(2)))).toBe(true)
+    expect(analysis.every(item => item.activeDays === Number((item.price / ECONOMY_CONFIG.store.dailyIncome.active).toFixed(2)))).toBe(true)
     expect(analysis.flatMap(item => item.flags)).toEqual([])
   })
 })

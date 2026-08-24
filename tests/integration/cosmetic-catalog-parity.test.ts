@@ -58,7 +58,7 @@ describe("cosmetic catalog contract", () => {
   })
 
   it("records the finalized membership and prices under the new catalog version", () => {
-    expect(ECONOMY_CONFIG.catalogVersion).toBe("2.6.0")
+    expect(ECONOMY_CONFIG.catalogVersion).toBe("3.0.0")
   })
 
   it("publishes the complete Nexus Protocol collection", () => {

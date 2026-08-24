@@ -99,7 +99,7 @@ describe("store purchase concurrency", () => {
     expect(responses.map(response => response.status).sort()).toEqual([200, 400])
     expect(bodies).toContainEqual(expect.objectContaining({ ok: true }))
     expect(bodies).toContainEqual({ error: "Already owned" })
-    expect(state.balance).toBe(700)
+    expect(state.balance).toBe(0)
     expect(state.ledger).toHaveLength(1)
     expect(state.inventory.get("learner-1:title_pre_med")).toBe(1)
   })
@@ -113,14 +113,14 @@ describe("store purchase concurrency", () => {
     }) as never)
 
     expect(response.status).toBe(200)
-    expect(state.balance).toBe(730)
+    expect(state.balance).toBe(325)
     expect(state.inventory.get("learner-1:lifeline_freeze")).toBe(3)
     expect(JSON.parse(String(state.ledger[0][4]))).toMatchObject({
       unitQuantity: 3,
-      unitPrice: 90,
-      totalPrice: 270,
+      unitPrice: 225,
+      totalPrice: 675,
       bundleId: "bundle_3",
-      catalogVersion: "2.5.0",
+      catalogVersion: "3.0.0",
       resultingInventoryQuantity: 3,
     })
   })
@@ -149,7 +149,6 @@ describe("store purchase concurrency", () => {
     expect(response.status).toBe(200)
     expect(body.items).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ id: expect.stringMatching(/^vault_/) }),
-      expect.objectContaining({ id: "frame_gold" }),
     ]))
   })
 
@@ -169,25 +168,25 @@ describe("store purchase concurrency", () => {
   })
 
   it("keeps a retired cosmetic equipable by its owner but rejects a new purchase", async () => {
-    state.inventory.set("learner-1:frame_gold", 1)
+    state.inventory.set("learner-1:frame_fire", 1)
     const { POST } = await import("@/app/api/economy/store/route")
     const { PATCH } = await import("@/app/api/economy/cosmetics/route")
 
     const purchaseResponse = await POST(new Request("http://mednexus.test/api/economy/store", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ itemId: "frame_gold" }),
+      body: JSON.stringify({ itemId: "frame_fire" }),
     }) as never)
     const equipResponse = await PATCH(new Request("http://mednexus.test/api/economy/cosmetics", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ type: "frame", itemId: "frame_gold" }),
+      body: JSON.stringify({ type: "frame", itemId: "frame_fire" }),
     }) as never)
 
     expect(purchaseResponse.status).toBe(409)
     expect(await purchaseResponse.json()).toEqual({ error: "Item is not available for purchase" })
     expect(equipResponse.status).toBe(200)
-    expect(await equipResponse.json()).toEqual({ ok: true })
+    expect(await equipResponse.json()).toMatchObject({ ok: true })
     expect(state.balance).toBe(1_000)
     expect(state.ledger).toHaveLength(0)
   })

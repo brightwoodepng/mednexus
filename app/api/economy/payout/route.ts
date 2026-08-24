@@ -411,6 +411,7 @@ export async function POST(req: NextRequest) {
           return awarded / (ECONOMY_CONFIG.questionRewards.trialTutor.correct + streakBonus)
         }
         if (isSoloGame) return awarded / ECONOMY_CONFIG.gameRewards.solo.correctAnswer
+        if (session.mode === "exam") return anti.perQuestion[index]?.rewardMultiplier ?? 1
         return 1
       })
       const xpCredits = sessionXPCredits({
@@ -438,6 +439,7 @@ export async function POST(req: NextRequest) {
         ...weekly.newlyCompleted.map(id => ({ label: `Weekly goal: ${id}`, amount: ECONOMY_CONFIG.weeklyGoals.find(goal => goal.id === id)?.reward ?? 0 })),
         ...weekly.credited.rankBreakdown,
         ...bountyCredit.rankBreakdown,
+        ...xp.rankNPBreakdown,
       ]
       if (soloFamilySuppressed > 0) breakdown.push({ label: "Daily solo-game NP cap", amount: -soloFamilySuppressed })
       const suppressed = soloFamilySuppressed + credit.suppressed + bountyCredit.suppressed + weekly.credited.suppressed
@@ -457,7 +459,7 @@ export async function POST(req: NextRequest) {
         distinctExamDates: weeklyRow?.distinct_exam_dates ?? [], creditedGoalIds: weeklyRow?.credited_goal_ids ?? [],
       }
       const payload = {
-        earned: credit.credited + bountyCredit.credited + weekly.credited.credited,
+        earned: credit.credited + bountyCredit.credited + weekly.credited.credited + xp.rankNPCredited,
         xpEarned: xp.credited,
         lifetimeXP: xp.lifetimeXP,
         xpBreakdown: xp.breakdown,

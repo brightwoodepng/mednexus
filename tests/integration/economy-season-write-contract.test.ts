@@ -10,8 +10,8 @@ describe("active economy season write contract", () => {
     ])
 
     expect(sessionRoute).toContain("(id, user_id, season_id, mode")
-    expect(antiFarming).toContain("(season_id, user_id, question_id, correct_count, discipline)")
-    expect(antiFarming).toContain("ON CONFLICT (season_id, user_id, question_id)")
+    expect(antiFarming).toContain("(season_id, user_id, question_id, reward_scope, correct_count, discipline)")
+    expect(antiFarming).toContain("ON CONFLICT (season_id, user_id, question_id, reward_scope)")
     expect(antiFarming).toContain("(season_id, user_id, discipline, earned_date, np_earned)")
     expect(antiFarming).toContain("ON CONFLICT (season_id, user_id, discipline, earned_date)")
     expect(schema).toContain("ALTER TABLE mednexus_exam_sessions ALTER COLUMN season_id SET NOT NULL")

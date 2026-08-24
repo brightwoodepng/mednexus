@@ -173,6 +173,7 @@ export async function POST(
       let total = 0
       let bestStreak = 0
       let currentStreak = 0
+      const correctQuestions: Array<{ id: string; discipline: string }> = []
 
       for (const entry of deduped) {
         const q = pool_questions[entry.qi]
@@ -180,6 +181,7 @@ export async function POST(
         total++
         if (entry.answer === q.correctAnswer) {
           correct++
+          correctQuestions.push({ id: q.id, discipline: q.discipline ?? "" })
           currentStreak++
           bestStreak = Math.max(bestStreak, currentStreak)
         } else {
@@ -245,6 +247,32 @@ export async function POST(
         return NextResponse.json({ error: "This member set has already earned from a match today" }, { status: 422 })
       }
 
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:activity-integrity:${playerId}`])
+      const repeatProgress = correctQuestions.length > 0 ? await client.query<{ question_id: string; correct_count: number }>(
+        `SELECT question_id,correct_count FROM mednexus_user_question_progress
+         WHERE season_id=$1 AND user_id=$2 AND reward_scope='multiplayer' AND question_id=ANY($3::text[]) FOR UPDATE`,
+        [season.id, playerId, correctQuestions.map(question => question.id)],
+      ) : { rows: [] }
+      const correctCounts = new Map(repeatProgress.rows.map(row => [row.question_id, Number(row.correct_count)]))
+      const questionCredits: NPCredit[] = []
+      let multiplayerQuestionNP = 0
+      let multiplayerCorrectXP = 0
+      for (const question of correctQuestions) {
+        const previousCorrect = correctCounts.get(question.id) ?? 0
+        const multiplier = ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers[previousCorrect] ?? 0
+        const amount = Math.floor(ECONOMY_CONFIG.gameRewards.multiplayer.correctAnswer * multiplier)
+        if (amount > 0) questionCredits.push({ source: "multiplayer_question", sourceId: `${pin}:${playerId}:${question.id}`, amount, metadata: { mode: room.mode, questionId: question.id, rewardScope: "multiplayer" } })
+        multiplayerQuestionNP += amount
+        multiplayerCorrectXP += Math.floor(XP_CONFIG.multiplayer.correct * multiplier)
+        correctCounts.set(question.id, previousCorrect + 1)
+        await client.query(
+          `INSERT INTO mednexus_user_question_progress(season_id,user_id,question_id,reward_scope,correct_count,discipline)
+           VALUES($1,$2,$3,'multiplayer',1,$4)
+           ON CONFLICT(season_id,user_id,question_id,reward_scope) DO UPDATE SET correct_count=mednexus_user_question_progress.correct_count+1`,
+          [season.id, playerId, question.id, question.discipline],
+        )
+      }
+
       const completionNP = ECONOMY_CONFIG.gameRewards.multiplayer.participation
       const achievementNP = ECONOMY_CONFIG.gameRewards.multiplayer.placeBonuses[playerRank - 1] ?? 0
       const achievementBreakdown = achievementNP > 0
@@ -253,7 +281,7 @@ export async function POST(
       const extraBreakdown: { label: string; amount: number }[] = []
 
       const playerRank1 = playerRank === 1
-      const credits: NPCredit[] = []
+      const credits: NPCredit[] = [...questionCredits]
       if (completionNP > 0) {
         credits.push({
           source: "game_completion",
@@ -289,8 +317,11 @@ export async function POST(
       }
 
       let remaining = await dailyRewardRemaining(client, playerId, "multiplayer", season.id)
+      let multiplayerCapSuppressed = 0
       for (const entry of credits) {
-        entry.amount = Math.min(entry.amount, remaining)
+        const requestedAmount = entry.amount
+        entry.amount = Math.min(requestedAmount, remaining)
+        multiplayerCapSuppressed += requestedAmount - entry.amount
         remaining -= entry.amount
       }
       const credit = await applyNPCredits(client, playerId, credits)
@@ -344,7 +375,8 @@ export async function POST(
       }
       const bountyCredit = await applyNPCredits(client, playerId, bountyCredits)
       const xpCredits: XPCredit[] = [
-        { source: "question", sourceId: `${pin}:${playerId}:questions`, amount: correct * XP_CONFIG.multiplayer.correct + (total - correct) * XP_CONFIG.multiplayer.incorrect, seasonId: season.id, metadata: { mode: room.mode, label: "Multiplayer questions" } },
+        { source: "question", sourceId: `${pin}:${playerId}:correct`, amount: multiplayerCorrectXP, seasonId: season.id, metadata: { mode: room.mode, label: "Multiplayer correct answers" } },
+        { source: "question", sourceId: `${pin}:${playerId}:incorrect`, amount: (total - correct) * XP_CONFIG.multiplayer.incorrect, seasonId: season.id, metadata: { mode: room.mode, category: "incorrect_attempt", label: "Multiplayer attempts" } },
         { source: "participation", sourceId: `${pin}:${playerId}:participation`, amount: XP_CONFIG.multiplayer.participation, seasonId: season.id, metadata: { mode: room.mode, label: "Multiplayer participation" } },
       ]
       const placeXP = XP_CONFIG.multiplayer.places[playerRank - 1] ?? 0
@@ -355,12 +387,13 @@ export async function POST(
       const xp = await applyXPCredits(client, playerId, xpCredits)
 
       const payload = {
-        earned: credit.credited + bountyCredit.credited + weekly.credited.credited,
+        earned: credit.credited + bountyCredit.credited + weekly.credited.credited + xp.rankNPCredited,
         xpEarned: xp.credited,
         lifetimeXP: xp.lifetimeXP,
         xpBreakdown: xp.breakdown,
-        newBalance: bountyCredit.credited > 0 ? bountyCredit.newBalance : weekly.credited.newBalance,
+        newBalance: xp.rankNPCredited > 0 ? xp.rankNPBalance : bountyCredit.credited > 0 ? bountyCredit.newBalance : weekly.credited.newBalance,
         breakdown: [
+          ...(multiplayerQuestionNP > 0 ? [{ label: `Correct answers (${correct} correct)`, amount: multiplayerQuestionNP }] : []),
           ...(completionNP > 0 ? [{ label: "Participation", amount: completionNP }] : []),
           ...achievementBreakdown,
           ...extraBreakdown,
@@ -369,6 +402,8 @@ export async function POST(
           ...weekly.newlyCompleted.map(id => ({ label: `Weekly goal: ${id}`, amount: ECONOMY_CONFIG.weeklyGoals.find(goal => goal.id === id)?.reward ?? 0 })),
           ...weekly.credited.rankBreakdown,
           ...bountyCredit.rankBreakdown,
+          ...xp.rankNPBreakdown,
+          ...(multiplayerCapSuppressed > 0 ? [{ label: "Daily multiplayer NP cap", amount: -multiplayerCapSuppressed }] : []),
         ],
         bountyUpdates,
         serverStats: { correct, total, accuracy, bestStreak },

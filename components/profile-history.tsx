@@ -62,6 +62,11 @@ function ProfileHeader() {
   const { user, cloudEnabled, updateName, signOutUser } = useApp()
   const { balance, lifetimeEarned, lifetimeXP, equippedCosmetics, grantDevNP } = useEconomy()
   const clinicalRank = [...XP_CONFIG.clinicalRanks].reverse().find(rank => lifetimeXP >= rank.minimumXP) ?? XP_CONFIG.clinicalRanks[0]
+  const clinicalRankIndex = XP_CONFIG.clinicalRanks.findIndex(rank => rank.name === clinicalRank.name)
+  const nextClinicalRank = XP_CONFIG.clinicalRanks[clinicalRankIndex + 1]
+  const rankProgress = nextClinicalRank
+    ? Math.min(100, Math.max(0, (lifetimeXP - clinicalRank.minimumXP) / (nextClinicalRank.minimumXP - clinicalRank.minimumXP) * 100))
+    : 100
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
@@ -179,6 +184,19 @@ function ProfileHeader() {
               Lifetime XP <strong className="tabular-nums">{lifetimeXP.toLocaleString()}</strong> · <strong>{clinicalRank.name}</strong>
             </span>
           </div>
+          <div className="mt-2 max-w-sm" aria-label={nextClinicalRank ? `${Math.round(rankProgress)} percent progress to ${nextClinicalRank.name}` : "Highest clinical rank reached"}>
+            <div className="mb-1 flex items-center justify-between gap-3 text-[10px] font-semibold text-muted-foreground">
+              <span>{clinicalRank.name}</span>
+              <span>{nextClinicalRank ? `${Math.max(0, nextClinicalRank.minimumXP - lifetimeXP).toLocaleString()} XP to ${nextClinicalRank.name}` : "Highest rank reached"}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-violet-500" style={{ width: `${rankProgress}%` }} /></div>
+          </div>
+          <details className="mt-2 max-w-sm rounded-xl border border-border/60 bg-background/45 px-3 py-2">
+            <summary className="cursor-pointer text-xs font-bold text-muted-foreground">View all {XP_CONFIG.clinicalRanks.length} clinical ranks</summary>
+            <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-1">
+              {XP_CONFIG.clinicalRanks.map(rank => <div key={rank.name} className={`flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-[11px] ${rank.name === clinicalRank.name ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground"}`}><span className="font-semibold">{rank.name}</span><span className="shrink-0 tabular-nums">{rank.minimumXP.toLocaleString()} XP{rank.npReward ? ` · +${rank.npReward.toLocaleString()} NP` : ""}</span></div>)}
+            </div>
+          </details>
 
           {/* Sync state */}
           <div className="mt-2">

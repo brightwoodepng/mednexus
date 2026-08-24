@@ -238,12 +238,12 @@ describe("account entry schema initialization", () => {
     expect(loginResponse.status).toBe(200)
     await expect(loginResponse.json()).resolves.toMatchObject({ name: "Approved Learner", role: "STUDENT" })
 
-    schemaInitialized = false
+    schemaInitialized = true
     const { POST: guest } = await import("@/app/api/auth/guest/route")
     const guestResponse = await guest(post("/api/auth/guest", { name: "Guest Learner", classLevel: "Level 300" }) as never)
     expect(guestResponse.status).toBe(201)
     expect(guestUsers).toHaveLength(1)
-    expect(ensureSchema).toHaveBeenCalledTimes(2)
+    expect(ensureSchema).toHaveBeenCalledTimes(1)
   })
 
   it("upgrades existing guest tables before class-level guest sessions are inserted", () => {

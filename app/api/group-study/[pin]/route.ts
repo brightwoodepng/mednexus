@@ -307,7 +307,7 @@ async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQue
   if (correct) {
     const progress = await client.query<{ correct_count: number }>(
       `SELECT correct_count FROM mednexus_user_question_progress
-       WHERE season_id=$1 AND user_id=$2 AND question_id=$3 FOR UPDATE`, [season.id, userId, question.question_id],
+       WHERE season_id=$1 AND user_id=$2 AND question_id=$3 AND reward_scope='group_study' FOR UPDATE`, [season.id, userId, question.question_id],
     )
     const count = Number(progress.rows[0]?.correct_count ?? 0)
     const multiplier = ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers[count] ?? 0
@@ -319,10 +319,10 @@ async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQue
       [season.id, userId, question.question_snapshot.subject, ECONOMY_CONFIG.antiFarming.disciplineWindowDays],
     )
     const fatigued = Number(fatigue.rows[0]?.total ?? 0) >= ECONOMY_CONFIG.antiFarming.disciplineNPWindowLimit
-    const requested = fatigued ? 0 : Math.floor(ECONOMY_CONFIG.gameRewards.solo.correctAnswer * multiplier)
-    const remaining = await dailyRewardRemaining(client, userId, "multiplayer", season.id)
+    const requested = fatigued ? 0 : Math.floor(ECONOMY_CONFIG.gameRewards.groupStudy.correctAnswer * multiplier)
+    const remaining = await dailyRewardRemaining(client, userId, "group_study", season.id)
     const credit = await applyNPCredits(client, userId, requested > 0 ? [{
-      source: "multiplayer_reward", sourceId: `group-study:${room.id}:${question.id}:correct`, amount: Math.min(requested, remaining),
+      source: "group_study_question", sourceId: `group-study:${room.id}:${question.id}:correct`, amount: Math.min(requested, remaining),
       metadata: { mode: "group-study", roomId: room.id, questionId: question.question_id, description: "Group Study correct answer" },
     }] : [])
     earned = credit.credited
@@ -334,9 +334,9 @@ async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQue
       [season.id, userId, question.question_snapshot.subject, earned],
     )
     await client.query(
-      `INSERT INTO mednexus_user_question_progress(season_id,user_id,question_id,correct_count,discipline)
-       VALUES($1,$2,$3,1,$4)
-       ON CONFLICT(season_id,user_id,question_id) DO UPDATE SET correct_count=mednexus_user_question_progress.correct_count+1`,
+      `INSERT INTO mednexus_user_question_progress(season_id,user_id,question_id,reward_scope,correct_count,discipline)
+       VALUES($1,$2,$3,'group_study',1,$4)
+       ON CONFLICT(season_id,user_id,question_id,reward_scope) DO UPDATE SET correct_count=mednexus_user_question_progress.correct_count+1`,
       [season.id, userId, question.question_id, question.question_snapshot.subject],
     )
   }
@@ -346,10 +346,11 @@ async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQue
   const xpCredits: XPCredit[] = [{
     source: "question", sourceId: `group-study:${room.id}:${question.id}:question`,
     amount: correct ? Math.floor(XP_CONFIG.groupStudy.correct * xpMultiplier) : XP_CONFIG.groupStudy.incorrect,
-    seasonId: season.id, metadata: { mode: "group-study", roomId: room.id, questionId: question.question_id, label: correct ? "Group Study correct answer" : "Group Study attempt" },
+    seasonId: season.id, metadata: { mode: "group-study", roomId: room.id, questionId: question.question_id, ...(correct ? {} : { category: "incorrect_attempt" }), label: correct ? "Group Study correct answer" : "Group Study attempt" },
   }]
   for (const goalId of weekly.newlyCompleted) xpCredits.push({ source: "weekly_goal", sourceId: `${weekly.progress.weekId}:${goalId}`, amount: XP_CONFIG.weeklyGoal[goalId] ?? 0, seasonId: season.id, metadata: { goalId, label: `Weekly goal: ${goalId}` } })
-  await applyXPCredits(client, userId, xpCredits)
+  const xp = await applyXPCredits(client, userId, xpCredits)
+  earned += xp.rankNPCredited
   await client.query(
     `INSERT INTO mednexus_group_study_reward_events(id,user_id,room_id,room_question_id,event_type)
      VALUES($1,$2,$3,$4,'participation') ON CONFLICT DO NOTHING`,
@@ -374,17 +375,20 @@ async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQue
 async function awardCompletion(client: PoolClient, room: RoomRow) {
   const season = await getActiveSeason(client, true)
   const members = await client.query("SELECT * FROM mednexus_group_study_memberships WHERE room_id=$1 FOR UPDATE", [room.id])
-  if (members.rows.length < ECONOMY_CONFIG.gameRewards.multiplayer.minimumPlayers) return
+  if (members.rows.length < ECONOMY_CONFIG.gameRewards.groupStudy.minimumPlayers) return
   for (const member of members.rows) {
     if (member.is_guest) continue
-    if (Number(member.questions_attempted) < ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers) continue
-    const remaining = await dailyRewardRemaining(client, member.user_id, "multiplayer", season.id)
-    const credit = await applyNPCredits(client, member.user_id, [{
-      source: "game_completion", sourceId: `group-study:${room.id}:completion`, amount: Math.min(ECONOMY_CONFIG.gameRewards.multiplayer.participation, remaining),
-      metadata: { mode: "group-study", roomId: room.id, multiplayer: true, description: "Group Study completion" },
-    }])
+    if (Number(member.questions_attempted) < ECONOMY_CONFIG.gameRewards.groupStudy.minimumAnswers) continue
     const accuracy = Number(member.questions_attempted) > 0 ? Number(member.correct_answers) * 100 / Number(member.questions_attempted) : 0
-    await applyXPCredits(client, member.user_id, [
+    let remaining = await dailyRewardRemaining(client, member.user_id, "group_study", season.id)
+    const completionAmount = Math.min(ECONOMY_CONFIG.gameRewards.groupStudy.completion, remaining)
+    remaining -= completionAmount
+    const accuracyAmount = accuracy >= 80 ? Math.min(ECONOMY_CONFIG.gameRewards.groupStudy.accuracy80, remaining) : 0
+    const credit = await applyNPCredits(client, member.user_id, [
+      { source: "group_study_completion", sourceId: `group-study:${room.id}:completion`, amount: completionAmount, metadata: { mode: "group-study", roomId: room.id, description: "Group Study completion" } },
+      { source: "group_study_accuracy", sourceId: `group-study:${room.id}:accuracy`, amount: accuracyAmount, metadata: { mode: "group-study", roomId: room.id, accuracy, description: "Group Study 80% accuracy" } },
+    ])
+    const xp = await applyXPCredits(client, member.user_id, [
       { source: "completion", sourceId: `group-study:${room.id}:completion`, amount: XP_CONFIG.groupStudy.completion, seasonId: season.id, metadata: { mode: "group-study", roomId: room.id, label: "Group Study completion" } },
       ...(accuracy >= 80 ? [{ source: "accuracy" as const, sourceId: `group-study:${room.id}:accuracy`, amount: XP_CONFIG.groupStudy.accuracy80, seasonId: season.id, metadata: { mode: "group-study", roomId: room.id, accuracy, label: "Group Study 80% accuracy" } }] : []),
     ])
@@ -393,7 +397,7 @@ async function awardCompletion(client: PoolClient, room: RoomRow) {
        VALUES($1,$2,$3,NULL,'completion') ON CONFLICT DO NOTHING`,
       [`gsre-${crypto.randomUUID()}`, member.user_id, room.id],
     )
-    await client.query("UPDATE mednexus_group_study_memberships SET session_np_earned=session_np_earned+$3 WHERE room_id=$1 AND user_id=$2", [room.id, member.user_id, credit.credited])
+    await client.query("UPDATE mednexus_group_study_memberships SET session_np_earned=session_np_earned+$3 WHERE room_id=$1 AND user_id=$2", [room.id, member.user_id, credit.credited + xp.rankNPCredited])
   }
 }
 

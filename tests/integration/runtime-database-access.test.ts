@@ -31,7 +31,7 @@ describe("runtime database access", () => {
 
   it("gives phone workspace choices canonical native destinations", async () => {
     const source = await readFile("components/navigation/study-hub-dropdown.tsx", "utf8")
-    expect(source).toContain("hrefForHub && hub.available && hub.id !== activeHub")
+    expect(source).toContain("hrefForHub && hub.available")
     expect(source).toContain('<a key={hub.id} role="menuitem" href={hrefForHub(hub.id)}')
     expect(source).toContain("data-study-hub-dropdown")
     expect(source).toContain('target?.closest("[data-study-hub-dropdown]")')

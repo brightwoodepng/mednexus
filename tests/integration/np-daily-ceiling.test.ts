@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 
 describe("global repeatable NP ceiling", () => {
-  it("is configured at 750 NP and enforced under a per-user/date lock", async () => {
+  it("is configured at 1,500 NP and enforced under a per-user/date lock", async () => {
     const ledger = await readFile("lib/np-ledger.ts", "utf8")
-    expect(ECONOMY_CONFIG.repeatableDailyCeiling).toBe(750)
+    expect(ECONOMY_CONFIG.repeatableDailyCeiling).toBe(1_500)
     expect(ledger).toContain("pg_advisory_xact_lock")
     expect(ledger).toContain("suppressedAmount")
     expect(ledger).toContain('ceilingPolicy: repeatable ? "repeatable_mcq" : "exempt"')
