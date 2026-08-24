@@ -15,8 +15,10 @@ function formatIndexNumber(raw: string): { formatted: string; autoApprove: boole
 }
 
 async function getPool() {
-  const { default: pool, ensureSchema } = await import("@/lib/db")
-  await ensureSchema()
+  // Database migrations are a deployment concern. Registration must not run
+  // the application-wide schema initializer: one unrelated legacy DDL failure
+  // would otherwise prevent an otherwise valid learner from creating an account.
+  const { default: pool } = await import("@/lib/db")
   return pool
 }
 
