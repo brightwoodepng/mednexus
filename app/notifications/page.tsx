@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import type { AppNotification } from "@/lib/types"
+import { NotificationPreferences } from "@/components/notification-preferences"
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 function BellIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
@@ -126,10 +127,15 @@ function NotificationRow({
     }
   }
 
+  async function handleOpen() {
+    await handleMarkRead()
+    if (n.actionUrl?.startsWith("/") && !n.actionUrl.startsWith("//")) window.location.assign(n.actionUrl)
+  }
+
 
   return (
     <div
-      onClick={handleMarkRead}
+      onClick={() => void handleOpen()}
       className={`group relative flex items-start gap-4 rounded-2xl px-5 py-4 transition-all duration-200 ${
         n.isRead
           ? "bg-transparent hover:bg-muted/40 cursor-default"
@@ -167,6 +173,7 @@ function NotificationRow({
             </span>
           )}
         </div>
+        {n.actionUrl ? <span className="mt-2 inline-flex text-xs font-bold text-primary">{n.actionLabel || "Open"} →</span> : null}
       </div>
 
       {/* Actions */}
@@ -283,6 +290,8 @@ function NotificationsInner() {
           )}
         </div>
       </header>
+
+      <NotificationPreferences />
 
       {/* Filter tabs */}
       <div className="mx-auto max-w-2xl px-4 pt-4">
