@@ -15,6 +15,7 @@ vi.mock("@/lib/admin-access", () => ({
 }))
 vi.mock("@/lib/platform-settings", () => ({ auditAdmin: vi.fn() }))
 vi.mock("@/lib/db", () => ({ default: { query } }))
+vi.mock("@/lib/notification-schema", () => ({ ensureNotificationSchema: vi.fn() }))
 
 function bulkRequest(path: string, body: Record<string, unknown> = { markAllRead: true }) {
   return new NextRequest(`http://mednexus.test${path}`, {
@@ -49,7 +50,7 @@ describe("notification bulk mark-all-read routes", () => {
 
     expect(await response.json()).toEqual({ success: true, updated: 3 })
     expect(query).toHaveBeenCalledTimes(1)
-    expect(query).toHaveBeenCalledWith(expect.stringMatching(/INSERT INTO[\s\S]+SELECT[\s\S]+ON CONFLICT/), ["user-a", false])
+    expect(query).toHaveBeenCalledWith(expect.stringMatching(/INSERT INTO[\s\S]+SELECT[\s\S]+ON CONFLICT/), ["user-a", false, "STUDENT"])
     expect(query.mock.calls[0][1]).not.toContain("user-b")
   })
 
