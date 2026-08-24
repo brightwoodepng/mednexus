@@ -333,10 +333,13 @@ export async function POST(req: NextRequest) {
         })
       }
 
+      let soloFamilySuppressed = 0
       if (isSoloGame) {
         let remaining = await dailyRewardRemaining(client, auth.uid, "solo", seasonId)
         for (const entry of credits) {
-          entry.amount = Math.min(entry.amount, remaining)
+          const requestedAmount = entry.amount
+          entry.amount = Math.min(requestedAmount, remaining)
+          soloFamilySuppressed += requestedAmount - entry.amount
           remaining -= entry.amount
         }
       }
@@ -436,7 +439,8 @@ export async function POST(req: NextRequest) {
         ...weekly.credited.rankBreakdown,
         ...bountyCredit.rankBreakdown,
       ]
-      const suppressed = credit.suppressed + bountyCredit.suppressed + weekly.credited.suppressed
+      if (soloFamilySuppressed > 0) breakdown.push({ label: "Daily solo-game NP cap", amount: -soloFamilySuppressed })
+      const suppressed = soloFamilySuppressed + credit.suppressed + bountyCredit.suppressed + weekly.credited.suppressed
       if (suppressed > 0) breakdown.push({ label: "Daily repeatable NP ceiling", amount: -suppressed })
       const [walletState, bountyState, weeklyState] = await Promise.all([
         client.query("SELECT balance,lifetime_earned,rank_points FROM mednexus_season_wallets WHERE user_id=$1 AND season_id=$2", [auth.uid, seasonId]),
