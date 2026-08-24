@@ -12,7 +12,7 @@ const database=read("lib/db.ts")
 
 describe("admin platform controls",()=>{
   it("stages and validates settings with health and audit feedback",()=>{
-    for(const text of ["Unsaved changes","Reset to current","Review these settings","Platform status","Recent settings audit"])expect(settings).toContain(text)
+    for(const text of ["Unsaved changes","Reset to current","Review these settings","System status","Recent activity"])expect(settings).toContain(text)
     expect(settingsApi).toContain("mednexus_admin_audit_log")
     expect(settingsApi).toContain('database: "operational"')
     expect(settingsApi).toContain("body.confirm !== true")
@@ -33,7 +33,7 @@ describe("admin platform controls",()=>{
   })
 
   it("migrates admin platform tables and binds taxonomy actions safely",()=>{
-    expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-08-16-group-study-navigation-compat-v2"')
+    expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-08-23-xp-ledger-and-leaderboard-v1"')
     expect(taxonomyApi).toContain('const updateParameters = action === "move_discipline"')
     expect(taxonomyApi).toContain(': [body.module, discipline, body.newName?.trim() ?? null]')
     expect(taxonomyApi).toContain("Modules and disciplines are temporarily unavailable")
