@@ -11,10 +11,12 @@ interface OverlayItem {
   title: string
   body: string
   /** Visual category — personal types fall back to info styling */
-  type: "info" | "update" | "alert" | "module_complete" | "discipline_mastery" | "qbank_milestone" | "streak" | "economy" | "store" | "leaderboard"
+  type: "info" | "update" | "alert" | "reward" | "reminder" | "module_complete" | "discipline_mastery" | "qbank_milestone" | "streak" | "economy" | "store" | "leaderboard"
   createdAt: string
   isRead: boolean
   source: "broadcast" | "personal"
+  actionUrl?: string | null
+  actionLabel?: string | null
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -207,7 +209,7 @@ function credentialHeaders(credential: StoredCredential | null): Record<string, 
 }
 
 interface BroadcastFeedData {
-  notifications?: Array<{ id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string }>
+  notifications?: Array<{ id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string; actionUrl?: string | null; actionLabel?: string | null }>
 }
 
 interface PersonalFeedData {
@@ -269,6 +271,11 @@ function NotificationRow({
     }
   }
 
+  async function handleOpen() {
+    await handleMarkRead()
+    if (item.actionUrl?.startsWith("/") && !item.actionUrl.startsWith("//")) window.location.assign(item.actionUrl)
+  }
+
   async function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()
     if (deleting) return
@@ -296,7 +303,7 @@ function NotificationRow({
 
   return (
     <div
-      onClick={handleMarkRead}
+      onClick={() => void handleOpen()}
       className={`group relative flex items-start gap-4 rounded-2xl px-4 py-4 transition-all duration-200 ${
         item.isRead
           ? "bg-transparent hover:bg-muted/40 cursor-default"
@@ -336,6 +343,7 @@ function NotificationRow({
             </span>
           )}
         </div>
+        {item.actionUrl ? <span className="mt-2 inline-flex text-xs font-bold text-primary">{item.actionLabel || "Open"} →</span> : null}
       </div>
 
       {/* Actions */}
@@ -370,7 +378,7 @@ function NotificationRow({
 // ─── Normalise raw API responses into OverlayItem ─────────────────────────────
 
 function normaliseBroadcast(r: {
-  id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string
+  id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string; actionUrl?: string | null; actionLabel?: string | null
 }): OverlayItem {
   return {
     id: r.id,
@@ -380,6 +388,8 @@ function normaliseBroadcast(r: {
     createdAt: r.createdAt,
     isRead: r.isRead,
     source: "broadcast",
+    actionUrl: r.actionUrl,
+    actionLabel: r.actionLabel,
   }
 }
 
