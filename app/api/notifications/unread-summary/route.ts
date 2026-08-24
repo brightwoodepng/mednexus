@@ -33,11 +33,24 @@ export async function GET(req: NextRequest) {
             LEFT JOIN mednexus_notification_states s
               ON s.notification_id = n.id AND s.user_id = $1
            WHERE ($2 OR n.admin_only = FALSE)
+             AND n.scheduled_at<=NOW() AND (n.expires_at IS NULL OR n.expires_at>NOW())
+             AND (n.type='alert' OR COALESCE((SELECT announcements FROM mednexus_notification_preferences WHERE user_id=$1),TRUE))
+             AND (n.audience='EVERYONE'
+               OR (n.audience='STUDENTS' AND $3 NOT IN ('ADMIN','SUPER_ADMIN'))
+               OR (n.audience='ADMINS' AND $3 IN ('ADMIN','SUPER_ADMIN'))
+               OR (n.audience='LEVEL' AND EXISTS (SELECT 1 FROM mednexus_registered_users u WHERE u.uid=$1 AND n.audience_value ? u.class_level))
+               OR (n.audience='USERS' AND n.audience_value ? $1))
              AND COALESCE(s.is_read, FALSE) = FALSE) AS broadcast,
          (SELECT COUNT(*)::int
-            FROM mednexus_user_notifications
-           WHERE user_id = $1 AND is_read = FALSE) AS personal`,
-      [auth.uid, canManageBroadcasts],
+            FROM mednexus_user_notifications un
+            LEFT JOIN mednexus_notification_preferences p ON p.user_id=un.user_id
+           WHERE un.user_id = $1 AND un.is_read = FALSE AND (p.user_id IS NULL
+             OR (un.type IN ('module_complete','discipline_mastery','qbank_milestone') AND p.study)
+             OR (un.type='group_study' AND p.group_study)
+             OR (un.type IN ('economy','store','streak') AND p.rewards)
+             OR (un.type='leaderboard' AND p.rankings)
+             OR un.type NOT IN ('module_complete','discipline_mastery','qbank_milestone','group_study','economy','store','streak','leaderboard'))) AS personal`,
+      [auth.uid, canManageBroadcasts, auth.role],
     )
     const broadcast = Number(result.rows[0]?.broadcast ?? 0)
     const personal = Number(result.rows[0]?.personal ?? 0)
