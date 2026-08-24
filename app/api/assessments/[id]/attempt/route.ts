@@ -8,6 +8,8 @@ import { assessmentGradingModeSql, gradeAssessment, isAssessmentGradingMode } fr
 import { optionalRuntimePool } from "@/lib/runtime-db"
 import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
 import { verifyAssessmentParticipantToken } from "@/lib/assessment-participant-token"
+import { ensureNotificationSchema } from "@/lib/notification-schema"
+import { notifyUser } from "@/lib/personal-notifications"
 
 async function getPool() {
   return optionalRuntimePool()
@@ -93,6 +95,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const pool = await getPool()
   if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
 
+  await ensureNotificationSchema(pool)
   let client: PoolClient | undefined
   try {
     const { id } = await params
@@ -145,6 +148,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
        VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,NOW())`,
       [attemptId, id, account.uid, account.name, account.isGuest, JSON.stringify(answers), score, total],
     )
+    if (!account.isGuest) await notifyUser(client, { id:`assessment-submit-${attemptId}`, userId:account.uid, type:"assessment", message:`Assessment submitted: ${score}/${total} (${grade.percentage}%).`, actionUrl:"/?hub=assessments", actionLabel:"View assessments" })
     await client.query("COMMIT")
     const attemptsUsed = tries + 1
     const reviewQuestions = attemptsUsed >= Number(asmt.tries_allowed)

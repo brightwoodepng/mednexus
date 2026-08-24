@@ -6,6 +6,7 @@ import { loadAssessmentQuestions } from "@/lib/assessment-questions"
 import { assessmentGradingModeSql, assessmentSnapshotWithGradingSql, isAssessmentGradingMode } from "@/lib/assessment-grading"
 import { optionalRuntimePool } from "@/lib/runtime-db"
 import { assessmentErrorResponse } from "@/lib/assessment-api-errors"
+import { ensureNotificationSchema } from "@/lib/notification-schema"
 
 async function getPool() {
   return optionalRuntimePool()
@@ -97,6 +98,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const pool = await getPool()
     if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
 
+    await ensureNotificationSchema(pool)
     const body = await req.json()
     const fields: string[] = []
     const values: unknown[] = []
@@ -133,7 +135,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           return NextResponse.json({ error: "Grading cannot be changed after the first submission" }, { status: 409 })
         }
       }
+      const before = await client.query<{ title:string; status:string }>("SELECT title,status FROM mednexus_assessments WHERE id=$1 FOR UPDATE", [id])
       await client.query(`UPDATE mednexus_assessments SET ${fields.join(", ")} WHERE id = $${i}`, values)
+      if (body.status === "live" && before.rows[0]?.status !== "live") await client.query(
+        `INSERT INTO mednexus_notifications (id,title,body,type,admin_only,audience,audience_value,action_url,action_label,created_by)
+         VALUES ($1,$2,$3,'reminder',FALSE,'STUDENTS','[]','/?hub=assessments','Open assessments',$4) ON CONFLICT (id) DO NOTHING`,
+        [`assessment-live-${id}`, "New assessment available", `${before.rows[0]?.title ?? "An assessment"} is now open.`, admin.uid],
+      )
       await auditAdmin(client, admin.uid, "update", "assessment", id, body)
       await client.query("COMMIT")
     } catch (error) {

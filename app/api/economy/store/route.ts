@@ -5,6 +5,8 @@ import { isStoreItemPurchasable, SELLABLE_STORE_ITEMS, STORE_ITEMS } from "@/lib
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getActiveSeason } from "@/lib/economy-seasons"
 import { countEconomyQueries, economyJson, economyMetrics } from "@/lib/economy-api"
+import { ensureNotificationSchema } from "@/lib/notification-schema"
+import { notifyUser } from "@/lib/personal-notifications"
 
 type PurchaseSelection = { quantity?: unknown; bundleId?: unknown }
 
@@ -45,6 +47,7 @@ export async function POST(req: NextRequest) {
     if (!auth) return unauthorized()
     const { itemId, quantity, bundleId } = await req.json()
     const uid = auth.uid
+    await ensureNotificationSchema(pool)
     if (!itemId) return NextResponse.json({ error: "Missing fields" }, { status: 400 })
 
     const item = STORE_ITEMS.find(i => i.id === itemId)
@@ -131,6 +134,7 @@ export async function POST(req: NextRequest) {
         [uid, season.id]
       )
       await client.query("COMMIT")
+      await notifyUser(pool, { id:`store-${season.id}-${uid}-${itemId}-${purchase.id}-${resultingQuantity}`, userId:uid, type:"store", message:`Purchase confirmed: ${purchase.quantity} × ${item.name} for ${purchase.price} NP.`, actionUrl:"/?hub=store", actionLabel:"View store" }).catch(error => console.error("[store notification]", error))
       return economyJson("economy.purchase", {
         ok: true,
         wallet: { balance: Number(newWallet[0].balance), lifetimeEarned: Number(newWallet[0].lifetime_earned), rankPoints: Number(newWallet[0].rank_points) },

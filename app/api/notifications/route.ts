@@ -40,9 +40,11 @@ export async function GET(req: NextRequest) {
     const canManageBroadcasts = auth.permissions?.has("manage_broadcasts") ?? auth.role === "SUPER_ADMIN"
     const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
     if (req.nextUrl.searchParams.get("adminView") === "true" && canManageBroadcasts) {
+      const search = req.nextUrl.searchParams.get("search")?.trim() ?? ""
+      const delivery = req.nextUrl.searchParams.get("status") ?? "all"
       const [broadcasts, levels, automation, totals, audienceTotals] = await Promise.all([
         pool.query(
-          `SELECT n.id,n.title,n.body,n.type,n.audience,n.audience_value,n.action_url,n.action_label,n.scheduled_at,n.expires_at,n.created_at,
+          `SELECT n.id,n.title,n.body,n.type,n.audience,n.audience_value,n.action_url,n.action_label,n.scheduled_at,n.expires_at,n.created_at,n.archived_at,
                   COUNT(s.user_id) FILTER (WHERE s.is_read)::int AS read_count,
                   CASE n.audience
                     WHEN 'STUDENTS' THEN (SELECT COUNT(*)::int FROM mednexus_registered_users WHERE status='approved' AND role NOT IN ('ADMIN','SUPER_ADMIN'))
@@ -52,16 +54,22 @@ export async function GET(req: NextRequest) {
                     ELSE (SELECT COUNT(*)::int FROM mednexus_registered_users WHERE status='approved') END AS recipient_count,
                   COUNT(*) OVER()::int AS total_count
              FROM mednexus_notifications n LEFT JOIN mednexus_notification_states s ON s.notification_id=n.id
+            WHERE ($3='' OR n.title ILIKE '%'||$3||'%' OR n.body ILIKE '%'||$3||'%')
+              AND ($4='all' AND n.archived_at IS NULL
+                OR $4='archived' AND n.archived_at IS NOT NULL
+                OR $4='scheduled' AND n.archived_at IS NULL AND n.scheduled_at>NOW()
+                OR $4='sent' AND n.archived_at IS NULL AND n.scheduled_at<=NOW() AND (n.expires_at IS NULL OR n.expires_at>NOW())
+                OR $4='expired' AND n.archived_at IS NULL AND n.expires_at<=NOW())
             GROUP BY n.id ORDER BY n.created_at DESC LIMIT $1 OFFSET $2`,
-          [pageSize, offset],
+          [pageSize, offset, search, delivery],
         ),
         pool.query("SELECT class_level,COUNT(*)::int AS count FROM mednexus_registered_users WHERE status='approved' AND class_level<>'' GROUP BY class_level ORDER BY class_level"),
         pool.query(`SELECT un.id,un.type,un.message,un.created_at,u.name FROM mednexus_user_notifications un LEFT JOIN mednexus_registered_users u ON u.uid=un.user_id ORDER BY un.created_at DESC LIMIT 30`),
-        pool.query(`SELECT COUNT(*) FILTER (WHERE scheduled_at<=NOW() AND (expires_at IS NULL OR expires_at>NOW()))::int AS sent, COUNT(*) FILTER (WHERE scheduled_at>NOW())::int AS scheduled, COUNT(*) FILTER (WHERE expires_at IS NOT NULL AND expires_at<=NOW())::int AS expired FROM mednexus_notifications`),
+        pool.query(`SELECT COUNT(*) FILTER (WHERE archived_at IS NULL AND scheduled_at<=NOW() AND (expires_at IS NULL OR expires_at>NOW()))::int AS sent, COUNT(*) FILTER (WHERE archived_at IS NULL AND scheduled_at>NOW())::int AS scheduled, COUNT(*) FILTER (WHERE archived_at IS NULL AND expires_at IS NOT NULL AND expires_at<=NOW())::int AS expired FROM mednexus_notifications`),
         pool.query(`SELECT COUNT(*)::int AS everyone, COUNT(*) FILTER (WHERE role NOT IN ('ADMIN','SUPER_ADMIN'))::int AS students, COUNT(*) FILTER (WHERE role IN ('ADMIN','SUPER_ADMIN'))::int AS admins FROM mednexus_registered_users WHERE status='approved'`),
       ])
       return NextResponse.json({
-        notifications: broadcasts.rows.map((row) => ({ id:row.id,title:row.title,body:row.body,type:row.type,audience:row.audience,audienceValue:row.audience_value,actionUrl:row.action_url,actionLabel:row.action_label,scheduledAt:row.scheduled_at,expiresAt:row.expires_at,createdAt:row.created_at,readCount:row.read_count,recipientCount:row.recipient_count,status:row.expires_at && new Date(row.expires_at)<=new Date()?"expired":new Date(row.scheduled_at)>new Date()?"scheduled":"sent" })),
+        notifications: broadcasts.rows.map((row) => ({ id:row.id,title:row.title,body:row.body,type:row.type,audience:row.audience,audienceValue:row.audience_value,actionUrl:row.action_url,actionLabel:row.action_label,scheduledAt:row.scheduled_at,expiresAt:row.expires_at,createdAt:row.created_at,readCount:row.read_count,recipientCount:row.recipient_count,status:row.archived_at?"archived":row.expires_at && new Date(row.expires_at)<=new Date()?"expired":new Date(row.scheduled_at)>new Date()?"scheduled":"sent" })),
         levels: levels.rows.map((row) => ({ value:row.class_level,count:row.count })), automated: automation.rows,
         audienceCounts: audienceTotals.rows[0] ?? { everyone:0,students:0,admins:0 },
         summary: totals.rows[0] ?? { sent:0,scheduled:0,expired:0 },
@@ -75,7 +83,7 @@ export async function GET(req: NextRequest) {
          FROM mednexus_notifications n
          LEFT JOIN mednexus_notification_states s
            ON s.notification_id = n.id AND s.user_id = $1
-        WHERE ($2 OR n.admin_only = FALSE)
+        WHERE n.archived_at IS NULL AND ($2 OR n.admin_only = FALSE)
           AND n.scheduled_at <= NOW() AND (n.expires_at IS NULL OR n.expires_at > NOW())
           AND (n.type='alert' OR COALESCE((SELECT announcements FROM mednexus_notification_preferences WHERE user_id=$1),TRUE))
           AND (n.audience='EVERYONE'
@@ -177,7 +185,7 @@ export async function PATCH(req: NextRequest) {
         `INSERT INTO mednexus_notification_states (notification_id, user_id, is_read, updated_at)
          SELECT id, $1, TRUE, NOW()
            FROM mednexus_notifications
-          WHERE ($2 OR admin_only = FALSE)
+          WHERE archived_at IS NULL AND ($2 OR admin_only = FALSE)
             AND scheduled_at<=NOW() AND (expires_at IS NULL OR expires_at>NOW())
             AND (type='alert' OR COALESCE((SELECT announcements FROM mednexus_notification_preferences WHERE user_id=$1),TRUE))
             AND (audience='EVERYONE'
@@ -218,6 +226,19 @@ export async function PATCH(req: NextRequest) {
     // Broadcast edits can only be made with a verified administrator session.
     const admin = await requireAdminRequest(req, "manage_broadcasts")
     if (!admin) return await adminUnauthorized(req)
+    const pool = await getPool()
+    if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
+    if (["archive","restore","cancel"].includes(body.action)) {
+      const expression = body.action === "restore" ? "NULL" : "NOW()"
+      const guard = body.action === "cancel" ? " AND scheduled_at>NOW()" : ""
+      const result = await pool.query(`UPDATE mednexus_notifications SET archived_at=${expression},updated_at=NOW() WHERE id=$1${guard} RETURNING id`, [id])
+      if (!result.rowCount) return NextResponse.json({ error: body.action === "cancel" ? "Only future notifications can be cancelled" : "Notification not found" }, { status: 404 })
+      await auditAdmin(pool, admin.uid, body.action, "broadcast", id)
+      return NextResponse.json({ success:true })
+    }
+    const existing = await pool.query("SELECT scheduled_at FROM mednexus_notifications WHERE id=$1 AND archived_at IS NULL", [id])
+    if (!existing.rowCount) return NextResponse.json({ error:"Notification not found" }, { status:404 })
+    if (new Date(existing.rows[0].scheduled_at) <= new Date()) return NextResponse.json({ error:"Sent notifications cannot be edited. Duplicate one instead." }, { status:409 })
     const updates: string[] = []
     const values: unknown[] = []
     if (typeof body.title === "string") {
@@ -236,13 +257,25 @@ export async function PATCH(req: NextRequest) {
       if (typeof body.adminOnly !== "boolean") return NextResponse.json({ error: "adminOnly must be a boolean" }, { status: 400 })
       values.push(body.adminOnly); updates.push(`admin_only = $${values.length}`)
     }
+    if (body.actionUrl !== undefined) {
+      if (body.actionUrl && !validInternalUrl(body.actionUrl)) return NextResponse.json({ error:"Action must be an internal MedNexus path" }, { status:400 })
+      values.push(body.actionUrl || null); updates.push(`action_url = $${values.length}`)
+    }
+    if (body.actionLabel !== undefined) { values.push(typeof body.actionLabel === "string" ? body.actionLabel.trim() || null : null); updates.push(`action_label = $${values.length}`) }
+    if (body.scheduledAt !== undefined) {
+      const value = new Date(body.scheduledAt); if (Number.isNaN(value.getTime()) || value <= new Date()) return NextResponse.json({ error:"Choose a future delivery time" }, { status:400 })
+      values.push(value.toISOString()); updates.push(`scheduled_at = $${values.length}`)
+    }
+    if (body.expiresAt !== undefined) {
+      const value = body.expiresAt ? new Date(body.expiresAt) : null
+      if (value && Number.isNaN(value.getTime())) return NextResponse.json({ error:"Choose a valid expiry time" }, { status:400 })
+      values.push(value?.toISOString() ?? null); updates.push(`expires_at = $${values.length}`)
+    }
     if (!updates.length) return NextResponse.json({ error: "No broadcast fields supplied" }, { status: 400 })
 
-    const pool = await getPool()
-    if (!pool) return NextResponse.json({ error: "No database" }, { status: 503 })
     values.push(id)
     const result = await pool.query(
-      `UPDATE mednexus_notifications SET ${updates.join(", ")} WHERE id = $${values.length} RETURNING id`,
+      `UPDATE mednexus_notifications SET ${updates.join(", ")},updated_at=NOW() WHERE id = $${values.length} RETURNING id`,
       values,
     )
     if (result.rowCount === 0) return NextResponse.json({ error: "Notification not found" }, { status: 404 })
