@@ -36,7 +36,7 @@ describe("Group Study persistence and authorization gates", () => {
     expect(creationRoute).toContain("canCreate: true")
     expect(creationRoute).toContain("requireAuthenticatedUser(req)")
     expect(creationRoute).toContain("auth.isGuest ? { rows: []")
-    expect(home).toContain("Registered and guest accounts can join")
+    expect(home).toContain("Enter the PIN shared by your host.")
     expect(multiplayerApi.indexOf('if (guest) headers["x-guest-token"]')).toBeLessThan(multiplayerApi.indexOf('else if (session) headers["x-session-token"]'))
   })
 
@@ -73,7 +73,7 @@ describe("Group Study persistence and authorization gates", () => {
     expect(route).toContain('navigationMode(room) !== "answer_ahead"')
     expect(route).toContain('navigationMode(room) !== "anyone_advances"')
     expect(route).toContain('["host_paced", "anyone_advances"].includes(navigationMode(room))')
-    expect(room).toContain("Tap to open navigator")
+    expect(room).toContain("QuestionNavigator")
     expect(room).toContain("Return to live question")
     expect(home).toContain("Default (host-paced)")
     expect(home).toContain("Browse and answer ahead")
