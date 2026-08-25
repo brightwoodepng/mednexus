@@ -151,7 +151,6 @@ export function normalizeTheoryImport(payload: unknown, images: TheoryImportImag
       const prompt = stripImageMarkers(rawPrompt)
       const rawAnswer = text(record.modelAnswer ?? record.answer ?? record.model_answer)
       const keyMarkingPoints = list(record.keyMarkingPoints ?? record.markingPoints ?? record.key_points)
-      if (!keyMarkingPoints.length) throw new Error("At least one key marking point is required.")
       const key = `${collectionTitle.toLowerCase()}|${rawPrompt.toLowerCase().replace(/\s+/g, " ")}`
       if (seen.has(key)) throw new Error("Duplicate question in this import.")
       seen.add(key)

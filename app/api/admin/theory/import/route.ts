@@ -37,11 +37,13 @@ Rules:
 - Headings establish running collection, module, and discipline context for following questions.
 - Do not return or create sets. The server assigns imported drafts to numbered sets automatically.
 - Generate a concise, specific title from each question's main subject, clinical problem, or learning focus, even when the source has no explicit title. Never use a generic label such as "Theory Question" or "Question 1", and never copy the full prompt as the title.
-- Never invent a module or discipline. Use the exact document heading.
+- Never invent a module. Use the exact module heading from the document.
+- Preserve an existing discipline heading exactly. If a question has no discipline heading, infer a concise, standard medical discipline from the question content.
 - This import is ${label}. Set collectionKind to "${collectionKind}" for every question.
 ${collectionKind === "end_of_module" ? "- moduleName is required; disciplineName may identify a related discipline." : "- disciplineName is required; moduleName must be empty."}
 - Keep model answers and marking schemes as Markdown.
-- Return at least one key marking point for every question. Marks are calculated by the system.
+- A source may contain raw questions without answers or marking points. In that case, return an empty modelAnswer and an empty keyMarkingPoints array. Never solve the question or invent an answer or marking scheme.
+- When the source includes a model answer or marking points, preserve them as written. Marks are calculated by the system.
 - Ignore source marks and references.
 - Copy every [IMAGE_N] marker into the relevant prompt or answer and include its id in imageIds.
 - Do not publish or grade anything.`

@@ -94,14 +94,16 @@ describe("Theory bulk importer", () => {
     expect(mixed.errors[0].message).toContain("importer is locked to End of Module")
   })
 
-  it("requires key points and generates bounded titles", () => {
-    const missing = normalizeTheoryImport([{
+  it("accepts raw unanswered questions as drafts and generates bounded titles", () => {
+    const raw = normalizeTheoryImport([{
       collectionKind: "end_of_year",
       disciplineName: "Pathology",
       prompt: "Discuss coagulative necrosis.",
     }])
-    expect(missing.items).toHaveLength(0)
-    expect(missing.errors[0].message).toBe("At least one key marking point is required.")
+    expect(raw.errors).toEqual([])
+    expect(raw.items).toHaveLength(1)
+    expect(raw.items[0]).toMatchObject({ modelAnswer: "", keyMarkingPoints: [], marks: 0 })
+    expect(raw.items[0].title).toBeTruthy()
 
     const generated = normalizeTheoryImport([{
       collectionKind: "end_of_year",
