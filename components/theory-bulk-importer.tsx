@@ -41,7 +41,7 @@ export function TheoryBulkImporter({ collectionKind, defaultSetSize = 20, onImpo
   const [promptCopied, setPromptCopied] = useState(false)
   const kindLabel = collectionKind === "end_of_module" ? "End of Module" : "End of Year"
   const formattingPrompt = collectionKind === "end_of_module"
-    ? `Organize and reformat all Theory questions in the attached slide or document to follow the exact MedNexus End-of-Module structure shown below. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Under every numbered question, repeat the complete QUESTION TITLE, QUESTION, MODEL ANSWER, and KEY POINTS block. For every question, generate a concise and specific QUESTION TITLE from the main subject, clinical problem, or learning focus of that question. Do not use generic titles such as "Theory Question" or "Question 1", and do not copy the entire question as its title. Preserve every question, sub-question, model answer, marking point, heading, and embedded image. Keep everything in its original order. Apart from generating the question title, do not add, remove, solve, rewrite, or summarize any content. Return a clean .docx, .txt, or .md file ready for MedNexus import.
+    ? `Organize and reformat all raw Theory questions in the attached slide or document to follow the exact MedNexus End-of-Module structure shown below. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Generate a concise, specific QUESTION TITLE from the main subject, clinical problem, or learning focus of each question. Preserve the exact MODULE and DISCIPLINE headings already present. If a discipline is missing, infer a concise, standard medical discipline from the question content. Preserve every question, sub-question, heading, and embedded image in its original order. If the source has no answers or marking points, do not solve the questions and do not invent answers or marking schemes. Apart from generating titles and missing disciplines, do not add, remove, rewrite, or summarize any question. Return a clean .docx, .txt, or .md file ready for MedNexus import.
 
 EXAMPLE TO FOLLOW
 
@@ -51,56 +51,29 @@ DISCIPLINE: Cardiology
 
 QUESTION 1
 
-QUESTION TITLE: Acute pulmonary oedema management
+QUESTION TITLE: Acute pulmonary oedema assessment
 
 QUESTION:
-A 68-year-old man presents with severe breathlessness, orthopnoea and pink frothy sputum. Discuss your assessment and immediate management.
-
-MODEL ANSWER:
-## Initial assessment
-
-Assess the patient using an ABCDE approach.
-
-## Immediate management
-
-- Administer oxygen when the patient is hypoxaemic.
-- Establish intravenous access and monitor the cardiac rhythm.
-- Give an appropriate nitrate when the blood pressure permits.
-- Consider intravenous loop diuretic therapy.
-- Identify and treat the precipitating cause.
-
-KEY POINTS:
-- Uses an ABCDE assessment
-- Identifies the characteristic clinical presentation
-- Describes appropriate oxygen therapy
-- Mentions nitrates where blood pressure permits
-- Mentions intravenous loop diuretic therapy
-- Identifies and treats the precipitating cause
+A 68-year-old man presents with severe breathlessness, orthopnoea and pink frothy sputum. Discuss your assessment, investigations and immediate management of this patient.
 
 QUESTION 2
 
 QUESTION TITLE: Complications of myocardial infarction
 
 QUESTION:
-Outline the early and late complications of acute myocardial infarction.
+Outline the early and late complications of acute myocardial infarction and briefly describe how they may be recognized clinically.
 
-MODEL ANSWER:
-## Early complications
+DISCIPLINE: Cardiovascular Pharmacology
 
-Early complications include arrhythmias, acute left ventricular failure, cardiogenic shock, recurrent ischaemia and acute pericarditis.
+QUESTION 3
 
-## Late complications
+QUESTION TITLE: Angiotensin-converting enzyme inhibitors
 
-Late complications include ventricular aneurysm, mural thrombus, chronic heart failure and Dressler syndrome.
+QUESTION:
+Discuss the mechanism of action, therapeutic uses and important adverse effects of angiotensin-converting enzyme inhibitors.
 
-KEY POINTS:
-- Identifies important arrhythmias
-- Mentions acute left ventricular failure
-- Mentions cardiogenic shock
-- Describes mechanical complications
-- Identifies ventricular aneurysm and mural thrombus
-- Mentions Dressler syndrome`
-    : `Organize and reformat all Theory questions in the attached slide or document to follow the exact MedNexus End-of-Year structure shown below. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Under every numbered question, repeat the complete QUESTION TITLE, QUESTION, MODEL ANSWER, and KEY POINTS block. For every question, generate a concise and specific QUESTION TITLE from the main subject, clinical problem, or learning focus of that question. Do not use generic titles such as "Theory Question" or "Question 1", and do not copy the entire question as its title. Preserve every question, sub-question, model answer, marking point, heading, and embedded image. Keep everything in its original order. Organize questions by discipline and do not add a MODULE heading. When the discipline changes, insert the new DISCIPLINE heading before the next numbered question. Apart from generating the question title, do not add, remove, solve, rewrite, or summarize any content. Return a clean .docx, .txt, or .md file ready for MedNexus import.
+Continue the same numbered structure for every remaining question. Only include MODEL ANSWER and KEY POINTS under a question when they already exist in the source document.`
+    : `Organize and reformat all raw Theory questions in the attached slide or document to follow the exact MedNexus End-of-Year structure shown below. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Generate a concise, specific QUESTION TITLE from the main subject, clinical problem, or learning focus of each question. Preserve every existing DISCIPLINE heading exactly. If a discipline is missing, infer a concise, standard medical discipline from the question content. Do not add a MODULE heading. When the discipline changes, insert the new DISCIPLINE heading before the next numbered question. Preserve every question, sub-question, heading, and embedded image in its original order. If the source has no answers or marking points, do not solve the questions and do not invent answers or marking schemes. Apart from generating titles and missing disciplines, do not add, remove, rewrite, or summarize any question. Return a clean .docx, .txt, or .md file ready for MedNexus import.
 
 EXAMPLE TO FOLLOW
 
@@ -113,50 +86,23 @@ QUESTION TITLE: Diabetic ketoacidosis
 QUESTION:
 Discuss the clinical presentation, investigations and management of diabetic ketoacidosis in an adult patient.
 
-MODEL ANSWER:
-## Clinical presentation
+QUESTION 2
 
-Patients may present with polyuria, polydipsia, dehydration, vomiting, abdominal pain, altered consciousness and Kussmaul respiration.
+QUESTION TITLE: Clinical assessment of thyrotoxicosis
 
-## Investigations and management
-
-Investigations include glucose, blood ketones, venous blood gas, electrolytes and renal function. Treatment includes intravenous fluids, fixed-rate intravenous insulin, potassium replacement and management of the precipitating cause.
-
-KEY POINTS:
-- Describes the major clinical features
-- Requests glucose and ketone measurement
-- Assesses acid-base and electrolyte status
-- Describes intravenous fluid replacement
-- Describes fixed-rate intravenous insulin
-- Mentions potassium monitoring
-- Treats the precipitating cause
+QUESTION:
+A 35-year-old woman presents with weight loss, heat intolerance, palpitations and a neck swelling. Explain your assessment and management of this patient.
 
 DISCIPLINE: Surgery
 
-QUESTION 2
+QUESTION 3
 
 QUESTION TITLE: Initial management of intestinal obstruction
 
 QUESTION:
-Discuss the clinical assessment and initial management of a patient presenting with suspected intestinal obstruction.
+Discuss the clinical assessment, investigations and initial management of a patient presenting with suspected intestinal obstruction.
 
-MODEL ANSWER:
-## Assessment
-
-Assess the history, abdominal symptoms, hydration status, vital signs and signs of peritonitis or strangulation.
-
-## Initial management
-
-Keep the patient nil by mouth, establish intravenous access, correct fluid and electrolyte deficits, insert a nasogastric tube when indicated and obtain appropriate imaging.
-
-KEY POINTS:
-- Identifies symptoms and signs of obstruction
-- Assesses hydration and haemodynamic status
-- Looks for peritonitis or strangulation
-- Keeps the patient nil by mouth
-- Describes fluid and electrolyte replacement
-- Mentions nasogastric decompression
-- Requests appropriate imaging`
+Continue the same numbered structure for every remaining question. Only include MODEL ANSWER and KEY POINTS under a question when they already exist in the source document.`
 
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; count: number; images: number }>()
@@ -322,7 +268,7 @@ KEY POINTS:
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold">Import preview</h2><p className="mt-1 text-sm text-muted-foreground">{items.length} valid questions across {groups.length} hierarchy paths. Review before committing.</p></div><button onClick={reset} className={`${button} border border-border`}>Start over</button></div>
       <div className="mt-5 grid gap-3 sm:grid-cols-3">{groups.map(group => <div key={group.label} className="rounded-xl border border-border bg-muted/20 p-3"><b className="text-sm">{group.label}</b><p className="mt-1 text-xs text-muted-foreground">{group.count} questions · {Math.ceil(group.count/defaultSetSize)} set allocation{Math.ceil(group.count/defaultSetSize) === 1 ? "" : "s"} · {group.images} images</p></div>)}</div>
       {errors.length > 0 && <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4"><div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-200"><AlertTriangle size={17}/>{errors.length} rows need attention and will not be imported</div><ul className="mt-2 space-y-1 text-sm text-amber-900 dark:text-amber-100">{errors.slice(0, 10).map(error => <li key={`${error.row}-${error.message}`}>Row {error.row || "—"}: {error.message}</li>)}</ul></div>}
-      <div className="mt-5 max-h-[42rem] space-y-3 overflow-y-auto pr-1">{items.map((item, index) => <article key={`${item.prompt}-${index}`} className="rounded-xl border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{[item.collectionTitle,item.moduleName,item.disciplineName].filter(Boolean).join(" / ")}</p><h3 className="mt-1 font-bold">{item.title}</h3><p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{item.prompt}</p><p className="mt-2 text-xs font-semibold text-primary">{item.marks} marks · {item.keyMarkingPoints.length} key points · Automatically allocated draft</p></div><button onClick={() => setItems(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove from import" className="rounded-lg p-2 text-destructive hover:bg-destructive/10"><Trash2 size={16}/></button></div>{item.media.length > 0 && <div className="mt-3"><TheoryQuestionMedia media={item.media} compact/></div>}</article>)}</div>
+      <div className="mt-5 max-h-[42rem] space-y-3 overflow-y-auto pr-1">{items.map((item, index) => <article key={`${item.prompt}-${index}`} className="rounded-xl border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{[item.collectionTitle,item.moduleName,item.disciplineName].filter(Boolean).join(" / ")}</p><h3 className="mt-1 font-bold">{item.title}</h3><p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{item.prompt}</p>{item.modelAnswer && item.keyMarkingPoints.length ? <p className="mt-2 text-xs font-semibold text-primary">{item.marks} marks · {item.keyMarkingPoints.length} key points · Automatically allocated draft</p> : <p className="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Answer pending · Complete the model answer and marking points before publishing</p>}</div><button onClick={() => setItems(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove from import" className="rounded-lg p-2 text-destructive hover:bg-destructive/10"><Trash2 size={16}/></button></div>{item.media.length > 0 && <div className="mt-3"><TheoryQuestionMedia media={item.media} compact/></div>}</article>)}</div>
       <div className="mt-5 flex justify-end"><button disabled={!items.length} onClick={commit} className={`${button} bg-primary text-primary-foreground disabled:opacity-50`}><CheckCircle2 size={16}/>Import and allocate {items.length} drafts</button></div>
     </section>}
   </div>
