@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import type { LiveAssessment, AssessmentAnalytics } from "@/lib/types"
 import { gradingModeLabel, type AssessmentGradingMode } from "@/lib/assessment-grading"
 import {
   ClipboardListIcon, PlusIcon, TrashIcon, ClockIcon, UsersIcon,
   BarChart2Icon, LinkIcon, CheckIcon, XIcon, AlertTriangleIcon,
-  RadioIcon, CopyIcon, RefreshCwIcon, ChevronDownIcon, TrophyIcon, ChevronLeftIcon,
+  RadioIcon, CopyIcon, ChevronDownIcon, TrophyIcon, ChevronLeftIcon,
 } from "@/components/icons"
 
 // ── Create Assessment Modal ────────────────────────────────────────────────────
@@ -500,6 +500,8 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
   const [optionsError, setOptionsError] = useState("")
   const [creationNotice, setCreationNotice] = useState("")
   const [assessmentError, setAssessmentError] = useState("")
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"all" | "live" | "offline">("all")
 
   const fetchAssessments = useCallback(async () => {
     setLoading(true)
@@ -587,10 +589,18 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
+  const filteredAssessments = useMemo(() => assessments.filter(asmt => {
+    const term = search.trim().toLowerCase()
+    return (statusFilter === "all" || asmt.status === statusFilter)
+      && (!term || asmt.title.toLowerCase().includes(term) || asmt.moduleName.toLowerCase().includes(term))
+  }), [assessments, search, statusFilter])
+  const liveCount = assessments.filter(asmt => asmt.status === "live").length
+  const totalQuestions = assessments.reduce((sum, asmt) => sum + Number(asmt.questionCount || 0), 0)
+
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="max-w-7xl space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {onBack && (
             <button
@@ -602,27 +612,29 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
               <ChevronLeftIcon size={16} />
             </button>
           )}
-          <div>
-            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <ClipboardListIcon size={20} className="text-amber-600" />
-              Assessments
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Admin</span>
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Create and manage live exams for your students</p>
-          </div>
+          <span className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary"><ClipboardListIcon size={21} /></span>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Live Assessments</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" aria-label="Refresh assessments and modules" onClick={() => { void fetchAssessments(); void fetchModuleOptions() }} className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors">
-            <RefreshCwIcon size={14} />
-          </button>
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
           >
             <PlusIcon size={14} /> New Assessment
           </button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[{label:"Total",value:assessments.length},{label:"Live now",value:liveCount},{label:"Offline",value:assessments.length-liveCount},{label:"Questions",value:totalQuestions}].map(item => <div key={item.label} className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">{item.label}</p><p className="mt-1 text-2xl font-bold">{item.value}</p></div>)}
+      </div>
+
+      <div className="grid gap-3 rounded-2xl border border-border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_180px]">
+        <label className="sr-only" htmlFor="assessment-search">Search assessments</label>
+        <input id="assessment-search" value={search} onChange={event => setSearch(event.target.value)} className="min-h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25" placeholder="Search by assessment or module" />
+        <label className="sr-only" htmlFor="assessment-status">Assessment status</label>
+        <select id="assessment-status" value={statusFilter} onChange={event => setStatusFilter(event.target.value as typeof statusFilter)} className="min-h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"><option value="all">All statuses</option><option value="live">Live</option><option value="offline">Offline</option></select>
       </div>
 
       {creationNotice && <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300"><span>{creationNotice}</span><button type="button" onClick={() => setCreationNotice("")} aria-label="Dismiss creation message" className="font-bold">×</button></div>}
@@ -645,12 +657,14 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
             <PlusIcon size={14} /> Create Assessment
           </button>
         </div>
+      ) : filteredAssessments.length === 0 ? (
+        <div className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">No assessments match these filters.</div>
       ) : (
-        <div className="space-y-3">
-          {assessments.map((asmt) => (
-            <div key={asmt.id} className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="grid gap-3 xl:grid-cols-2">
+          {filteredAssessments.map((asmt) => (
+            <article key={asmt.id} className="overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-primary/25">
               <div className="p-5">
-                <div className="flex items-start gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       {/* Status toggle */}
@@ -681,7 +695,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex shrink-0 items-center gap-1.5 flex-wrap justify-end">
+                  <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
                     <button
                       type="button"
                       onClick={() => copyLink(asmt)}
@@ -724,7 +738,7 @@ export function LiveAssessmentsAdmin({ onBack }: { onBack?: () => void }) {
                   </div>
                 )}
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}

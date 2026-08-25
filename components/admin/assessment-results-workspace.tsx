@@ -2,48 +2,40 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
-import { BarChart3, Download, Loader2, Search, Users } from "lucide-react"
+import { BarChart3, ChevronLeft, ChevronRight, ClipboardCheck, Download, Gauge, Loader2, Search, Target, Users } from "lucide-react"
 
-type Summary = { id: string; title: string; moduleName: string; questionCount: number; passMark: number; status: string; createdAt: string; participants: number; average: number; median: number; highest: number; lowest: number; passed: number; failed: number }
-type Payload = { summaries: Summary[]; total: number; page: number; pageSize: number; modules: string[]; metrics: { assessments: number; participants: number; average: number; passRate: number } }
+type Summary = { id:string;title:string;moduleName:string;questionCount:number;passMark:number;status:string;createdAt:string;participants:number;average:number;median:number;highest:number;lowest:number;passed:number;failed:number }
+type Payload = { summaries:Summary[];total:number;page:number;pageSize:number;modules:string[];metrics:{ assessments:number;participants:number;average:number;passRate:number } }
+const control = "min-h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25"
 
 export function AssessmentResultsWorkspace() {
-  const [data, setData] = useState<Payload | null>(null)
-  const [search, setSearch] = useState("")
-  const [moduleName, setModuleName] = useState("")
-  const [status, setStatus] = useState("")
-  const [page, setPage] = useState(1)
-  const [loading, setLoading] = useState(true)
-  const load = useCallback(async () => {
-    setLoading(true)
-    const params = new URLSearchParams({ search, module: moduleName, status, page: String(page), pageSize: "20" })
-    const response = await fetch(`/api/admin/results?${params}`)
-    const body = await response.json()
-    if (response.ok) setData(body)
-    setLoading(false)
-  }, [search, moduleName, status, page])
-  useEffect(() => { const timer = window.setTimeout(load, 200); return () => window.clearTimeout(timer) }, [load])
-  useEffect(() => { setPage(1) }, [search, moduleName, status])
+  const [data,setData]=useState<Payload|null>(null), [search,setSearch]=useState(""), [moduleName,setModuleName]=useState(""), [status,setStatus]=useState("")
+  const [page,setPage]=useState(1), [loading,setLoading]=useState(true), [error,setError]=useState("")
+  const load=useCallback(async()=>{setLoading(true);setError("");try{const params=new URLSearchParams({search,module:moduleName,status,page:String(page),pageSize:"20"});const response=await fetch(`/api/admin/results?${params}`,{cache:"no-store"});const body=await response.json();if(!response.ok)throw new Error(body.error??"Unable to load assessment results.");setData(body)}catch(cause){setError(cause instanceof Error?cause.message:"Unable to load assessment results.")}finally{setLoading(false)}},[search,moduleName,status,page])
+  useEffect(()=>{const timer=window.setTimeout(()=>void load(),200);return()=>window.clearTimeout(timer)},[load])
+  useEffect(()=>setPage(1),[search,moduleName,status])
+  const metrics=[{label:"Assessments",value:data?.metrics.assessments??0,Icon:ClipboardCheck},{label:"Participants",value:data?.metrics.participants??0,Icon:Users},{label:"Average",value:`${data?.metrics.average??0}%`,Icon:Gauge},{label:"Pass rate",value:`${data?.metrics.passRate??0}%`,Icon:Target}]
+  const totalPages=Math.max(1,Math.ceil((data?.total??0)/(data?.pageSize??20)))
 
-  const inputClass = "h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/50"
-  return <div className="space-y-5">
-    <div><p className="text-sm font-semibold tracking-wide text-primary">ASSESSMENTS</p><h1 className="mt-2 text-3xl font-bold">Assessment Results</h1><p className="mt-2 text-sm text-muted-foreground">Best attempts are used for summaries and rankings. Open an assessment to inspect every attempt and question performance.</p></div>
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[
-      ["Assessments", data?.metrics.assessments ?? 0], ["Participants", data?.metrics.participants ?? 0],
-      ["Average", `${data?.metrics.average ?? 0}%`], ["Pass rate", `${data?.metrics.passRate ?? 0}%`],
-    ].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div>)}</div>
-    <div className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-3">
-      <label className="relative"><Search size={15} className="absolute left-3 top-3 text-muted-foreground" /><input className={`${inputClass} w-full pl-9`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search assessments" /></label>
-      <select className={inputClass} value={moduleName} onChange={(event) => setModuleName(event.target.value)}><option value="">All modules</option>{data?.modules.map((module) => <option key={module}>{module}</option>)}</select>
-      <select className={inputClass} value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option><option value="live">Live</option><option value="offline">Offline</option><option value="ended">Ended</option></select>
+  return <div className="max-w-7xl space-y-5">
+    <header className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary"><BarChart3 size={21}/></span><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Assessment Results</h1></header>
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{metrics.map(({label,value,Icon})=><div key={label} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground"><Icon size={17}/></span><div><p className="text-xs text-muted-foreground">{label}</p><p className="text-xl font-bold">{value}</p></div></div>)}</div>
+    <div className="grid gap-3 rounded-2xl border border-border bg-card p-3 md:grid-cols-[minmax(0,1fr)_220px_160px]">
+      <label className="relative"><span className="sr-only">Search assessments</span><Search size={15} className="absolute left-3 top-3.5 text-muted-foreground"/><input className={`${control} w-full pl-9`} value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search assessment or module"/></label>
+      <label><span className="sr-only">Filter by module</span><select className={`${control} w-full`} value={moduleName} onChange={event=>setModuleName(event.target.value)}><option value="">All modules</option>{data?.modules.map(module=><option key={module}>{module}</option>)}</select></label>
+      <label><span className="sr-only">Filter by status</span><select className={`${control} w-full`} value={status} onChange={event=>setStatus(event.target.value)}><option value="">All statuses</option><option value="live">Live</option><option value="offline">Offline</option><option value="ended">Ended</option></select></label>
     </div>
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      {loading ? <div className="flex min-h-48 items-center justify-center"><Loader2 className="animate-spin text-primary" /></div> : !data?.summaries.length ? <p className="p-12 text-center text-sm text-muted-foreground">No assessment results match these filters.</p> :
-      <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead><tr className="border-b border-border bg-muted/40 text-left text-xs text-muted-foreground">{["Assessment", "Participants", "Average", "Median", "Pass / Fail", "Range", ""].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody>{data.summaries.map((summary) => <tr key={summary.id} className="border-b border-border/60 last:border-0"><td className="px-4 py-3"><p className="font-semibold">{summary.title}</p><p className="text-xs text-muted-foreground">{summary.moduleName} · {summary.questionCount} questions</p></td><td className="px-4 py-3"><span className="inline-flex items-center gap-1"><Users size={14} />{summary.participants}</span></td><td className="px-4 py-3 font-semibold">{summary.average}%</td><td className="px-4 py-3">{summary.median}%</td><td className="px-4 py-3"><span className="text-emerald-600">{summary.passed}</span> / <span className="text-destructive">{summary.failed}</span></td><td className="px-4 py-3">{summary.lowest}%–{summary.highest}%</td><td className="px-4 py-3"><div className="flex justify-end gap-1"><Link href={`/admin/results/${summary.id}`} className="inline-flex h-9 items-center gap-1 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground"><BarChart3 size={14} />Open</Link><a href={`/api/admin/results/export?assessmentId=${encodeURIComponent(summary.id)}&format=csv`} className="flex h-9 w-9 items-center justify-center rounded-lg border border-border" aria-label={`Export ${summary.title}`}><Download size={14} /></a></div></td></tr>)}</tbody></table></div>}
-    </div>
-    {(data?.total ?? 0) > (data?.pageSize ?? 20) && <div className="flex items-center justify-between text-xs text-muted-foreground">
-      <span>Page {data?.page ?? page} of {Math.ceil((data?.total ?? 0) / (data?.pageSize ?? 20))}</span>
-      <div className="flex gap-2"><button type="button" disabled={page===1} onClick={() => setPage(value => Math.max(1,value-1))} className="rounded-lg border border-border px-3 py-1.5 disabled:opacity-40">Previous</button><button type="button" disabled={page*(data?.pageSize ?? 20)>=(data?.total ?? 0)} onClick={() => setPage(value => value+1)} className="rounded-lg border border-border px-3 py-1.5 disabled:opacity-40">Next</button></div>
-    </div>}
+    {error?<div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><span>{error}</span><button type="button" onClick={()=>void load()} className="font-semibold">Retry</button></div>:null}
+    <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      {loading?<div className="flex min-h-56 items-center justify-center"><Loader2 className="animate-spin text-primary"/></div>:!data?.summaries.length?<div className="grid min-h-56 place-items-center p-8 text-center"><div><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground"><BarChart3 size={20}/></span><p className="mt-3 font-semibold">No results found</p><p className="mt-1 text-sm text-muted-foreground">Try another search or filter.</p></div></div>:<>
+        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[820px] text-sm"><thead><tr className="border-b border-border bg-muted/35 text-left text-xs text-muted-foreground">{["Assessment","Participants","Performance","Pass / fail","Score range",""] .map(header=><th key={header} className="px-5 py-3 font-medium">{header}</th>)}</tr></thead><tbody>{data.summaries.map(summary=><tr key={summary.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20"><td className="px-5 py-4"><div className="flex items-center gap-2"><p className="font-semibold">{summary.title}</p><Status value={summary.status}/></div><p className="mt-1 text-xs text-muted-foreground">{summary.moduleName} · {summary.questionCount} questions · {summary.passMark}% pass mark</p></td><td className="px-5 py-4 font-medium">{summary.participants}</td><td className="px-5 py-4"><p className="font-semibold">{summary.average}% average</p><p className="text-xs text-muted-foreground">{summary.median}% median</p></td><td className="px-5 py-4"><span className="text-emerald-600">{summary.passed} passed</span><span className="mx-1 text-muted-foreground">·</span><span className="text-destructive">{summary.failed} failed</span></td><td className="px-5 py-4">{summary.lowest}%–{summary.highest}%</td><td className="px-5 py-4"><Actions summary={summary}/></td></tr>)}</tbody></table></div>
+        <div className="divide-y divide-border md:hidden">{data.summaries.map(summary=><article key={summary.id} className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold">{summary.title}</h2><p className="mt-1 text-xs text-muted-foreground">{summary.moduleName} · {summary.questionCount} questions</p></div><Status value={summary.status}/></div><div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-muted/35 p-3 text-center"><Mini label="People" value={summary.participants}/><Mini label="Average" value={`${summary.average}%`}/><Mini label="Pass rate" value={`${summary.participants?Math.round(summary.passed/summary.participants*100):0}%`}/></div><div className="mt-3"><Actions summary={summary}/></div></article>)}</div>
+      </>}
+      {!loading&&(data?.total??0)>0?<footer className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground"><span>{data?.total} assessment{data?.total===1?"":"s"}</span><div className="flex items-center gap-2"><button type="button" aria-label="Previous page" disabled={page===1} onClick={()=>setPage(value=>Math.max(1,value-1))} className="grid size-9 place-items-center rounded-lg border border-border disabled:opacity-30"><ChevronLeft size={15}/></button><span>{page} / {totalPages}</span><button type="button" aria-label="Next page" disabled={page>=totalPages} onClick={()=>setPage(value=>value+1)} className="grid size-9 place-items-center rounded-lg border border-border disabled:opacity-30"><ChevronRight size={15}/></button></div></footer>:null}
+    </section>
   </div>
 }
+
+function Status({value}:{value:string}){return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${value==="live"?"bg-emerald-500/10 text-emerald-600":"bg-muted text-muted-foreground"}`}>{value}</span>}
+function Mini({label,value}:{label:string;value:string|number}){return <div><p className="text-[10px] text-muted-foreground">{label}</p><p className="mt-0.5 text-sm font-bold">{value}</p></div>}
+function Actions({summary}:{summary:Summary}){return <div className="flex items-center justify-end gap-2"><Link href={`/admin/results/${summary.id}`} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground md:flex-none"><BarChart3 size={14}/>Open results</Link><a href={`/api/admin/results/export?assessmentId=${encodeURIComponent(summary.id)}&format=csv`} className="grid size-9 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label={`Export ${summary.title}`}><Download size={14}/></a></div>}
