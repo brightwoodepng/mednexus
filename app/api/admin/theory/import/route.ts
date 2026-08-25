@@ -33,9 +33,10 @@ Return JSON only, in this shape:
 
 Rules:
 - Extract every long-answer, essay, short-answer, teaching, or past-paper question in source order.
+- Treat each QUESTION 1, QUESTION 2, QUESTION 3, and subsequent numbered heading as the start of a separate question. Never merge two numbered question blocks into one item.
 - Headings establish running collection, module, and discipline context for following questions.
 - Do not return or create sets. The server assigns imported drafts to numbered sets automatically.
-- Generate a concise, specific title even when the source has no explicit question title.
+- Generate a concise, specific title from each question's main subject, clinical problem, or learning focus, even when the source has no explicit title. Never use a generic label such as "Theory Question" or "Question 1", and never copy the full prompt as the title.
 - Never invent a module or discipline. Use the exact document heading.
 - This import is ${label}. Set collectionKind to "${collectionKind}" for every question.
 ${collectionKind === "end_of_module" ? "- moduleName is required; disciplineName may identify a related discipline." : "- disciplineName is required; moduleName must be empty."}
