@@ -418,10 +418,8 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
   const [categorizeModule, setCategorizeModule] = useState("")
   const [categorizeDiscipline, setCategorizeDiscipline] = useState("")
 
-  // ── Format Tips accordion ─────────────────────────────────────────────────────
-  const [openTip, setOpenTip] = useState<string | null>(null)
+  // ── Copyable AI formatting prompt ─────────────────────────────────────────────
   const [rulesCopied, setRulesCopied] = useState(false)
-  function toggleTip(id: string) { setOpenTip((prev) => (prev === id ? null : id)) }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -1011,358 +1009,85 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
                 </div>
               )}
 
-              {/* ── Format Rules accordion ────────────────────────────────── */}
+              {/* ── Copyable AI formatting example ─────────────────────────── */}
               {(() => {
-                const sections: {
-                  id: string
-                  label: string
-                  accent: string
-                  iconBg: string
-                  icon: React.ReactNode
-                  rules: { good?: string; bad?: string; note?: string }[]
-                  example?: string
-                }[] = [
-                  {
-                    id: "workflow",
-                    label: "Your Workflow (how to use this)",
-                    accent: "border-emerald-400/40 dark:border-emerald-600/30",
-                    iconBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
-                    icon: <BookOpenIcon size={12} />,
-                    rules: [
-                      { good: "Reformat the questions compilation to match the MedNexus formatting rules (single module tag, continuous numbering, discipline tags per section, A–E options, Answer: line, Explanation: line) and export as a clean .docx/.txt for import" },
-                      { note: "Rule 3 — Question Numbering: numbering runs continuously across the ENTIRE document, never restarting at each new DISCIPLINE tag" },
-                      { bad: "Blank line between the question number and the vignette text" },
-                      { bad: "A second MODULE tag anywhere in the document — only one, at the top" },
-                      { bad: "DISCIPLINE tag placed mid-question (between stem and options)" },
-                      { bad: "Answer: line placed before the options" },
-                      { bad: "Sub-numbering or bullet points inside options (A. 1. sub-item)" },
-                      { bad: "Question number duplicated at the start of the vignette text (1. 1. A patient…)" },
-                      { bad: "Question numbering restarting at 1 for each new discipline" },
-                    ],
-                  },
-                  {
-                    id: "module",
-                    label: "MODULE — extracted from your title",
-                    accent: "border-emerald-400/40 dark:border-emerald-600/30",
-                    iconBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
-                    icon: <HashIcon size={12} />,
-                    rules: [
-                      { good: "MODULE: <name>  —  appears ONCE, at the very top of the document" },
-                      { good: "Applies to every question in the file, regardless of discipline" },
-                      { good: "Separator after keyword: colon  :  period  .  or dash  -  (colon preferred)" },
-                      { good: "Tag is case-insensitive" },
-                    ],
-                    example: "MODULE: UCC Entrance Examination",
-                  },
-                  {
-                    id: "discipline",
-                    label: "DISCIPLINE — from your section headings",
-                    accent: "border-blue-400/40 dark:border-blue-600/30",
-                    iconBg: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
-                    icon: <ListChecksIcon size={12} />,
-                    rules: [
-                      { good: "DISCIPLINE: <name>  —  own line, placed before the first question of that section" },
-                      { good: "Also accepts  SUBJECT:  or  TOPIC:" },
-                      { good: "Applies to every question that follows until the next DISCIPLINE tag" },
-                      { good: "Use a new DISCIPLINE tag every time the subject changes (e.g. Mathematics → Chemistry → Physics → Biology → Aptitude/Reasoning)" },
-                      { bad: "Do NOT repeat the MODULE tag between sections — it is set once for the whole document" },
-                    ],
-                    example: "DISCIPLINE: Mathematics\n...(questions 1–25)...\nDISCIPLINE: Chemistry\n...(questions 26–51)...",
-                  },
-                  {
-                    id: "options",
-                    label: "Answer Options — lowercase → uppercase",
-                    accent: "border-violet-400/40 dark:border-violet-600/30",
-                    iconBg: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400",
-                    icon: <CheckIcon size={12} />,
-                    rules: [
-                      { good: "Each option on its own dedicated line" },
-                      { good: "Accepted formats:  A. text   A) text   A: text   A- text   (A) text" },
-                      { good: "Letters A–E only (uppercase or lowercase — normalised to uppercase)" },
-                      { good: "Minimum 2 options (A and B) required; option E is optional" },
-                      { bad: "Option label repeated inside the text, e.g.  A. (A) Aortic dissection" },
-                      { bad: "All options on a single line separated by commas or slashes" },
-                    ],
-                    example: "A. Aortic dissection\nB. Pulmonary embolism\nC. Myocardial infarction\nD. Pericarditis",
-                  },
-                  {
-                    id: "answer",
-                    label: "Answer line — only if present",
-                    accent: "border-emerald-400/40 dark:border-emerald-600/30",
-                    iconBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
-                    icon: <CheckIcon size={12} />,
-                    rules: [
-                      { good: "Accepted keywords (case-insensitive):  Answer   Correct Answer   Correct_Answer   Ans   Key" },
-                      { good: "Separator after keyword: colon  :  period  .  space  —  or dash  -" },
-                      { good: "Value: single letter A, B, C, D, or E  (uppercase or lowercase)" },
-                      { good: "Must appear AFTER all options and BEFORE the Explanation" },
-                      { bad: "Answer line placed before the options" },
-                      { bad: "Answer written as a word, e.g.  Answer: Aortic dissection" },
-                    ],
-                    example: "Answer: A",
-                  },
-                  {
-                    id: "explanation",
-                    label: "Explanation — only if present",
-                    accent: "border-sky-400/40 dark:border-sky-600/30",
-                    iconBg: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400",
-                    icon: <BookOpenIcon size={12} />,
-                    rules: [
-                      { good: "Trigger keywords (case-insensitive):  Explanation   Rationale   Discussion   Reason   Solution" },
-                      { good: "Keyword must be followed by any separator: period  .  colon  :  dash  -  em-dash  —  or a space" },
-                      { good: "Everything after the keyword on that line, plus every subsequent line until the next question number, is the explanation body" },
-                      { good: "Multi-paragraph explanations work — lines are concatenated automatically" },
-                      { good: "Maps to the 'Why the correct answer is right' field in the editor" },
-                      { bad: "No trigger keyword — unlabelled paragraph after the answer will be ignored" },
-                    ],
-                    example: "Explanation: Aortic dissection classically presents with sudden tearing chest pain radiating to the back, with a blood-pressure differential between arms and a widened mediastinum on CXR.",
-                  },
-                  {
-                    id: "images",
-                    label: "Clinical Images (.docx only)",
-                    accent: "border-amber-400/40 dark:border-amber-600/30",
-                    iconBg: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
-                    icon: <ImageIcon size={12} />,
-                    rules: [
-                      { good: "Embed the image directly in your Word document at the correct position within the question block (after the stem, before or between the options)" },
-                      { good: "The system counts question boundaries to assign images — one image per question, first image wins" },
-                      { good: "A document can contain up to 50 embedded images, with a combined decoded-image limit of 8 MB" },
-                      { bad: "Image placed between two question numbers — it will be attached to the preceding question" },
-                      { note: "Do NOT type [IMAGE_1] or any placeholder manually — those are internal markers generated by the extractor. Embedding the image in Word at the right place is all that is needed." },
-                    ],
-                  },
-                ]
+                const formattingPrompt = `Organize and reformat every MCQ in the attached slide or document to follow the exact MedNexus structure shown in the example below. Preserve every question, answer option, correct answer, explanation, discipline, and embedded clinical image from the source. Use one MODULE heading at the top, add a DISCIPLINE heading whenever the subject changes, and keep question numbering continuous throughout the entire document. Do not add, remove, solve, rewrite, or summarize any question. Return the completed work as a clean .docx or .txt file ready for MedNexus import.
 
-                // Raw formatting prompt — copied verbatim to clipboard when user clicks "Copy Formatting Rules for AI"
-                const RAW_FORMATTING_PROMPT = `Reformat the questions compilation to match the MedNexus formatting rules (single module tag, continuous numbering, discipline tags per section, A–E options, Answer: line, Explanation: line) and export as a clean .docx/.txt for import.
+EXAMPLE TO FOLLOW
 
-MEDNEXUS DOCUMENT FORMATTING RULES
-Use these rules to pre-format raw MCQ compilations before importing.
-============================================================
+MODULE: Integument II
 
-1. MODULE TAG (ONE PER DOCUMENT)
-----------------------------------
-  ✓  MODULE: <name>  —  appears ONCE, at the very top of the document
-  ✓  Applies to every question in the file, regardless of discipline
-  ✓  Separator after keyword: colon  :  period  .  or dash  -  (colon preferred)
-  ✓  Tag is case-insensitive
+DISCIPLINE: Dermatology
 
-  Example:
-    MODULE: UCC Entrance Examination
+1. A 24-year-old woman presents with an intensely itchy rash affecting the flexor surfaces of both elbows. Examination shows dry, erythematous, excoriated plaques. She has a history of asthma. What is the most likely diagnosis?
 
-2. DISCIPLINE TAGS (ONE PER SECTION)
---------------------------------------
-  ✓  DISCIPLINE: <name>  —  own line, placed before the first question of that section
-  ✓  Also accepts  SUBJECT:  or  TOPIC:
-  ✓  Applies to every question that follows until the next DISCIPLINE tag
-  ✓  Use a new DISCIPLINE tag every time the subject changes (e.g. Mathematics → Chemistry → Physics → Biology → Aptitude/Reasoning)
-  ✗  Do NOT repeat the MODULE tag between sections — it is set once for the whole document
-
-  Example:
-    DISCIPLINE: Mathematics
-    ...(questions 1–25)...
-    DISCIPLINE: Chemistry
-    ...(questions 26–51)...
-
-3. QUESTION NUMBERING — CONTINUOUS THROUGHOUT
--------------------------------------------------
-  ✓  Numbering runs continuously across the ENTIRE document, not restarting at each discipline
-  ✓  Number must start at the very beginning of the line — no leading spaces
-  ✓  Accepted:  1.   1)   1:   Q1.   Q.1.   Question 1.   (1)  — numbers 1–9999
-  ✓  Question text must begin on the SAME LINE as the number, immediately after the separator
-  ✗  Number on one line, vignette text on the next — parser reads a blank vignette
-  ✓  Multi-line vignettes are fine — continuation lines are appended automatically
-  ✗  Numbering must NOT reset to 1 when a new DISCIPLINE tag appears
-
-  Example:
-    24. A man invests GH₵1000 at 10% compound interest...
-    DISCIPLINE: Chemistry
-    25. pH of 10⁻⁵ M HCl is:
-
-4. ANSWER OPTIONS (A – E)
---------------------------
-  ✓  Each option on its own dedicated line
-  ✓  Accepted formats:  A. text   A) text   A: text   A- text   (A) text
-  ✓  Letters A–E only (uppercase or lowercase — normalised to uppercase)
-  ✓  Minimum 2 options (A and B) required; option E is optional
-  ✗  Option label repeated inside the text, e.g.  A. (A) Aortic dissection
-  ✗  All options on a single line separated by commas or slashes
-
-  Example:
-    A. Aortic dissection
-    B. Pulmonary embolism
-    C. Myocardial infarction
-    D. Pericarditis
-
-5. CORRECT ANSWER LINE
------------------------
-  ✓  Accepted keywords (case-insensitive):  Answer   Correct Answer   Correct_Answer   Ans   Key
-  ✓  Separator after keyword: colon  :  period  .  space  —  or dash  -
-  ✓  Value: single letter A, B, C, D, or E  (uppercase or lowercase)
-  ✓  Must appear AFTER all options and BEFORE the Explanation
-  ✗  Answer line placed before the options
-  ✗  Answer written as a word, e.g.  Answer: Aortic dissection
-
-  Example:
-    Answer: A
-
-6. EXPLANATION / RATIONALE
----------------------------
-  ✓  Trigger keywords (case-insensitive):  Explanation   Rationale   Discussion   Reason   Solution
-  ✓  Keyword must be followed by any separator: period  .  colon  :  dash  -  em-dash  —  or a space
-  ✓  Everything after the keyword on that line, plus every subsequent line until the next question number, is the explanation body
-  ✓  Multi-paragraph explanations work — lines are concatenated automatically
-  ✓  Maps to the 'Why the correct answer is right' field in the editor
-  ✗  No trigger keyword — unlabelled paragraph after the answer will be ignored
-
-  Example:
-    Explanation: Aortic dissection classically presents with sudden tearing chest pain radiating to the back, with a blood-pressure differential between arms and a widened mediastinum on CXR.
-
-7. CLINICAL IMAGES (.DOCX ONLY)
---------------------------------
-  ✓  Embed the image directly in your Word document at the correct position within the question block (after the stem, before or between the options)
-  ✓  The system counts question boundaries to assign images — one image per question, first image wins
-  ✓  Maximum 50 embedded images per document; combined decoded-image data must remain within 8 MB
-  ✗  Image placed between two question numbers — it will be attached to the preceding question
-  ℹ  Do NOT type [IMAGE_1] or any placeholder manually — those are internal markers generated by the extractor. Embedding the image in Word at the right place is all that is needed.
-
-8. CRITICAL DON'TS
--------------------
-  ✗  Blank line between the question number and the vignette text
-  ✗  A second MODULE tag anywhere in the document — only one, at the top
-  ✗  DISCIPLINE tag placed mid-question (between stem and options)
-  ✗  Answer: line placed before the options
-  ✗  Sub-numbering or bullet points inside options (A. 1. sub-item)
-  ✗  Question number duplicated at the start of the vignette text (1. 1. A patient…)
-  ✗  Question numbering restarting at 1 for each new discipline
-
-============================================================
-COMPLETE DOCUMENT STRUCTURE EXAMPLE
---------------------------------------
-
-MODULE: UCC Entrance Examination
-
-DISCIPLINE: Mathematics
-
-1. A trader sells an item at a 20% profit. If he had bought it for 15%
-   less and sold it for GH₵30 less, he would have gained 25%. Find the
-   cost price.
-
-A. 218
-B. 250
-C. 300
-D. 350
+A. Atopic dermatitis
+B. Plaque psoriasis
+C. Tinea corporis
+D. Seborrhoeic dermatitis
+E. Contact urticaria
 
 Answer: A
 
-Explanation: Let CP = x. SP₁ = 1.2x. New CP = 0.85x, New SP = 1.2x − 30.
-Since new profit is 25%: 1.25(0.85x) = 1.2x − 30 → x = GH₵218.
+Explanation: Atopic dermatitis commonly affects flexural surfaces and is associated with other atopic conditions such as asthma and allergic rhinitis.
 
-2. If 2x + 3y = 5 and x² + y² = 10, find the maximum value of xy.
-...
+2. Which layer of the epidermis contains melanocytes?
 
-DISCIPLINE: Chemistry
+A. Stratum corneum
+B. Stratum lucidum
+C. Stratum granulosum
+D. Stratum spinosum
+E. Stratum basale
 
-26. pH of 10⁻⁵ M HCl is:
+Answer: E
 
-A. 5
-B. 7
-C. 9
-D. 10
+Explanation: Melanocytes are primarily situated in the stratum basale and produce melanin, which is transferred to surrounding keratinocytes.
 
-Answer: A
+DISCIPLINE: Plastic Surgery
 
-Explanation: HCl is a strong acid that fully dissociates, so [H⁺] = 10⁻⁵ M,
-giving pH = 5.`
+3. Which factor is most likely to delay wound healing?
+
+A. Adequate oxygenation
+B. Good nutritional status
+C. Corticosteroid treatment
+D. Proper wound apposition
+E. Absence of infection
+
+Answer: C
+
+Explanation: Corticosteroids inhibit inflammation, fibroblast proliferation and collagen synthesis, thereby delaying wound healing.`
 
                 return (
-                  <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-                      <InfoIcon size={13} className="text-muted-foreground shrink-0" />
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Formatting Rules</p>
-                        <p className="text-[10px] text-muted-foreground/60">Copy → paste into Claude or Gemini before your document</p>
+                  <div className="overflow-hidden rounded-2xl border border-border bg-muted/30">
+                    <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center">
+                      <div className="flex items-center gap-2">
+                        <InfoIcon size={14} className="shrink-0 text-primary" />
+                        <div>
+                          <p className="text-xs font-bold text-foreground">AI formatting prompt and example</p>
+                          <p className="text-[11px] text-muted-foreground">Copy this prompt and send it to the AI together with your document.</p>
+                        </div>
                       </div>
-                      <div className="ml-auto flex items-center gap-1.5">
-                        {/* Copy Formatting Rules for AI */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(RAW_FORMATTING_PROMPT).then(() => {
-                              setRulesCopied(true)
-                              setTimeout(() => setRulesCopied(false), 2200)
-                            })
-                          }}
-                          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                            rulesCopied
-                              ? "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                              : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-                          }`}
-                          title="Copy the full formatting rules to paste into Claude or Gemini before your document"
-                        >
-                          {rulesCopied ? <CheckIcon size={10} /> : <ClipboardListIcon size={10} />}
-                          {rulesCopied ? "Copied!" : "Copy Formatting Rules for AI"}
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(formattingPrompt).then(() => {
+                            setRulesCopied(true)
+                            setTimeout(() => setRulesCopied(false), 2200)
+                          })
+                        }}
+                        className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors sm:ml-auto ${rulesCopied
+                          ? "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          : "border-border bg-background text-foreground hover:bg-muted"
+                        }`}
+                        title="Copy the AI prompt and MCQ example"
+                      >
+                        {rulesCopied ? <CheckIcon size={12} /> : <ClipboardListIcon size={12} />}
+                        {rulesCopied ? "Copied!" : "Copy prompt and example"}
+                      </button>
                     </div>
-
-                    {/* Accordion sections */}
-                    <div className="divide-y divide-border">
-                      {sections.map((s) => {
-                        const isOpen = openTip === s.id
-                        return (
-                          <div key={s.id}>
-                            <button
-                              type="button"
-                              onClick={() => toggleTip(s.id)}
-                              className="flex w-full items-center gap-2.5 px-4 py-3 text-left transition-colors hover:bg-muted/40"
-                            >
-                              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${s.iconBg}`}>
-                                {s.icon}
-                              </span>
-                              <span className="flex-1 text-xs font-semibold text-foreground">{s.label}</span>
-                              {isOpen
-                                ? <ChevronDownIcon size={13} className="shrink-0 text-muted-foreground" />
-                                : <ChevronRightIcon size={13} className="shrink-0 text-muted-foreground" />
-                              }
-                            </button>
-
-                            {isOpen && (
-                              <div className={`border-l-2 mx-4 mb-3 rounded-r-xl ${s.accent} bg-background/60 px-4 py-3 space-y-2`}>
-                                {s.rules.map((r, i) => (
-                                  <div key={i} className="flex items-start gap-2">
-                                    {r.good !== undefined && (
-                                      <>
-                                        <CheckIcon size={11} className="mt-0.5 shrink-0 text-emerald-500" />
-                                        <span className="text-xs text-foreground/80">{r.good}</span>
-                                      </>
-                                    )}
-                                    {r.bad !== undefined && (
-                                      <>
-                                        <XIcon size={11} className="mt-0.5 shrink-0 text-destructive" />
-                                        <span className="text-xs text-foreground/70">{r.bad}</span>
-                                      </>
-                                    )}
-                                    {r.note !== undefined && (
-                                      <>
-                                        <InfoIcon size={11} className="mt-0.5 shrink-0 text-amber-500" />
-                                        <span className="text-xs text-amber-700 dark:text-amber-400">{r.note}</span>
-                                      </>
-                                    )}
-                                  </div>
-                                ))}
-                                {s.example && (
-                                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg bg-muted px-3 py-2.5 font-mono text-[10px] leading-relaxed text-foreground/80">
-                                    {s.example}
-                                  </pre>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <pre className="max-h-80 overflow-auto whitespace-pre-wrap p-4 font-mono text-[11px] leading-relaxed text-foreground/80">
+                      {formattingPrompt}
+                    </pre>
                   </div>
                 )
               })()}
