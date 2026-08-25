@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useRef, useState, type DragEvent } from "react"
-import { AlertTriangle, CheckCircle2, FileJson, FileText, FileUp, ImageIcon, Loader2, Trash2, Upload } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ClipboardCopy, FileJson, FileText, FileUp, ImageIcon, Loader2, Trash2, Upload } from "lucide-react"
 import { importAuthHeaders, importError } from "@/lib/import-client"
 import type { TheoryCollectionKind, TheoryImportImage, TheoryImportItem, TheoryImportValidation } from "@/lib/theory-import"
 import { TheoryQuestionMedia } from "@/components/theory-question-media"
@@ -38,7 +38,125 @@ export function TheoryBulkImporter({ collectionKind, defaultSetSize = 20, onImpo
   const [stage, setStage] = useState<"select" | "extracting" | "parsing" | "preview" | "committing" | "done">("select")
   const [message, setMessage] = useState("")
   const [failure, setFailure] = useState("")
+  const [promptCopied, setPromptCopied] = useState(false)
   const kindLabel = collectionKind === "end_of_module" ? "End of Module" : "End of Year"
+  const formattingPrompt = collectionKind === "end_of_module"
+    ? `Organize and reformat all Theory questions in the attached slide or document to follow the exact MedNexus End-of-Module structure shown below. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Under every numbered question, repeat the complete QUESTION TITLE, QUESTION, MODEL ANSWER, and KEY POINTS block. For every question, generate a concise and specific QUESTION TITLE from the main subject, clinical problem, or learning focus of that question. Do not use generic titles such as "Theory Question" or "Question 1", and do not copy the entire question as its title. Preserve every question, sub-question, model answer, marking point, heading, and embedded image. Keep everything in its original order. Apart from generating the question title, do not add, remove, solve, rewrite, or summarize any content. Return a clean .docx, .txt, or .md file ready for MedNexus import.
+
+EXAMPLE TO FOLLOW
+
+MODULE: Cardiovascular Medicine
+
+DISCIPLINE: Cardiology
+
+QUESTION 1
+
+QUESTION TITLE: Acute pulmonary oedema management
+
+QUESTION:
+A 68-year-old man presents with severe breathlessness, orthopnoea and pink frothy sputum. Discuss your assessment and immediate management.
+
+MODEL ANSWER:
+## Initial assessment
+
+Assess the patient using an ABCDE approach.
+
+## Immediate management
+
+- Administer oxygen when the patient is hypoxaemic.
+- Establish intravenous access and monitor the cardiac rhythm.
+- Give an appropriate nitrate when the blood pressure permits.
+- Consider intravenous loop diuretic therapy.
+- Identify and treat the precipitating cause.
+
+KEY POINTS:
+- Uses an ABCDE assessment
+- Identifies the characteristic clinical presentation
+- Describes appropriate oxygen therapy
+- Mentions nitrates where blood pressure permits
+- Mentions intravenous loop diuretic therapy
+- Identifies and treats the precipitating cause
+
+QUESTION 2
+
+QUESTION TITLE: Complications of myocardial infarction
+
+QUESTION:
+Outline the early and late complications of acute myocardial infarction.
+
+MODEL ANSWER:
+## Early complications
+
+Early complications include arrhythmias, acute left ventricular failure, cardiogenic shock, recurrent ischaemia and acute pericarditis.
+
+## Late complications
+
+Late complications include ventricular aneurysm, mural thrombus, chronic heart failure and Dressler syndrome.
+
+KEY POINTS:
+- Identifies important arrhythmias
+- Mentions acute left ventricular failure
+- Mentions cardiogenic shock
+- Describes mechanical complications
+- Identifies ventricular aneurysm and mural thrombus
+- Mentions Dressler syndrome`
+    : `Organize and reformat all Theory questions in the attached slide or document to follow the exact MedNexus End-of-Year structure shown below. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Under every numbered question, repeat the complete QUESTION TITLE, QUESTION, MODEL ANSWER, and KEY POINTS block. For every question, generate a concise and specific QUESTION TITLE from the main subject, clinical problem, or learning focus of that question. Do not use generic titles such as "Theory Question" or "Question 1", and do not copy the entire question as its title. Preserve every question, sub-question, model answer, marking point, heading, and embedded image. Keep everything in its original order. Organize questions by discipline and do not add a MODULE heading. When the discipline changes, insert the new DISCIPLINE heading before the next numbered question. Apart from generating the question title, do not add, remove, solve, rewrite, or summarize any content. Return a clean .docx, .txt, or .md file ready for MedNexus import.
+
+EXAMPLE TO FOLLOW
+
+DISCIPLINE: Internal Medicine
+
+QUESTION 1
+
+QUESTION TITLE: Diabetic ketoacidosis
+
+QUESTION:
+Discuss the clinical presentation, investigations and management of diabetic ketoacidosis in an adult patient.
+
+MODEL ANSWER:
+## Clinical presentation
+
+Patients may present with polyuria, polydipsia, dehydration, vomiting, abdominal pain, altered consciousness and Kussmaul respiration.
+
+## Investigations and management
+
+Investigations include glucose, blood ketones, venous blood gas, electrolytes and renal function. Treatment includes intravenous fluids, fixed-rate intravenous insulin, potassium replacement and management of the precipitating cause.
+
+KEY POINTS:
+- Describes the major clinical features
+- Requests glucose and ketone measurement
+- Assesses acid-base and electrolyte status
+- Describes intravenous fluid replacement
+- Describes fixed-rate intravenous insulin
+- Mentions potassium monitoring
+- Treats the precipitating cause
+
+DISCIPLINE: Surgery
+
+QUESTION 2
+
+QUESTION TITLE: Initial management of intestinal obstruction
+
+QUESTION:
+Discuss the clinical assessment and initial management of a patient presenting with suspected intestinal obstruction.
+
+MODEL ANSWER:
+## Assessment
+
+Assess the history, abdominal symptoms, hydration status, vital signs and signs of peritonitis or strangulation.
+
+## Initial management
+
+Keep the patient nil by mouth, establish intravenous access, correct fluid and electrolyte deficits, insert a nasogastric tube when indicated and obtain appropriate imaging.
+
+KEY POINTS:
+- Identifies symptoms and signs of obstruction
+- Assesses hydration and haemodynamic status
+- Looks for peritonitis or strangulation
+- Keeps the patient nil by mouth
+- Describes fluid and electrolyte replacement
+- Mentions nasogastric decompression
+- Requests appropriate imaging`
 
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; count: number; images: number }>()
@@ -174,24 +292,29 @@ export function TheoryBulkImporter({ collectionKind, defaultSetSize = 20, onImpo
       <div className="mt-4 flex justify-end"><button disabled={!file || stage !== "select"} onClick={processFile} className={`${button} bg-primary text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50`}><FileUp size={16}/>Parse and preview</button></div>
     </section>
 
-    <details className={card}>
-      <summary className="cursor-pointer font-bold">Recommended document structure</summary>
-      <div className="mt-4 grid gap-4 text-sm leading-6 text-muted-foreground md:grid-cols-2">
-        <div><b className="text-foreground">Recommended {kindLabel} headings</b><pre className="mt-2 overflow-x-auto rounded-xl bg-muted p-3 text-xs text-foreground">{`${collectionKind === "end_of_module" ? "MODULE: Cardiovascular Medicine\nDISCIPLINE: Cardiology" : "DISCIPLINE: Internal Medicine"}
-QUESTION TITLE: Acute pulmonary oedema management
-
-QUESTION:
-Discuss the assessment and management...
-
-MODEL ANSWER:
-## Assessment
-...
-
-KEY POINTS:
-- Performs an ABCDE assessment
-- Identifies likely precipitants
-- Describes appropriate initial management`}</pre></div>
-        <div><b className="text-foreground">Titles, images, and automatic sets</b><p className="mt-2">A question title is recommended, but the system generates one when it is absent. Place each image immediately beside or below its question. Do not include collections, sets, or marks. The destination is fixed as {kindLabel}, sets are generated by the system, and marks are calculated as two per key point.</p></div>
+    <details className={`${card} overflow-hidden p-0`}>
+      <summary className="cursor-pointer px-5 py-4 font-bold">Formatting tips</summary>
+      <div className="border-t border-border">
+        <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center">
+          <div>
+            <b className="text-sm">AI formatting prompt and {kindLabel} example</b>
+            <p className="mt-0.5 text-xs text-muted-foreground">Copy this prompt and send it to the AI together with your document.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(formattingPrompt).then(() => {
+                setPromptCopied(true)
+                setTimeout(() => setPromptCopied(false), 2200)
+              })
+            }}
+            className={`${button} min-h-9 border border-border bg-background px-3 text-xs sm:ml-auto`}
+          >
+            {promptCopied ? <CheckCircle2 size={14}/> : <ClipboardCopy size={14}/>}
+            {promptCopied ? "Copied!" : "Copy prompt and example"}
+          </button>
+        </div>
+        <pre className="max-h-96 overflow-auto whitespace-pre-wrap p-5 font-mono text-[11px] leading-relaxed text-foreground/80">{formattingPrompt}</pre>
       </div>
     </details>
 
