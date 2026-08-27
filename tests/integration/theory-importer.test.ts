@@ -152,6 +152,10 @@ describe("Theory bulk importer", () => {
     expect(db).toContain("FOREIGN KEY (set_id, collection_id, discipline_id)%")
     expect(db).toContain("ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I")
     expect(db).toContain("CONSTRAINT mednexus_theory_questions_set_fk")
+    expect(db).toContain("This focused repair must run before the schema-version fast path")
+    expect(db.indexOf("This focused repair must run before the schema-version fast path")).toBeLessThan(
+      db.indexOf("const current = await client.query"),
+    )
   })
 
   it("parses text and Markdown files without document extraction", async () => {
