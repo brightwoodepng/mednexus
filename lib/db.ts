@@ -239,46 +239,6 @@ export async function ensureSchema() {
 
   const client = await pool.connect()
   try {
-    // This focused repair must run before the schema-version fast path. Existing
-    // databases may already carry the current marker while still retaining the
-    // obsolete composite Theory set constraint.
-    await client.query(`
-      DO $
-      DECLARE
-        legacy_set_fk RECORD;
-      BEGIN
-        IF to_regclass('public.mednexus_theory_questions') IS NULL
-          OR to_regclass('public.mednexus_theory_sets') IS NULL THEN
-          RETURN;
-        END IF;
-
-        FOR legacy_set_fk IN
-          SELECT oid, conname
-          FROM pg_constraint
-          WHERE conrelid = 'mednexus_theory_questions'::regclass
-            AND contype = 'f'
-            AND pg_get_constraintdef(oid) LIKE
-              'FOREIGN KEY (set_id, collection_id, discipline_id)%'
-        LOOP
-          EXECUTE format(
-            'ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I',
-            legacy_set_fk.conname
-          );
-        END LOOP;
-
-        IF NOT EXISTS (
-          SELECT 1
-          FROM pg_constraint
-          WHERE conrelid = 'mednexus_theory_questions'::regclass
-            AND conname = 'mednexus_theory_questions_set_fk'
-        ) THEN
-          ALTER TABLE mednexus_theory_questions
-            ADD CONSTRAINT mednexus_theory_questions_set_fk
-            FOREIGN KEY (set_id) REFERENCES mednexus_theory_sets(id) ON DELETE SET NULL;
-        END IF;
-      END $;
-    `)
-
     // Serverless cold starts used to execute the complete 1,000+ line
     // idempotent schema program. A deployed schema needs only this tiny marker
     // lookup; explicit release migrations install the marker after succeeding.

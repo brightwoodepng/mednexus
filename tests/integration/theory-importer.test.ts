@@ -168,10 +168,11 @@ describe("Theory bulk importer", () => {
     expect(db).toContain("ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I")
     expect(db).toContain("CONSTRAINT mednexus_theory_questions_set_fk")
     expect(db).not.toContain("export async function ensureTheoryImportSchema()")
-    expect(db).toContain("This focused repair must run before the schema-version fast path")
-    expect(db.indexOf("This focused repair must run before the schema-version fast path")).toBeLessThan(
+    const schemaStartup = db.slice(
+      db.indexOf("export async function ensureSchema()"),
       db.indexOf("const current = await client.query"),
     )
+    expect(schemaStartup).not.toContain("ALTER TABLE mednexus_theory_questions")
   })
 
   it("parses text and Markdown files without document extraction", async () => {
