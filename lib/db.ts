@@ -498,8 +498,8 @@ export async function ensureSchema() {
       updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       FOREIGN KEY (discipline_id, collection_id)
         REFERENCES mednexus_theory_disciplines(id, collection_id),
-      FOREIGN KEY (set_id, collection_id, discipline_id)
-        REFERENCES mednexus_theory_sets(id, collection_id, discipline_id),
+      CONSTRAINT mednexus_theory_questions_set_fk
+        FOREIGN KEY (set_id) REFERENCES mednexus_theory_sets(id) ON DELETE SET NULL,
       CHECK ((set_id IS NULL) OR (set_id <> ''))
     );
     CREATE INDEX IF NOT EXISTS mednexus_theory_questions_placement_idx
@@ -1408,12 +1408,34 @@ export async function ensureSchema() {
         END
       );
 
-    DO $$ BEGIN
+    -- End-of-Module sets are grouped by module, while a question may retain an
+    -- optional related discipline. Remove the original composite set FK, which
+    -- incorrectly required both records to carry the same discipline.
+    DO $
+    DECLARE
+      legacy_set_fk RECORD;
+    BEGIN
+      FOR legacy_set_fk IN
+        SELECT oid, conname
+        FROM pg_constraint
+        WHERE conrelid = 'mednexus_theory_questions'::regclass
+          AND contype = 'f'
+          AND pg_get_constraintdef(oid) LIKE
+            'FOREIGN KEY (set_id, collection_id, discipline_id)%'
+      LOOP
+        EXECUTE format(
+          'ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I',
+          legacy_set_fk.conname
+        );
+      END LOOP;
+    END $;
+
+    DO $ BEGIN
       ALTER TABLE mednexus_theory_questions
         ADD CONSTRAINT mednexus_theory_questions_set_fk
         FOREIGN KEY (set_id) REFERENCES mednexus_theory_sets(id) ON DELETE SET NULL;
     EXCEPTION WHEN duplicate_object THEN NULL;
-    END $$;
+    END $;
 
     INSERT INTO mednexus_theory_modules (id, collection_id, name, sort_order)
     SELECT 'theory-module-' || md5(d.collection_id || ':' || d.name), d.collection_id, d.name, d.sort_order
