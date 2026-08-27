@@ -44,7 +44,6 @@ const groupStudyMigrationPool = groupStudyMigrationConnectionString === connecti
 
 let initialized = false
 let groupStudyInitialized = false
-let theoryImportSchemaInitialized = false
 // Keep this marker in step with every deployed DDL change. The previous
 // assessment-grading marker predated the admin platform/settings and economy
 // season tables, which let existing databases skip those additions entirely.
@@ -227,56 +226,6 @@ export async function ensureGroupStudySchema() {
     `)
     await client.query("COMMIT")
     groupStudyInitialized = true
-  } catch (error) {
-    await client.query("ROLLBACK")
-    throw error
-  } finally {
-    client.release()
-  }
-}
-
-/**
- * Remove the obsolete composite Theory question-to-set foreign key before an
- * admin commits an import. Runtime Theory reads stay DDL-free; this focused,
- * idempotent repair uses the release/owner connection when one is configured.
- */
-export async function ensureTheoryImportSchema() {
-  if (theoryImportSchemaInitialized) return
-  const client = await groupStudyMigrationPool.connect()
-  try {
-    await client.query("BEGIN")
-    await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:theory-import-schema'))")
-    const legacyConstraints = await client.query<{ conname: string }>(`
-      SELECT conname
-      FROM pg_constraint
-      WHERE conrelid = 'mednexus_theory_questions'::regclass
-        AND contype = 'f'
-        AND pg_get_constraintdef(oid) LIKE
-          'FOREIGN KEY (set_id, collection_id, discipline_id)%'
-    `)
-    for (const { conname } of legacyConstraints.rows) {
-      const ddl = await client.query<{ statement: string }>(
-        "SELECT format('ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I', $1::text) AS statement",
-        [conname],
-      )
-      await client.query(ddl.rows[0].statement)
-    }
-
-    const currentConstraint = await client.query(`
-      SELECT 1
-      FROM pg_constraint
-      WHERE conrelid = 'mednexus_theory_questions'::regclass
-        AND conname = 'mednexus_theory_questions_set_fk'
-    `)
-    if (!currentConstraint.rows[0]) {
-      await client.query(`
-        ALTER TABLE mednexus_theory_questions
-          ADD CONSTRAINT mednexus_theory_questions_set_fk
-          FOREIGN KEY (set_id) REFERENCES mednexus_theory_sets(id) ON DELETE SET NULL
-      `)
-    }
-    await client.query("COMMIT")
-    theoryImportSchemaInitialized = true
   } catch (error) {
     await client.query("ROLLBACK")
     throw error
