@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import type { PoolClient } from "pg"
 import { requireAdminPermission, unauthorized } from "@/lib/request-auth"
 import { generateWithFallback } from "@/lib/gemini"
+import { ensureTheoryImportSchema } from "@/lib/db"
 import { guardImportRequest, validateImages, validateImportText } from "@/lib/import-guard"
 import { normalizeTheoryImport, type TheoryImportItem, type TheoryImportImage, type TheoryCollectionKind } from "@/lib/theory-import"
 import { auditTheory, theoryId, theoryPool, withTransaction } from "@/lib/theory-server"
@@ -216,6 +217,7 @@ export async function POST(request: NextRequest) {
     if (action === "commit") {
       const validation = normalizeTheoryImport(body.items, [], collectionKind)
       if (!validation.items.length) return NextResponse.json({ error: validation.errors[0]?.message ?? "No valid questions to import." }, { status: 400 })
+      await ensureTheoryImportSchema()
       const pool = await theoryPool()
       const summary = await withTransaction(pool, async client => {
         const result = await commitItems(client, validation.items.slice(0, 500))
