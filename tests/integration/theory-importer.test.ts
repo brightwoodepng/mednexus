@@ -155,6 +155,12 @@ describe("Theory bulk importer", () => {
     expect(db).toContain("CONSTRAINT mednexus_theory_questions_set_fk")
     expect(db).toContain("export async function ensureTheoryImportSchema()")
     expect(db).toContain("mednexus:theory-import-schema")
+    expect(db).toContain("legacyConstraints.rows")
+    const importRepair = db.slice(
+      db.indexOf("export async function ensureTheoryImportSchema()"),
+      db.indexOf("export async function ensureSchema()"),
+    )
+    expect(importRepair).not.toContain("DO $")
     expect(db).toContain("This focused repair must run before the schema-version fast path")
     expect(db.indexOf("This focused repair must run before the schema-version fast path")).toBeLessThan(
       db.indexOf("const current = await client.query"),

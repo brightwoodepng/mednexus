@@ -246,37 +246,35 @@ export async function ensureTheoryImportSchema() {
   try {
     await client.query("BEGIN")
     await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:theory-import-schema'))")
-    await client.query(`
-      DO $
-      DECLARE
-        legacy_set_fk RECORD;
-      BEGIN
-        FOR legacy_set_fk IN
-          SELECT oid, conname
-          FROM pg_constraint
-          WHERE conrelid = 'mednexus_theory_questions'::regclass
-            AND contype = 'f'
-            AND pg_get_constraintdef(oid) LIKE
-              'FOREIGN KEY (set_id, collection_id, discipline_id)%'
-        LOOP
-          EXECUTE format(
-            'ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I',
-            legacy_set_fk.conname
-          );
-        END LOOP;
-
-        IF NOT EXISTS (
-          SELECT 1
-          FROM pg_constraint
-          WHERE conrelid = 'mednexus_theory_questions'::regclass
-            AND conname = 'mednexus_theory_questions_set_fk'
-        ) THEN
-          ALTER TABLE mednexus_theory_questions
-            ADD CONSTRAINT mednexus_theory_questions_set_fk
-            FOREIGN KEY (set_id) REFERENCES mednexus_theory_sets(id) ON DELETE SET NULL;
-        END IF;
-      END $;
+    const legacyConstraints = await client.query<{ conname: string }>(`
+      SELECT conname
+      FROM pg_constraint
+      WHERE conrelid = 'mednexus_theory_questions'::regclass
+        AND contype = 'f'
+        AND pg_get_constraintdef(oid) LIKE
+          'FOREIGN KEY (set_id, collection_id, discipline_id)%'
     `)
+    for (const { conname } of legacyConstraints.rows) {
+      const ddl = await client.query<{ statement: string }>(
+        "SELECT format('ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I', $1::text) AS statement",
+        [conname],
+      )
+      await client.query(ddl.rows[0].statement)
+    }
+
+    const currentConstraint = await client.query(`
+      SELECT 1
+      FROM pg_constraint
+      WHERE conrelid = 'mednexus_theory_questions'::regclass
+        AND conname = 'mednexus_theory_questions_set_fk'
+    `)
+    if (!currentConstraint.rows[0]) {
+      await client.query(`
+        ALTER TABLE mednexus_theory_questions
+          ADD CONSTRAINT mednexus_theory_questions_set_fk
+          FOREIGN KEY (set_id) REFERENCES mednexus_theory_sets(id) ON DELETE SET NULL
+      `)
+    }
     await client.query("COMMIT")
     theoryImportSchemaInitialized = true
   } catch (error) {
