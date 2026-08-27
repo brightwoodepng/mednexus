@@ -2,8 +2,20 @@ import { readFile } from "node:fs/promises"
 import { describe, expect, it } from "vitest"
 import { normalizeTheoryImport } from "../../lib/theory-import"
 import { sanitizeTheoryMedia } from "../../lib/theory-media"
+import { theorySetAllocationKey, theorySetPlacement } from "../../lib/theory-set-placement"
 
 describe("Theory bulk importer", () => {
+  it("keeps End-of-Module set and question placement compatible with the legacy composite foreign key", () => {
+    const collectionId = "theory-collection-end-of-module"
+    const moduleId = "theory-module-community-medicine"
+    const disciplineId = "theory-discipline-community-medicine"
+    const set = theorySetPlacement("end_of_module", moduleId, disciplineId)
+
+    expect(set).toEqual({ moduleId, disciplineId })
+    expect([collectionId, set.disciplineId]).toEqual([collectionId, disciplineId])
+    expect(theorySetAllocationKey(collectionId, "end_of_module", moduleId, disciplineId)).toContain(disciplineId)
+  })
+
   it("preserves module, related discipline, and embedded image placement while ignoring source sets and marks", () => {
     const result = normalizeTheoryImport({
       questions: [{
@@ -138,7 +150,9 @@ describe("Theory bulk importer", () => {
     expect(route).toContain("default_set_size")
     expect(route).toContain('theoryId("theory-set")')
     expect(route).toContain("collectionKind")
-    expect(route).toContain("await ensureTheoryImportSchema()")
+    expect(route).not.toContain("ensureTheoryImportSchema")
+    expect(route).toContain("s.discipline_id IS NOT DISTINCT FROM $3")
+    expect(route).toContain("placement.moduleId, placement.disciplineId")
     expect(route).not.toContain("findOrCreateSet")
     expect(manager).toContain("<TheoryBulkImporter")
     expect(manager).toContain("<TheoryMediaEditor")
@@ -153,14 +167,7 @@ describe("Theory bulk importer", () => {
     expect(db).toContain("FOREIGN KEY (set_id, collection_id, discipline_id)%")
     expect(db).toContain("ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I")
     expect(db).toContain("CONSTRAINT mednexus_theory_questions_set_fk")
-    expect(db).toContain("export async function ensureTheoryImportSchema()")
-    expect(db).toContain("mednexus:theory-import-schema")
-    expect(db).toContain("legacyConstraints.rows")
-    const importRepair = db.slice(
-      db.indexOf("export async function ensureTheoryImportSchema()"),
-      db.indexOf("export async function ensureSchema()"),
-    )
-    expect(importRepair).not.toContain("DO $")
+    expect(db).not.toContain("export async function ensureTheoryImportSchema()")
     expect(db).toContain("This focused repair must run before the schema-version fast path")
     expect(db.indexOf("This focused repair must run before the schema-version fast path")).toBeLessThan(
       db.indexOf("const current = await client.query"),
