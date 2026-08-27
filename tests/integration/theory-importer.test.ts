@@ -148,6 +148,10 @@ describe("Theory bulk importer", () => {
     expect(adminRoute).toContain("discipline_id=COALESCE($4,discipline_id)")
     expect(exportRoute).not.toContain("referencesMd")
     expect(db).toContain("jsonb_array_length(key_marking_points) * 2")
+    expect(db).toContain("pg_get_constraintdef(oid) LIKE")
+    expect(db).toContain("FOREIGN KEY (set_id, collection_id, discipline_id)%")
+    expect(db).toContain("ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I")
+    expect(db).toContain("CONSTRAINT mednexus_theory_questions_set_fk")
   })
 
   it("parses text and Markdown files without document extraction", async () => {
