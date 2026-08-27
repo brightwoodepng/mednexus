@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import type { PoolClient } from "pg"
 import { requireAdminPermission, unauthorized } from "@/lib/request-auth"
 import { generateWithFallback } from "@/lib/gemini"
-import { ensureTheoryImportSchema } from "@/lib/db"
 import { guardImportRequest, validateImages, validateImportText } from "@/lib/import-guard"
 import { normalizeTheoryImport, type TheoryImportItem, type TheoryImportImage, type TheoryCollectionKind } from "@/lib/theory-import"
+import { theorySetAllocationKey, theorySetPlacement } from "@/lib/theory-set-placement"
 import { auditTheory, theoryId, theoryPool, withTransaction } from "@/lib/theory-server"
 
 export const maxDuration = 120
@@ -103,7 +103,8 @@ async function commitItems(client: PoolClient, items: TheoryImportItem[]) {
   async function destinationSet(collectionId: string, moduleId: string | null, disciplineId: string | null, kind: TheoryCollectionKind) {
     const groupId = kind === "end_of_module" ? moduleId : disciplineId
     if (!groupId) throw new Error(`${kind === "end_of_module" ? "Module" : "Discipline"} is required before assigning a set.`)
-    const key = `${collectionId}:${kind}:${groupId}`
+    const placement = theorySetPlacement(kind, moduleId, disciplineId)
+    const key = theorySetAllocationKey(collectionId, kind, moduleId, disciplineId)
     let current = allocations.get(key)
     if (!current) {
       const found = await client.query(`SELECT s.id,s.question_limit AS limit,s.sort_order,
@@ -112,20 +113,23 @@ async function commitItems(client: PoolClient, items: TheoryImportItem[]) {
         FROM mednexus_theory_sets s
         LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id
         WHERE s.collection_id=$1 AND s.status<>'archived'
-          AND ${kind === "end_of_module" ? "s.module_id=$2" : "s.discipline_id=$2"}
+          AND s.module_id IS NOT DISTINCT FROM $2
+          AND s.discipline_id IS NOT DISTINCT FROM $3
         GROUP BY s.id HAVING COUNT(q.id) FILTER (WHERE q.status<>'archived') < s.question_limit
-        ORDER BY s.sort_order DESC,s.created_at DESC LIMIT 1`, [collectionId, groupId])
+        ORDER BY s.sort_order DESC,s.created_at DESC LIMIT 1`, [collectionId,
+          placement.moduleId, placement.disciplineId])
       if (found.rows[0]) current = { id: found.rows[0].id, count: Number(found.rows[0].count), limit: Number(found.rows[0].limit), nextOrder: Number(found.rows[0].nextOrder) }
     }
     if (!current || current.count >= current.limit) {
       const sequence = await client.query(`SELECT COUNT(*)::int AS count,COALESCE(MAX(sort_order),0)::int AS "sortOrder"
-        FROM mednexus_theory_sets WHERE collection_id=$1 AND ${kind === "end_of_module" ? "module_id=$2" : "discipline_id=$2"}`, [collectionId, groupId])
+        FROM mednexus_theory_sets
+        WHERE collection_id=$1 AND discipline_id IS NOT DISTINCT FROM $2`, [collectionId, disciplineId])
       const setNumber = Number(sequence.rows[0]?.count ?? 0) + 1
       const id = theoryId("theory-set")
       await client.query(`INSERT INTO mednexus_theory_sets
         (id,collection_id,module_id,discipline_id,name,description,status,question_limit,sort_order)
         VALUES ($1,$2,$3,$4,$5,'','published',$6,$7)`, [id, collectionId,
-        kind === "end_of_module" ? moduleId : null, kind === "end_of_year" ? disciplineId : null,
+        placement.moduleId, placement.disciplineId,
         `Set ${setNumber}`, defaultSetSize, Number(sequence.rows[0]?.sortOrder ?? 0) + 10])
       current = { id, count: 0, limit: defaultSetSize, nextOrder: 0 }
     }
@@ -217,7 +221,6 @@ export async function POST(request: NextRequest) {
     if (action === "commit") {
       const validation = normalizeTheoryImport(body.items, [], collectionKind)
       if (!validation.items.length) return NextResponse.json({ error: validation.errors[0]?.message ?? "No valid questions to import." }, { status: 400 })
-      await ensureTheoryImportSchema()
       const pool = await theoryPool()
       const summary = await withTransaction(pool, async client => {
         const result = await commitItems(client, validation.items.slice(0, 500))
