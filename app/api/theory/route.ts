@@ -31,13 +31,13 @@ export async function GET(request: NextRequest) {
           COUNT(DISTINCT q.id)::int AS "totalQuestions",
           COUNT(DISTINCT CASE WHEN rp.completed_at IS NOT NULL THEN q.id END)::int AS "completedQuestions"
           FROM mednexus_theory_collections c
-          LEFT JOIN mednexus_theory_questions q ON q.collection_id=c.id AND q.status='published'
+          LEFT JOIN mednexus_theory_questions q ON q.collection_id=c.id AND q.status='published' AND q.deleted_at IS NULL
           LEFT JOIN mednexus_theory_reading_progress rp ON rp.question_id=q.id AND rp.user_id=$1
           WHERE c.status='published' GROUP BY c.id ORDER BY c.sort_order, c.title`, [userId]),
         pool.query(`SELECT id, collection_id AS "collectionId", name, description, sort_order AS "sortOrder"
-          FROM mednexus_theory_modules ORDER BY sort_order, name`),
+          FROM mednexus_theory_modules WHERE deleted_at IS NULL ORDER BY sort_order, name`),
         pool.query(`SELECT id, collection_id AS "collectionId", name, sort_order AS "sortOrder"
-          FROM mednexus_theory_disciplines ORDER BY sort_order, name`),
+          FROM mednexus_theory_disciplines WHERE deleted_at IS NULL ORDER BY sort_order, name`),
         pool.query(`SELECT s.id, s.collection_id AS "collectionId", s.module_id AS "moduleId",
           s.discipline_id AS "disciplineId", s.name, s.description, s.question_limit AS "questionLimit",
           ${theorySetDisplayProjection("s")},
@@ -45,9 +45,9 @@ export async function GET(request: NextRequest) {
           COUNT(CASE WHEN rp.completed_at IS NOT NULL THEN 1 END)::int AS "completedQuestions",
           MIN(q.sort_order)::int AS "rangeStart", MAX(q.sort_order)::int AS "rangeEnd"
           FROM mednexus_theory_sets s
-          LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id AND q.status='published'
+          LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id AND q.status='published' AND q.deleted_at IS NULL
           LEFT JOIN mednexus_theory_reading_progress rp ON rp.question_id=q.id AND rp.user_id=$1
-          WHERE s.status='published'
+          WHERE s.status='published' AND s.deleted_at IS NULL
           GROUP BY s.id ORDER BY s.sort_order, s.name`, [userId]),
       ])
       return NextResponse.json({ collections: collections.rows, modules: modules.rows, disciplines: disciplines.rows, sets: sets.rows })
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           JOIN mednexus_theory_collections c ON c.id=s.collection_id
           LEFT JOIN mednexus_theory_modules m ON m.id=s.module_id
           LEFT JOIN mednexus_theory_disciplines d ON d.id=s.discipline_id
-          WHERE s.id=$1 AND s.status='published'`, [setId]),
+          WHERE s.id=$1 AND s.status='published' AND s.deleted_at IS NULL`, [setId]),
         pool.query(`SELECT q.id, q.title, q.prompt, q.sort_order AS "sortOrder", q.marks,
           (rp.completed_at IS NOT NULL) AS completed,
           EXISTS(SELECT 1 FROM mednexus_theory_bookmarks b WHERE b.user_id=$2 AND b.question_id=q.id) AS bookmarked,
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
           EXISTS(SELECT 1 FROM mednexus_theory_attempts a WHERE a.user_id=$2 AND a.question_id=q.id AND a.status='draft') AS draft
           FROM mednexus_theory_questions q
           LEFT JOIN mednexus_theory_reading_progress rp ON rp.question_id=q.id AND rp.user_id=$2
-          WHERE q.set_id=$1 AND q.status='published'
+          WHERE q.set_id=$1 AND q.status='published' AND q.deleted_at IS NULL
           ORDER BY q.sort_order, q.created_at, q.id`, [setId, userId]),
       ])
       if (!setResult.rows[0]) return NextResponse.json({ error: "Set not found." }, { status: 404 })
@@ -93,11 +93,11 @@ export async function GET(request: NextRequest) {
         LEFT JOIN mednexus_theory_modules m ON m.id=q.module_id
         LEFT JOIN mednexus_theory_disciplines d ON d.id=q.discipline_id
         LEFT JOIN mednexus_theory_sets s ON s.id=q.set_id
-        WHERE q.id=$1 AND q.status='published'`, [questionId])
+        WHERE q.id=$1 AND q.status='published' AND q.deleted_at IS NULL`, [questionId])
       const question = result.rows[0]
       if (!question) return NextResponse.json({ error: "Question not found." }, { status: 404 })
       const siblings = await pool.query(`SELECT id FROM mednexus_theory_questions
-        WHERE set_id IS NOT DISTINCT FROM $1 AND status='published' ORDER BY sort_order, created_at, id`, [question.setId])
+        WHERE set_id IS NOT DISTINCT FROM $1 AND status='published' AND deleted_at IS NULL ORDER BY sort_order, created_at, id`, [question.setId])
       const ids = siblings.rows.map(row => row.id as string)
       const index = ids.indexOf(questionId)
       let state = null
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN mednexus_theory_modules m ON m.id=q.module_id
         LEFT JOIN mednexus_theory_disciplines d ON d.id=q.discipline_id
         LEFT JOIN mednexus_theory_sets s ON s.id=q.set_id
-        WHERE q.status='published'
+        WHERE q.status='published' AND q.deleted_at IS NULL
           AND ($2='' OR q.prompt ILIKE '%' || $2 || '%' OR COALESCE(m.name,d.name,'') ILIKE '%' || $2 || '%')
           AND ($3::text IS NULL OR q.module_id=$3 OR q.discipline_id=$3 OR q.collection_id=$3)
         ORDER BY ${order} LIMIT $4 OFFSET $5`, [auth.uid, query, groupId, pageSize, offset])
@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN mednexus_theory_disciplines d ON d.id=q.discipline_id
         LEFT JOIN mednexus_theory_sets s ON s.id=q.set_id
         LEFT JOIN mednexus_theory_notes n ON n.question_id=q.id AND n.user_id=$1
-        WHERE q.status='published'
+        WHERE q.status='published' AND q.deleted_at IS NULL
           AND ($3::text IS NULL OR q.collection_id=$3)
           AND ($4::text IS NULL OR q.module_id=$4 OR q.discipline_id=$4)
           AND (
@@ -213,7 +213,7 @@ export async function GET(request: NextRequest) {
           (SELECT COUNT(*)::int FROM mednexus_theory_revision_queue WHERE user_id=$1 AND active) AS revisions
           FROM mednexus_theory_questions q
           LEFT JOIN mednexus_theory_reading_progress rp ON rp.question_id=q.id AND rp.user_id=$1
-          WHERE q.status='published'`, [auth.uid]),
+          WHERE q.status='published' AND q.deleted_at IS NULL`, [auth.uid]),
         pool.query(`SELECT c.id AS "collectionId", c.title AS collection,
           COALESCE(m.id,d.id) AS "groupId", COALESCE(m.name,d.name,'Unassigned') AS name,
           COUNT(q.id)::int AS total,
@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
             LEFT JOIN mednexus_theory_reading_progress srp ON srp.question_id=sq.id AND srp.user_id=$1
             WHERE sq.set_id=q.set_id AND sq.status='published'
           ) set_progress ON TRUE
-          WHERE q.status='published'
+          WHERE q.status='published' AND q.deleted_at IS NULL
           GROUP BY c.id,c.title,m.id,m.name,d.id,d.name ORDER BY c.title,name`, [auth.uid]),
         pool.query(`SELECT ra.activity_type AS type, ra.occurred_at AS "occurredAt", q.id AS "questionId",
           q.prompt, COALESCE(m.name,d.name) AS "groupName", s.name AS "setTitle",
@@ -264,13 +264,18 @@ export async function POST(request: NextRequest) {
     const pool = await theoryPool()
 
     if (action !== "session" && !questionId) return badRequest("Question id is required.")
+    let questionHasAnswer = false
     if (questionId) {
-      const exists = await pool.query("SELECT 1 FROM mednexus_theory_questions WHERE id=$1 AND status='published'", [questionId])
+      const exists = await pool.query(`SELECT
+        (TRIM(model_answer)<>'' AND COALESCE(cardinality(key_marking_points),0)>0) AS has_answer
+        FROM mednexus_theory_questions WHERE id=$1 AND status='published' AND deleted_at IS NULL`, [questionId])
       if (!exists.rows.length) return NextResponse.json({ error: "Question not found." }, { status: 404 })
+      questionHasAnswer = exists.rows[0].has_answer === true
     }
 
     if (action === "opened" || action === "reviewed") {
       const reviewed = action === "reviewed"
+      if (reviewed && !questionHasAnswer) return badRequest("This prompt does not have a model answer to review yet.")
       await withTransaction(pool, async client => {
         await client.query(`INSERT INTO mednexus_theory_reading_progress
           (user_id, question_id, progress_percent, opened_at, reviewed_at, completed_at, last_read_at, last_mode, review_count)
@@ -337,6 +342,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "reveal") {
+      if (!questionHasAnswer) return badRequest("The model answer is still being prepared.")
       await pool.query(`INSERT INTO mednexus_theory_attempts
         (id,user_id,question_id,status,model_answer_revealed_at)
         VALUES ($1,$2,$3,'draft',NOW())
@@ -364,6 +370,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "rate") {
+      if (!questionHasAnswer) return badRequest("Self-marking is unavailable until a model answer is added.")
       const rating = body.rating
       if (rating !== "excellent" && rating !== "partial" && rating !== "needs_revision") return badRequest("A valid self-rating is required.")
       const { confidence } = theoryRatingOutcome(rating)
@@ -409,10 +416,10 @@ export async function POST(request: NextRequest) {
       const rows = kind === "revision"
         ? await pool.query(`SELECT q.id FROM mednexus_theory_revision_queue r
           JOIN mednexus_theory_questions q ON q.id=r.question_id
-          WHERE r.user_id=$1 AND r.active AND q.status='published'
+          WHERE r.user_id=$1 AND r.active AND q.status='published' AND q.deleted_at IS NULL
           ORDER BY r.priority DESC,r.added_at`, [auth.uid])
         : await pool.query(`SELECT id FROM mednexus_theory_questions
-          WHERE set_id=$1 AND status='published' ORDER BY sort_order,created_at,id`, [setId])
+          WHERE set_id=$1 AND status='published' AND deleted_at IS NULL ORDER BY sort_order,created_at,id`, [setId])
       if (!rows.rows.length) return badRequest("There are no questions available for this session.")
       const id = theoryId("theory-session")
       const questionIds = rows.rows.map(row => row.id)

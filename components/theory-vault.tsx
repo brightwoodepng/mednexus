@@ -521,7 +521,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
   }, [registered])
 
   useEffect(() => {
-    if (!registered || mode !== "review" || !question || reviewRecorded.current) return
+    if (!registered || mode !== "review" || !question?.hasAnswer || reviewRecorded.current) return
     let visibleSeconds = 0
     const timer = window.setInterval(() => {
       if (document.visibilityState !== "visible") return
@@ -567,6 +567,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
     setQuestion(current => current?.state ? { ...current, state: { ...current.state, note } } : current)
   }
   const reveal = async () => {
+    if (!question.hasAnswer) return setMessage("The model answer is still being prepared.")
     if (registered) await personalized({ action: "reveal" })
     setRevealed(true)
   }
@@ -697,10 +698,12 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
             </div>
             <div className="p-4 sm:p-5">
               {/* Main narrative answer — card-style to distinguish from key points */}
-              <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-4 sm:px-5">
-                <TheoryMarkdown children={question.modelAnswer}/>
-              </div>
-              <KeyPointsSection key={question.id} points={question.keyMarkingPoints}/>
+              {question.hasAnswer ? <>
+                <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-4 sm:px-5">
+                  <TheoryMarkdown children={question.modelAnswer}/>
+                </div>
+                <KeyPointsSection key={question.id} points={question.keyMarkingPoints}/>
+              </> : <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-5 text-sm text-amber-900 dark:text-amber-100"><b className="block">Model answer coming soon</b><span className="mt-1 block">You can practise this prompt now, but answer review and self-marking are unavailable until the editor adds an answer.</span></div>}
             </div>
           </article>
 
@@ -738,7 +741,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
                   onQuota={remaining => updateAiQuota("transcriptions", remaining)}
                 />}
                 <button onClick={submit} disabled={!registered || submitted} className={`${button} w-full bg-primary text-primary-foreground disabled:opacity-50 sm:w-auto`}>Submit Answer</button>
-                <button onClick={reveal} className={`${button} w-full border border-border sm:w-auto`}>Reveal Answer</button>
+                <button onClick={reveal} disabled={!question.hasAnswer} className={`${button} w-full border border-border disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto`}>{question.hasAnswer ? "Reveal Answer" : "Answer coming soon"}</button>
               </div>
           </article>}
 
@@ -748,12 +751,12 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
                 <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-5"><h2 className="font-bold">My Answer</h2></div>
                 <div className="overflow-hidden p-4 sm:p-5">{answer ? <TheoryMarkdown children={answer}/> : <p className="text-sm text-muted-foreground">No answer submitted.</p>}</div>
               </article>}
-              <article className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
+              {question.hasAnswer ? <article className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
                 <div className="border-b border-primary/15 bg-primary/5 px-4 py-3 sm:px-5"><h2 className="font-bold text-primary">Model Answer</h2></div>
                 <div className="overflow-hidden p-4 sm:p-5"><TheoryMarkdown children={question.modelAnswer}/><KeyPointsSection key={question.id} points={question.keyMarkingPoints}/></div>
-              </article>
+              </article> : <article className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-900 dark:text-amber-100"><b>Attempt saved</b><p className="mt-1">The model answer is coming soon. You cannot self-mark this response yet.</p></article>}
             </div>
-            <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            {question.hasAnswer && <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-5">
                 <h2 className="font-bold">How did you do?</h2>
               </div>
@@ -762,7 +765,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
                 <Rating label="Partial" text="Some gaps remain" onClick={() => rate("partial")}/>
                 <Rating label="Needs Revision" text="Add to revision queue" onClick={() => rate("needs_revision")}/>
               </div>
-            </article>
+            </article>}
           </>}
         </div>
       )}

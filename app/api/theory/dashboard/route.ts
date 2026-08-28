@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
         COUNT(CASE WHEN rp.completed_at IS NOT NULL THEN 1 END)::int AS completed
         FROM mednexus_theory_questions q
         LEFT JOIN mednexus_theory_reading_progress rp ON rp.question_id=q.id AND rp.user_id=$1
-        WHERE q.status='published'`, [userId]),
+        WHERE q.status='published' AND q.deleted_at IS NULL`, [userId]),
       pool.query(`SELECT c.id,c.slug,c.title,c.kind,
         COUNT(DISTINCT COALESCE(m.id,d.id))::int AS groups,
         COUNT(DISTINCT q.set_id)::int AS sets,
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         FROM mednexus_theory_collections c
         LEFT JOIN mednexus_theory_modules m ON m.collection_id=c.id
         LEFT JOIN mednexus_theory_disciplines d ON d.collection_id=c.id
-        LEFT JOIN mednexus_theory_questions q ON q.collection_id=c.id AND q.status='published'
+        LEFT JOIN mednexus_theory_questions q ON q.collection_id=c.id AND q.status='published' AND q.deleted_at IS NULL
           AND (q.module_id=m.id OR q.discipline_id=d.id OR (q.module_id IS NULL AND q.discipline_id IS NULL))
         LEFT JOIN mednexus_theory_reading_progress rp ON rp.question_id=q.id AND rp.user_id=$1
         WHERE c.status='published' GROUP BY c.id ORDER BY c.sort_order,c.title`, [userId]),
@@ -35,12 +35,12 @@ export async function GET(request: NextRequest) {
         ${theorySetDisplayProjection("s")},
         c.title AS collection,COALESCE(m.name,d.name,'Unassigned') AS "groupName",
         rp.last_read_at AS "lastStudiedAt",
-        (SELECT COUNT(*)::int FROM mednexus_theory_questions sq WHERE sq.set_id=q.set_id AND sq.status='published') AS "setTotal",
+        (SELECT COUNT(*)::int FROM mednexus_theory_questions sq WHERE sq.set_id=q.set_id AND sq.status='published' AND sq.deleted_at IS NULL) AS "setTotal",
         (SELECT COUNT(*)::int FROM mednexus_theory_questions sq
           JOIN mednexus_theory_reading_progress srp ON srp.question_id=sq.id AND srp.user_id=$1
-          WHERE sq.set_id=q.set_id AND sq.status='published' AND srp.completed_at IS NOT NULL) AS "setCompleted"
+          WHERE sq.set_id=q.set_id AND sq.status='published' AND sq.deleted_at IS NULL AND srp.completed_at IS NOT NULL) AS "setCompleted"
         FROM mednexus_theory_reading_progress rp
-        JOIN mednexus_theory_questions q ON q.id=rp.question_id AND q.status='published'
+        JOIN mednexus_theory_questions q ON q.id=rp.question_id AND q.status='published' AND q.deleted_at IS NULL
         JOIN mednexus_theory_collections c ON c.id=q.collection_id
         LEFT JOIN mednexus_theory_modules m ON m.id=q.module_id
         LEFT JOIN mednexus_theory_disciplines d ON d.id=q.discipline_id
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         WHERE rp.user_id=$1 ORDER BY rp.last_read_at DESC LIMIT 1`, [userId]),
       pool.query(`SELECT COUNT(*)::int AS count
         FROM mednexus_theory_revision_queue r
-        JOIN mednexus_theory_questions q ON q.id=r.question_id AND q.status='published'
+        JOIN mednexus_theory_questions q ON q.id=r.question_id AND q.status='published' AND q.deleted_at IS NULL
         WHERE r.user_id=$1 AND r.active`, [userId]),
       pool.query(`SELECT
         (SELECT COUNT(*)::int FROM mednexus_theory_bookmarks WHERE user_id=$1) AS bookmarks,
@@ -58,12 +58,12 @@ export async function GET(request: NextRequest) {
         ${theorySetDisplayProjection("s")},
         c.title AS collection,COALESCE(m.name,d.name,'Unassigned') AS "groupName",
         rp.last_read_at AS "lastStudiedAt",
-        (SELECT COUNT(*)::int FROM mednexus_theory_questions sq WHERE sq.set_id=q.set_id AND sq.status='published') AS total,
+        (SELECT COUNT(*)::int FROM mednexus_theory_questions sq WHERE sq.set_id=q.set_id AND sq.status='published' AND sq.deleted_at IS NULL) AS total,
         (SELECT COUNT(*)::int FROM mednexus_theory_questions sq
           JOIN mednexus_theory_reading_progress srp ON srp.question_id=sq.id AND srp.user_id=$1
-          WHERE sq.set_id=q.set_id AND sq.status='published' AND srp.completed_at IS NOT NULL) AS completed
+          WHERE sq.set_id=q.set_id AND sq.status='published' AND sq.deleted_at IS NULL AND srp.completed_at IS NOT NULL) AS completed
         FROM mednexus_theory_reading_progress rp
-        JOIN mednexus_theory_questions q ON q.id=rp.question_id AND q.status='published'
+        JOIN mednexus_theory_questions q ON q.id=rp.question_id AND q.status='published' AND q.deleted_at IS NULL
         JOIN mednexus_theory_collections c ON c.id=q.collection_id
         LEFT JOIN mednexus_theory_modules m ON m.id=q.module_id
         LEFT JOIN mednexus_theory_disciplines d ON d.id=q.discipline_id

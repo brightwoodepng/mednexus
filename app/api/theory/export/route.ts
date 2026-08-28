@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       LEFT JOIN mednexus_theory_disciplines d ON d.id=q.discipline_id
       LEFT JOIN mednexus_theory_sets s ON s.id=q.set_id
       LEFT JOIN mednexus_theory_notes n ON n.question_id=q.id AND n.user_id=$1
-      WHERE q.status='published' AND ${where}
+      WHERE q.status='published' AND q.deleted_at IS NULL AND ${where}
       ORDER BY c.sort_order,COALESCE(m.sort_order,d.sort_order),s.sort_order,q.sort_order,q.created_at`,
     [auth?.uid ?? null, sourceId])
     if (!result.rows.length) return NextResponse.json({ error: "No Theory questions matched this export." }, { status: 404 })

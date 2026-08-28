@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation"
 import { getVerifiedAdminFromCookie } from "@/lib/admin-access"
-import { TheoryAdminManager } from "@/components/theory-admin-manager"
+import { TheoryAdminSimplified } from "@/components/theory-admin-simplified"
 
 export default async function AdminTheorySection({ params }: { params: Promise<{ section: string }> }) {
   if (!await getVerifiedAdminFromCookie("manage_theory_content")) redirect("/admin")
   const { section } = await params
-  const tab = section === "hierarchy" ? "hierarchy" : section === "import" ? "import" : section === "settings" ? "settings" : section === "audit" ? "audit" : "questions"
-  return <TheoryAdminManager initialTab={tab} />
+  const initialTab = section === "import" ? "import" : section === "imports" ? "imports" : section === "trash" ? "trash" : section === "settings" ? "more" : "editor"
+  return <TheoryAdminSimplified initialTab={initialTab} />
 }

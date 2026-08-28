@@ -30,7 +30,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const permission = job.bank === "theory" ? "manage_theory_content" : "manage_mcq_content"
   const admin = await requireAdminRequest(req, permission)
   if (!admin) return adminAccessDenied(req)
-  const body = await req.json() as { action?: string; selectedIndexes?: number[] }
+  const body = await req.json() as { action?: string; selectedIndexes?: number[]; confirmation?: string }
+  if (body.action === "trash") {
+    await pool.query("UPDATE mednexus_content_import_jobs SET previous_status=status,deleted_at=NOW(),deleted_by=$2,updated_at=NOW() WHERE id=$1 AND deleted_at IS NULL", [id,admin.uid])
+    await auditAdmin(pool, admin.uid, "trash", `${job.bank}_import`, id)
+    return NextResponse.json({ success: true, trashed: true })
+  }
+  if (body.action === "restore") {
+    await pool.query("UPDATE mednexus_content_import_jobs SET status=COALESCE(previous_status,status),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE id=$1", [id])
+    await auditAdmin(pool, admin.uid, "restore", `${job.bank}_import`, id)
+    return NextResponse.json({ success: true, restored: true })
+  }
+  if (body.action === "purge") {
+    if (body.confirmation !== "DELETE") return NextResponse.json({ error: "Type DELETE to permanently remove this import record." }, { status: 400 })
+    await auditAdmin(pool, admin.uid, "purge", `${job.bank}_import`, id)
+    await pool.query("DELETE FROM mednexus_content_import_jobs WHERE id=$1 AND deleted_at IS NOT NULL", [id])
+    return NextResponse.json({ success: true, deleted: true })
+  }
   if (body.action === "retry") {
     await pool.query("UPDATE mednexus_content_import_jobs SET status='review',updated_at=NOW() WHERE id=$1", [id])
     await auditAdmin(pool, admin.uid, "retry", `${job.bank}_import`, id)
@@ -93,7 +109,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const admin = await requireAdminRequest(req, permission)
   if (!admin) return adminAccessDenied(req)
   if (req.nextUrl.searchParams.get("confirm") !== "true") return NextResponse.json({ error: "Confirmation required." }, { status: 400 })
-  await auditAdmin(pool, admin.uid, "delete", `${found.rows[0].bank}_import`, id)
-  await pool.query("DELETE FROM mednexus_content_import_jobs WHERE id=$1", [id])
-  return NextResponse.json({ success: true })
+  await auditAdmin(pool, admin.uid, "trash", `${found.rows[0].bank}_import`, id)
+  await pool.query("UPDATE mednexus_content_import_jobs SET previous_status=status,deleted_at=NOW(),deleted_by=$2,updated_at=NOW() WHERE id=$1", [id,admin.uid])
+  return NextResponse.json({ success: true, trashed: true })
 }

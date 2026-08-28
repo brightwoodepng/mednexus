@@ -47,7 +47,7 @@ let groupStudyInitialized = false
 // Keep this marker in step with every deployed DDL change. The previous
 // assessment-grading marker predated the admin platform/settings and economy
 // season tables, which let existing databases skip those additions entirely.
-export const CURRENT_SCHEMA_VERSION = "2026-08-23-xp-ledger-and-leaderboard-v1"
+export const CURRENT_SCHEMA_VERSION = "2026-08-28-theory-editor-trash-v1"
 
 export async function groupStudySchemaStatus() {
   const result = await pool.query<{
@@ -448,6 +448,11 @@ export async function ensureSchema() {
     );
     CREATE INDEX IF NOT EXISTS mednexus_content_import_jobs_recent_idx
       ON mednexus_content_import_jobs (created_at DESC);
+
+    ALTER TABLE mednexus_content_import_jobs
+      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS deleted_by TEXT,
+      ADD COLUMN IF NOT EXISTS previous_status TEXT;
 
     -- ── Theory Vault ───────────────────────────────────────────────────────
     -- Theory has its own normalized content model. Do not add these fields to
@@ -1356,6 +1361,15 @@ export async function ensureSchema() {
       UNIQUE (collection_id, name)
     );
 
+    ALTER TABLE mednexus_theory_modules
+      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS deleted_by TEXT,
+      ADD COLUMN IF NOT EXISTS previous_status TEXT;
+    ALTER TABLE mednexus_theory_disciplines
+      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS deleted_by TEXT,
+      ADD COLUMN IF NOT EXISTS previous_status TEXT;
+
     CREATE TABLE IF NOT EXISTS mednexus_theory_module_disciplines (
       module_id TEXT NOT NULL REFERENCES mednexus_theory_modules(id) ON DELETE CASCADE,
       discipline_id TEXT NOT NULL REFERENCES mednexus_theory_disciplines(id) ON DELETE CASCADE,
@@ -1374,6 +1388,10 @@ export async function ensureSchema() {
         CHECK (question_limit BETWEEN 1 AND 100),
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    ALTER TABLE mednexus_theory_sets
+      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS deleted_by TEXT,
+      ADD COLUMN IF NOT EXISTS previous_status TEXT;
 
     ALTER TABLE mednexus_theory_questions ALTER COLUMN discipline_id DROP NOT NULL;
     ALTER TABLE mednexus_theory_questions
@@ -1382,6 +1400,16 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS marks INTEGER CHECK (marks IS NULL OR marks >= 0),
       ADD COLUMN IF NOT EXISTS references_md TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS media JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE mednexus_theory_questions
+      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS deleted_by TEXT,
+      ADD COLUMN IF NOT EXISTS previous_status TEXT;
+
+    CREATE INDEX IF NOT EXISTS mednexus_theory_questions_active_hierarchy_idx
+      ON mednexus_theory_questions (collection_id, module_id, discipline_id, set_id, status)
+      WHERE deleted_at IS NULL;
+    CREATE INDEX IF NOT EXISTS mednexus_theory_questions_trash_idx
+      ON mednexus_theory_questions (deleted_at DESC) WHERE deleted_at IS NOT NULL;
 
     UPDATE mednexus_theory_questions
     SET title = LEFT(TRIM(REGEXP_REPLACE(

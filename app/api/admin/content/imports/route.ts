@@ -12,16 +12,19 @@ export async function GET(req: NextRequest) {
   const { default: pool } = await import("@/lib/db")
   const { page, pageSize, offset } = boundedPagination(req.nextUrl.searchParams)
   const bank = req.nextUrl.searchParams.get("bank")
+  const trash = req.nextUrl.searchParams.get("trash") === "true"
   const values: Array<string | number> = []
-  const where = bank === "mcq" || bank === "theory" ? (values.push(bank), "WHERE bank=$1") : ""
+  const clauses = [trash ? "deleted_at IS NOT NULL" : "deleted_at IS NULL"]
+  if (bank === "mcq" || bank === "theory") { values.push(bank); clauses.push(`bank=$${values.length}`) }
+  const where = `WHERE ${clauses.join(" AND ")}`
   values.push(pageSize, offset)
   const limitIndex = values.length - 1
-  const result = await pool.query(`SELECT id,bank,source_name,status,total_count,valid_count,error_count,created_at,updated_at,committed_at,COUNT(*) OVER()::int AS total_rows FROM mednexus_content_import_jobs ${where} ORDER BY created_at DESC LIMIT $${limitIndex} OFFSET $${limitIndex + 1}`, values)
+  const result = await pool.query(`SELECT id,bank,source_name,status,total_count,valid_count,error_count,created_at,updated_at,committed_at,deleted_at,COUNT(*) OVER()::int AS total_rows FROM mednexus_content_import_jobs ${where} ORDER BY created_at DESC LIMIT $${limitIndex} OFFSET $${limitIndex + 1}`, values)
   const payload = { jobs: result.rows.map((row) => ({
     id: row.id, bank: row.bank, sourceName: row.source_name, status: row.status,
     totalCount: row.total_count, validCount: row.valid_count, errorCount: row.error_count,
     createdAt: row.created_at,
-    updatedAt: row.updated_at, committedAt: row.committed_at,
+    updatedAt: row.updated_at, committedAt: row.committed_at, deletedAt: row.deleted_at,
   })), pagination: { page, pageSize, total: Number(result.rows[0]?.total_rows ?? 0) } }
   return measuredJson({
     route: "GET /api/admin/content/imports",

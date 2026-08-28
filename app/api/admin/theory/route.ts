@@ -33,22 +33,26 @@ export async function GET(request: NextRequest) {
     const setId = request.nextUrl.searchParams.get("setId")
     const status = request.nextUrl.searchParams.get("status")
     const unassigned = request.nextUrl.searchParams.get("unassigned") === "true"
+    const trashOnly = request.nextUrl.searchParams.get("trash") === "true"
     const sort = request.nextUrl.searchParams.get("sort") === "oldest" ? "oldest" : request.nextUrl.searchParams.get("sort") === "title" ? "title" : "updated"
     const orderBy = sort === "title" ? "q.title ASC" : sort === "oldest" ? "q.updated_at ASC" : "q.updated_at DESC"
-    const [collections, modules, disciplines, sets, questions, settings, audit, counts] = await Promise.all([
+    const [collections, modules, disciplines, sets, questions, settings, audit, counts, hierarchyStats, trash, imports] = await Promise.all([
       pool.query(`SELECT id,slug,title,kind,status,sort_order AS "sortOrder"
         FROM mednexus_theory_collections WHERE kind=$1 ORDER BY sort_order,title`, [kind]),
       pool.query(`SELECT id,collection_id AS "collectionId",name,description,sort_order AS "sortOrder"
         FROM mednexus_theory_modules WHERE collection_id IN (SELECT id FROM mednexus_theory_collections WHERE kind=$1)
+          AND deleted_at IS NULL
         ORDER BY sort_order,name`, [kind]),
       pool.query(`SELECT id,collection_id AS "collectionId",name,sort_order AS "sortOrder"
         FROM mednexus_theory_disciplines WHERE collection_id IN (SELECT id FROM mednexus_theory_collections WHERE kind=$1)
+          AND deleted_at IS NULL
         ORDER BY sort_order,name`, [kind]),
       pool.query(`SELECT s.id,s.collection_id AS "collectionId",s.module_id AS "moduleId",
         s.discipline_id AS "disciplineId",s.name,s.description,s.status,s.question_limit AS "questionLimit",
         s.sort_order AS "sortOrder",COUNT(q.id)::int AS "questionCount"
-        FROM mednexus_theory_sets s LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id AND q.status<>'archived'
+        FROM mednexus_theory_sets s LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id AND q.deleted_at IS NULL
         WHERE s.collection_id IN (SELECT id FROM mednexus_theory_collections WHERE kind=$1)
+          AND s.deleted_at IS NULL
         GROUP BY s.id ORDER BY s.sort_order,s.name`, [kind]),
       pool.query(`SELECT ${theoryQuestionProjection},
         c.title AS "collectionTitle",m.name AS "moduleName",d.name AS "disciplineName",s.name AS "setTitle",
@@ -59,6 +63,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN mednexus_theory_disciplines d ON d.id=q.discipline_id
         LEFT JOIN mednexus_theory_sets s ON s.id=q.set_id
         WHERE c.kind=$1
+          AND (($11::boolean=TRUE AND q.deleted_at IS NOT NULL) OR ($11::boolean=FALSE AND q.deleted_at IS NULL))
           AND ($2='' OR q.prompt ILIKE '%'||$2||'%' OR q.title ILIKE '%'||$2||'%')
           AND ($3::text IS NULL OR q.collection_id=$3)
           AND ($4::text IS NULL OR q.status=$4)
@@ -66,14 +71,38 @@ export async function GET(request: NextRequest) {
           AND ($6::text IS NULL OR q.module_id=$6)
           AND ($7::text IS NULL OR q.discipline_id=$7)
           AND ($8::text IS NULL OR q.set_id=$8)
-        ORDER BY ${orderBy} LIMIT $9 OFFSET $10`, [kind, query, collectionId, status, unassigned, moduleId, disciplineId, setId, pageSize, offset]),
+        ORDER BY ${orderBy} LIMIT $9 OFFSET $10`, [kind, query, collectionId, status, unassigned, moduleId, disciplineId, setId, pageSize, offset, trashOnly]),
       pool.query(`SELECT default_set_size AS "defaultSetSize",updated_at AS "updatedAt"
         FROM mednexus_theory_settings WHERE id=1`),
       pool.query(`SELECT id,action,resource_type AS "resourceType",resource_id AS "resourceId",
         details,created_at AS "createdAt" FROM mednexus_theory_audit_log
         ORDER BY created_at DESC LIMIT 20`),
       pool.query(`SELECT q.status,COUNT(*)::int AS count FROM mednexus_theory_questions q
-        JOIN mednexus_theory_collections c ON c.id=q.collection_id WHERE c.kind=$1 GROUP BY q.status`, [kind]),
+        JOIN mednexus_theory_collections c ON c.id=q.collection_id WHERE c.kind=$1 AND q.deleted_at IS NULL GROUP BY q.status`, [kind]),
+      pool.query(`SELECT q.collection_id AS "collectionId",q.module_id AS "moduleId",q.discipline_id AS "disciplineId",q.set_id AS "setId",
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE q.status='draft')::int AS draft,
+        COUNT(*) FILTER (WHERE q.status='published')::int AS live,
+        COUNT(*) FILTER (WHERE q.set_id IS NULL OR TRIM(q.prompt)='' OR TRIM(q.model_answer)='' OR COALESCE(cardinality(q.key_marking_points),0)=0)::int AS "needsAttention"
+        FROM mednexus_theory_questions q JOIN mednexus_theory_collections c ON c.id=q.collection_id
+        WHERE c.kind=$1 AND q.deleted_at IS NULL GROUP BY GROUPING SETS
+        ((q.collection_id,q.module_id,q.discipline_id,q.set_id),(q.collection_id,q.module_id,q.discipline_id),(q.collection_id))`, [kind]),
+      pool.query(`SELECT 'module' AS type,m.id,m.name AS label,m.deleted_at AS "deletedAt",COUNT(q.id)::int AS count
+        FROM mednexus_theory_modules m JOIN mednexus_theory_collections c ON c.id=m.collection_id
+        LEFT JOIN mednexus_theory_questions q ON q.module_id=m.id AND q.deleted_at IS NOT NULL
+        WHERE c.kind=$1 AND m.deleted_at IS NOT NULL GROUP BY m.id
+        UNION ALL SELECT 'discipline',d.id,d.name,d.deleted_at,COUNT(q.id)::int
+        FROM mednexus_theory_disciplines d JOIN mednexus_theory_collections c ON c.id=d.collection_id
+        LEFT JOIN mednexus_theory_questions q ON q.discipline_id=d.id AND q.deleted_at IS NOT NULL
+        WHERE c.kind=$1 AND d.deleted_at IS NOT NULL GROUP BY d.id
+        UNION ALL SELECT 'set',s.id,s.name,s.deleted_at,COUNT(q.id)::int
+        FROM mednexus_theory_sets s JOIN mednexus_theory_collections c ON c.id=s.collection_id
+        LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id AND q.deleted_at IS NOT NULL
+        WHERE c.kind=$1 AND s.deleted_at IS NOT NULL GROUP BY s.id
+        ORDER BY "deletedAt" DESC`, [kind]),
+      pool.query(`SELECT id,source_name AS "sourceName",status,total_count AS "totalCount",valid_count AS "validCount",
+        error_count AS "errorCount",created_at AS "createdAt",committed_at AS "committedAt",deleted_at AS "deletedAt"
+        FROM mednexus_content_import_jobs WHERE bank='theory' ORDER BY created_at DESC LIMIT 50`),
     ])
     return NextResponse.json({
       collections: collections.rows,
@@ -88,6 +117,9 @@ export async function GET(request: NextRequest) {
       updatedAt: new Date().toISOString(),
       settings: settings.rows[0] ?? { defaultSetSize: 20 },
       audit: audit.rows,
+      hierarchyStats: hierarchyStats.rows,
+      trash: trash.rows,
+      imports: imports.rows,
     })
   } catch (error) {
     console.error("[admin theory GET]", error)
@@ -165,8 +197,8 @@ export async function POST(request: NextRequest) {
         const title = deriveTheoryTitle(prompt, optionalText(body.title, 200))
         const marks = calculateTheoryMarks(keyMarkingPoints)
         const status = theoryStatus(body.status)
-        if (status === "published" && (!setId || !modelAnswer.trim() || !keyMarkingPoints.length)) {
-          throw new Error("A set, model answer, and key marking points are required before publishing.")
+        if (status === "published" && !setId) {
+          throw new Error("Choose a set before publishing this question.")
         }
         await client.query(`INSERT INTO mednexus_theory_questions
           (id,collection_id,module_id,discipline_id,set_id,title,prompt,model_answer,key_marking_points,
@@ -197,6 +229,55 @@ export async function PATCH(request: NextRequest) {
     const action = String(body.action ?? "update")
     const pool = await theoryPool()
     const summary = await withTransaction(pool, async client => {
+      if (action === "trash" || action === "restore" || action === "purge" || action === "empty_trash") {
+        const resource = String(body.resource ?? "question")
+        const ids = stringArray(body.ids, 500)
+        const id = typeof body.id === "string" ? body.id : ""
+        if (id && !ids.includes(id)) ids.push(id)
+        if (action !== "empty_trash" && !ids.length) throw new Error("Select something to update.")
+        if (!["question", "set", "module", "discipline"].includes(resource)) throw new Error("Unsupported trash resource.")
+        const operationIds = ids
+        if (action === "trash") {
+          if (resource === "question") await client.query(`UPDATE mednexus_theory_questions SET previous_status=status,deleted_at=NOW(),deleted_by=$1,updated_at=NOW() WHERE id=ANY($2::text[]) AND deleted_at IS NULL`, [auth.uid,operationIds])
+          if (resource === "set") {
+            await client.query(`UPDATE mednexus_theory_sets SET previous_status=status,deleted_at=NOW(),deleted_by=$1,updated_at=NOW() WHERE id=ANY($2::text[]) AND deleted_at IS NULL`, [auth.uid,operationIds])
+            await client.query(`UPDATE mednexus_theory_questions SET previous_status=status,deleted_at=NOW(),deleted_by=$1,updated_at=NOW() WHERE set_id=ANY($2::text[]) AND deleted_at IS NULL`, [auth.uid,operationIds])
+          }
+          if (resource === "module") {
+            await client.query(`UPDATE mednexus_theory_modules SET deleted_at=NOW(),deleted_by=$1,updated_at=NOW() WHERE id=ANY($2::text[]) AND deleted_at IS NULL`, [auth.uid,operationIds])
+            await client.query(`UPDATE mednexus_theory_sets SET previous_status=status,deleted_at=NOW(),deleted_by=$1,updated_at=NOW() WHERE module_id=ANY($2::text[]) AND deleted_at IS NULL`, [auth.uid,operationIds])
+            await client.query(`UPDATE mednexus_theory_questions SET previous_status=status,deleted_at=NOW(),deleted_by=$1,updated_at=NOW() WHERE module_id=ANY($2::text[]) AND deleted_at IS NULL`, [auth.uid,operationIds])
+          }
+          if (resource === "discipline") {
+            await client.query(`UPDATE mednexus_theory_disciplines SET deleted_at=NOW(),deleted_by=$1 WHERE id=ANY($2::text[]) AND deleted_at IS NULL`, [auth.uid,operationIds])
+            await client.query(`UPDATE mednexus_theory_sets SET previous_status=status,deleted_at=NOW(),deleted_by=$1,updated_at=NOW() WHERE discipline_id=ANY($2::text[]) AND deleted_at IS NULL`, [auth.uid,operationIds])
+            await client.query(`UPDATE mednexus_theory_questions SET previous_status=status,deleted_at=NOW(),deleted_by=$1,updated_at=NOW() WHERE discipline_id=ANY($2::text[]) AND deleted_at IS NULL`, [auth.uid,operationIds])
+          }
+        } else if (action === "restore") {
+          if (resource === "question") await client.query(`UPDATE mednexus_theory_questions SET status=COALESCE(previous_status,'draft'),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE id=ANY($1::text[])`, [operationIds])
+          if (resource === "set") {
+            await client.query(`UPDATE mednexus_theory_sets SET status=COALESCE(previous_status,'published'),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE id=ANY($1::text[])`, [operationIds])
+            await client.query(`UPDATE mednexus_theory_questions SET status=COALESCE(previous_status,'draft'),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE set_id=ANY($1::text[])`, [operationIds])
+          }
+          if (resource === "module") {
+            await client.query(`UPDATE mednexus_theory_modules SET deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE id=ANY($1::text[])`, [operationIds])
+            await client.query(`UPDATE mednexus_theory_sets SET status=COALESCE(previous_status,'published'),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE module_id=ANY($1::text[])`, [operationIds])
+            await client.query(`UPDATE mednexus_theory_questions SET status=COALESCE(previous_status,'draft'),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE module_id=ANY($1::text[])`, [operationIds])
+          }
+          if (resource === "discipline") {
+            await client.query(`UPDATE mednexus_theory_disciplines SET deleted_at=NULL,deleted_by=NULL WHERE id=ANY($1::text[])`, [operationIds])
+            await client.query(`UPDATE mednexus_theory_sets SET status=COALESCE(previous_status,'published'),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE discipline_id=ANY($1::text[])`, [operationIds])
+            await client.query(`UPDATE mednexus_theory_questions SET status=COALESCE(previous_status,'draft'),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE discipline_id=ANY($1::text[])`, [operationIds])
+          }
+        } else {
+          if (action === "empty_trash" || resource === "question") await client.query(`DELETE FROM mednexus_theory_questions WHERE deleted_at IS NOT NULL ${action === "empty_trash" ? "" : "AND id=ANY($1::text[])"}`, action === "empty_trash" ? [] : [operationIds])
+          if (action === "empty_trash" || resource === "set") await client.query(`DELETE FROM mednexus_theory_sets WHERE deleted_at IS NOT NULL ${action === "empty_trash" ? "" : "AND id=ANY($1::text[])"}`, action === "empty_trash" ? [] : [operationIds])
+          if (action === "empty_trash" || resource === "module") await client.query(`DELETE FROM mednexus_theory_modules WHERE deleted_at IS NOT NULL ${action === "empty_trash" ? "" : "AND id=ANY($1::text[])"}`, action === "empty_trash" ? [] : [operationIds])
+          if (action === "empty_trash" || resource === "discipline") await client.query(`DELETE FROM mednexus_theory_disciplines WHERE deleted_at IS NOT NULL ${action === "empty_trash" ? "" : "AND id=ANY($1::text[])"}`, action === "empty_trash" ? [] : [operationIds])
+        }
+        await auditTheory(client, auth.uid, action, resource, operationIds[0] ?? null, { ids: operationIds })
+        return { matched: operationIds.length, updated: operationIds.length, skipped: 0, validationDetails: [] }
+      }
       if (action === "settings") {
         const defaultSetSize = intInRange(body.defaultSetSize, 15, 20, 20)
         await client.query(`UPDATE mednexus_theory_settings SET default_set_size=$1,updated_at=NOW() WHERE id=1`, [defaultSetSize])
@@ -216,9 +297,34 @@ export async function PATCH(request: NextRequest) {
       if (action === "move") {
         const questionIds = stringArray(body.questionIds, 500)
         if (!questionIds.length) throw new Error("Select at least one question.")
-        const setId = requiredText(body.setId, "Destination set", 100)
+        let setId = typeof body.setId === "string" ? body.setId.trim() : ""
+        if (!setId) {
+          const moduleId = typeof body.moduleId === "string" && body.moduleId ? body.moduleId : null
+          const disciplineId = typeof body.disciplineId === "string" && body.disciplineId ? body.disciplineId : null
+          if (!moduleId && !disciplineId) throw new Error("Choose a destination module, discipline, or set.")
+          const group = await client.query(`SELECT c.id AS collection_id,COALESCE(m.id,d.id) AS group_id
+            FROM mednexus_theory_collections c
+            LEFT JOIN mednexus_theory_modules m ON m.collection_id=c.id AND m.id=$1 AND m.deleted_at IS NULL
+            LEFT JOIN mednexus_theory_disciplines d ON d.collection_id=c.id AND d.id=$2 AND d.deleted_at IS NULL
+            WHERE m.id IS NOT NULL OR d.id IS NOT NULL LIMIT 1`, [moduleId, disciplineId])
+          if (!group.rows[0]) throw new Error("Destination group not found.")
+          const available = await client.query(`SELECT s.id FROM mednexus_theory_sets s
+            WHERE s.collection_id=$1 AND s.module_id IS NOT DISTINCT FROM $2 AND s.discipline_id IS NOT DISTINCT FROM $3
+              AND s.deleted_at IS NULL AND s.status<>'archived'
+              AND (SELECT COUNT(*) FROM mednexus_theory_questions q WHERE q.set_id=s.id AND q.deleted_at IS NULL) < s.question_limit
+            ORDER BY s.sort_order,s.created_at LIMIT 1`, [group.rows[0].collection_id, moduleId, disciplineId])
+          setId = available.rows[0]?.id ?? theoryId("theory-set")
+          if (!available.rows[0]) {
+            const settings = await client.query("SELECT default_set_size FROM mednexus_theory_settings WHERE id=1")
+            const number = await client.query(`SELECT COUNT(*)::int+1 AS next FROM mednexus_theory_sets
+              WHERE collection_id=$1 AND module_id IS NOT DISTINCT FROM $2 AND discipline_id IS NOT DISTINCT FROM $3`, [group.rows[0].collection_id,moduleId,disciplineId])
+            await client.query(`INSERT INTO mednexus_theory_sets
+              (id,collection_id,module_id,discipline_id,name,status,question_limit,sort_order)
+              VALUES($1,$2,$3,$4,$5,'published',$6,$7)`, [setId,group.rows[0].collection_id,moduleId,disciplineId,`Set ${number.rows[0].next}`,Number(settings.rows[0]?.default_set_size??20),Number(number.rows[0].next)*10])
+          }
+        }
         const set = await client.query(`SELECT collection_id,module_id,discipline_id,question_limit
-          FROM mednexus_theory_sets WHERE id=$1 AND status<>'archived'`, [setId])
+          FROM mednexus_theory_sets WHERE id=$1 AND status<>'archived' AND deleted_at IS NULL`, [setId])
         if (!set.rows[0]) throw new Error("Destination set not found.")
         const capacity = await client.query(`SELECT
           COUNT(*) FILTER (WHERE set_id=$1 AND status<>'archived' AND NOT (id=ANY($2::text[])))::int AS existing,
@@ -260,7 +366,7 @@ export async function PATCH(request: NextRequest) {
           if (operation === "published") {
             values.push(operation)
             const result = await client.query(`UPDATE mednexus_theory_questions SET status=$${values.length},updated_at=NOW()
-              WHERE ${where} AND set_id IS NOT NULL AND trim(model_answer)<>'' AND cardinality(key_marking_points)>0 RETURNING id`, values)
+              WHERE ${where} AND deleted_at IS NULL AND set_id IS NOT NULL AND trim(prompt)<>'' RETURNING id`, values)
             updated = result.rowCount ?? 0
           } else {
             values.push(operation)
@@ -286,6 +392,12 @@ export async function PATCH(request: NextRequest) {
         [id, typeof body.name === "string" ? body.name.trim() : null,
           typeof body.description === "string" ? body.description : null,
           typeof body.status === "string" ? theoryStatus(body.status) : null])
+      } else if (resource === "module") {
+        await client.query(`UPDATE mednexus_theory_modules SET name=COALESCE($2,name),description=COALESCE($3,description),updated_at=NOW()
+          WHERE id=$1 AND deleted_at IS NULL`, [id,typeof body.name === "string" ? requiredText(body.name,"Module name",160) : null,typeof body.description === "string" ? body.description : null])
+      } else if (resource === "discipline") {
+        await client.query(`UPDATE mednexus_theory_disciplines SET name=COALESCE($2,name)
+          WHERE id=$1 AND deleted_at IS NULL`, [id,typeof body.name === "string" ? requiredText(body.name,"Discipline name",160) : null])
       } else if (resource === "question") {
         const current = await client.query(`SELECT title,prompt,model_answer,key_marking_points,status,
           collection_id,module_id,discipline_id,set_id
@@ -293,10 +405,17 @@ export async function PATCH(request: NextRequest) {
         if (!current.rows[0]) throw new Error("Question not found.")
         const nextStatus = typeof body.status === "string" ? theoryStatus(body.status) : null
         const modelAnswer = typeof body.modelAnswer === "string" ? body.modelAnswer : current.rows[0].model_answer
-        const collectionId = typeof body.collectionId === "string" ? body.collectionId : current.rows[0].collection_id
-        const moduleId = Object.hasOwn(body, "moduleId") ? (typeof body.moduleId === "string" && body.moduleId ? body.moduleId : null) : current.rows[0].module_id
-        const disciplineId = Object.hasOwn(body, "disciplineId") ? (typeof body.disciplineId === "string" && body.disciplineId ? body.disciplineId : null) : current.rows[0].discipline_id
+        let collectionId = typeof body.collectionId === "string" ? body.collectionId : current.rows[0].collection_id
+        let moduleId = Object.hasOwn(body, "moduleId") ? (typeof body.moduleId === "string" && body.moduleId ? body.moduleId : null) : current.rows[0].module_id
+        let disciplineId = Object.hasOwn(body, "disciplineId") ? (typeof body.disciplineId === "string" && body.disciplineId ? body.disciplineId : null) : current.rows[0].discipline_id
         const setId = Object.hasOwn(body, "setId") ? (typeof body.setId === "string" && body.setId ? body.setId : null) : current.rows[0].set_id
+        if (setId && setId !== current.rows[0].set_id) {
+          const destination = await client.query(`SELECT collection_id,module_id,discipline_id FROM mednexus_theory_sets WHERE id=$1 AND deleted_at IS NULL`, [setId])
+          if (!destination.rows[0]) throw new Error("Destination set not found.")
+          collectionId = destination.rows[0].collection_id
+          moduleId = destination.rows[0].module_id
+          disciplineId = destination.rows[0].discipline_id ?? disciplineId
+        }
         const prompt = typeof body.prompt === "string" ? requiredText(body.prompt, "Question prompt") : current.rows[0].prompt
         const keyMarkingPoints = Array.isArray(body.keyMarkingPoints)
           ? stringArray(body.keyMarkingPoints)
@@ -304,8 +423,8 @@ export async function PATCH(request: NextRequest) {
         const title = deriveTheoryTitle(prompt, typeof body.title === "string" ? body.title : current.rows[0].title)
         const marks = calculateTheoryMarks(keyMarkingPoints)
         const effectiveStatus = nextStatus ?? current.rows[0].status
-        if (effectiveStatus === "published" && (!setId || !modelAnswer.trim() || !keyMarkingPoints.length)) {
-          throw new Error("A set, model answer, and key marking points are required before publishing.")
+        if (effectiveStatus === "published" && !setId) {
+          throw new Error("Choose a set before publishing this question.")
         }
         await client.query(`UPDATE mednexus_theory_questions SET
           title=$2,prompt=$3,model_answer=COALESCE($4,model_answer),

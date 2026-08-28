@@ -138,5 +138,14 @@ export const theoryQuestionProjection = `
   q.difficulty,
   q.estimated_study_minutes AS "estimatedStudyMinutes",
   q.status,
+  q.deleted_at AS "deletedAt",
+  q.previous_status AS "previousStatus",
+  (TRIM(q.model_answer) <> '' AND COALESCE(cardinality(q.key_marking_points),0) > 0) AS "hasAnswer",
+  CASE
+    WHEN TRIM(q.prompt) = '' THEN 'missing_prompt'
+    WHEN q.set_id IS NULL THEN 'missing_set'
+    WHEN TRIM(q.model_answer) = '' OR COALESCE(cardinality(q.key_marking_points),0) = 0 THEN 'prompt_only'
+    ELSE 'ready'
+  END AS "readiness",
   q.sort_order AS "sortOrder"
 `

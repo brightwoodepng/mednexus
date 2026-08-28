@@ -260,6 +260,10 @@ export interface TheoryQuestion {
   difficulty: number
   estimatedStudyMinutes: number
   status: TheoryStatus
+  hasAnswer: boolean
+  readiness: "missing_prompt" | "missing_set" | "prompt_only" | "ready"
+  deletedAt?: string | null
+  previousStatus?: TheoryStatus | null
   sortOrder: number
 }
 
