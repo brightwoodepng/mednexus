@@ -4,7 +4,6 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
 import { assertEconomySeasonSchema, EconomySeasonSchemaError } from "@/lib/economy-seasons"
 import { applyNPCredits } from "@/lib/np-ledger"
-import { applyXPCredits } from "@/lib/xp-ledger"
 import { randomUUID } from "node:crypto"
 
 const confirmationFor=(name:string)=>`START ${name.trim().toUpperCase()}`
@@ -27,7 +26,7 @@ async function awardSeasonWinners(client: import("pg").PoolClient, season: Recor
     const amount = rewards[Number(winner.place)-1] ?? 0
     if (amount <= 0) continue
     await applyNPCredits(client,winner.uid,[{source:"leaderboard_reward",sourceId:`season:${season.id}:place:${winner.place}`,amount,countsTowardClinicalRank:false,ceilingPolicy:"exempt",metadata:{seasonId:season.id,place:Number(winner.place),xp:Number(winner.total_xp),rewardCategory:"season_winner"}}])
-    await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message,action_url,action_label) VALUES($1,$2,'leaderboard',$3,'/?hub=rankings','View rankings') ON CONFLICT DO NOTHING`,[`season-winner-${season.id}-${winner.uid}`,winner.uid,`Season complete — you placed #${winner.place} and earned ${amount} NP.`])
+    await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message,action_url,action_label) VALUES($1,$2,'leaderboard',$3,'/?hub=rankings','View rankings') ON CONFLICT DO NOTHING`,[`season-winner-${season.id}-${winner.uid}`,winner.uid,`Season complete — you placed #${winner.place} and earned ${amount} NT.`])
   }
 }
 
@@ -47,7 +46,7 @@ async function awardMonthlyWinners(client: import("pg").PoolClient, season: Reco
     [start.toISOString(),end.toISOString(),`${month}-01`,end.toISOString().slice(0,10),Number(season.minimum_eligible_questions??300),rewards.length])
   for(const winner of winners.rows){const amount=rewards[Number(winner.place)-1]??0;if(amount<=0)continue
     await applyNPCredits(client,winner.uid,[{source:"leaderboard_reward",sourceId:`month:${month}:place:${winner.place}`,amount,countsTowardClinicalRank:false,ceilingPolicy:"exempt",metadata:{month,place:Number(winner.place),xp:Number(winner.total_xp),rewardCategory:"monthly_winner"}}])
-    await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message,action_url,action_label) VALUES($1,$2,'leaderboard',$3,'/?hub=rankings','View rankings') ON CONFLICT DO NOTHING`,[`month-winner-${month}-${winner.uid}`,winner.uid,`Monthly rankings finalized — you placed #${winner.place} and earned ${amount} NP.`])
+    await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message,action_url,action_label) VALUES($1,$2,'leaderboard',$3,'/?hub=rankings','View rankings') ON CONFLICT DO NOTHING`,[`month-winner-${month}-${winner.uid}`,winner.uid,`Monthly rankings finalized — you placed #${winner.place} and earned ${amount} NT.`])
   }
   return winners.rowCount??winners.rows.length
 }
@@ -90,14 +89,10 @@ export async function POST(req:NextRequest){
       if(!seasonId||!Number.isInteger(minimumEligibleQuestions)||minimumEligibleQuestions<1||minimumEligibleQuestions>100000||!validRewards(monthlyRewards)||!validRewards(seasonalRewards))return NextResponse.json({error:"Enter valid eligibility and reward amounts."},{status:400})
       const client=await pool.connect();try{await client.query("BEGIN");const updated=await client.query(`UPDATE mednexus_economy_seasons SET minimum_eligible_questions=$2,monthly_rewards=$3::jsonb,seasonal_rewards=$4::jsonb WHERE id=$1 AND status IN ('planned','active') RETURNING id`,[seasonId,minimumEligibleQuestions,JSON.stringify(monthlyRewards),JSON.stringify(seasonalRewards)]);if(!updated.rowCount)throw new Error("Choose an active or planned season.");await auditAdmin(client,admin.uid,"update","economy_rules",seasonId,{minimumEligibleQuestions,monthlyRewards,seasonalRewards});await client.query("COMMIT")}catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}return NextResponse.json({ok:true,...await payload()})
     }
-    if(action==="adjust_points"){
-      const userId=String(body.userId??"").trim(),npAmount=Number(body.npAmount??0),xpAmount=Number(body.xpAmount??0),reason=String(body.reason??"").trim()
-      if(!userId||reason.length<8||!Number.isInteger(npAmount)||!Number.isInteger(xpAmount)||npAmount<0||xpAmount<0||npAmount>100000||xpAmount>100000||(!npAmount&&!xpAmount))return NextResponse.json({error:"Enter a learner ID, a reason of at least 8 characters, and a positive NP or XP correction."},{status:400})
-      const client=await pool.connect();try{await client.query("BEGIN");const user=await client.query("SELECT 1 FROM mednexus_registered_users WHERE uid=$1 AND status='approved' FOR UPDATE",[userId]);if(!user.rowCount)throw new Error("No approved learner matches that user ID.");const season=(await client.query("SELECT id FROM mednexus_economy_seasons WHERE status='active' FOR SHARE")).rows[0];if(!season)throw new Error("No active season is available.");const adjustmentId=randomUUID();if(npAmount)await applyNPCredits(client,userId,[{source:"admin_adjustment",sourceId:adjustmentId,amount:npAmount,countsTowardClinicalRank:false,ceilingPolicy:"exempt",metadata:{reason,administrator:admin.uid}}]);if(xpAmount)await applyXPCredits(client,userId,[{source:"admin_adjustment",sourceId:adjustmentId,amount:xpAmount,seasonId:season.id,competitive:false,metadata:{reason,administrator:admin.uid,label:"Administrator XP correction"}}]);await auditAdmin(client,admin.uid,"adjust","learner_economy",userId,{adjustmentId,npAmount,xpAmount,reason});await client.query("COMMIT")}catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}return NextResponse.json({ok:true,...await payload()})
-    }
-    if(action==="finalize_week"){
-      const week=String(body.week??"");if(!/^\d{4}-W\d{2}$/.test(week))return NextResponse.json({error:"Choose a valid completed ISO week."},{status:400})
-      const client=await pool.connect();try{await client.query("BEGIN");await client.query("SELECT pg_advisory_xact_lock(hashtext($1))",[`mednexus:week-finalize:${week}`]);const repeated=await client.query("SELECT 1 FROM mednexus_admin_audit_log WHERE action='finalize' AND resource_type='weekly_economy' AND resource_id=$1",[week]);if(repeated.rowCount)throw new Error("This week has already been finalized.");const progress=await client.query(`SELECT COUNT(*)::int participants,COALESCE(SUM(jsonb_array_length(COALESCE(credited_goal_ids,'[]'::jsonb))),0)::int goals_awarded FROM mednexus_weekly_goal_progress WHERE week_id=$1`,[week]);await auditAdmin(client,admin.uid,"finalize","weekly_economy",week,progress.rows[0]??{});await client.query("COMMIT")}catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}return NextResponse.json({ok:true,...await payload()})
+    if(action==="gift_nt"){
+      const indexNumber=String(body.indexNumber??"").trim(),amount=Number(body.amount??0),note=String(body.note??"").trim()
+      if(!indexNumber||!Number.isInteger(amount)||amount<1||amount>100000||note.length<3)return NextResponse.json({error:"Enter a valid index number, an NT amount from 1 to 100,000, and a short gift note."},{status:400})
+      const client=await pool.connect();try{await client.query("BEGIN");const user=await client.query("SELECT uid,name,index_number FROM mednexus_registered_users WHERE LOWER(index_number)=LOWER($1) AND status='approved' FOR UPDATE",[indexNumber]);if(!user.rowCount)throw new Error("No approved learner matches that index number.");const giftId=randomUUID();await applyNPCredits(client,user.rows[0].uid,[{source:"admin_gift",sourceId:giftId,amount,countsTowardClinicalRank:false,ceilingPolicy:"exempt",metadata:{note,administrator:admin.uid,indexNumber:user.rows[0].index_number,displayCurrency:"NT"}}]);await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message,action_url,action_label) VALUES($1,$2,'economy',$3,'/','View balance') ON CONFLICT DO NOTHING`,[`admin-gift-${giftId}`,user.rows[0].uid,`You received a gift of ${amount} NT from MedNexus: ${note}`]);await auditAdmin(client,admin.uid,"gift","learner_nt",user.rows[0].uid,{giftId,indexNumber:user.rows[0].index_number,amount,note});await client.query("COMMIT")}catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}return NextResponse.json({ok:true,...await payload()})
     }
     if(action==="award_month"){
       if(admin.role!=="SUPER_ADMIN")return NextResponse.json({error:"Only a super administrator can finalize monthly rewards."},{status:403})
@@ -166,7 +161,7 @@ export async function POST(req:NextRequest){
       const after=await client.query("SELECT COALESCE(SUM(balance),0)::bigint total FROM mednexus_season_wallets WHERE season_id=$1",[target.id]);const expected=BigInt(before.rows[0].total)+BigInt(affectedUsers)*BigInt(target.opening_grant)
       if(BigInt(after.rows[0].total)!==expected)throw new Error(`Opening balance verification failed: expected ${expected}, received ${after.rows[0].total}.`)
       await client.query(`INSERT INTO mednexus_economy_cutovers(migration_id,from_season_id,to_season_id,affected_users,before_total,after_total,executed_by) VALUES($1,$2,$3,$4,$5,$6,$7)`,[migrationId,current.id,target.id,affectedUsers,before.rows[0].total,after.rows[0].total,admin.uid])
-      await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message,action_url,action_label) SELECT $1||'-'||uid,uid,'economy',$2,'/?hub=rankings','View season' FROM mednexus_registered_users WHERE status='approved' ON CONFLICT DO NOTHING`,[migrationId,`${target.name} has started. You received ${target.opening_grant} NP.`])
+      await client.query(`INSERT INTO mednexus_user_notifications(id,user_id,type,message,action_url,action_label) SELECT $1||'-'||uid,uid,'economy',$2,'/?hub=rankings','View season' FROM mednexus_registered_users WHERE status='approved' ON CONFLICT DO NOTHING`,[migrationId,`${target.name} has started. You received ${target.opening_grant} NT.`])
       await auditAdmin(client,admin.uid,"activate","economy_season",target.id,{fromSeasonId:current.id,migrationId,affectedUsers,beforeTotal:before.rows[0].total,afterTotal:after.rows[0].total})
       await client.query("COMMIT")
     }catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}
