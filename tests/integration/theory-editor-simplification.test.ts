@@ -22,6 +22,14 @@ describe("simplified Theory editor", () => {
   it("supports reversible hierarchy trash and deliberate permanent deletion", () => {
     for (const column of ["deleted_at", "deleted_by", "previous_status"]) expect(schema).toContain(column)
     for (const action of ['action === "trash"', 'action === "restore"', 'action === "purge"', 'action === "empty_trash"']) expect(route).toContain(action)
+    expect(route).toContain("DELETE FROM mednexus_content_import_jobs WHERE bank='theory' AND deleted_at IS NOT NULL")
+    expect(admin).toContain('{action:"empty_trash",kind}')
+  })
+
+  it("opens imported drafts in their assigned Theory folder", () => {
+    expect(admin).toContain("reviewGroupName")
+    expect(admin).toContain('setStatus("draft")')
+    expect(admin).toContain("Showing imported drafts in")
   })
 
   it("keeps prompt-only practice available without answer review or self-marking", () => {

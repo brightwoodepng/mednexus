@@ -270,11 +270,32 @@ export async function PATCH(request: NextRequest) {
             await client.query(`UPDATE mednexus_theory_sets SET status=COALESCE(previous_status,'published'),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE discipline_id=ANY($1::text[])`, [operationIds])
             await client.query(`UPDATE mednexus_theory_questions SET status=COALESCE(previous_status,'draft'),previous_status=NULL,deleted_at=NULL,deleted_by=NULL,updated_at=NOW() WHERE discipline_id=ANY($1::text[])`, [operationIds])
           }
+        } else if (action === "empty_trash") {
+          const kind = body.kind === "end_of_year" ? "end_of_year" : "end_of_module"
+          const questionResult = await client.query(`DELETE FROM mednexus_theory_questions q USING mednexus_theory_collections c
+            WHERE q.collection_id=c.id AND c.kind=$1 AND (
+              q.deleted_at IS NOT NULL
+              OR EXISTS (SELECT 1 FROM mednexus_theory_sets s WHERE s.id=q.set_id AND s.deleted_at IS NOT NULL)
+              OR EXISTS (SELECT 1 FROM mednexus_theory_modules m WHERE m.id=q.module_id AND m.deleted_at IS NOT NULL)
+              OR EXISTS (SELECT 1 FROM mednexus_theory_disciplines d WHERE d.id=q.discipline_id AND d.deleted_at IS NOT NULL)
+            )`, [kind])
+          const setResult = await client.query(`DELETE FROM mednexus_theory_sets s USING mednexus_theory_collections c
+            WHERE s.collection_id=c.id AND c.kind=$1 AND (
+              s.deleted_at IS NOT NULL
+              OR EXISTS (SELECT 1 FROM mednexus_theory_modules m WHERE m.id=s.module_id AND m.deleted_at IS NOT NULL)
+              OR EXISTS (SELECT 1 FROM mednexus_theory_disciplines d WHERE d.id=s.discipline_id AND d.deleted_at IS NOT NULL)
+            )`, [kind])
+          const moduleResult = await client.query(`DELETE FROM mednexus_theory_modules m USING mednexus_theory_collections c WHERE m.collection_id=c.id AND c.kind=$1 AND m.deleted_at IS NOT NULL`, [kind])
+          const disciplineResult = await client.query(`DELETE FROM mednexus_theory_disciplines d USING mednexus_theory_collections c WHERE d.collection_id=c.id AND c.kind=$1 AND d.deleted_at IS NOT NULL`, [kind])
+          const importResult = await client.query("DELETE FROM mednexus_content_import_jobs WHERE bank='theory' AND deleted_at IS NOT NULL")
+          const removed = (questionResult.rowCount ?? 0) + (setResult.rowCount ?? 0) + (moduleResult.rowCount ?? 0) + (disciplineResult.rowCount ?? 0) + (importResult.rowCount ?? 0)
+          await auditTheory(client, auth.uid, action, "trash", null, { kind, removed })
+          return { matched: removed, updated: removed, skipped: 0, validationDetails: [] }
         } else {
-          if (action === "empty_trash" || resource === "question") await client.query(`DELETE FROM mednexus_theory_questions WHERE deleted_at IS NOT NULL ${action === "empty_trash" ? "" : "AND id=ANY($1::text[])"}`, action === "empty_trash" ? [] : [operationIds])
-          if (action === "empty_trash" || resource === "set") await client.query(`DELETE FROM mednexus_theory_sets WHERE deleted_at IS NOT NULL ${action === "empty_trash" ? "" : "AND id=ANY($1::text[])"}`, action === "empty_trash" ? [] : [operationIds])
-          if (action === "empty_trash" || resource === "module") await client.query(`DELETE FROM mednexus_theory_modules WHERE deleted_at IS NOT NULL ${action === "empty_trash" ? "" : "AND id=ANY($1::text[])"}`, action === "empty_trash" ? [] : [operationIds])
-          if (action === "empty_trash" || resource === "discipline") await client.query(`DELETE FROM mednexus_theory_disciplines WHERE deleted_at IS NOT NULL ${action === "empty_trash" ? "" : "AND id=ANY($1::text[])"}`, action === "empty_trash" ? [] : [operationIds])
+          if (resource === "question") await client.query("DELETE FROM mednexus_theory_questions WHERE deleted_at IS NOT NULL AND id=ANY($1::text[])", [operationIds])
+          if (resource === "set") await client.query("DELETE FROM mednexus_theory_sets WHERE deleted_at IS NOT NULL AND id=ANY($1::text[])", [operationIds])
+          if (resource === "module") await client.query("DELETE FROM mednexus_theory_modules WHERE deleted_at IS NOT NULL AND id=ANY($1::text[])", [operationIds])
+          if (resource === "discipline") await client.query("DELETE FROM mednexus_theory_disciplines WHERE deleted_at IS NOT NULL AND id=ANY($1::text[])", [operationIds])
         }
         await auditTheory(client, auth.uid, action, resource, operationIds[0] ?? null, { ids: operationIds })
         return { matched: operationIds.length, updated: operationIds.length, skipped: 0, validationDetails: [] }

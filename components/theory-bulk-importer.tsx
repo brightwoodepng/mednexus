@@ -30,7 +30,7 @@ export function TheoryBulkImporter({ collectionKind, defaultSetSize = 20, onImpo
   collectionKind: TheoryCollectionKind
   defaultSetSize?: number
   onImported: () => Promise<void> | void
-  onReviewImported: () => void
+  onReviewImported: (destination: { groupName: string | null }) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -222,7 +222,8 @@ Continue the same numbered structure for every remaining question. Only include 
   }
 
   if (stage === "done") {
-    return <section className={`${card} max-w-3xl py-12 text-center`}><CheckCircle2 className="mx-auto text-emerald-600" size={38}/><h2 className="mt-4 text-2xl font-bold">{kindLabel} import complete</h2><p className="mt-2 text-sm text-muted-foreground">{message}</p><p className="mt-2 text-sm text-muted-foreground">The system placed every imported draft into its numbered set. Review and publish when ready.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><button onClick={onReviewImported} className={`${button} bg-primary text-primary-foreground`}><CheckCircle2 size={16}/>Review imported questions</button><button onClick={reset} className={`${button} border border-border`}><Upload size={16}/>Import another file</button></div></section>
+    const groupName = collectionKind === "end_of_module" ? items[0]?.moduleName : items[0]?.disciplineName
+    return <section className={`${card} max-w-3xl py-12 text-center`}><CheckCircle2 className="mx-auto text-emerald-600" size={38}/><h2 className="mt-4 text-2xl font-bold">{kindLabel} import complete</h2><p className="mt-2 text-sm text-muted-foreground">{message}</p><p className="mt-2 text-sm text-muted-foreground">Imported questions are saved as Draft and will not appear in the learner Theory Vault until you publish them. Review them in their assigned folder and numbered set.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><button onClick={() => onReviewImported({ groupName: groupName || null })} className={`${button} bg-primary text-primary-foreground`}><CheckCircle2 size={16}/>Review imported questions</button><button onClick={reset} className={`${button} border border-border`}><Upload size={16}/>Import another file</button></div></section>
   }
 
   return <div className="space-y-5">

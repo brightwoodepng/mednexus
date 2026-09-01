@@ -67,6 +67,7 @@ export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: 
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [reviewGroupName, setReviewGroupName] = useState<string | null>(null)
   const requestRef = useRef<AbortController | null>(null)
   const requestIdRef = useRef(0)
   const cacheRef = useRef(new Map<string, AdminData>())
@@ -102,6 +103,15 @@ export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: 
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 180); return () => { window.clearTimeout(timer); requestRef.current?.abort() } }, [load])
   useEffect(() => { setGroupId(""); setSetId(""); setSelected([]) }, [kind])
+  useEffect(() => {
+    if (!reviewGroupName || tab !== "editor") return
+    const destination = groups.find(group => group.name.localeCompare(reviewGroupName, undefined, { sensitivity: "accent" }) === 0)
+    if (!destination) return
+    setGroupId(destination.id)
+    setSetId("")
+    setReviewGroupName(null)
+    setNotice(`Showing imported drafts in ${destination.name}.`)
+  }, [groups, reviewGroupName, tab])
 
   const change = async (method: "POST" | "PATCH", body: Record<string, unknown>, success: string) => {
     setBusy(true); setError(""); setNotice("")
@@ -167,9 +177,9 @@ export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: 
       </main>
     </div> : null}
 
-    {tab === "import" ? <TheoryBulkImporter collectionKind={kind} defaultSetSize={data.settings.defaultSetSize} onImported={load} onReviewImported={() => setTab("editor")}/> : null}
+    {tab === "import" ? <TheoryBulkImporter collectionKind={kind} defaultSetSize={data.settings.defaultSetSize} onImported={() => { cacheRef.current.clear(); return load(true) }} onReviewImported={({groupName}) => { setQuery(""); setStatus("draft"); setSetId(""); setSelected([]); setReviewGroupName(groupName); setTab("editor") }}/> : null}
     {tab === "imports" ? <ImportHistory jobs={data.imports} onChange={async (id,action) => { await api(`/api/admin/content/imports/${id}`, { method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action}) }); setNotice(action === "trash" ? "Import moved to Trash." : "Import restored."); await load() }}/> : null}
-    {tab === "trash" ? <TrashView data={data} busy={busy} change={change} reload={load}/> : null}
+    {tab === "trash" ? <TrashView data={data} kind={kind} busy={busy} change={change} reload={load}/> : null}
     {tab === "more" ? <MoreTools data={data} change={change}/> : null}
     {active ? <QuestionPanel question={active} data={data} onClose={() => setActive(null)} onSaved={saveQuestion}/> : null}
     {preview ? <PreviewPanel question={preview} onClose={() => setPreview(null)}/> : null}
@@ -188,14 +198,14 @@ function MovePanel({ids,groups,sets,kind,onClose,onMove}:{ids:string[];groups:Gr
 
 function ImportHistory({jobs,onChange}:{jobs:ImportJob[];onChange:(id:string,action:"trash"|"restore")=>Promise<void>}) { return <section className={`${card} overflow-hidden`}><div className="border-b border-border p-5"><h2 className="text-xl font-bold">Uploaded files</h2><p className="text-sm text-muted-foreground">Import history does not control questions already created from a file.</p></div><div className="divide-y divide-border">{jobs.filter(job=>!job.deletedAt).map(job=><article key={job.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><FileUp className="text-primary"/><div className="min-w-0 flex-1"><b className="block truncate">{job.sourceName}</b><span className="text-xs text-muted-foreground">{job.totalCount} questions · {job.status} · {new Date(job.createdAt).toLocaleDateString()}</span></div><button onClick={()=>void onChange(job.id,"trash")} className={`${button} text-destructive hover:bg-destructive/10`}><Trash2 size={14}/>Trash file</button></article>)}</div></section> }
 
-function TrashView({data,busy,change,reload}:{data:AdminData;busy:boolean;change:(method:"POST"|"PATCH",body:Record<string,unknown>,success:string)=>Promise<boolean>;reload:()=>Promise<void>}) {
+function TrashView({data,kind,busy,change,reload}:{data:AdminData;kind:Kind;busy:boolean;change:(method:"POST"|"PATCH",body:Record<string,unknown>,success:string)=>Promise<boolean>;reload:()=>Promise<void>}) {
   const questions=data.questions.filter(q=>q.deletedAt)
   const items=[...data.trash,...questions.map(q=>({type:"question" as const,id:q.id,label:q.title||q.prompt,deletedAt:q.deletedAt!,count:1}))]
   const imports=data.imports.filter(job=>job.deletedAt)
   const totalItems=items.length+imports.length
   const act=async(action:"restore"|"purge",item:typeof items[number])=>{if(action==="purge"&&window.prompt(`Type DELETE to permanently remove ${item.label}`)!=="DELETE")return;await change("PATCH",{action,resource:item.type,ids:[item.id]},action==="restore"?"Restored.":"Permanently deleted.")}
   const actImport=async(action:"restore"|"purge",job:ImportJob)=>{if(action==="purge"&&window.prompt(`Type DELETE to permanently remove ${job.sourceName}`)!=="DELETE")return;await api(`/api/admin/content/imports/${job.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,confirmation:action==="purge"?"DELETE":undefined})});await reload()}
-  const emptyTrash=async()=>{if(window.prompt("Type DELETE to permanently empty Theory Trash")!=="DELETE")return;await Promise.all(imports.map(job=>api(`/api/admin/content/imports/${job.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"purge",confirmation:"DELETE"})})));await change("PATCH",{action:"empty_trash"},"Trash emptied.")}
+  const emptyTrash=async()=>{if(window.prompt("Type DELETE to permanently empty Theory Trash")!=="DELETE")return;await change("PATCH",{action:"empty_trash",kind},"Trash emptied.")}
   return <section className={`${card} overflow-hidden`}><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div><h2 className="text-xl font-bold">Trash</h2><p className="text-sm text-muted-foreground">Items stay here until you permanently delete them.</p></div><button disabled={busy||!totalItems} onClick={()=>void emptyTrash()} className={`${button} bg-destructive text-destructive-foreground disabled:opacity-40`}>Empty trash</button></div><div className="divide-y divide-border">{items.map(item=><article key={`${item.type}-${item.id}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><Trash2 className="text-muted-foreground"/><div className="min-w-0 flex-1"><b className="block truncate">{item.label}</b><span className="text-xs capitalize text-muted-foreground">{item.type} · {item.count} contained question{item.count===1?"":"s"}</span></div><button onClick={()=>void act("restore",item)} className={`${button} border border-border`}><ArchiveRestore size={14}/>Restore</button><button onClick={()=>void act("purge",item)} className={`${button} text-destructive hover:bg-destructive/10`}><Trash2 size={14}/>Delete forever</button></article>)}{imports.map(job=><article key={`import-${job.id}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><FileUp className="text-muted-foreground"/><div className="min-w-0 flex-1"><b className="block truncate">{job.sourceName}</b><span className="text-xs text-muted-foreground">Import file · created questions are unaffected</span></div><button onClick={()=>void actImport("restore",job)} className={`${button} border border-border`}><ArchiveRestore size={14}/>Restore</button><button onClick={()=>void actImport("purge",job)} className={`${button} text-destructive hover:bg-destructive/10`}><Trash2 size={14}/>Delete forever</button></article>)}{!totalItems?<p className="p-12 text-center text-sm text-muted-foreground">Trash is empty.</p>:null}</div></section>
 }
 
