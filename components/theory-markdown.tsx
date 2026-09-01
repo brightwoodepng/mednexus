@@ -3,6 +3,7 @@
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeSanitize from "rehype-sanitize"
+import { formatTheorySubquestions } from "@/lib/theory-format"
 
 export function TheoryMarkdown({ children, className = "" }: { children: string; className?: string }) {
   return (
@@ -25,7 +26,7 @@ export function TheoryMarkdown({ children, className = "" }: { children: string;
           a: props => <a className="font-semibold text-primary underline underline-offset-2" target="_blank" rel="noreferrer" {...props} />,
         }}
       >
-        {children}
+        {formatTheorySubquestions(children)}
       </ReactMarkdown>
     </div>
   )

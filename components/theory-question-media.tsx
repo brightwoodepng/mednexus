@@ -8,12 +8,16 @@ export function TheoryQuestionMedia({ media, compact = false }: { media: TheoryM
   return (
     <div className={`grid gap-3 ${visible.length > 1 ? "sm:grid-cols-2" : ""}`}>
       {visible.map((item, index) => (
-        <figure key={`${item.url.slice(0, 80)}-${index}`} className="overflow-hidden rounded-xl border border-border/70 bg-muted/20">
-          <img
-            src={item.url}
-            alt={item.alt || `Question image ${index + 1}`}
-            className={`w-full object-contain ${compact ? "max-h-40" : "max-h-[32rem]"}`}
-          />
+        <figure key={`${item.url.slice(0, 80)}-${index}`} className={`overflow-hidden rounded-xl border border-border/70 bg-muted/20 ${visible.length === 1 ? "mx-auto w-full max-w-3xl" : ""}`}>
+          <div className={`flex items-center justify-center p-2 sm:p-3 ${compact ? "max-h-44" : "max-h-[24rem]"}`}>
+            <img
+              src={item.url}
+              alt={item.alt || `Question image ${index + 1}`}
+              loading="lazy"
+              decoding="async"
+              className={`h-auto w-auto max-w-full object-contain ${compact ? "max-h-40" : "max-h-[22rem]"}`}
+            />
+          </div>
           {item.alt && <figcaption className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">{item.alt}</figcaption>}
         </figure>
       ))}
