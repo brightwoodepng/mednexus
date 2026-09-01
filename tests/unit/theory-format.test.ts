@@ -13,4 +13,9 @@ describe("Theory question formatting", () => {
     expect(formatTheorySubquestions("Vitamin A. This sentence remains unchanged."))
       .toBe("Vitamin A. This sentence remains unchanged.")
   })
+
+  it("turns Markdown-soft line breaks from structured imports into separate paragraphs", () => {
+    expect(formatTheorySubquestions("A. State two advantages.\nB. Sketch the latrine.\nC. Explain why it is preferred."))
+      .toBe("A. State two advantages.\n\nB. Sketch the latrine.\n\nC. Explain why it is preferred.")
+  })
 })

@@ -133,7 +133,7 @@ function structuredPrompt(record: Record<string, unknown>, fallback: string) {
   })
   if (!preamble && !questions.length) return fallback
   const blocks = preamble ? [`> **Preamble**\n> ${preamble.replace(/\n/g, "\n> ")}`] : []
-  if (questions.length) blocks.push(questions.map(item => `${item.label}. ${item.text}`).join("\n"))
+  if (questions.length) blocks.push(questions.map(item => `**${item.label}.** ${item.text}`).join("\n\n"))
   return blocks.join("\n\n")
 }
 
