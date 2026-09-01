@@ -19,7 +19,7 @@ describe("notification centre",()=>{
   })
 
   it("keeps delivery targeting and preferences in the database",()=>{
-    expect(database).toContain("2026-08-28-theory-editor-trash-v1")
+    expect(database).toContain("2026-09-01-admin-console-stability-v1")
     expect(notificationSchema).toContain("mednexus_notification_preferences")
     expect(notificationSchema).not.toMatch(/\b(CREATE|ALTER|DROP|DELETE|TRUNCATE)\s+(TABLE|INDEX)\b/i)
     expect(notificationSchema).toContain("Run the release migration")

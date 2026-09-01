@@ -21,7 +21,7 @@ describe("negative-marking assessment contracts", () => {
   })
 
   it("defines the grading migration without running DDL in assessment requests", () => {
-    expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-08-28-theory-editor-trash-v1"')
+    expect(database).toContain('CURRENT_SCHEMA_VERSION = "2026-09-01-admin-console-stability-v1"')
     expect(database).toContain("ADD COLUMN IF NOT EXISTS grading_mode")
     expect(createRoute).toContain("assessmentGradingModeSql")
     expect(createRoute).toContain("optionalRuntimePool")

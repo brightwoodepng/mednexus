@@ -53,7 +53,7 @@ let groupStudyInitialized = false
 // Keep this marker in step with every deployed DDL change. The previous
 // assessment-grading marker predated the admin platform/settings and economy
 // season tables, which let existing databases skip those additions entirely.
-export const CURRENT_SCHEMA_VERSION = "2026-08-28-theory-editor-trash-v1"
+export const CURRENT_SCHEMA_VERSION = "2026-09-01-admin-console-stability-v1"
 
 export async function groupStudySchemaStatus() {
   const result = await pool.query<{
@@ -1188,6 +1188,31 @@ export async function ensureSchema() {
     -- never read from or write to this broadcast-level column.
     ALTER TABLE mednexus_notifications
       ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE mednexus_notifications
+      ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'EVERYONE',
+      ADD COLUMN IF NOT EXISTS audience_value JSONB NOT NULL DEFAULT '[]',
+      ADD COLUMN IF NOT EXISTS action_url TEXT,
+      ADD COLUMN IF NOT EXISTS action_label TEXT,
+      ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS created_by TEXT,
+      ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    ALTER TABLE mednexus_user_notifications
+      ADD COLUMN IF NOT EXISTS action_url TEXT,
+      ADD COLUMN IF NOT EXISTS action_label TEXT,
+      ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+    CREATE INDEX IF NOT EXISTS mednexus_notifications_delivery_idx
+      ON mednexus_notifications (scheduled_at DESC, expires_at);
+    CREATE TABLE IF NOT EXISTS mednexus_notification_preferences (
+      user_id TEXT PRIMARY KEY REFERENCES mednexus_registered_users(uid) ON DELETE CASCADE,
+      study BOOLEAN NOT NULL DEFAULT TRUE,
+      group_study BOOLEAN NOT NULL DEFAULT TRUE,
+      rewards BOOLEAN NOT NULL DEFAULT TRUE,
+      rankings BOOLEAN NOT NULL DEFAULT TRUE,
+      announcements BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
 
     ALTER TABLE mednexus_user_cosmetics
       ADD COLUMN IF NOT EXISTS equipped_avatar TEXT;

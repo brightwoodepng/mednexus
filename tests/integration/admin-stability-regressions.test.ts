@@ -24,6 +24,13 @@ describe("admin stability regressions", () => {
     expect(repair).not.toMatch(/END \$(?!\$)/)
   })
 
+  it("installs the complete notification contract through the release migration", async () => {
+    const source = await readFile("lib/db.ts", "utf8")
+    for (const contract of ["audience_value", "scheduled_at", "action_url", "mednexus_notification_preferences"]) {
+      expect(source).toContain(contract)
+    }
+  })
+
   it("cancels stale Theory loads and updates a saved question in place", async () => {
     const source = await readFile("components/theory-admin-simplified.tsx", "utf8")
     expect(source).toContain("requestRef.current?.abort()")
