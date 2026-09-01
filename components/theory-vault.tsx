@@ -613,34 +613,33 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
     <div className="mx-auto max-w-7xl space-y-4 pb-24 md:pb-0">
 
       {/* ── Top nav bar ── */}
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border/70 pb-4">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border/70 pb-4">
         <button onClick={onBack} aria-label="Back to set" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted"><ArrowLeft size={18}/></button>
-        <div className="min-w-0"><p className="truncate text-sm font-semibold">Theory Vault <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 text-xs text-muted-foreground">{question.setLabel}</p></div>
-        <div className="flex items-center gap-2"><span className="hidden text-sm font-semibold text-muted-foreground sm:block">{question.position} of {question.setTotal}</span>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Theory Vault <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 text-xs text-muted-foreground">{question.setLabel} · {question.position} of {question.setTotal}</p></div>
+        <div className="order-3 grid w-full grid-cols-2 gap-2 sm:order-none sm:flex sm:w-auto sm:items-center">
           <button
             onClick={toggleBookmark}
             aria-label={state?.bookmark ? "Remove bookmark" : "Bookmark question"}
             title={state?.bookmark ? "Bookmarked" : "Bookmark"}
-            className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all ${
+            className={`flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-all ${
               state?.bookmark ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <Bookmark size={17} className={state?.bookmark ? "" : "text-primary"} fill={state?.bookmark ? "currentColor" : "none"}/>
+            <Bookmark size={17} className={state?.bookmark ? "" : "text-primary"} fill={state?.bookmark ? "currentColor" : "none"}/><span>{state?.bookmark ? "Bookmarked" : "Bookmark"}</span>
           </button>
           <button
             onClick={toggleRevision}
             aria-label={state?.revision ? "Remove from revision" : "Mark for revision"}
             title={state?.revision ? "In revision" : "Mark for revision"}
-            className={`hidden h-11 w-11 items-center justify-center rounded-xl transition-all sm:flex ${
+            className={`flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-all ${
               state?.revision ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <RefreshCw size={16} className={state?.revision ? "" : "text-primary"}/>
+            <RefreshCw size={16} className={state?.revision ? "" : "text-primary"}/><span>{state?.revision ? "In revision" : "Revision"}</span>
           </button>
+          <div className="col-span-2 grid grid-cols-2 rounded-xl border border-border bg-muted/40 p-1 sm:col-span-1"><button onClick={() => setMode("review")} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === "review" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Review</button><button onClick={() => setMode("practice")} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === "practice" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Practice</button></div>
         </div>
       </div>
-
-      <div className="flex items-center justify-between gap-3"><span className="text-xs font-semibold text-muted-foreground sm:hidden">{question.position} of {question.setTotal}</span><div className="ml-auto grid grid-cols-2 rounded-xl border border-border bg-muted/40 p-1"><button onClick={() => setMode("review")} className={`rounded-lg px-4 py-2 text-sm font-bold ${mode === "review" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Review</button><button onClick={() => setMode("practice")} className={`rounded-lg px-4 py-2 text-sm font-bold ${mode === "practice" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Practice</button></div></div>
 
       {!registered && <SignInNotice/>}
       {message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
@@ -660,26 +659,14 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
 
       {/* Focused question prompt */}
       <article className="rounded-[1.25rem] border border-border bg-card p-5 shadow-sm sm:p-7">
-          <p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-primary">Question</p>
-          <h1 className="break-words text-xl font-bold leading-snug sm:text-2xl">{question.title || question.prompt}</h1>
-          {question.title && (
-            <TheoryMarkdown children={question.prompt} className="mt-3 text-foreground/80"/>
-          )}
-          {question.media.length > 0 && <div className="mt-4"><TheoryQuestionMedia media={question.media}/></div>}
+          <div className={`grid items-start gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-primary">Question</p><h1 className="break-words text-xl font-bold leading-snug sm:text-2xl">{question.title || question.prompt}</h1>{question.title && <TheoryMarkdown children={question.prompt} className="mt-3 text-foreground/80"/>}</div>{question.media.length > 0 && <div className="lg:pt-7"><TheoryQuestionMedia media={question.media} compact/></div>}</div>
       </article>
 
       {/* ── Review mode ── */}
       {mode === "review" ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-
-          <div className="grid grid-cols-2 rounded-xl border border-border bg-card p-1 lg:hidden"><button onClick={()=>setReviewPane("answer")} className={`rounded-lg px-3 py-2.5 text-sm font-bold ${reviewPane==="answer"?"bg-primary text-primary-foreground":"text-muted-foreground"}`}>Model Answer</button><button onClick={()=>setReviewPane("notes")} className={`rounded-lg px-3 py-2.5 text-sm font-bold ${reviewPane==="notes"?"bg-primary text-primary-foreground":"text-muted-foreground"}`}>My Notes</button></div>
-
-          {/* Model Answer card */}
-          <article className={`${reviewPane==="answer"?"block":"hidden"} overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-sm lg:block`}>
-            <div className="flex items-center gap-3 border-b border-border px-5 py-4 sm:px-6">
-              <BookOpen className="text-primary" size={19}/>
-              <div><h2 className="text-lg font-bold">Model Answer</h2><p className="text-xs text-muted-foreground">Compare each section with the question above.</p></div>
-            </div>
+        <article className="overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-sm">
+            <div className="grid grid-cols-2 border-b border-border px-3 pt-2 sm:flex sm:gap-2"><button onClick={()=>setReviewPane("answer")} className={`flex min-h-11 items-center justify-center gap-2 border-b-2 px-4 text-sm font-bold transition ${reviewPane==="answer"?"border-primary text-primary":"border-transparent text-muted-foreground"}`}><BookOpen size={17}/>Model Answer</button><button onClick={()=>setReviewPane("notes")} className={`flex min-h-11 items-center justify-center gap-2 border-b-2 px-4 text-sm font-bold transition ${reviewPane==="notes"?"border-primary text-primary":"border-transparent text-muted-foreground"}`}><NotebookPen size={17}/>My Notes</button></div>
+          {reviewPane === "answer" ? <>
             <div className="p-5 sm:p-6">
               {/* Main narrative answer — card-style to distinguish from key points */}
               {question.hasAnswer ? <>
@@ -689,16 +676,13 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
                 <KeyPointsSection key={question.id} points={question.keyMarkingPoints}/>
               </> : <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-5 text-sm text-amber-900 dark:text-amber-100"><b className="block">Model answer coming soon</b><span className="mt-1 block">You can practise this prompt now, but answer review and self-marking are unavailable until the editor adds an answer.</span></div>}
             </div>
-          </article>
-
-          {/* Note sidebar */}
-          <div className={`${reviewPane==="notes"?"block":"hidden"} lg:block`}><NoteEditor
+          </> : <NoteEditor
             note={note}
             registered={registered}
             onChange={setNote}
             onSave={saveNote}
-          /></div>
-        </div>
+          />}
+        </article>
 
       ) : (
         /* ── Practice mode ── */
@@ -970,19 +954,15 @@ function NoteEditor({
   onSave: () => void
 }) {
   return (
-    <aside className="h-fit overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-sm lg:sticky lg:top-4">
-      <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-        <NotebookPen className="text-primary" size={19}/>
-        <div><h2 className="text-lg font-bold">My Notes</h2><p className="text-xs text-muted-foreground">Keep a quick reminder for this question.</p></div>
-      </div>
-      <div className="p-4 sm:p-5">
+    <div className="p-5 sm:p-6">
+      <div className="mx-auto max-w-3xl"><p className="mb-3 text-sm text-muted-foreground">Keep a quick reminder for this question.</p>
         <textarea value={note} onChange={event => onChange(event.target.value)} rows={12}
           disabled={!registered}
           placeholder={registered ? "Write a quick note…" : "Sign in to save personal notes."}
           className="w-full resize-y rounded-xl border border-border bg-background p-4 text-sm leading-6 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-60"/>
         <button onClick={onSave} disabled={!registered} className={`${button} mt-3 w-full bg-primary text-primary-foreground disabled:opacity-50`}><Save size={15}/> Save note</button>
       </div>
-    </aside>
+    </div>
   )
 }
 
