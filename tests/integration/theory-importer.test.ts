@@ -136,6 +136,38 @@ describe("Theory bulk importer", () => {
     ])).toHaveLength(2)
   })
 
+  it("preserves preambles, sub-questions, matching answer sections, and unique images", () => {
+    const result = normalizeTheoryImport({ questions: [{
+      collectionKind: "end_of_module",
+      moduleName: "Community Medicine",
+      disciplineName: "Community Medicine",
+      title: "Port health flags and hazards",
+      preamble: "Study the port-health flags shown in the exhibit.",
+      subQuestions: [
+        { label: "A", text: "Explain each flag and what it communicates." },
+        { label: "B", text: "State two port hazards and their health effects." },
+      ],
+      modelAnswerSections: [
+        { label: "A", heading: "Quarantine flags", body: "Q requests free pratique; QQ requires clearance; QL indicates infection risk." },
+        { label: "B", heading: "Port hazards", body: "Dust may cause respiratory disease; noise may cause hearing loss." },
+      ],
+      prompt: "compatibility fallback",
+      modelAnswer: "compatibility fallback",
+      imageIds: ["IMAGE_1"],
+    }] }, [{ id: "IMAGE_1", dataUri: "data:image/png;base64,aGVsbG8=" }])
+    expect(result.errors).toEqual([])
+    expect(result.items[0].prompt).toContain("> **Preamble**")
+    expect(result.items[0].prompt).toContain("A. Explain each flag")
+    expect(result.items[0].modelAnswer).toContain("### A. Quarantine flags")
+    expect(result.items[0].modelAnswer).toContain("### B. Port hazards")
+    expect(result.items[0].media).toHaveLength(1)
+
+    expect(sanitizeTheoryMedia([
+      { type: "image", url: "https://example.edu/flags.png" },
+      { type: "image", url: "https://example.edu/flags.png" },
+    ])).toHaveLength(1)
+  })
+
   it("keeps the importer admin-protected and renders saved media to learners", async () => {
     const [route, adminRoute, exportRoute, manager, vault, db] = await Promise.all([
       readFile(new URL("../../app/api/admin/theory/import/route.ts", import.meta.url), "utf8"),
@@ -158,6 +190,7 @@ describe("Theory bulk importer", () => {
     expect(manager).toContain("<TheoryMediaEditor")
     expect(manager).toContain("Assign selected to set")
     expect(vault).toContain("<TheoryQuestionMedia media={question.media}")
+    expect(vault).toContain("<TheoryMarkdown children={question.prompt}")
     expect(vault).not.toContain("question.referencesMd")
     expect(adminRoute).toContain("question_limit")
     expect(adminRoute).toContain("discipline_id=COALESCE($4,discipline_id)")

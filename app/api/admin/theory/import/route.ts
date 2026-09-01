@@ -19,7 +19,10 @@ Return JSON only, in this shape:
   "moduleName":"module heading or empty string",
   "disciplineName":"discipline/subject heading or empty string",
   "title":"concise, specific question-card title",
+  "preamble":"shared scenario, exhibit description, case stem, or empty string",
+  "subQuestions":[{"label":"A or 1","text":"one complete sub-question"}],
   "prompt":"complete question prompt, preserving any [IMAGE_N] markers",
+  "modelAnswerSections":[{"label":"matching sub-question label","heading":"short answer topic","body":"complete answer in Markdown"}],
   "modelAnswer":"complete model answer in Markdown, preserving any [IMAGE_N] markers",
   "keyMarkingPoints":["one point per item"],
   "tags":["tags"],
@@ -38,6 +41,9 @@ Rules:
 - Headings establish running collection, module, and discipline context for following questions.
 - Do not return or create sets. The server assigns imported drafts to numbered sets automatically.
 - Generate a concise, specific title from each question's main subject, clinical problem, or learning focus, even when the source has no explicit title. Never use a generic label such as "Theory Question" or "Question 1", and never copy the full prompt as the title.
+- Preserve compound-question structure. Put a shared case, scenario, exhibit description, or introductory statement in preamble. Put every distinct instruction or question in subQuestions, in source order, with its original A/B/C or numeric label. Never combine separate sub-questions into one sentence.
+- Split the model answer into modelAnswerSections that use the same labels and order as subQuestions. Give each section a short descriptive heading. Preserve paragraphs, numbered steps, bullet lists, and tables as Markdown instead of flattening them into prose.
+- Also return prompt and modelAnswer as compatibility fallbacks, but never flatten paragraph boundaries. If there is one question with no preamble, subQuestions may contain one item.
 - Never invent a module. Use the exact module heading from the document.
 - Preserve an existing discipline heading exactly. If a question has no discipline heading, infer a concise, standard medical discipline from the question content.
 - This import is ${label}. Set collectionKind to "${collectionKind}" for every question.

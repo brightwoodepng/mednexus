@@ -679,7 +679,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
       <article className="rounded-2xl border border-border bg-card px-4 py-4 shadow-sm sm:px-5">
           <h1 className="break-words text-lg font-bold leading-snug sm:text-xl">{question.title || question.prompt}</h1>
           {question.title && (
-            <p className="mt-3 leading-7 text-foreground/80">{question.prompt}</p>
+            <TheoryMarkdown children={question.prompt} className="mt-3 text-foreground/80"/>
           )}
           {question.media.length > 0 && <div className="mt-4"><TheoryQuestionMedia media={question.media}/></div>}
       </article>

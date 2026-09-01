@@ -121,6 +121,35 @@ function markerIds(...values: string[]) {
   return ids
 }
 
+function structuredPrompt(record: Record<string, unknown>, fallback: string) {
+  const preamble = text(record.preamble)
+  const raw = Array.isArray(record.subQuestions) ? record.subQuestions : []
+  const questions = raw.flatMap((entry, index) => {
+    if (typeof entry === "string") return [{ label: String(index + 1), text: entry.trim() }]
+    if (!entry || typeof entry !== "object") return []
+    const item = entry as Record<string, unknown>
+    const content = text(item.text ?? item.question ?? item.prompt)
+    return content ? [{ label: text(item.label, String(index + 1)).replace(/[.):]+$/, ""), text: content }] : []
+  })
+  if (!preamble && !questions.length) return fallback
+  const blocks = preamble ? [`> **Preamble**\n> ${preamble.replace(/\n/g, "\n> ")}`] : []
+  if (questions.length) blocks.push(questions.map(item => `${item.label}. ${item.text}`).join("\n"))
+  return blocks.join("\n\n")
+}
+
+function structuredAnswer(record: Record<string, unknown>, fallback: string) {
+  const raw = Array.isArray(record.modelAnswerSections) ? record.modelAnswerSections : []
+  const sections = raw.flatMap((entry, index) => {
+    if (typeof entry === "string") return [{ label: String(index + 1), heading: "", body: entry.trim() }]
+    if (!entry || typeof entry !== "object") return []
+    const item = entry as Record<string, unknown>
+    const body = text(item.body ?? item.answer ?? item.text)
+    return body ? [{ label: text(item.label, String(index + 1)).replace(/[.):]+$/, ""), heading: text(item.heading ?? item.title), body }] : []
+  })
+  if (!sections.length) return fallback
+  return sections.map(item => `### ${item.label}${item.heading ? `. ${item.heading}` : ""}\n\n${item.body}`).join("\n\n")
+}
+
 export function normalizeTheoryImport(payload: unknown, images: TheoryImportImage[] = [], expectedKind?: TheoryCollectionKind): TheoryImportValidation {
   const records = collect(payload)
   const imageMap = new Map(images.map(image => [image.id.toUpperCase(), image.dataUri]))
@@ -146,19 +175,19 @@ export function normalizeTheoryImport(payload: unknown, images: TheoryImportImag
       if (collectionKind === "end_of_module" && !moduleName) throw new Error("Module is required for End-of-Module content.")
       if (collectionKind === "end_of_year" && !disciplineName) throw new Error("Discipline is required for End-of-Year content.")
 
-      const rawPrompt = text(record.prompt ?? record.question)
+      const rawPrompt = structuredPrompt(record, text(record.prompt ?? record.question))
       if (!rawPrompt) throw new Error("Question prompt is required.")
       const prompt = stripImageMarkers(rawPrompt)
-      const rawAnswer = text(record.modelAnswer ?? record.answer ?? record.model_answer)
+      const rawAnswer = structuredAnswer(record, text(record.modelAnswer ?? record.answer ?? record.model_answer))
       const keyMarkingPoints = list(record.keyMarkingPoints ?? record.markingPoints ?? record.key_points)
       const key = `${collectionTitle.toLowerCase()}|${rawPrompt.toLowerCase().replace(/\s+/g, " ")}`
       if (seen.has(key)) throw new Error("Duplicate question in this import.")
       seen.add(key)
 
-      const requestedIds = [
+      const requestedIds = [...new Set([
         ...markerIds(rawPrompt, rawAnswer),
         ...list(record.imageIds ?? record.images).map(id => id.replace(/^\[|\]$/g, "").toUpperCase()),
-      ]
+      ])]
       const importedMedia = requestedIds
         .map(id => imageMap.get(id))
         .filter((url): url is string => Boolean(url))

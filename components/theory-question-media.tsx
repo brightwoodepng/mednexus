@@ -2,7 +2,7 @@ import type { TheoryMediaItem } from "@/lib/theory-media"
 import { isSafeTheoryMediaUrl } from "@/lib/theory-media"
 
 export function TheoryQuestionMedia({ media, compact = false }: { media: TheoryMediaItem[]; compact?: boolean }) {
-  const visible = media.filter(item => item && typeof item.url === "string" && isSafeTheoryMediaUrl(item.url))
+  const visible = media.filter((item, index, items) => item && typeof item.url === "string" && isSafeTheoryMediaUrl(item.url) && items.findIndex(candidate => candidate?.url === item.url) === index)
   if (!visible.length) return null
 
   return (
