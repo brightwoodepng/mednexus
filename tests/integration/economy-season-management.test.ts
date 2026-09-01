@@ -19,6 +19,14 @@ describe("economy season management",()=>{
     expect(api).toContain("pg_advisory_xact_lock")
     expect(api).toContain("A planned season already uses this name or economy version.")
   })
+  it("manages weekly closure, reward rules, and audited NP/XP corrections",()=>{
+    for(const action of ['action==="finalize_week"','action==="update_rules"','action==="adjust_points"'])expect(api).toContain(action)
+    expect(api).toContain("applyNPCredits")
+    expect(api).toContain("applyXPCredits")
+    expect(api).toContain("weekly_economy")
+    expect(api).not.toContain("ensureNotificationSchema")
+    for(const label of ["Finalize week","Save reward rules","Apply correction","All-time XP remains continuous across seasons"])expect(ui).toContain(label)
+  })
   it("archives the prior season and verifies every opening balance",()=>{
     for(const text of ["mednexus_economy_season_archives","status='closed'","status='active'","mednexus_economy_cutovers","Opening balance verification failed","auditAdmin"])expect(api).toContain(text)
     expect(economy).toContain("season.openingGrant")

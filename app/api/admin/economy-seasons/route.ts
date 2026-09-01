@@ -4,10 +4,12 @@ import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
 import { assertEconomySeasonSchema, EconomySeasonSchemaError } from "@/lib/economy-seasons"
 import { applyNPCredits } from "@/lib/np-ledger"
-import { ensureNotificationSchema } from "@/lib/notification-schema"
+import { applyXPCredits } from "@/lib/xp-ledger"
+import { randomUUID } from "node:crypto"
 
 const confirmationFor=(name:string)=>`START ${name.trim().toUpperCase()}`
 const slug=(value:string)=>value.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60)
+const validRewards=(values:number[])=>values.length>0&&values.length<=100&&values.every(value=>Number.isInteger(value)&&value>=0&&value<=100000)
 
 async function awardSeasonWinners(client: import("pg").PoolClient, season: Record<string,unknown>) {
   const rewards = Array.isArray(season.seasonal_rewards) ? season.seasonal_rewards.map(Number) : []
@@ -81,8 +83,22 @@ export async function POST(req:NextRequest){
   const admin=await requireAdminRequest(req,"manage_system");if(!admin)return adminAccessDenied(req)
   if(admin.role!=="SUPER_ADMIN")return NextResponse.json({error:"Only a super administrator can reset an economy season."},{status:403})
   try{
-    await ensureNotificationSchema(pool)
     await assertEconomySeasonSchema(pool);const body=await req.json() as Record<string,unknown>;const action=String(body.action??"")
+    if(action==="update_rules"){
+      const seasonId=String(body.seasonId??""),minimumEligibleQuestions=Number(body.minimumEligibleQuestions)
+      const monthlyRewards=Array.isArray(body.monthlyRewards)?body.monthlyRewards.map(Number):[],seasonalRewards=Array.isArray(body.seasonalRewards)?body.seasonalRewards.map(Number):[]
+      if(!seasonId||!Number.isInteger(minimumEligibleQuestions)||minimumEligibleQuestions<1||minimumEligibleQuestions>100000||!validRewards(monthlyRewards)||!validRewards(seasonalRewards))return NextResponse.json({error:"Enter valid eligibility and reward amounts."},{status:400})
+      const client=await pool.connect();try{await client.query("BEGIN");const updated=await client.query(`UPDATE mednexus_economy_seasons SET minimum_eligible_questions=$2,monthly_rewards=$3::jsonb,seasonal_rewards=$4::jsonb WHERE id=$1 AND status IN ('planned','active') RETURNING id`,[seasonId,minimumEligibleQuestions,JSON.stringify(monthlyRewards),JSON.stringify(seasonalRewards)]);if(!updated.rowCount)throw new Error("Choose an active or planned season.");await auditAdmin(client,admin.uid,"update","economy_rules",seasonId,{minimumEligibleQuestions,monthlyRewards,seasonalRewards});await client.query("COMMIT")}catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}return NextResponse.json({ok:true,...await payload()})
+    }
+    if(action==="adjust_points"){
+      const userId=String(body.userId??"").trim(),npAmount=Number(body.npAmount??0),xpAmount=Number(body.xpAmount??0),reason=String(body.reason??"").trim()
+      if(!userId||reason.length<8||!Number.isInteger(npAmount)||!Number.isInteger(xpAmount)||npAmount<0||xpAmount<0||npAmount>100000||xpAmount>100000||(!npAmount&&!xpAmount))return NextResponse.json({error:"Enter a learner ID, a reason of at least 8 characters, and a positive NP or XP correction."},{status:400})
+      const client=await pool.connect();try{await client.query("BEGIN");const user=await client.query("SELECT 1 FROM mednexus_registered_users WHERE uid=$1 AND status='approved' FOR UPDATE",[userId]);if(!user.rowCount)throw new Error("No approved learner matches that user ID.");const season=(await client.query("SELECT id FROM mednexus_economy_seasons WHERE status='active' FOR SHARE")).rows[0];if(!season)throw new Error("No active season is available.");const adjustmentId=randomUUID();if(npAmount)await applyNPCredits(client,userId,[{source:"admin_adjustment",sourceId:adjustmentId,amount:npAmount,countsTowardClinicalRank:false,ceilingPolicy:"exempt",metadata:{reason,administrator:admin.uid}}]);if(xpAmount)await applyXPCredits(client,userId,[{source:"admin_adjustment",sourceId:adjustmentId,amount:xpAmount,seasonId:season.id,competitive:false,metadata:{reason,administrator:admin.uid,label:"Administrator XP correction"}}]);await auditAdmin(client,admin.uid,"adjust","learner_economy",userId,{adjustmentId,npAmount,xpAmount,reason});await client.query("COMMIT")}catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}return NextResponse.json({ok:true,...await payload()})
+    }
+    if(action==="finalize_week"){
+      const week=String(body.week??"");if(!/^\d{4}-W\d{2}$/.test(week))return NextResponse.json({error:"Choose a valid completed ISO week."},{status:400})
+      const client=await pool.connect();try{await client.query("BEGIN");await client.query("SELECT pg_advisory_xact_lock(hashtext($1))",[`mednexus:week-finalize:${week}`]);const repeated=await client.query("SELECT 1 FROM mednexus_admin_audit_log WHERE action='finalize' AND resource_type='weekly_economy' AND resource_id=$1",[week]);if(repeated.rowCount)throw new Error("This week has already been finalized.");const progress=await client.query(`SELECT COUNT(*)::int participants,COALESCE(SUM(jsonb_array_length(COALESCE(credited_goal_ids,'[]'::jsonb))),0)::int goals_awarded FROM mednexus_weekly_goal_progress WHERE week_id=$1`,[week]);await auditAdmin(client,admin.uid,"finalize","weekly_economy",week,progress.rows[0]??{});await client.query("COMMIT")}catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}return NextResponse.json({ok:true,...await payload()})
+    }
     if(action==="award_month"){
       if(admin.role!=="SUPER_ADMIN")return NextResponse.json({error:"Only a super administrator can finalize monthly rewards."},{status:403})
       const client=await pool.connect();try{await client.query("BEGIN");await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:monthly-leaderboard-award'))");const current=(await client.query("SELECT * FROM mednexus_economy_seasons WHERE status='active' FOR UPDATE")).rows[0];if(!current)throw new Error("No active season is available.");await awardMonthlyWinners(client,current,String(body.month??""));await auditAdmin(client,admin.uid,"award","monthly_leaderboard",String(body.month??""),{});await client.query("COMMIT")}catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}return NextResponse.json({ok:true,...await payload()})
@@ -91,7 +107,6 @@ export async function POST(req:NextRequest){
       const name=typeof body.name==="string"?body.name.trim():"",version=typeof body.economyVersion==="string"?body.economyVersion.trim():""
       const openingGrant=Number(body.openingGrant),startsAt=typeof body.startsAt==="string"?new Date(body.startsAt):new Date(),minimumEligibleQuestions=Number(body.minimumEligibleQuestions)
       const monthlyRewards=Array.isArray(body.monthlyRewards)?body.monthlyRewards.map(Number):[],seasonalRewards=Array.isArray(body.seasonalRewards)?body.seasonalRewards.map(Number):[]
-      const validRewards=(values:number[])=>values.length>0&&values.length<=100&&values.every(value=>Number.isInteger(value)&&value>=0&&value<=100000)
       if(name.length<3||!version||!Number.isInteger(openingGrant)||openingGrant<0||openingGrant>100000||!Number.isInteger(minimumEligibleQuestions)||minimumEligibleQuestions<1||minimumEligibleQuestions>100000||!validRewards(monthlyRewards)||!validRewards(seasonalRewards)||Number.isNaN(startsAt.getTime()))return NextResponse.json({error:"Enter valid season details, eligibility, and winner rewards."},{status:400})
       const id=`${slug(name)}-${Date.now().toString(36)}`
       const client=await pool.connect()
