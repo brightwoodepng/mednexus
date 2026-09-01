@@ -118,6 +118,26 @@ export function LegacyMcqWorkspace({ pendingImport, onPendingImportConsumed, onO
 
   const activeCount = useMemo(() => ["live", "draft", "review", "offline"].reduce((total, key) => total + Number(summary?.counts[key] ?? 0), 0), [summary])
   const allCount = useMemo(() => statuses.reduce((total, item) => total + Number(summary?.counts[item.value] ?? 0), 0), [summary])
+  const visibleCategories = useMemo(() => {
+    const categories = summary?.filters.categories ?? []
+    if (status === "all") return categories
+    return categories.flatMap(category => {
+      const disciplines = category.disciplines
+        .filter(discipline => Number(discipline.statusCounts[status] ?? 0) > 0)
+        .map(discipline => ({ ...discipline, count: Number(discipline.statusCounts[status] ?? 0) }))
+      const count = Number(category.statusCounts[status] ?? 0)
+      return count > 0 ? [{ ...category, count, disciplines }] : []
+    })
+  }, [status, summary])
+
+  useEffect(() => {
+    if (!expandedModule) return
+    const module = visibleCategories.find(category => category.module === expandedModule)
+    if (!module) { setExpandedModule(null); setExpandedDiscipline(null); setQuestions([]); return }
+    if (expandedDiscipline && !module.disciplines.some(discipline => discipline.subject === expandedDiscipline)) {
+      setExpandedDiscipline(null); setQuestions([])
+    }
+  }, [expandedDiscipline, expandedModule, visibleCategories])
 
   const refreshAfterMutation = useCallback(async () => {
     await loadSummary()
@@ -174,12 +194,12 @@ export function LegacyMcqWorkspace({ pendingImport, onPendingImportConsumed, onO
         <button onClick={()=>void loadSummary()} className={`${button} border border-border`}><RefreshCw size={15}/>Refresh</button>
         <button onClick={onOpenImporter} className={`${button} bg-primary text-primary-foreground`}>Import questions</button>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">Legacy now loads only the discipline and page you open. {activeCount} active questions across {summary?.filters.categories.length ?? 0} modules.</p>
+      <p className="mt-2 text-xs text-muted-foreground">Legacy now loads only the discipline and page you open. {status === "all" ? `${activeCount} active questions` : `${summary?.counts[status] ?? 0} ${statuses.find(item=>item.value===status)?.label.toLowerCase()} questions`} across {visibleCategories.length} matching modules.</p>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">{statuses.map(item=><button type="button" key={item.value} onClick={()=>setStatus(item.value)} className={`rounded-xl border px-3 py-2 text-left transition ${status===item.value?"border-primary bg-primary/10":"border-border hover:bg-muted"}`}><span className="block text-xs text-muted-foreground">{item.label}</span><b className="text-lg">{summary?.counts[item.value] ?? 0}</b></button>)}</div>
     </section>
 
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      {(summary?.filters.categories ?? []).map(category => {
+      {visibleCategories.map(category => {
         const moduleOpen = expandedModule === category.module
         return <div key={category.module} className="border-b border-border last:border-0">
           <div className="flex items-center"><button type="button" onClick={()=>{setExpandedModule(moduleOpen?null:category.module);setExpandedDiscipline(null);setQuestions([])}} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-4 text-left hover:bg-muted/50">{moduleOpen?<ChevronDown size={17}/>:<ChevronRight size={17}/>}<span className="min-w-0 flex-1"><b className="block truncate">{category.module || "Unassigned module"}</b><span className="text-xs text-muted-foreground">{category.disciplines.length} disciplines · {category.count} questions</span></span></button><button type="button" onClick={()=>selectScope(category)} className="mr-3 rounded-lg border border-border p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`Manage ${category.module} module`} title="Select entire module"><Settings2 size={16}/></button></div>
@@ -196,6 +216,7 @@ export function LegacyMcqWorkspace({ pendingImport, onPendingImportConsumed, onO
           })}</div>:null}
         </div>
       })}
+      {!loadingSummary && visibleCategories.length===0?<p className="p-10 text-center text-sm text-muted-foreground">No modules or disciplines contain {status === "all" ? "questions" : `${statuses.find(item=>item.value===status)?.label.toLowerCase()} questions`}.</p>:null}
     </section>
     {bulkOpen && scope ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="legacy-bulk-title"><div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-background p-5 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><h2 id="legacy-bulk-title" className="text-lg font-bold">Manage selected {scope.subject ? "discipline" : "module"}</h2><p className="text-sm text-muted-foreground">{scope.subject ? `${scope.subject} · ${scope.module}` : scope.module} · {scope.count} questions</p></div><button type="button" onClick={()=>setBulkOpen(false)} aria-label="Close bulk editor" className="rounded-lg p-2 hover:bg-muted"><X size={18}/></button></div>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">{statuses.map(item=><button type="button" key={item.value} disabled={savingBulk} onClick={()=>void bulk("status",{status:item.value})} className="rounded-xl border border-border px-2 py-2 text-xs font-semibold hover:border-primary hover:bg-primary/5 disabled:opacity-50">{item.label}<span className="mt-1 block font-normal text-muted-foreground">{scope.statusCounts[item.value] ?? 0}</span></button>)}</div>
