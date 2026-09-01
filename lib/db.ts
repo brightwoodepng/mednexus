@@ -1445,7 +1445,7 @@ export async function ensureSchema() {
     -- End-of-Module sets are grouped by module, while a question may retain an
     -- optional related discipline. Remove the original composite set FK, which
     -- incorrectly required both records to carry the same discipline.
-    DO $
+    DO $$
     DECLARE
       legacy_set_fk RECORD;
     BEGIN
@@ -1462,14 +1462,14 @@ export async function ensureSchema() {
           legacy_set_fk.conname
         );
       END LOOP;
-    END $;
+    END $$;
 
-    DO $ BEGIN
+    DO $$ BEGIN
       ALTER TABLE mednexus_theory_questions
         ADD CONSTRAINT mednexus_theory_questions_set_fk
         FOREIGN KEY (set_id) REFERENCES mednexus_theory_sets(id) ON DELETE SET NULL;
     EXCEPTION WHEN duplicate_object THEN NULL;
-    END $;
+    END $$;
 
     INSERT INTO mednexus_theory_modules (id, collection_id, name, sort_order)
     SELECT 'theory-module-' || md5(d.collection_id || ':' || d.name), d.collection_id, d.name, d.sort_order

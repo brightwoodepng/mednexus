@@ -15,6 +15,15 @@ describe("admin stability regressions", () => {
     }
   })
 
+  it("uses valid dollar quoting for the Theory foreign-key repair", async () => {
+    const source = await readFile("lib/db.ts", "utf8")
+    const repair = source.slice(source.indexOf("legacy_set_fk") - 200, source.indexOf("legacy_set_fk") + 1_200)
+    expect(repair).toContain("DO $$")
+    expect(repair).toContain("END $$;")
+    expect(repair).not.toMatch(/DO \$(?!\$)/)
+    expect(repair).not.toMatch(/END \$(?!\$)/)
+  })
+
   it("cancels stale Theory loads and updates a saved question in place", async () => {
     const source = await readFile("components/theory-admin-simplified.tsx", "utf8")
     expect(source).toContain("requestRef.current?.abort()")
