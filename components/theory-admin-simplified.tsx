@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArchiveRestore, BookOpen, ChevronDown, ChevronRight, Eye, FileUp, Folder,
   FolderOpen, MoreHorizontal, MoveRight, Pencil, Plus, RefreshCw, Search, Settings2,
@@ -30,7 +30,7 @@ type AdminData = {
   trash: Array<{ type: "module" | "discipline" | "set"; id: string; label: string; deletedAt: string; count: number }>
   audit: Array<{ id: number; action: string; resourceType: string; resourceId: string | null; createdAt: string }>
 }
-type ApiSummary = { matched?: number; updated?: number; skipped?: number; validationDetails?: Array<{ id: string; reason: string }> }
+type ApiSummary = { matched?: number; updated?: number; skipped?: number; validationDetails?: Array<{ id: string; reason: string }>; question?: Question }
 type Tab = "editor" | "import" | "imports" | "trash" | "more"
 
 const card = "rounded-2xl border border-border bg-card shadow-sm"
@@ -66,23 +66,41 @@ export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: 
   const [notice, setNotice] = useState("")
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const requestRef = useRef<AbortController | null>(null)
+  const requestIdRef = useRef(0)
+  const cacheRef = useRef(new Map<string, AdminData>())
 
   const groups = useMemo(() => kind === "end_of_module" ? data?.modules ?? [] : data?.disciplines ?? [], [data, kind])
   const groupSets = useMemo(() => (data?.sets ?? []).filter(item => kind === "end_of_module" ? item.moduleId === groupId : item.disciplineId === groupId), [data, groupId, kind])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     const params = new URLSearchParams({ kind, pageSize: "50" })
     if (groupId) params.set(kind === "end_of_module" ? "moduleId" : "disciplineId", groupId)
     if (setId) params.set("setId", setId)
     if (query.trim()) params.set("q", query.trim())
     if (status) params.set("status", status)
     if (tab === "trash") params.set("trash", "true")
-    setError("")
-    try { setData(await api<AdminData>(`/api/admin/theory?${params}`)) }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to load Theory Vault.") }
+    const cacheKey = params.toString()
+    const cached = cacheRef.current.get(cacheKey)
+    if (cached && !force) { setData(cached); setLoading(false) }
+    requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    const requestId = ++requestIdRef.current
+    setLoading(true); setError("")
+    try {
+      const next = await api<AdminData>(`/api/admin/theory?${params}`, { signal: controller.signal })
+      if (controller.signal.aborted || requestId !== requestIdRef.current) return
+      cacheRef.current.set(cacheKey, next); setData(next)
+    } catch (cause) {
+      if (!controller.signal.aborted && requestId === requestIdRef.current) setError(cause instanceof Error ? cause.message : "Unable to load Theory Vault.")
+    } finally {
+      if (!controller.signal.aborted && requestId === requestIdRef.current) setLoading(false)
+    }
   }, [groupId, kind, query, setId, status, tab])
 
-  useEffect(() => { const timer = window.setTimeout(() => void load(), 180); return () => window.clearTimeout(timer) }, [load])
+  useEffect(() => { const timer = window.setTimeout(() => void load(), 180); return () => { window.clearTimeout(timer); requestRef.current?.abort() } }, [load])
   useEffect(() => { setGroupId(""); setSetId(""); setSelected([]) }, [kind])
 
   const change = async (method: "POST" | "PATCH", body: Record<string, unknown>, success: string) => {
@@ -90,7 +108,7 @@ export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: 
     try {
       const summary = await api<ApiSummary>("/api/admin/theory", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       const result = summary.matched == null ? success : `${success} ${summary.updated ?? 0} changed${summary.skipped ? `; ${summary.skipped} skipped` : ""}.`
-      setNotice(result); await load(); return true
+      setNotice(result); cacheRef.current.clear(); await load(true); return true
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to save."); return false }
     finally { setBusy(false) }
   }
@@ -102,6 +120,18 @@ export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: 
   const publish = (ids: string[], next: "published" | "draft") => change("PATCH", { action: "bulk", operation: next, scope: { ids } }, next === "published" ? "Published." : "Returned to draft.")
   const selectedGroup = groups.find(item => item.id === groupId)
 
+  const saveQuestion = async (body: Record<string, unknown>) => {
+    if (!active) return
+    setBusy(true); setError(""); setNotice("")
+    try {
+      const result = await api<ApiSummary>("/api/admin/theory", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resource: "question", id: active.id, ...body }) })
+      if (!result.question) throw new Error("The question was saved, but its refreshed record was unavailable.")
+      setData(current => current ? { ...current, questions: current.questions.map(question => question.id === active.id ? result.question! : question) } : current)
+      cacheRef.current.clear(); setNotice("Question saved."); setActive(null)
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to save the question.") }
+    finally { setBusy(false) }
+  }
+
   if (!data) return <div className={`${card} p-14 text-center text-sm text-muted-foreground`}>{error || "Loading Theory Vault…"}</div>
   return <div className="space-y-4 pb-12">
     <header className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
@@ -112,6 +142,7 @@ export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: 
       ["editor","Questions",BookOpen],["import","Import file",FileUp],["imports","Import history",FolderOpen],["trash","Trash",Trash2],["more","More tools",MoreHorizontal],
     ] as const).map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`${button} shrink-0 ${tab === id ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}><Icon size={16}/>{label}</button>)}</nav>
     {error ? <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div> : null}
+    {loading ? <div role="status" className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-2 text-xs font-semibold text-primary">Updating this Theory workspace…</div> : null}
     {notice ? <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100">{notice}</div> : null}
 
     {tab === "editor" ? <div className="grid gap-4 xl:grid-cols-[300px_1fr]">
@@ -140,7 +171,7 @@ export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: 
     {tab === "imports" ? <ImportHistory jobs={data.imports} onChange={async (id,action) => { await api(`/api/admin/content/imports/${id}`, { method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action}) }); setNotice(action === "trash" ? "Import moved to Trash." : "Import restored."); await load() }}/> : null}
     {tab === "trash" ? <TrashView data={data} busy={busy} change={change} reload={load}/> : null}
     {tab === "more" ? <MoreTools data={data} change={change}/> : null}
-    {active ? <QuestionPanel question={active} data={data} onClose={() => setActive(null)} onSaved={async body => { if(await change("PATCH",{resource:"question",id:active.id,...body},"Question saved."))setActive(null) }}/> : null}
+    {active ? <QuestionPanel question={active} data={data} onClose={() => setActive(null)} onSaved={saveQuestion}/> : null}
     {preview ? <PreviewPanel question={preview} onClose={() => setPreview(null)}/> : null}
     {moveIds.length ? <MovePanel ids={moveIds} groups={groups} sets={data.sets} kind={kind} onClose={() => setMoveIds([])} onMove={async destination => { if(await change("PATCH",{action:"move",questionIds:moveIds,...destination},"Questions moved.")){setMoveIds([]);setSelected([])} }}/> : null}
   </div>

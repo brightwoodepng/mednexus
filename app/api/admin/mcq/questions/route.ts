@@ -6,6 +6,7 @@ import type { Question } from "@/lib/types"
 import { boundedPagination, measuredJson } from "@/lib/api-efficiency"
 import { runtimePool } from "@/lib/runtime-db"
 import { applyQuestionStatus, managedQuestionStatuses, normalizeCategory, normalizeQuestionStatus, type ManagedQuestionStatus } from "@/lib/mcq-status"
+import { databaseErrorResponse } from "@/lib/api-error-response"
 
 export const dynamic = "force-dynamic"
 
@@ -138,7 +139,7 @@ export async function GET(req: NextRequest) {
     return measuredJson({ route: "GET /api/admin/mcq/questions", queryStartedAt, rowCount: questions.length, payload })
   } catch (error) {
     console.error("[admin/mcq/questions GET]", error)
-    return NextResponse.json({ error: "Unable to load the MCQ bank." }, { status: 500 })
+    return databaseErrorResponse(error, "Unable to load the MCQ bank.")
   }
 }
 

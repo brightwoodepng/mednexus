@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { LayoutGrid, ListTree } from "lucide-react"
-import { QuestionEditor } from "@/components/question-editor"
 import { UniversalImporter } from "@/components/universal-importer"
 import { McqModernWorkspace } from "@/components/admin/mcq-modern-workspace"
+import { LegacyMcqWorkspace } from "@/components/admin/legacy-mcq-workspace"
 import type { Question } from "@/lib/types"
 
 type ManagerView = "modern" | "legacy"
@@ -38,7 +38,7 @@ export function McqBankWorkspace() {
         <button onClick={() => choose("legacy")} aria-pressed={view === "legacy"} title="Compatibility editor" className={"inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors " + (view === "legacy" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}><ListTree size={16}/>Legacy</button>
       </div>
     </div>
-    {!ready ? <div className="min-h-64 animate-pulse rounded-2xl bg-muted"/> : view === "modern" ? <McqModernWorkspace onOpenImporter={() => setImporterOpen(true)}/> : <QuestionEditor pendingImport={pendingImport} onPendingImportConsumed={() => setPendingImport(null)} onOpenImporter={() => setImporterOpen(true)}/>} 
+    {!ready ? <div className="min-h-64 animate-pulse rounded-2xl bg-muted"/> : view === "modern" ? <McqModernWorkspace onOpenImporter={() => setImporterOpen(true)}/> : <LegacyMcqWorkspace pendingImport={pendingImport} onPendingImportConsumed={() => setPendingImport(null)} onOpenImporter={() => setImporterOpen(true)}/>}
     {importerOpen && (
       <UniversalImporter onImport={(questions) => { void fetch("/api/admin/content/imports", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ bank: "mcq", sourceName: "MCQ universal importer", drafts: questions }) }); setPendingImport(questions); setImporterOpen(false); choose("legacy") }} onClose={() => setImporterOpen(false)}/>
     )} 

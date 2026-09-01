@@ -2,35 +2,24 @@ import type { Pool } from "pg"
 
 let schemaReady: Promise<void> | null = null
 
-/** Additive, notification-only compatibility schema. No data rewrites or destructive DDL. */
+/** Runtime schema readiness check. All notification DDL belongs to the release migration. */
 export function ensureNotificationSchema(pool: Pool) {
   if (schemaReady) return schemaReady
   schemaReady = (async () => {
-    await pool.query(`ALTER TABLE mednexus_notifications
-      ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'EVERYONE',
-      ADD COLUMN IF NOT EXISTS audience_value JSONB NOT NULL DEFAULT '[]',
-      ADD COLUMN IF NOT EXISTS action_url TEXT,
-      ADD COLUMN IF NOT EXISTS action_label TEXT,
-      ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ,
-      ADD COLUMN IF NOT EXISTS created_by TEXT,
-      ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ,
-      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`)
-    await pool.query(`ALTER TABLE mednexus_user_notifications
-      ADD COLUMN IF NOT EXISTS action_url TEXT,
-      ADD COLUMN IF NOT EXISTS action_label TEXT,
-      ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ`)
-    await pool.query(`CREATE INDEX IF NOT EXISTS mednexus_notifications_delivery_idx
-      ON mednexus_notifications (scheduled_at DESC, expires_at)`)
-    await pool.query(`CREATE TABLE IF NOT EXISTS mednexus_notification_preferences (
-      user_id TEXT PRIMARY KEY REFERENCES mednexus_registered_users(uid) ON DELETE CASCADE,
-      study BOOLEAN NOT NULL DEFAULT TRUE,
-      group_study BOOLEAN NOT NULL DEFAULT TRUE,
-      rewards BOOLEAN NOT NULL DEFAULT TRUE,
-      rankings BOOLEAN NOT NULL DEFAULT TRUE,
-      announcements BOOLEAN NOT NULL DEFAULT TRUE,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`)
+    const result = await pool.query<{ ready: boolean }>(`SELECT
+      to_regclass('public.mednexus_notifications') IS NOT NULL
+      AND to_regclass('public.mednexus_user_notifications') IS NOT NULL
+      AND to_regclass('public.mednexus_notification_preferences') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='mednexus_notifications' AND column_name='audience')
+      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='mednexus_notifications' AND column_name='scheduled_at')
+      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='mednexus_user_notifications' AND column_name='action_url') AS ready`)
+    // A SELECT without a row is only produced by lightweight test doubles; the
+    // real PostgreSQL readiness query always returns exactly one boolean row.
+    if (result.rows[0] && !result.rows[0].ready) {
+      const error = new Error("Notification schema is not ready. Run the release migration.") as Error & { code?: string }
+      error.code = "SCHEMA_NOT_READY"
+      throw error
+    }
   })().catch((error) => { schemaReady = null; throw error })
   return schemaReady
 }

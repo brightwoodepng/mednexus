@@ -43,7 +43,7 @@ describe("professional admin MCQ manager", () => {
     expect(questionsRoute).toContain('req.nextUrl.searchParams.get("issues") === "with"')
     expect(questionsRoute).toContain("sortExpressions")
     expect(questionsRoute).toContain("issueCount")
-    expect(questionsRoute).toContain('NextResponse.json({ error: "Unable to load the MCQ bank." }, { status: 500 })')
+    expect(questionsRoute).toContain('databaseErrorResponse(error, "Unable to load the MCQ bank.")')
     expect(questionsRoute).toContain("(question.value->'options')::text ILIKE")
     expect(questionsRoute).toContain("(question.value->'tags')::text ILIKE")
     expect(questionsRoute).toContain('body.status === "live"')
@@ -56,12 +56,13 @@ describe("professional admin MCQ manager", () => {
   })
 
   it("selects entire canonical categories and keeps archived questions restorable", async () => {
-    const [manager, route, legacy, context, statusHelper] = await Promise.all([
+    const [manager, route, legacy, context, statusHelper, legacyWorkspace] = await Promise.all([
       read("components/admin/mcq-modern-workspace.tsx"),
       read("app/api/admin/mcq/questions/route.ts"),
       read("components/question-editor.tsx"),
       read("contexts/questions-context.tsx"),
       read("lib/mcq-status.ts"),
+      read("components/admin/legacy-mcq-workspace.tsx"),
     ])
     expect(manager).toContain("Select an entire module")
     expect(manager).toContain("All disciplines in module")
@@ -77,6 +78,10 @@ describe("professional admin MCQ manager", () => {
       expect(legacy).toContain(`<option value="${status}">`)
       expect(statusHelper).toContain(`"${status}"`)
     }
+    expect(legacyWorkspace).toContain('pageSize: "50"')
+    expect(legacyWorkspace).toContain("requestRef.current?.abort()")
+    expect(legacyWorkspace).toContain("/admin/mcq/${question.id}")
+    expect(legacyWorkspace).not.toContain("loadFullQuestionBank")
   })
 
   it("uses a task-based sidebar, one access snapshot, and persistent professional identity", async () => {

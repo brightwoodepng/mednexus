@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { adminAccessDenied, requireAdminRequest } from "@/lib/admin-access"
 import { auditAdmin } from "@/lib/platform-settings"
 import type { Question } from "@/lib/types"
-import { runtimePool } from "@/lib/runtime-db"
+import { runtimePool, withReadRetry } from "@/lib/runtime-db"
+import { databaseErrorResponse } from "@/lib/api-error-response"
 
 function publicationIssues(question: Question) {
   const issues: string[] = []
@@ -19,18 +20,22 @@ function publicationIssues(question: Question) {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await requireAdminRequest(req, "manage_mcq_content")) return adminAccessDenied(req)
-  const { id } = await params
-  const pool = await runtimePool()
-  const result = await pool.query(
+  try {
+    const { id } = await params
+    const result = await withReadRetry(pool => pool.query(
     `SELECT item.value AS question,source.updated_at
      FROM mednexus_questions source
      CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) item(value)
      WHERE source.id=1 AND item.value->>'id'=$1 LIMIT 1`,
     [id],
-  )
-  const question = result.rows[0]?.question as Question | undefined
-  if (!question) return NextResponse.json({ error: "Question not found." }, { status: 404 })
-  return NextResponse.json({ question, validationIssues: publicationIssues(question), bankUpdatedAt: result.rows[0]?.updated_at ?? null })
+    ))
+    const question = result.rows[0]?.question as Question | undefined
+    if (!question) return NextResponse.json({ error: "Question not found.", code: "QUESTION_NOT_FOUND", retryable: false }, { status: 404 })
+    return NextResponse.json({ question, validationIssues: publicationIssues(question), bankUpdatedAt: result.rows[0]?.updated_at ?? null })
+  } catch (error) {
+    console.error("[admin/mcq/questions/id GET]", error)
+    return databaseErrorResponse(error, "Unable to load this MCQ.")
+  }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -77,7 +82,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await auditAdmin(client, admin.uid, "update", "mcq_question", id, { status, mediaCount: next.media?.length ?? 0 })
     await client.query("COMMIT")
     return NextResponse.json({ question: next, validationIssues: issues })
-  } catch (error) { await client.query("ROLLBACK"); console.error("[admin/mcq/questions/id PATCH]", error); return NextResponse.json({ error: "Save failed without changing the question." }, { status: 500 }) } finally { client.release() }
+  } catch (error) { await client.query("ROLLBACK"); console.error("[admin/mcq/questions/id PATCH]", error); return databaseErrorResponse(error, "Save failed without changing the question.") } finally { client.release() }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

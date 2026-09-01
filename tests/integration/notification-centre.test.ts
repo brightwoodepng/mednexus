@@ -19,9 +19,10 @@ describe("notification centre",()=>{
   })
 
   it("keeps delivery targeting and preferences in the database",()=>{
-    expect(database).toContain("2026-08-23-xp-ledger-and-leaderboard-v1")
+    expect(database).toContain("2026-08-28-theory-editor-trash-v1")
     expect(notificationSchema).toContain("mednexus_notification_preferences")
-    expect(notificationSchema).not.toMatch(/^\s*(DROP|DELETE|TRUNCATE)\b/m)
+    expect(notificationSchema).not.toMatch(/\b(CREATE|ALTER|DROP|DELETE|TRUNCATE)\s+(TABLE|INDEX)\b/i)
+    expect(notificationSchema).toContain("Run the release migration")
     for(const field of ["group_study","rewards","rankings","announcements"])expect(preferenceApi).toContain(field)
   })
 

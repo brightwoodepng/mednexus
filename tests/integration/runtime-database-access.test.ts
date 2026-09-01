@@ -27,6 +27,16 @@ describe("runtime database access", () => {
     const source = await readFile("lib/runtime-db.ts", "utf8")
     expect(source).toContain('const { default: pool } = await import("@/lib/db")')
     expect(source).not.toContain("ensureSchema")
+    expect(source).toContain("withReadRetry")
+    expect(source).toContain("isTransientDatabaseError")
+  })
+
+  it("keeps runtime notification and recovery routes free of DDL", async () => {
+    const [notifications, recovery] = await Promise.all([
+      readFile("lib/notification-schema.ts", "utf8"),
+      readFile("app/api/admin/question-bank/route.ts", "utf8"),
+    ])
+    for (const source of [notifications, recovery]) expect(source).not.toMatch(/\b(CREATE|ALTER|DROP)\s+(TABLE|INDEX)\b/i)
   })
 
   it("gives phone workspace choices canonical native destinations", async () => {

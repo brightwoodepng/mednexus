@@ -11,9 +11,6 @@ const confirmation = "CLEAR MCQ BANK"
 type Action = "export" | "replace" | "clear-postgres" | "restore-demo" | "clear-firestore" | "refresh"
 
 async function audit(pool: Pool, adminId: string, action: string, source: string, count: number, backup: unknown[]) {
-  await pool.query(`CREATE TABLE IF NOT EXISTS mednexus_question_bank_audit_log (
-    id BIGSERIAL PRIMARY KEY, admin_id TEXT NOT NULL, action TEXT NOT NULL, source TEXT NOT NULL,
-    affected_count INTEGER NOT NULL, backup JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`)
   await pool.query("INSERT INTO mednexus_question_bank_audit_log (admin_id, action, source, affected_count, backup) VALUES ($1, $2, $3, $4, $5::jsonb)", [adminId, action, source, count, JSON.stringify(backup)])
 }
 
@@ -27,7 +24,7 @@ export async function GET(req: NextRequest) {
     const { default: pool } = await import("@/lib/db")
     const auditRows = await pool.query(`SELECT action,source,affected_count AS "affectedCount",created_at AS "createdAt" FROM mednexus_question_bank_audit_log ORDER BY created_at DESC LIMIT 5`)
     recentActions = auditRows.rows
-  } catch { /* The audit table is created on the first recovery action. */ }
+  } catch { /* Migration readiness must not block diagnostics. */ }
   return measuredJson({
     route: "GET /api/admin/question-bank",
     queryStartedAt,

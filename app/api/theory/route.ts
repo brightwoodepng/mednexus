@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
     let questionHasAnswer = false
     if (questionId) {
       const exists = await pool.query(`SELECT
-        (TRIM(model_answer)<>'' AND COALESCE(cardinality(key_marking_points),0)>0) AS has_answer
+        (TRIM(model_answer)<>'' AND CASE WHEN jsonb_typeof(key_marking_points)='array' THEN jsonb_array_length(key_marking_points) ELSE 0 END>0) AS has_answer
         FROM mednexus_theory_questions WHERE id=$1 AND status='published' AND deleted_at IS NULL`, [questionId])
       if (!exists.rows.length) return NextResponse.json({ error: "Question not found." }, { status: 404 })
       questionHasAnswer = exists.rows[0].has_answer === true

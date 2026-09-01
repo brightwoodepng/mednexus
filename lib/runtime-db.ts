@@ -1,6 +1,7 @@
 import "server-only"
 
 import type { Pool } from "pg"
+import { isTransientDatabaseError } from "@/lib/api-error-response"
 
 /**
  * Return the already-provisioned application database pool.
@@ -20,4 +21,15 @@ export async function runtimePool(): Promise<Pool> {
 export async function optionalRuntimePool(): Promise<Pool | null> {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) return null
   return runtimePool()
+}
+
+/** Retry one idempotent read after Neon terminates or restarts a connection. */
+export async function withReadRetry<T>(operation: (pool: Pool) => Promise<T>): Promise<T> {
+  const pool = await runtimePool()
+  try {
+    return await operation(pool)
+  } catch (error) {
+    if (!isTransientDatabaseError(error)) throw error
+    return operation(pool)
+  }
 }

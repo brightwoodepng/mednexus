@@ -25,6 +25,12 @@ const pool = new Pool({
   idleTimeoutMillis: 20000,
 })
 
+// pg emits idle-client failures on the pool. Without a listener, a transient
+// Neon restart can become an uncaught process error and tear down the request.
+pool.on("error", (error) => {
+  console.error("[database pool] idle client error", error)
+})
+
 // Some hosted PostgreSQL integrations expose a privileged/unpooled URL for
 // release DDL while the regular runtime role intentionally cannot CREATE.
 const groupStudyMigrationConnectionString = [

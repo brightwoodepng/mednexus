@@ -16,6 +16,8 @@ import {
 import { seedTheoryDemo } from "@/lib/theory-demo-seed"
 import { sanitizeTheoryMedia } from "@/lib/theory-media"
 import { calculateTheoryMarks, deriveTheoryTitle } from "@/lib/theory-content"
+import { databaseErrorResponse } from "@/lib/api-error-response"
+import { withReadRetry } from "@/lib/runtime-db"
 
 const badRequest = (message: string) => NextResponse.json({ error: message }, { status: 400 })
 
@@ -23,7 +25,6 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, "manage_theory_content")
   if (!auth) return unauthorized()
   try {
-    const pool = await theoryPool()
     const { page, pageSize, offset } = pagination(request.nextUrl)
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? ""
     const kind = request.nextUrl.searchParams.get("kind") === "end_of_year" ? "end_of_year" : "end_of_module"
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const trashOnly = request.nextUrl.searchParams.get("trash") === "true"
     const sort = request.nextUrl.searchParams.get("sort") === "oldest" ? "oldest" : request.nextUrl.searchParams.get("sort") === "title" ? "title" : "updated"
     const orderBy = sort === "title" ? "q.title ASC" : sort === "oldest" ? "q.updated_at ASC" : "q.updated_at DESC"
-    const [collections, modules, disciplines, sets, questions, settings, audit, counts, hierarchyStats, trash, imports] = await Promise.all([
+    const [collections, modules, disciplines, sets, questions, settings, audit, counts, hierarchyStats, trash, imports] = await withReadRetry(pool => Promise.all([
       pool.query(`SELECT id,slug,title,kind,status,sort_order AS "sortOrder"
         FROM mednexus_theory_collections WHERE kind=$1 ORDER BY sort_order,title`, [kind]),
       pool.query(`SELECT id,collection_id AS "collectionId",name,description,sort_order AS "sortOrder"
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE q.status='draft')::int AS draft,
         COUNT(*) FILTER (WHERE q.status='published')::int AS live,
-        COUNT(*) FILTER (WHERE q.set_id IS NULL OR TRIM(q.prompt)='' OR TRIM(q.model_answer)='' OR COALESCE(cardinality(q.key_marking_points),0)=0)::int AS "needsAttention"
+        COUNT(*) FILTER (WHERE q.set_id IS NULL OR TRIM(q.prompt)='' OR TRIM(q.model_answer)='' OR CASE WHEN jsonb_typeof(q.key_marking_points)='array' THEN jsonb_array_length(q.key_marking_points) ELSE 0 END=0)::int AS "needsAttention"
         FROM mednexus_theory_questions q JOIN mednexus_theory_collections c ON c.id=q.collection_id
         WHERE c.kind=$1 AND q.deleted_at IS NULL GROUP BY GROUPING SETS
         ((q.collection_id,q.module_id,q.discipline_id,q.set_id),(q.collection_id,q.module_id,q.discipline_id),(q.collection_id))`, [kind]),
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
       pool.query(`SELECT id,source_name AS "sourceName",status,total_count AS "totalCount",valid_count AS "validCount",
         error_count AS "errorCount",created_at AS "createdAt",committed_at AS "committedAt",deleted_at AS "deletedAt"
         FROM mednexus_content_import_jobs WHERE bank='theory' ORDER BY created_at DESC LIMIT 50`),
-    ])
+    ]))
     return NextResponse.json({
       collections: collections.rows,
       modules: modules.rows,
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("[admin theory GET]", error)
-    return NextResponse.json({ error: "Unable to load Theory administration." }, { status: 500 })
+    return databaseErrorResponse(error, "Unable to load Theory administration.")
   }
 }
 
@@ -442,13 +443,22 @@ export async function PATCH(request: NextRequest) {
           Object.hasOwn(body, "difficulty") ? intInRange(body.difficulty, 1, 5, 3) : null,
           Object.hasOwn(body, "estimatedStudyMinutes") ? intInRange(body.estimatedStudyMinutes, 1, 180, 8) : null,
           body.sourceMetadata && typeof body.sourceMetadata === "object" ? body.sourceMetadata : null])
+        const saved = await client.query(`SELECT ${theoryQuestionProjection},
+          c.title AS "collectionTitle",m.name AS "moduleName",d.name AS "disciplineName",s.name AS "setTitle"
+          FROM mednexus_theory_questions q
+          JOIN mednexus_theory_collections c ON c.id=q.collection_id
+          LEFT JOIN mednexus_theory_modules m ON m.id=q.module_id
+          LEFT JOIN mednexus_theory_disciplines d ON d.id=q.discipline_id
+          LEFT JOIN mednexus_theory_sets s ON s.id=q.set_id WHERE q.id=$1`, [id])
+        await auditTheory(client, auth.uid, "update", resource, id, {})
+        return { question: saved.rows[0] }
       } else throw new Error("Unknown Theory resource.")
       await auditTheory(client, auth.uid, "update", resource, id, {})
     })
     return NextResponse.json({ ok: true, ...(summary ?? {}) })
   } catch (error) {
     console.error("[admin theory PATCH]", error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to update Theory content." }, { status: 400 })
+    return databaseErrorResponse(error, error instanceof Error ? error.message : "Unable to update Theory content.", 400)
   }
 }
 
