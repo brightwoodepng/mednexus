@@ -15,7 +15,7 @@ describe("admin Theory Manager", () => {
   })
 
   it("provides module-first folders, set filters, search, and visible actions", () => {
-    for (const contract of ["data.hierarchyStats", "groupId", "setId", "Search questions", "Import history", "More tools"]) {
+    for (const contract of ["data.hierarchyStats", "groupId", "setId", "Search questions", "Import history", "FolderSettingsPanel", "Questions per new set"]) {
       expect(manager).toContain(contract)
     }
     for (const contract of ['searchParams.get("moduleId")', 'searchParams.get("disciplineId")', 'searchParams.get("setId")', "GROUP BY q.status", "GROUPING SETS"]) {

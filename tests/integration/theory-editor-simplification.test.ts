@@ -11,6 +11,10 @@ describe("simplified Theory editor", () => {
     for (const label of ["Questions", "Edit", "Preview", "Move", "Publish", "Trash"]) expect(admin).toContain(label)
     expect(admin).toContain("Use next available set automatically")
     expect(admin).toContain("Import history")
+    expect(admin).not.toContain('"More tools"')
+    expect(admin).toContain("FolderSettingsPanel")
+    expect(admin).toContain("Apply to all questions")
+    expect(admin).toContain("Questions per new set")
   })
 
   it("publishes prompt-only questions but still requires an assigned set", () => {
