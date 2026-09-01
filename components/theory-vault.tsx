@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   ArrowLeft, ArrowRight, BookOpen, Bookmark, Check, CheckCircle2, ChevronDown, ChevronRight,
   Clock3, Download, FileText, FolderOpen, ListChecks, LoaderCircle, Mic, NotebookPen,
-  RefreshCw, Save, Search, ShieldCheck, Sparkles, Square, Target, Timer, X,
+  RefreshCw, Save, Search, ShieldCheck, Square, Target, Timer, X,
 } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -486,6 +486,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
   const [aiStatus, setAiStatus] = useState<TheoryAiStatus | null>(null)
   const [aiMessage, setAiMessage] = useState("")
   const [acceptingAi, setAcceptingAi] = useState(false)
+  const [reviewPane, setReviewPane] = useState<"answer" | "notes">("answer")
   const reviewRecorded = useRef(false)
   const restored = useRef(false)
   const answerRef = useRef<HTMLTextAreaElement>(null)
@@ -609,75 +610,58 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-2.5 pb-24 sm:space-y-4 md:pb-0">
+    <div className="mx-auto max-w-7xl space-y-4 pb-24 md:pb-0">
 
       {/* ── Top nav bar ── */}
-      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <button onClick={onBack} className="flex min-h-11 w-fit items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-sm font-semibold shadow-sm transition-colors hover:bg-muted">
-            <ArrowLeft size={15}/> Back to Set
-          </button>
-          <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:hidden">
-            Question {question.position} of {question.setTotal}
-          </span>
-        </div>
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <span className="hidden shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground sm:inline">
-            Question {question.position} of {question.setTotal}
-          </span>
-          <div className="grid min-w-0 flex-1 grid-cols-2 rounded-full bg-muted p-1 sm:flex sm:flex-none sm:rounded-xl">
-            <button onClick={() => setMode("review")} className={`min-h-11 rounded-full px-3 text-sm font-bold transition-all sm:min-h-0 sm:rounded-lg sm:px-4 sm:py-1.5 ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Review</button>
-            <button onClick={() => setMode("practice")} className={`min-h-11 rounded-full px-3 text-sm font-bold transition-all sm:min-h-0 sm:rounded-lg sm:px-4 sm:py-1.5 ${mode === "practice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Practice</button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Breadcrumb pill + action buttons ── */}
-      <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-        <span className="hidden w-full truncate rounded-full border border-border/60 bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground sm:block sm:w-auto" title={[question.moduleName ?? question.disciplineName, question.setLabel].filter(Boolean).join(" · ")}>
-          {[question.moduleName ?? question.disciplineName, question.setLabel].filter(Boolean).join(" · ")}
-        </span>
-        <div className="grid grid-cols-2 gap-2 sm:flex">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border/70 pb-4">
+        <button onClick={onBack} aria-label="Back to set" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted"><ArrowLeft size={18}/></button>
+        <div className="min-w-0"><p className="truncate text-sm font-semibold">Theory Vault <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 text-xs text-muted-foreground">{question.setLabel}</p></div>
+        <div className="flex items-center gap-2"><span className="hidden text-sm font-semibold text-muted-foreground sm:block">{question.position} of {question.setTotal}</span>
           <button
             onClick={toggleBookmark}
-            className={`flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold shadow-sm transition-all sm:min-h-0 sm:px-3 ${
+            aria-label={state?.bookmark ? "Remove bookmark" : "Bookmark question"}
+            title={state?.bookmark ? "Bookmarked" : "Bookmark"}
+            className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all ${
               state?.bookmark ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <Bookmark size={13} className={state?.bookmark ? "" : "text-primary"} fill={state?.bookmark ? "currentColor" : "none"}/>
-            {state?.bookmark ? "Bookmarked" : "Bookmark"}
+            <Bookmark size={17} className={state?.bookmark ? "" : "text-primary"} fill={state?.bookmark ? "currentColor" : "none"}/>
           </button>
           <button
             onClick={toggleRevision}
-            className={`flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold shadow-sm transition-all sm:min-h-0 sm:px-3 ${
+            aria-label={state?.revision ? "Remove from revision" : "Mark for revision"}
+            title={state?.revision ? "In revision" : "Mark for revision"}
+            className={`hidden h-11 w-11 items-center justify-center rounded-xl transition-all sm:flex ${
               state?.revision ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <RefreshCw size={13} className={state?.revision ? "" : "text-primary"}/>
-            {state?.revision ? "In Revision" : "Mark for Revision"}
+            <RefreshCw size={16} className={state?.revision ? "" : "text-primary"}/>
           </button>
         </div>
       </div>
 
+      <div className="flex items-center justify-between gap-3"><span className="text-xs font-semibold text-muted-foreground sm:hidden">{question.position} of {question.setTotal}</span><div className="ml-auto grid grid-cols-2 rounded-xl border border-border bg-muted/40 p-1"><button onClick={() => setMode("review")} className={`rounded-lg px-4 py-2 text-sm font-bold ${mode === "review" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Review</button><button onClick={() => setMode("practice")} className={`rounded-lg px-4 py-2 text-sm font-bold ${mode === "practice" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Practice</button></div></div>
+
       {!registered && <SignInNotice/>}
       {message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
-      {registered && aiStatus?.consent.required && (
+      {mode === "practice" && registered && aiStatus?.consent.required && (
         <AiConsentNotice
           available={aiStatus.available}
           accepting={acceptingAi}
           onAccept={acceptAiConsent}
         />
       )}
-      {registered && aiStatus && !aiStatus.available && !aiStatus.consent.required && (
+      {mode === "practice" && registered && aiStatus && !aiStatus.available && !aiStatus.consent.required && (
         <div className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
           AI refinement and dictation are temporarily unavailable because Gemini is not configured.
         </div>
       )}
-      {aiMessage && <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">{aiMessage}</div>}
+      {mode === "practice" && aiMessage && <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">{aiMessage}</div>}
 
       {/* Focused question prompt */}
-      <article className="rounded-2xl border border-border bg-card px-4 py-4 shadow-sm sm:px-5">
-          <h1 className="break-words text-lg font-bold leading-snug sm:text-xl">{question.title || question.prompt}</h1>
+      <article className="rounded-[1.25rem] border border-border bg-card p-5 shadow-sm sm:p-7">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-primary">Question</p>
+          <h1 className="break-words text-xl font-bold leading-snug sm:text-2xl">{question.title || question.prompt}</h1>
           {question.title && (
             <TheoryMarkdown children={question.prompt} className="mt-3 text-foreground/80"/>
           )}
@@ -686,20 +670,20 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
 
       {/* ── Review mode ── */}
       {mode === "review" ? (
-        <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+
+          <div className="grid grid-cols-2 rounded-xl border border-border bg-card p-1 lg:hidden"><button onClick={()=>setReviewPane("answer")} className={`rounded-lg px-3 py-2.5 text-sm font-bold ${reviewPane==="answer"?"bg-primary text-primary-foreground":"text-muted-foreground"}`}>Model Answer</button><button onClick={()=>setReviewPane("notes")} className={`rounded-lg px-3 py-2.5 text-sm font-bold ${reviewPane==="notes"?"bg-primary text-primary-foreground":"text-muted-foreground"}`}>My Notes</button></div>
 
           {/* Model Answer card */}
-          <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex items-center gap-2 border-b border-border bg-primary/8 px-4 py-3 sm:px-5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <BookOpen size={14}/>
-              </div>
-              <h2 className="font-bold">Model Answer</h2>
+          <article className={`${reviewPane==="answer"?"block":"hidden"} overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-sm lg:block`}>
+            <div className="flex items-center gap-3 border-b border-border px-5 py-4 sm:px-6">
+              <BookOpen className="text-primary" size={19}/>
+              <div><h2 className="text-lg font-bold">Model Answer</h2><p className="text-xs text-muted-foreground">Compare each section with the question above.</p></div>
             </div>
-            <div className="p-4 sm:p-5">
+            <div className="p-5 sm:p-6">
               {/* Main narrative answer — card-style to distinguish from key points */}
               {question.hasAnswer ? <>
-                <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-4 sm:px-5">
+                <div className="overflow-hidden">
                   <TheoryMarkdown children={question.modelAnswer}/>
                 </div>
                 <KeyPointsSection key={question.id} points={question.keyMarkingPoints}/>
@@ -708,15 +692,12 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
           </article>
 
           {/* Note sidebar */}
-          <NoteEditor
+          <div className={`${reviewPane==="notes"?"block":"hidden"} lg:block`}><NoteEditor
             note={note}
-            questionId={question.id}
             registered={registered}
-            aiStatus={aiStatus}
             onChange={setNote}
             onSave={saveNote}
-            onQuota={updateAiQuota}
-          />
+          /></div>
         </div>
 
       ) : (
@@ -981,96 +962,25 @@ function DictationControl({ questionId, target, textareaRef, disabled, onTranscr
 }
 
 function NoteEditor({
-  note, questionId, registered, aiStatus, onChange, onSave, onQuota,
+  note, registered, onChange, onSave,
 }: {
   note: string
-  questionId: string
   registered: boolean
-  aiStatus: TheoryAiStatus | null
   onChange: (value: string) => void
   onSave: () => void
-  onQuota: (kind: "refinements" | "transcriptions", remaining: number) => void
 }) {
-  const [refining, setRefining] = useState(false)
-  const [preview, setPreview] = useState<{ original: string; refined: string } | null>(null)
-  const [error, setError] = useState("")
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const aiEnabled = registered && Boolean(aiStatus?.available) && !aiStatus?.consent.required
-
-  const refine = async () => {
-    if (!note.trim()) {
-      setError("Write a note before asking Gemini to refine it.")
-      return
-    }
-    setRefining(true)
-    setError("")
-    setPreview(null)
-    try {
-      const result = await api<{ refinedNote: string; remaining: number }>("/api/theory/ai/refine-note", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionId, note }),
-      })
-      setPreview({ original: note, refined: result.refinedNote })
-      onQuota("refinements", result.remaining)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Gemini could not refine this note.")
-    } finally {
-      setRefining(false)
-    }
-  }
-  const insertNoteTranscript = (text: string, position: number) => {
-    onChange(insertDictation(note, text, position))
-    window.setTimeout(() => textareaRef.current?.focus(), 0)
-  }
-
   return (
-    <aside className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground"><NotebookPen size={13}/></div>
-        <h2 className="font-bold">My Note</h2>
+    <aside className="h-fit overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-sm lg:sticky lg:top-4">
+      <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+        <NotebookPen className="text-primary" size={19}/>
+        <div><h2 className="text-lg font-bold">My Notes</h2><p className="text-xs text-muted-foreground">Keep a quick reminder for this question.</p></div>
       </div>
-      <div className="p-4">
-        <textarea ref={textareaRef} value={note} onChange={event => onChange(event.target.value)} rows={9}
-          placeholder="Jot down key takeaways, mnemonics, or reminders…"
-          className="w-full rounded-xl border border-border bg-background p-3 text-sm leading-6 outline-none focus:ring-2 focus:ring-primary/25"/>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={refine}
-            disabled={!aiEnabled || refining || !note.trim() || (aiStatus?.remaining.refinements ?? 0) <= 0}
-            className={`${button} flex-1 border border-primary/30 text-primary disabled:cursor-not-allowed disabled:opacity-50`}>
-            {refining ? <LoaderCircle className="animate-spin" size={15}/> : <Sparkles size={15}/>}
-            {refining ? "Refining…" : "Refine with AI"}
-          </button>
-          {registered && <DictationControl questionId={questionId} target="note" textareaRef={textareaRef}
-            disabled={!aiEnabled || (aiStatus?.remaining.transcriptions ?? 0) <= 0}
-            onTranscript={insertNoteTranscript}
-            onQuota={remaining => onQuota("transcriptions", remaining)}/>}
-        </div>
-        {aiEnabled && aiStatus && <p className="mt-2 text-xs text-muted-foreground">
-          {aiStatus.remaining.refinements} refinements · {aiStatus.remaining.transcriptions} transcriptions left today
-        </p>}
-        {error && <p className="mt-2 text-xs leading-5 text-destructive">{error}</p>}
-        {preview && (
-          <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-primary">Review the polished note</p>
-            <div className="mt-3 grid gap-3">
-              <div>
-                <p className="mb-1 text-xs font-semibold text-muted-foreground">Original</p>
-                <div className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-xs leading-5">{preview.original}</div>
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-semibold text-muted-foreground">Polished</p>
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-primary/20 bg-background p-3 text-xs leading-5"><TheoryMarkdown children={preview.refined}/></div>
-              </div>
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button onClick={() => { onChange(preview.refined); setPreview(null) }} className={`${button} min-h-9 flex-1 bg-primary text-primary-foreground`}>Accept</button>
-              <button onClick={() => setPreview(null)} className={`${button} min-h-9 flex-1 border border-border`}>Discard</button>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">Accepting changes the editor only. Use Save Note when you are ready.</p>
-          </div>
-        )}
-        <button onClick={onSave} className={`${button} mt-3 w-full bg-primary text-primary-foreground`}><Save size={15}/> Save Note</button>
+      <div className="p-4 sm:p-5">
+        <textarea value={note} onChange={event => onChange(event.target.value)} rows={12}
+          disabled={!registered}
+          placeholder={registered ? "Write a quick note…" : "Sign in to save personal notes."}
+          className="w-full resize-y rounded-xl border border-border bg-background p-4 text-sm leading-6 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-60"/>
+        <button onClick={onSave} disabled={!registered} className={`${button} mt-3 w-full bg-primary text-primary-foreground disabled:opacity-50`}><Save size={15}/> Save note</button>
       </div>
     </aside>
   )

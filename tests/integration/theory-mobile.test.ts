@@ -111,7 +111,7 @@ describe("Theory Vault phone experience", () => {
     expect(source).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2")
     expect(source).toContain("grid gap-3 lg:grid-cols-2")
     expect(source).toContain("fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))]")
-    expect(source).toContain("space-y-2.5 pb-24")
+    expect(source).toContain("space-y-4 pb-24")
     expect(source).toContain('role="dialog" aria-label="PDF export options"')
     expect(source).toContain("fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]")
     expect(source).toContain("onQuestionViewChange")
@@ -125,9 +125,11 @@ describe("Theory Vault phone experience", () => {
       readFile("components/theory-vault.tsx", "utf8"),
       readFile("components/mednexus-app.tsx", "utf8"),
     ])
-    expect(question).toContain("min-h-11 w-fit")
+    expect(question).toContain('aria-label="Back to set"')
+    expect(question).toContain("h-11 w-11")
     expect(question).toContain("sm:hidden")
-    expect(question).toContain("hidden w-full truncate")
+    expect(question).toContain("reviewPane")
+    expect(question).toContain("lg:grid-cols-[minmax(0,1fr)_320px]")
     expect(question).toContain('question.nextId ? onMove(question.nextId) : onFinish(question.setId)')
     expect(question).toContain("if (setId) await openSet(setId)")
     expect(question).toContain('<>Finish <CheckCircle2 size={16}/></>')
