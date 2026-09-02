@@ -133,6 +133,8 @@ describe("Theory Vault phone experience", () => {
     expect(question).toContain("My Notes")
     expect(question).toContain("min-h-72 w-full flex-1")
     expect(question).toContain("Refine with AI")
+    expect(question).toContain('aria-hidden className="h-3 w-px shrink-0 bg-primary/40"')
+    expect(question).toContain('truncate text-xs font-bold text-primary')
     expect(question).toContain('question.nextId ? onMove(question.nextId) : onFinish(question.setId)')
     expect(question).toContain("if (setId) await openSet(setId)")
     expect(question).toContain('<>Finish <CheckCircle2 size={16}/></>')
