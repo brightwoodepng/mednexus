@@ -134,7 +134,7 @@ describe("Theory Vault phone experience", () => {
     expect(question).toContain("min-h-72 w-full flex-1")
     expect(question).toContain("Refine with AI")
     expect(question).toContain('aria-hidden className="h-4 w-px shrink-0 bg-primary/40"')
-    expect(question).toContain('items-center gap-2 text-sm font-bold leading-7 text-primary')
+    expect(question).toContain('inline-flex max-w-full items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-sm font-bold leading-7 text-primary')
     expect(question).toContain('truncate font-bold text-primary')
     expect(question).toContain('question.nextId ? onMove(question.nextId) : onFinish(question.setId)')
     expect(question).toContain("if (setId) await openSet(setId)")
