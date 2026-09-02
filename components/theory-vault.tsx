@@ -45,6 +45,7 @@ type TheoryAiStatus = {
 
 const card = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
 const button = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition"
+const ACTIVE_THEORY_QUESTION_KEY = "mednexus:theory:active-question"
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...init })
@@ -128,6 +129,7 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
   const [setData, setSetData] = useState<SetData | null>(null)
   const [questionId, setQuestionId] = useState<string | null>(null)
   const [sessionQuestionIds, setSessionQuestionIds] = useState<string[] | null>(null)
+  const [restoreChecked, setRestoreChecked] = useState(false)
   const [collectionId, setCollectionId] = useState<string | null>(null)
   const [groupId, setGroupId] = useState<string | null>(null)
   const [loading, setLoading] = useState(initialView === "Dashboard" ? !initialDashboard : true)
@@ -137,6 +139,31 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
   const setGlobalQuery = onExternalQueryChange ?? setInternalQuery
   const showingQuestion = questionId !== null
   const dashboardVisible = useRef(Boolean(initialDashboard))
+
+  useEffect(() => {
+    let restoredQuestion = false
+    try {
+      const saved = window.sessionStorage.getItem(ACTIVE_THEORY_QUESTION_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved) as { questionId?: unknown; sessionQuestionIds?: unknown }
+        if (typeof parsed.questionId === "string" && parsed.questionId.trim()) {
+          restoredQuestion = true
+          setQuestionId(parsed.questionId)
+          setSessionQuestionIds(Array.isArray(parsed.sessionQuestionIds) ? parsed.sessionQuestionIds.filter((id): id is string => typeof id === "string") : null)
+        }
+      }
+    } catch {
+      window.sessionStorage.removeItem(ACTIVE_THEORY_QUESTION_KEY)
+    } finally {
+      if (restoredQuestion) setLoading(false)
+      setRestoreChecked(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!restoreChecked || !questionId) return
+    window.sessionStorage.setItem(ACTIVE_THEORY_QUESTION_KEY, JSON.stringify({ questionId, sessionQuestionIds }))
+  }, [questionId, restoreChecked, sessionQuestionIds])
 
   const loadDashboard = useCallback(async () => {
     if (!dashboardVisible.current) setLoading(true)
@@ -158,10 +185,11 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
   }, [])
 
   useEffect(() => {
+    if (!restoreChecked || questionId) return
     if (view === "Dashboard") void loadDashboard()
     else if (view === "Browse Questions") void loadCatalog()
     else setLoading(false)
-  }, [view, loadDashboard, loadCatalog])
+  }, [view, loadDashboard, loadCatalog, questionId, restoreChecked])
 
   useEffect(() => {
     onQuestionViewChange?.(showingQuestion)
@@ -170,8 +198,13 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
     }
   }, [onQuestionViewChange, showingQuestion])
 
+  const clearActiveQuestion = () => {
+    window.sessionStorage.removeItem(ACTIVE_THEORY_QUESTION_KEY)
+    setQuestionId(null)
+    setSessionQuestionIds(null)
+  }
   const navigate = (next: View) => {
-    setQuestionId(null); setSessionQuestionIds(null); setSetData(null); setCollectionId(null); setGroupId(null); setError(""); setView(next)
+    clearActiveQuestion(); setSetData(null); setCollectionId(null); setGroupId(null); setError(""); setView(next)
   }
   const search = () => {
     if (!globalQuery.trim()) return
@@ -190,16 +223,15 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
     setQuestionId(questionIds[0])
   }
   const finishQuestion = async (setId: string | null) => {
-    setQuestionId(null)
-    setSessionQuestionIds(null)
+    clearActiveQuestion()
     if (setId) await openSet(setId)
   }
 
   return <div data-tutorial-anchor="theory-home" className="mx-auto max-w-7xl space-y-5">
 
     {error && <div role="alert" className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
-    {loading ? <div role="status" aria-live="polite" className={`${card} flex flex-col items-center justify-center gap-3 py-14 text-center text-sm text-muted-foreground`}><LoaderCircle className="animate-spin text-primary" size={24} aria-hidden/><span>Opening Theory Vault…</span></div>
-      : questionId ? <StudyQuestion questionId={questionId} sessionQuestionIds={sessionQuestionIds} registered={Boolean(registered)} onBack={() => { setQuestionId(null); setSessionQuestionIds(null) }} onFinish={finishQuestion} onMove={setQuestionId}/>
+    {loading || !restoreChecked ? <div role="status" aria-live="polite" className={`${card} flex flex-col items-center justify-center gap-3 py-14 text-center text-sm text-muted-foreground`}><LoaderCircle className="animate-spin text-primary" size={24} aria-hidden/><span>Opening Theory Vault…</span></div>
+      : questionId ? <StudyQuestion questionId={questionId} sessionQuestionIds={sessionQuestionIds} registered={Boolean(registered)} onBack={finishQuestion} onFinish={finishQuestion} onMove={setQuestionId}/>
       : setData ? <SetOverview data={setData} registered={Boolean(registered)} onBack={() => setSetData(null)} onOpen={openQuestion} onSession={openSession}/>
       : view === "Dashboard" ? <Dashboard data={dashboard} displayName={user?.name} onView={navigate} onCollection={id => { setCollectionId(id); setView("Browse Questions") }} onSet={openSet} onQuestion={openQuestion}/>
       : view === "Browse Questions" ? <Catalog data={catalog} collectionId={collectionId} groupId={groupId} onCollection={setCollectionId} onGroup={setGroupId} onBack={() => groupId ? setGroupId(null) : setCollectionId(null)} onSet={openSet}/>
@@ -474,7 +506,7 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
   </div>
 }
 
-function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onFinish, onMove }: { questionId: string; sessionQuestionIds: string[] | null; registered: boolean; onBack: () => void; onFinish: (setId: string | null) => void; onMove: (id: string) => void }) {
+function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onFinish, onMove }: { questionId: string; sessionQuestionIds: string[] | null; registered: boolean; onBack: (setId: string | null) => void; onFinish: (setId: string | null) => void; onMove: (id: string) => void }) {
   const [question, setQuestion] = useState<TheoryQuestionDetail | null>(null)
   const [mode, setMode] = useState<TheoryStudyMode>("review")
   const [answer, setAnswer] = useState("")
@@ -614,7 +646,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
 
       {/* ── Top nav bar ── */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border/70 pb-4">
-        <button onClick={onBack} aria-label="Back to set" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted"><ArrowLeft size={18}/></button>
+        <button onClick={() => onBack(question.setId)} aria-label="Back to set" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted"><ArrowLeft size={18}/></button>
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Theory Vault <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 text-xs text-muted-foreground">{question.setLabel} · {question.position} of {question.setTotal}</p></div>
         <div className="order-3 grid w-full grid-cols-2 gap-2 sm:order-none sm:flex sm:w-auto sm:items-center">
           <button

@@ -137,6 +137,16 @@ describe("Theory Vault phone experience", () => {
     expect(app).toContain('hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}')
   })
 
+  it("restores an active Theory question after a browser refresh", async () => {
+    const source = await readFile("components/theory-vault.tsx", "utf8")
+    expect(source).toContain('ACTIVE_THEORY_QUESTION_KEY = "mednexus:theory:active-question"')
+    expect(source).toContain("window.sessionStorage.getItem(ACTIVE_THEORY_QUESTION_KEY)")
+    expect(source).toContain("window.sessionStorage.setItem(ACTIVE_THEORY_QUESTION_KEY")
+    expect(source).toContain("window.sessionStorage.removeItem(ACTIVE_THEORY_QUESTION_KEY)")
+    expect(source).toContain("if (!restoreChecked || questionId) return")
+    expect(source).toContain("onBack(question.setId)")
+  })
+
   it("keeps the Theory search compact on phones and wider on desktop", async () => {
     const source = await readFile("components/mednexus-app.tsx", "utf8")
     expect(source).toContain("max-w-[10.5rem]")
