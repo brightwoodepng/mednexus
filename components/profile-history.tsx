@@ -464,6 +464,127 @@ function PrivacySettings() {
 
 type TheoryDashboardData = { authenticated: boolean; displayName: string; totals: { total: number; completed: number }; collections: Array<{ id: string; title: string; kind: string; groups: number; sets: number; total: number; completed: number }>; continueStudying: { prompt: string; collection: string; groupName: string; setTitle: string; lastStudiedAt: string } | null; counts: { bookmarks: number; notes: number; drafts: number; revision: number }; recentSets: Array<{ collection: string; groupName: string; setTitle: string; lastStudiedAt: string }> }
 
+type ProfileTab = "overview" | "mcq" | "theory" | "cosmetics" | "settings"
+
+function UnifiedOverview({ onSelectTab }: { onSelectTab: (tab: ProfileTab) => void }) {
+  const { progress } = useApp()
+  const { balance, lifetimeXP } = useEconomy()
+  const [theory, setTheory] = useState<TheoryDashboardData | null>(null)
+
+  useEffect(() => {
+    fetch("/api/theory/dashboard")
+      .then((response) => response.ok ? response.json() : null)
+      .then(setTheory)
+      .catch(() => setTheory(null))
+  }, [])
+
+  const mcq = useMemo(() => {
+    const attempted = progress.history.length
+    const correct = progress.history.filter((entry) => entry.isCorrect).length
+    const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
+    const byModule = new Map<string, { attempted: number; correct: number }>()
+    for (const entry of progress.history) {
+      const moduleName = entry.module ?? entry.subject ?? "Uncategorized"
+      const current = byModule.get(moduleName) ?? { attempted: 0, correct: 0 }
+      current.attempted += 1
+      if (entry.isCorrect) current.correct += 1
+      byModule.set(moduleName, current)
+    }
+    const rankedModules = [...byModule.entries()]
+      .filter(([, value]) => value.attempted > 0)
+      .sort((a, b) => (b[1].correct / b[1].attempted) - (a[1].correct / a[1].attempted))
+    return { attempted, correct, accuracy, strongest: rankedModules[0]?.[0] ?? "Not enough data" }
+  }, [progress.history])
+
+  const clinicalRank = [...XP_CONFIG.clinicalRanks].reverse().find((rank) => lifetimeXP >= rank.minimumXP) ?? XP_CONFIG.clinicalRanks[0]
+  const recentMcq = [...progress.history].sort((a, b) => b.timestamp - a.timestamp).slice(0, 3)
+  const theoryCompleted = theory?.totals.completed ?? 0
+  const theoryTotal = theory?.totals.total ?? 0
+  const theoryPercent = theoryTotal > 0 ? Math.round((theoryCompleted / theoryTotal) * 100) : 0
+
+  const metrics = [
+    { label: "Lifetime XP", value: lifetimeXP.toLocaleString(), hint: "All-time experience", tone: "text-violet-400", icon: "XP" },
+    { label: "Nexus Points", value: balance.toLocaleString(), hint: "Available to spend", tone: "text-amber-400", icon: "NP" },
+    { label: "Current streak", value: `${progress.streak ?? 0} days`, hint: "Keep it going", tone: "text-orange-400", icon: "↗" },
+    { label: "Clinical rank", value: clinicalRank.name, hint: `${lifetimeXP.toLocaleString()} XP earned`, tone: "text-cyan-400", icon: "#" },
+  ]
+
+  return (
+    <section className="space-y-4" aria-labelledby="profile-overview-title">
+      <h2 id="profile-overview-title" className="sr-only">Learning overview</h2>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-black ${metric.tone}`}>{metric.icon}</span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
+                <p className="truncate text-xl font-bold tabular-nums text-foreground">{metric.value}</p>
+                <p className="text-[11px] text-muted-foreground">{metric.hint}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div><p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-400">MCQ Vault</p><h3 className="mt-1 font-semibold">Question performance</h3></div>
+            <button type="button" onClick={() => onSelectTab("mcq")} className="text-xs font-semibold text-primary hover:underline">View vault →</button>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-border px-2 py-5 text-center">
+            <Stat label="Attempted" value={mcq.attempted.toLocaleString()} />
+            <Stat label="Correct" value={mcq.correct.toLocaleString()} />
+            <Stat label="Accuracy" value={`${mcq.accuracy}%`} />
+          </div>
+          <div className="border-t border-border px-5 py-4">
+            <div className="mb-2 flex justify-between text-xs"><span className="text-muted-foreground">Overall accuracy</span><span className="font-bold tabular-nums">{mcq.accuracy}%</span></div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${mcq.accuracy}%` }} /></div>
+            <p className="mt-3 text-xs text-muted-foreground">Strongest module: <span className="font-semibold text-foreground">{mcq.strongest}</span></p>
+          </div>
+        </article>
+
+        <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div><p className="text-xs font-bold uppercase tracking-[.16em] text-violet-400">Theory Vault</p><h3 className="mt-1 font-semibold">Reading and revision</h3></div>
+            <button type="button" onClick={() => onSelectTab("theory")} className="text-xs font-semibold text-primary hover:underline">View vault →</button>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-border px-2 py-5 text-center">
+            <Stat label="Read" value={theoryCompleted.toLocaleString()} />
+            <Stat label="Available" value={theoryTotal.toLocaleString()} />
+            <Stat label="Progress" value={`${theoryPercent}%`} />
+          </div>
+          <div className="border-t border-border px-5 py-4">
+            <div className="mb-2 flex justify-between text-xs"><span className="text-muted-foreground">Vault completion</span><span className="font-bold tabular-nums">{theoryPercent}%</span></div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-violet-500" style={{ width: `${theoryPercent}%` }} /></div>
+            <p className="mt-3 truncate text-xs text-muted-foreground">{theory?.continueStudying ? `Continue: ${theory.continueStudying.prompt}` : "No Theory activity yet"}</p>
+          </div>
+        </article>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
+        <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between"><h3 className="font-semibold">Recent activity</h3><span className="text-xs text-muted-foreground">Latest sessions</span></div>
+          {recentMcq.length > 0 ? <ul className="divide-y divide-border">{recentMcq.map((entry) => <li key={`${entry.questionId}-${entry.timestamp}`} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-sm font-medium">{entry.module ?? entry.subject ?? "MCQ session"}</p><p className="truncate text-xs text-muted-foreground">{entry.vignetteSnippet}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${entry.isCorrect ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>{entry.isCorrect ? "Correct" : "Review"}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">Your latest MCQ and Theory activity will appear here.</p>}
+        </article>
+        <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <h3 className="font-semibold">Milestones</h3>
+          <div className="mt-4 space-y-3">
+            <Milestone earned={mcq.attempted >= 20} title="First Twenty" detail="Attempt 20 MCQs" />
+            <Milestone earned={(progress.streak ?? 0) >= 7} title="Week Streak" detail="Study for 7 consecutive days" />
+            <Milestone earned={theoryCompleted >= 10} title="Theory Explorer" detail="Read 10 Theory questions" />
+          </div>
+        </article>
+      </div>
+    </section>
+  )
+}
+
+function Milestone({ earned, title, detail }: { earned: boolean; title: string; detail: string }) {
+  return <div className={`flex items-center gap-3 rounded-xl border p-3 ${earned ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20 opacity-65"}`}><span className={`flex h-9 w-9 items-center justify-center rounded-full ${earned ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>{earned ? "✓" : "○"}</span><div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-muted-foreground">{detail}</p></div></div>
+}
+
 function TheoryProfilePanel({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
   const { progress } = useApp()
   const [data, setData] = useState<TheoryDashboardData | null>(null)
@@ -494,15 +615,30 @@ function Stat({ label, value }: { label: string; value: string }) { return <div 
 export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} }: { activeHub?: StudyHubId; onNavigate?: (screen: Screen) => void }) {
   const { progress } = useApp()
   const examScores = progress.examScores ?? []
+  const [activeTab, setActiveTab] = useState<ProfileTab>(activeHub === "theory-vault" ? "theory" : "overview")
+
+  const tabs: Array<{ id: ProfileTab; label: string }> = [
+    { id: "overview", label: "Overview" },
+    { id: "mcq", label: "MCQ Vault" },
+    { id: "theory", label: "Theory Vault" },
+    { id: "cosmetics", label: "Cosmetics" },
+    { id: "settings", label: "Settings" },
+  ]
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-4 px-1 pb-8">
       <ProfileHeader />
-      <TutorialSettings />
-      {activeHub === "theory-vault" ? <TheoryProfilePanel onNavigate={onNavigate} /> : <><CosmeticLoadout />
-      <PrivacySettings />
-      <ModuleReviewSection />
-      <ExamScores scores={examScores} /></>}
+      <nav className="overflow-x-auto rounded-2xl border border-border bg-card px-2 shadow-sm" aria-label="Profile sections">
+        <div className="flex min-w-max gap-1">
+          {tabs.map((tab) => <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} className={`relative min-h-12 px-4 text-sm font-semibold transition-colors ${activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>{tab.label}{activeTab === tab.id && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" />}</button>)}
+        </div>
+      </nav>
+
+      {activeTab === "overview" && <UnifiedOverview onSelectTab={setActiveTab} />}
+      {activeTab === "mcq" && <div className="space-y-6"><ModuleReviewSection /><ExamScores scores={examScores} /></div>}
+      {activeTab === "theory" && <TheoryProfilePanel onNavigate={onNavigate} />}
+      {activeTab === "cosmetics" && <CosmeticLoadout />}
+      {activeTab === "settings" && <div className="grid gap-4 lg:grid-cols-2"><PrivacySettings /><TutorialSettings /></div>}
     </div>
   )
 }
