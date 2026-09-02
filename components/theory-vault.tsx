@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   ArrowLeft, ArrowRight, BookOpen, Bookmark, Check, CheckCircle2, ChevronDown, ChevronRight,
   Clock3, Download, FileText, FolderOpen, ListChecks, LoaderCircle, Mic, NotebookPen,
-  RefreshCw, Save, Search, ShieldCheck, Square, Target, Timer, X,
+  RefreshCw, Save, Search, ShieldCheck, Sparkles, Square, Target, Timer, X,
 } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -675,23 +675,23 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
 
       {!registered && <SignInNotice/>}
       {message && <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">{message}</div>}
-      {mode === "practice" && registered && aiStatus?.consent.required && (
+      {(mode === "practice" || reviewPane === "notes") && registered && aiStatus?.consent.required && (
         <AiConsentNotice
           available={aiStatus.available}
           accepting={acceptingAi}
           onAccept={acceptAiConsent}
         />
       )}
-      {mode === "practice" && registered && aiStatus && !aiStatus.available && !aiStatus.consent.required && (
+      {(mode === "practice" || reviewPane === "notes") && registered && aiStatus && !aiStatus.available && !aiStatus.consent.required && (
         <div className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
           AI refinement and dictation are temporarily unavailable because Gemini is not configured.
         </div>
       )}
-      {mode === "practice" && aiMessage && <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">{aiMessage}</div>}
+      {(mode === "practice" || reviewPane === "notes") && aiMessage && <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">{aiMessage}</div>}
 
       {/* Focused question prompt */}
       <article className="rounded-[1.25rem] border border-border bg-card p-5 shadow-sm sm:p-7">
-          <div className={`grid items-start gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><p className="mb-2 text-xs font-bold uppercase tracking-[.16em] text-primary">Question</p><h1 className="break-words text-xl font-bold leading-snug sm:text-2xl">{question.title || question.prompt}</h1>{question.title && <TheoryMarkdown children={question.prompt} className="mt-3 text-foreground/80"/>}</div>{question.media.length > 0 && <div className="lg:pt-7"><TheoryQuestionMedia media={question.media} compact/></div>}</div>
+          <div className={`grid items-start gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span className="text-xs font-bold uppercase tracking-[.16em] text-primary">Question</span><h1 className="break-words text-base font-bold leading-snug sm:text-lg">{question.title || "Theory question"}</h1></div><TheoryMarkdown children={question.prompt} className="mt-4 text-foreground/80"/></div>{question.media.length > 0 && <div className="lg:pt-2"><TheoryQuestionMedia media={question.media} compact/></div>}</div>
       </article>
 
       {/* ── Review mode ── */}
@@ -710,9 +710,12 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
             </div>
           </> : <NoteEditor
             note={note}
+            questionId={question.id}
             registered={registered}
+            aiStatus={aiStatus}
             onChange={setNote}
             onSave={saveNote}
+            onQuota={updateAiQuota}
           />}
         </article>
 
@@ -770,7 +773,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
       {/* ── Desktop Prev / Next ── */}
       <div className="hidden justify-between pt-1 md:flex">
         {question.previousId
-          ? <button onClick={() => onMove(question.previousId!)} className={`${button} border border-border`}><ArrowLeft size={16}/> Previous</button>
+          ? <button onClick={() => onMove(question.previousId!)} className={`${button} bg-primary text-primary-foreground`}><ArrowLeft size={16}/> Previous</button>
           : <span/>}
         <button onClick={() => question.nextId ? onMove(question.nextId) : onFinish(question.setId)} className={`${button} bg-primary text-primary-foreground`}>
           {question.nextId ? <>Next <ArrowRight size={16}/></> : <>Finish <CheckCircle2 size={16}/></>}
@@ -782,7 +785,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
           type="button"
           onClick={() => question.previousId && onMove(question.previousId)}
           disabled={!question.previousId}
-          className={`${button} min-w-0 border border-border px-2 disabled:opacity-40`}
+          className={`${button} min-w-0 bg-primary px-2 text-primary-foreground disabled:opacity-40`}
         >
           <ArrowLeft size={15}/> <span className="hidden min-[350px]:inline">Previous</span>
         </button>
@@ -978,22 +981,53 @@ function DictationControl({ questionId, target, textareaRef, disabled, onTranscr
 }
 
 function NoteEditor({
-  note, registered, onChange, onSave,
+  note, questionId, registered, aiStatus, onChange, onSave, onQuota,
 }: {
   note: string
+  questionId: string
   registered: boolean
+  aiStatus: TheoryAiStatus | null
   onChange: (value: string) => void
   onSave: () => void
+  onQuota: (kind: "refinements" | "transcriptions", remaining: number) => void
 }) {
+  const [refining, setRefining] = useState(false)
+  const [preview, setPreview] = useState<{ original: string; refined: string } | null>(null)
+  const [error, setError] = useState("")
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const aiEnabled = registered && Boolean(aiStatus?.available) && !aiStatus?.consent.required
+
+  const refine = async () => {
+    if (!note.trim()) { setError("Write a note before asking Gemini to refine it."); return }
+    setRefining(true); setError(""); setPreview(null)
+    try {
+      const result = await api<{ refinedNote: string; remaining: number }>("/api/theory/ai/refine-note", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionId, note }),
+      })
+      setPreview({ original: note, refined: result.refinedNote })
+      onQuota("refinements", result.remaining)
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Gemini could not refine this note.") }
+    finally { setRefining(false) }
+  }
+  const insertNoteTranscript = (text: string, position: number) => {
+    onChange(insertDictation(note, text, position))
+    window.setTimeout(() => textareaRef.current?.focus(), 0)
+  }
   return (
-    <div className="p-5 sm:p-6">
-      <div className="mx-auto max-w-3xl"><p className="mb-3 text-sm text-muted-foreground">Keep a quick reminder for this question.</p>
-        <textarea value={note} onChange={event => onChange(event.target.value)} rows={12}
+    <div className="flex min-h-[32rem] flex-col p-5 sm:p-6">
+      <p className="mb-3 text-sm text-muted-foreground">Write, dictate, or refine your notes for this question.</p>
+        <textarea ref={textareaRef} value={note} onChange={event => onChange(event.target.value)}
           disabled={!registered}
           placeholder={registered ? "Write a quick note…" : "Sign in to save personal notes."}
-          className="w-full resize-y rounded-xl border border-border bg-background p-4 text-sm leading-6 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-60"/>
-        <button onClick={onSave} disabled={!registered} className={`${button} mt-3 w-full bg-primary text-primary-foreground disabled:opacity-50`}><Save size={15}/> Save note</button>
-      </div>
+          className="min-h-72 w-full flex-1 resize-y rounded-xl border border-border bg-background p-4 text-sm leading-7 outline-none focus:ring-2 focus:ring-primary/25 disabled:opacity-60"/>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <button onClick={refine} disabled={!aiEnabled || refining || !note.trim() || (aiStatus?.remaining.refinements ?? 0) <= 0} className={`${button} flex-1 border border-primary/30 text-primary disabled:cursor-not-allowed disabled:opacity-50`}>{refining ? <LoaderCircle className="animate-spin" size={15}/> : <Sparkles size={15}/>}{refining ? "Refining…" : "Refine with AI"}</button>
+          {registered && <DictationControl questionId={questionId} target="note" textareaRef={textareaRef} disabled={!aiEnabled || (aiStatus?.remaining.transcriptions ?? 0) <= 0} onTranscript={insertNoteTranscript} onQuota={remaining => onQuota("transcriptions", remaining)}/>}
+          <button onClick={onSave} disabled={!registered} className={`${button} flex-1 bg-primary text-primary-foreground disabled:opacity-50`}><Save size={15}/> Save note</button>
+        </div>
+        {aiEnabled && aiStatus && <p className="mt-2 text-xs text-muted-foreground">{aiStatus.remaining.refinements} refinements · {aiStatus.remaining.transcriptions} transcriptions left today</p>}
+        {error && <p className="mt-2 text-xs leading-5 text-destructive">{error}</p>}
+        {preview && <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4"><p className="text-xs font-bold uppercase tracking-wider text-primary">Review the polished note</p><div className="mt-3 grid gap-3 md:grid-cols-2"><div><p className="mb-1 text-xs font-semibold text-muted-foreground">Original</p><div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-xs leading-5">{preview.original}</div></div><div><p className="mb-1 text-xs font-semibold text-muted-foreground">Polished</p><div className="max-h-48 overflow-y-auto rounded-lg border border-primary/20 bg-background p-3 text-xs leading-5"><TheoryMarkdown children={preview.refined}/></div></div></div><div className="mt-3 flex gap-2"><button onClick={() => {onChange(preview.refined);setPreview(null)}} className={`${button} flex-1 bg-primary text-primary-foreground`}>Accept</button><button onClick={() => setPreview(null)} className={`${button} flex-1 border border-border`}>Discard</button></div><p className="mt-2 text-xs text-muted-foreground">Accepting changes the editor only. Use Save note when you are ready.</p></div>}
     </div>
   )
 }

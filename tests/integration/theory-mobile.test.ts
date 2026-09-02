@@ -131,6 +131,8 @@ describe("Theory Vault phone experience", () => {
     expect(question).toContain("reviewPane")
     expect(question).toContain("lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]")
     expect(question).toContain("My Notes")
+    expect(question).toContain("min-h-72 w-full flex-1")
+    expect(question).toContain("Refine with AI")
     expect(question).toContain('question.nextId ? onMove(question.nextId) : onFinish(question.setId)')
     expect(question).toContain("if (setId) await openSet(setId)")
     expect(question).toContain('<>Finish <CheckCircle2 size={16}/></>')
