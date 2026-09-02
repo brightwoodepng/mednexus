@@ -691,7 +691,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
 
       {/* Focused question prompt */}
       <article className="rounded-[1.25rem] border border-border bg-card p-5 shadow-sm sm:p-7">
-          <div className={`grid items-start gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="flex min-w-0 items-center gap-2 text-sm font-bold leading-7 text-primary"><span className="shrink-0 uppercase tracking-[.16em]">Question</span><span aria-hidden className="h-4 w-px shrink-0 bg-primary/40"/><h1 className="min-w-0 truncate font-bold text-primary" title={question.title || "Theory question"}>{question.title || "Theory question"}</h1></div><TheoryMarkdown children={question.prompt} className="mt-4 text-foreground/80"/></div>{question.media.length > 0 && <div className="lg:pt-2"><TheoryQuestionMedia media={question.media} compact/></div>}</div>
+          <div className={`grid items-start gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="flex min-w-0 items-center gap-2 text-sm font-bold leading-7 text-primary"><span className="shrink-0">Question</span><span aria-hidden className="h-4 w-px shrink-0 bg-primary/40"/><h1 className="min-w-0 truncate font-bold text-primary" title={question.title || "Theory question"}>{question.title || "Theory question"}</h1></div><TheoryMarkdown children={question.prompt} className="mt-4 text-foreground/80"/></div>{question.media.length > 0 && <div className="lg:pt-2"><TheoryQuestionMedia media={question.media} compact/></div>}</div>
       </article>
 
       {/* ── Review mode ── */}
