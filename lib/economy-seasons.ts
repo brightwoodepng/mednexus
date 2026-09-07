@@ -32,6 +32,10 @@ export async function assertEconomySeasonSchema(db: Queryable) {
       to_regclass('public.mednexus_bounty_progress') IS NOT NULL AS bounty_progress,
       to_regclass('public.mednexus_weekly_goal_progress') IS NOT NULL AS weekly_goals,
       to_regclass('public.mednexus_game_personal_bests') IS NOT NULL AS personal_bests
+      ,to_regclass('public.mednexus_economy_config_revisions') IS NOT NULL AS config_revisions
+      ,to_regclass('public.mednexus_economy_reward_runs') IS NOT NULL AS reward_runs
+      ,to_regclass('public.mednexus_economy_reward_recipients') IS NOT NULL AS reward_recipients
+      ,to_regclass('public.mednexus_economy_gifts') IS NOT NULL AS gifts
   `)
   const missing = Object.entries(result.rows[0] ?? {})
     .filter(([, ready]) => !ready)

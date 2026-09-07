@@ -5,6 +5,7 @@ import { getTodaysBounties, TODAY_DATE } from "@/lib/economy"
 import { applyNPCredits } from "@/lib/np-ledger"
 import { getActiveSeason } from "@/lib/economy-seasons"
 import { countEconomyQueries, economyJson, economyMetrics } from "@/lib/economy-api"
+import { getActiveEconomyConfig } from "@/lib/economy-runtime-config"
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +14,8 @@ export async function GET(req: NextRequest) {
     const uid = auth.uid
     if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 })
 
-    const bounties = getTodaysBounties()
+    const runtimeConfig = await getActiveEconomyConfig(pool)
+    const bounties = getTodaysBounties(undefined,runtimeConfig.npConfig)
     const today = TODAY_DATE()
     const season = await getActiveSeason(pool)
 
@@ -47,7 +49,8 @@ export async function POST(req: NextRequest) {
     const uid = auth.uid
     if (!bountyId) return NextResponse.json({ error: "Missing fields" }, { status: 400 })
 
-    const bounties = getTodaysBounties()
+    const runtimeConfig = await getActiveEconomyConfig(pool)
+    const bounties = getTodaysBounties(undefined,runtimeConfig.npConfig)
     const today = TODAY_DATE()
     const bounty = bounties.find(b => b.id === bountyId)
     if (!bounty) return NextResponse.json({ error: "Bounty not active today" }, { status: 400 })

@@ -1,6 +1,7 @@
 import type { PoolClient } from "pg"
 import { TODAY_DATE } from "@/lib/economy"
 import { XP_CONFIG, type XPSource } from "@/lib/xp-config"
+import { getActiveEconomyConfig, type RuntimeXPConfig } from "@/lib/economy-runtime-config"
 import { applyNPCredits } from "@/lib/np-ledger"
 
 export type XPCredit = {
@@ -23,6 +24,8 @@ export type XPCreditResult = {
 }
 
 export async function applyXPCredits(client: PoolClient, userId: string, credits: XPCredit[]): Promise<XPCreditResult> {
+  const runtime = await getActiveEconomyConfig(client)
+  const xpConfig = runtime.xpConfig
   const economyDate = TODAY_DATE()
   await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:xp:${userId}:${economyDate}`])
   const previousLifetimeResult = await client.query<{ total: string }>("SELECT COALESCE(SUM(amount),0)::text total FROM mednexus_xp_transactions WHERE user_id=$1", [userId])
@@ -47,16 +50,16 @@ export async function applyXPCredits(client: PoolClient, userId: string, credits
     const requested = Math.max(0, Math.floor(credit.amount))
     if (!requested) continue
     const competitive = credit.competitive !== false
-    const remaining = Math.max(0, XP_CONFIG.dailyCompetitiveCap - competitiveToday)
+    const remaining = Math.max(0, xpConfig.dailyCompetitiveCap - competitiveToday)
     const isIncorrectAttempt = credit.metadata?.category === "incorrect_attempt"
-    const incorrectRemaining = isIncorrectAttempt ? Math.max(0, XP_CONFIG.dailyIncorrectCap - incorrectToday) : requested
+    const incorrectRemaining = isIncorrectAttempt ? Math.max(0, xpConfig.dailyIncorrectCap - incorrectToday) : requested
     const amount = competitive ? Math.min(requested, remaining, incorrectRemaining) : Math.min(requested, incorrectRemaining)
     const result = await client.query(
-      `INSERT INTO mednexus_xp_transactions(id,user_id,season_id,source,source_id,amount,competitive,metadata)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
+      `INSERT INTO mednexus_xp_transactions(id,user_id,season_id,source,source_id,amount,competitive,metadata,config_version)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)
        ON CONFLICT(user_id,source,source_id) DO NOTHING RETURNING amount`,
       [`xp-${crypto.randomUUID()}`, userId, credit.seasonId, credit.source, credit.sourceId, amount, competitive,
-        JSON.stringify({ ...credit.metadata, xpVersion: XP_CONFIG.version, economyDate, requestedAmount: requested, suppressedAmount: requested - amount })],
+        JSON.stringify({ ...credit.metadata, xpVersion: runtime.version, economyDate, requestedAmount: requested, suppressedAmount: requested - amount }), runtime.version],
     )
     if (!result.rowCount) continue
     credited += amount
@@ -67,7 +70,7 @@ export async function applyXPCredits(client: PoolClient, userId: string, credits
   }
   const lifetime = await client.query<{ total: string }>("SELECT COALESCE(SUM(amount),0)::text total FROM mednexus_xp_transactions WHERE user_id=$1", [userId])
   const lifetimeXP = Number(lifetime.rows[0]?.total ?? 0)
-  const crossedRanks = XP_CONFIG.clinicalRanks.filter(rank => rank.npReward > 0 && previousLifetimeXP < rank.minimumXP && lifetimeXP >= rank.minimumXP)
+  const crossedRanks = xpConfig.clinicalRanks.filter(rank => rank.npReward > 0 && previousLifetimeXP < rank.minimumXP && lifetimeXP >= rank.minimumXP)
   const rankCredit = await applyNPCredits(client, userId, crossedRanks.map(rank => ({
     source: "xp_rank_reward",
     sourceId: rank.name,
@@ -103,11 +106,11 @@ export function sessionXPCredits(input: {
   firstDailyCompletion?: boolean
   accuracy: number
   isNewHigh?: boolean
-}): XPCredit[] {
+}, xpConfig: RuntimeXPConfig = XP_CONFIG): XPCredit[] {
   const trial = input.mode === "trial" || input.mode === "tutor"
   const exam = input.mode === "exam"
-  const correctReward = trial ? XP_CONFIG.trial.correct : exam ? XP_CONFIG.exam.correct : XP_CONFIG.solo.correct
-  const incorrectReward = trial ? XP_CONFIG.trial.incorrect : exam ? XP_CONFIG.exam.incorrect : XP_CONFIG.solo.incorrect
+  const correctReward = trial ? xpConfig.trial.correct : exam ? xpConfig.exam.correct : xpConfig.solo.correct
+  const incorrectReward = trial ? xpConfig.trial.incorrect : exam ? xpConfig.exam.incorrect : xpConfig.solo.incorrect
   let correctXP = 0
   let incorrectXP = 0
   input.attempts.forEach((attempt, index) => {
@@ -116,7 +119,7 @@ export function sessionXPCredits(input: {
     correctXP += Math.floor(correctReward * multiplier)
     if (trial) {
       const streak = attempt.currentStreak ?? 0
-      const bonus = streak >= 10 ? XP_CONFIG.trial.streak10 : streak >= 5 ? XP_CONFIG.trial.streak5 : 0
+      const bonus = streak >= 10 ? xpConfig.trial.streak10 : streak >= 5 ? xpConfig.trial.streak5 : 0
       correctXP += Math.floor(bonus * multiplier)
     }
   })
@@ -125,16 +128,16 @@ export function sessionXPCredits(input: {
     { source: "question", sourceId: `${input.sessionId}:incorrect`, amount: incorrectXP, seasonId: input.seasonId, metadata: { mode: input.mode, category: "incorrect_attempt", label: "Attempt XP" } },
   ]
   if (trial) {
-    if (input.attempts.length >= 10) credits.push({ source: "completion", sourceId: `${input.sessionId}:completion-10`, amount: XP_CONFIG.trial.completion10, seasonId: input.seasonId, metadata: { mode: input.mode, label: "10-question completion" } })
-    if (input.attempts.length >= 25) credits.push({ source: "completion", sourceId: `${input.sessionId}:completion-25`, amount: XP_CONFIG.trial.completion25, seasonId: input.seasonId, metadata: { mode: input.mode, label: "25-question completion" } })
+    if (input.attempts.length >= 10) credits.push({ source: "completion", sourceId: `${input.sessionId}:completion-10`, amount: xpConfig.trial.completion10, seasonId: input.seasonId, metadata: { mode: input.mode, label: "10-question completion" } })
+    if (input.attempts.length >= 25) credits.push({ source: "completion", sourceId: `${input.sessionId}:completion-25`, amount: xpConfig.trial.completion25, seasonId: input.seasonId, metadata: { mode: input.mode, label: "25-question completion" } })
   } else if (input.meaningfulCompletion) {
-    const completion = exam ? XP_CONFIG.exam.completion : XP_CONFIG.solo.completion
-    const accuracyRewards = exam ? XP_CONFIG.exam : XP_CONFIG.solo
+    const completion = exam ? xpConfig.exam.completion : xpConfig.solo.completion
+    const accuracyRewards = exam ? xpConfig.exam : xpConfig.solo
     credits.push({ source: "completion", sourceId: `${input.sessionId}:completion`, amount: completion, seasonId: input.seasonId, metadata: { mode: input.mode, label: "Valid completion" } })
     const accuracyAmount = accuracyXP(input.accuracy, accuracyRewards)
     if (accuracyAmount) credits.push({ source: "accuracy", sourceId: `${input.sessionId}:accuracy`, amount: accuracyAmount, seasonId: input.seasonId, metadata: { mode: input.mode, accuracy: input.accuracy, label: "Accuracy bonus" } })
   }
-  if (!trial && !exam && input.firstDailyCompletion) credits.push({ source: "first_daily_completion", sourceId: `${TODAY_DATE()}:${input.userId}:solo`, amount: XP_CONFIG.solo.firstDailyCompletion, seasonId: input.seasonId, metadata: { mode: input.mode, label: "First solo completion" } })
-  if (!trial && !exam && input.isNewHigh) credits.push({ source: "personal_best", sourceId: `${input.sessionId}:personal-best`, amount: XP_CONFIG.solo.personalBest, seasonId: input.seasonId, metadata: { mode: input.mode, label: "Personal best" } })
+  if (!trial && !exam && input.firstDailyCompletion) credits.push({ source: "first_daily_completion", sourceId: `${TODAY_DATE()}:${input.userId}:solo`, amount: xpConfig.solo.firstDailyCompletion, seasonId: input.seasonId, metadata: { mode: input.mode, label: "First solo completion" } })
+  if (!trial && !exam && input.isNewHigh) credits.push({ source: "personal_best", sourceId: `${input.sessionId}:personal-best`, amount: xpConfig.solo.personalBest, seasonId: input.seasonId, metadata: { mode: input.mode, label: "Personal best" } })
   return credits
 }

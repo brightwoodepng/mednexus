@@ -398,7 +398,6 @@ function QuestionMediaGallery({ media, legacyImage, label }: {
       {items.map(item => (
         <figure key={item.id} className="overflow-hidden rounded-2xl border border-border bg-background">
           {/* Imported question media can be a data URI or a user-hosted URL, so use a native image element. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={item.url}
             alt={item.alt || label}
@@ -1183,9 +1182,8 @@ function ModeCard({ name, icon, gradient, shadow, desc, rules, hsLabel, hsKey, o
 type ModeCategory = "solo" | "multi"
 
 function QuestsDrawer({ onClose }: { onClose: () => void }) {
-  const { bounties, weeklyGoals } = useEconomy()
+  const { bounties } = useEconomy()
   const pendingCount = bounties.filter(b => b.progress >= b.target && !b.claimed).length
-    + weeklyGoals.filter(goal => goal.completed && !goal.credited).length
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1223,9 +1221,8 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
 }) {
   const [category, setCategory] = useState<ModeCategory>("solo")
   const [questsOpen, setQuestsOpen] = useState(false)
-  const { bounties, weeklyGoals } = useEconomy()
+  const { bounties } = useEconomy()
   const questBadgeCount = bounties.filter(b => b.progress >= b.target && !b.claimed).length
-    + weeklyGoals.filter(goal => goal.completed && !goal.credited).length
 
   return (
     <div className="flex min-h-full flex-col p-3 sm:p-5 lg:p-6">

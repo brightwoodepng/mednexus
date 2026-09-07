@@ -29,11 +29,9 @@ import {
   recordDailyActivity,
   type NPCredit,
 } from "@/lib/np-ledger"
-import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
-import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
 import { getActiveSeason } from "@/lib/economy-seasons"
 import { applyXPCredits, type XPCredit } from "@/lib/xp-ledger"
-import { XP_CONFIG } from "@/lib/xp-config"
+import { getActiveEconomyConfig } from "@/lib/economy-runtime-config"
 
 interface AnswerEntry {
   /** Index into the room's question_pool */
@@ -81,6 +79,7 @@ export async function POST(
     try {
       await client.query("BEGIN")
       const season = await getActiveSeason(client, true)
+      const runtime=await getActiveEconomyConfig(client),economyConfig=runtime.npConfig,xpConfig=runtime.xpConfig
 
       // ── Load authoritative room state (with row lock) ──────────────────────
       const res = await client.query(
@@ -101,8 +100,8 @@ export async function POST(
         scored_uids: string[]
         answer_history: Record<string, AnswerEntry[]>
       }
-      if (!isEarningModeEnabled("mcq_multiplayer_game")
-        || !(ECONOMY_CONFIG.modeIds.multiplayerGames as readonly string[]).includes(room.mode)) {
+      if (!economyConfig.enabledEarningModes.mcq_multiplayer_game
+        || !(economyConfig.modeIds.multiplayerGames as readonly string[]).includes(room.mode)) {
         await client.query("ROLLBACK")
         return NextResponse.json({ error: "Rewards are disabled for this mode" }, { status: 422 })
       }
@@ -222,12 +221,12 @@ export async function POST(
         const validQuestions = new Set((room.answer_history?.[player.id] ?? [])
           .map(entry => entry.qi)
           .filter(qi => Number.isInteger(qi) && room.question_pool[qi]))
-        return validQuestions.size >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers
+        return validQuestions.size >= economyConfig.gameRewards.multiplayer.minimumAnswers
       })
-      const meaningfulMatch = room.question_pool.length >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers
-        && meaningfulParticipants.length >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumPlayers
+      const meaningfulMatch = room.question_pool.length >= economyConfig.gameRewards.multiplayer.minimumAnswers
+        && meaningfulParticipants.length >= economyConfig.gameRewards.multiplayer.minimumPlayers
         && playerRank > 0
-        && total >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumAnswers
+        && total >= economyConfig.gameRewards.multiplayer.minimumAnswers
       if (!meaningfulMatch) {
         await client.query("ROLLBACK")
         return NextResponse.json({ error: "Match does not meet the reward eligibility policy" }, { status: 422 })
@@ -259,11 +258,11 @@ export async function POST(
       let multiplayerCorrectXP = 0
       for (const question of correctQuestions) {
         const previousCorrect = correctCounts.get(question.id) ?? 0
-        const multiplier = ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers[previousCorrect] ?? 0
-        const amount = Math.floor(ECONOMY_CONFIG.gameRewards.multiplayer.correctAnswer * multiplier)
+        const multiplier = economyConfig.antiFarming.repeatRewardMultipliers[previousCorrect] ?? 0
+        const amount = Math.floor(economyConfig.gameRewards.multiplayer.correctAnswer * multiplier)
         if (amount > 0) questionCredits.push({ source: "multiplayer_question", sourceId: `${pin}:${playerId}:${question.id}`, amount, metadata: { mode: room.mode, questionId: question.id, rewardScope: "multiplayer" } })
         multiplayerQuestionNP += amount
-        multiplayerCorrectXP += Math.floor(XP_CONFIG.multiplayer.correct * multiplier)
+        multiplayerCorrectXP += Math.floor(xpConfig.multiplayer.correct * multiplier)
         correctCounts.set(question.id, previousCorrect + 1)
         await client.query(
           `INSERT INTO mednexus_user_question_progress(season_id,user_id,question_id,reward_scope,correct_count,discipline)
@@ -273,8 +272,8 @@ export async function POST(
         )
       }
 
-      const completionNP = ECONOMY_CONFIG.gameRewards.multiplayer.participation
-      const achievementNP = ECONOMY_CONFIG.gameRewards.multiplayer.placeBonuses[playerRank - 1] ?? 0
+      const completionNP = economyConfig.gameRewards.multiplayer.participation
+      const achievementNP = economyConfig.gameRewards.multiplayer.placeBonuses[playerRank - 1] ?? 0
       const achievementBreakdown = achievementNP > 0
         ? [{ label: `${playerRank === 1 ? "🥇" : playerRank === 2 ? "🥈" : "🥉"} Place Bonus`, amount: achievementNP }]
         : []
@@ -309,10 +308,10 @@ export async function POST(
           credits.push({
             source: "first_multiplayer_win",
             sourceId: `${TODAY_DATE()}:${playerId}`,
-            amount: ECONOMY_CONFIG.gameRewards.multiplayer.firstDailyWin,
+            amount: economyConfig.gameRewards.multiplayer.firstDailyWin,
             metadata: { roomPin: pin, mode: room.mode, rewardCategory: "first_multiplayer_win" },
           })
-          extraBreakdown.push({ label: "🌅 First Win of the Day!", amount: ECONOMY_CONFIG.gameRewards.multiplayer.firstDailyWin })
+          extraBreakdown.push({ label: "🌅 First Win of the Day!", amount: economyConfig.gameRewards.multiplayer.firstDailyWin })
         }
       }
 
@@ -326,9 +325,8 @@ export async function POST(
       }
       const credit = await applyNPCredits(client, playerId, credits)
       await recordDailyActivity(client, playerId, total, correct)
-      const weekly = await recordWeeklyGoalActivity(client, playerId, season.id, { answered: total, correct })
 
-      const todayBounties = getTodaysBounties()
+      const todayBounties = getTodaysBounties(undefined,economyConfig)
       const today = TODAY_DATE()
       const bountyUpdates: {
         id: string; progress: number; target: number; claimed: boolean; newlyComplete: boolean; reward: number
@@ -376,22 +374,21 @@ export async function POST(
       const bountyCredit = await applyNPCredits(client, playerId, bountyCredits)
       const xpCredits: XPCredit[] = [
         { source: "question", sourceId: `${pin}:${playerId}:correct`, amount: multiplayerCorrectXP, seasonId: season.id, metadata: { mode: room.mode, label: "Multiplayer correct answers" } },
-        { source: "question", sourceId: `${pin}:${playerId}:incorrect`, amount: (total - correct) * XP_CONFIG.multiplayer.incorrect, seasonId: season.id, metadata: { mode: room.mode, category: "incorrect_attempt", label: "Multiplayer attempts" } },
-        { source: "participation", sourceId: `${pin}:${playerId}:participation`, amount: XP_CONFIG.multiplayer.participation, seasonId: season.id, metadata: { mode: room.mode, label: "Multiplayer participation" } },
+        { source: "question", sourceId: `${pin}:${playerId}:incorrect`, amount: (total - correct) * xpConfig.multiplayer.incorrect, seasonId: season.id, metadata: { mode: room.mode, category: "incorrect_attempt", label: "Multiplayer attempts" } },
+        { source: "participation", sourceId: `${pin}:${playerId}:participation`, amount: xpConfig.multiplayer.participation, seasonId: season.id, metadata: { mode: room.mode, label: "Multiplayer participation" } },
       ]
-      const placeXP = XP_CONFIG.multiplayer.places[playerRank - 1] ?? 0
+      const placeXP = xpConfig.multiplayer.places[playerRank - 1] ?? 0
       if (placeXP) xpCredits.push({ source: "placement", sourceId: `${pin}:${playerId}:place`, amount: placeXP, seasonId: season.id, metadata: { mode: room.mode, rank: playerRank, label: `Place ${playerRank}` } })
-      if (playerRank1) xpCredits.push({ source: "first_daily_win", sourceId: `${TODAY_DATE()}:${playerId}:multiplayer`, amount: XP_CONFIG.multiplayer.firstDailyWin, seasonId: season.id, metadata: { mode: room.mode, label: "First multiplayer win" } })
-      for (const bounty of bountyUpdates.filter(item => item.newlyComplete)) xpCredits.push({ source: "bounty", sourceId: `${today}:${bounty.id}`, amount: XP_CONFIG.bounty[bounty.id] ?? 0, seasonId: season.id, metadata: { bountyId: bounty.id, label: `Bounty: ${bounty.id}` } })
-      for (const goalId of weekly.newlyCompleted) xpCredits.push({ source: "weekly_goal", sourceId: `${weekly.progress.weekId}:${goalId}`, amount: XP_CONFIG.weeklyGoal[goalId] ?? 0, seasonId: season.id, metadata: { goalId, label: `Weekly goal: ${goalId}` } })
+      if (playerRank1) xpCredits.push({ source: "first_daily_win", sourceId: `${TODAY_DATE()}:${playerId}:multiplayer`, amount: xpConfig.multiplayer.firstDailyWin, seasonId: season.id, metadata: { mode: room.mode, label: "First multiplayer win" } })
+      for (const bounty of bountyUpdates.filter(item => item.newlyComplete)) xpCredits.push({ source: "bounty", sourceId: `${today}:${bounty.id}`, amount: xpConfig.bounty[bounty.id] ?? 0, seasonId: season.id, metadata: { bountyId: bounty.id, label: `Bounty: ${bounty.id}` } })
       const xp = await applyXPCredits(client, playerId, xpCredits)
 
       const payload = {
-        earned: credit.credited + bountyCredit.credited + weekly.credited.credited + xp.rankNPCredited,
+        earned: credit.credited + bountyCredit.credited + xp.rankNPCredited,
         xpEarned: xp.credited,
         lifetimeXP: xp.lifetimeXP,
         xpBreakdown: xp.breakdown,
-        newBalance: xp.rankNPCredited > 0 ? xp.rankNPBalance : bountyCredit.credited > 0 ? bountyCredit.newBalance : weekly.credited.newBalance,
+        newBalance: xp.rankNPCredited > 0 ? xp.rankNPBalance : bountyCredit.credited > 0 ? bountyCredit.newBalance : credit.newBalance,
         breakdown: [
           ...(multiplayerQuestionNP > 0 ? [{ label: `Correct answers (${correct} correct)`, amount: multiplayerQuestionNP }] : []),
           ...(completionNP > 0 ? [{ label: "Participation", amount: completionNP }] : []),
@@ -399,8 +396,6 @@ export async function POST(
           ...extraBreakdown,
           ...bountyUpdates.filter(item => item.newlyComplete).map(item => ({ label: `Bounty: ${todayBounties.find(b => b.id === item.id)?.label ?? item.id}`, amount: item.reward })),
           ...credit.rankBreakdown,
-          ...weekly.newlyCompleted.map(id => ({ label: `Weekly goal: ${id}`, amount: ECONOMY_CONFIG.weeklyGoals.find(goal => goal.id === id)?.reward ?? 0 })),
-          ...weekly.credited.rankBreakdown,
           ...bountyCredit.rankBreakdown,
           ...xp.rankNPBreakdown,
           ...(multiplayerCapSuppressed > 0 ? [{ label: "Daily multiplayer NP cap", amount: -multiplayerCapSuppressed }] : []),

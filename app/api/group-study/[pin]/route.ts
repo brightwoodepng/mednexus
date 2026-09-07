@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import type { PoolClient } from "pg"
 import pool, { ensureGroupStudySchema } from "@/lib/db"
-import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getActiveSeason } from "@/lib/economy-seasons"
 import {
   firstEligibleQuestionIndex,
@@ -21,9 +20,8 @@ import {
 } from "@/lib/group-study"
 import { applyNPCredits, dailyRewardRemaining, recordDailyActivity } from "@/lib/np-ledger"
 import { requireAuthenticatedUser } from "@/lib/request-auth"
-import { recordWeeklyGoalActivity } from "@/lib/weekly-goals"
 import { applyXPCredits, type XPCredit } from "@/lib/xp-ledger"
-import { XP_CONFIG } from "@/lib/xp-config"
+import { getActiveEconomyConfig } from "@/lib/economy-runtime-config"
 import { ensureNotificationSchema } from "@/lib/notification-schema"
 import { notifyRoomMembers, notifyUser } from "@/lib/personal-notifications"
 
@@ -303,6 +301,7 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
 
 async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQuestionRow, userId: string, correct: boolean) {
   const season = await getActiveSeason(client, true)
+  const runtime=await getActiveEconomyConfig(client),economyConfig=runtime.npConfig,xpConfig=runtime.xpConfig
   await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:activity-integrity:${userId}`])
   let earned = 0
   let xpMultiplier = 1
@@ -312,16 +311,16 @@ async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQue
        WHERE season_id=$1 AND user_id=$2 AND question_id=$3 AND reward_scope='group_study' FOR UPDATE`, [season.id, userId, question.question_id],
     )
     const count = Number(progress.rows[0]?.correct_count ?? 0)
-    const multiplier = ECONOMY_CONFIG.antiFarming.repeatRewardMultipliers[count] ?? 0
+    const multiplier = economyConfig.antiFarming.repeatRewardMultipliers[count] ?? 0
     xpMultiplier = multiplier
     const fatigue = await client.query<{ total: string }>(
       `SELECT COALESCE(SUM(np_earned),0)::text total FROM mednexus_discipline_np_log
        WHERE season_id=$1 AND user_id=$2 AND discipline=$3
          AND earned_date::date >= CURRENT_DATE-($4::int-1)`,
-      [season.id, userId, question.question_snapshot.subject, ECONOMY_CONFIG.antiFarming.disciplineWindowDays],
+      [season.id, userId, question.question_snapshot.subject, economyConfig.antiFarming.disciplineWindowDays],
     )
-    const fatigued = Number(fatigue.rows[0]?.total ?? 0) >= ECONOMY_CONFIG.antiFarming.disciplineNPWindowLimit
-    const requested = fatigued ? 0 : Math.floor(ECONOMY_CONFIG.gameRewards.groupStudy.correctAnswer * multiplier)
+    const fatigued = Number(fatigue.rows[0]?.total ?? 0) >= economyConfig.antiFarming.disciplineNPWindowLimit
+    const requested = fatigued ? 0 : Math.floor(economyConfig.gameRewards.groupStudy.correctAnswer * multiplier)
     const remaining = await dailyRewardRemaining(client, userId, "group_study", season.id)
     const credit = await applyNPCredits(client, userId, requested > 0 ? [{
       source: "group_study_question", sourceId: `group-study:${room.id}:${question.id}:correct`, amount: Math.min(requested, remaining),
@@ -343,14 +342,11 @@ async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQue
     )
   }
   await recordDailyActivity(client, userId, 1, correct ? 1 : 0)
-  const weekly = await recordWeeklyGoalActivity(client, userId, season.id, { answered: 1, correct: correct ? 1 : 0 })
-  earned += weekly.credited.credited
   const xpCredits: XPCredit[] = [{
     source: "question", sourceId: `group-study:${room.id}:${question.id}:question`,
-    amount: correct ? Math.floor(XP_CONFIG.groupStudy.correct * xpMultiplier) : XP_CONFIG.groupStudy.incorrect,
+    amount: correct ? Math.floor(xpConfig.groupStudy.correct * xpMultiplier) : xpConfig.groupStudy.incorrect,
     seasonId: season.id, metadata: { mode: "group-study", roomId: room.id, questionId: question.question_id, ...(correct ? {} : { category: "incorrect_attempt" }), label: correct ? "Group Study correct answer" : "Group Study attempt" },
   }]
-  for (const goalId of weekly.newlyCompleted) xpCredits.push({ source: "weekly_goal", sourceId: `${weekly.progress.weekId}:${goalId}`, amount: XP_CONFIG.weeklyGoal[goalId] ?? 0, seasonId: season.id, metadata: { goalId, label: `Weekly goal: ${goalId}` } })
   const xp = await applyXPCredits(client, userId, xpCredits)
   earned += xp.rankNPCredited
   await client.query(
@@ -376,23 +372,24 @@ async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQue
 
 async function awardCompletion(client: PoolClient, room: RoomRow) {
   const season = await getActiveSeason(client, true)
+  const runtime=await getActiveEconomyConfig(client),economyConfig=runtime.npConfig,xpConfig=runtime.xpConfig
   const members = await client.query("SELECT * FROM mednexus_group_study_memberships WHERE room_id=$1 FOR UPDATE", [room.id])
-  if (members.rows.length < ECONOMY_CONFIG.gameRewards.groupStudy.minimumPlayers) return
+  if (members.rows.length < economyConfig.gameRewards.groupStudy.minimumPlayers) return
   for (const member of members.rows) {
     if (member.is_guest) continue
-    if (Number(member.questions_attempted) < ECONOMY_CONFIG.gameRewards.groupStudy.minimumAnswers) continue
+    if (Number(member.questions_attempted) < economyConfig.gameRewards.groupStudy.minimumAnswers) continue
     const accuracy = Number(member.questions_attempted) > 0 ? Number(member.correct_answers) * 100 / Number(member.questions_attempted) : 0
     let remaining = await dailyRewardRemaining(client, member.user_id, "group_study", season.id)
-    const completionAmount = Math.min(ECONOMY_CONFIG.gameRewards.groupStudy.completion, remaining)
+    const completionAmount = Math.min(economyConfig.gameRewards.groupStudy.completion, remaining)
     remaining -= completionAmount
-    const accuracyAmount = accuracy >= 80 ? Math.min(ECONOMY_CONFIG.gameRewards.groupStudy.accuracy80, remaining) : 0
+    const accuracyAmount = accuracy >= 80 ? Math.min(economyConfig.gameRewards.groupStudy.accuracy80, remaining) : 0
     const credit = await applyNPCredits(client, member.user_id, [
       { source: "group_study_completion", sourceId: `group-study:${room.id}:completion`, amount: completionAmount, metadata: { mode: "group-study", roomId: room.id, description: "Group Study completion" } },
       { source: "group_study_accuracy", sourceId: `group-study:${room.id}:accuracy`, amount: accuracyAmount, metadata: { mode: "group-study", roomId: room.id, accuracy, description: "Group Study 80% accuracy" } },
     ])
     const xp = await applyXPCredits(client, member.user_id, [
-      { source: "completion", sourceId: `group-study:${room.id}:completion`, amount: XP_CONFIG.groupStudy.completion, seasonId: season.id, metadata: { mode: "group-study", roomId: room.id, label: "Group Study completion" } },
-      ...(accuracy >= 80 ? [{ source: "accuracy" as const, sourceId: `group-study:${room.id}:accuracy`, amount: XP_CONFIG.groupStudy.accuracy80, seasonId: season.id, metadata: { mode: "group-study", roomId: room.id, accuracy, label: "Group Study 80% accuracy" } }] : []),
+      { source: "completion", sourceId: `group-study:${room.id}:completion`, amount: xpConfig.groupStudy.completion, seasonId: season.id, metadata: { mode: "group-study", roomId: room.id, label: "Group Study completion" } },
+      ...(accuracy >= 80 ? [{ source: "accuracy" as const, sourceId: `group-study:${room.id}:accuracy`, amount: xpConfig.groupStudy.accuracy80, seasonId: season.id, metadata: { mode: "group-study", roomId: room.id, accuracy, label: "Group Study 80% accuracy" } }] : []),
     ])
     await client.query(
       `INSERT INTO mednexus_group_study_reward_events(id,user_id,room_id,room_question_id,event_type)

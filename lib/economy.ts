@@ -1,4 +1,4 @@
-import { ECONOMY_CONFIG, type StoreProductGroup } from "@/lib/economy-config"
+import { ECONOMY_CONFIG, type EconomyConfig, type StoreProductGroup } from "@/lib/economy-config"
 // ── Economy constants shared between API and frontend ──────────────────────────
 
 export interface BountyDef {
@@ -33,13 +33,16 @@ export const BOUNTY_POOL: BountyDef[] = BOUNTY_DEFINITIONS.map((definition) => {
 })
 
 /** Pick one bounty from each daily category, deterministically by economy date. */
-export function getTodaysBounties(date = TODAY_DATE()): BountyDef[] {
+export function getTodaysBounties(date = TODAY_DATE(), economyConfig: EconomyConfig = ECONOMY_CONFIG): BountyDef[] {
   const dayNum = Math.floor(Date.parse(`${date}T00:00:00Z`) / 86_400_000)
   const categories: BountyDef["category"][] = ["practice", "exam_accuracy", "game_variety"]
   let seed = dayNum
   return categories.map(category => {
     seed = (seed * 1664525 + 1013904223) & 0x7fffffff
-    const pool = BOUNTY_POOL.filter(bounty => bounty.category === category)
+    const pool = BOUNTY_POOL.filter(bounty => bounty.category === category).map(bounty => {
+      const configured = economyConfig.bounties.find(item => item.id === bounty.id)
+      return configured ? { ...bounty, target: configured.target, reward: configured.reward } : bounty
+    })
     return pool[seed % pool.length]
   })
 }
@@ -903,10 +906,10 @@ const BOUNTY_GAME_MODES = new Set<string>([
   ...ECONOMY_CONFIG.modeIds.multiplayerGames,
 ])
 
-export function calculatePayout(result: GameResult): { total: number; breakdown: PayoutBreakdown[] } {
+export function calculatePayout(result: GameResult, economyConfig: EconomyConfig = ECONOMY_CONFIG): { total: number; breakdown: PayoutBreakdown[] } {
   const breakdown: PayoutBreakdown[] = []
 
-  const rewards = ECONOMY_CONFIG.gameRewards.solo
+  const rewards = economyConfig.gameRewards.solo
   breakdown.push({ label: "Valid Completion", amount: rewards.completion })
   const accuracyBonus = [...rewards.accuracyBonuses]
     .reverse().find((band) => result.accuracy >= band.minimumAccuracy)

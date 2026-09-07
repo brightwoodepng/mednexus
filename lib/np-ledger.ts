@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg"
 import { TODAY_DATE } from "@/lib/economy"
-import { ECONOMY_CONFIG } from "@/lib/economy-config"
+import { getActiveEconomyConfig } from "@/lib/economy-runtime-config"
 import { getActiveSeason, provisionActiveSeasonWallet } from "@/lib/economy-seasons"
 
 export interface NPCredit {
@@ -49,6 +49,8 @@ export async function applyNPCredits(
   userId: string,
   credits: NPCredit[],
 ): Promise<NPCreditResult> {
+  const runtime = await getActiveEconomyConfig(client)
+  const economyConfig = runtime.npConfig
   const inserted: NPCredit[] = []
   // Credits are an authenticated/controlled operation, so this is the safe
   // fallback for approved accounts missed by a cutover or approval hook.
@@ -76,13 +78,13 @@ export async function applyNPCredits(
     const requestedAmount = Math.max(0, Math.floor(credit.amount))
     if (!requestedAmount) continue
     const repeatable = isRepeatable(credit)
-    const remaining = Math.max(0, ECONOMY_CONFIG.repeatableDailyCeiling - dailyRepeatableCredited)
+    const remaining = Math.max(0, economyConfig.repeatableDailyCeiling - dailyRepeatableCredited)
     const amount = repeatable ? Math.min(requestedAmount, remaining) : requestedAmount
     const suppressedAmount = requestedAmount - amount
     const result = await client.query(
       `INSERT INTO mednexus_np_transactions
-         (id, user_id, season_id, source, source_id, amount, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+         (id, user_id, season_id, source, source_id, amount, metadata, config_version)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
        ON CONFLICT (user_id, source, source_id) DO NOTHING
        RETURNING id`,
       [
@@ -100,8 +102,9 @@ export async function applyNPCredits(
           ceilingPolicy: repeatable ? "repeatable_mcq" : "exempt",
           requestedAmount,
           suppressedAmount,
-          dailyCeiling: repeatable ? ECONOMY_CONFIG.repeatableDailyCeiling : undefined,
+          dailyCeiling: repeatable ? economyConfig.repeatableDailyCeiling : undefined,
         }),
+        runtime.version,
       ],
     )
     if (result.rowCount) {
@@ -146,7 +149,7 @@ export async function applyNPCredits(
     rankBonus,
     rankBreakdown,
     suppressed,
-    dailyCeiling: ECONOMY_CONFIG.repeatableDailyCeiling,
+    dailyCeiling: economyConfig.repeatableDailyCeiling,
     dailyRepeatableCredited,
   }
 }
@@ -203,6 +206,7 @@ export async function dailyRewardRemaining(
   family: "solo" | "multiplayer" | "group_study",
   seasonId: string,
 ) {
+  const runtime = await getActiveEconomyConfig(client)
   const sources = family === "solo"
     ? ["question_reward", "game_completion", "game_achievement"]
     : family === "group_study"
@@ -218,8 +222,8 @@ export async function dailyRewardRemaining(
        AND created_at >= $3::date AND created_at < $3::date + INTERVAL '1 day'`,
     [userId, sources, TODAY_DATE(), family === "multiplayer", seasonId],
   )
-  const cap = family === "solo" ? ECONOMY_CONFIG.gameRewards.solo.dailyCap
-    : family === "group_study" ? ECONOMY_CONFIG.gameRewards.groupStudy.dailyCap
-    : ECONOMY_CONFIG.gameRewards.multiplayer.dailyCap
+  const cap = family === "solo" ? runtime.npConfig.gameRewards.solo.dailyCap
+    : family === "group_study" ? runtime.npConfig.gameRewards.groupStudy.dailyCap
+    : runtime.npConfig.gameRewards.multiplayer.dailyCap
   return Math.max(0, cap - Number(result.rows[0]?.total ?? 0))
 }

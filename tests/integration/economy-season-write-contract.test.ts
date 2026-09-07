@@ -19,19 +19,15 @@ describe("active economy season write contract", () => {
     expect(schema).toContain("session.started_at >= active.starts_at")
   })
 
-  it("scopes quiz payouts, personal bests, bounties, and weekly goals to a season", async () => {
-    const [payout, weekly] = await Promise.all([
-      readFile("app/api/economy/payout/route.ts", "utf8"),
-      readFile("lib/weekly-goals.ts", "utf8"),
-    ])
+  it("scopes quiz payouts, personal bests, and bounties to a season", async () => {
+    const payout = await readFile("app/api/economy/payout/route.ts", "utf8")
 
     expect(payout).toContain("getActiveSeason(client, true)")
     expect(payout).toContain("ON CONFLICT (season_id, user_id, mode)")
     expect(payout).toContain("ON CONFLICT (season_id, uid, bounty_id, bounty_date)")
     expect(payout).toContain("calculateSessionNP(")
     expect(payout).toContain("seasonId,")
-    expect(weekly).toContain("ON CONFLICT (season_id, uid, week_id)")
-    expect(weekly).toContain("WHERE season_id = $1 AND uid = $2 AND week_id = $3")
+    expect(payout).not.toContain("recordWeeklyGoalActivity")
   })
 
   it("scopes multiplayer payouts and progress to the same active season", async () => {
@@ -40,19 +36,17 @@ describe("active economy season write contract", () => {
     expect(scoreRoute).toContain("const season = await getActiveSeason(client, true)")
     expect(scoreRoute).toContain("ON CONFLICT (season_id, room_pin, user_id)")
     expect(scoreRoute).toContain("ON CONFLICT (season_id, uid, bounty_id, bounty_date)")
-    expect(scoreRoute).toContain("recordWeeklyGoalActivity(client, playerId, season.id")
+    expect(scoreRoute).not.toContain("recordWeeklyGoalActivity")
   })
 
-  it("reads member-facing goals and bounties from the active season", async () => {
-    const [bounties, weeklyGoals, leaderboard, notifications] = await Promise.all([
+  it("reads member-facing bounties from the active season without weekly rewards", async () => {
+    const [bounties, leaderboard, notifications] = await Promise.all([
       readFile("app/api/economy/bounties/route.ts", "utf8"),
-      readFile("app/api/economy/weekly-goals/route.ts", "utf8"),
       readFile("app/api/leaderboard/route.ts", "utf8"),
       readFile("lib/progression-notifications.ts", "utf8"),
     ])
 
     expect(bounties).toContain("season_id = $1")
-    expect(weeklyGoals).toContain("season_id = $1")
     expect(leaderboard).toContain("WHERE season_id = $1")
     expect(notifications).toContain("FROM mednexus_season_wallets WHERE season_id = $1")
     expect(notifications).not.toContain("FROM mednexus_wallet ")

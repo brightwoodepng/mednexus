@@ -12,7 +12,7 @@ describe("economy earning paths", () => {
   it("does not let one idle player suppress every valid multiplayer payout", async () => {
     const scoreRoute = await readFile("app/api/game-rooms/[pin]/score/route.ts", "utf8")
 
-    expect(scoreRoute).toContain("meaningfulParticipants.length >= ECONOMY_CONFIG.gameRewards.multiplayer.minimumPlayers")
+    expect(scoreRoute).toContain("meaningfulParticipants.length >= economyConfig.gameRewards.multiplayer.minimumPlayers")
     expect(scoreRoute).not.toContain("hasMeaningfulServerHistory")
   })
 

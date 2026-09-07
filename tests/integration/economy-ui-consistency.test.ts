@@ -21,12 +21,11 @@ describe("economy UI consistency", () => {
     const panel = quests.slice(quests.indexOf("export function DailyBountiesPanel"), quests.indexOf("export function StoreModal"))
 
     expect(panel).toContain("bountyIcons")
-    expect(panel).toContain("weeklyIcons")
-    expect(panel).toContain("bg-violet-500")
     expect(panel).toContain("bg-cyan-500")
     expect(panel).toContain("text-amber-600")
     expect(panel).toContain("bg-emerald-500")
     expect(panel).not.toContain("bounty.icon")
+    expect(panel).not.toContain("Weekly progress")
     expect(panel).not.toContain("transition-all")
   })
 

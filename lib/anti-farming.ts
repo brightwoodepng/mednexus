@@ -16,11 +16,12 @@
 import type { PoolClient } from "pg"
 import pool from "@/lib/db"
 import { applyNPCredits } from "@/lib/np-ledger"
-import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
+import { ECONOMY_CONFIG, type EconomyConfig } from "@/lib/economy-config"
 import { getActiveSeason } from "@/lib/economy-seasons"
 import { applyXPCredits } from "@/lib/xp-ledger"
 import { XP_CONFIG } from "@/lib/xp-config"
 import { countEconomyQueries, type EconomyQueryMetrics } from "@/lib/economy-api"
+import { getActiveEconomyConfig } from "@/lib/economy-runtime-config"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -125,14 +126,19 @@ export async function calculateSessionNP(
   examMeta?:   ExamMeta,
   sessionId?:  string,
   seasonId?:   string,
+  runtimeConfig: EconomyConfig = ECONOMY_CONFIG,
 ): Promise<SessionNPResult> {
   if (!seasonId) throw new Error("An active economy season is required for scored rewards")
+  const config=runtimeConfig
+  const ECONOMY_CONFIG=runtimeConfig
   const enabled = mode === "exam"
-    ? isEarningModeEnabled("mcq_exam") && (ECONOMY_CONFIG.modeIds.exam as readonly string[]).includes(mode)
-    : (isEarningModeEnabled("mcq_trial_tutor") && (ECONOMY_CONFIG.modeIds.trialTutor as readonly string[]).includes(mode))
-      || (isEarningModeEnabled("mcq_solo_game") && (ECONOMY_CONFIG.modeIds.soloGames as readonly string[]).includes(mode))
+    ? config.enabledEarningModes.mcq_exam && (config.modeIds.exam as readonly string[]).includes(mode)
+    : (config.enabledEarningModes.mcq_trial_tutor && (config.modeIds.trialTutor as readonly string[]).includes(mode))
+      || (config.enabledEarningModes.mcq_solo_game && (config.modeIds.soloGames as readonly string[]).includes(mode))
   if (!enabled) throw new Error(`Economy rewards are disabled for mode: ${mode}`)
-  const rewardScope = questionRewardScope(mode)
+  const rewardScope:QuestionRewardScope=(config.modeIds.trialTutor as readonly string[]).includes(mode)?"trial":(config.modeIds.exam as readonly string[]).includes(mode)?"exam":"solo_game"
+  const REPEAT_MULTIPLIERS=config.antiFarming.repeatRewardMultipliers
+  const DISCIPLINE_NP_LIMIT=config.antiFarming.disciplineNPWindowLimit
 
   // Serialize the complete anti-farming read/modify/write cycle. Row locks are
   // insufficient here because a question or discipline progress row might not
@@ -144,7 +150,7 @@ export async function calculateSessionNP(
   )
 
   const today   = todayStr()
-  const window7 = last7DaysStrings()
+  const window7 = Array.from({length:config.antiFarming.disciplineWindowDays},(_,index)=>{const date=new Date();date.setDate(date.getDate()-index);return date.toISOString().slice(0,10)})
 
   // Reconstruct Trial/Tutor results from server-owned session data. Client
   // correctness and streak claims are deliberately ignored.
@@ -519,11 +525,13 @@ export interface DailyLoginResult {
  * ECONOMY_CONFIG.dailyLogin.
  */
 export async function processDailyLogin(userId: string, metrics?: EconomyQueryMetrics): Promise<DailyLoginResult> {
-  if (!isEarningModeEnabled("daily_login")) throw new Error("Daily login rewards are disabled")
   const connectedClient = await pool.connect()
   const client = metrics ? countEconomyQueries(connectedClient, metrics) : connectedClient
   try {
     await client.query("BEGIN")
+    const runtime=await getActiveEconomyConfig(client)
+    if(!runtime.npConfig.enabledEarningModes.daily_login)throw new Error("Daily login rewards are disabled")
+    const ECONOMY_CONFIG=runtime.npConfig
 
     // ── Lock the user row to guard against concurrent calls ───────────────────
     const { rows } = await client.query<{

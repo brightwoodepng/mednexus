@@ -33,11 +33,11 @@ describe("completed economy integration invariants", () => {
     expect(ledger).toContain("suppressedAmount")
     expect(ledger).toContain("metadata->>'multiplayer'")
     expect(payout).toContain("entry.amount = Math.min(requestedAmount, remaining)")
-    expect(payout).toContain("earned: credit.credited + bountyCredit.credited + weekly.credited.credited + xp.rankNPCredited")
+    expect(payout).toContain("earned: credit.credited + bountyCredit.credited + xp.rankNPCredited")
     expect(payout).toContain("Daily repeatable NP ceiling")
   })
 
-  it("automatically and exactly-once credits bounties and weekly goals", async () => {
+  it("automatically credits bounties while retaining weekly records only for audit history", async () => {
     const [payout, bounties, goals] = await Promise.all([
       readFile("app/api/economy/payout/route.ts", "utf8"),
       readFile("app/api/economy/bounties/route.ts", "utf8"),
@@ -50,6 +50,7 @@ describe("completed economy integration invariants", () => {
     expect(goals).toContain('sourceId: `${weekId}:${id}`')
     expect(goals).toContain("automatic: true")
     expect(goals).toContain("credited_goal_ids")
+    expect(payout).not.toContain("updateWeeklyGoals")
   })
 
   it("uses consistent UTC midnight and Monday boundaries", () => {

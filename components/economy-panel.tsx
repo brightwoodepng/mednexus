@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BookOpen, CalendarDays, Check, ClipboardCheck, Clock3, Coins, Compass, Flame, Gamepad2, Target, Trophy, type LucideIcon } from "lucide-react"
+import { BookOpen, Check, ClipboardCheck, Clock3, Coins, Compass, Flame, Gamepad2, Target, Trophy, type LucideIcon } from "lucide-react"
 import { useEconomy } from "@/contexts/economy-context"
 import { SELLABLE_STORE_ITEMS, BOUNTY_POOL } from "@/lib/economy"
 import { ECONOMY_ICON, ECONOMY_PROGRESS_TRACK, ECONOMY_ROW, ECONOMY_SECTION, ECONOMY_SECTION_HEADER } from "@/components/economy-ui"
@@ -107,7 +107,7 @@ export function PayoutResult({
 
 // ── Daily Bounties Panel ───────────────────────────────────────────────────────
 export function DailyBountiesPanel() {
-  const { bounties, weeklyGoals, claimBounty, loading } = useEconomy()
+  const { bounties, claimBounty, loading } = useEconomy()
   const [claiming, setClaiming] = useState<string | null>(null)
   const [flash, setFlash] = useState<{ id: string; earned: number } | null>(null)
 
@@ -127,42 +127,7 @@ export function DailyBountiesPanel() {
     practice: BookOpen, exam: ClipboardCheck, accuracy: Target, game: Trophy,
     streak: Flame, discipline_variety: Compass, game_variety: Gamepad2,
   }
-  const weeklyIcons = { answers: BookOpen, accuracy: Target, exam_dates: CalendarDays } satisfies Record<(typeof weeklyGoals)[number]["type"], LucideIcon>
-  const weeklyLabels = {
-    answers: "Complete 100 eligible questions",
-    accuracy: "Reach 70% accuracy across 100+ answers",
-    exam_dates: "Complete 3 qualifying exams on separate days",
-  }
-
   return <div className="grid gap-3">
-    <section className={ECONOMY_SECTION} aria-labelledby="weekly-rounds-title">
-      <div className={ECONOMY_SECTION_HEADER}>
-        <p id="weekly-rounds-title" className="text-[10px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-300">Weekly rounds</p>
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground"><CalendarDays size={13} aria-hidden />Monday reset</span>
-      </div>
-      <div className="grid gap-2 p-3">{weeklyGoals.map(goal => {
-        const pct = Math.min(goal.progress / Math.max(goal.target, 1) * 100, 100)
-        const GoalIcon = weeklyIcons[goal.type]
-        return <div key={goal.id} className={ECONOMY_ROW}>
-          <div className="flex min-w-0 items-start gap-3">
-            <span className={`${ECONOMY_ICON} bg-violet-500/12 text-violet-600 dark:text-violet-300`}><GoalIcon size={17} aria-hidden /></span>
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-start justify-between gap-2">
-                <p className="min-w-0 text-xs font-bold leading-5 text-foreground">{weeklyLabels[goal.type]}</p>
-                <span className={`shrink-0 text-[10px] font-bold tabular-nums ${goal.credited ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
-                  {goal.credited ? <span className="inline-flex items-center gap-1"><Check size={12} aria-hidden />Credited</span> : `+${goal.reward} NP`}
-                </span>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <div className={ECONOMY_PROGRESS_TRACK}><div className={`h-full rounded-full transition-[width,background-color] duration-500 ${goal.completed ? "bg-emerald-500" : "bg-violet-500"}`} style={{ width: `${pct}%` }} /></div>
-                <span className="w-10 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">{Math.min(goal.progress, goal.target)}/{goal.target}{goal.type === "accuracy" ? "%" : ""}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      })}</div>
-    </section>
-
     <section className={ECONOMY_SECTION} aria-labelledby="daily-bounties-title">
       <div className={ECONOMY_SECTION_HEADER}>
         <p id="daily-bounties-title" className="text-[10px] font-bold uppercase tracking-widest text-cyan-600 dark:text-cyan-300">Daily bounties</p>

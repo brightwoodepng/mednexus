@@ -7,11 +7,10 @@ import {
   computeBountyProgress,
   mergeBountyProgress,
   TODAY_DATE,
-  economyWeekId,
   type GameResult,
 } from "@/lib/economy"
 import { calculateSessionNP, type SessionQuestionInput } from "@/lib/anti-farming"
-import { ECONOMY_CONFIG, isEarningModeEnabled } from "@/lib/economy-config"
+import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
 import {
   applyNPCredits,
@@ -20,13 +19,12 @@ import {
   recordDailyActivity,
   type NPCredit,
 } from "@/lib/np-ledger"
-import { recordWeeklyGoalActivity, weeklyGoalView, type WeeklyGoalProgress } from "@/lib/weekly-goals"
 import { calculateDoubleBank, hasConsistentSoloCompletion } from "@/lib/solo-completion-validation"
 import { getPersonalBestUpdate, personalBestValue, type SoloPersonalBestResult } from "@/lib/game-personal-best"
 import { getActiveSeason } from "@/lib/economy-seasons"
 import { countEconomyQueries, economyJson, economyMetrics } from "@/lib/economy-api"
 import { applyXPCredits, sessionXPCredits } from "@/lib/xp-ledger"
-import { XP_CONFIG } from "@/lib/xp-config"
+import { getActiveEconomyConfig } from "@/lib/economy-runtime-config"
 
 type Key = {
   id: string
@@ -122,6 +120,9 @@ export async function POST(req: NextRequest) {
     try {
       await client.query("BEGIN")
       const activeSeason = await getActiveSeason(client, true)
+      const runtimeConfig = await getActiveEconomyConfig(client)
+      const economyConfig = runtimeConfig.npConfig
+      const xpConfig = runtimeConfig.xpConfig
       const { rows } = await client.query(
         `SELECT id,user_id,season_id,mode,question_ids,answered_ids,answer_key,
                 accepted_answers,answer_order,result_meta,payout,status,started_at,submitted_at
@@ -155,11 +156,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Activity is not completed" }, { status: 409 })
       }
       const enabledMode = session.mode === "exam"
-        ? isEarningModeEnabled("mcq_exam")
+        ? economyConfig.enabledEarningModes.mcq_exam
         : SOLO_GAME_MODES.has(session.mode)
-          ? isEarningModeEnabled("mcq_solo_game")
-          : (ECONOMY_CONFIG.modeIds.trialTutor as readonly string[]).includes(session.mode)
-            && isEarningModeEnabled("mcq_trial_tutor")
+          ? economyConfig.enabledEarningModes.mcq_solo_game
+          : (economyConfig.modeIds.trialTutor as readonly string[]).includes(session.mode)
+            && economyConfig.enabledEarningModes.mcq_trial_tutor
       if (!enabledMode) {
         await client.query("ROLLBACK")
         return NextResponse.json({ error: "Rewards are disabled for this mode" }, { status: 422 })
@@ -246,8 +247,8 @@ export async function POST(req: NextRequest) {
       const accuracy = total ? Math.round(correctCount * 100 / total) : 0
       const isSoloGame = SOLO_GAME_MODES.has(session.mode)
       const minimumAnswers = session.mode === "sudden"
-        ? ECONOMY_CONFIG.gameRewards.solo.suddenDeathMinimumAnswers
-        : ECONOMY_CONFIG.gameRewards.solo.minimumAnswers
+        ? economyConfig.gameRewards.solo.suddenDeathMinimumAnswers
+        : economyConfig.gameRewards.solo.minimumAnswers
       const meaningfulSoloCompletion = isSoloGame
         && completionMetadataConsistent
         && total >= minimumAnswers
@@ -288,9 +289,10 @@ export async function POST(req: NextRequest) {
           : undefined,
         sessionId,
         seasonId,
+        economyConfig,
       )
 
-      const gross = calculatePayout(result)
+      const gross = calculatePayout(result,economyConfig)
       const canAwardFirstCompletion = meaningfulSoloCompletion
         && await completionBonusAvailable(client, auth.uid, seasonId)
       const achievementBreakdown = isSoloGame && completionMetadataConsistent
@@ -314,14 +316,14 @@ export async function POST(req: NextRequest) {
         credits.push({
           source: "game_completion",
           sourceId: sessionId,
-          amount: ECONOMY_CONFIG.gameRewards.solo.completion,
+          amount: economyConfig.gameRewards.solo.completion,
           metadata: { mode: session.mode, multiplayer: false, rewardCategory: "solo_completion" },
         })
       }
       if (canAwardFirstCompletion) credits.push({
         source: "game_achievement",
         sourceId: `${sessionId}:first-daily-completion`,
-        amount: ECONOMY_CONFIG.gameRewards.solo.firstDailyCompletion,
+        amount: economyConfig.gameRewards.solo.firstDailyCompletion,
         metadata: { mode: session.mode, economyDate: TODAY_DATE(), reward: "first_daily_completion" },
       })
       if (achievementNP > 0) {
@@ -345,18 +347,6 @@ export async function POST(req: NextRequest) {
       }
       const credit = await applyNPCredits(client, auth.uid, credits)
       await recordDailyActivity(client, auth.uid, total, correctCount)
-      const weekly = completionMetadataConsistent
-        ? await recordWeeklyGoalActivity(client, auth.uid, seasonId, {
-            answered: total,
-            correct: correctCount,
-            qualifyingExam: session.mode === "exam" && total >= ECONOMY_CONFIG.examRewards.minimumAnswered,
-            occurredAt: session.submitted_at ? new Date(session.submitted_at) : undefined,
-          })
-        : { newlyCompleted: [] as string[], credited: {
-            credited: 0, suppressed: 0, newBalance: credit.newBalance,
-            rankBreakdown: [] as Array<{ label: string; amount: number }>, dailyRepeatableCredited: 0,
-          } }
-
       const bountyUpdates: Array<{
         id: string
         progress: number
@@ -366,7 +356,7 @@ export async function POST(req: NextRequest) {
         reward: number
       }> = []
       const bountyCredits: NPCredit[] = []
-      for (const bounty of completionMetadataConsistent ? getTodaysBounties() : []) {
+      for (const bounty of completionMetadataConsistent ? getTodaysBounties(undefined,economyConfig) : []) {
         const delta = computeBountyProgress(bounty, result)
         if (!delta) continue
         const old = await client.query(
@@ -406,68 +396,54 @@ export async function POST(req: NextRequest) {
         if (!attempt.isCorrect) return 1
         const awarded = anti.perQuestion[index]?.awardedNP ?? 0
         if (session.mode === "trial" || session.mode === "tutor") {
-          const streakBonus = attempt.currentStreak >= 10 ? ECONOMY_CONFIG.questionRewards.trialTutor.streakThresholds[1].bonus
-            : attempt.currentStreak >= 5 ? ECONOMY_CONFIG.questionRewards.trialTutor.streakThresholds[0].bonus : 0
-          return awarded / (ECONOMY_CONFIG.questionRewards.trialTutor.correct + streakBonus)
+          const streakBonus = attempt.currentStreak >= 10 ? economyConfig.questionRewards.trialTutor.streakThresholds[1].bonus
+            : attempt.currentStreak >= 5 ? economyConfig.questionRewards.trialTutor.streakThresholds[0].bonus : 0
+          return awarded / (economyConfig.questionRewards.trialTutor.correct + streakBonus)
         }
-        if (isSoloGame) return awarded / ECONOMY_CONFIG.gameRewards.solo.correctAnswer
+        if (isSoloGame) return awarded / economyConfig.gameRewards.solo.correctAnswer
         if (session.mode === "exam") return anti.perQuestion[index]?.rewardMultiplier ?? 1
         return 1
       })
       const xpCredits = sessionXPCredits({
         userId: auth.uid, seasonId, sessionId, mode: session.mode, attempts: sessionData,
-        rewardMultipliers, meaningfulCompletion: session.mode === "exam" ? total >= ECONOMY_CONFIG.examRewards.minimumAnswered : meaningfulSoloCompletion,
+        rewardMultipliers, meaningfulCompletion: session.mode === "exam" ? total >= economyConfig.examRewards.minimumAnswered : meaningfulSoloCompletion,
         firstDailyCompletion: canAwardFirstCompletion, accuracy, isNewHigh,
-      })
+      },xpConfig)
       for (const bounty of bountyUpdates.filter(item => item.newlyComplete)) xpCredits.push({
-        source: "bounty", sourceId: `${TODAY_DATE()}:${bounty.id}`, amount: XP_CONFIG.bounty[bounty.id] ?? 0,
+        source: "bounty", sourceId: `${TODAY_DATE()}:${bounty.id}`, amount: xpConfig.bounty[bounty.id] ?? 0,
         seasonId, metadata: { bountyId: bounty.id, label: `Bounty: ${bounty.id}` },
-      })
-      for (const goalId of weekly.newlyCompleted) xpCredits.push({
-        source: "weekly_goal", sourceId: `${economyWeekId(session.submitted_at ? new Date(session.submitted_at) : undefined)}:${goalId}`, amount: XP_CONFIG.weeklyGoal[goalId] ?? 0,
-        seasonId, metadata: { goalId, label: `Weekly goal: ${goalId}` },
       })
       const xp = await applyXPCredits(client, auth.uid, xpCredits)
 
       const breakdown = [
         ...anti.breakdown,
-        ...(meaningfulSoloCompletion ? [{ label: "Valid Completion", amount: ECONOMY_CONFIG.gameRewards.solo.completion }] : []),
-        ...(canAwardFirstCompletion ? [{ label: "First Solo Completion", amount: ECONOMY_CONFIG.gameRewards.solo.firstDailyCompletion }] : []),
+        ...(meaningfulSoloCompletion ? [{ label: "Valid Completion", amount: economyConfig.gameRewards.solo.completion }] : []),
+        ...(canAwardFirstCompletion ? [{ label: "First Solo Completion", amount: economyConfig.gameRewards.solo.firstDailyCompletion }] : []),
         ...achievementBreakdown,
-        ...bountyUpdates.filter(item => item.newlyComplete).map(item => ({ label: `Bounty: ${getTodaysBounties().find(b => b.id === item.id)?.label ?? item.id}`, amount: item.reward })),
+        ...bountyUpdates.filter(item => item.newlyComplete).map(item => ({ label: `Bounty: ${getTodaysBounties(undefined,economyConfig).find(b => b.id === item.id)?.label ?? item.id}`, amount: item.reward })),
         ...credit.rankBreakdown,
-        ...weekly.newlyCompleted.map(id => ({ label: `Weekly goal: ${id}`, amount: ECONOMY_CONFIG.weeklyGoals.find(goal => goal.id === id)?.reward ?? 0 })),
-        ...weekly.credited.rankBreakdown,
         ...bountyCredit.rankBreakdown,
         ...xp.rankNPBreakdown,
       ]
       if (soloFamilySuppressed > 0) breakdown.push({ label: "Daily solo-game NP cap", amount: -soloFamilySuppressed })
-      const suppressed = soloFamilySuppressed + credit.suppressed + bountyCredit.suppressed + weekly.credited.suppressed
+      const suppressed = soloFamilySuppressed + credit.suppressed + bountyCredit.suppressed
       if (suppressed > 0) breakdown.push({ label: "Daily repeatable NP ceiling", amount: -suppressed })
-      const [walletState, bountyState, weeklyState] = await Promise.all([
+      const [walletState, bountyState] = await Promise.all([
         client.query("SELECT balance,lifetime_earned,rank_points FROM mednexus_season_wallets WHERE user_id=$1 AND season_id=$2", [auth.uid, seasonId]),
         client.query("SELECT bounty_id,progress,claimed FROM mednexus_bounty_progress WHERE season_id=$1 AND uid=$2 AND bounty_date=$3", [seasonId, auth.uid, TODAY_DATE()]),
-        client.query(`SELECT eligible_answered,eligible_correct,qualifying_exams,distinct_exam_dates,credited_goal_ids
-          FROM mednexus_weekly_goal_progress WHERE season_id=$1 AND uid=$2 AND week_id=$3`, [seasonId, auth.uid, economyWeekId()]),
       ])
       const walletRow = walletState.rows[0]
       const bountyMap = Object.fromEntries(bountyState.rows.map(row => [row.bounty_id, row]))
-      const weeklyRow = weeklyState.rows[0]
-      const weeklyProgress: WeeklyGoalProgress = {
-        weekId: economyWeekId(), eligibleAnswered: Number(weeklyRow?.eligible_answered ?? 0),
-        eligibleCorrect: Number(weeklyRow?.eligible_correct ?? 0), qualifyingExams: Number(weeklyRow?.qualifying_exams ?? 0),
-        distinctExamDates: weeklyRow?.distinct_exam_dates ?? [], creditedGoalIds: weeklyRow?.credited_goal_ids ?? [],
-      }
       const payload = {
-        earned: credit.credited + bountyCredit.credited + weekly.credited.credited + xp.rankNPCredited,
+        earned: credit.credited + bountyCredit.credited + xp.rankNPCredited,
         xpEarned: xp.credited,
         lifetimeXP: xp.lifetimeXP,
         xpBreakdown: xp.breakdown,
-        newBalance: bountyCredit.credited > 0 ? bountyCredit.newBalance : weekly.credited.newBalance,
+        newBalance: bountyCredit.credited > 0 ? bountyCredit.newBalance : credit.newBalance,
         breakdown,
         suppressed,
         dailyCeiling: credit.dailyCeiling,
-        dailyRepeatableCredited: Math.max(credit.dailyRepeatableCredited, bountyCredit.dailyRepeatableCredited, weekly.credited.dailyRepeatableCredited),
+        dailyRepeatableCredited: Math.max(credit.dailyRepeatableCredited, bountyCredit.dailyRepeatableCredited),
         examRewardBreakdown: anti.examRewardBreakdown,
         bountyUpdates,
         score,
@@ -475,8 +451,8 @@ export async function POST(req: NextRequest) {
         total,
         isNewHigh,
         wallet: { balance: Number(walletRow?.balance ?? 0), lifetimeEarned: Number(walletRow?.lifetime_earned ?? 0), rankPoints: Number(walletRow?.rank_points ?? 0) },
-        bounties: getTodaysBounties().map(item => ({ ...item, progress: Number(bountyMap[item.id]?.progress ?? 0), claimed: bountyMap[item.id]?.claimed ?? false })),
-        weeklyGoals: weeklyGoalView(weeklyProgress),
+        bounties: getTodaysBounties(undefined,economyConfig).map(item => ({ ...item, progress: Number(bountyMap[item.id]?.progress ?? 0), claimed: bountyMap[item.id]?.claimed ?? false })),
+        weeklyGoals: [],
       }
       await client.query(
         "UPDATE mednexus_exam_sessions SET payout = $3::jsonb WHERE id = $1 AND season_id = $2",
