@@ -89,7 +89,7 @@ function loadFailure(error:unknown){
 }
 
 async function payload(){
-  const [seasons,dryRun,config,revisions,rewardRuns,gifts]=await Promise.all([
+  const [seasons,dryRun,config,revisions,rewardRuns,gifts,learners]=await Promise.all([
     pool.query(`SELECT s.id,s.name,s.economy_version,s.status,s.starts_at,s.ends_at,s.created_at,s.activated_at,s.opening_grant,s.minimum_eligible_questions,s.monthly_rewards,s.seasonal_rewards,
       COUNT(w.user_id)::int member_count,COALESCE(SUM(w.balance),0)::bigint currency_supply,
       COALESCE(SUM(w.lifetime_earned),0)::bigint currency_earned,
@@ -102,8 +102,14 @@ async function payload(){
     pool.query(`SELECT id,version,reason,is_active,created_by,created_at,activated_at FROM mednexus_economy_config_revisions ORDER BY created_at DESC LIMIT 20`),
     pool.query(`SELECT r.*,COALESCE(jsonb_agg(jsonb_build_object('userId',p.user_id,'name',u.name,'indexNumber',u.index_number,'place',p.place,'score',p.score,'npAmount',p.np_amount) ORDER BY p.place) FILTER(WHERE p.user_id IS NOT NULL),'[]') recipients FROM mednexus_economy_reward_runs r LEFT JOIN mednexus_economy_reward_recipients p ON p.run_id=r.id LEFT JOIN mednexus_registered_users u ON u.uid=p.user_id GROUP BY r.id ORDER BY r.executed_at DESC LIMIT 24`),
     pool.query(`SELECT g.id,g.index_number,g.amount,g.reason,g.kind,g.batch_id,g.created_by,g.created_at,u.name FROM mednexus_economy_gifts g LEFT JOIN mednexus_registered_users u ON u.uid=g.user_id ORDER BY g.created_at DESC LIMIT 50`),
+    pool.query(`SELECT u.uid,u.name,u.index_number,COALESCE(w.balance,0)::int balance
+      FROM mednexus_registered_users u
+      LEFT JOIN mednexus_economy_seasons s ON s.status='active'
+      LEFT JOIN mednexus_season_wallets w ON w.season_id=s.id AND w.user_id=u.uid
+      WHERE u.status='approved' AND u.role='STUDENT'
+      ORDER BY u.name,u.index_number LIMIT 2000`),
   ])
-  return {seasons:seasons.rows,dryRunReport:dryRun.rows[0],activeSeason:seasons.rows.find(row=>row.status==="active")??null,config,revisions:revisions.rows,rewardRuns:rewardRuns.rows,gifts:gifts.rows}
+  return {seasons:seasons.rows,dryRunReport:dryRun.rows[0],activeSeason:seasons.rows.find(row=>row.status==="active")??null,config,revisions:revisions.rows,rewardRuns:rewardRuns.rows,gifts:gifts.rows,learners:learners.rows}
 }
 
 export async function GET(req:NextRequest){
