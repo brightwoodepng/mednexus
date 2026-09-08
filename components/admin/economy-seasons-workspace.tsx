@@ -10,7 +10,6 @@ import {
 import {
   BarChart3,
   CalendarClock,
-  Coins,
   Download,
   Gift,
   History,
@@ -21,8 +20,6 @@ import {
   Search,
   Settings2,
   Trophy,
-  Upload,
-  UserRound,
   X,
 } from "lucide-react";
 
@@ -85,7 +82,14 @@ type Data = {
   gifts: GiftRow[];
   learners: Learner[];
 };
-type Tab = "overview" | "seasons" | "rewards" | "rules" | "gifts" | "history";
+type Tab =
+  | "overview"
+  | "seasons"
+  | "rewards"
+  | "rules"
+  | "gifts"
+  | "history"
+  | "reports";
 const tabs: Array<[Tab, string, typeof BarChart3]> = [
   ["overview", "Overview", BarChart3],
   ["seasons", "Seasons", CalendarClock],
@@ -93,6 +97,7 @@ const tabs: Array<[Tab, string, typeof BarChart3]> = [
   ["rules", "NP & XP Rules", Settings2],
   ["gifts", "Gift NP", Gift],
   ["history", "History", History],
+  ["reports", "Reports", Download],
 ];
 const control =
   "min-h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/25";
@@ -139,13 +144,12 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
       Array<{ path: string; before: unknown; after: unknown }>
     >([]),
     [configConfirmation, setConfigConfirmation] = useState("");
-  const [giftText, setGiftText] = useState(""),
-    [giftPreview, setGiftPreview] = useState<Record<string, unknown> | null>(
-      null,
-    ),
-    [giftMode, setGiftMode] = useState<"single" | "bulk">("single");
+  const [giftPreview, setGiftPreview] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [learnerQuery, setLearnerQuery] = useState(""),
-    [selectedLearner, setSelectedLearner] = useState<Learner | null>(null),
+    [selectedLearnerIds, setSelectedLearnerIds] = useState<string[]>([]),
     [giftAmount, setGiftAmount] = useState(100),
     [giftReason, setGiftReason] = useState("");
   const load = useCallback(async () => {
@@ -211,22 +215,6 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
       setBusy("");
     }
   };
-  const gifts = useMemo(
-    () =>
-      giftText
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => {
-          const [indexNumber, amount, ...reason] = line.split(",");
-          return {
-            indexNumber: indexNumber?.trim(),
-            amount: Number(amount),
-            reason: reason.join(",").trim(),
-          };
-        }),
-    [giftText],
-  );
   const visibleLearners = useMemo(() => {
     const query = learnerQuery.trim().toLowerCase();
     if (!query) return data?.learners ?? [];
@@ -259,36 +247,7 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
   const active = data.activeSeason;
   return (
     <main className="mx-auto w-full max-w-7xl space-y-5">
-      <header className="space-y-4 border-b border-border pb-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 text-primary">
-              <Coins size={22} />
-            </span>
-            <div>
-              <p className="text-xs font-bold text-primary">Admin economy</p>
-              <h1 className="text-2xl font-bold sm:text-3xl">
-                Economy Seasons
-              </h1>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <a
-              href="/api/admin/economy-seasons?download=1"
-              className={`${button} border bg-card`}
-            >
-              <Download size={15} />
-              Report
-            </a>
-            <button
-              onClick={() => void load()}
-              className={`${button} border bg-card`}
-            >
-              <RefreshCw size={15} />
-              Refresh
-            </button>
-          </div>
-        </div>
+      <header className="border-b border-border pb-4">
         <nav
           aria-label="Economy sections"
           className="flex gap-1 overflow-x-auto"
@@ -477,9 +436,11 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
 
       {tab === "rewards" && (
         <div className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-2">
-            <section className={card}>
-              <h2 className="text-lg font-bold">Reward rules</h2>
+          <div className="space-y-4">
+            <details open className={card}>
+              <summary className="cursor-pointer text-lg font-bold">
+                Monthly rewards
+              </summary>
               <p className="text-sm text-muted-foreground">
                 Set eligibility and NP prizes for the active season.
               </p>
@@ -495,6 +456,14 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
                   set={setActiveMonthly}
                 />
               </div>
+            </details>
+            <details className={card}>
+              <summary className="cursor-pointer text-lg font-bold">
+                Seasonal rewards
+              </summary>
+              <p className="text-sm text-muted-foreground">
+                Set the final ranking prizes paid when a season closes.
+              </p>
               <div className="mt-4">
                 <RewardTable
                   title="Seasonal NP rewards"
@@ -525,9 +494,11 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
                   Save reward rules
                 </button>
               )}
-            </section>
-            <section className={card}>
-              <h2 className="text-lg font-bold">Finalize monthly rewards</h2>
+            </details>
+            <details className={card}>
+              <summary className="cursor-pointer text-lg font-bold">
+                Monthly finalization
+              </summary>
               <p className="text-sm text-muted-foreground">
                 Preview leaders and exact NP payouts first.
               </p>
@@ -613,24 +584,13 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
                   )}
                 </div>
               )}
-            </section>
+            </details>
           </div>
         </div>
       )}
 
       {tab === "rules" && (
         <div className="space-y-5">
-          <div className="flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="text-lg font-bold">NP & XP settings</h2>
-              <p className="text-sm text-muted-foreground">
-                Edit future reward rules here—no coding required.
-              </p>
-            </div>
-            <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-              Active version {data.config.version}
-            </span>
-          </div>
           <div className="grid gap-5 xl:grid-cols-2">
             <FriendlyRuleGroups
               title="Nexus Points (NP)"
@@ -751,243 +711,156 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
 
       {tab === "gifts" && (
         <div className="space-y-5">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              Choose a learner or upload a bulk list.
-            </p>
-            <div className="flex rounded-xl bg-muted p-1">
-              <button
-                onClick={() => {
-                  setGiftMode("single");
-                  setGiftPreview(null);
-                }}
-                className={`${button} min-h-9 px-3 ${giftMode === "single" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
-              >
-                <UserRound size={15} />
-                One learner
-              </button>
-              <button
-                onClick={() => {
-                  setGiftMode("bulk");
-                  setGiftPreview(null);
-                }}
-                className={`${button} min-h-9 px-3 ${giftMode === "bulk" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
-              >
-                <Upload size={15} />
-                Bulk list
-              </button>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Select one or more learners, then enter the NP amount and reason.
+          </p>
           <div>
-            {giftMode === "single" ? (
-              <section className={card}>
-                <h3 className="font-bold">1. Select a learner</h3>
-                <div className="relative mt-3">
-                  <Search
-                    size={16}
-                    className="absolute left-3 top-3.5 text-muted-foreground"
-                  />
-                  <input
-                    value={learnerQuery}
-                    onChange={(event) => setLearnerQuery(event.target.value)}
-                    placeholder="Search by learner name or index number"
-                    className={`${control} w-full pl-10`}
-                  />
-                </div>
-                <div className="mt-3 max-h-64 space-y-2 overflow-auto">
-                  {visibleLearners.map((learner) => (
-                    <button
-                      key={learner.uid}
-                      onClick={() => {
-                        setSelectedLearner(learner);
-                        setGiftPreview(null);
-                      }}
-                      className={`flex w-full items-center justify-between rounded-xl border p-3 text-left ${selectedLearner?.uid === learner.uid ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 font-bold text-primary">
-                          {learner.name.slice(0, 1).toUpperCase()}
-                        </span>
-                        <span className="min-w-0">
-                          <b className="block truncate text-sm">
-                            {learner.name}
-                          </b>
-                          <span className="text-xs text-muted-foreground">
-                            {learner.index_number}
-                          </span>
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-right text-xs">
-                        <b className="block">
-                          {learner.balance.toLocaleString()} NP
-                        </b>
-                        <span className="text-muted-foreground">
-                          Current balance
-                        </span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                {selectedLearner && (
-                  <div className="mt-5 border-t pt-5">
-                    <h3 className="font-bold">2. Enter gift details</h3>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <Num
-                        label="NP amount"
-                        value={giftAmount}
-                        set={(value) => {
-                          setGiftAmount(value);
-                          setGiftPreview(null);
-                        }}
-                      />
-                      <Field
-                        label="Reason"
-                        value={giftReason}
-                        set={(value) => {
-                          setGiftReason(value);
-                          setGiftPreview(null);
-                        }}
-                      />
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        disabled={
-                          giftAmount < 1 || giftReason.trim().length < 3
-                        }
-                        onClick={async () => {
-                          const result = await request(
-                            {
-                              action: "validate_gifts",
-                              gifts: [
-                                {
-                                  indexNumber: selectedLearner.index_number,
-                                  amount: giftAmount,
-                                  reason: giftReason,
-                                },
-                              ],
-                            },
-                            "gifts",
-                          );
-                          if (result) setGiftPreview(result);
-                        }}
-                        className={`${button} border`}
-                      >
-                        Review gift
-                      </button>
-                      {canReset &&
-                        giftPreview &&
-                        Boolean(giftPreview.valid) && (
-                          <button
-                            onClick={async () => {
-                              if (
-                                await request(
-                                  {
-                                    action: "gift_np",
-                                    gifts: [
-                                      {
-                                        indexNumber:
-                                          selectedLearner.index_number,
-                                        amount: giftAmount,
-                                        reason: giftReason,
-                                      },
-                                    ],
-                                  },
-                                  "send-gifts",
-                                )
-                              ) {
-                                setGiftPreview(null);
-                                setGiftReason("");
-                                setSelectedLearner(null);
-                                setNotice("NP gift sent and recorded.");
-                              }
-                            }}
-                            className={`${button} bg-primary text-primary-foreground`}
-                          >
-                            <Gift size={16} />
-                            Send {giftAmount.toLocaleString()} NP
-                          </button>
-                        )}
-                    </div>
-                    {giftPreview && <GiftPreview value={giftPreview} />}
-                  </div>
-                )}
-              </section>
-            ) : (
-              <section className={card}>
-                <h3 className="font-bold">Bulk gift list</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Upload a CSV or paste one learner per line: index number, NP
-                  amount, reason.
-                </p>
-                <label
-                  className={`${button} mt-4 inline-flex cursor-pointer border`}
-                >
-                  <Upload size={16} />
-                  Choose CSV
-                  <input
-                    type="file"
-                    accept=".csv,text/csv"
-                    className="sr-only"
-                    onChange={async (event) => {
-                      const file = event.target.files?.[0];
-                      if (file) {
-                        setGiftText(await file.text());
-                        setGiftPreview(null);
-                      }
-                      event.target.value = "";
-                    }}
-                  />
-                </label>
-                <textarea
-                  value={giftText}
-                  onChange={(event) => {
-                    setGiftText(event.target.value);
-                    setGiftPreview(null);
-                  }}
-                  rows={9}
-                  placeholder={
-                    "SM/SMS/22/0102,500,Challenge winner\nSM/SMS/22/0144,250,Participation award"
-                  }
-                  className={`${control} mt-3 w-full py-3 font-mono`}
+            <section className={card}>
+              <h3 className="font-bold">1. Select learners</h3>
+              <div className="relative mt-3">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-3.5 text-muted-foreground"
                 />
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    disabled={!gifts.length}
-                    onClick={async () => {
-                      const result = await request(
-                        { action: "validate_gifts", gifts },
-                        "gifts",
-                      );
-                      if (result) setGiftPreview(result);
-                    }}
-                    className={`${button} border`}
+                <input
+                  value={learnerQuery}
+                  onChange={(event) => setLearnerQuery(event.target.value)}
+                  placeholder="Search by learner name or index number"
+                  className={`${control} w-full pl-10`}
+                />
+              </div>
+              <div className="mt-3 max-h-64 space-y-2 overflow-auto">
+                {visibleLearners.map((learner) => (
+                  <label
+                    key={learner.uid}
+                    className={`flex w-full cursor-pointer items-center justify-between rounded-xl border p-3 text-left ${selectedLearnerIds.includes(learner.uid) ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
                   >
-                    Validate {gifts.length || ""} recipients
-                  </button>
-                  {canReset && giftPreview && Boolean(giftPreview.valid) && (
-                    <button
-                      onClick={async () => {
-                        if (
-                          await request(
-                            { action: "gift_np", gifts },
-                            "send-gifts",
-                          )
-                        ) {
-                          setGiftText("");
+                    <span className="flex min-w-0 items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedLearnerIds.includes(learner.uid)}
+                        onChange={() => {
+                          setSelectedLearnerIds((current) =>
+                            current.includes(learner.uid)
+                              ? current.filter((id) => id !== learner.uid)
+                              : [...current, learner.uid],
+                          );
                           setGiftPreview(null);
-                          setNotice("NP gifts sent and recorded.");
-                        }
+                        }}
+                        aria-label={`Select ${learner.name}`}
+                        className="size-4 accent-primary"
+                      />
+                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 font-bold text-primary">
+                        {learner.name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="min-w-0">
+                        <b className="block truncate text-sm">{learner.name}</b>
+                        <span className="text-xs text-muted-foreground">
+                          {learner.index_number}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right text-xs">
+                      <b className="block">
+                        {learner.balance.toLocaleString()} NP
+                      </b>
+                      <span className="text-muted-foreground">
+                        Current balance
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {selectedLearnerIds.length > 0 && (
+                <div className="mt-5 border-t pt-5">
+                  <h3 className="font-bold">
+                    2. Gift {selectedLearnerIds.length} selected learner
+                    {selectedLearnerIds.length === 1 ? "" : "s"}
+                  </h3>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <Num
+                      label="NP amount"
+                      value={giftAmount}
+                      set={(value) => {
+                        setGiftAmount(value);
+                        setGiftPreview(null);
                       }}
-                      className={`${button} bg-primary text-primary-foreground`}
+                    />
+                    <Field
+                      label="Reason"
+                      value={giftReason}
+                      set={(value) => {
+                        setGiftReason(value);
+                        setGiftPreview(null);
+                      }}
+                    />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      disabled={giftAmount < 1 || giftReason.trim().length < 3}
+                      onClick={async () => {
+                        const result = await request(
+                          {
+                            action: "validate_gifts",
+                            gifts: data.learners
+                              .filter((learner) =>
+                                selectedLearnerIds.includes(learner.uid),
+                              )
+                              .map((learner) => ({
+                                indexNumber: learner.index_number,
+                                amount: giftAmount,
+                                reason: giftReason,
+                              })),
+                          },
+                          "gifts",
+                        );
+                        if (result) setGiftPreview(result);
+                      }}
+                      className={`${button} border`}
                     >
-                      Send {Number(giftPreview.totalNP ?? 0).toLocaleString()}{" "}
-                      NP
+                      Review gift
                     </button>
-                  )}
+                    {canReset && giftPreview && Boolean(giftPreview.valid) && (
+                      <button
+                        onClick={async () => {
+                          if (
+                            await request(
+                              {
+                                action: "gift_np",
+                                gifts: data.learners
+                                  .filter((learner) =>
+                                    selectedLearnerIds.includes(learner.uid),
+                                  )
+                                  .map((learner) => ({
+                                    indexNumber: learner.index_number,
+                                    amount: giftAmount,
+                                    reason: giftReason,
+                                  })),
+                              },
+                              "send-gifts",
+                            )
+                          ) {
+                            setGiftPreview(null);
+                            setGiftReason("");
+                            setSelectedLearnerIds([]);
+                            setNotice("NP gifts sent and recorded.");
+                          }
+                        }}
+                        className={`${button} bg-primary text-primary-foreground`}
+                      >
+                        <Gift size={16} />
+                        Send{" "}
+                        {(
+                          giftAmount * selectedLearnerIds.length
+                        ).toLocaleString()}{" "}
+                        NP
+                      </button>
+                    )}
+                  </div>
+                  {giftPreview && <GiftPreview value={giftPreview} />}
                 </div>
-                {giftPreview && <GiftPreview value={giftPreview} />}
-              </section>
-            )}
+              )}
+            </section>
           </div>
         </div>
       )}
@@ -1096,6 +969,28 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
             </div>
           </section>
         </div>
+      )}
+
+      {tab === "reports" && (
+        <section className={card}>
+          <h2 className="text-lg font-bold">Economy report</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Export seasons, reward runs, NP gifts, balances, and economy totals.
+          </p>
+          <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Stat label="Seasons" value={data.seasons.length} />
+            <Stat label="Reward runs" value={data.rewardRuns.length} />
+            <Stat label="NP gifts" value={data.gifts.length} />
+            <Stat label="Learners" value={data.learners.length} />
+          </dl>
+          <a
+            href="/api/admin/economy-seasons?download=1"
+            className={`${button} mt-5 bg-primary text-primary-foreground`}
+          >
+            <Download size={16} />
+            Download report
+          </a>
+        </section>
       )}
 
       {creating && (
