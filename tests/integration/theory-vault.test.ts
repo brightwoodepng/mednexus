@@ -65,4 +65,12 @@ describe("Theory Vault contracts", () => {
     expect(adminRoute).toContain("mednexus_theory_sets")
     expect(adminRoute).toContain("name")
   })
+
+  it("supports fast keyboard navigation between theory questions", async () => {
+    const vault = await readFile("components/theory-vault.tsx", "utf8")
+    expect(vault).toContain("useQuestionKeyboardNavigation")
+    expect(vault).toContain("prefetchTheoryQuestion(stable.previousId)")
+    expect(vault).toContain("prefetchTheoryQuestion(stable.nextId)")
+    expect(vault).toContain("loadSequenceRef")
+  })
 })

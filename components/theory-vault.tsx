@@ -14,6 +14,7 @@ import type { TheoryQuestionDetail, TheorySelfRating, TheoryStudyMode } from "@/
 import { loadTheoryDashboard, type TheoryDashboardData } from "@/lib/theory-dashboard-client"
 import { ACTIVE_THEORY_QUESTION_KEY, clearPersistedTheoryQuestion } from "@/lib/theory-navigation"
 import { theorySectionKeys } from "@/lib/theory-format"
+import { useQuestionKeyboardNavigation } from "@/hooks/use-question-keyboard-navigation"
 
 type View = "Dashboard" | "Browse Questions" | "Bookmarks" | "My Notes" | "Revision Queue" | "Progress" | "Search"
 type CatalogData = {
@@ -60,6 +61,16 @@ async function mutate(payload: Record<string, unknown>) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   })
+}
+
+// Keep recently opened theory questions ready so sequential navigation feels immediate.
+const theoryQuestionCache = new Map<string, TheoryQuestionDetail>()
+
+function prefetchTheoryQuestion(id: string | null) {
+  if (!id || theoryQuestionCache.has(id)) return
+  void api<TheoryQuestionDetail>(`/api/theory?mode=question&id=${encodeURIComponent(id)}`)
+    .then(question => theoryQuestionCache.set(id, question))
+    .catch(() => undefined)
 }
 
 function dateLabel(value: string | null | undefined) {
@@ -544,26 +555,56 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
   const restored = useRef(false)
   const answerRef = useRef<HTMLTextAreaElement>(null)
   const highlightTimerRef = useRef<number | null>(null)
+  const loadSequenceRef = useRef(0)
   useAutosizeTextarea(answerRef, answer, mode === "practice" && !submitted)
 
   const load = useCallback(async () => {
+    const loadSequence = ++loadSequenceRef.current
     setMessage(""); setSubmitted(false); setRevealed(false); reviewRecorded.current = false; restored.current = false
-    try {
-      const next = await api<TheoryQuestionDetail>(`/api/theory?mode=question&id=${encodeURIComponent(questionId)}`)
+    const stabilise = (next: TheoryQuestionDetail) => {
       const sessionIndex = sessionQuestionIds?.indexOf(questionId) ?? -1
-      const stable = sessionIndex >= 0 && sessionQuestionIds ? {
+      return sessionIndex >= 0 && sessionQuestionIds ? {
         ...next,
         position: sessionIndex + 1,
         setTotal: sessionQuestionIds.length,
         previousId: sessionIndex > 0 ? sessionQuestionIds[sessionIndex - 1] : null,
         nextId: sessionIndex < sessionQuestionIds.length - 1 ? sessionQuestionIds[sessionIndex + 1] : null,
       } : next
+    }
+    const applyQuestion = (next: TheoryQuestionDetail) => {
+      const stable = stabilise(next)
       setQuestion(stable); setNote(next.state?.note ?? ""); setAnswer(next.state?.draft?.answerMd ?? "")
       restored.current = true
+      prefetchTheoryQuestion(stable.previousId)
+      prefetchTheoryQuestion(stable.nextId)
+    }
+    const cached = theoryQuestionCache.get(questionId)
+    if (cached) applyQuestion(cached)
+    else setQuestion(null)
+    try {
+      const next = await api<TheoryQuestionDetail>(`/api/theory?mode=question&id=${encodeURIComponent(questionId)}`)
+      theoryQuestionCache.set(questionId, next)
+      if (loadSequence !== loadSequenceRef.current) return
+      applyQuestion(next)
       if (registered) void mutate({ action: "opened", questionId })
-    } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to open question.") }
+    } catch (cause) {
+      if (loadSequence === loadSequenceRef.current && !cached) setMessage(cause instanceof Error ? cause.message : "Unable to open question.")
+    }
   }, [questionId, registered, sessionQuestionIds])
   useEffect(() => { void load() }, [load])
+
+  const goToPreviousQuestion = useCallback(() => {
+    if (question?.previousId) onMove(question.previousId)
+  }, [onMove, question?.previousId])
+  const goToNextQuestion = useCallback(() => {
+    if (question?.nextId) onMove(question.nextId)
+  }, [onMove, question?.nextId])
+
+  useQuestionKeyboardNavigation({
+    enabled: Boolean(question),
+    onPrevious: goToPreviousQuestion,
+    onNext: goToNextQuestion,
+  })
 
   useEffect(() => {
     if (!registered) {
