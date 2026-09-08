@@ -217,5 +217,8 @@ describe("Theory bulk importer", () => {
     expect(importer).toMatch(/plainTextImportFileType\(file\.name\)[\s\S]*action: "parse"[\s\S]*images: \[\]/)
     expect(importer).toContain("onDrop={handleDrop}")
     expect(importer).toContain("Unsupported file type. Choose a .pdf, .docx, .json, .txt, or .md file.")
+    expect(importer).toContain("End of Year has one grouping level only: DISCIPLINE")
+    expect(importer).toContain("Start each section with MODULE: … (required).")
+    expect(importer).toContain("Use DISCIPLINE: … as the only grouping heading.")
   })
 })

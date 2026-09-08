@@ -41,6 +41,19 @@ export function TheoryBulkImporter({ collectionKind, defaultSetSize = 20, onImpo
   const [failure, setFailure] = useState("")
   const [promptCopied, setPromptCopied] = useState(false)
   const kindLabel = collectionKind === "end_of_module" ? "End of Module" : "End of Year"
+  const formatRules = collectionKind === "end_of_module"
+    ? [
+        "Start each section with MODULE: … (required).",
+        "Add DISCIPLINE: … only when it helps organise questions inside that module.",
+        "Use a separate QUESTION number and QUESTION TITLE for every question.",
+        "Keep preambles, A/B/C sub-questions, answers, and images under the correct question.",
+      ]
+    : [
+        "Use DISCIPLINE: … as the only grouping heading.",
+        "Do not add MODULE headings to an End-of-Year document.",
+        "Use a separate QUESTION number and QUESTION TITLE for every question.",
+        "Keep preambles, A/B/C sub-questions, answers, and images under the correct question.",
+      ]
   const formattingPrompt = collectionKind === "end_of_module"
     ? `Organize and reformat all raw Theory questions in the attached slide or document to follow the exact MedNexus End-of-Module structure shown below. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Generate a concise, specific QUESTION TITLE from the main subject, clinical problem, or learning focus of each question. Preserve the exact MODULE and DISCIPLINE headings already present. If a discipline is missing, infer a concise, standard medical discipline from the question content. Preserve every question, sub-question, heading, and embedded image in its original order. Keep a shared scenario or exhibit description as a separate preamble. Put every sub-question on its own A/B/C or numbered line, and organize MODEL ANSWER with matching labeled headings in the same order. Never flatten separate questions or answer paragraphs into one paragraph. If the source has no answers or marking points, do not solve the questions and do not invent answers or marking schemes. Apart from generating titles and missing disciplines, do not add, remove, rewrite, or summarize any question. Return a clean .docx, .txt, or .md file ready for MedNexus import.
 
@@ -74,7 +87,7 @@ QUESTION:
 Discuss the mechanism of action, therapeutic uses and important adverse effects of angiotensin-converting enzyme inhibitors.
 
 Continue the same numbered structure for every remaining question. Only include MODEL ANSWER and KEY POINTS under a question when they already exist in the source document.`
-    : `Organize and reformat all raw Theory questions in the attached slide or document to follow the exact MedNexus End-of-Year structure shown below. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Generate a concise, specific QUESTION TITLE from the main subject, clinical problem, or learning focus of each question. Preserve every existing DISCIPLINE heading exactly. If a discipline is missing, infer a concise, standard medical discipline from the question content. Do not add a MODULE heading. When the discipline changes, insert the new DISCIPLINE heading before the next numbered question. Preserve every question, sub-question, heading, and embedded image in its original order. Keep a shared scenario or exhibit description as a separate preamble. Put every sub-question on its own A/B/C or numbered line, and organize MODEL ANSWER with matching labeled headings in the same order. Never flatten separate questions or answer paragraphs into one paragraph. If the source has no answers or marking points, do not solve the questions and do not invent answers or marking schemes. Apart from generating titles and missing disciplines, do not add, remove, rewrite, or summarize any question. Return a clean .docx, .txt, or .md file ready for MedNexus import.
+    : `Organize and reformat all raw Theory questions in the attached slide or document to follow the exact MedNexus End-of-Year structure shown below. End of Year has one grouping level only: DISCIPLINE. Never add MODULE, rotation, or course headings. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Generate a concise, specific QUESTION TITLE from the main subject, clinical problem, or learning focus of each question. Preserve every existing DISCIPLINE heading exactly. If a discipline is missing, infer a concise, standard medical discipline from the question content. When the discipline changes, insert the new DISCIPLINE heading before the next numbered question. Preserve every question, sub-question, heading, and embedded image in its original order. Keep a shared scenario or exhibit description as a separate preamble. Put every sub-question on its own A/B/C or numbered line, and organize MODEL ANSWER with matching labeled headings in the same order. Never flatten separate questions or answer paragraphs into one paragraph. If the source has no answers or marking points, do not solve the questions and do not invent answers or marking schemes. Apart from generating titles and missing disciplines, do not add, remove, rewrite, or summarize any question. Return a clean .docx, .txt, or .md file ready for MedNexus import.
 
 EXAMPLE TO FOLLOW
 
@@ -241,8 +254,14 @@ Continue the same numbered structure for every remaining question. Only include 
     </section>
 
     <details className={`${card} overflow-hidden p-0`}>
-      <summary className="cursor-pointer px-5 py-4 font-bold">Formatting tips</summary>
+      <summary className="cursor-pointer px-5 py-4 font-bold">{kindLabel} formatting tips</summary>
       <div className="border-t border-border">
+        <div className="border-b border-border bg-primary/5 px-5 py-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">Required structure</p>
+          <ul className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+            {formatRules.map(rule => <li key={rule} className="rounded-lg border border-border bg-background px-3 py-2">{rule}</li>)}
+          </ul>
+        </div>
         <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center">
           <div>
             <b className="text-sm">AI formatting prompt and {kindLabel} example</b>
