@@ -47,7 +47,7 @@ Rules:
 - Never invent a module. Use the exact module heading from the document.
 - Preserve an existing discipline heading exactly. If a question has no discipline heading, infer a concise, standard medical discipline from the question content.
 - This import is ${label}. Set collectionKind to "${collectionKind}" for every question.
-${collectionKind === "end_of_module" ? "- moduleName is required; disciplineName may identify a related discipline." : "- disciplineName is required; moduleName must be empty."}
+${collectionKind === "end_of_module" ? "- moduleName is required; disciplineName may identify a related discipline." : "- The entire upload belongs to one discipline. Use the same required disciplineName for every question, and leave moduleName empty."}
 - Keep model answers and marking schemes as Markdown.
 - A source may contain raw questions without answers or marking points. In that case, return an empty modelAnswer and an empty keyMarkingPoints array. Never solve the question or invent an answer or marking scheme.
 - When the source includes a model answer or marking points, preserve them as written. Marks are calculated by the system.

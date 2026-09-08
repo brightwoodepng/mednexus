@@ -95,17 +95,43 @@ DISCIPLINE: Pathology
 
 QUESTION 1
 
+QUESTION TITLE: Acute inflammation assessment
+
+PREAMBLE:
+A tissue specimen from an infected wound shows an acute inflammatory response. [IMAGE_1]
+
+QUESTION:
+A. Describe the vascular events in acute inflammation.
+B. Explain the main cellular events.
+C. State two possible outcomes.
+
+MODEL ANSWER:
+A. Vascular events
+- Brief vasoconstriction followed by vasodilatation.
+- Increased vascular permeability with protein-rich exudate.
+
+B. Cellular events
+- Margination, rolling, adhesion and transmigration of leukocytes.
+- Chemotaxis and phagocytosis at the site of injury.
+
+C. Outcomes
+- Complete resolution.
+- Abscess formation, fibrosis or progression to chronic inflammation.
+
+KEY POINTS:
+- Correct sequence of vascular events
+- Correct sequence of leukocyte recruitment
+- Two valid outcomes
+
+IMAGES:
+[IMAGE_1]
+
+QUESTION 2
+
 QUESTION TITLE: Coagulative necrosis
 
 QUESTION:
 Describe the causes, morphology and clinical significance of coagulative necrosis.
-
-QUESTION 2
-
-QUESTION TITLE: Acute inflammation
-
-QUESTION:
-A tissue specimen shows an acute inflammatory response. Describe the vascular and cellular events involved.
 
 QUESTION 3
 
@@ -114,7 +140,7 @@ QUESTION TITLE: Neoplasia and metastasis
 QUESTION:
 Explain the biological steps involved in invasion and haematogenous metastasis of a malignant tumour.
 
-Continue the same numbered structure for every remaining question. Only include MODEL ANSWER and KEY POINTS under a question when they already exist in the source document.`
+Continue the same numbered structure for every remaining question under the single Pathology discipline. PREAMBLE, MODEL ANSWER, KEY POINTS, and IMAGES are optional: include them only when they already exist in the source document. Keep every A/B/C item on its own line and use matching A/B/C headings in MODEL ANSWER.`
 
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; count: number; images: number }>()
