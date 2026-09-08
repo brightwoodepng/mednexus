@@ -139,6 +139,7 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
   const setGlobalQuery = onExternalQueryChange ?? setInternalQuery
   const showingQuestion = questionId !== null
   const dashboardVisible = useRef(Boolean(initialDashboard))
+  const previousInitialView = useRef(initialView)
 
   useEffect(() => {
     let restoredQuestion = false
@@ -159,6 +160,24 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
       setRestoreChecked(true)
     }
   }, [])
+
+  // MedNexus keeps the Theory Vault mounted while the learner switches between
+  // its top-level destinations. State initializers only use `initialView` on the
+  // first render, so explicitly follow later route changes and close any nested
+  // set/question that belonged to the previous destination. The first render is
+  // intentionally ignored so a question can still be restored after a refresh.
+  useEffect(() => {
+    if (previousInitialView.current === initialView) return
+    previousInitialView.current = initialView
+    window.sessionStorage.removeItem(ACTIVE_THEORY_QUESTION_KEY)
+    setQuestionId(null)
+    setSessionQuestionIds(null)
+    setSetData(null)
+    setCollectionId(null)
+    setGroupId(null)
+    setError("")
+    setView(initialView)
+  }, [initialView])
 
   useEffect(() => {
     if (!restoreChecked || !questionId) return
