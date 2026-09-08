@@ -5,6 +5,7 @@ import path from "node:path"
 const root = process.cwd()
 const manager = fs.readFileSync(path.join(root, "components/theory-admin-simplified.tsx"), "utf8")
 const api = fs.readFileSync(path.join(root, "app/api/admin/theory/route.ts"), "utf8")
+const page = fs.readFileSync(path.join(root, "app/admin/theory/page.tsx"), "utf8")
 
 describe("admin Theory Manager", () => {
   it("uses one category-aware Theory workspace", () => {
@@ -12,6 +13,8 @@ describe("admin Theory Manager", () => {
     expect(manager).toContain('setKind("end_of_year")')
     expect(manager).not.toContain('setMode("legacy")')
     expect(manager).not.toContain("bg-gradient-to-br from-teal-700")
+    expect(page).toContain('params.kind === "end_of_year"')
+    expect(page).toContain("initialStatus={initialStatus}")
   })
 
   it("provides module-first folders, set filters, search, and visible actions", () => {

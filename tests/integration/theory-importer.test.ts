@@ -227,6 +227,8 @@ describe("Theory bulk importer", () => {
     expect(importer).toContain("readPlainTextImportFile(file)")
     expect(importer).toMatch(/plainTextImportFileType\(file\.name\)[\s\S]*action: "parse"[\s\S]*images: \[\]/)
     expect(importer).toContain("onDrop={handleDrop}")
+    expect(importer).toContain("Not saved yet")
+    expect(importer).toContain("drafts to Theory Vault")
     expect(importer).toContain("Unsupported file type. Choose a .pdf, .docx, .json, .txt, or .md file.")
     expect(importer).toContain("One End-of-Year document contains questions from one discipline only")
     expect(importer).toContain("Start each section with MODULE: … (required).")

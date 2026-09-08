@@ -51,14 +51,14 @@ function readinessLabel(question: Question) {
   return { label: "Needs a prompt", className: "bg-rose-500/10 text-rose-700 dark:text-rose-300" }
 }
 
-export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: Tab }) {
-  const [kind, setKind] = useState<Kind>("end_of_module")
+export function TheoryAdminSimplified({ initialTab = "editor", initialKind = "end_of_module", initialStatus = "" }: { initialTab?: Tab; initialKind?: Kind; initialStatus?: Status | "" }) {
+  const [kind, setKind] = useState<Kind>(initialKind)
   const [tab, setTab] = useState<Tab>(initialTab)
   const [data, setData] = useState<AdminData | null>(null)
   const [groupId, setGroupId] = useState("")
   const [setId, setSetId] = useState("")
   const [query, setQuery] = useState("")
-  const [status, setStatus] = useState("")
+  const [status, setStatus] = useState(initialStatus)
   const [selected, setSelected] = useState<string[]>([])
   const [active, setActive] = useState<Question | null>(null)
   const [preview, setPreview] = useState<Question | null>(null)
@@ -170,7 +170,7 @@ export function TheoryAdminSimplified({ initialTab = "editor" }: { initialTab?: 
         })}</div>
       </aside>
       <main className="min-w-0 space-y-3">
-        <section className={`${card} p-4`}><div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border px-3"><Search size={16}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search questions" className="w-full bg-transparent text-sm outline-none"/></label><select value={status} onChange={event => setStatus(event.target.value)} className={control}><option value="">All statuses</option><option value="draft">Draft</option><option value="review">In review</option><option value="published">Live</option><option value="archived">Archived</option></select><button onClick={() => void load()} className={`${button} border border-border`}><RefreshCw size={15}/>Refresh</button></div>
+        <section className={`${card} p-4`}><div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border px-3"><Search size={16}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search questions" className="w-full bg-transparent text-sm outline-none"/></label><select value={status} onChange={event => setStatus(event.target.value as Status | "")} className={control}><option value="">All statuses</option><option value="draft">Draft</option><option value="review">In review</option><option value="published">Live</option><option value="archived">Archived</option></select><button onClick={() => void load()} className={`${button} border border-border`}><RefreshCw size={15}/>Refresh</button></div>
           <div className="mt-3 flex flex-wrap items-center gap-2"><b className="mr-auto text-sm">{selectedGroup?.name ?? "Choose a folder"}{setId ? ` · ${groupSets.find(item => item.id === setId)?.name}` : ""}</b>{selected.length ? <><span className="text-xs text-muted-foreground">{selected.length} selected</span><button onClick={() => void publish(selected,"published")} className={`${button} bg-emerald-600 text-white`}>Publish</button><button onClick={() => setMoveIds(selected)} className={`${button} border border-border`}><MoveRight size={14}/>Move</button><button onClick={() => void trash("question",selected)} className={`${button} bg-destructive/10 text-destructive`}><Trash2 size={14}/>Trash</button></> : null}</div>
         </section>
         {!groupId ? <div className={`${card} p-12 text-center`}><FolderOpen className="mx-auto text-primary" size={34}/><h2 className="mt-4 font-bold">Choose a {kind === "end_of_module" ? "module" : "discipline"}</h2><p className="mt-1 text-sm text-muted-foreground">Its sets and questions will appear here.</p></div> : data.questions.length ? <section className={`${card} overflow-hidden`}><div className="flex items-center gap-3 border-b border-border bg-muted/30 px-4 py-3 text-xs font-bold"><input type="checkbox" checked={selected.length === data.questions.length} onChange={event => setSelected(event.target.checked ? data.questions.map(item => item.id) : [])}/><span>{data.questions.length} shown</span></div><div className="divide-y divide-border">{data.questions.map(question => {
