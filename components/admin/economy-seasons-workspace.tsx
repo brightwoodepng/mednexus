@@ -591,7 +591,7 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
 
       {tab === "rules" && (
         <div className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="space-y-5">
             <FriendlyRuleGroups
               title="Nexus Points (NP)"
               description="Control spendable points, caps, streaks, games and bounties."
@@ -769,7 +769,7 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
                 ))}
               </div>
               {selectedLearnerIds.length > 0 && (
-                <div className="mt-5 border-t pt-5">
+                <div className="sticky bottom-3 z-20 mt-5 rounded-2xl border border-primary/25 bg-card p-4 shadow-lg">
                   <h3 className="font-bold">
                     2. Gift {selectedLearnerIds.length} selected learner
                     {selectedLearnerIds.length === 1 ? "" : "s"}
@@ -1399,7 +1399,7 @@ function FriendlyRuleGroups({
     <section className={card}>
       <h2 className="text-lg font-bold">{title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 grid gap-3 lg:grid-cols-2">
         {Object.entries(value)
           .filter(([key]) => !omit.includes(key))
           .map(([key, item], index) => (
