@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import { TheoryGroupQuestion, TheoryGroupSummary, type TheoryRoomContent } from "@/components/group-study/theory-group-question"
+import { useApplicationShell } from "@/components/authenticated-application-shell"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Check, ChevronDown, Clock3, Copy, Crown, Flag, LogOut, Play, ShieldCheck, SlidersHorizontal, Trophy, Users, X } from "lucide-react"
 import { multiplayerApi, MultiplayerApiError } from "@/lib/multiplayer-api"
@@ -10,19 +12,22 @@ import { useEconomy } from "@/contexts/economy-context"
 
 type Member = { userId: string; name: string; avatar?: string | null; role: "host" | "member"; isGuest: boolean; rank: number; ready: boolean; hasSubmitted: boolean; firstEligibleQuestion: number | null; eligibleQuestions: number; questionsAttempted: number; correctAnswers: number; incorrectAnswers: number; eligibleUnanswered: number; accuracy: number; currentStreak: number; highestStreak: number; roomScore: number; sessionNpEarned: number; connectionStatus: "online" | "disconnected" | "left" }
 type NavigationMode = "host_paced" | "browse_ahead" | "answer_ahead" | "anyone_advances"
-type RoomState = {
-  room: { id: string; pin: string; hostUserId: string; moduleId: string; discipline: string | null; difficulty: string; questionCount: number; timerSeconds: number | null; status: string; phase: string; currentQuestionIndex: number; viewedQuestionIndex: number; isLiveQuestion: boolean; navigationMode: NavigationMode; questionOpenedAt: string | null; answerClosesAt: string | null; answerClosedAt: string | null; expiresAt: string; version: number; capacity: number; memberCount: number }
+export type RoomState = {
+  personal?: { note: string; bookmark: boolean; revision: boolean } | null
+  room: { studyType: "mcq" | "theory"; startedAt?: string | null; createdAt: string; completedAt?: string | null; id: string; pin: string; hostUserId: string; moduleId: string; discipline: string | null; difficulty: string; questionCount: number; timerSeconds: number | null; status: string; phase: string; currentQuestionIndex: number; viewedQuestionIndex: number; isLiveQuestion: boolean; navigationMode: NavigationMode; questionOpenedAt: string | null; answerClosesAt: string | null; answerClosedAt: string | null; expiresAt: string; version: number; capacity: number; memberCount: number }
   viewer: Member | null
   viewerFlags: number[]
   viewerAnsweredQuestions: number[]
   members: Member[]
-  question: null | { roomQuestionId: string; position: number; id: string; subject: string; vignette: string; contextContent?: string | null; media?: QuestionMedia[]; mediaBase64?: string | null; multiple: boolean; options: QuestionOption[]; correctAnswer?: string | string[]; explanation?: QuestionExplanation | null }
+  question: null | { theory?: TheoryRoomContent; roomQuestionId: string; position: number; id: string; subject: string; vignette: string; contextContent?: string | null; media?: QuestionMedia[]; mediaBase64?: string | null; multiple: boolean; options: QuestionOption[]; correctAnswer?: string | string[]; explanation?: QuestionExplanation | null }
   answerState: { submitted: boolean; selectedAnswer: string | string[] | null; isCorrect: boolean | null; npEarned: number; correctCount: number | null; incorrectCount: number | null; unansweredCount: number | null; optionCounts: Record<string, number> | null }
-  finalReview: Array<{ roomQuestionId: string; position: number; question: { id: string; vignette: string; options: QuestionOption[]; correctAnswer: string | string[]; explanation: QuestionExplanation | null }; selectedAnswer: unknown; isCorrect: boolean | null; correctCount: number; answerCount: number }>
+  finalReview: Array<{ opened?: boolean; revealed?: boolean; roomQuestionId: string; position: number; question: { theory?: TheoryRoomContent; id: string; vignette: string; options: QuestionOption[]; correctAnswer: string | string[]; explanation: QuestionExplanation | null }; selectedAnswer: unknown; isCorrect: boolean | null; correctCount: number; answerCount: number }>
 }
 
 export function GroupStudyRoom({ pin }: { pin: string }) {
   const { refresh: refreshEconomy } = useEconomy()
+  const { setActiveStudyHub } = useApplicationShell()
+  const actionInFlight = useRef(false)
   const [state, setState] = useState<RoomState | null>(null)
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
@@ -33,16 +38,20 @@ export function GroupStudyRoom({ pin }: { pin: string }) {
   const roomRequestRef = useRef(0)
 
   const act = useCallback(async (action: string, extra: Record<string, unknown> = {}) => {
+    if (actionInFlight.current) return
+    actionInFlight.current = true
     roomRequestRef.current += 1
     setBusy(true); setError("")
     try {
       const next = await multiplayerApi<RoomState>(`/api/group-study/${pin}`, { method: "POST", body: JSON.stringify({ action, ...(viewedPosition === null ? {} : { questionPosition: viewedPosition }), ...extra }) })
+      if (["next", "previous", "start"].includes(action)) setViewedPosition(null)
       setState(next)
       if (action === "submit" || (action === "next" && next.room.phase === "completed")) void refreshEconomy()
       return next
-    } catch (error) { setError(error instanceof Error ? error.message : "Unable to update the room"); throw error } finally { setBusy(false) }
+    } catch (error) { setError(error instanceof Error ? error.message : "Unable to update the room"); throw error } finally { actionInFlight.current = false; setBusy(false) }
   }, [pin, refreshEconomy, viewedPosition])
   const load = useCallback(async () => {
+    if (actionInFlight.current) return
     const requestId = ++roomRequestRef.current
     try {
       const next = await multiplayerApi<RoomState>(`/api/group-study/${pin}${viewedPosition === null ? "" : `?question=${viewedPosition}`}`)
@@ -57,6 +66,7 @@ export function GroupStudyRoom({ pin }: { pin: string }) {
   }, [act, pin, viewedPosition])
   const navigateTo = useCallback(async (position: number | null) => {
     setViewedPosition(position)
+    if (actionInFlight.current) return
     const requestId = ++roomRequestRef.current
     try {
       const next = await multiplayerApi<RoomState>(`/api/group-study/${pin}${position === null ? "" : `?question=${position}`}`)
@@ -103,6 +113,10 @@ export function GroupStudyRoom({ pin }: { pin: string }) {
     return () => window.cancelAnimationFrame(frame)
   }, [state?.room.currentQuestionIndex, state?.room.phase, state?.viewer?.role])
 
+  useEffect(() => {
+    if (state?.room.studyType) setActiveStudyHub(state.room.studyType === "theory" ? "theory-vault" : "mcq-qbank")
+  }, [state?.room.studyType, setActiveStudyHub])
+
   const secondsLeft = state?.room.answerClosesAt ? Math.max(0, Math.ceil((new Date(state.room.answerClosesAt).getTime() - now) / 1000)) : null
   const isHost = state?.viewer?.role === "host"
   const reveal = state ? Boolean(state.question?.correctAnswer) : false
@@ -116,20 +130,21 @@ export function GroupStudyRoom({ pin }: { pin: string }) {
   const invite = typeof window === "undefined" ? `/group-study/${pin}` : `${window.location.origin}/group-study/${pin}`
 
   return <main className="min-h-screen bg-background text-foreground">
-    <header className="sticky top-14 z-30 border-b bg-background/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6"><Link href="/group-study" className="hidden font-black tracking-tight md:block">MedNexus <span className="text-primary">Group Study</span></Link><span className="ml-auto rounded-lg bg-muted px-2.5 py-1 font-mono text-sm font-bold">PIN {pin}</span>{secondsLeft !== null && state.room.phase === "question_open" && <span className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-bold ${secondsLeft <= 10 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}><Clock3 size={14}/>{secondsLeft}s</span>}<button onClick={() => setPanelOpen(value => !value)} className="flex h-9 w-9 items-center justify-center rounded-xl border text-primary lg:hidden" aria-label="Open leaderboard"><Trophy size={18}/></button></div></header>
+    <header className="sticky top-14 z-30 border-b bg-background/95 backdrop-blur"><div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6"><Link href="/group-study" className="hidden font-black tracking-tight md:block">MedNexus <span className="text-primary">Group Study</span></Link><span className="ml-auto rounded-lg bg-muted px-2.5 py-1 font-mono text-sm font-bold">PIN {pin}</span>{secondsLeft !== null && state.room.phase === "question_open" && <span className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-bold ${secondsLeft <= 10 ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}><Clock3 size={14}/>{secondsLeft}s</span>}<button onClick={() => setPanelOpen(value => !value)} className="flex h-9 w-9 items-center justify-center rounded-xl border text-primary lg:hidden" aria-label={state.room.studyType === "theory" ? "Open participants" : "Open leaderboard"}><Trophy size={18}/></button></div></header>
     {error && <div role="alert" className="mx-auto mt-4 max-w-7xl px-4 sm:px-6"><div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div></div>}
     <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="min-w-0">{state.room.phase === "lobby" ? <Lobby state={state} invite={invite} busy={busy} isHost={Boolean(isHost)} onReady={ready => act("ready", { ready })} onStart={start} onLeave={leave} onMode={navigationMode => act("navigation-mode", { navigationMode })}/>
+      <section className="min-w-0">{state.room.studyType === "theory" && secondsLeft === 0 && <p role="status" className="mb-3 rounded-xl border p-3 text-sm">Discussion time is up. You can continue talking or move on when ready.</p>}{state.room.phase === "lobby" ? <Lobby state={state} invite={invite} busy={busy} isHost={Boolean(isHost)} onReady={ready => act("ready", { ready })} onStart={start} onLeave={leave} onMode={navigationMode => act("navigation-mode", { navigationMode })}/>
+        : state.room.studyType === "theory" ? <>{state.room.phase === "completed" && viewedPosition === null ? <TheoryGroupSummary state={state} navigate={position => void navigateTo(position)}/> : <TheoryGroupQuestion key={`${state.viewer?.userId}:${state.question?.id}`} state={state} busy={busy} act={act} navigate={position => void navigateTo(position)}/>}</>
         : ["completed", "ended", "expired"].includes(state.room.phase) ? <GroupFinalResults state={state}/>
         : <Question state={state} reveal={reveal} eligible={Boolean(eligible)} selected={selected} busy={busy} onSelect={setSelected} onSubmit={() => act("submit", { answer: selected, questionPosition: state.room.viewedQuestionIndex })} isHost={Boolean(isHost)} onClose={close} onNext={() => { setViewedPosition(null); return act("next", { questionPosition: state.room.currentQuestionIndex }) }} onToggleFlag={() => act("flag", { questionPosition: state.room.viewedQuestionIndex })} onNavigate={position => void navigateTo(position === state.room.currentQuestionIndex ? null : position)} onMode={navigationMode => act("navigation-mode", { navigationMode })}/>}</section>
-      <aside className={`${panelOpen ? "fixed inset-x-3 bottom-3 top-20 z-40 block overflow-auto rounded-3xl border bg-card p-4 shadow-2xl" : "hidden"} lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto lg:rounded-3xl lg:border lg:bg-card lg:p-4 lg:shadow-sm`}><div className="mb-3 flex items-center justify-between"><div><h2 className="font-bold">Leaderboard</h2><p className="text-xs text-muted-foreground">{state.room.memberCount} of {state.room.capacity} members joined</p></div><button className="lg:hidden" onClick={() => setPanelOpen(false)}><X size={20}/></button></div><Leaderboard members={state.members}/><button onClick={leave} className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold text-muted-foreground hover:bg-muted"><LogOut size={15}/>Leave room</button></aside>
+      <aside className={`${panelOpen ? "fixed inset-x-3 bottom-3 top-20 z-40 block overflow-auto rounded-3xl border bg-card p-4 shadow-2xl" : "hidden"} lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto lg:rounded-3xl lg:border lg:bg-card lg:p-4 lg:shadow-sm`}><div className="mb-3 flex items-center justify-between"><div><h2 className="font-bold">{state.room.studyType === "theory" ? "Participants" : "Leaderboard"}</h2><p className="text-xs text-muted-foreground">{state.room.memberCount} of {state.room.capacity} members joined</p></div><button className="lg:hidden" onClick={() => setPanelOpen(false)}><X size={20}/></button></div><>{state.room.studyType === "theory" ? <div className="space-y-3">{state.members.map(member => <div key={member.userId} className="flex items-center gap-3 rounded-xl border p-3"><Avatar member={member}/><div><p className="text-sm font-semibold">{member.name}{member.role === "host" ? " · Host" : ""}</p><p className="text-sm text-muted-foreground">{member.connectionStatus}</p></div></div>)}</div> : <Leaderboard members={state.members}/>}</><button onClick={leave} className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold text-muted-foreground hover:bg-muted"><LogOut size={15}/>Leave room</button></aside>
     </div>
   </main>
 }
 
 function Lobby({ state, invite, busy, isHost, onReady, onStart, onLeave, onMode }: { state: RoomState; invite: string; busy: boolean; isHost: boolean; onReady: (ready: boolean) => void; onStart: () => void; onLeave: () => void; onMode: (mode: NavigationMode) => void }) {
   return <div className="space-y-4 pb-3 sm:space-y-5">
-    {isHost && <NavigationModeControl value={state.room.navigationMode} busy={busy} onChange={onMode}/>}
+    {isHost && state.room.studyType !== "theory" && <NavigationModeControl value={state.room.navigationMode} busy={busy} onChange={onMode}/>}
     <section className="rounded-3xl border bg-card p-4 shadow-sm sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><div className="flex min-w-0 flex-1 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><ShieldCheck size={20}/></span><div className="min-w-0"><p className="text-xs font-semibold text-muted-foreground">Invite with room PIN</p><p className="font-mono text-2xl font-black tracking-[0.16em] text-foreground">{state.room.pin}</p></div></div><button onClick={() => navigator.clipboard.writeText(invite)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/5 px-4 text-sm font-bold text-primary transition hover:bg-primary/10 sm:w-auto"><Copy size={16}/>Copy invite link</button></div></section>
 
     <section className="rounded-3xl border bg-card p-4 shadow-sm sm:p-6"><div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Users size={18}/></span><div><h2 className="font-bold">Participants</h2><p className="text-xs text-muted-foreground">Everyone can join with the six-digit PIN</p></div><span className="ml-auto rounded-full bg-muted px-3 py-1 text-xs font-bold">{state.room.memberCount}/10</span></div><div className="mt-4 grid gap-2.5 sm:grid-cols-2">{state.members.map(member => <div key={member.userId} className="flex min-h-16 items-center gap-3 rounded-2xl border bg-background/60 p-3"><Avatar member={member}/><div className="min-w-0 flex-1"><div className="flex min-w-0 items-center gap-1.5"><p className="truncate text-sm font-bold">{member.name}</p>{member.role === "host" && <span title="Host" className="shrink-0 text-amber-500"><Crown size={14}/></span>}{member.isGuest && <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">Guest</span>}</div><p className={`mt-0.5 text-xs ${member.connectionStatus === "online" && member.ready ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>{member.connectionStatus === "online" ? member.ready ? "Ready to begin" : member.role === "host" ? "Hosting room" : "Waiting to get ready" : member.connectionStatus}</p></div>{member.ready && <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><Check size={15}/></span>}</div>)}</div></section>

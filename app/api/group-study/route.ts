@@ -11,6 +11,8 @@ import {
 } from "@/lib/group-study"
 import { requireAuthenticatedUser } from "@/lib/request-auth"
 import type { Question } from "@/lib/types"
+import { theoryGroupOptions, theoryGroupQuestions, theoryGroupSchemaReady } from "@/lib/theory-group-study-server"
+import { isTheoryDiscussionTimer, theoryGroupSnapshot } from "@/lib/theory-group-study"
 
 const fail = (message: string, status = 400, code = "INVALID_REQUEST") =>
   NextResponse.json({ error: message, code }, { status })
@@ -42,6 +44,9 @@ export async function GET(req: Request) {
   const auth = await requireAuthenticatedUser(req)
   if (!auth) return fail("Sign in or continue as a guest to use Group Study", 401, "AUTHENTICATION_REQUIRED")
   try {
+    if (new URL(req.url).searchParams.get("studyType") === "theory") {
+      return NextResponse.json({ canCreate: true, theoryOptions: await theoryGroupOptions() })
+    }
     const questions = await questionBank()
     const modules = new Map<string, Map<string, number>>()
     for (const question of questions) {
@@ -69,26 +74,33 @@ export async function POST(req: Request) {
   if (!auth) return fail("Sign in or continue as a guest to create Group Study", 401, "AUTHENTICATION_REQUIRED")
   try {
     await ensureGroupStudySchema()
-    const body = await req.json() as { moduleId?: unknown; discipline?: unknown; questionCount?: unknown; timerSeconds?: unknown; navigationMode?: unknown }
-    const moduleId = typeof body.moduleId === "string" ? body.moduleId.trim() : ""
-    const discipline = typeof body.discipline === "string" ? body.discipline.trim() : ""
+    const body = await req.json() as { studyType?: unknown; setId?: unknown; moduleId?: unknown; discipline?: unknown; questionCount?: unknown; timerSeconds?: unknown; navigationMode?: unknown }
+    const studyType = body.studyType ?? "mcq"
+    if (studyType !== "mcq" && studyType !== "theory") return fail("Choose MCQ or Theory")
+    const theory = studyType === "theory"
+    if (theory && !await theoryGroupSchemaReady()) return fail("Theory Group Study is awaiting its database update. Existing MCQ rooms are available.", 503, "THEORY_SCHEMA_REQUIRED")
+    if (theory && (typeof body.setId !== "string" || !body.setId)) return fail("Choose a theory set")
+    const theoryQuestions = theory ? await theoryGroupQuestions(body.setId as string) : []
+    const moduleId = theory ? theoryQuestions[0]?.moduleName ?? theoryQuestions[0]?.collectionTitle ?? "Theory" : typeof body.moduleId === "string" ? body.moduleId.trim() : ""
+    const discipline = theory ? theoryQuestions[0]?.disciplineName ?? "" : typeof body.discipline === "string" ? body.discipline.trim() : ""
     const questionCount = Number(body.questionCount)
     const timerSeconds = body.timerSeconds === undefined ? null : body.timerSeconds
     const navigationMode = body.navigationMode ?? "host_paced"
     if (!moduleId || !Number.isInteger(questionCount) || questionCount < 1) return fail("A valid module and question count are required")
-    if (!isGroupStudyTimer(timerSeconds)) return fail("Timer must be off, 30, 45, 60 or 90 seconds")
+    if (theory ? !isTheoryDiscussionTimer(timerSeconds) : !isGroupStudyTimer(timerSeconds)) return fail("Choose a valid timer duration")
     if (!isGroupStudyNavigationMode(navigationMode)) return fail("Choose a valid navigation mode")
+    if (theory && navigationMode === "answer_ahead") return fail("Theory rooms do not use answer-ahead mode")
 
-    const available = (await questionBank()).filter(question => {
+    const available = theory ? theoryQuestions.map(theoryGroupSnapshot) : (await questionBank()).filter(question => {
       const questionModule = question.module?.trim() || question.subject.trim()
       return questionModule === moduleId && (!discipline || question.subject.trim() === discipline)
-    })
+    }).map(snapshot)
     if (!available.length) return fail("No eligible questions are available for this selection", 422, "INSUFFICIENT_QUESTIONS")
     if (questionCount > available.length) return fail(`Only ${available.length} eligible questions are available for this selection`, 422, "INSUFFICIENT_QUESTIONS")
     const client = await pool.connect()
     try {
       await client.query("BEGIN")
-      const disciplineScope = discipline || ""
+      const disciplineScope = theory ? `theory:${body.setId}` : discipline || ""
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`mednexus:group-study-rotation:${auth.uid}:${moduleId}:${disciplineScope}`])
       await client.query("SELECT pg_advisory_xact_lock(hashtext('mednexus:group-study-pin'))")
       const user = await client.query<{ name: string; avatar: string | null }>(
@@ -104,7 +116,7 @@ export async function POST(req: Request) {
         [auth.uid, moduleId, disciplineScope],
       )
       const lastSelected = new Map(history.rows.map(row => [row.question_id, row.last_selected_at.getTime()]))
-      const selected = prioritizeGroupStudyQuestions(available, lastSelected).slice(0, questionCount).map(snapshot)
+      const selected = (theory ? available : prioritizeGroupStudyQuestions(available, lastSelected)).slice(0, questionCount)
       const roomId = `gsr-${crypto.randomUUID()}`
       let pin = ""
       for (let attempt = 0; attempt < 20; attempt++) {
@@ -115,9 +127,9 @@ export async function POST(req: Request) {
       if (!pin) throw new Error("Unable to reserve a room PIN")
       await client.query(
         `INSERT INTO mednexus_group_study_rooms
-          (id,pin,host_user_id,module_id,discipline,difficulty,question_count,timer_seconds,status,current_phase,expires_at)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,'lobby','lobby',NOW()+($9||' minutes')::interval)`,
-        [roomId, pin, auth.uid, moduleId, discipline || null, groupStudyNavigationModeToStorage(navigationMode), questionCount, timerSeconds, GROUP_STUDY_RECONNECT_MINUTES],
+          (id,pin,host_user_id,module_id,discipline,difficulty,question_count,timer_seconds,status,current_phase,expires_at${theory ? ",study_type" : ""})
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,'lobby','lobby',NOW()+($9||' minutes')::interval${theory ? ",$10" : ""})`,
+        [roomId, pin, auth.uid, moduleId, discipline || null, groupStudyNavigationModeToStorage(navigationMode), questionCount, timerSeconds, GROUP_STUDY_RECONNECT_MINUTES, ...(theory ? [studyType] : [])],
       )
       for (let position = 0; position < selected.length; position++) {
         const question = selected[position]

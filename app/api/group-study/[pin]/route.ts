@@ -26,6 +26,7 @@ import { ensureNotificationSchema } from "@/lib/notification-schema"
 import { notifyRoomMembers, notifyUser } from "@/lib/personal-notifications"
 
 type RoomRow = {
+  study_type: "mcq" | "theory"
   id: string; pin: string; host_user_id: string; module_id: string; discipline: string | null; difficulty: string
   question_count: number; timer_seconds: number | null; status: string; current_question_index: number
   current_phase: GroupStudyPhase; question_opened_at: Date | null; answer_closes_at: Date | null
@@ -33,7 +34,7 @@ type RoomRow = {
   created_at: Date; expires_at: Date; completed_at: Date | null
 }
 
-type RoomQuestionRow = { id: string; question_id: string; position: number; question_snapshot: GroupStudyQuestionSnapshot; opened_at: Date | null; closed_at: Date | null }
+type RoomQuestionRow = { id: string; question_id: string; position: number; question_snapshot: GroupStudyQuestionSnapshot; opened_at: Date | null; closed_at: Date | null; revealed_at: Date | null }
 
 const fail = (message: string, status = 400, code = "INVALID_REQUEST") => NextResponse.json({ error: message, code }, { status })
 const revealPhases = new Set<GroupStudyPhase>(["answer_closed", "reveal", "discussion", "completed"])
@@ -48,6 +49,7 @@ async function lockedRoom(client: PoolClient, pin: string) {
 const navigationMode = (room: RoomRow) => groupStudyNavigationModeFromStorage(room.difficulty)
 
 async function closeAnswering(client: PoolClient, room: RoomRow) {
+  if (room.study_type === "theory") return room
   if (room.current_phase !== "question_open") return room
   const question = await client.query<RoomQuestionRow>(
     "SELECT * FROM mednexus_group_study_room_questions WHERE room_id=$1 AND position=$2", [room.id, room.current_question_index],
@@ -141,7 +143,7 @@ async function closeAnswering(client: PoolClient, room: RoomRow) {
 }
 
 async function maintainRoom(client: PoolClient, room: RoomRow) {
-  if (room.current_phase === "question_open" && room.answer_closes_at && room.answer_closes_at.getTime() <= Date.now()) {
+  if (room.study_type !== "theory" && room.current_phase === "question_open" && room.answer_closes_at && room.answer_closes_at.getTime() <= Date.now()) {
     room = await closeAnswering(client, room)
   }
   const disconnected = await client.query(
@@ -212,7 +214,7 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
      LEFT JOIN mednexus_user_cosmetics c ON c.uid=m.user_id AND NOT m.is_guest
      WHERE m.room_id=$1 ORDER BY m.joined_at,m.user_id`, [room.id],
   )
-  const visibleRows = room.current_phase === "completed"
+  const visibleRows = room.study_type === "theory" && ["completed", "ended", "expired"].includes(room.current_phase) ? allMemberRows.rows : room.current_phase === "completed"
     ? allMemberRows.rows.filter(row => Number(row.questions_attempted) > 0 || row.user_id === viewerId)
     : allMemberRows.rows.filter(row => row.connection_status === "online")
   const viewerMembership = allMemberRows.rows.find(row => row.user_id === viewerId)
@@ -248,14 +250,14 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
     for (const option of selected) if (typeof option === "string") optionCounts[option] = (optionCounts[option] ?? 0) + 1
   }
   const viewerAnswer = answers.rows.find(answer => answer.user_id === viewerId)
-  const reveal = viewedPosition < room.current_question_index || sharedReveal || (viewedPosition > room.current_question_index && navigationMode(room) === "answer_ahead" && Boolean(viewerAnswer))
+  const reveal = room.study_type === "theory" ? Boolean(question?.revealed_at) : viewedPosition < room.current_question_index || sharedReveal || (viewedPosition > room.current_question_index && navigationMode(room) === "answer_ahead" && Boolean(viewerAnswer))
   const eligibleCount = visibleRows.filter(row => row.first_eligible_question !== null && row.first_eligible_question <= room.current_question_index).length
   const finalReview = room.current_phase === "completed"
     ? await client.query<{
         id: string; position: number; question_snapshot: GroupStudyQuestionSnapshot; selected_answer: unknown
-        is_correct: boolean | null; correct_count: number; answer_count: number
+        is_correct: boolean | null; correct_count: number; answer_count: number; revealed_at: Date | null; opened_at: Date | null
       }>(
-        `SELECT q.id,q.position,q.question_snapshot,viewer.selected_answer,viewer.is_correct,
+        `SELECT q.id,q.position,q.question_snapshot,${room.study_type === "theory" ? "q.revealed_at" : "NULL::timestamptz AS revealed_at"},q.opened_at,viewer.selected_answer,viewer.is_correct,
           COUNT(a.id) FILTER(WHERE a.is_correct)::int correct_count,COUNT(a.id)::int answer_count
          FROM mednexus_group_study_room_questions q
          LEFT JOIN mednexus_group_study_answers a ON a.room_question_id=q.id
@@ -264,8 +266,17 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
         [room.id, viewerId],
       )
     : { rows: [] }
+  const personal = room.study_type === "theory" && question && !viewerMembership?.is_guest
+    ? (await client.query(`SELECT
+        COALESCE((SELECT body FROM mednexus_theory_notes WHERE user_id=$1 AND question_id=$2),'') AS note,
+        EXISTS(SELECT 1 FROM mednexus_theory_bookmarks WHERE user_id=$1 AND question_id=$2) AS bookmark,
+        EXISTS(SELECT 1 FROM mednexus_theory_revision_queue WHERE user_id=$1 AND question_id=$2 AND active) AS revision`, [viewerId, question.question_id])).rows[0]
+    : null
   return {
+    personal,
     room: {
+      studyType: room.study_type ?? "mcq", createdAt: room.created_at.toISOString(),
+      startedAt: finalReview.rows[0]?.opened_at?.toISOString() ?? null,
       id: room.id, pin: room.pin, hostUserId: room.host_user_id, moduleId: room.module_id,
       discipline: room.discipline, difficulty: room.difficulty, questionCount: room.question_count, timerSeconds: room.timer_seconds,
       status: room.status, phase: room.current_phase, currentQuestionIndex: room.current_question_index,
@@ -293,7 +304,8 @@ async function serializeRoom(client: PoolClient, room: RoomRow, viewerId: string
     },
     finalReview: finalReview.rows.map(row => ({
       roomQuestionId: row.id, position: row.position,
-      question: publicGroupStudyQuestion(row.question_snapshot, true), selectedAnswer: row.selected_answer,
+      opened: Boolean(row.opened_at), revealed: Boolean(row.revealed_at),
+      question: publicGroupStudyQuestion(row.question_snapshot, room.study_type !== "theory" || Boolean(row.revealed_at)), selectedAnswer: row.selected_answer,
       isCorrect: row.is_correct, correctCount: Number(row.correct_count), answerCount: Number(row.answer_count),
     })),
   }
@@ -371,6 +383,7 @@ async function rewardAnswer(client: PoolClient, room: RoomRow, question: RoomQue
 }
 
 async function awardCompletion(client: PoolClient, room: RoomRow) {
+  if (room.study_type === "theory") return
   const season = await getActiveSeason(client, true)
   const runtime=await getActiveEconomyConfig(client),economyConfig=runtime.npConfig,xpConfig=runtime.xpConfig
   const members = await client.query("SELECT * FROM mednexus_group_study_memberships WHERE room_id=$1 FOR UPDATE", [room.id])
@@ -442,7 +455,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
   if (!auth) return fail("Sign in or continue as a guest to join Group Study", 401, "AUTHENTICATION_REQUIRED")
   try { await Promise.all([ensureGroupStudySchema(), ensureNotificationSchema(pool)]) } catch (error) { console.error("[group-study schema POST]", error); return fail("Group Study is temporarily unavailable", 503, "SCHEMA_UNAVAILABLE") }
   const { pin } = await context.params
-  const body = await req.json().catch(() => ({})) as { action?: string; answer?: unknown; ready?: unknown; force?: unknown; targetUserId?: unknown; questionPosition?: unknown; navigationMode?: unknown }
+  const body = await req.json().catch(() => ({})) as { action?: string; answer?: unknown; ready?: unknown; force?: unknown; targetUserId?: unknown; questionPosition?: unknown; expectedIndex?: unknown; navigationMode?: unknown }
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
@@ -480,6 +493,13 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         room = restoredRoom.rows[0]
       }
       const isHost = room.host_user_id === auth.uid && member.role === "host"
+      if (room.study_type === "theory" && ["submit", "close"].includes(body.action ?? "")) {
+        await client.query("ROLLBACK"); return fail("Theory rooms use discussion, not answer submission", 409, "THEORY_DISCUSSION_ONLY")
+      }
+      if (room.study_type === "theory" && ["next", "previous", "reveal"].includes(body.action ?? "")) {
+        if (room.status !== "active") { await client.query("ROLLBACK"); return fail("The session is not active", 409, "INVALID_PHASE") }
+        if (body.expectedIndex !== room.current_question_index) { await client.query("ROLLBACK"); return fail("The group has moved. Please try again.", 409, "STALE_QUESTION") }
+      }
       if (body.action === "ready") {
         await client.query("UPDATE mednexus_group_study_memberships SET ready=$2 WHERE id=$1", [member.id, body.ready === true])
         await client.query("UPDATE mednexus_group_study_rooms SET version=version+1 WHERE id=$1", [room.id])
@@ -495,6 +515,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
       } else if (body.action === "navigation-mode") {
         if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can change navigation", 403, "HOST_REQUIRED") }
         if (!isGroupStudyNavigationMode(body.navigationMode)) { await client.query("ROLLBACK"); return fail("Choose a valid navigation mode", 422, "INVALID_NAVIGATION_MODE") }
+        if (room.study_type === "theory" && body.navigationMode === "answer_ahead") { await client.query("ROLLBACK"); return fail("Theory rooms do not support answering ahead", 422, "INVALID_NAVIGATION_MODE") }
         const updated = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET difficulty=$2,version=version+1 WHERE id=$1 RETURNING *", [room.id, groupStudyNavigationModeToStorage(body.navigationMode)])
         room = updated.rows[0]
       } else if (body.action === "start") {
@@ -548,9 +569,20 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
         )
         if (Number(remaining.rows[0].count) > 0 && body.force !== true) { await client.query("ROLLBACK"); return fail(`${remaining.rows[0].count} participants have not answered`, 409, "UNANSWERED_MEMBERS") }
         room = await closeAnswering(client, room)
+      } else if (body.action === "reveal" || body.action === "previous") {
+        if (room.study_type !== "theory" || !isHost) { await client.query("ROLLBACK"); return fail("Only the Theory host can use this control", 403, "HOST_REQUIRED") }
+        if (body.action === "reveal") {
+          await client.query("UPDATE mednexus_group_study_room_questions SET revealed_at=COALESCE(revealed_at,NOW()) WHERE room_id=$1 AND position=$2", [room.id, room.current_question_index])
+          room = (await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET current_phase='discussion',version=version+1 WHERE id=$1 RETURNING *", [room.id])).rows[0]
+        } else {
+          if (room.current_question_index <= 0) { await client.query("ROLLBACK"); return fail("Already at the first question", 409, "FIRST_QUESTION") }
+          room = (await client.query<RoomRow>(`UPDATE mednexus_group_study_rooms SET current_question_index=current_question_index-1,
+            current_phase='question_open',question_opened_at=NOW(),answer_closes_at=CASE WHEN timer_seconds IS NULL THEN NULL ELSE NOW()+timer_seconds*INTERVAL '1 second' END,
+            version=version+1 WHERE id=$1 RETURNING *`, [room.id])).rows[0]
+        }
       } else if (body.action === "next") {
         if (!isHost && navigationMode(room) !== "anyone_advances") { await client.query("ROLLBACK"); return fail("Only the host can advance", 403, "HOST_REQUIRED") }
-        if (!revealPhases.has(room.current_phase)) { await client.query("ROLLBACK"); return fail("Reveal the current answer first", 409, "INVALID_PHASE") }
+        if (room.study_type !== "theory" && !revealPhases.has(room.current_phase)) { await client.query("ROLLBACK"); return fail("Reveal the current answer first", 409, "INVALID_PHASE") }
         const nextIndex = room.current_question_index + 1
         if (nextIndex >= room.question_count) {
           const completed = await client.query<RoomRow>("UPDATE mednexus_group_study_rooms SET status='completed',current_phase='completed',completed_at=NOW(),version=version+1 WHERE id=$1 RETURNING *", [room.id])
@@ -564,7 +596,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
              answer_closed_at=NULL,version=version+1 WHERE id=$1 RETURNING *`, [room.id, nextIndex],
           )
           room = advanced.rows[0]
-          await client.query("UPDATE mednexus_group_study_room_questions SET opened_at=NOW() WHERE room_id=$1 AND position=$2", [room.id, nextIndex])
+          await client.query("UPDATE mednexus_group_study_room_questions SET opened_at=COALESCE(opened_at,NOW()) WHERE room_id=$1 AND position=$2", [room.id, nextIndex])
         }
       } else if (body.action === "end") {
         if (!isHost) { await client.query("ROLLBACK"); return fail("Only the host can end the room", 403, "HOST_REQUIRED") }
@@ -600,7 +632,7 @@ export async function POST(req: Request, context: { params: Promise<{ pin: strin
       } else { await client.query("ROLLBACK"); return fail("Unknown Group Study action") }
     }
     const fresh = (await lockedRoom(client, pin))!
-    const responsePosition = Number.isInteger(Number(body.questionPosition)) ? Number(body.questionPosition) : fresh.current_question_index
+    const responsePosition = ["next", "previous", "start"].includes(body.action ?? "") ? fresh.current_question_index : Number.isInteger(Number(body.questionPosition)) ? Number(body.questionPosition) : fresh.current_question_index
     const allowedPosition = responsePosition > fresh.current_question_index && ["host_paced", "anyone_advances"].includes(navigationMode(fresh)) ? fresh.current_question_index : responsePosition
     const payload = await serializeRoom(client, fresh, auth.uid, allowedPosition)
     await client.query("COMMIT")

@@ -1,4 +1,4 @@
-import type { Question, QuestionExplanation, QuestionMedia, QuestionOption } from "@/lib/types"
+import type { Question, QuestionExplanation, QuestionMedia, QuestionOption, TheoryQuestionDetail } from "@/lib/types"
 
 export const GROUP_STUDY_CAPACITY = 10
 export const GROUP_STUDY_RECONNECT_MINUTES = 10
@@ -39,6 +39,7 @@ export type GroupStudyDifficulty = typeof GROUP_STUDY_DIFFICULTIES[number]
 export type GroupStudyPhase = "lobby" | "question_open" | "answer_closed" | "reveal" | "discussion" | "completed" | "ended" | "expired"
 
 export type GroupStudyQuestionSnapshot = {
+  theory?: Pick<TheoryQuestionDetail, "title" | "prompt" | "modelAnswer" | "keyMarkingPoints" | "media" | "hasAnswer">
   id: string
   module: string | null
   subject: string
@@ -104,6 +105,11 @@ export function isValidGroupStudyAnswer(answer: unknown, question: Pick<GroupStu
 
 /** Before reveal, never serialize the key or explanation to any participant, including the host. */
 export function publicGroupStudyQuestion(question: GroupStudyQuestionSnapshot, reveal: boolean) {
+  if (question.theory) {
+    const { modelAnswer, keyMarkingPoints, ...prompt } = question.theory
+    const { correctAnswer: _key, explanation: _explanation, ...safe } = question
+    return { ...safe, theory: reveal ? { ...prompt, modelAnswer, keyMarkingPoints } : prompt }
+  }
   const { correctAnswer, explanation, ...safe } = question
   return reveal ? { ...safe, correctAnswer, explanation } : safe
 }

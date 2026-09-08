@@ -1,4 +1,5 @@
 import { Pool } from "pg"
+import { THEORY_GROUP_STUDY_SCHEMA } from "@/lib/theory-group-study-schema"
 
 // Allow callers to supply the connection string via POSTGRES_URL (user-managed
 // secret) when Replit's runtime-managed DATABASE_URL is not present.
@@ -53,7 +54,7 @@ let groupStudyInitialized = false
 // Keep this marker in step with every deployed DDL change. The previous
 // assessment-grading marker predated the admin platform/settings and economy
 // season tables, which let existing databases skip those additions entirely.
-export const CURRENT_SCHEMA_VERSION = "2026-09-07-economy-control-plane-v1"
+export const CURRENT_SCHEMA_VERSION = "2026-09-08-theory-group-study-v1"
 
 export async function groupStudySchemaStatus() {
   const result = await pool.query<{
@@ -1757,6 +1758,7 @@ export async function ensureSchema() {
       [CURRENT_SCHEMA_VERSION],
     )
 
+    await client.query(THEORY_GROUP_STUDY_SCHEMA)
     await client.query("COMMIT")
     initialized = true
   } catch (error) {
