@@ -49,7 +49,7 @@ export function TheoryBulkImporter({ collectionKind, defaultSetSize = 20, onImpo
         "Keep preambles, A/B/C sub-questions, answers, and images under the correct question.",
       ]
     : [
-        "Use DISCIPLINE: … as the only grouping heading.",
+        "Put DISCIPLINE: … once at the top; the whole document must belong to that one discipline.",
         "Do not add MODULE headings to an End-of-Year document.",
         "Use a separate QUESTION number and QUESTION TITLE for every question.",
         "Keep preambles, A/B/C sub-questions, answers, and images under the correct question.",
@@ -87,34 +87,32 @@ QUESTION:
 Discuss the mechanism of action, therapeutic uses and important adverse effects of angiotensin-converting enzyme inhibitors.
 
 Continue the same numbered structure for every remaining question. Only include MODEL ANSWER and KEY POINTS under a question when they already exist in the source document.`
-    : `Organize and reformat all raw Theory questions in the attached slide or document to follow the exact MedNexus End-of-Year structure shown below. End of Year has one grouping level only: DISCIPLINE. Never add MODULE, rotation, or course headings. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Generate a concise, specific QUESTION TITLE from the main subject, clinical problem, or learning focus of each question. Preserve every existing DISCIPLINE heading exactly. If a discipline is missing, infer a concise, standard medical discipline from the question content. When the discipline changes, insert the new DISCIPLINE heading before the next numbered question. Preserve every question, sub-question, heading, and embedded image in its original order. Keep a shared scenario or exhibit description as a separate preamble. Put every sub-question on its own A/B/C or numbered line, and organize MODEL ANSWER with matching labeled headings in the same order. Never flatten separate questions or answer paragraphs into one paragraph. If the source has no answers or marking points, do not solve the questions and do not invent answers or marking schemes. Apart from generating titles and missing disciplines, do not add, remove, rewrite, or summarize any question. Return a clean .docx, .txt, or .md file ready for MedNexus import.
+    : `Organize and reformat all raw Theory questions in the attached slide or document to follow the exact MedNexus End-of-Year structure shown below. One End-of-Year document contains questions from one discipline only. Put one DISCIPLINE heading at the top and apply that same discipline to every question in the document. Never add another discipline, MODULE, rotation, or course heading. Number the question blocks continuously as QUESTION 1, QUESTION 2, QUESTION 3, and so on. Generate a concise, specific QUESTION TITLE from the main subject, clinical problem, or learning focus of each question. Preserve the existing discipline name exactly. If it is missing, infer one concise, standard medical discipline from the entire document and use it once at the top. Preserve every question, sub-question, heading, and embedded image in its original order. Keep a shared scenario or exhibit description as a separate preamble. Put every sub-question on its own A/B/C or numbered line, and organize MODEL ANSWER with matching labeled headings in the same order. Never flatten separate questions or answer paragraphs into one paragraph. If the source has no answers or marking points, do not solve the questions and do not invent answers or marking schemes. Apart from generating titles and the single missing discipline, do not add, remove, rewrite, or summarize any question. Return a clean .docx, .txt, or .md file ready for MedNexus import.
 
 EXAMPLE TO FOLLOW
 
-DISCIPLINE: Internal Medicine
+DISCIPLINE: Pathology
 
 QUESTION 1
 
-QUESTION TITLE: Diabetic ketoacidosis
+QUESTION TITLE: Coagulative necrosis
 
 QUESTION:
-Discuss the clinical presentation, investigations and management of diabetic ketoacidosis in an adult patient.
+Describe the causes, morphology and clinical significance of coagulative necrosis.
 
 QUESTION 2
 
-QUESTION TITLE: Clinical assessment of thyrotoxicosis
+QUESTION TITLE: Acute inflammation
 
 QUESTION:
-A 35-year-old woman presents with weight loss, heat intolerance, palpitations and a neck swelling. Explain your assessment and management of this patient.
-
-DISCIPLINE: Surgery
+A tissue specimen shows an acute inflammatory response. Describe the vascular and cellular events involved.
 
 QUESTION 3
 
-QUESTION TITLE: Initial management of intestinal obstruction
+QUESTION TITLE: Neoplasia and metastasis
 
 QUESTION:
-Discuss the clinical assessment, investigations and initial management of a patient presenting with suspected intestinal obstruction.
+Explain the biological steps involved in invasion and haematogenous metastasis of a malignant tumour.
 
 Continue the same numbered structure for every remaining question. Only include MODEL ANSWER and KEY POINTS under a question when they already exist in the source document.`
 
