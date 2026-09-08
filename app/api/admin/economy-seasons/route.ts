@@ -106,8 +106,8 @@ async function payload(){
       FROM mednexus_registered_users u
       LEFT JOIN mednexus_economy_seasons s ON s.status='active'
       LEFT JOIN mednexus_season_wallets w ON w.season_id=s.id AND w.user_id=u.uid
-      WHERE u.status='approved' AND u.role='STUDENT'
-      ORDER BY u.name,u.index_number LIMIT 2000`),
+      WHERE u.status='approved'
+      ORDER BY u.name,u.index_number`),
   ])
   return {seasons:seasons.rows,dryRunReport:dryRun.rows[0],activeSeason:seasons.rows.find(row=>row.status==="active")??null,config,revisions:revisions.rows,rewardRuns:rewardRuns.rows,gifts:gifts.rows,learners:learners.rows}
 }
