@@ -13,6 +13,7 @@ import { TheoryQuestionMedia } from "@/components/theory-question-media"
 import type { TheoryQuestionDetail, TheorySelfRating, TheoryStudyMode } from "@/lib/types"
 import { loadTheoryDashboard, type TheoryDashboardData } from "@/lib/theory-dashboard-client"
 import { ACTIVE_THEORY_QUESTION_KEY, clearPersistedTheoryQuestion } from "@/lib/theory-navigation"
+import { theorySectionKeys } from "@/lib/theory-format"
 
 type View = "Dashboard" | "Browse Questions" | "Bookmarks" | "My Notes" | "Revision Queue" | "Progress" | "Search"
 type CatalogData = {
@@ -537,9 +538,12 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
   const [aiMessage, setAiMessage] = useState("")
   const [acceptingAi, setAcceptingAi] = useState(false)
   const [reviewPane, setReviewPane] = useState<"answer" | "notes">("answer")
+  const [answerJump, setAnswerJump] = useState<string | null>(null)
+  const [highlightedAnswer, setHighlightedAnswer] = useState<string | null>(null)
   const reviewRecorded = useRef(false)
   const restored = useRef(false)
   const answerRef = useRef<HTMLTextAreaElement>(null)
+  const highlightTimerRef = useRef<number | null>(null)
   useAutosizeTextarea(answerRef, answer, mode === "practice" && !submitted)
 
   const load = useCallback(async () => {
@@ -595,6 +599,36 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
     }, 800)
     return () => window.clearTimeout(timer)
   }, [answer, mode, question, registered])
+
+  const answerSectionKeys = useMemo(() => theorySectionKeys(question?.modelAnswer ?? ""), [question?.modelAnswer])
+  const answerSectionPrefix = `theory-answer-${question?.id ?? questionId}`
+  const answerLinksEnabled = mode === "review" || revealed || submitted
+
+  const jumpToModelAnswer = (key: string) => {
+    if (!answerLinksEnabled) return
+    if (mode === "review") setReviewPane("answer")
+    setAnswerJump(key)
+  }
+
+  useEffect(() => {
+    if (!answerJump) return
+    const key = answerJump
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(`${answerSectionPrefix}-${key.toLowerCase()}`)
+      if (!target) return
+      setHighlightedAnswer(key)
+      target.focus({ preventScroll: true })
+      target.scrollIntoView({ behavior: "smooth", block: "start" })
+      setAnswerJump(null)
+      if (highlightTimerRef.current !== null) window.clearTimeout(highlightTimerRef.current)
+      highlightTimerRef.current = window.setTimeout(() => setHighlightedAnswer(null), 2200)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [answerJump, answerSectionPrefix, reviewPane])
+
+  useEffect(() => () => {
+    if (highlightTimerRef.current !== null) window.clearTimeout(highlightTimerRef.current)
+  }, [])
 
   if (!question) return message ? <Empty title="Question unavailable" text={message}/> : <div className={`${card} py-14 text-center text-sm text-muted-foreground`}>Loading question…</div>
   const state = question.state
@@ -658,7 +692,6 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
     setAnswer(current => insertDictation(current, text, position))
     window.setTimeout(() => answerRef.current?.focus(), 0)
   }
-
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-24 md:pb-0">
 
@@ -709,7 +742,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
 
       {/* Focused question prompt */}
       <article className="rounded-[1.25rem] border border-border bg-card p-5 shadow-sm sm:p-7">
-          <div className={`grid items-start gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-sm font-bold leading-7 text-primary"><span className="shrink-0">Question</span><span aria-hidden className="h-4 w-px shrink-0 bg-primary/40"/><h1 className="min-w-0 truncate font-bold text-primary" title={question.title || "Theory question"}>{question.title || "Theory question"}</h1></div><TheoryMarkdown children={question.prompt} className="mt-4 text-foreground/80"/></div>{question.media.length > 0 && <div className="lg:pt-2"><TheoryQuestionMedia media={question.media} compact/></div>}</div>
+          <div className={`grid items-start gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-sm font-bold leading-7 text-primary"><span className="shrink-0">Question</span><span aria-hidden className="h-4 w-px shrink-0 bg-primary/40"/><h1 className="min-w-0 truncate font-bold text-primary" title={question.title || "Theory question"}>{question.title || "Theory question"}</h1></div><TheoryMarkdown children={question.prompt} className="mt-4 text-foreground/80" linkedSectionKeys={answerLinksEnabled ? answerSectionKeys : []} onSectionSelect={answerLinksEnabled ? jumpToModelAnswer : undefined}/></div>{question.media.length > 0 && <div className="lg:pt-2"><TheoryQuestionMedia media={question.media} compact/></div>}</div>
       </article>
 
       {/* ── Review mode ── */}
@@ -721,7 +754,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
               {/* Main narrative answer — card-style to distinguish from key points */}
               {question.hasAnswer ? <>
                 <div className="overflow-hidden">
-                  <TheoryMarkdown children={question.modelAnswer}/>
+                  <TheoryMarkdown children={question.modelAnswer} answerSectionPrefix={answerSectionPrefix} highlightedSectionKey={highlightedAnswer}/>
                 </div>
                 <KeyPointsSection key={question.id} points={question.keyMarkingPoints}/>
               </> : <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-5 text-sm text-amber-900 dark:text-amber-100"><b className="block">Model answer coming soon</b><span className="mt-1 block">You can practise this prompt now, but answer review and self-marking are unavailable until the editor adds an answer.</span></div>}
@@ -771,7 +804,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
               </article>}
               {question.hasAnswer ? <article className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
                 <div className="border-b border-primary/15 bg-primary/5 px-4 py-3 sm:px-5"><h2 className="font-bold text-primary">Model Answer</h2></div>
-                <div className="overflow-hidden p-4 sm:p-5"><TheoryMarkdown children={question.modelAnswer}/><KeyPointsSection key={question.id} points={question.keyMarkingPoints}/></div>
+                <div className="overflow-hidden p-4 sm:p-5"><TheoryMarkdown children={question.modelAnswer} answerSectionPrefix={answerSectionPrefix} highlightedSectionKey={highlightedAnswer}/><KeyPointsSection key={question.id} points={question.keyMarkingPoints}/></div>
               </article> : <article className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-900 dark:text-amber-100"><b>Attempt saved</b><p className="mt-1">The model answer is coming soon. You cannot self-mark this response yet.</p></article>}
             </div>
             {question.hasAnswer && <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
