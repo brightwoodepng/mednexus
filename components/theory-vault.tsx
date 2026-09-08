@@ -12,6 +12,7 @@ import { TheoryMarkdown } from "@/components/theory-markdown"
 import { TheoryQuestionMedia } from "@/components/theory-question-media"
 import type { TheoryQuestionDetail, TheorySelfRating, TheoryStudyMode } from "@/lib/types"
 import { loadTheoryDashboard, type TheoryDashboardData } from "@/lib/theory-dashboard-client"
+import { ACTIVE_THEORY_QUESTION_KEY, clearPersistedTheoryQuestion } from "@/lib/theory-navigation"
 
 type View = "Dashboard" | "Browse Questions" | "Bookmarks" | "My Notes" | "Revision Queue" | "Progress" | "Search"
 type CatalogData = {
@@ -45,8 +46,6 @@ type TheoryAiStatus = {
 
 const card = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
 const button = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition"
-const ACTIVE_THEORY_QUESTION_KEY = "mednexus:theory:active-question"
-
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...init })
   const data = await response.json().catch(() => ({}))
@@ -169,7 +168,7 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
   useEffect(() => {
     if (previousInitialView.current === initialView) return
     previousInitialView.current = initialView
-    window.sessionStorage.removeItem(ACTIVE_THEORY_QUESTION_KEY)
+    clearPersistedTheoryQuestion()
     setQuestionId(null)
     setSessionQuestionIds(null)
     setSetData(null)
@@ -218,7 +217,7 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
   }, [onQuestionViewChange, showingQuestion])
 
   const clearActiveQuestion = () => {
-    window.sessionStorage.removeItem(ACTIVE_THEORY_QUESTION_KEY)
+    clearPersistedTheoryQuestion()
     setQuestionId(null)
     setSessionQuestionIds(null)
   }

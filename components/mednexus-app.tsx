@@ -42,6 +42,7 @@ import { LearnerWorkspaceShell } from "@/components/learner-workspace-shell"
 import { TheoryVault } from "@/components/theory-vault"
 import { TutorialProvider } from "@/components/onboarding"
 import { abortTheoryDashboardPreload, getRecentTheoryDashboard, preloadTheoryDashboard } from "@/lib/theory-dashboard-client"
+import { clearPersistedTheoryQuestion } from "@/lib/theory-navigation"
 import { clearQuizSession, createQuizSession, loadQuizSession, restoreQuizSession, saveQuizSession, type QuizSession } from "@/lib/quiz-session"
 
 interface PendingQuiz {
@@ -468,6 +469,7 @@ export function MedNexusApp() {
   const [isExamActive, setIsExamActive] = useState(false)
   const [theorySearchQuery, setTheorySearchQuery] = useState("")
   const [theoryQuestionOpen, setTheoryQuestionOpen] = useState(false)
+  const [theoryNavigationKey, setTheoryNavigationKey] = useState(0)
   const [importerOpen, setImporterOpen] = useState(false)
   const [pendingEditorImport, setPendingEditorImport] = useState<import("@/lib/types").Question[] | null>(null)
   const [creditsOpen, setCreditsOpen] = useState(false)
@@ -548,6 +550,11 @@ export function MedNexusApp() {
   }, [activeStudyHub, screen])
 
   const handleScreenNavigation = useCallback((nextScreen: Screen) => {
+    if (activeStudyHub === "theory-vault") {
+      clearPersistedTheoryQuestion()
+      setTheoryQuestionOpen(false)
+      setTheoryNavigationKey(current => current + 1)
+    }
     window.history.pushState({}, "", learnerScreenUrl(nextScreen, activeStudyHub))
     setScreen(nextScreen)
   }, [activeStudyHub])
@@ -783,13 +790,13 @@ export function MedNexusApp() {
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); handleScreenNavigation("modules") }} onOpenWeakAreas={() => handleScreenNavigation("weak-areas")} onOpenLiveAssessments={() => handleScreenNavigation("live-assessments")} />
           )}
-          {safeScreen === "theory-dashboard" && <TheoryVault initialView="Dashboard" initialDashboard={getRecentTheoryDashboard()} externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-browse" && <TheoryVault initialView="Browse Questions" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-bookmarks" && <TheoryVault initialView="Bookmarks" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-notes" && <TheoryVault initialView="My Notes" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-revision" && <TheoryVault initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-progress" && <TheoryVault initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-search" && <TheoryVault initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
+          {safeScreen === "theory-dashboard" && <TheoryVault key={`theory-dashboard-${theoryNavigationKey}`} initialView="Dashboard" initialDashboard={getRecentTheoryDashboard()} externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
+          {safeScreen === "theory-browse" && <TheoryVault key={`theory-browse-${theoryNavigationKey}`} initialView="Browse Questions" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
+          {safeScreen === "theory-bookmarks" && <TheoryVault key={`theory-bookmarks-${theoryNavigationKey}`} initialView="Bookmarks" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
+          {safeScreen === "theory-notes" && <TheoryVault key={`theory-notes-${theoryNavigationKey}`} initialView="My Notes" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
+          {safeScreen === "theory-revision" && <TheoryVault key={`theory-revision-${theoryNavigationKey}`} initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
+          {safeScreen === "theory-progress" && <TheoryVault key={`theory-progress-${theoryNavigationKey}`} initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
+          {safeScreen === "theory-search" && <TheoryVault key={`theory-search-${theoryNavigationKey}`} initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}

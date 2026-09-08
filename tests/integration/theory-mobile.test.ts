@@ -144,10 +144,12 @@ describe("Theory Vault phone experience", () => {
 
   it("restores an active Theory question after a browser refresh", async () => {
     const source = await readFile("components/theory-vault.tsx", "utf8")
-    expect(source).toContain('ACTIVE_THEORY_QUESTION_KEY = "mednexus:theory:active-question"')
+    const navigation = await readFile("lib/theory-navigation.ts", "utf8")
+    expect(source).toContain('import { ACTIVE_THEORY_QUESTION_KEY, clearPersistedTheoryQuestion } from "@/lib/theory-navigation"')
+    expect(navigation).toContain('ACTIVE_THEORY_QUESTION_KEY = "mednexus:theory:active-question"')
     expect(source).toContain("window.sessionStorage.getItem(ACTIVE_THEORY_QUESTION_KEY)")
     expect(source).toContain("window.sessionStorage.setItem(ACTIVE_THEORY_QUESTION_KEY")
-    expect(source).toContain("window.sessionStorage.removeItem(ACTIVE_THEORY_QUESTION_KEY)")
+    expect(source).toContain("clearPersistedTheoryQuestion()")
     expect(source).toContain("if (!restoreChecked || questionId) return")
     expect(source).toContain("onBack(question.setId)")
   })
