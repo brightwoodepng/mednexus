@@ -711,9 +711,6 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
 
       {tab === "gifts" && (
         <div className="space-y-5">
-          <p className="text-sm text-muted-foreground">
-            Select one or more learners, then enter the NP amount and reason.
-          </p>
           <div>
             <section className={card}>
               <h3 className="font-bold">1. Select learners</h3>
@@ -729,7 +726,7 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
                   className={`${control} w-full pl-10`}
                 />
               </div>
-              <div className="mt-3 max-h-64 space-y-2 overflow-auto">
+              <div className="mt-3 grid max-h-[32rem] gap-2 overflow-auto md:grid-cols-2">
                 {visibleLearners.map((learner) => (
                   <label
                     key={learner.uid}
