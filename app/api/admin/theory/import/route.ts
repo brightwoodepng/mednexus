@@ -3,7 +3,7 @@ import type { PoolClient } from "pg"
 import { requireAdminPermission, unauthorized } from "@/lib/request-auth"
 import { generateWithFallback } from "@/lib/gemini"
 import { guardImportRequest, validateImages, validateImportText } from "@/lib/import-guard"
-import { normalizeTheoryImport, type TheoryImportItem, type TheoryImportImage, type TheoryCollectionKind } from "@/lib/theory-import"
+import { normalizeTheoryImport, parseFormattedTheoryText, type TheoryImportItem, type TheoryImportImage, type TheoryCollectionKind } from "@/lib/theory-import"
 import { theorySetAllocationKey, theorySetPlacement } from "@/lib/theory-set-placement"
 import { auditTheory, theoryId, theoryPool, withTransaction } from "@/lib/theory-server"
 
@@ -212,6 +212,8 @@ export async function POST(request: NextRequest) {
       if (textLimitError) return NextResponse.json({ error: textLimitError }, { status: 413 })
       const imageError = validateImages(body.images)
       if (imageError) return NextResponse.json({ error: imageError }, { status: 415 })
+      const formatted = parseFormattedTheoryText(source, collectionKind)
+      if (formatted) return NextResponse.json(normalizeTheoryImport(formatted, body.images ?? [], collectionKind))
       const raw = await generateWithFallback(systemInstruction(collectionKind), `Theory document:\n${source}`)
       if (!raw) return NextResponse.json({ error: "The AI parser did not return a usable response." }, { status: 502 })
       const parsed = JSON.parse(raw) as unknown

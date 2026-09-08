@@ -28,6 +28,54 @@ export type TheoryImportValidation = {
 
 export type TheoryCollectionKind = TheoryImportItem["collectionKind"]
 
+const formattedSectionNames = ["QUESTION TITLE", "PREAMBLE", "QUESTION", "MODEL ANSWER", "KEY POINTS", "IMAGES"] as const
+
+function formattedSection(block: string, name: typeof formattedSectionNames[number]) {
+  const escaped = name.replace(/ /g, "\\s+")
+  const next = formattedSectionNames.filter(item => item !== name).map(item => item.replace(/ /g, "\\s+")).join("|")
+  return block.match(new RegExp(`^${escaped}:\\s*([\\s\\S]*?)(?=^(?:${next}):|$(?![\\s\\S]))`, "im"))?.[1]?.trim() ?? ""
+}
+
+function formattedSubQuestions(value: string) {
+  const matches = [...value.matchAll(/^([A-Za-z]|\d+)[.)]\s+([\s\S]*?)(?=^(?:[A-Za-z]|\d+)[.)]\s+|$)/gm)]
+  if (!matches.length) return value.trim() ? [{ label: "1", text: value.trim() }] : []
+  return matches.map(match => ({ label: match[1].toUpperCase(), text: match[2].trim() }))
+}
+
+/** Parses the exact text/Markdown template offered by the Theory importer without an AI round trip. */
+export function parseFormattedTheoryText(source: string, collectionKind: TheoryCollectionKind): unknown | null {
+  if (!/^QUESTION\s+\d+\s*$/im.test(source) || !/^QUESTION\s+TITLE:/im.test(source) || !/^QUESTION:/im.test(source)) return null
+  const disciplineName = source.match(/^DISCIPLINE:\s*(.+)$/im)?.[1]?.trim() ?? ""
+  const moduleName = source.match(/^MODULE:\s*(.+)$/im)?.[1]?.trim() ?? ""
+  const parts = source.split(/^QUESTION\s+(\d+)\s*$/gim)
+  const questions: Array<Record<string, unknown>> = []
+  for (let index = 1; index < parts.length; index += 2) {
+    const sourceOrder = Number(parts[index])
+    const block = parts[index + 1] ?? ""
+    const title = formattedSection(block, "QUESTION TITLE")
+    const question = formattedSection(block, "QUESTION")
+    if (!title || !question) continue
+    const preamble = formattedSection(block, "PREAMBLE")
+    const modelAnswer = formattedSection(block, "MODEL ANSWER")
+    const keyPoints = formattedSection(block, "KEY POINTS")
+    questions.push({
+      collectionKind,
+      collectionTitle: collectionKind === "end_of_year" ? "End of Year" : "End of Module",
+      moduleName: collectionKind === "end_of_module" ? moduleName : "",
+      disciplineName,
+      title,
+      preamble,
+      subQuestions: formattedSubQuestions(question),
+      prompt: question,
+      modelAnswer,
+      keyMarkingPoints: keyPoints ? keyPoints.split(/\r?\n/).map(item => item.replace(/^[-*]\s*/, "").trim()).filter(Boolean) : [],
+      imageIds: [...new Set([...block.matchAll(/\[(IMAGE_\d+)\]/gi)].map(match => match[1].toUpperCase()))],
+      sourceOrder,
+    })
+  }
+  return questions.length ? { questions } : null
+}
+
 type Context = {
   collectionTitle?: string
   collectionKind?: string

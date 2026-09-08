@@ -1,10 +1,21 @@
 import { readFile } from "node:fs/promises"
 import { describe, expect, it } from "vitest"
-import { normalizeTheoryImport } from "../../lib/theory-import"
+import { normalizeTheoryImport, parseFormattedTheoryText } from "../../lib/theory-import"
 import { sanitizeTheoryMedia } from "../../lib/theory-media"
 import { theorySetAllocationKey, theorySetPlacement } from "../../lib/theory-set-placement"
 
 describe("Theory bulk importer", () => {
+  it("directly parses large one-discipline End-of-Year template files", () => {
+    const questions = Array.from({ length: 201 }, (_, index) => `QUESTION ${index + 1}\n\nQUESTION TITLE: Pathology topic ${index + 1}\n\nPREAMBLE:\nClinical context ${index + 1}.\n\nQUESTION:\na. State the diagnosis.\nb. Give two features.\n\nMODEL ANSWER:\nA. Diagnosis ${index + 1}.\nB. Two valid features.\n\nKEY POINTS:\n- Correct diagnosis\n- Two features`).join("\n\n")
+    const parsed = parseFormattedTheoryText(`DISCIPLINE: Pathology\n\n${questions}`, "end_of_year")
+    const result = normalizeTheoryImport(parsed, [], "end_of_year")
+    expect(result.errors).toEqual([])
+    expect(result.items).toHaveLength(201)
+    expect(result.items.every(item => item.disciplineName === "Pathology" && item.moduleName === "")).toBe(true)
+    expect(result.items[0].prompt).toContain("**A.** State the diagnosis.")
+    expect(result.items[200].title).toBe("Pathology topic 201")
+  })
+
   it("keeps End-of-Module set and question placement compatible with the legacy composite foreign key", () => {
     const collectionId = "theory-collection-end-of-module"
     const moduleId = "theory-module-community-medicine"
