@@ -769,94 +769,83 @@ export function EconomySeasonsWorkspace({ canReset }: { canReset: boolean }) {
                 ))}
               </div>
               {selectedLearnerIds.length > 0 && (
-                <div className="sticky bottom-3 z-20 mt-5 rounded-2xl border border-primary/25 bg-card p-4 shadow-lg">
-                  <h3 className="font-bold">
-                    2. Gift {selectedLearnerIds.length} selected learner
-                    {selectedLearnerIds.length === 1 ? "" : "s"}
-                  </h3>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <Num
-                      label="NP amount"
-                      value={giftAmount}
-                      set={(value) => {
-                        setGiftAmount(value);
-                        setGiftPreview(null);
-                      }}
-                    />
-                    <Field
-                      label="Reason"
-                      value={giftReason}
-                      set={(value) => {
-                        setGiftReason(value);
-                        setGiftPreview(null);
-                      }}
-                    />
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                <div className="sticky bottom-3 z-20 mt-5 flex items-center gap-2 rounded-2xl border border-primary/25 bg-card p-3 shadow-lg">
+                  <span className="shrink-0 rounded-full bg-primary/10 px-3 py-2 text-sm font-bold text-primary">
+                    {selectedLearnerIds.length} selected
+                  </span>
+                  <input
+                    aria-label="NP amount per learner"
+                    type="number"
+                    min={1}
+                    placeholder="NP amount"
+                    value={giftAmount}
+                    onChange={(event) => {
+                      setGiftAmount(Number(event.target.value));
+                      setGiftPreview(null);
+                    }}
+                    className={`${control} w-32 shrink-0`}
+                  />
+                  <input
+                    aria-label="Gift reason"
+                    placeholder="Reason"
+                    value={giftReason}
+                    onChange={(event) => {
+                      setGiftReason(event.target.value);
+                      setGiftPreview(null);
+                    }}
+                    className={`${control} min-w-0 flex-1`}
+                  />
+                  {canReset && (
                     <button
-                      disabled={giftAmount < 1 || giftReason.trim().length < 3}
+                      disabled={
+                        busy === "gifts" ||
+                        busy === "send-gifts" ||
+                        giftAmount < 1 ||
+                        giftReason.trim().length < 3
+                      }
                       onClick={async () => {
-                        const result = await request(
+                        const selectedGifts = data.learners
+                          .filter((learner) =>
+                            selectedLearnerIds.includes(learner.uid),
+                          )
+                          .map((learner) => ({
+                            indexNumber: learner.index_number,
+                            amount: giftAmount,
+                            reason: giftReason,
+                          }));
+                        const validation = await request(
                           {
                             action: "validate_gifts",
-                            gifts: data.learners
-                              .filter((learner) =>
-                                selectedLearnerIds.includes(learner.uid),
-                              )
-                              .map((learner) => ({
-                                indexNumber: learner.index_number,
-                                amount: giftAmount,
-                                reason: giftReason,
-                              })),
+                            gifts: selectedGifts,
                           },
                           "gifts",
                         );
-                        if (result) setGiftPreview(result);
+                        if (!validation) return;
+                        if (!validation.valid) {
+                          setGiftPreview(validation);
+                          return;
+                        }
+                        if (
+                          await request(
+                            { action: "gift_np", gifts: selectedGifts },
+                            "send-gifts",
+                          )
+                        ) {
+                          setGiftPreview(null);
+                          setGiftReason("");
+                          setSelectedLearnerIds([]);
+                          setNotice("NP gifts sent and recorded.");
+                        }
                       }}
-                      className={`${button} border`}
+                      className={`${button} shrink-0 bg-primary text-primary-foreground`}
                     >
-                      Review gift
+                      <Gift size={16} />
+                      Send
                     </button>
-                    {canReset && giftPreview && Boolean(giftPreview.valid) && (
-                      <button
-                        onClick={async () => {
-                          if (
-                            await request(
-                              {
-                                action: "gift_np",
-                                gifts: data.learners
-                                  .filter((learner) =>
-                                    selectedLearnerIds.includes(learner.uid),
-                                  )
-                                  .map((learner) => ({
-                                    indexNumber: learner.index_number,
-                                    amount: giftAmount,
-                                    reason: giftReason,
-                                  })),
-                              },
-                              "send-gifts",
-                            )
-                          ) {
-                            setGiftPreview(null);
-                            setGiftReason("");
-                            setSelectedLearnerIds([]);
-                            setNotice("NP gifts sent and recorded.");
-                          }
-                        }}
-                        className={`${button} bg-primary text-primary-foreground`}
-                      >
-                        <Gift size={16} />
-                        Send{" "}
-                        {(
-                          giftAmount * selectedLearnerIds.length
-                        ).toLocaleString()}{" "}
-                        NP
-                      </button>
-                    )}
-                  </div>
-                  {giftPreview && <GiftPreview value={giftPreview} />}
+                  )}
                 </div>
               )}
+              {giftPreview && <GiftPreview value={giftPreview} />}
             </section>
           </div>
         </div>

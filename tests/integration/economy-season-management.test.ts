@@ -47,7 +47,7 @@ describe("economy season management", () => {
       "Reports",
       "Search by learner name or index number",
       "Select learners",
-      "Review gift",
+      "NP amount per learner",
       "lifetime XP remain",
     ])
       expect(ui).toContain(label);
