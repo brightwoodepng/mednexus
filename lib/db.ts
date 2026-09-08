@@ -1206,7 +1206,10 @@ export async function ensureSchema() {
     ALTER TABLE mednexus_multiplayer_payouts DROP CONSTRAINT IF EXISTS mednexus_multiplayer_payouts_pkey;
     ALTER TABLE mednexus_multiplayer_payouts ADD CONSTRAINT mednexus_multiplayer_payouts_pkey PRIMARY KEY (season_id,room_pin,user_id);
     ALTER TABLE mednexus_user_question_progress DROP CONSTRAINT IF EXISTS mednexus_user_question_progress_pkey;
-    ALTER TABLE mednexus_user_question_progress ADD CONSTRAINT mednexus_user_question_progress_pkey PRIMARY KEY (season_id,user_id,question_id);
+    -- Repeat history is intentionally isolated by earning mode. Excluding
+    -- reward_scope here collapses legitimate solo/multiplayer rows and makes
+    -- the release migration fail when both scopes already exist.
+    ALTER TABLE mednexus_user_question_progress ADD CONSTRAINT mednexus_user_question_progress_pkey PRIMARY KEY (season_id,user_id,question_id,reward_scope);
     ALTER TABLE mednexus_discipline_np_log DROP CONSTRAINT IF EXISTS mednexus_discipline_np_log_pkey;
     ALTER TABLE mednexus_discipline_np_log ADD CONSTRAINT mednexus_discipline_np_log_pkey PRIMARY KEY (season_id,user_id,discipline,earned_date);
 

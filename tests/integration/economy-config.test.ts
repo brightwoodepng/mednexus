@@ -74,6 +74,7 @@ describe("versioned economy configuration", () => {
     const groupStudy = readFileSync("app/api/group-study/[pin]/route.ts", "utf8")
     const multiplayer = readFileSync("app/api/game-rooms/[pin]/score/route.ts", "utf8")
     const migration = readFileSync("migrations/2026-08-24-economy-v3-scoped-repeats.sql", "utf8")
+    const database = readFileSync("lib/db.ts", "utf8")
     expect(antiFarming).toContain('type QuestionRewardScope = "trial" | "exam" | "solo_game" | "group_study" | "multiplayer"')
     expect(antiFarming).toContain("AND reward_scope = $4")
     expect(groupStudy).toContain('reward_scope=\'group_study\'')
@@ -81,6 +82,7 @@ describe("versioned economy configuration", () => {
     expect(groupStudy).toContain('dailyRewardRemaining(client, member.user_id, "group_study", season.id)')
     expect(multiplayer).toContain('dailyRewardRemaining(client, playerId, "multiplayer", season.id)')
     expect(migration).toContain("PRIMARY KEY (season_id, user_id, question_id, reward_scope)")
+    expect(database).toContain("PRIMARY KEY (season_id,user_id,question_id,reward_scope)")
   })
 
   it("defines the finite daily-login reward program", () => {
