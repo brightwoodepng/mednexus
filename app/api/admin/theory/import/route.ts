@@ -97,6 +97,7 @@ async function findOrCreateDiscipline(client: PoolClient, collectionId: string, 
 
 async function commitItems(client: PoolClient, items: TheoryImportItem[]) {
   let created = 0
+  let updated = 0
   let skipped = 0
   const collections = new Set<string>()
   const modules = new Set<string>()
@@ -155,11 +156,19 @@ async function commitItems(client: PoolClient, items: TheoryImportItem[]) {
     if (moduleId) modules.add(moduleId)
     if (disciplineId) disciplines.add(disciplineId)
 
-    const duplicate = await client.query(`SELECT id FROM mednexus_theory_questions
+    const duplicate = await client.query(`SELECT id,model_answer FROM mednexus_theory_questions
       WHERE collection_id=$1 AND lower(trim(prompt))=lower(trim($2)) AND status<>'archived' LIMIT 1`,
     [collectionId, item.prompt])
     if (duplicate.rows[0]) {
-      skipped++
+      if (!String(duplicate.rows[0].model_answer ?? "").trim() && item.modelAnswer.trim()) {
+        await client.query(`UPDATE mednexus_theory_questions SET
+          title=$2,model_answer=$3,key_marking_points=$4::jsonb,marks=$5,
+          source_metadata=source_metadata||$6::jsonb,updated_at=NOW()
+          WHERE id=$1`, [duplicate.rows[0].id, item.title, item.modelAnswer,
+          JSON.stringify(item.keyMarkingPoints), item.marks,
+          JSON.stringify({ ...item.sourceMetadata, imported: true, sourceOrder: item.sourceOrder })])
+        updated++
+      } else skipped++
       continue
     }
     const allocation = await destinationSet(collectionId, moduleId, disciplineId, item.collectionKind)
@@ -179,6 +188,7 @@ async function commitItems(client: PoolClient, items: TheoryImportItem[]) {
   }
   return {
     created,
+    updated,
     skipped,
     collections: collections.size,
     modules: modules.size,

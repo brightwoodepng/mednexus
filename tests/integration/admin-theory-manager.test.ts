@@ -15,6 +15,8 @@ describe("admin Theory Manager", () => {
     expect(manager).not.toContain("bg-gradient-to-br from-teal-700")
     expect(page).toContain('params.kind === "end_of_year"')
     expect(page).toContain("initialStatus={initialStatus}")
+    expect(manager).toContain('params.set("view", tab)')
+    expect(api).toContain("const includeQuestions")
   })
 
   it("provides module-first folders, set filters, search, and visible actions", () => {

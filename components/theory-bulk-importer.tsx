@@ -232,14 +232,14 @@ Continue the same numbered structure for every remaining question under the sing
         bank: "theory", sourceName: file?.name || "Theory bulk importer", drafts: items, errors,
       })
       const result = await jsonRequest<{
-        summary: { created: number; skipped: number; modules: number; disciplines: number; unassigned: number }
+        summary: { created: number; updated: number; skipped: number; modules: number; disciplines: number; unassigned: number }
       }>("/api/admin/theory/import", { action: "commit", collectionKind, items })
       await fetch(`/api/admin/content/imports/${staged.id}`, {
         method: "PATCH",
         headers: { ...importAuthHeaders(true), "Content-Type": "application/json" },
         body: JSON.stringify({ action: "mark_committed" }),
       })
-      setMessage(`${result.summary.created} draft questions imported; ${result.summary.skipped} existing questions skipped.`)
+      setMessage(`${result.summary.created} draft questions imported; ${result.summary.updated} existing questions received answers; ${result.summary.skipped} unchanged duplicates skipped.`)
       setStage("done")
       await onImported()
     } catch (error) {

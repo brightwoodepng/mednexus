@@ -213,6 +213,7 @@ describe("Theory bulk importer", () => {
     expect(db).toContain("ALTER TABLE mednexus_theory_questions DROP CONSTRAINT %I")
     expect(db).toContain("CONSTRAINT mednexus_theory_questions_set_fk")
     expect(db).not.toContain("export async function ensureTheoryImportSchema()")
+    expect(route).toContain("updated++")
     const schemaStartup = db.slice(
       db.indexOf("export async function ensureSchema()"),
       db.indexOf("const current = await client.query"),
@@ -237,5 +238,9 @@ describe("Theory bulk importer", () => {
     expect(importer).toContain("Keep every A/B/C item on its own line")
     const route = await readFile(new URL("../../app/api/admin/theory/import/route.ts", import.meta.url), "utf8")
     expect(route).toContain("Use the same required disciplineName for every question")
+    expect(route).toContain("!String(duplicate.rows[0].model_answer")
+    const theoryServer = await readFile(new URL("../../lib/theory-server.ts", import.meta.url), "utf8")
+    expect(theoryServer).toContain(`(TRIM(q.model_answer) <> '') AS "hasAnswer"`)
+    expect(theoryServer).not.toContain("TRIM(q.model_answer) <> '' AND CASE")
   })
 })

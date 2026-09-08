@@ -79,6 +79,7 @@ export function TheoryAdminSimplified({ initialTab = "editor", initialKind = "en
 
   const load = useCallback(async (force = false) => {
     const params = new URLSearchParams({ kind, pageSize: "50" })
+    params.set("view", tab)
     if (groupId) params.set(kind === "end_of_module" ? "moduleId" : "disciplineId", groupId)
     if (setId) params.set("setId", setId)
     if (query.trim()) params.set("q", query.trim())

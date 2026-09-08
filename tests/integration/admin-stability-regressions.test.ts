@@ -10,9 +10,10 @@ describe("admin stability regressions", () => {
     ])
     for (const source of sources) {
       expect(source).not.toMatch(/cardinality\([^)]*key_marking_points/)
-      expect(source).toContain("jsonb_array_length")
-      expect(source).toContain("jsonb_typeof")
     }
+    expect(sources.some(source => source.includes("jsonb_array_length"))).toBe(true)
+    expect(sources.some(source => source.includes("jsonb_typeof"))).toBe(true)
+    expect(sources[0]).toContain(`(TRIM(q.model_answer) <> '') AS "hasAnswer"`)
   })
 
   it("uses valid dollar quoting for the Theory foreign-key repair", async () => {

@@ -35,6 +35,8 @@ export async function GET(request: NextRequest) {
     const status = request.nextUrl.searchParams.get("status")
     const unassigned = request.nextUrl.searchParams.get("unassigned") === "true"
     const trashOnly = request.nextUrl.searchParams.get("trash") === "true"
+    const view = request.nextUrl.searchParams.get("view") ?? "editor"
+    const includeQuestions = view === "trash" || (view === "editor" && Boolean(moduleId || disciplineId))
     const sort = request.nextUrl.searchParams.get("sort") === "oldest" ? "oldest" : request.nextUrl.searchParams.get("sort") === "title" ? "title" : "updated"
     const orderBy = sort === "title" ? "q.title ASC" : sort === "oldest" ? "q.updated_at ASC" : "q.updated_at DESC"
     const [collections, modules, disciplines, sets, questions, settings, audit, counts, hierarchyStats, trash, imports] = await withReadRetry(pool => Promise.all([
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
         WHERE s.collection_id IN (SELECT id FROM mednexus_theory_collections WHERE kind=$1)
           AND s.deleted_at IS NULL
         GROUP BY s.id ORDER BY s.sort_order,s.name`, [kind]),
-      pool.query(`SELECT ${theoryQuestionProjection},
+      includeQuestions ? pool.query(`SELECT ${theoryQuestionProjection},
         c.title AS "collectionTitle",m.name AS "moduleName",d.name AS "disciplineName",s.name AS "setTitle",
         COUNT(*) OVER()::int AS "totalCount"
         FROM mednexus_theory_questions q
@@ -72,12 +74,10 @@ export async function GET(request: NextRequest) {
           AND ($6::text IS NULL OR q.module_id=$6)
           AND ($7::text IS NULL OR q.discipline_id=$7)
           AND ($8::text IS NULL OR q.set_id=$8)
-        ORDER BY ${orderBy} LIMIT $9 OFFSET $10`, [kind, query, collectionId, status, unassigned, moduleId, disciplineId, setId, pageSize, offset, trashOnly]),
+        ORDER BY ${orderBy} LIMIT $9 OFFSET $10`, [kind, query, collectionId, status, unassigned, moduleId, disciplineId, setId, pageSize, offset, trashOnly]) : Promise.resolve({ rows: [] }),
       pool.query(`SELECT default_set_size AS "defaultSetSize",updated_at AS "updatedAt"
         FROM mednexus_theory_settings WHERE id=1`),
-      pool.query(`SELECT id,action,resource_type AS "resourceType",resource_id AS "resourceId",
-        details,created_at AS "createdAt" FROM mednexus_theory_audit_log
-        ORDER BY created_at DESC LIMIT 20`),
+      Promise.resolve({ rows: [] }),
       pool.query(`SELECT q.status,COUNT(*)::int AS count FROM mednexus_theory_questions q
         JOIN mednexus_theory_collections c ON c.id=q.collection_id WHERE c.kind=$1 AND q.deleted_at IS NULL GROUP BY q.status`, [kind]),
       pool.query(`SELECT q.collection_id AS "collectionId",q.module_id AS "moduleId",q.discipline_id AS "disciplineId",q.set_id AS "setId",
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
         FROM mednexus_theory_questions q JOIN mednexus_theory_collections c ON c.id=q.collection_id
         WHERE c.kind=$1 AND q.deleted_at IS NULL GROUP BY GROUPING SETS
         ((q.collection_id,q.module_id,q.discipline_id,q.set_id),(q.collection_id,q.module_id,q.discipline_id),(q.collection_id))`, [kind]),
-      pool.query(`SELECT 'module' AS type,m.id,m.name AS label,m.deleted_at AS "deletedAt",COUNT(q.id)::int AS count
+      view === "trash" ? pool.query(`SELECT 'module' AS type,m.id,m.name AS label,m.deleted_at AS "deletedAt",COUNT(q.id)::int AS count
         FROM mednexus_theory_modules m JOIN mednexus_theory_collections c ON c.id=m.collection_id
         LEFT JOIN mednexus_theory_questions q ON q.module_id=m.id AND q.deleted_at IS NOT NULL
         WHERE c.kind=$1 AND m.deleted_at IS NOT NULL GROUP BY m.id
@@ -100,10 +100,10 @@ export async function GET(request: NextRequest) {
         FROM mednexus_theory_sets s JOIN mednexus_theory_collections c ON c.id=s.collection_id
         LEFT JOIN mednexus_theory_questions q ON q.set_id=s.id AND q.deleted_at IS NOT NULL
         WHERE c.kind=$1 AND s.deleted_at IS NOT NULL GROUP BY s.id
-        ORDER BY "deletedAt" DESC`, [kind]),
-      pool.query(`SELECT id,source_name AS "sourceName",status,total_count AS "totalCount",valid_count AS "validCount",
+        ORDER BY "deletedAt" DESC`, [kind]) : Promise.resolve({ rows: [] }),
+      view === "imports" ? pool.query(`SELECT id,source_name AS "sourceName",status,total_count AS "totalCount",valid_count AS "validCount",
         error_count AS "errorCount",created_at AS "createdAt",committed_at AS "committedAt",deleted_at AS "deletedAt"
-        FROM mednexus_content_import_jobs WHERE bank='theory' ORDER BY created_at DESC LIMIT 50`),
+        FROM mednexus_content_import_jobs WHERE bank='theory' ORDER BY created_at DESC LIMIT 50`) : Promise.resolve({ rows: [] }),
     ]))
     return NextResponse.json({
       collections: collections.rows,
