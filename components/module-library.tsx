@@ -16,6 +16,7 @@ import {
   StarIcon,
   SearchIcon,
   DownloadIcon,
+  CheckIcon,
   ArrowUpDownIcon,
 } from "@/components/icons"
 
@@ -303,19 +304,14 @@ function ModuleGrid({
   onToggleFav:(mod: string) => void
   catalog: QuestionCatalogModule[]
 }) {
-  const { offlinePacks, offlineLoading, downloadModule, removeDownloadedModule } = useQuestions()
+  const { offlinePacks, offlineLoading, downloadModule } = useQuestions()
   const [activeDownload, setActiveDownload] = useState<string | null>(null)
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null)
 
-  async function toggleDownload(module: string, downloaded: boolean) {
+  async function downloadForOffline(module: string) {
     setActiveDownload(module); setDownloadMessage(null)
-    if (downloaded) {
-      await removeDownloadedModule(module)
-      setDownloadMessage(`${module} removed from offline downloads.`)
-    } else {
-      const result = await downloadModule(module)
-      setDownloadMessage(result.ok ? `${module} is ready offline.` : (result.error ?? "Download failed."))
-    }
+    const result = await downloadModule(module)
+    setDownloadMessage(result.ok ? `${module} is ready offline.` : (result.error ?? "Download failed."))
     setActiveDownload(null)
   }
 
@@ -373,15 +369,15 @@ function ModuleGrid({
                 Open Module
                 <ArrowRightIcon size={13} className="transition-transform group-hover:translate-x-0.5" />
               </button>
-              <button
+              {downloaded ? <div className="mt-2 flex w-full cursor-default items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400" role="status"><CheckIcon size={13}/>Available offline</div> : <button
                 type="button"
                 disabled={offlineLoading && activeDownload === mod}
-                onClick={() => void toggleDownload(mod, downloaded)}
-                className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-50 ${downloaded ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-border text-muted-foreground hover:bg-muted"}`}
+                onClick={() => void downloadForOffline(mod)}
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
               >
                 <DownloadIcon size={13} />
-                {activeDownload === mod ? "Downloading…" : downloaded ? "Available offline · Remove" : "Download for offline"}
-              </button>
+                {activeDownload === mod ? "Downloading…" : "Download for offline"}
+              </button>}
             </div>
           </div>
         )

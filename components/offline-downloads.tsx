@@ -132,6 +132,7 @@ export function OfflineDownloads() {
   }, [groupedTheory, offlinePacks])
 
   const removeGroup = async (ids: string[]) => {
+    if (!window.confirm("Remove this module from offline downloads? You can download it again at any time.")) return
     for (const id of ids) await removeOfflinePack(id)
   }
   return <section className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5" aria-labelledby="offline-downloads-title">

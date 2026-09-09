@@ -11,9 +11,12 @@ describe("offline PWA", () => {
   })
 
   it("stores selective MCQ downloads in IndexedDB and falls back to them", () => {
+    const modules = read("components/module-library.tsx")
     expect(read("lib/offline-storage.ts")).toContain('const PACKS = "content-packs"')
     expect(read("contexts/questions-context.tsx")).toContain("await loadMcqPack(owner, filter.module)")
-    expect(read("components/module-library.tsx")).toContain("Download for offline")
+    expect(modules).toContain("Download for offline")
+    expect(modules).toContain("Available offline")
+    expect(modules).not.toContain("Available offline · Remove")
   })
 
   it("caches downloaded Theory questions sets and queues offline mutations", () => {
@@ -45,6 +48,7 @@ describe("offline PWA", () => {
     expect(downloads).toContain("Each module download automatically includes all of its sets")
     expect(downloads).toContain("Downloaded modules")
     expect(downloads).toContain("group-open:rotate-180")
+    expect(downloads).toContain("Remove this module from offline downloads?")
     expect(downloads).not.toContain('label="Theory sets"')
     expect(profile.indexOf("<OfflineDownloads />")).toBeLessThan(profile.indexOf("function Milestone"))
   })
