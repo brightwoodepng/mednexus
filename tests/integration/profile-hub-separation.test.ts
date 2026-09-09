@@ -37,7 +37,8 @@ describe("profile study-hub separation", () => {
 
   it("uses the compact icon-based profile navigation dock", () => {
     expect(profile).toContain('aria-label="Profile sections"')
-    expect(profile).toContain("grid-cols-4")
+    expect(profile).toContain("grid-cols-2")
+    expect(profile).toContain("sm:grid-cols-4")
     expect(profile).toContain('aria-label="More profile actions"')
   })
 

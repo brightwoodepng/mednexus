@@ -93,10 +93,10 @@ function ProfileHeader() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-6">
 
         {/* Avatar + Identity: flex-row on all screen sizes */}
-        <div className="flex flex-row items-center gap-4 min-w-0 flex-1 sm:gap-4">
+        <div className="flex min-w-0 flex-1 flex-row items-center gap-3 sm:gap-4">
 
           {/* Avatar with frame wrapper and hover-edit overlay */}
           <div
@@ -107,7 +107,7 @@ function ProfileHeader() {
             {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
             <CosmeticFrame cosmeticId={equippedCosmetics.frame} size="profile" motionState="focused" interactionState="focused" className="rounded-full ring-offset-2 ring-offset-card">
               {/* Avatar circle */}
-              <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm text-3xl font-bold select-none overflow-hidden">
+              <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-primary text-2xl font-bold text-primary-foreground shadow-sm select-none sm:h-24 sm:w-24 sm:text-3xl">
                 {avatarImagePath ? (
                   <img
                     src={avatarImagePath}
@@ -128,12 +128,12 @@ function ProfileHeader() {
           {/* Identity column */}
           <div className="min-w-0 flex-1">
           {editing ? (
-            <form onSubmit={saveName} className="flex items-center gap-2 mb-1">
+            <form onSubmit={saveName} className="mb-1 flex min-w-0 items-center gap-1.5 sm:gap-2">
               <input
                 autoFocus
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                className="rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 w-48"
+                className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 sm:w-48 sm:flex-none"
                 placeholder="Your name"
               />
               <button
@@ -158,7 +158,7 @@ function ProfileHeader() {
               className="group/name flex items-center gap-1.5 mb-0.5 text-left"
               aria-label="Edit name"
             >
-              <h1 className="text-xl font-semibold tracking-tight">{user?.name ?? "Clinician"}</h1>
+              <h1 className="break-words text-lg font-semibold tracking-tight sm:text-xl">{user?.name ?? "Clinician"}</h1>
               <PencilIcon size={12} className="text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity" />
             </button>
           )}
@@ -481,7 +481,7 @@ function UnifiedOverview({ activeHub, onSelectTab, onNavigate }: { activeHub: St
       </div>
 
       <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex items-center justify-between gap-3"><h3 className="font-semibold">Clinical Rank Progress</h3><details className="relative"><summary className="cursor-pointer list-none rounded-full border border-border px-3 py-2 text-xs font-semibold text-foreground">View all 12 clinical ranks →</summary><ol className="absolute right-0 top-11 z-20 grid w-72 gap-1 rounded-2xl border border-border bg-card p-3 shadow-2xl">{XP_CONFIG.clinicalRanks.map(rank => <li key={rank.name} className={`rounded-lg px-3 py-2 text-xs ${lifetimeXP >= rank.minimumXP ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}><b>{rank.name}</b><span className="float-right tabular-nums">{rank.minimumXP.toLocaleString()} XP</span></li>)}</ol></details></div>
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"><h3 className="font-semibold">Clinical Rank Progress</h3><details className="relative w-full sm:w-auto"><summary className="cursor-pointer list-none rounded-full border border-border px-3 py-2 text-center text-xs font-semibold text-foreground">View all 12 clinical ranks →</summary><ol className="absolute right-0 top-11 z-20 grid w-[min(18rem,calc(100vw-3rem))] gap-1 rounded-2xl border border-border bg-card p-3 shadow-2xl">{XP_CONFIG.clinicalRanks.map(rank => <li key={rank.name} className={`rounded-lg px-3 py-2 text-xs ${lifetimeXP >= rank.minimumXP ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}><b>{rank.name}</b><span className="float-right tabular-nums">{rank.minimumXP.toLocaleString()} XP</span></li>)}</ol></details></div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 sm:divide-x sm:divide-border">
           <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-lg font-black text-primary">#</span><div><p className="text-[11px] text-muted-foreground">Current rank</p><p className="font-bold">{clinicalRank.name}</p><p className="text-[11px] text-muted-foreground">{lifetimeXP.toLocaleString()} XP earned</p></div></div>
           <div className="flex items-center gap-3 sm:pl-5"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400"><GraduationCap size={18}/></span><div><p className="text-[11px] text-muted-foreground">Next rank</p><p className="font-bold">{nextClinicalRank?.name ?? clinicalRank.name}</p><p className="text-[11px] text-muted-foreground">{nextClinicalRank ? `${Math.max(0, nextClinicalRank.minimumXP - lifetimeXP).toLocaleString()} XP to ${nextClinicalRank.name}` : "Highest rank achieved"}</p></div></div>
@@ -564,12 +564,12 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
   const latestActivity = progress.history.length ? formatDate(new Date(Math.max(...progress.history.map(entry => entry.timestamp))).toISOString()) : "Not yet"
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-1 pb-8">
+    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-3 overflow-x-clip px-0 pb-8 sm:space-y-4 sm:px-1">
       <ProfileHeader />
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <nav className="w-full overflow-x-auto rounded-2xl border border-primary/20 bg-card p-1.5 shadow-sm lg:w-auto" aria-label="Profile sections">
-          <div className="grid min-w-[31rem] grid-cols-4 gap-1.5 lg:min-w-[34rem]">
-            {tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-all ${activeTab === tab.id ? "border-cyan-300/60 bg-gradient-to-r from-cyan-500/30 to-primary/25 text-cyan-50 shadow-[0_0_18px_rgba(6,182,212,.18)]" : "border-border bg-background/35 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}><Icon size={16}/><span>{tab.label}</span></button> })}
+        <nav className="w-full rounded-2xl border border-primary/20 bg-card p-1.5 shadow-sm lg:w-auto" aria-label="Profile sections">
+          <div className="grid w-full grid-cols-2 gap-1.5 sm:grid-cols-4 lg:min-w-[34rem]">
+            {tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} className={`flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border px-2 text-[11px] font-semibold transition-all sm:px-3 sm:text-xs ${activeTab === tab.id ? "border-cyan-300/60 bg-gradient-to-r from-cyan-500/30 to-primary/25 text-cyan-50 shadow-[0_0_18px_rgba(6,182,212,.18)]" : "border-border bg-background/35 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}><Icon size={16} className="shrink-0"/><span className="truncate">{tab.label}</span></button> })}
           </div>
         </nav>
         <div className="hidden items-center gap-4 lg:flex"><div className="border-l border-border pl-4"><p className="text-xs font-semibold text-foreground">Profile overview</p><p className="text-[11px] text-muted-foreground">Last activity: {latestActivity}</p></div><button type="button" onClick={() => setActiveTab("settings")} aria-label="More profile actions" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-primary hover:bg-muted"><MoreHorizontal size={18}/></button></div>
