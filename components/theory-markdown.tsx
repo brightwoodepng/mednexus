@@ -55,22 +55,22 @@ export function TheoryMarkdown({
   }
 
   return (
-    <div className={`theory-markdown text-sm leading-7 text-foreground ${className}`}>
+    <div className={`theory-markdown min-w-0 break-words text-[15px] leading-7 text-foreground [overflow-wrap:anywhere] sm:text-base ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSanitize]}
         components={{
-          h1: ({node: _node, ...props}) => <h1 {...sectionProps(props, "mb-3 mt-6 text-2xl font-bold")} />,
-          h2: ({node: _node, ...props}) => <h2 {...sectionProps(props, "mb-3 mt-6 text-xl font-bold")} />,
-          h3: ({node: _node, ...props}) => <h3 {...sectionProps(props, "mb-2 mt-5 text-lg font-bold")} />,
+          h1: ({node: _node, ...props}) => <h1 {...sectionProps(props, "mb-3 mt-5 text-xl font-bold sm:mt-6 sm:text-2xl")} />,
+          h2: ({node: _node, ...props}) => <h2 {...sectionProps(props, "mb-3 mt-5 text-lg font-bold sm:mt-6 sm:text-xl")} />,
+          h3: ({node: _node, ...props}) => <h3 {...sectionProps(props, "mb-2 mt-4 text-base font-bold sm:mt-5 sm:text-lg")} />,
           p: ({node: _node, ...props}) => <p {...sectionProps(props, "my-3")} />,
-          ul: props => <ul className="my-3 list-disc space-y-1 pl-6" {...props} />,
-          ol: props => <ol className="my-3 list-decimal space-y-1 pl-6" {...props} />,
-          blockquote: props => <blockquote className="my-4 border-l-4 border-primary/40 bg-primary/5 px-4 py-2" {...props} />,
+          ul: props => <ul className="my-3 list-disc space-y-1 pl-5 sm:pl-6" {...props} />,
+          ol: props => <ol className="my-3 list-decimal space-y-1 pl-5 sm:pl-6" {...props} />,
+          blockquote: props => <blockquote className="my-4 border-l-4 border-primary/40 bg-primary/5 px-3 py-2 sm:px-4" {...props} />,
           code: props => <code className="rounded bg-muted px-1.5 py-0.5 text-[0.9em]" {...props} />,
-          table: props => <div className="my-4 overflow-x-auto"><table className="w-full border-collapse text-left" {...props} /></div>,
-          th: props => <th className="border border-border bg-muted px-3 py-2 font-semibold" {...props} />,
-          td: props => <td className="border border-border px-3 py-2 align-top" {...props} />,
+          table: props => <div className="my-4 max-w-full overflow-x-auto overscroll-x-contain rounded-lg border border-border"><table className="min-w-full border-collapse text-left text-sm" {...props} /></div>,
+          th: props => <th className="border-b border-r border-border bg-muted px-2 py-2 font-semibold last:border-r-0 sm:px-3" {...props} />,
+          td: props => <td className="border-b border-r border-border px-2 py-2 align-top last:border-r-0 sm:px-3" {...props} />,
           a: props => <a className="font-semibold text-primary underline underline-offset-2" target="_blank" rel="noreferrer" {...props} />,
         }}
       >

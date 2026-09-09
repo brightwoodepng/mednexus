@@ -27,6 +27,11 @@ describe("offline PWA", () => {
     expect(read("components/sidebar.tsx")).toContain("Group Study requires an internet connection")
   })
 
+  it("keeps the offline status above mobile navigation", () => {
+    expect(read("components/offline-status.tsx")).toContain("bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))]")
+    expect(read("components/offline-status.tsx")).toContain("md:bottom-4")
+  })
+
   it("offers installation and a confirmed download-all summary in profile overview", () => {
     const downloads = read("components/offline-downloads.tsx")
     const profile = read("components/profile-history.tsx")

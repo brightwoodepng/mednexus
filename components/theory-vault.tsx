@@ -749,12 +749,12 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
     window.setTimeout(() => answerRef.current?.focus(), 0)
   }
   return (
-    <div className="mx-auto max-w-7xl space-y-4 pb-24 md:pb-0">
+    <div className="mx-auto min-w-0 max-w-7xl space-y-3 pb-24 sm:space-y-4 md:pb-0">
 
       {/* ── Top nav bar ── */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-border/70 pb-4">
+      <div className="sticky top-0 z-30 -mx-3 flex flex-wrap items-center gap-2 border-b border-border/70 bg-background/95 px-3 pb-3 pt-1 backdrop-blur-md sm:static sm:mx-0 sm:gap-3 sm:bg-transparent sm:px-0 sm:pb-4 sm:pt-0 sm:backdrop-blur-none">
         <button onClick={() => onBack(question.setId)} aria-label="Back to set" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted"><ArrowLeft size={18}/></button>
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Theory Vault <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 text-xs text-muted-foreground">{question.setLabel} · {question.position} of {question.setTotal}</p></div>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{question.collectionTitle} <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{question.setLabel} · Question {question.position} of {question.setTotal}</p></div>
         <div className="order-3 grid w-full grid-cols-2 gap-2 sm:order-none sm:flex sm:w-auto sm:items-center">
           <button
             onClick={toggleBookmark}
@@ -797,8 +797,8 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
       {(mode === "practice" || reviewPane === "notes") && aiMessage && <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">{aiMessage}</div>}
 
       {/* Focused question prompt */}
-      <article className="rounded-[1.25rem] border border-border bg-card p-5 shadow-sm sm:p-7">
-          <div className={`grid items-start gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-sm font-bold leading-7 text-primary"><span className="shrink-0">Question</span><span aria-hidden className="h-4 w-px shrink-0 bg-primary/40"/><h1 className="min-w-0 truncate font-bold text-primary" title={question.title || "Theory question"}>{question.title || "Theory question"}</h1></div><TheoryMarkdown children={question.prompt} className="mt-4 text-foreground/80" linkedSectionKeys={answerLinksEnabled ? answerSectionKeys : []} onSectionSelect={answerLinksEnabled ? jumpToModelAnswer : undefined}/></div>{question.media.length > 0 && <div className="lg:pt-2"><TheoryQuestionMedia media={question.media} compact/></div>}</div>
+      <article className="min-w-0 overflow-hidden rounded-[1.25rem] border border-border bg-card p-4 shadow-sm sm:p-7">
+          <div className={`grid min-w-0 items-start gap-5 sm:gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-xs font-bold text-primary"><span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1">Question {question.position}</span>{question.marks != null && <span className="rounded-full bg-muted px-3 py-1 text-muted-foreground">{question.marks} marks</span>}<span className="rounded-full bg-muted px-3 py-1 text-muted-foreground">{question.collectionTitle}</span></div><h1 className="mt-3 break-words text-lg font-bold leading-snug text-foreground sm:text-xl">{question.title || "Theory question"}</h1><TheoryMarkdown children={question.prompt} className="mt-3 text-foreground/85 sm:mt-4" linkedSectionKeys={answerLinksEnabled ? answerSectionKeys : []} onSectionSelect={answerLinksEnabled ? jumpToModelAnswer : undefined}/></div>{question.media.length > 0 && <div className="min-w-0 lg:pt-2"><TheoryQuestionMedia media={question.media}/></div>}</div>
       </article>
 
       {/* ── Review mode ── */}
@@ -806,10 +806,10 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
         <article className="overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-sm">
             <div className="grid grid-cols-2 border-b border-border px-3 pt-2 sm:flex sm:gap-2"><button onClick={()=>setReviewPane("answer")} className={`flex min-h-11 items-center justify-center gap-2 border-b-2 px-4 text-sm font-bold transition ${reviewPane==="answer"?"border-primary text-primary":"border-transparent text-muted-foreground"}`}><BookOpen size={17}/>Model Answer</button><button onClick={()=>setReviewPane("notes")} className={`flex min-h-11 items-center justify-center gap-2 border-b-2 px-4 text-sm font-bold transition ${reviewPane==="notes"?"border-primary text-primary":"border-transparent text-muted-foreground"}`}><NotebookPen size={17}/>My Notes</button></div>
           {reviewPane === "answer" ? <>
-            <div className="p-5 sm:p-6">
+            <div className="min-w-0 p-4 sm:p-6">
               {/* Main narrative answer — card-style to distinguish from key points */}
               {question.hasAnswer ? <>
-                <div className="overflow-hidden">
+                <div className="min-w-0 overflow-hidden">
                   <TheoryMarkdown children={question.modelAnswer} answerSectionPrefix={answerSectionPrefix} highlightedSectionKey={highlightedAnswer}/>
                 </div>
                 <KeyPointsSection key={question.id} points={question.keyMarkingPoints}/>
@@ -854,11 +854,11 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
 
           {(revealed || submitted) && <>
             <div className={`grid gap-4 ${submitted ? "lg:grid-cols-2" : ""}`}>
-              {submitted && <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              {submitted && <article className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-5"><h2 className="font-bold">My Answer</h2></div>
                 <div className="overflow-hidden p-4 sm:p-5">{answer ? <TheoryMarkdown children={answer}/> : <p className="text-sm text-muted-foreground">No answer submitted.</p>}</div>
               </article>}
-              {question.hasAnswer ? <article className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
+              {question.hasAnswer ? <article className="min-w-0 overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm">
                 <div className="border-b border-primary/15 bg-primary/5 px-4 py-3 sm:px-5"><h2 className="font-bold text-primary">Model Answer</h2></div>
                 <div className="overflow-hidden p-4 sm:p-5"><TheoryMarkdown children={question.modelAnswer} answerSectionPrefix={answerSectionPrefix} highlightedSectionKey={highlightedAnswer}/><KeyPointsSection key={question.id} points={question.keyMarkingPoints}/></div>
               </article> : <article className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-900 dark:text-amber-100"><b>Attempt saved</b><p className="mt-1">The model answer is coming soon. You cannot self-mark this response yet.</p></article>}
