@@ -13,6 +13,10 @@ self.addEventListener("fetch", event => {
   const request = event.request
   if (request.method !== "GET") return
   const url = new URL(request.url)
+  if (request.destination === "image") {
+    event.respondWith(caches.match(request).then(cached => cached || fetch(request)))
+    return
+  }
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin") || url.pathname.startsWith("/group-study") || url.pathname.startsWith("/exam/") || url.pathname.startsWith("/notifications")) return
   event.respondWith(
     fetch(request).then(response => {

@@ -506,6 +506,8 @@ function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
         </details>
       </article>
 
+      <OfflineDownloads />
+
       <div className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
         <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between"><h3 className="font-semibold">Recent activity</h3><span className="text-xs text-muted-foreground">Latest sessions</span></div>
@@ -584,7 +586,7 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
       {activeTab === "mcq" && <div className="space-y-6"><ModuleReviewSection /><ExamScores scores={examScores} /></div>}
       {activeTab === "theory" && <TheoryProfilePanel onNavigate={onNavigate} />}
       {activeTab === "cosmetics" && <CosmeticLoadout />}
-      {activeTab === "settings" && <div className="grid gap-4 lg:grid-cols-2"><PrivacySettings /><TutorialSettings /><OfflineDownloads /></div>}
+      {activeTab === "settings" && <div className="grid gap-4 lg:grid-cols-2"><PrivacySettings /><TutorialSettings /></div>}
     </div>
   )
 }

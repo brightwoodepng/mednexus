@@ -8,10 +8,11 @@ const OUTBOX = "sync-outbox"
 
 export type OfflinePack = {
   id: string
-  kind: "mcq-module"
+  kind: "mcq-module" | "theory-set"
   ownerId: string
   title: string
   questions: Question[]
+  itemCount: number
   downloadedAt: string
   updatedAt: string | null
   bytes: number
@@ -39,6 +40,23 @@ function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   })
 }
 
+async function cacheMediaAssets(records: unknown[]) {
+  if (typeof caches === "undefined") return
+  const urls = new Set<string>()
+  for (const record of records) {
+    const media = (record as { media?: Array<{ url?: string }> })?.media
+    for (const item of media ?? []) if (item.url) urls.add(item.url)
+  }
+  if (!urls.size) return
+  const cache = await caches.open("mednexus-offline-media-v1")
+  for (const url of urls) {
+    try {
+      const response = await fetch(url)
+      if (response.ok) await cache.put(url, response)
+    } catch { /* The content remains downloadable even if one optional image fails. */ }
+  }
+}
+
 export function mcqPackId(ownerId: string, module: string) {
   return `mcq:${ownerId}:${module}`
 }
@@ -48,10 +66,11 @@ export async function saveMcqPack(ownerId: string, module: string, questions: Qu
   const serialised = JSON.stringify(questions)
   const pack: OfflinePack = {
     id: mcqPackId(ownerId, module), kind: "mcq-module", ownerId, title: module, questions,
-    downloadedAt: new Date().toISOString(), updatedAt, bytes: new Blob([serialised]).size,
+    downloadedAt: new Date().toISOString(), updatedAt, bytes: new Blob([serialised]).size, itemCount: questions.length,
   }
   await requestResult(db.transaction(PACKS, "readwrite").objectStore(PACKS).put(pack))
   db.close()
+  await cacheMediaAssets(questions)
   return pack
 }
 
@@ -73,6 +92,28 @@ export async function deleteOfflinePack(id: string) {
   const db = await openOfflineDb()
   await requestResult(db.transaction(PACKS, "readwrite").objectStore(PACKS).delete(id))
   db.close()
+}
+
+export async function downloadTheorySet(ownerId: string, setId: string, title?: string) {
+  const setUrl = `/api/theory?mode=set&id=${encodeURIComponent(setId)}`
+  const set = await offlineTheoryFetch<{ setLabel?: string; name?: string; questions?: Array<{ id: string }> }>(setUrl)
+  const details: unknown[] = []
+  const ids = set.questions?.map(question => question.id) ?? []
+  for (let offset = 0; offset < ids.length; offset += 4) {
+    const batch = await Promise.all(ids.slice(offset, offset + 4).map(id => offlineTheoryFetch(`/api/theory?mode=question&id=${encodeURIComponent(id)}`)))
+    details.push(...batch)
+  }
+  await cacheMediaAssets(details)
+  const db = await openOfflineDb()
+  const pack: OfflinePack = {
+    id: `theory:${ownerId}:${setId}`, kind: "theory-set", ownerId,
+    title: title ?? set.setLabel ?? set.name ?? "Theory set", questions: [], itemCount: ids.length,
+    downloadedAt: new Date().toISOString(), updatedAt: null,
+    bytes: new Blob([JSON.stringify({ set, details })]).size,
+  }
+  await requestResult(db.transaction(PACKS, "readwrite").objectStore(PACKS).put(pack))
+  db.close()
+  return pack
 }
 
 function currentOwnerId() {

@@ -26,4 +26,15 @@ describe("offline PWA", () => {
     expect(read("components/mednexus-app.tsx")).toContain("ONLINE_ONLY_SCREENS")
     expect(read("components/sidebar.tsx")).toContain("Group Study requires an internet connection")
   })
+
+  it("offers installation and a confirmed download-all summary in profile overview", () => {
+    const downloads = read("components/offline-downloads.tsx")
+    const profile = read("components/profile-history.tsx")
+    expect(read("components/offline-status.tsx")).toContain("beforeinstallprompt")
+    expect(downloads).toContain("Install MedNexus")
+    expect(downloads).toContain("Download everything")
+    expect(downloads).toContain("Estimated size")
+    expect(downloads).toContain("Confirm download")
+    expect(profile.indexOf("<OfflineDownloads />")).toBeLessThan(profile.indexOf("function Milestone"))
+  })
 })

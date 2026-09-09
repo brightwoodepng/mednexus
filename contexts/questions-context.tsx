@@ -58,6 +58,8 @@ interface QuestionsContextValue {
   offlineLoading: boolean
   downloadModule: (module: string) => Promise<{ ok: boolean; error?: string }>
   removeDownloadedModule: (module: string) => Promise<void>
+  removeOfflinePack: (id: string) => Promise<void>
+  refreshOfflinePacks: () => Promise<void>
   addQuestion: (q: Question) => Promise<void>
   updateQuestion: (q: Question) => Promise<void>
   deleteQuestion: (id: string) => Promise<void>
@@ -460,6 +462,11 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     await refreshOfflinePacks()
   }, [refreshOfflinePacks, userId])
 
+  const removeOfflinePack = useCallback(async (id: string) => {
+    await deleteOfflinePack(id)
+    await refreshOfflinePacks()
+  }, [refreshOfflinePacks])
+
   const loadFullQuestionBank = useCallback(async () => {
     questionSetRequest.current?.abort()
     const controller = new AbortController()
@@ -602,6 +609,8 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         offlineLoading,
         downloadModule,
         removeDownloadedModule,
+        removeOfflinePack,
+        refreshOfflinePacks,
         addQuestion,
         updateQuestion,
         deleteQuestion,
