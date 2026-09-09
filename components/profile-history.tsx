@@ -60,13 +60,7 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 
 function ProfileHeader() {
   const { user, cloudEnabled, updateName, signOutUser } = useApp()
-  const { balance, lifetimeEarned, lifetimeXP, equippedCosmetics, grantDevNP } = useEconomy()
-  const clinicalRank = [...XP_CONFIG.clinicalRanks].reverse().find(rank => lifetimeXP >= rank.minimumXP) ?? XP_CONFIG.clinicalRanks[0]
-  const clinicalRankIndex = XP_CONFIG.clinicalRanks.findIndex(rank => rank.name === clinicalRank.name)
-  const nextClinicalRank = XP_CONFIG.clinicalRanks[clinicalRankIndex + 1]
-  const rankProgress = nextClinicalRank
-    ? Math.min(100, Math.max(0, (lifetimeXP - clinicalRank.minimumXP) / (nextClinicalRank.minimumXP - clinicalRank.minimumXP) * 100))
-    : 100
+  const { balance, equippedCosmetics } = useEconomy()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
@@ -172,31 +166,12 @@ function ProfileHeader() {
             : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
           }
 
-          {/* Spendable, lifetime, and progression totals are intentionally distinct. */}
+          {/* Keep the profile identity card focused on the spendable balance. */}
           <div className="mt-2 flex flex-wrap gap-1.5">
             <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-1 text-[10px] font-semibold text-amber-500">
               NP Balance <strong className="tabular-nums">{balance.toLocaleString()}</strong>
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-              Lifetime NP <strong className="tabular-nums">{lifetimeEarned.toLocaleString()}</strong>
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/30 bg-violet-400/10 px-2.5 py-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400">
-              Lifetime XP <strong className="tabular-nums">{lifetimeXP.toLocaleString()}</strong> · <strong>{clinicalRank.name}</strong>
-            </span>
           </div>
-          <div className="mt-2 max-w-sm" aria-label={nextClinicalRank ? `${Math.round(rankProgress)} percent progress to ${nextClinicalRank.name}` : "Highest clinical rank reached"}>
-            <div className="mb-1 flex items-center justify-between gap-3 text-[10px] font-semibold text-muted-foreground">
-              <span>{clinicalRank.name}</span>
-              <span>{nextClinicalRank ? `${Math.max(0, nextClinicalRank.minimumXP - lifetimeXP).toLocaleString()} XP to ${nextClinicalRank.name}` : "Highest rank reached"}</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-violet-500" style={{ width: `${rankProgress}%` }} /></div>
-          </div>
-          <details className="mt-2 max-w-sm rounded-xl border border-border/60 bg-background/45 px-3 py-2">
-            <summary className="cursor-pointer text-xs font-bold text-muted-foreground">View all {XP_CONFIG.clinicalRanks.length} clinical ranks</summary>
-            <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-1">
-              {XP_CONFIG.clinicalRanks.map(rank => <div key={rank.name} className={`flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-[11px] ${rank.name === clinicalRank.name ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground"}`}><span className="font-semibold">{rank.name}</span><span className="shrink-0 tabular-nums">{rank.minimumXP.toLocaleString()} XP{rank.npReward ? ` · +${rank.npReward.toLocaleString()} NP` : ""}</span></div>)}
-            </div>
-          </details>
 
           {/* Sync state */}
           <div className="mt-2">
@@ -466,17 +441,19 @@ type TheoryDashboardData = { authenticated: boolean; displayName: string; totals
 
 type ProfileTab = "overview" | "mcq" | "theory" | "cosmetics" | "settings"
 
-function UnifiedOverview({ onSelectTab }: { onSelectTab: (tab: ProfileTab) => void }) {
+function UnifiedOverview({ activeHub, onSelectTab }: { activeHub: StudyHubId; onSelectTab: (tab: ProfileTab) => void }) {
   const { progress } = useApp()
   const { balance, lifetimeXP } = useEconomy()
   const [theory, setTheory] = useState<TheoryDashboardData | null>(null)
+  const isTheory = activeHub === "theory-vault"
 
   useEffect(() => {
+    if (!isTheory) { setTheory(null); return }
     fetch("/api/theory/dashboard")
       .then((response) => response.ok ? response.json() : null)
       .then(setTheory)
       .catch(() => setTheory(null))
-  }, [])
+  }, [isTheory])
 
   const mcq = useMemo(() => {
     const attempted = progress.history.length
@@ -527,7 +504,8 @@ function UnifiedOverview({ onSelectTab }: { onSelectTab: (tab: ProfileTab) => vo
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
+        {!isTheory && (
         <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <div><p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-400">MCQ Vault</p><h3 className="mt-1 font-semibold">Question performance</h3></div>
@@ -544,7 +522,9 @@ function UnifiedOverview({ onSelectTab }: { onSelectTab: (tab: ProfileTab) => vo
             <p className="mt-3 text-xs text-muted-foreground">Strongest module: <span className="font-semibold text-foreground">{mcq.strongest}</span></p>
           </div>
         </article>
+        )}
 
+        {isTheory && (
         <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <div><p className="text-xs font-bold uppercase tracking-[.16em] text-violet-400">Theory Vault</p><h3 className="mt-1 font-semibold">Reading and revision</h3></div>
@@ -561,19 +541,22 @@ function UnifiedOverview({ onSelectTab }: { onSelectTab: (tab: ProfileTab) => vo
             <p className="mt-3 truncate text-xs text-muted-foreground">{theory?.continueStudying ? `Continue: ${theory.continueStudying.prompt}` : "No Theory activity yet"}</p>
           </div>
         </article>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
         <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between"><h3 className="font-semibold">Recent activity</h3><span className="text-xs text-muted-foreground">Latest sessions</span></div>
-          {recentMcq.length > 0 ? <ul className="divide-y divide-border">{recentMcq.map((entry) => <li key={`${entry.questionId}-${entry.timestamp}`} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-sm font-medium">{entry.module ?? entry.subject ?? "MCQ session"}</p><p className="truncate text-xs text-muted-foreground">{entry.vignetteSnippet}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${entry.isCorrect ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>{entry.isCorrect ? "Correct" : "Review"}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">Your latest MCQ and Theory activity will appear here.</p>}
+          {isTheory
+            ? <p className="text-sm text-muted-foreground">{theory?.continueStudying ? `Continue: ${theory.continueStudying.prompt}` : theory?.recentSets?.[0] ? `Recently studied: ${theory.recentSets[0].groupName} · ${theory.recentSets[0].setTitle}` : "No Theory activity yet."}</p>
+            : recentMcq.length > 0 ? <ul className="divide-y divide-border">{recentMcq.map((entry) => <li key={`${entry.questionId}-${entry.timestamp}`} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-sm font-medium">{entry.module ?? entry.subject ?? "MCQ session"}</p><p className="truncate text-xs text-muted-foreground">{entry.vignetteSnippet}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${entry.isCorrect ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>{entry.isCorrect ? "Correct" : "Review"}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">No MCQ activity yet.</p>}
         </article>
         <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <h3 className="font-semibold">Milestones</h3>
           <div className="mt-4 space-y-3">
-            <Milestone earned={mcq.attempted >= 20} title="First Twenty" detail="Attempt 20 MCQs" />
+            {!isTheory && <Milestone earned={mcq.attempted >= 20} title="First Twenty" detail="Attempt 20 MCQs" />}
             <Milestone earned={(progress.streak ?? 0) >= 7} title="Week Streak" detail="Study for 7 consecutive days" />
-            <Milestone earned={theoryCompleted >= 10} title="Theory Explorer" detail="Read 10 Theory questions" />
+            {isTheory && <Milestone earned={theoryCompleted >= 10} title="Theory Explorer" detail="Read 10 Theory questions" />}
           </div>
         </article>
       </div>
@@ -617,10 +600,11 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
   const examScores = progress.examScores ?? []
   const [activeTab, setActiveTab] = useState<ProfileTab>(activeHub === "theory-vault" ? "theory" : "overview")
 
+  useEffect(() => { setActiveTab("overview") }, [activeHub])
+
   const tabs: Array<{ id: ProfileTab; label: string }> = [
     { id: "overview", label: "Overview" },
-    { id: "mcq", label: "MCQ Vault" },
-    { id: "theory", label: "Theory Vault" },
+    activeHub === "theory-vault" ? { id: "theory", label: "Theory Vault" } : { id: "mcq", label: "MCQ Vault" },
     { id: "cosmetics", label: "Cosmetics" },
     { id: "settings", label: "Settings" },
   ]
@@ -634,7 +618,7 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
         </div>
       </nav>
 
-      {activeTab === "overview" && <UnifiedOverview onSelectTab={setActiveTab} />}
+      {activeTab === "overview" && <UnifiedOverview activeHub={activeHub} onSelectTab={setActiveTab} />}
       {activeTab === "mcq" && <div className="space-y-6"><ModuleReviewSection /><ExamScores scores={examScores} /></div>}
       {activeTab === "theory" && <TheoryProfilePanel onNavigate={onNavigate} />}
       {activeTab === "cosmetics" && <CosmeticLoadout />}
