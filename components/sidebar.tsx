@@ -157,14 +157,21 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
       {/* ── User profile footer ── */}
       <div className="shrink-0 border-t border-sidebar-border p-3 space-y-1">
         {/* Profile card */}
-        <div className="flex items-center gap-3 rounded-xl px-2.5 py-2 bg-sidebar-accent/50" data-tutorial-anchor={mobileOpen ? "drawer-profile" : "desktop-profile"}>
-          <UserAvatar name={user?.name} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold leading-tight text-sidebar-foreground">{firstName}</p>
-            <span className={`mt-0.5 inline-flex items-center rounded-full border px-1.5 py-px text-[10px] font-semibold leading-none ${roleBadgeClass(user?.role)}`}>
-              {roleLabel(user?.role)}
+        <div className="flex items-center gap-1 rounded-xl px-2.5 py-2 bg-sidebar-accent/50" data-tutorial-anchor={mobileOpen ? "drawer-profile" : "desktop-profile"}>
+          <button
+            type="button"
+            onClick={() => nav("profile")}
+            aria-label="Open profile"
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          >
+            <UserAvatar name={user?.name} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold leading-tight text-sidebar-foreground">{firstName}</span>
+              <span className={`mt-0.5 inline-flex items-center rounded-full border px-1.5 py-px text-[10px] font-semibold leading-none ${roleBadgeClass(user?.role)}`}>
+                {roleLabel(user?.role)}
+              </span>
             </span>
-          </div>
+          </button>
           <span data-tutorial-anchor={mobileOpen ? "drawer-sign-out-explanation" : "desktop-sign-out-explanation"}><button
             type="button"
             onClick={signOutUser}
@@ -217,8 +224,8 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
         <div className="h-px w-6 bg-sidebar-border/60" />
         <button
           type="button"
-          onClick={onExpand}
-          aria-label="Expand sidebar to see profile"
+          onClick={() => nav("profile")}
+          aria-label="Open profile"
           className="transition-opacity hover:opacity-80"
         >
           <UserAvatar name={user?.name} size="sm" />

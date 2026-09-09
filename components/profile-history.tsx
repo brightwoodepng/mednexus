@@ -59,8 +59,8 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 // ── Profile Header ───────────────────────────────────────────────────────────
 
 function ProfileHeader() {
-  const { user, cloudEnabled, updateName, signOutUser } = useApp()
-  const { balance, equippedCosmetics } = useEconomy()
+  const { user, updateName, signOutUser } = useApp()
+  const { equippedCosmetics } = useEconomy()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
@@ -104,7 +104,7 @@ function ProfileHeader() {
             {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
             <CosmeticFrame cosmeticId={equippedCosmetics.frame} size="profile" motionState="focused" interactionState="focused" className="rounded-full ring-offset-2 ring-offset-card">
               {/* Avatar circle */}
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm text-2xl font-bold select-none overflow-hidden">
+              <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm text-3xl font-bold select-none overflow-hidden">
                 {avatarImagePath ? (
                   <img
                     src={avatarImagePath}
@@ -166,23 +166,6 @@ function ProfileHeader() {
             : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
           }
 
-          {/* Keep the profile identity card focused on the spendable balance. */}
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-1 text-[10px] font-semibold text-amber-500">
-              NP Balance <strong className="tabular-nums">{balance.toLocaleString()}</strong>
-            </span>
-          </div>
-
-          {/* Sync state */}
-          <div className="mt-2">
-            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              cloudEnabled
-                ? "bg-primary/10 text-primary"
-                : "bg-muted text-muted-foreground"
-            }`}>
-              {cloudEnabled ? "☁ Synced to cloud" : "Saving locally…"}
-            </span>
-          </div>
           </div>
           {/* end Identity column */}
         </div>
