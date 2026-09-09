@@ -531,21 +531,21 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
     <section aria-label="Set study summary" className="border-b border-border pb-4">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-primary">{data.collectionTitle}</p>
-          <h1 className="mt-1 text-lg font-bold tracking-tight sm:text-xl">{data.setLabel}</h1>
+          <p className="hidden text-xs font-semibold text-primary md:block">{data.collectionTitle}</p>
+          <h1 className="text-center text-lg font-bold tracking-tight md:mt-1 md:text-left md:text-xl">{data.setLabel}</h1>
           <div className="mt-2 grid grid-cols-3 divide-x divide-border rounded-xl bg-muted/50 py-2 text-center text-xs"><span><b className="block text-sm text-foreground">{data.total}</b>Questions</span><span><b className="block text-sm text-foreground">{data.completed}</b>Completed</span><span><b className="block text-sm text-primary">{data.progressPercent}%</b>Progress</span></div>
         </div>
-        <div className="grid shrink-0 grid-cols-2 gap-2 md:flex"><button onClick={start} className={`${button} col-span-2 w-full bg-primary text-primary-foreground md:col-span-1 md:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><button type="button" disabled={downloading || downloaded} onClick={() => void download()} className={`${button} border border-border bg-card text-foreground disabled:opacity-60`}><Download size={16}/>{downloading ? "Downloading…" : downloaded ? "Downloaded" : "Download"}</button><ExportButton source="set" sourceId={data.id}/></div>
+        <div className="grid shrink-0 grid-cols-2 gap-2 md:flex"><button onClick={start} className={`${button} col-span-2 w-full bg-primary text-primary-foreground md:col-span-1 md:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><button type="button" disabled={downloading || downloaded} onClick={() => void download()} className={`${button} border border-primary/30 bg-primary/10 text-primary disabled:opacity-60 md:border-border md:bg-card md:text-foreground`}><Download size={16}/>{downloading ? "Downloading…" : downloaded ? "Downloaded" : "Download"}</button><ExportButton source="set" sourceId={data.id} emphasizedOnMobile/></div>
       </div>
       <div className="mt-4"><ProgressBar value={data.progressPercent}/></div>
       {downloadMessage && <p role="status" className="mt-3 text-xs font-medium text-muted-foreground">{downloadMessage}</p>}
     </section>
     <section aria-labelledby="set-questions-heading">
-      <div className="mb-3"><h2 id="set-questions-heading" className="text-lg font-bold">Questions</h2><p className="text-sm text-muted-foreground">Choose a question to review or practise.</p></div>
-      <div className="space-y-2">{data.questions.map((question, index) => <button key={question.id} onClick={() => onOpen(question.id)} className="grid min-h-16 w-full grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:px-4">
+      <div className="mb-3"><h2 id="set-questions-heading" className="text-lg font-bold">Questions</h2><p className="hidden text-sm text-muted-foreground md:block">Choose a question to review or practise.</p></div>
+      <div className="space-y-2">{data.questions.map((question, index) => <button key={question.id} onClick={() => onOpen(question.id)} className="grid min-h-16 w-full grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 md:border-border md:bg-card md:px-4">
         <span className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold ${question.completed ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{question.completed ? <Check size={16}/> : index + 1}</span>
         <span className="min-w-0"><b className="line-clamp-2 text-sm sm:text-base">{question.title || question.prompt}</b><small className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground">{question.marks != null && <span>{question.marks} marks</span>}{question.completed && <span>Completed</span>}{question.bookmarked && <span>Bookmarked</span>}{question.revision && <span>Revision</span>}{question.draft && <span>Draft saved</span>}</small></span>
-        <ChevronRight className="shrink-0 text-muted-foreground" size={18}/>
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><ChevronRight size={17}/></span>
       </button>)}</div>
     </section>
   </div>
@@ -1221,7 +1221,7 @@ function ProgressView({ registered }: { registered: boolean }) {
   </div>
 }
 
-function ExportButton({ source, sourceId }: { source: "set" | "bookmarks" | "revision" | "notes"; sourceId?: string }) {
+function ExportButton({ source, sourceId, emphasizedOnMobile = false }: { source: "set" | "bookmarks" | "revision" | "notes"; sourceId?: string; emphasizedOnMobile?: boolean }) {
   const [open, setOpen] = useState(false)
   const [answers, setAnswers] = useState(true)
   const [notes, setNotes] = useState(source === "notes")
@@ -1238,5 +1238,5 @@ function ExportButton({ source, sourceId }: { source: "set" | "bookmarks" | "rev
       anchor.click(); URL.revokeObjectURL(url); setOpen(false)
     } finally { setBusy(false) }
   }
-  return <div className="relative w-full sm:w-auto"><button onClick={() => setOpen(value => !value)} className={`${button} w-full border border-border sm:w-auto`}><Download size={16}/> Export PDF</button>{open && <div role="dialog" aria-label="PDF export options" className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] z-[60] rounded-2xl border border-border bg-card p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:z-20 sm:mt-2 sm:w-72 sm:shadow-xl"><h3 className="font-bold">PDF options</h3><label className="mt-3 flex min-h-11 items-center justify-between gap-4 text-sm">Questions and model answers<input type="checkbox" checked={answers} onChange={event => setAnswers(event.target.checked)} className="h-4 w-4 shrink-0 accent-primary"/></label><label className="mt-3 flex min-h-11 items-center justify-between gap-4 text-sm">Include personal notes<input type="checkbox" checked={notes} onChange={event => setNotes(event.target.checked)} className="h-4 w-4 shrink-0 accent-primary"/></label><button onClick={download} disabled={busy} className={`${button} mt-4 w-full bg-primary text-primary-foreground disabled:opacity-50`}>{busy ? "Generating…" : "Download PDF"}</button></div>}</div>
+  return <div className="relative w-full sm:w-auto"><button onClick={() => setOpen(value => !value)} className={`${button} w-full border ${emphasizedOnMobile ? "border-primary/30 bg-primary/10 text-primary md:border-border md:bg-transparent md:text-foreground" : "border-border"} sm:w-auto`}><Download size={16}/> Export PDF</button>{open && <div role="dialog" aria-label="PDF export options" className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] z-[60] rounded-2xl border border-border bg-card p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:z-20 sm:mt-2 sm:w-72 sm:shadow-xl"><h3 className="font-bold">PDF options</h3><label className="mt-3 flex min-h-11 items-center justify-between gap-4 text-sm">Questions and model answers<input type="checkbox" checked={answers} onChange={event => setAnswers(event.target.checked)} className="h-4 w-4 shrink-0 accent-primary"/></label><label className="mt-3 flex min-h-11 items-center justify-between gap-4 text-sm">Include personal notes<input type="checkbox" checked={notes} onChange={event => setNotes(event.target.checked)} className="h-4 w-4 shrink-0 accent-primary"/></label><button onClick={download} disabled={busy} className={`${button} mt-4 w-full bg-primary text-primary-foreground disabled:opacity-50`}>{busy ? "Generating…" : "Download PDF"}</button></div>}</div>
 }

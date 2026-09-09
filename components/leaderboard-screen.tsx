@@ -21,9 +21,9 @@ const ranges: Array<{ id: RankingTab; label: string; description: string }> = [
 ]
 
 const podium = {
-  1: { order: "order-2", height: "h-40 sm:h-48", avatar: "h-[86px] w-[86px] sm:h-24 sm:w-24", tone: "from-amber-300 via-yellow-400 to-amber-600", surface: "from-yellow-200 via-amber-300 to-amber-500", delay: "120ms" },
-  2: { order: "order-1", height: "h-28 sm:h-36", avatar: "h-[68px] w-[68px] sm:h-20 sm:w-20", tone: "from-slate-200 via-slate-300 to-slate-500", surface: "from-white via-slate-200 to-slate-400", delay: "40ms" },
-  3: { order: "order-3", height: "h-24 sm:h-32", avatar: "h-16 w-16 sm:h-[74px] sm:w-[74px]", tone: "from-orange-300 via-orange-400 to-orange-700", surface: "from-orange-200 via-orange-300 to-orange-500", delay: "200ms" },
+  1: { order: "order-2", height: "h-40 sm:h-48", avatar: "h-[98px] w-[98px] sm:h-28 sm:w-28", tone: "from-amber-300 via-yellow-400 to-amber-600", surface: "from-yellow-200 via-amber-300 to-amber-500", delay: "120ms" },
+  2: { order: "order-1", height: "h-28 sm:h-36", avatar: "h-[82px] w-[82px] sm:h-[92px] sm:w-[92px]", tone: "from-slate-200 via-slate-300 to-slate-500", surface: "from-white via-slate-200 to-slate-400", delay: "40ms" },
+  3: { order: "order-3", height: "h-24 sm:h-32", avatar: "h-[78px] w-[78px] sm:h-[86px] sm:w-[86px]", tone: "from-orange-300 via-orange-400 to-orange-700", surface: "from-orange-200 via-orange-300 to-orange-500", delay: "200ms" },
 } as const
 
 function formatNP(value: number) {
@@ -82,7 +82,7 @@ function Avatar({ entry, size, orbit = false, rank }: {
             ? <img src={avatar.imagePath} alt="" className="h-full w-full object-cover" />
             : (entry.name[0] ?? "?").toUpperCase()}
         </div>
-        {rank && <span className={"absolute bottom-0 left-1/2 z-20 flex h-6 min-w-6 -translate-x-1/2 items-center justify-center rounded-full border-2 px-1 text-[11px] font-black shadow-md " + medal}>{rank}</span>}
+        {rank && <span className={"absolute bottom-0 left-1/2 z-20 flex h-5 min-w-5 -translate-x-1/2 items-center justify-center rounded-full border px-1 text-[9px] font-black shadow-md " + medal}>{rank}</span>}
       </div>
     </div>
   )
@@ -127,7 +127,7 @@ function CompetitorRow({ entry, viewer, index, onSelect }: { entry: LeaderboardE
       wrapperProps={{ type: "button", onClick: onSelect, "aria-label": `Open ${entry.name}'s profile, rank ${entry.rank}${cosmeticLabel ? `, ${cosmeticLabel} highlight` : ""}`, style: { animationDelay: `${Math.min(index, 10) * 45}ms` }, onPointerEnter: () => setEngaged(true), onPointerLeave: () => setEngaged(false), onFocus: () => setEngaged(true), onBlur: () => setEngaged(false) }}
       className={"leaderboard-row flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-4 " + (viewer ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20" : "")}>
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-black tabular-nums text-muted-foreground ring-1 ring-border/70">{entry.rank}</span>
-      <Avatar entry={entry} size="h-14 w-14 sm:h-16 sm:w-16" />
+      <Avatar entry={entry} size="h-16 w-16 sm:h-[72px] sm:w-[72px]" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="truncate text-sm font-bold text-foreground sm:text-base">{entry.name}</span>
