@@ -127,6 +127,31 @@ type SessionAccount = {
   canAccessAdmin: boolean
 }
 
+type GuestSessionAccount = { uid: string; name: string; classLevel: string; expiresAt: string }
+
+function guestTokenExpiry(token: string | null): number | null {
+  if (!token) return null
+  try {
+    const encoded = token.slice(0, token.lastIndexOf("."))
+    const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/")
+    const normalized = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")
+    const payload = JSON.parse(atob(normalized)) as { exp?: unknown }
+    return typeof payload.exp === "number" ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
+function clearExpiredGuestStorage(uid: string) {
+  clearLocalLearnerState(uid)
+  try {
+    localStorage.removeItem(LS_GUEST_TOKEN)
+    localStorage.removeItem(`mednexus-pending-sync:${uid}`)
+    localStorage.removeItem(`mednexus-sync-version:${uid}`)
+    sessionStorage.clear()
+  } catch {}
+}
+
 async function getSessionAccount(): Promise<SessionAccount | null> {
   try {
     const res = await fetch("/api/auth/session", { signal: AbortSignal.timeout(6000) })
@@ -134,6 +159,23 @@ async function getSessionAccount(): Promise<SessionAccount | null> {
     return await res.json() as SessionAccount
   } catch {
     return null
+  }
+}
+
+async function validateGuestSession(token: string): Promise<
+  { state: "valid"; account: GuestSessionAccount } | { state: "expired" } | { state: "unavailable" }
+> {
+  try {
+    const response = await fetch("/api/auth/guest", {
+      headers: { "x-guest-token": token },
+      cache: "no-store",
+      signal: AbortSignal.timeout(6000),
+    })
+    if (response.status === 401) return { state: "expired" }
+    if (!response.ok) return { state: "unavailable" }
+    return { state: "valid", account: await response.json() as GuestSessionAccount }
+  } catch {
+    return { state: "unavailable" }
   }
 }
 
@@ -367,25 +409,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return
         }
 
+        const expiry = guestTokenExpiry(guestToken)
+        if (!guestToken || expiry === null || expiry <= Date.now()) {
+          clearExpiredGuestStorage(uid)
+          tokenRef.current = null
+          pendingMutations.current = []
+          setUser(null)
+          setProgress(EMPTY_PROGRESS)
+          setCloudEnabled(false)
+          setRequiresPasswordUpdate(false)
+          setAuthReady(true)
+          return
+        }
+
+        let guestName = name
+        let guestLevel = classLevel
+        if (navigator.onLine) {
+          const validation = await validateGuestSession(guestToken)
+          if (validation.state === "expired") {
+            clearExpiredGuestStorage(uid)
+            tokenRef.current = null
+            pendingMutations.current = []
+            setUser(null)
+            setProgress(EMPTY_PROGRESS)
+            setCloudEnabled(false)
+            setRequiresPasswordUpdate(false)
+            setAuthReady(true)
+            return
+          }
+          if (validation.state === "valid") {
+            guestName = validation.account.name
+            guestLevel = validation.account.classLevel
+            try {
+              localStorage.setItem(LS_NAME, guestName)
+              localStorage.setItem(LS_CLASS_LEVEL, guestLevel)
+            } catch {}
+          }
+        }
+
         const local = loadLocal(uid)
-        const appUser: AppUser = { uid, name, role: "guest", status: status ?? undefined, classLevel }
+        const appUser: AppUser = { uid, name: guestName, role: "guest", status: status ?? undefined, classLevel: guestLevel }
         setUser(appUser)
         setProgress(local)
         setRequiresPasswordUpdate(needsPwUpdate)
         setAuthReady(true)
-
-        const remote = await apiGet(tokenRef.current, storedSyncVersion(uid))
-        if (remote) {
-          syncVersionRef.current = remote.version
-          try { localStorage.setItem(syncVersionStorageKey(uid), String(remote.version)) } catch {}
-          setCloudEnabled(true)
-          if (remote.progress) {
-            const reconciled = applyPendingMutations(remote.progress, pendingMutations.current)
-            setProgress(reconciled)
-            saveLocal(uid, reconciled)
-          }
-          setUser({ uid, name: remote.name, role: "guest", classLevel })
-        }
+        setCloudEnabled(false)
       } else {
         setAuthReady(true)
       }
@@ -579,6 +647,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Hard redirect so all React state (including AdminContext) is fully torn down
     window.location.href = "/"
   }, [])
+
+  useEffect(() => {
+    if (user?.role !== "guest") return
+    const token = localStorage.getItem(LS_GUEST_TOKEN)
+    const expiresAt = guestTokenExpiry(token)
+    const expireGuest = () => {
+      clearExpiredGuestStorage(user.uid)
+      signOutUser()
+    }
+    if (!token || expiresAt === null || expiresAt <= Date.now()) {
+      expireGuest()
+      return
+    }
+
+    const verifyLiveGuest = async () => {
+      if (!navigator.onLine) return
+      const validation = await validateGuestSession(token)
+      if (validation.state === "expired") expireGuest()
+    }
+    const expiryTimer = window.setTimeout(expireGuest, Math.min(expiresAt - Date.now(), 2_147_483_647))
+    const validationTimer = window.setInterval(() => void verifyLiveGuest(), 5 * 60_000)
+    window.addEventListener("online", verifyLiveGuest)
+    window.addEventListener("focus", verifyLiveGuest)
+    return () => {
+      window.clearTimeout(expiryTimer)
+      window.clearInterval(validationTimer)
+      window.removeEventListener("online", verifyLiveGuest)
+      window.removeEventListener("focus", verifyLiveGuest)
+    }
+  }, [signOutUser, user])
 
   const updateName = useCallback(async (name: string) => {
     const trimmed = name.trim() || "Clinician"

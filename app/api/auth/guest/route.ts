@@ -15,12 +15,39 @@ import crypto from "crypto"
 import { createGuestToken } from "@/lib/guest-auth"
 import { isValidLevel } from "@/lib/levels"
 import { defaultPlatformSettings, getPlatformSettings } from "@/lib/platform-settings"
+import { requireAuthenticatedUser, unauthorized } from "@/lib/request-auth"
 
 async function getPool() {
   // Production uses explicit migrations and a restricted runtime role. Guest
   // signup must not attempt the full DDL bootstrap on every cold start.
   const { default: pool } = await import("@/lib/db")
   return pool
+}
+
+// Validates a stored guest credential against both its signed expiry and the
+// live database row. The client uses this before restoring a guest workspace.
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await requireAuthenticatedUser(req)
+    if (!auth?.isGuest) return unauthorized()
+    const pool = await getPool()
+    const result = await pool.query(
+      `SELECT uid, name, class_level, expires_at
+         FROM mednexus_guest_users
+        WHERE uid = $1 AND expires_at > NOW()`,
+      [auth.uid],
+    )
+    if (!result.rows[0]) return unauthorized()
+    return NextResponse.json({
+      uid: result.rows[0].uid,
+      name: result.rows[0].name,
+      classLevel: result.rows[0].class_level,
+      expiresAt: result.rows[0].expires_at,
+    })
+  } catch (error) {
+    console.error("[auth/guest GET]", error)
+    return NextResponse.json({ error: "Unable to validate guest session" }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
