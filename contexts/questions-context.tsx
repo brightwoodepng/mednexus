@@ -21,6 +21,7 @@ import {
 
 // Invalidate the local cache so modules.ts picks up fresh questions
 import { saveActiveQuestions } from "@/lib/custom-questions"
+import { deleteOfflinePack, listOfflinePacks, loadMcqPack, mcqPackId, saveMcqPack, type OfflinePack } from "@/lib/offline-storage"
 
 const QUESTION_PAGE_SIZE = 25
 const PAGE_CONCURRENCY = 4
@@ -53,6 +54,10 @@ interface QuestionsContextValue {
   loadFullQuestionBank: () => Promise<Question[]>
   loadGameQuestionPool: (filter: QuestionSetFilter, quantity: number) => Promise<GameQuestionBatch>
   loadQuestionsByIds: (questionIds: string[], gameOnly?: boolean) => Promise<Question[]>
+  offlinePacks: OfflinePack[]
+  offlineLoading: boolean
+  downloadModule: (module: string) => Promise<{ ok: boolean; error?: string }>
+  removeDownloadedModule: (module: string) => Promise<void>
   addQuestion: (q: Question) => Promise<void>
   updateQuestion: (q: Question) => Promise<void>
   deleteQuestion: (id: string) => Promise<void>
@@ -247,6 +252,8 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [gameCatalog, setGameCatalog] = useState<QuestionCatalogModule[]>([])
   const [gameCatalogLoading, setGameCatalogLoading] = useState(false)
+  const [offlinePacks, setOfflinePacks] = useState<OfflinePack[]>([])
+  const [offlineLoading, setOfflineLoading] = useState(false)
   const questionSetCache = useRef(new Map<string, Question[]>())
   const questionsRef = useRef(questions)
   questionsRef.current = questions
@@ -262,6 +269,13 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     catalogRequest.current?.abort()
     questionSetRequest.current?.abort()
   }, [])
+
+  const refreshOfflinePacks = useCallback(async () => {
+    if (!userId) { setOfflinePacks([]); return }
+    try { setOfflinePacks(await listOfflinePacks(userId)) } catch { setOfflinePacks([]) }
+  }, [userId])
+
+  useEffect(() => { void refreshOfflinePacks() }, [refreshOfflinePacks])
 
   // Sync to custom-questions cache so modules.ts picks up changes.
   // `alreadySaved` marks state changes this context has already persisted
@@ -407,15 +421,44 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     // Never substitute bundled demo content for an authentication race,
     // network error, or rejected request. The server remains responsible for
     // selecting its configured database/static source on successful requests.
-    const loaded = result.questions ?? questionsRef.current
-    if (result.questions !== null) persist(loaded, true)
-    if (result.questions !== null && cacheKey) questionSetCache.current.set(cacheKey, loaded)
+    let offlineQuestions: Question[] | null = null
+    if (result.questions === null && owner && filter.module) {
+      const pack = await loadMcqPack(owner, filter.module).catch(() => null)
+      offlineQuestions = pack?.questions ?? null
+    }
+    const loaded = result.questions ?? offlineQuestions ?? questionsRef.current
+    if (result.questions !== null || offlineQuestions !== null) persist(loaded, true)
+    if ((result.questions !== null || offlineQuestions !== null) && cacheKey) questionSetCache.current.set(cacheKey, loaded)
     if (result.questions !== null && !filter.module && !filter.discipline) setQuestionCount(loaded.length)
     if (result.updatedAt) setLastUpdated(new Date(result.updatedAt))
     setIsLoading(false)
     if (questionSetRequest.current === controller) questionSetRequest.current = null
     return loaded
   }, [userId])
+
+  const downloadModule = useCallback(async (module: string) => {
+    if (!userId) return { ok: false, error: "Sign in before downloading a module." }
+    if (typeof navigator !== "undefined" && !navigator.onLine) return { ok: false, error: "Connect to the internet to download this module." }
+    setOfflineLoading(true)
+    try {
+      const controller = new AbortController()
+      const result = await fetchFromDb({ module }, controller.signal)
+      if (!result.questions) return { ok: false, error: "The module could not be downloaded." }
+      await saveMcqPack(userId, module, result.questions, result.updatedAt)
+      questionSetCache.current.set(`${userId}\u0000${module}\u0000*\u0000*`, result.questions)
+      await refreshOfflinePacks()
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : "The module could not be downloaded." }
+    } finally { setOfflineLoading(false) }
+  }, [refreshOfflinePacks, userId])
+
+  const removeDownloadedModule = useCallback(async (module: string) => {
+    if (!userId) return
+    await deleteOfflinePack(mcqPackId(userId, module))
+    questionSetCache.current.delete(`${userId}\u0000${module}\u0000*\u0000*`)
+    await refreshOfflinePacks()
+  }, [refreshOfflinePacks, userId])
 
   const loadFullQuestionBank = useCallback(async () => {
     questionSetRequest.current?.abort()
@@ -555,6 +598,10 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
         loadFullQuestionBank,
         loadGameQuestionPool,
         loadQuestionsByIds,
+        offlinePacks,
+        offlineLoading,
+        downloadModule,
+        removeDownloadedModule,
         addQuestion,
         updateQuestion,
         deleteQuestion,

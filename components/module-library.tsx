@@ -303,14 +303,33 @@ function ModuleGrid({
   onToggleFav:(mod: string) => void
   catalog: QuestionCatalogModule[]
 }) {
+  const { offlinePacks, offlineLoading, downloadModule, removeDownloadedModule } = useQuestions()
+  const [activeDownload, setActiveDownload] = useState<string | null>(null)
+  const [downloadMessage, setDownloadMessage] = useState<string | null>(null)
+
+  async function toggleDownload(module: string, downloaded: boolean) {
+    setActiveDownload(module); setDownloadMessage(null)
+    if (downloaded) {
+      await removeDownloadedModule(module)
+      setDownloadMessage(`${module} removed from offline downloads.`)
+    } else {
+      const result = await downloadModule(module)
+      setDownloadMessage(result.ok ? `${module} is ready offline.` : (result.error ?? "Download failed."))
+    }
+    setActiveDownload(null)
+  }
+
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+    <div>
+      {downloadMessage && <p role="status" className="mb-4 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">{downloadMessage}</p>}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
       {modules.map((mod) => {
         const palette    = CARD_PALETTES[allModules.indexOf(mod) % CARD_PALETTES.length]
         const catalogModule = catalog.find((entry) => entry.name === mod)!
         const total = catalogModule.count
         const disciplines = catalogModule.disciplines
         const isFav      = favorites.includes(mod)
+        const downloaded = offlinePacks.some(pack => pack.title === mod)
 
         return (
           <div
@@ -354,10 +373,20 @@ function ModuleGrid({
                 Open Module
                 <ArrowRightIcon size={13} className="transition-transform group-hover:translate-x-0.5" />
               </button>
+              <button
+                type="button"
+                disabled={offlineLoading && activeDownload === mod}
+                onClick={() => void toggleDownload(mod, downloaded)}
+                className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-50 ${downloaded ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-border text-muted-foreground hover:bg-muted"}`}
+              >
+                <DownloadIcon size={13} />
+                {activeDownload === mod ? "Downloading…" : downloaded ? "Available offline · Remove" : "Download for offline"}
+              </button>
             </div>
           </div>
         )
       })}
+      </div>
     </div>
   )
 }

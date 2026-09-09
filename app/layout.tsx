@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description:
     'MedNexus is a premium clinical education Q-Bank for medical students and clinicians. Practice high-yield vignettes in tutor or timed exam mode.',
   generator: 'v0.app',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'MedNexus', statusBarStyle: 'black-translucent' },
   icons: {
     icon: [
       {

@@ -15,6 +15,7 @@ import { loadTheoryDashboard, type TheoryDashboardData } from "@/lib/theory-dash
 import { ACTIVE_THEORY_QUESTION_KEY, clearPersistedTheoryQuestion } from "@/lib/theory-navigation"
 import { theorySectionKeys } from "@/lib/theory-format"
 import { useQuestionKeyboardNavigation } from "@/hooks/use-question-keyboard-navigation"
+import { offlineTheoryFetch } from "@/lib/offline-storage"
 
 type View = "Dashboard" | "Browse Questions" | "Bookmarks" | "My Notes" | "Revision Queue" | "Progress" | "Search"
 type CatalogData = {
@@ -49,10 +50,7 @@ type TheoryAiStatus = {
 const card = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
 const button = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition"
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...init })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(data.error ?? "Something went wrong.")
-  return data as T
+  return offlineTheoryFetch<T>(url, init)
 }
 
 async function mutate(payload: Record<string, unknown>) {
@@ -502,6 +500,22 @@ function Catalog({ data, collectionId, groupId, onCollection, onGroup, onBack, o
 }
 
 function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: SetData; registered: boolean; onBack: () => void; onOpen: (id: string) => void; onSession: (ids: string[]) => void }) {
+  const [downloading, setDownloading] = useState(false)
+  const [downloaded, setDownloaded] = useState(false)
+  const [downloadMessage, setDownloadMessage] = useState("")
+  const download = async () => {
+    if (!navigator.onLine) { setDownloadMessage("Connect to the internet to download this set."); return }
+    setDownloading(true); setDownloadMessage("")
+    try {
+      const ids = data.questions.map(question => question.id)
+      for (let offset = 0; offset < ids.length; offset += 4) {
+        await Promise.all(ids.slice(offset, offset + 4).map(id => api<TheoryQuestionDetail>(`/api/theory?mode=question&id=${encodeURIComponent(id)}`).then(question => theoryQuestionCache.set(id, question))))
+      }
+      setDownloaded(true)
+      setDownloadMessage(`${data.setLabel} is ready for offline study.`)
+    } catch (cause) { setDownloadMessage(cause instanceof Error ? cause.message : "The set could not be downloaded.") }
+    finally { setDownloading(false) }
+  }
   const start = async () => {
     if (registered) {
       try {
@@ -521,9 +535,10 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
           <h1 className="truncate text-lg font-bold tracking-tight sm:text-xl">{data.setLabel}</h1>
           <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground"><span>{data.total} questions</span><span>{data.completed} completed</span><span className="font-semibold text-primary">{data.progressPercent}%</span></div>
         </div>
-        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><ExportButton source="set" sourceId={data.id}/></div>
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><button type="button" disabled={downloading || downloaded} onClick={() => void download()} className={`${button} border border-border bg-card text-foreground disabled:opacity-60`}><Download size={16}/>{downloading ? "Downloading…" : downloaded ? "Downloaded" : "Download"}</button><ExportButton source="set" sourceId={data.id}/></div>
       </div>
       <div className="mt-3"><ProgressBar value={data.progressPercent}/></div>
+      {downloadMessage && <p role="status" className="mt-3 text-xs font-medium text-muted-foreground">{downloadMessage}</p>}
     </section>
     <section aria-labelledby="set-questions-heading">
       <div className="mb-3"><h2 id="set-questions-heading" className="text-lg font-bold">Questions</h2><p className="text-sm text-muted-foreground">Choose a question to review or practise.</p></div>

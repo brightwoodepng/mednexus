@@ -8,8 +8,9 @@ import { StudyModeProvider } from "@/contexts/study-mode-context"
 import { EconomyProvider } from "@/contexts/economy-context"
 import { ThematicCanvas } from "@/components/thematic-canvas"
 import { AuthenticatedApplicationShell } from "@/components/authenticated-application-shell"
+import { OfflineStatus } from "@/components/offline-status"
 
 /** Shared provider tree for every authenticated workspace route. */
 export function WorkspaceProviders({ children }: { children: ReactNode }) {
-  return <ThemeProvider><ThematicCanvas /><AppProvider><QuestionsProvider><StudyModeProvider><EconomyProvider><AuthenticatedApplicationShell>{children}</AuthenticatedApplicationShell></EconomyProvider></StudyModeProvider></QuestionsProvider></AppProvider></ThemeProvider>
+  return <ThemeProvider><ThematicCanvas /><OfflineStatus /><AppProvider><QuestionsProvider><StudyModeProvider><EconomyProvider><AuthenticatedApplicationShell>{children}</AuthenticatedApplicationShell></EconomyProvider></StudyModeProvider></QuestionsProvider></AppProvider></ThemeProvider>
 }

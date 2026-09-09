@@ -1,6 +1,6 @@
 "use client"
 
-import { type ReactNode } from "react"
+import { type MouseEventHandler, type ReactNode } from "react"
 import Link from "next/link"
 import { ChevronLeftIcon, XIcon } from "@/components/icons"
 
@@ -33,7 +33,7 @@ export function SidebarNavButton({ active, onClick, icon, label, badge, trailing
 }
 
 /** A navigational counterpart to SidebarNavButton for route-based workspaces. */
-export function SidebarNavLink({ active, href, onClick, icon, label, trailing, prefetch = true }: { active: boolean; href: string; onClick?: () => void; icon: ReactNode; label: string; trailing?: ReactNode; prefetch?: boolean }) {
+export function SidebarNavLink({ active, href, onClick, icon, label, trailing, prefetch = true }: { active: boolean; href: string; onClick?: MouseEventHandler<HTMLAnchorElement>; icon: ReactNode; label: string; trailing?: ReactNode; prefetch?: boolean }) {
   const stateClass = active
     ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border"
     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"

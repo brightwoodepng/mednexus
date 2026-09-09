@@ -63,6 +63,8 @@ interface ActiveQuiz {
   session: QuizSession
 }
 
+const ONLINE_ONLY_SCREENS = new Set<Screen>(["live-assessments", "game", "store", "store-supply", "store-cosmetics", "store-vault", "leaderboard"])
+
 // ── Credits Modal ─────────────────────────────────────────────────────────────
 function CreditsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null
@@ -478,6 +480,7 @@ export function MedNexusApp() {
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
   const [resumeCandidate, setResumeCandidate] = useState<ActiveQuiz | null>(null)
   const [discardQuizOpen, setDiscardQuizOpen] = useState(false)
+  const [offlineBlocked, setOfflineBlocked] = useState(false)
   const restoredForUserRef = useRef<string | null>(null)
   const [modulesInitialModule, setModulesInitialModule] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<{
@@ -550,6 +553,10 @@ export function MedNexusApp() {
   }, [activeStudyHub, screen])
 
   const handleScreenNavigation = useCallback((nextScreen: Screen) => {
+    if (typeof navigator !== "undefined" && !navigator.onLine && ONLINE_ONLY_SCREENS.has(nextScreen)) {
+      setOfflineBlocked(true)
+      return
+    }
     if (activeStudyHub === "theory-vault") {
       clearPersistedTheoryQuestion()
       setTheoryQuestionOpen(false)
@@ -760,6 +767,7 @@ export function MedNexusApp() {
 
   return (
     <>
+    {offlineBlocked && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/55 p-4"><div role="dialog" aria-modal="true" aria-labelledby="online-required-title" className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 text-center shadow-2xl"><ZapIcon size={28} className="mx-auto text-amber-500"/><h2 id="online-required-title" className="mt-3 text-lg font-bold">Internet connection required</h2><p className="mt-2 text-sm text-muted-foreground">Live assessments, multiplayer, rankings, and the Nexus Store are available when you are online. Your downloaded MCQs and Theory sets still work offline.</p><button type="button" onClick={() => setOfflineBlocked(false)} className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Continue offline</button></div></div>}
     {resumeCandidate && <QuizSessionChoice title={resumeCandidate.mode === "exam" && Date.now() >= resumeCandidate.session.startedAt + resumeCandidate.session.durationSeconds * 1000 ? "Exam time has expired" : "Continue your saved attempt?"} description={resumeCandidate.mode === "exam" ? "Exam time kept running while you were away. Resume to submit the remaining answers, or discard this attempt." : "Trial Mode is untimed. Your question order, answers, and review state are ready."} primaryLabel="Resume" secondaryLabel="Discard" onPrimary={() => { setActiveQuiz(resumeCandidate); setResumeCandidate(null); setScreen("quiz") }} onSecondary={() => { clearQuizSession(user.uid); setResumeCandidate(null) }} />}
     <TutorialProvider activeHub={activeStudyHub} currentScreen={safeScreen} welcomeOpen={showWelcome} onNavigate={handleScreenNavigation} blocked={Boolean(pendingQuiz || activeQuiz || isExamActive || theoryQuestionOpen || themeOpen || importerOpen || creditsOpen || loadActiveRoomSession(user.uid) || loadSoloGameSession(user.uid))}>
     <LearnerWorkspaceShell

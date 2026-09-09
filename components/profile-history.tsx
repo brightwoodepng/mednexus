@@ -20,6 +20,7 @@ import type { StudyHubId } from "@/components/study-hub-switcher"
 import type { Screen } from "@/lib/view"
 import { CosmeticFrame, CosmeticTitle } from "@/components/cosmetics"
 import { TutorialSettings } from "@/components/onboarding/TutorialSettings"
+import { OfflineDownloads } from "@/components/offline-downloads"
 
 // ── Exam Scores ──────────────────────────────────────────────────────────────
 
@@ -583,7 +584,7 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
       {activeTab === "mcq" && <div className="space-y-6"><ModuleReviewSection /><ExamScores scores={examScores} /></div>}
       {activeTab === "theory" && <TheoryProfilePanel onNavigate={onNavigate} />}
       {activeTab === "cosmetics" && <CosmeticLoadout />}
-      {activeTab === "settings" && <div className="grid gap-4 lg:grid-cols-2"><PrivacySettings /><TutorialSettings /></div>}
+      {activeTab === "settings" && <div className="grid gap-4 lg:grid-cols-2"><PrivacySettings /><TutorialSettings /><OfflineDownloads /></div>}
     </div>
   )
 }

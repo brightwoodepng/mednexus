@@ -204,6 +204,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const tokenRef = useRef<AuthHeader>(null)
   const syncVersionRef = useRef(0)
   const pendingMutations = useRef<SyncMutation[]>([])
+  const pendingSyncStorageKey = (uid: string) => `mednexus-pending-sync:${uid}`
+  const persistPendingMutations = () => {
+    const uid = userRef.current?.uid
+    if (!uid) return
+    try { localStorage.setItem(pendingSyncStorageKey(uid), JSON.stringify(pendingMutations.current)) } catch {}
+  }
+  const restorePendingMutations = (uid: string) => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(pendingSyncStorageKey(uid)) ?? "[]")
+      pendingMutations.current = Array.isArray(stored) ? stored : []
+    } catch { pendingMutations.current = [] }
+  }
   const syncVersionStorageKey = (uid: string) => `mednexus-sync-version:${uid}`
   const storedSyncVersion = (uid: string) => {
     const raw = localStorage.getItem(syncVersionStorageKey(uid))
@@ -214,9 +226,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const scheduleSync = useCallback((name: string, mutation: SyncMutation) => {
     pendingMutations.current.push(mutation)
+    persistPendingMutations()
     if (syncTimer.current) clearTimeout(syncTimer.current)
     syncTimer.current = setTimeout(async () => {
       const queued = pendingMutations.current.splice(0)
+      persistPendingMutations()
       const combined = queued.reduce<SyncMutation>((result, item) => ({
         patch: { ...result.patch, ...item.patch },
         increments: {
@@ -249,6 +263,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else {
         setCloudEnabled(false)
         pendingMutations.current.unshift(...queued)
+        persistPendingMutations()
       }
     }, 1500)
   }, [])
@@ -262,6 +277,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const needsPwUpdate = typeof window !== "undefined" ? localStorage.getItem(LS_REQUIRES_PW_UPDATE) === "true" : false
       const classLevel = typeof window !== "undefined" ? localStorage.getItem(LS_CLASS_LEVEL) ?? undefined : undefined
       if (uid) {
+        restorePendingMutations(uid)
         // Restore auth header from localStorage
         const guestToken = localStorage.getItem(LS_GUEST_TOKEN)
         const userToken = localStorage.getItem(LS_USER_TOKEN)
@@ -272,6 +288,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
 
         if (role === "user") {
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            const local = loadLocal(uid)
+            setUser({ uid, name, role: "user", sessionVerified: false, status, classLevel, level: classLevel })
+            setProgress(local)
+            setRequiresPasswordUpdate(needsPwUpdate)
+            setCloudEnabled(false)
+            setAuthReady(true)
+            return
+          }
           // A registered account is restored only from the HttpOnly cookie.
           // Locally persisted identity and role data are never authoritative.
           const account = await getSessionAccount()
@@ -340,6 +365,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     init()
   }, [])
+
+  useEffect(() => {
+    if (authReady && user && navigator.onLine && pendingMutations.current.length) scheduleSync(user.name, {})
+  }, [authReady, scheduleSync, user])
+
+  useEffect(() => {
+    const retryPendingSync = () => {
+      const current = userRef.current
+      if (current && pendingMutations.current.length) scheduleSync(current.name, {})
+    }
+    window.addEventListener("online", retryPendingSync)
+    return () => window.removeEventListener("online", retryPendingSync)
+  }, [scheduleSync])
 
   const enterApp = useCallback(async (name: string, classLevel: string) => {
     const trimmed = name.trim() || "Clinician"

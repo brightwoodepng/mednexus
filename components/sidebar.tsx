@@ -73,6 +73,14 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
     item.id !== "live-assessments" || hasLiveAssessments
   ), [activeStudyHub, hasLiveAssessments, hasWeakAreas])
   const nav = (next: Screen) => { onNavigate(next); onCloseMobile() }
+  const openGroupStudy = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      event.preventDefault()
+      window.alert("Group Study requires an internet connection. Downloaded MCQs and Theory sets remain available offline.")
+      return
+    }
+    onCloseMobile()
+  }
   const selectStudyHub = (hub: StudyHubId) => {
     onSelectStudyHub(hub)
     if (mobileOpen) onCloseMobile()
@@ -139,7 +147,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
               /></div>
             )
           })}
-          {(activeStudyHub === "mcq-qbank" || activeStudyHub === "theory-vault") && <SidebarNavLink active={groupStudyActive} href="/group-study" onClick={onCloseMobile} icon={<Users size={17} className="text-primary" />} label="Group Study" />}
+          {(activeStudyHub === "mcq-qbank" || activeStudyHub === "theory-vault") && <SidebarNavLink active={groupStudyActive} href="/group-study" onClick={openGroupStudy} icon={<Users size={17} className="text-primary" />} label="Group Study" />}
         </div>
 
         <div className="mt-4 border-t border-sidebar-border pt-4 md:hidden">
@@ -218,7 +226,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
           </IconButton>
         )
       })}
-      {(activeStudyHub === "mcq-qbank" || activeStudyHub === "theory-vault") && <Link href="/group-study" onClick={onCloseMobile} title="Group Study" aria-label="Group Study" aria-current={groupStudyActive ? "page" : undefined} className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${groupStudyActive ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}><Users size={18} className="text-primary" /></Link>}
+      {(activeStudyHub === "mcq-qbank" || activeStudyHub === "theory-vault") && <Link href="/group-study" onClick={openGroupStudy} title="Group Study" aria-label="Group Study" aria-current={groupStudyActive ? "page" : undefined} className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${groupStudyActive ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}><Users size={18} className="text-primary" /></Link>}
       {/* User avatar at bottom of compact rail */}
       <div className="mt-auto flex flex-col items-center gap-2 pb-1">
         <div className="h-px w-6 bg-sidebar-border/60" />
