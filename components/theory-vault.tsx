@@ -528,16 +528,16 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
   return <div className="space-y-5">
     <button onClick={onBack} className="flex min-h-11 items-center gap-1 text-sm font-bold text-primary"><ArrowLeft size={16}/> Back to sets</button>
     {!registered && <SignInNotice/>}
-    <section aria-label="Set study summary" className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <section aria-label="Set study summary" className="border-b border-border pb-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-primary">{data.collectionTitle}</p>
-          <h1 className="truncate text-lg font-bold tracking-tight sm:text-xl">{data.setLabel}</h1>
-          <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground"><span>{data.total} questions</span><span>{data.completed} completed</span><span className="font-semibold text-primary">{data.progressPercent}%</span></div>
+          <h1 className="mt-1 text-lg font-bold tracking-tight sm:text-xl">{data.setLabel}</h1>
+          <div className="mt-2 grid grid-cols-3 divide-x divide-border rounded-xl bg-muted/50 py-2 text-center text-xs"><span><b className="block text-sm text-foreground">{data.total}</b>Questions</span><span><b className="block text-sm text-foreground">{data.completed}</b>Completed</span><span><b className="block text-sm text-primary">{data.progressPercent}%</b>Progress</span></div>
         </div>
-        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex"><button onClick={start} className={`${button} w-full bg-primary text-primary-foreground sm:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><button type="button" disabled={downloading || downloaded} onClick={() => void download()} className={`${button} border border-border bg-card text-foreground disabled:opacity-60`}><Download size={16}/>{downloading ? "Downloading…" : downloaded ? "Downloaded" : "Download"}</button><ExportButton source="set" sourceId={data.id}/></div>
+        <div className="grid shrink-0 grid-cols-2 gap-2 md:flex"><button onClick={start} className={`${button} col-span-2 w-full bg-primary text-primary-foreground md:col-span-1 md:w-auto`}>{data.completed ? "Continue Set" : "Start Set"}</button><button type="button" disabled={downloading || downloaded} onClick={() => void download()} className={`${button} border border-border bg-card text-foreground disabled:opacity-60`}><Download size={16}/>{downloading ? "Downloading…" : downloaded ? "Downloaded" : "Download"}</button><ExportButton source="set" sourceId={data.id}/></div>
       </div>
-      <div className="mt-3"><ProgressBar value={data.progressPercent}/></div>
+      <div className="mt-4"><ProgressBar value={data.progressPercent}/></div>
       {downloadMessage && <p role="status" className="mt-3 text-xs font-medium text-muted-foreground">{downloadMessage}</p>}
     </section>
     <section aria-labelledby="set-questions-heading">
@@ -753,7 +753,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, mode, onMod
       {/* ── Top nav bar ── */}
       <div className="sticky top-0 z-30 -mx-3 flex w-[calc(100%+1.5rem)] items-center gap-2 overflow-x-auto border-b border-border/70 bg-background/95 px-3 pb-3 pt-2 shadow-sm backdrop-blur-md [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:static md:mx-0 md:w-full md:overflow-visible md:bg-transparent md:px-0 md:pb-4 md:pt-0 md:shadow-none md:backdrop-blur-none">
         <button onClick={() => onBack(question.setId)} aria-label="Back to set" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted"><ArrowLeft size={18}/></button>
-        <div className="flex h-11 shrink-0 items-center rounded-xl border border-border bg-card px-3 md:min-w-0 md:flex-1 md:border-0 md:bg-transparent md:px-0"><div className="md:hidden"><p className="whitespace-nowrap text-sm font-bold">Question {question.position} of {question.setTotal}</p><p className="max-w-32 truncate text-[11px] text-muted-foreground">{question.setLabel}</p></div><div className="hidden min-w-0 md:block"><p className="truncate text-sm font-semibold">{question.collectionTitle} <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{question.setLabel} · Question {question.position} of {question.setTotal}</p></div></div>
+        <div className="hidden min-w-0 flex-1 md:block"><p className="truncate text-sm font-semibold">{question.collectionTitle} <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{question.setLabel} · Question {question.position} of {question.setTotal}</p></div>
         <div className="flex min-w-max items-center gap-2 md:min-w-0">
           <button
             onClick={toggleBookmark}
@@ -797,7 +797,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, mode, onMod
 
       {/* Focused question prompt */}
       <article className="min-w-0 overflow-hidden rounded-[1.25rem] border border-border bg-card p-4 shadow-sm sm:p-7">
-          <div className={`grid min-w-0 items-start gap-4 sm:gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-sm font-bold leading-7 text-primary"><span className="shrink-0">Question</span><span aria-hidden className="h-4 w-px shrink-0 bg-primary/40"/><h1 className="min-w-0 truncate font-bold text-primary" title={question.title || "Theory question"}>{question.title || "Theory question"}</h1></div><TheoryMarkdown children={question.prompt} className="mt-4 text-foreground/85" linkedSectionKeys={answerLinksEnabled ? answerSectionKeys : []} onSectionSelect={answerLinksEnabled ? jumpToModelAnswer : undefined}/></div>{question.media.length > 0 && <div className="min-w-0 lg:pt-2"><TheoryQuestionMedia media={question.media}/></div>}</div>
+          <div className={`grid min-w-0 items-start gap-4 sm:gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-sm font-bold leading-7 text-primary"><span className="hidden shrink-0 md:inline">Question</span><span aria-hidden className="hidden h-4 w-px shrink-0 bg-primary/40 md:block"/><h1 className="min-w-0 truncate font-bold text-primary" title={question.title || "Theory question"}>{question.title || "Theory question"}</h1></div><TheoryMarkdown children={question.prompt} className="mt-4 text-foreground/85" linkedSectionKeys={answerLinksEnabled ? answerSectionKeys : []} onSectionSelect={answerLinksEnabled ? jumpToModelAnswer : undefined}/></div>{question.media.length > 0 && <div className="min-w-0 lg:pt-2"><TheoryQuestionMedia media={question.media}/></div>}</div>
       </article>
 
       {/* ── Review mode ── */}
@@ -886,23 +886,23 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, mode, onMod
         </button>
       </div>
       {/* Compact study navigation occupies the safe-area edge while global Theory navigation is hidden. */}
-      <div className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur-md md:hidden">
+      <div className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-40 grid grid-cols-[minmax(52px,0.8fr)_auto_minmax(52px,0.8fr)] items-center gap-1.5 rounded-2xl border border-border bg-background/95 p-2 shadow-xl backdrop-blur-md md:hidden">
         <button
           type="button"
           onClick={() => question.previousId && onMove(question.previousId)}
           disabled={!question.previousId}
-          className={`${button} min-w-0 bg-primary px-2 text-primary-foreground disabled:opacity-40`}
+          className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl bg-primary px-1.5 text-xs font-bold text-primary-foreground transition disabled:opacity-40"
         >
-          <ArrowLeft size={15}/> <span className="hidden min-[350px]:inline">Previous</span>
+          <ArrowLeft size={14}/> <span>Prev</span>
         </button>
-        <span className="whitespace-nowrap px-1 text-[11px] font-bold text-muted-foreground">{question.position} / {question.setTotal}</span>
+        <span className="whitespace-nowrap rounded-full bg-muted px-2.5 py-1 text-xs font-black tabular-nums text-foreground">{question.position} / {question.setTotal}</span>
         <button
           type="button"
           onClick={() => question.nextId ? onMove(question.nextId) : onFinish(question.setId)}
-          className={`${button} min-w-0 bg-primary px-2 text-primary-foreground`}
+          className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl bg-primary px-1.5 text-xs font-bold text-primary-foreground transition"
         >
-          <span className="hidden min-[350px]:inline">{question.nextId ? "Next" : "Finish"}</span>
-          {question.nextId ? <ArrowRight size={15}/> : <CheckCircle2 size={15}/>}
+          <span>{question.nextId ? "Next" : "Finish"}</span>
+          {question.nextId ? <ArrowRight size={14}/> : <CheckCircle2 size={14}/>}
         </button>
       </div>
     </div>

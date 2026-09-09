@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   TITLE_LABELS,
   STORE_ITEMS,
@@ -46,6 +46,8 @@ function formatNP(n: number): string {
 
 export function PublicProfileModal({ entry, npLabel = "Lifetime XP", onClose }: PublicProfileModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
+  const [ownedIds, setOwnedIds] = useState<string[]>([])
+  const [cosmeticsLoading, setCosmeticsLoading] = useState(true)
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
@@ -53,8 +55,20 @@ export function PublicProfileModal({ entry, npLabel = "Lifetime XP", onClose }: 
     return () => window.removeEventListener("keydown", handleKey)
   }, [onClose])
 
+  useEffect(() => {
+    let active = true
+    setCosmeticsLoading(true)
+    fetch(`/api/leaderboard/profile/${encodeURIComponent(entry.uid)}`, { cache: "no-store" })
+      .then(response => response.ok ? response.json() : { ownedCosmetics: [] })
+      .then((body: { ownedCosmetics?: string[] }) => { if (active) setOwnedIds(body.ownedCosmetics ?? []) })
+      .catch(() => { if (active) setOwnedIds([]) })
+      .finally(() => { if (active) setCosmeticsLoading(false) })
+    return () => { active = false }
+  }, [entry.uid])
+
   const avatarItem   = entry.equippedAvatar ? STORE_ITEMS.find(i => i.id === entry.equippedAvatar) : null
   const titleLabel   = entry.equippedTitle  ? (TITLE_LABELS[entry.equippedTitle] ?? null) : null
+  const ownedCosmetics = useMemo(() => ownedIds.map(id => STORE_ITEMS.find(item => item.id === id)).filter((item): item is NonNullable<typeof item> => Boolean(item)), [ownedIds])
 
   const tierName = [...XP_CONFIG.clinicalRanks].reverse().find(rank => (entry.rankPoints ?? 0) >= rank.minimumXP)?.name ?? XP_CONFIG.clinicalRanks[0].name
 
@@ -63,14 +77,14 @@ export function PublicProfileModal({ entry, npLabel = "Lifetime XP", onClose }: 
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
       onClick={e => { if (e.target === overlayRef.current) onClose() }}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Card */}
-      <div className="relative z-10 w-full max-w-sm rounded-3xl border border-border bg-card shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
+      <div role="dialog" aria-modal="true" aria-label={`${entry.name}'s profile`} className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-sm overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl animate-in zoom-in-95 duration-200">
         {/* Header gradient band */}
         <div className="relative bg-gradient-to-br from-primary/80 to-primary px-6 pt-8 pb-16 text-primary-foreground">
           <button
@@ -150,6 +164,16 @@ export function PublicProfileModal({ entry, npLabel = "Lifetime XP", onClose }: 
               </span>
             )}
           </div>
+
+          <section className="border-t border-border pt-4 text-left" aria-label="Owned cosmetics">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-foreground">Cosmetics owned</h3>
+              {!cosmeticsLoading && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">{ownedCosmetics.length}</span>}
+            </div>
+            {cosmeticsLoading ? <div className="mt-3 grid grid-cols-2 gap-2"><span className="h-12 animate-pulse rounded-xl bg-muted"/><span className="h-12 animate-pulse rounded-xl bg-muted"/></div>
+              : ownedCosmetics.length ? <div className="mt-3 grid grid-cols-2 gap-2">{ownedCosmetics.map(item => <div key={item.id} className="min-w-0 rounded-xl border border-border bg-muted/40 px-3 py-2"><p className="truncate text-xs font-bold text-foreground">{item.name}</p><p className="mt-0.5 text-[10px] capitalize text-muted-foreground">{item.cosmeticType}</p></div>)}</div>
+              : <p className="mt-2 text-xs text-muted-foreground">No purchased cosmetics yet.</p>}
+          </section>
         </div>
       </div>
     </div>

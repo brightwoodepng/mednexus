@@ -168,6 +168,25 @@ type SyncMutation = {
   deleteHistory?: { mode: "trial" | "exam"; questionIds: string[] }
 }
 
+function applyPendingMutations(remote: UserProgress, mutations: SyncMutation[]): UserProgress {
+  return mutations.reduce((current, mutation) => {
+    const removed = mutation.deleteHistory
+      ? new Set(mutation.deleteHistory.questionIds)
+      : null
+    return {
+      ...current,
+      ...mutation.patch,
+      totalAnswered: current.totalAnswered + (mutation.increments?.totalAnswered ?? 0),
+      totalCorrect: current.totalCorrect + (mutation.increments?.totalCorrect ?? 0),
+      history: [
+        ...(mutation.events?.history ?? []),
+        ...current.history.filter(item => !removed || item.mode !== mutation.deleteHistory?.mode || !removed.has(item.questionId)),
+      ],
+      examScores: [...(mutation.events?.examScores ?? []), ...current.examScores],
+    }
+  }, remote)
+}
+
 type SyncResult = { ok: boolean; version?: number; conflict?: boolean }
 
 async function apiPost(name: string, mutation: SyncMutation, baseVersion: number, auth: AuthHeader): Promise<SyncResult> {
@@ -338,7 +357,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             syncVersionRef.current = remote.version
             try { localStorage.setItem(syncVersionStorageKey(account.uid), String(remote.version)) } catch {}
             setCloudEnabled(true)
-            if (remote.progress) setProgress(remote.progress)
+            if (remote.progress) {
+              const reconciled = applyPendingMutations(remote.progress, pendingMutations.current)
+              setProgress(reconciled)
+              saveLocal(account.uid, reconciled)
+            }
             setUser((current) => current ? { ...current, name: remote.name } : current)
           }
           return
@@ -356,7 +379,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           syncVersionRef.current = remote.version
           try { localStorage.setItem(syncVersionStorageKey(uid), String(remote.version)) } catch {}
           setCloudEnabled(true)
-          if (remote.progress) setProgress(remote.progress)
+          if (remote.progress) {
+            const reconciled = applyPendingMutations(remote.progress, pendingMutations.current)
+            setProgress(reconciled)
+            saveLocal(uid, reconciled)
+          }
           setUser({ uid, name: remote.name, role: "guest", classLevel })
         }
       } else {
@@ -479,7 +506,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         syncVersionRef.current = remote.version
         try { localStorage.setItem(syncVersionStorageKey(accountUid), String(remote.version)) } catch {}
         setCloudEnabled(true)
-        if (remote.progress) setProgress(remote.progress)
+        if (remote.progress) {
+          const reconciled = applyPendingMutations(remote.progress, pendingMutations.current)
+          setProgress(reconciled)
+          saveLocal(accountUid, reconciled)
+        }
       }
 
       return { ok: true }

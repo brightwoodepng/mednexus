@@ -29,6 +29,8 @@ describe("MCQ leaderboard redesign", () => {
     expect(api).toContain("r.is_private = FALSE")
     expect(api).toContain("r.status = 'approved'")
     expect(api).not.toContain("entries.length + 1")
+    expect(api).toContain("data.entries.filter((entry) => entry.uid !== viewerUid)")
+    expect(api).not.toContain("entries: data.viewerEntry ? [data.viewerEntry] : []")
   })
 
   it("keeps profile interactions and routes the viewer CTA to modules", async () => {
@@ -36,6 +38,22 @@ describe("MCQ leaderboard redesign", () => {
     expect(component).toContain("<PublicProfileModal")
     expect(component).toContain('onNavigate?.("modules")')
     expect(navigation).toContain("<LeaderboardScreen onNavigate={handleScreenNavigation} />")
+  })
+
+  it("centers mobile public profiles and shows purchased cosmetics", async () => {
+    const profile = await readFile(new URL("../../components/public-profile-modal.tsx", import.meta.url), "utf8")
+    const profileApi = await readFile(new URL("../../app/api/leaderboard/profile/[uid]/route.ts", import.meta.url), "utf8")
+    expect(profile).toContain("flex items-center justify-center")
+    expect(profile).toContain("max-h-[calc(100dvh-1.5rem)]")
+    expect(profile).toContain("Cosmetics owned")
+    expect(profile).toContain("/api/leaderboard/profile/")
+    expect(profileApi).toContain("mednexus_user_inventory")
+    expect(profileApi).toContain("i.quantity > 0")
+  })
+
+  it("uses larger avatars below the podium", async () => {
+    const component = await readFile(componentPath, "utf8")
+    expect(component).toContain('size="h-14 w-14 sm:h-16 sm:w-16"')
   })
 
   it("uses tapered podiums, framed rank badges, and layered reduced-motion-safe decoration", async () => {

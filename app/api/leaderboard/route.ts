@@ -331,23 +331,22 @@ export async function GET(req: NextRequest) {
         ? await seasonLeaderboard(viewerUid, season)
         : await allTimeLeaderboard(viewerUid)
 
+    let viewerIsPrivate = false
     if (viewerUid) {
       const viewerPrivacy = await pool.query(
         "SELECT is_private FROM mednexus_registered_users WHERE uid = $1 AND status = 'approved'",
         [viewerUid],
       )
-      if (viewerPrivacy.rows[0]?.is_private === true) {
-        return NextResponse.json({
-          ...data,
-          entries: data.viewerEntry ? [data.viewerEntry] : [],
-        })
-      }
+      viewerIsPrivate = viewerPrivacy.rows[0]?.is_private === true
     }
-    const payload = { ...data, season }
+    const visibleEntries = viewerIsPrivate
+      ? data.entries.filter((entry) => entry.uid !== viewerUid)
+      : data.entries
+    const payload = { ...data, entries: visibleEntries, season }
     const response = measuredJson({
       route: "GET /api/leaderboard",
       queryStartedAt,
-      rowCount: data.entries.length,
+      rowCount: visibleEntries.length,
       payload,
     })
     response.headers.set("Cache-Control", "private, max-age=60, stale-while-revalidate=120")
