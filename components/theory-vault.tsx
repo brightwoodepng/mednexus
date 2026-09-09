@@ -129,7 +129,7 @@ function SignInNotice() {
   return <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">Sign in with a student account to save drafts, bookmarks, notes, revision items, and progress.</div>
 }
 
-export function TheoryVault({ initialView = "Dashboard", initialDashboard = null, externalQuery, onExternalQueryChange, onQuestionViewChange }: { initialView?: View; initialDashboard?: TheoryDashboardData | null; externalQuery?: string; onExternalQueryChange?: (q: string) => void; onQuestionViewChange?: (active: boolean) => void }) {
+export function TheoryVault({ initialView = "Dashboard", initialDashboard = null, externalQuery, onExternalQueryChange, onQuestionViewChange, studyMode = "review", onStudyModeChange }: { initialView?: View; initialDashboard?: TheoryDashboardData | null; externalQuery?: string; onExternalQueryChange?: (q: string) => void; onQuestionViewChange?: (active: boolean) => void; studyMode?: TheoryStudyMode; onStudyModeChange?: (mode: TheoryStudyMode) => void }) {
   const { user } = useApp()
   const registered = user?.role === "user" && user.sessionVerified
   const [view, setView] = useState<View>(initialView)
@@ -259,7 +259,7 @@ export function TheoryVault({ initialView = "Dashboard", initialDashboard = null
 
     {error && <div role="alert" className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
     {loading || !restoreChecked ? <div role="status" aria-live="polite" className={`${card} flex flex-col items-center justify-center gap-3 py-14 text-center text-sm text-muted-foreground`}><LoaderCircle className="animate-spin text-primary" size={24} aria-hidden/><span>Opening Theory Vault…</span></div>
-      : questionId ? <StudyQuestion questionId={questionId} sessionQuestionIds={sessionQuestionIds} registered={Boolean(registered)} onBack={finishQuestion} onFinish={finishQuestion} onMove={setQuestionId}/>
+      : questionId ? <StudyQuestion questionId={questionId} sessionQuestionIds={sessionQuestionIds} registered={Boolean(registered)} mode={studyMode} onModeChange={onStudyModeChange ?? (() => undefined)} onBack={finishQuestion} onFinish={finishQuestion} onMove={setQuestionId}/>
       : setData ? <SetOverview data={setData} registered={Boolean(registered)} onBack={() => setSetData(null)} onOpen={openQuestion} onSession={openSession}/>
       : view === "Dashboard" ? <Dashboard data={dashboard} displayName={user?.name} onView={navigate} onCollection={id => { setCollectionId(id); setView("Browse Questions") }} onSet={openSet} onQuestion={openQuestion}/>
       : view === "Browse Questions" ? <Catalog data={catalog} collectionId={collectionId} groupId={groupId} onCollection={setCollectionId} onGroup={setGroupId} onBack={() => groupId ? setGroupId(null) : setCollectionId(null)} onSet={openSet}/>
@@ -551,9 +551,8 @@ function SetOverview({ data, registered, onBack, onOpen, onSession }: { data: Se
   </div>
 }
 
-function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onFinish, onMove }: { questionId: string; sessionQuestionIds: string[] | null; registered: boolean; onBack: (setId: string | null) => void; onFinish: (setId: string | null) => void; onMove: (id: string) => void }) {
+function StudyQuestion({ questionId, sessionQuestionIds, registered, mode, onModeChange, onBack, onFinish, onMove }: { questionId: string; sessionQuestionIds: string[] | null; registered: boolean; mode: TheoryStudyMode; onModeChange: (mode: TheoryStudyMode) => void; onBack: (setId: string | null) => void; onFinish: (setId: string | null) => void; onMove: (id: string) => void }) {
   const [question, setQuestion] = useState<TheoryQuestionDetail | null>(null)
-  const [mode, setMode] = useState<TheoryStudyMode>("review")
   const [answer, setAnswer] = useState("")
   const [note, setNote] = useState("")
   const [revealed, setRevealed] = useState(false)
@@ -752,31 +751,31 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
     <div className="mx-auto min-w-0 max-w-7xl space-y-3 pb-24 sm:space-y-4 md:pb-0">
 
       {/* ── Top nav bar ── */}
-      <div className="sticky top-0 z-30 -mx-3 flex w-[calc(100%+1.5rem)] flex-wrap items-center gap-2 border-b border-border/70 bg-background/95 px-3 pb-3 pt-2 shadow-sm backdrop-blur-md sm:static sm:mx-0 sm:w-full sm:gap-3 sm:bg-transparent sm:px-0 sm:pb-4 sm:pt-0 sm:shadow-none sm:backdrop-blur-none">
+      <div className="sticky top-0 z-30 -mx-3 flex w-[calc(100%+1.5rem)] items-center gap-2 overflow-x-auto border-b border-border/70 bg-background/95 px-3 pb-3 pt-2 shadow-sm backdrop-blur-md [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:static md:mx-0 md:w-full md:overflow-visible md:bg-transparent md:px-0 md:pb-4 md:pt-0 md:shadow-none md:backdrop-blur-none">
         <button onClick={() => onBack(question.setId)} aria-label="Back to set" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted"><ArrowLeft size={18}/></button>
-        <div className="min-w-0 flex-1"><div className="sm:hidden"><p className="text-sm font-bold">Question {question.position} of {question.setTotal}</p><p className="truncate text-[11px] text-muted-foreground">{question.setLabel}</p></div><div className="hidden sm:block"><p className="truncate text-sm font-semibold">{question.collectionTitle} <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{question.setLabel} · Question {question.position} of {question.setTotal}</p></div></div>
-        <div className="order-3 grid w-full grid-cols-[44px_44px_minmax(0,1fr)] gap-2 sm:order-none sm:flex sm:w-auto sm:items-center">
+        <div className="flex h-11 shrink-0 items-center rounded-xl border border-border bg-card px-3 md:min-w-0 md:flex-1 md:border-0 md:bg-transparent md:px-0"><div className="md:hidden"><p className="whitespace-nowrap text-sm font-bold">Question {question.position} of {question.setTotal}</p><p className="max-w-32 truncate text-[11px] text-muted-foreground">{question.setLabel}</p></div><div className="hidden min-w-0 md:block"><p className="truncate text-sm font-semibold">{question.collectionTitle} <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{question.setLabel} · Question {question.position} of {question.setTotal}</p></div></div>
+        <div className="flex min-w-max items-center gap-2 md:min-w-0">
           <button
             onClick={toggleBookmark}
             aria-label={state?.bookmark ? "Remove bookmark" : "Bookmark question"}
             title={state?.bookmark ? "Bookmarked" : "Bookmark"}
-            className={`flex h-11 items-center justify-center gap-2 rounded-xl px-2 text-sm font-bold transition-all sm:px-3 ${
+            className={`flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-all ${
               state?.bookmark ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <Bookmark size={17} className={state?.bookmark ? "" : "text-primary"} fill={state?.bookmark ? "currentColor" : "none"}/><span className="hidden sm:inline">{state?.bookmark ? "Bookmarked" : "Bookmark"}</span>
+            <Bookmark size={17} className={state?.bookmark ? "" : "text-primary"} fill={state?.bookmark ? "currentColor" : "none"}/><span>{state?.bookmark ? "Bookmarked" : "Bookmark"}</span>
           </button>
           <button
             onClick={toggleRevision}
             aria-label={state?.revision ? "Remove from revision" : "Mark for revision"}
             title={state?.revision ? "In revision" : "Mark for revision"}
-            className={`flex h-11 items-center justify-center gap-2 rounded-xl px-2 text-sm font-bold transition-all sm:px-3 ${
+            className={`flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-all ${
               state?.revision ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <RefreshCw size={16} className={state?.revision ? "" : "text-primary"}/><span className="hidden sm:inline">{state?.revision ? "In revision" : "Revision"}</span>
+            <RefreshCw size={16} className={state?.revision ? "" : "text-primary"}/><span>{state?.revision ? "In revision" : "Revision"}</span>
           </button>
-          <div role="group" aria-label="Study mode" className="grid min-w-0 grid-cols-2 rounded-xl border-2 border-primary/25 bg-muted/60 p-1"><button type="button" aria-pressed={mode === "review"} onClick={() => setMode("review")} className={`min-w-0 rounded-lg px-2 py-2 text-xs font-bold transition-colors sm:px-3 sm:text-sm ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Review</button><button type="button" aria-pressed={mode === "practice"} onClick={() => setMode("practice")} className={`min-w-0 rounded-lg px-2 py-2 text-xs font-bold transition-colors sm:px-3 sm:text-sm ${mode === "practice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Practice</button></div>
+          <div role="group" aria-label="Study mode" className="hidden min-w-0 grid-cols-2 rounded-xl border-2 border-primary/25 bg-muted/60 p-1 md:grid"><button type="button" aria-pressed={mode === "review"} onClick={() => onModeChange("review")} className={`min-w-0 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Review</button><button type="button" aria-pressed={mode === "practice"} onClick={() => onModeChange("practice")} className={`min-w-0 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${mode === "practice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Practice</button></div>
         </div>
       </div>
 

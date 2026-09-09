@@ -8,7 +8,7 @@ import { useQuestions } from "@/contexts/questions-context"
 import { getQuestionsForModuleAndDiscipline, getWeakAreaQuestions } from "@/lib/modules"
 import { sortByUrgency } from "@/lib/srs"
 import type { Screen } from "@/lib/view"
-import type { QuizMode, BlockResult, HistoryEntry, Question, ExamScore } from "@/lib/types"
+import type { QuizMode, BlockResult, HistoryEntry, Question, ExamScore, TheoryStudyMode } from "@/lib/types"
 import { AuthScreen } from "@/components/auth-screen"
 import { Dashboard } from "@/components/dashboard"
 import { ModuleLibrary } from "@/components/module-library"
@@ -364,6 +364,13 @@ function StudyModeToggle({ globalMode, setGlobalMode }: { globalMode: QuizMode; 
   )
 }
 
+function TheoryStudyModeToggle({ mode, onChange }: { mode: TheoryStudyMode; onChange: (mode: TheoryStudyMode) => void }) {
+  return <div role="group" aria-label="Theory study mode" className="grid grid-cols-2 rounded-xl border-2 border-primary/25 bg-muted/60 p-1 md:hidden">
+    <button type="button" aria-pressed={mode === "review"} onClick={() => onChange("review")} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Review</button>
+    <button type="button" aria-pressed={mode === "practice"} onClick={() => onChange("practice")} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${mode === "practice" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Practice</button>
+  </div>
+}
+
 const MCQ_MODE_SCREENS = new Set<Screen>(["dashboard", "modules", "weak-areas"])
 
 const MCQ_HEADER_TITLES: Partial<Record<Screen, string>> = {
@@ -471,6 +478,7 @@ export function MedNexusApp() {
   const [isExamActive, setIsExamActive] = useState(false)
   const [theorySearchQuery, setTheorySearchQuery] = useState("")
   const [theoryQuestionOpen, setTheoryQuestionOpen] = useState(false)
+  const [theoryStudyMode, setTheoryStudyMode] = useState<TheoryStudyMode>("review")
   const [theoryNavigationKey, setTheoryNavigationKey] = useState(0)
   const [importerOpen, setImporterOpen] = useState(false)
   const [pendingEditorImport, setPendingEditorImport] = useState<import("@/lib/types").Question[] | null>(null)
@@ -775,7 +783,11 @@ export function MedNexusApp() {
       onNavigate={handleScreenNavigation}
       onSelectStudyHub={handleStudyHubNavigation}
       onOpenAppearance={() => setThemeOpen(true)}
-      modeControl={activeStudyHub === "mcq-qbank" && MCQ_MODE_SCREENS.has(safeScreen) ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} /> : undefined}
+      modeControl={activeStudyHub === "mcq-qbank" && MCQ_MODE_SCREENS.has(safeScreen)
+        ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
+        : activeStudyHub === "theory-vault" && theoryQuestionOpen
+          ? <TheoryStudyModeToggle mode={theoryStudyMode} onChange={setTheoryStudyMode} />
+          : undefined}
       headerSlot={activeStudyHub === "theory-vault" && !theoryQuestionOpen ? (
         <label className="mr-1 flex h-8 min-w-0 w-full max-w-[10.5rem] items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 text-sm transition-all focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/25 sm:mr-2 sm:h-9 sm:max-w-xl sm:gap-2 sm:rounded-xl sm:px-3 lg:max-w-2xl">
           <SearchIcon size={15} className="shrink-0 text-muted-foreground" />
@@ -798,13 +810,13 @@ export function MedNexusApp() {
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); handleScreenNavigation("modules") }} onOpenWeakAreas={() => handleScreenNavigation("weak-areas")} onOpenLiveAssessments={() => handleScreenNavigation("live-assessments")} />
           )}
-          {safeScreen === "theory-dashboard" && <TheoryVault key={`theory-dashboard-${theoryNavigationKey}`} initialView="Dashboard" initialDashboard={getRecentTheoryDashboard()} externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-browse" && <TheoryVault key={`theory-browse-${theoryNavigationKey}`} initialView="Browse Questions" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-bookmarks" && <TheoryVault key={`theory-bookmarks-${theoryNavigationKey}`} initialView="Bookmarks" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-notes" && <TheoryVault key={`theory-notes-${theoryNavigationKey}`} initialView="My Notes" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-revision" && <TheoryVault key={`theory-revision-${theoryNavigationKey}`} initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-progress" && <TheoryVault key={`theory-progress-${theoryNavigationKey}`} initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
-          {safeScreen === "theory-search" && <TheoryVault key={`theory-search-${theoryNavigationKey}`} initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} />}
+          {safeScreen === "theory-dashboard" && <TheoryVault key={`theory-dashboard-${theoryNavigationKey}`} initialView="Dashboard" initialDashboard={getRecentTheoryDashboard()} externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
+          {safeScreen === "theory-browse" && <TheoryVault key={`theory-browse-${theoryNavigationKey}`} initialView="Browse Questions" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
+          {safeScreen === "theory-bookmarks" && <TheoryVault key={`theory-bookmarks-${theoryNavigationKey}`} initialView="Bookmarks" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
+          {safeScreen === "theory-notes" && <TheoryVault key={`theory-notes-${theoryNavigationKey}`} initialView="My Notes" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
+          {safeScreen === "theory-revision" && <TheoryVault key={`theory-revision-${theoryNavigationKey}`} initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
+          {safeScreen === "theory-progress" && <TheoryVault key={`theory-progress-${theoryNavigationKey}`} initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
+          {safeScreen === "theory-search" && <TheoryVault key={`theory-search-${theoryNavigationKey}`} initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
