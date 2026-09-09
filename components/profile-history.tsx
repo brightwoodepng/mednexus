@@ -21,6 +21,7 @@ import type { Screen } from "@/lib/view"
 import { CosmeticFrame, CosmeticTitle } from "@/components/cosmetics"
 import { TutorialSettings } from "@/components/onboarding/TutorialSettings"
 import { OfflineDownloads } from "@/components/offline-downloads"
+import { CalendarDays, ClipboardList, GraduationCap, LayoutGrid, MoreHorizontal, Palette, Play, Settings, Target, Trophy } from "lucide-react"
 
 // ── Exam Scores ──────────────────────────────────────────────────────────────
 
@@ -61,7 +62,7 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 
 function ProfileHeader() {
   const { user, updateName, signOutUser } = useApp()
-  const { equippedCosmetics } = useEconomy()
+  const { equippedCosmetics, lifetimeXP } = useEconomy()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const [saving, setSaving] = useState(false)
@@ -88,10 +89,11 @@ function ProfileHeader() {
     ? STORE_ITEMS.find((i) => i.id === equippedCosmetics.avatar)
     : null
   const avatarImagePath = equippedAvatarItem?.imagePath ?? null
+  const clinicalRank = [...XP_CONFIG.clinicalRanks].reverse().find(rank => lifetimeXP >= rank.minimumXP) ?? XP_CONFIG.clinicalRanks[0]
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:p-6">
+      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
 
         {/* Avatar + Identity: flex-row on all screen sizes */}
         <div className="flex flex-row items-center gap-4 min-w-0 flex-1 sm:gap-4">
@@ -166,6 +168,7 @@ function ProfileHeader() {
             ? <p className="text-sm text-purple-400 italic font-semibold"><CosmeticTitle cosmeticId={equippedCosmetics.title} size="profile">{equippedTitleLabel}</CosmeticTitle></p>
             : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
           }
+          <p className="mt-1 text-sm font-medium text-muted-foreground">{clinicalRank.name}</p>
 
           </div>
           {/* end Identity column */}
@@ -425,7 +428,7 @@ type TheoryDashboardData = { authenticated: boolean; displayName: string; totals
 
 type ProfileTab = "overview" | "mcq" | "theory" | "cosmetics" | "settings"
 
-function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
+function UnifiedOverview({ activeHub, onSelectTab, onNavigate }: { activeHub: StudyHubId; onSelectTab: (tab: ProfileTab) => void; onNavigate: (screen: Screen) => void }) {
   const { progress } = useApp()
   const { balance, lifetimeXP } = useEconomy()
   const [theory, setTheory] = useState<TheoryDashboardData | null>(null)
@@ -478,14 +481,10 @@ function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
       </div>
 
       <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-400">Clinical rank</p>
-            <h3 className="mt-1 text-xl font-bold">{clinicalRank.name}</h3>
-          </div>
-          <p className="text-sm font-semibold text-muted-foreground">
-            {nextClinicalRank ? `${Math.max(0, nextClinicalRank.minimumXP - lifetimeXP).toLocaleString()} XP to ${nextClinicalRank.name}` : "Highest rank achieved"}
-          </p>
+        <div className="flex items-center justify-between gap-3"><h3 className="font-semibold">Clinical Rank Progress</h3><details className="relative"><summary className="cursor-pointer list-none rounded-full border border-border px-3 py-2 text-xs font-semibold text-foreground">View all 12 clinical ranks →</summary><ol className="absolute right-0 top-11 z-20 grid w-72 gap-1 rounded-2xl border border-border bg-card p-3 shadow-2xl">{XP_CONFIG.clinicalRanks.map(rank => <li key={rank.name} className={`rounded-lg px-3 py-2 text-xs ${lifetimeXP >= rank.minimumXP ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}><b>{rank.name}</b><span className="float-right tabular-nums">{rank.minimumXP.toLocaleString()} XP</span></li>)}</ol></details></div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 sm:divide-x sm:divide-border">
+          <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-lg font-black text-primary">#</span><div><p className="text-[11px] text-muted-foreground">Current rank</p><p className="font-bold">{clinicalRank.name}</p><p className="text-[11px] text-muted-foreground">{lifetimeXP.toLocaleString()} XP earned</p></div></div>
+          <div className="flex items-center gap-3 sm:pl-5"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400"><GraduationCap size={18}/></span><div><p className="text-[11px] text-muted-foreground">Next rank</p><p className="font-bold">{nextClinicalRank?.name ?? clinicalRank.name}</p><p className="text-[11px] text-muted-foreground">{nextClinicalRank ? `${Math.max(0, nextClinicalRank.minimumXP - lifetimeXP).toLocaleString()} XP to ${nextClinicalRank.name}` : "Highest rank achieved"}</p></div></div>
         </div>
         <div className="mt-4 h-3 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Clinical rank progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(rankProgress)}>
           <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-primary transition-[width]" style={{ width: `${rankProgress}%` }} />
@@ -494,32 +493,22 @@ function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
           <span>{lifetimeXP.toLocaleString()} XP</span>
           <span>{nextClinicalRank ? `${nextClinicalRank.minimumXP.toLocaleString()} XP` : clinicalRank.name}</span>
         </div>
-        <details className="mt-4 border-t border-border pt-3">
-          <summary className="cursor-pointer text-sm font-semibold text-primary">View all clinical ranks</summary>
-          <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {XP_CONFIG.clinicalRanks.map((rank) => (
-              <li key={rank.name} className={`rounded-xl border px-3 py-2 text-sm ${lifetimeXP >= rank.minimumXP ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20 text-muted-foreground"}`}>
-                <span className="font-semibold">{rank.name}</span><span className="ml-2 text-xs tabular-nums">{rank.minimumXP.toLocaleString()} XP</span>
-              </li>
-            ))}
-          </ol>
-        </details>
       </article>
 
       <OfflineDownloads />
 
       <div className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
         <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between"><h3 className="font-semibold">Recent activity</h3><span className="text-xs text-muted-foreground">Latest sessions</span></div>
+          <div className="mb-4 flex items-center justify-between"><h3 className="flex items-center gap-2 font-semibold"><span className="text-violet-400">◷</span>Recent Activity</h3><button type="button" onClick={() => onSelectTab(isTheory ? "theory" : "mcq")} className="text-xs font-semibold text-primary hover:underline">View all activity →</button></div>
           {isTheory
             ? <p className="text-sm text-muted-foreground">{theory?.continueStudying ? `Continue: ${theory.continueStudying.prompt}` : theory?.recentSets?.[0] ? `Recently studied: ${theory.recentSets[0].groupName} · ${theory.recentSets[0].setTitle}` : "No Theory activity yet."}</p>
-            : recentMcq.length > 0 ? <ul className="divide-y divide-border">{recentMcq.map((entry) => <li key={`${entry.questionId}-${entry.timestamp}`} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-sm font-medium">{entry.module ?? entry.subject ?? "MCQ session"}</p><p className="truncate text-xs text-muted-foreground">{entry.vignetteSnippet}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${entry.isCorrect ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>{entry.isCorrect ? "Correct" : "Review"}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">No MCQ activity yet.</p>}
+            : recentMcq.length > 0 ? <ul className="divide-y divide-border">{recentMcq.map((entry) => <li key={`${entry.questionId}-${entry.timestamp}`} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-sm font-medium">{entry.module ?? entry.subject ?? "MCQ session"}</p><p className="truncate text-xs text-muted-foreground">{entry.vignetteSnippet}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${entry.isCorrect ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>{entry.isCorrect ? "Correct" : "Review"}</span></li>)}</ul> : <div className="rounded-xl border border-border bg-background/35 px-4 py-6 text-center"><ClipboardList size={24} className="mx-auto text-muted-foreground"/><p className="mt-2 text-sm font-semibold">No recent activity yet</p><p className="mt-1 text-xs text-muted-foreground">Start an MCQ session to see your activity here.</p><button type="button" onClick={() => onNavigate("modules")} className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground"><Play size={13} fill="currentColor"/>Start an MCQ session</button></div>}
         </article>
         <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="font-semibold">Milestones</h3>
+          <h3 className="flex items-center gap-2 font-semibold"><Trophy size={17} className="text-violet-400"/>Milestones</h3>
           <div className="mt-4 space-y-3">
-            {!isTheory && <Milestone earned={mcq.attempted >= 20} title="First Twenty" detail="Attempt 20 MCQs" />}
-            <Milestone earned={(progress.streak ?? 0) >= 7} title="Week Streak" detail="Study for 7 consecutive days" />
+            {!isTheory && <Milestone icon={<Target size={17}/>} earned={mcq.attempted >= 20} title="First Twenty" detail="Answer 20 MCQs" progress={`${Math.min(mcq.attempted, 20)}/20`} percent={Math.min(100, mcq.attempted / 20 * 100)} />}
+            <Milestone icon={<CalendarDays size={17}/>} earned={(progress.streak ?? 0) >= 7} title="Week Streak" detail="Study for 7 consecutive days" progress={`${Math.min(progress.streak ?? 0, 7)}/7`} percent={Math.min(100, (progress.streak ?? 0) / 7 * 100)} />
             {isTheory && <Milestone earned={theoryCompleted >= 10} title="Theory Explorer" detail="Read 10 Theory questions" />}
           </div>
         </article>
@@ -528,8 +517,8 @@ function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
   )
 }
 
-function Milestone({ earned, title, detail }: { earned: boolean; title: string; detail: string }) {
-  return <div className={`flex items-center gap-3 rounded-xl border p-3 ${earned ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20 opacity-65"}`}><span className={`flex h-9 w-9 items-center justify-center rounded-full ${earned ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>{earned ? "✓" : "○"}</span><div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-muted-foreground">{detail}</p></div></div>
+function Milestone({ earned, title, detail, icon, progress, percent = 0 }: { earned: boolean; title: string; detail: string; icon?: React.ReactNode; progress?: string; percent?: number }) {
+  return <div className={`flex items-center gap-3 rounded-xl border p-3 ${earned ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20"}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${earned ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>{earned ? "✓" : icon ?? "○"}</span><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><p className="text-sm font-semibold">{title}</p>{progress && <span className="text-xs font-bold tabular-nums">{progress}</span>}</div><div className="mt-1 flex items-center gap-3"><p className="min-w-0 flex-1 text-xs text-muted-foreground">{detail}</p>{progress && <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }}/></div>}</div></div></div>
 }
 
 function TheoryProfilePanel({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
@@ -566,23 +555,27 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
 
   useEffect(() => { setActiveTab("overview") }, [activeHub])
 
-  const tabs: Array<{ id: ProfileTab; label: string }> = [
-    { id: "overview", label: "Overview" },
-    activeHub === "theory-vault" ? { id: "theory", label: "Theory Vault" } : { id: "mcq", label: "MCQ Vault" },
-    { id: "cosmetics", label: "Cosmetics" },
-    { id: "settings", label: "Settings" },
+  const tabs: Array<{ id: ProfileTab; label: string; icon: typeof LayoutGrid }> = [
+    { id: "overview", label: "Overview", icon: LayoutGrid },
+    activeHub === "theory-vault" ? { id: "theory", label: "Theory Activity", icon: ClipboardList } : { id: "mcq", label: "MCQ Activity", icon: ClipboardList },
+    { id: "cosmetics", label: "Cosmetics", icon: Palette },
+    { id: "settings", label: "Settings", icon: Settings },
   ]
+  const latestActivity = progress.history.length ? formatDate(new Date(Math.max(...progress.history.map(entry => entry.timestamp))).toISOString()) : "Not yet"
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-1 pb-8">
       <ProfileHeader />
-      <nav className="overflow-x-auto rounded-2xl border border-border bg-card px-2 shadow-sm" aria-label="Profile sections">
-        <div className="flex min-w-max gap-1">
-          {tabs.map((tab) => <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} className={`relative min-h-12 px-4 text-sm font-semibold transition-colors ${activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>{tab.label}{activeTab === tab.id && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" />}</button>)}
-        </div>
-      </nav>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <nav className="w-full overflow-x-auto rounded-2xl border border-primary/20 bg-card p-1.5 shadow-sm lg:w-auto" aria-label="Profile sections">
+          <div className="grid min-w-[31rem] grid-cols-4 gap-1.5 lg:min-w-[34rem]">
+            {tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-all ${activeTab === tab.id ? "border-cyan-300/60 bg-gradient-to-r from-cyan-500/30 to-primary/25 text-cyan-50 shadow-[0_0_18px_rgba(6,182,212,.18)]" : "border-border bg-background/35 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}><Icon size={16}/><span>{tab.label}</span></button> })}
+          </div>
+        </nav>
+        <div className="hidden items-center gap-4 lg:flex"><div className="border-l border-border pl-4"><p className="text-xs font-semibold text-foreground">Profile overview</p><p className="text-[11px] text-muted-foreground">Last activity: {latestActivity}</p></div><button type="button" onClick={() => setActiveTab("settings")} aria-label="More profile actions" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-primary hover:bg-muted"><MoreHorizontal size={18}/></button></div>
+      </div>
 
-      {activeTab === "overview" && <UnifiedOverview activeHub={activeHub} />}
+      {activeTab === "overview" && <UnifiedOverview activeHub={activeHub} onSelectTab={setActiveTab} onNavigate={onNavigate} />}
       {activeTab === "mcq" && <div className="space-y-6"><ModuleReviewSection /><ExamScores scores={examScores} /></div>}
       {activeTab === "theory" && <TheoryProfilePanel onNavigate={onNavigate} />}
       {activeTab === "cosmetics" && <CosmeticLoadout />}
