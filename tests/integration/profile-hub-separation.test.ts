@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 const profile = readFileSync("components/profile-history.tsx", "utf8")
 const sidebar = readFileSync("components/sidebar.tsx", "utf8")
 const header = profile.slice(profile.indexOf("function ProfileHeader"), profile.indexOf("// ── Continuous Module Review"))
+const overview = profile.slice(profile.indexOf("function UnifiedOverview"), profile.indexOf("function Milestone"))
 
 describe("profile study-hub separation", () => {
   it("keeps balances and sync status out of the identity card", () => {
@@ -20,11 +21,18 @@ describe("profile study-hub separation", () => {
     expect(sidebar.match(/aria-label="Open profile"/g)).toHaveLength(2)
   })
 
-  it("shows only the active vault in overview and navigation", () => {
+  it("keeps vault-specific data separate from the overview", () => {
     expect(profile).toContain('const isTheory = activeHub === "theory-vault"')
-    expect(profile).toContain("{!isTheory && (")
-    expect(profile).toContain("{isTheory && (")
     expect(profile).toContain('activeHub === "theory-vault" ? { id: "theory", label: "Theory Vault" } : { id: "mcq", label: "MCQ Vault" }')
+    expect(overview).not.toContain("Question performance")
+    expect(overview).not.toContain("Reading and revision")
+    expect(overview).not.toContain("View vault")
+  })
+
+  it("shows clinical-rank progression in the overview", () => {
+    expect(overview).toContain('aria-label="Clinical rank progress"')
+    expect(overview).toContain("XP to ${nextClinicalRank.name}")
+    expect(overview).toContain("View all clinical ranks")
   })
 
   it("does not request Theory profile data in MCQ mode", () => {

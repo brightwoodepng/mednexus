@@ -424,7 +424,7 @@ type TheoryDashboardData = { authenticated: boolean; displayName: string; totals
 
 type ProfileTab = "overview" | "mcq" | "theory" | "cosmetics" | "settings"
 
-function UnifiedOverview({ activeHub, onSelectTab }: { activeHub: StudyHubId; onSelectTab: (tab: ProfileTab) => void }) {
+function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
   const { progress } = useApp()
   const { balance, lifetimeXP } = useEconomy()
   const [theory, setTheory] = useState<TheoryDashboardData | null>(null)
@@ -440,39 +440,28 @@ function UnifiedOverview({ activeHub, onSelectTab }: { activeHub: StudyHubId; on
 
   const mcq = useMemo(() => {
     const attempted = progress.history.length
-    const correct = progress.history.filter((entry) => entry.isCorrect).length
-    const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
-    const byModule = new Map<string, { attempted: number; correct: number }>()
-    for (const entry of progress.history) {
-      const moduleName = entry.module ?? entry.subject ?? "Uncategorized"
-      const current = byModule.get(moduleName) ?? { attempted: 0, correct: 0 }
-      current.attempted += 1
-      if (entry.isCorrect) current.correct += 1
-      byModule.set(moduleName, current)
-    }
-    const rankedModules = [...byModule.entries()]
-      .filter(([, value]) => value.attempted > 0)
-      .sort((a, b) => (b[1].correct / b[1].attempted) - (a[1].correct / a[1].attempted))
-    return { attempted, correct, accuracy, strongest: rankedModules[0]?.[0] ?? "Not enough data" }
+    return { attempted }
   }, [progress.history])
 
-  const clinicalRank = [...XP_CONFIG.clinicalRanks].reverse().find((rank) => lifetimeXP >= rank.minimumXP) ?? XP_CONFIG.clinicalRanks[0]
+  const clinicalRankIndex = Math.max(0, XP_CONFIG.clinicalRanks.findLastIndex((rank) => lifetimeXP >= rank.minimumXP))
+  const clinicalRank = XP_CONFIG.clinicalRanks[clinicalRankIndex]
+  const nextClinicalRank = XP_CONFIG.clinicalRanks[clinicalRankIndex + 1] ?? null
+  const rankProgress = nextClinicalRank
+    ? Math.min(100, Math.max(0, ((lifetimeXP - clinicalRank.minimumXP) / (nextClinicalRank.minimumXP - clinicalRank.minimumXP)) * 100))
+    : 100
   const recentMcq = [...progress.history].sort((a, b) => b.timestamp - a.timestamp).slice(0, 3)
   const theoryCompleted = theory?.totals.completed ?? 0
-  const theoryTotal = theory?.totals.total ?? 0
-  const theoryPercent = theoryTotal > 0 ? Math.round((theoryCompleted / theoryTotal) * 100) : 0
 
   const metrics = [
     { label: "Lifetime XP", value: lifetimeXP.toLocaleString(), hint: "All-time experience", tone: "text-violet-400", icon: "XP" },
     { label: "Nexus Points", value: balance.toLocaleString(), hint: "Available to spend", tone: "text-amber-400", icon: "NP" },
     { label: "Current streak", value: `${progress.streak ?? 0} days`, hint: "Keep it going", tone: "text-orange-400", icon: "↗" },
-    { label: "Clinical rank", value: clinicalRank.name, hint: `${lifetimeXP.toLocaleString()} XP earned`, tone: "text-cyan-400", icon: "#" },
   ]
 
   return (
     <section className="space-y-4" aria-labelledby="profile-overview-title">
       <h2 id="profile-overview-title" className="sr-only">Learning overview</h2>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         {metrics.map((metric) => (
           <div key={metric.label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center gap-3">
@@ -487,45 +476,34 @@ function UnifiedOverview({ activeHub, onSelectTab }: { activeHub: StudyHubId; on
         ))}
       </div>
 
-      <div className="grid gap-4">
-        {!isTheory && (
-        <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <div><p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-400">MCQ Vault</p><h3 className="mt-1 font-semibold">Question performance</h3></div>
-            <button type="button" onClick={() => onSelectTab("mcq")} className="text-xs font-semibold text-primary hover:underline">View vault →</button>
+      <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-400">Clinical rank</p>
+            <h3 className="mt-1 text-xl font-bold">{clinicalRank.name}</h3>
           </div>
-          <div className="grid grid-cols-3 divide-x divide-border px-2 py-5 text-center">
-            <Stat label="Attempted" value={mcq.attempted.toLocaleString()} />
-            <Stat label="Correct" value={mcq.correct.toLocaleString()} />
-            <Stat label="Accuracy" value={`${mcq.accuracy}%`} />
-          </div>
-          <div className="border-t border-border px-5 py-4">
-            <div className="mb-2 flex justify-between text-xs"><span className="text-muted-foreground">Overall accuracy</span><span className="font-bold tabular-nums">{mcq.accuracy}%</span></div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${mcq.accuracy}%` }} /></div>
-            <p className="mt-3 text-xs text-muted-foreground">Strongest module: <span className="font-semibold text-foreground">{mcq.strongest}</span></p>
-          </div>
-        </article>
-        )}
-
-        {isTheory && (
-        <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <div><p className="text-xs font-bold uppercase tracking-[.16em] text-violet-400">Theory Vault</p><h3 className="mt-1 font-semibold">Reading and revision</h3></div>
-            <button type="button" onClick={() => onSelectTab("theory")} className="text-xs font-semibold text-primary hover:underline">View vault →</button>
-          </div>
-          <div className="grid grid-cols-3 divide-x divide-border px-2 py-5 text-center">
-            <Stat label="Read" value={theoryCompleted.toLocaleString()} />
-            <Stat label="Available" value={theoryTotal.toLocaleString()} />
-            <Stat label="Progress" value={`${theoryPercent}%`} />
-          </div>
-          <div className="border-t border-border px-5 py-4">
-            <div className="mb-2 flex justify-between text-xs"><span className="text-muted-foreground">Vault completion</span><span className="font-bold tabular-nums">{theoryPercent}%</span></div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-violet-500" style={{ width: `${theoryPercent}%` }} /></div>
-            <p className="mt-3 truncate text-xs text-muted-foreground">{theory?.continueStudying ? `Continue: ${theory.continueStudying.prompt}` : "No Theory activity yet"}</p>
-          </div>
-        </article>
-        )}
-      </div>
+          <p className="text-sm font-semibold text-muted-foreground">
+            {nextClinicalRank ? `${Math.max(0, nextClinicalRank.minimumXP - lifetimeXP).toLocaleString()} XP to ${nextClinicalRank.name}` : "Highest rank achieved"}
+          </p>
+        </div>
+        <div className="mt-4 h-3 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Clinical rank progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(rankProgress)}>
+          <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-primary transition-[width]" style={{ width: `${rankProgress}%` }} />
+        </div>
+        <div className="mt-2 flex justify-between gap-3 text-xs text-muted-foreground">
+          <span>{lifetimeXP.toLocaleString()} XP</span>
+          <span>{nextClinicalRank ? `${nextClinicalRank.minimumXP.toLocaleString()} XP` : clinicalRank.name}</span>
+        </div>
+        <details className="mt-4 border-t border-border pt-3">
+          <summary className="cursor-pointer text-sm font-semibold text-primary">View all clinical ranks</summary>
+          <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {XP_CONFIG.clinicalRanks.map((rank) => (
+              <li key={rank.name} className={`rounded-xl border px-3 py-2 text-sm ${lifetimeXP >= rank.minimumXP ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20 text-muted-foreground"}`}>
+                <span className="font-semibold">{rank.name}</span><span className="ml-2 text-xs tabular-nums">{rank.minimumXP.toLocaleString()} XP</span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      </article>
 
       <div className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
         <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -601,7 +579,7 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
         </div>
       </nav>
 
-      {activeTab === "overview" && <UnifiedOverview activeHub={activeHub} onSelectTab={setActiveTab} />}
+      {activeTab === "overview" && <UnifiedOverview activeHub={activeHub} />}
       {activeTab === "mcq" && <div className="space-y-6"><ModuleReviewSection /><ExamScores scores={examScores} /></div>}
       {activeTab === "theory" && <TheoryProfilePanel onNavigate={onNavigate} />}
       {activeTab === "cosmetics" && <CosmeticLoadout />}
