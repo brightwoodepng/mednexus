@@ -754,29 +754,29 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
       {/* ── Top nav bar ── */}
       <div className="sticky top-0 z-30 -mx-3 flex flex-wrap items-center gap-2 border-b border-border/70 bg-background/95 px-3 pb-3 pt-1 backdrop-blur-md sm:static sm:mx-0 sm:gap-3 sm:bg-transparent sm:px-0 sm:pb-4 sm:pt-0 sm:backdrop-blur-none">
         <button onClick={() => onBack(question.setId)} aria-label="Back to set" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted"><ArrowLeft size={18}/></button>
-        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{question.collectionTitle} <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{question.setLabel} · Question {question.position} of {question.setTotal}</p></div>
-        <div className="order-3 grid w-full grid-cols-2 gap-2 sm:order-none sm:flex sm:w-auto sm:items-center">
+        <div className="min-w-0 flex-1"><div className="sm:hidden"><p className="text-sm font-bold">Question {question.position} of {question.setTotal}</p><p className="truncate text-[11px] text-muted-foreground">{question.setLabel}</p></div><div className="hidden sm:block"><p className="truncate text-sm font-semibold">{question.collectionTitle} <span className="mx-1 text-muted-foreground">/</span> {question.moduleName ?? question.disciplineName ?? "Questions"}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{question.setLabel} · Question {question.position} of {question.setTotal}</p></div></div>
+        <div className="order-3 grid w-full grid-cols-[44px_44px_minmax(0,1fr)] gap-2 sm:order-none sm:flex sm:w-auto sm:items-center">
           <button
             onClick={toggleBookmark}
             aria-label={state?.bookmark ? "Remove bookmark" : "Bookmark question"}
             title={state?.bookmark ? "Bookmarked" : "Bookmark"}
-            className={`flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-all ${
+            className={`flex h-11 items-center justify-center gap-2 rounded-xl px-2 text-sm font-bold transition-all sm:px-3 ${
               state?.bookmark ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <Bookmark size={17} className={state?.bookmark ? "" : "text-primary"} fill={state?.bookmark ? "currentColor" : "none"}/><span>{state?.bookmark ? "Bookmarked" : "Bookmark"}</span>
+            <Bookmark size={17} className={state?.bookmark ? "" : "text-primary"} fill={state?.bookmark ? "currentColor" : "none"}/><span className="hidden sm:inline">{state?.bookmark ? "Bookmarked" : "Bookmark"}</span>
           </button>
           <button
             onClick={toggleRevision}
             aria-label={state?.revision ? "Remove from revision" : "Mark for revision"}
             title={state?.revision ? "In revision" : "Mark for revision"}
-            className={`flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-all ${
+            className={`flex h-11 items-center justify-center gap-2 rounded-xl px-2 text-sm font-bold transition-all sm:px-3 ${
               state?.revision ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-muted"
             }`}
           >
-            <RefreshCw size={16} className={state?.revision ? "" : "text-primary"}/><span>{state?.revision ? "In revision" : "Revision"}</span>
+            <RefreshCw size={16} className={state?.revision ? "" : "text-primary"}/><span className="hidden sm:inline">{state?.revision ? "In revision" : "Revision"}</span>
           </button>
-          <div className="col-span-2 grid grid-cols-2 rounded-xl border border-border bg-muted/40 p-1 sm:col-span-1"><button onClick={() => setMode("review")} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === "review" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Review</button><button onClick={() => setMode("practice")} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === "practice" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Practice</button></div>
+          <div className="grid min-w-0 grid-cols-2 rounded-xl border border-border bg-muted/40 p-1"><button onClick={() => setMode("review")} className={`min-w-0 rounded-lg px-2 py-2 text-xs font-bold sm:px-3 sm:text-sm ${mode === "review" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Review</button><button onClick={() => setMode("practice")} className={`min-w-0 rounded-lg px-2 py-2 text-xs font-bold sm:px-3 sm:text-sm ${mode === "practice" ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}>Practice</button></div>
         </div>
       </div>
 
@@ -798,7 +798,7 @@ function StudyQuestion({ questionId, sessionQuestionIds, registered, onBack, onF
 
       {/* Focused question prompt */}
       <article className="min-w-0 overflow-hidden rounded-[1.25rem] border border-border bg-card p-4 shadow-sm sm:p-7">
-          <div className={`grid min-w-0 items-start gap-5 sm:gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-xs font-bold text-primary"><span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1">Question {question.position}</span>{question.marks != null && <span className="rounded-full bg-muted px-3 py-1 text-muted-foreground">{question.marks} marks</span>}<span className="rounded-full bg-muted px-3 py-1 text-muted-foreground">{question.collectionTitle}</span></div><h1 className="mt-3 break-words text-lg font-bold leading-snug text-foreground sm:text-xl">{question.title || "Theory question"}</h1><TheoryMarkdown children={question.prompt} className="mt-3 text-foreground/85 sm:mt-4" linkedSectionKeys={answerLinksEnabled ? answerSectionKeys : []} onSectionSelect={answerLinksEnabled ? jumpToModelAnswer : undefined}/></div>{question.media.length > 0 && <div className="min-w-0 lg:pt-2"><TheoryQuestionMedia media={question.media}/></div>}</div>
+          <div className={`grid min-w-0 items-start gap-4 sm:gap-6 ${question.media.length ? "lg:grid-cols-[minmax(0,1fr)_minmax(240px,34%)]" : ""}`}><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-xs font-bold text-primary"><span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1">Question {question.position}</span>{question.marks != null && <span className="rounded-full bg-muted px-3 py-1 text-muted-foreground">{question.marks} marks</span>}<span className="hidden rounded-full bg-muted px-3 py-1 text-muted-foreground sm:inline-flex">{question.collectionTitle}</span></div><h1 className="mt-3 break-words text-base font-bold leading-snug text-foreground sm:text-xl">{question.title || "Theory question"}</h1><TheoryMarkdown children={question.prompt} className="mt-2 text-foreground/85 sm:mt-4" linkedSectionKeys={answerLinksEnabled ? answerSectionKeys : []} onSectionSelect={answerLinksEnabled ? jumpToModelAnswer : undefined}/></div>{question.media.length > 0 && <div className="min-w-0 lg:pt-2"><TheoryQuestionMedia media={question.media}/></div>}</div>
       </article>
 
       {/* ── Review mode ── */}
