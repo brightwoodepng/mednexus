@@ -1,0 +1,24 @@
+import { readFileSync } from "node:fs"
+import { describe, expect, it } from "vitest"
+
+const quiz = readFileSync("components/quiz-simulator.tsx", "utf8")
+const groupStudy = readFileSync("components/group-study/group-study-room.tsx", "utf8")
+
+describe("MCQ answer locking", () => {
+  it("keeps a Tutor selection pending until the learner locks it", () => {
+    expect(quiz).toContain("setPendingSelections(prev => ({ ...prev, [current.id]: optionId }))")
+    expect(quiz).toContain("function lockInSingleAnswer()")
+    expect(quiz).toContain("setAnswers(prev => ({ ...prev, [current.id]: optionId }))")
+    expect(quiz).toContain("You can change your selection until you lock it.")
+  })
+
+  it("does not reveal Tutor feedback from a tentative selection", () => {
+    expect(quiz).toContain('committedAnswer !== null)')
+    expect(quiz).toContain('mode === "trial" && !revealed')
+  })
+
+  it("retains the explicit Group Study lock step", () => {
+    expect(groupStudy).toContain(">Lock answer</button>")
+    expect(groupStudy).toContain('onSubmit={() => act("submit"')
+  })
+})

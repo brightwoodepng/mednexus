@@ -93,6 +93,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
   const [index, setIndex] = useState(session.currentQuestionIndex)
   const [answers, setAnswers] = useState<Record<string, string | string[] | null>>(session.answers)
+  const [pendingSelections, setPendingSelections] = useState<Record<string, string>>({})
   const [struck, setStruck] = useState<Record<string, Set<string>>>(() => Object.fromEntries(Object.entries(session.struckOptions).map(([id, options]) => [id, new Set(options)])))
   const [sataSelections, setSataSelections] = useState<Record<string, string[]>>(session.sataSelections)
   const [sataLocked, setSataLocked] = useState<Set<string>>(() => new Set(session.sataLockedQuestionIds))
@@ -134,10 +135,13 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     sataSelected.length === sataCorrectAnswers.length &&
     sataCorrectAnswers.length > 0 &&
     sataSelected.every(id => sataCorrectAnswers.includes(id))
-  const selected = current ? (answers[current.id] ?? null) : null
+  const committedAnswer = current ? (answers[current.id] ?? null) : null
+  const selected = current
+    ? (mode === "trial" && !isSATA ? (pendingSelections[current.id] ?? committedAnswer) : committedAnswer)
+    : null
   const isFlagged = current ? progress.flaggedQuestionIds.includes(current.id) : false
   const struckSet = current ? struck[current.id] ?? new Set<string>() : new Set<string>()
-  const revealed = mode === "trial" && (isSATA ? isLocked : selected !== null)
+  const revealed = mode === "trial" && (isSATA ? isLocked : committedAnswer !== null)
 
   const goToPreviousQuestion = useCallback(() => {
     setIndex((currentIndex) => Math.max(0, currentIndex - 1))
@@ -471,31 +475,38 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       return
     }
     if (struckSet.has(optionId)) return
-    if (mode === "trial" && selected !== null) return
+    if (mode === "trial") {
+      if (committedAnswer !== null) return
+      setPendingSelections(prev => ({ ...prev, [current.id]: optionId }))
+      return
+    }
+    setAnswers(prev => ({ ...prev, [current.id]: optionId }))
+  }
+
+  function lockInSingleAnswer() {
+    if (mode !== "trial" || isSATA || committedAnswer !== null) return
+    const optionId = pendingSelections[current.id]
+    if (!optionId) return
     setAnswers(prev => ({ ...prev, [current.id]: optionId }))
 
-    // ── Trial mode: session tracking + gamification feedback ─────────────────
-    if (mode === "trial") {
-      const isCorrect = optionId === (current.correctAnswer as string)
-      const newStreak = isCorrect ? currentStreakRef.current + 1 : 0
-      currentStreakRef.current = newStreak
+    const isCorrect = optionId === (current.correctAnswer as string)
+    const newStreak = isCorrect ? currentStreakRef.current + 1 : 0
+    currentStreakRef.current = newStreak
 
-      // Accumulate per-question data for anti-farming payout (all trial sessions)
-      if (!sessionDataRef.current.some((d) => d.questionId === current.id)) {
-        sessionDataRef.current.push({
-          questionId: current.id, discipline: current.subject, isCorrect, currentStreak: newStreak,
-        })
-      }
+    // Only locked answers count toward history, streaks, and rewards.
+    if (!sessionDataRef.current.some((d) => d.questionId === current.id)) {
+      sessionDataRef.current.push({
+        questionId: current.id, discipline: current.subject, isCorrect, currentStreak: newStreak,
+      })
+    }
 
-      if (gamificationEnabled) {
-        if (!isCorrect) triggerError()
-        streakEngine.recordAnswer(isCorrect)
-        // NP toast on correct answer
-        if (isCorrect) {
-          const capCount = repeatCapMap.get(current.id) ?? 0
-          const estimate = estimateTrialQuestionNP(capCount, newStreak)
-          setNpToast({ id: Date.now(), ...estimate })
-        }
+    if (gamificationEnabled) {
+      if (!isCorrect) triggerError()
+      streakEngine.recordAnswer(isCorrect)
+      if (isCorrect) {
+        const capCount = repeatCapMap.get(current.id) ?? 0
+        const estimate = estimateTrialQuestionNP(capCount, newStreak)
+        setNpToast({ id: Date.now(), ...estimate })
       }
     }
   }
@@ -539,7 +550,13 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       if (set.has(optionId)) set.delete(optionId)
       else {
         set.add(optionId)
-        if (answers[current.id] === optionId && !(mode === "trial" && selected !== null)) {
+        if (mode === "trial" && pendingSelections[current.id] === optionId && committedAnswer === null) {
+          setPendingSelections((selections) => {
+            const next = { ...selections }
+            delete next[current.id]
+            return next
+          })
+        } else if (answers[current.id] === optionId && mode !== "trial") {
           setAnswers((a) => ({ ...a, [current.id]: null }))
         }
       }
@@ -602,6 +619,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     currentStreakRef.current    = 0
     setIndex(0)
     setAnswers({})
+    setPendingSelections({})
     setStruck({})
     setSataSelections({})
     setSataLocked(new Set())
@@ -919,6 +937,21 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
                 )
               })}
             </div>
+
+            {/* Trial/Tutor mode: selecting is reversible until explicitly locked. */}
+            {!isSATA && mode === "trial" && !revealed && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={lockInSingleAnswer}
+                  disabled={!selected}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary px-4 py-3.5 text-sm font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  🔒 Lock answer
+                </button>
+                <p className="mt-2 text-center text-xs text-muted-foreground">You can change your selection until you lock it.</p>
+              </div>
+            )}
 
             {/* ── Lock In Answers button (SATA only, before lock) ── */}
             {isSATA && !isLocked && (
