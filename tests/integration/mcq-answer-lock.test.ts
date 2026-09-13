@@ -8,8 +8,8 @@ describe("MCQ answer locking", () => {
   it("offers an optional lock toggle in normal MCQ setup", () => {
     const setup = readFileSync("components/quantity-modal.tsx", "utf8")
     expect(setup).toContain('role="switch"')
-    expect(setup).toContain("Lock answer before submitting")
-    expect(setup).toContain("Submit immediately when an option is selected.")
+    expect(setup).toContain("Confirm each answer")
+    expect(setup).not.toContain("Submit immediately when an option is selected.")
   })
 
   it("keeps a Tutor selection pending when answer locking is enabled", () => {

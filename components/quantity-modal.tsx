@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Modal } from "@/components/ui/modal"
 import { buildCocktail } from "@/lib/modules"
-import { ShuffleIcon, ArrowRightIcon, LayersIcon, HashIcon, ZapIcon, SparklesIcon } from "@/components/icons"
+import { ShuffleIcon, ArrowRightIcon, HashIcon, ZapIcon, SparklesIcon } from "@/components/icons"
 import type { Question, QuizMode } from "@/lib/types"
 
 interface QuantityModalProps {
@@ -193,30 +193,18 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
 
   return (
     <Modal open={open} onClose={handleClose} title={label} widthClass="max-w-md" animated={false}>
-      <div className="space-y-5">
-        {/* Context pill */}
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2.5">
-          <LayersIcon size={14} className="shrink-0 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs text-muted-foreground">
-              {sublabel ? (
-                <><span className="font-medium text-foreground">{sublabel}</span> · {label}</>
-              ) : (
-                <span className="font-medium text-foreground">{label}</span>
-              )}
-            </p>
-          </div>
-          <span className="ml-auto shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-            {available} total
-          </span>
-        </div>
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {sublabel && <><span className="font-medium text-foreground">{sublabel}</span><span className="px-1.5">·</span></>}
+          {available} questions
+        </p>
 
         {/* Tab switcher */}
-        <div className="flex rounded-xl border border-border bg-muted p-0.5 gap-0.5">
+        <div className="flex rounded-lg bg-muted p-1">
           <button
             type="button"
             onClick={() => setTab("quantity")}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-2 text-xs font-semibold transition-all ${
               tab === "quantity" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -226,7 +214,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
           <button
             type="button"
             onClick={() => setTab("range")}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-2 text-xs font-semibold transition-all ${
               tab === "range" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -239,25 +227,19 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
           <>
             {/* Preset buttons */}
             <div>
-              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Quick Select
-              </p>
+              <p className="mb-2 text-sm font-medium">How many questions?</p>
               <div className="grid grid-cols-3 gap-2">
-                {PRESETS.map((n) => {
-                  const enabled = n <= available
+                {PRESETS.filter((n) => n <= available).map((n) => {
                   const active = !useCustom && selectedPreset === n
                   return (
                     <button
                       key={n}
                       type="button"
-                      disabled={!enabled}
                       onClick={() => handlePreset(n)}
-                      className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all
+                      className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition-all
                         ${active
                           ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                          : enabled
-                            ? "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted"
-                            : "border-border/40 bg-muted/30 text-muted-foreground/40 cursor-not-allowed"
+                          : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted"
                         }`}
                     >
                       {n}
@@ -267,45 +249,29 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
                 <button
                   type="button"
                   onClick={handleAll}
-                  className={`col-span-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition-all
                     ${isAllSelected
                       ? "border-primary bg-primary text-primary-foreground shadow-sm"
                       : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted"
                     }`}
                 >
-                  All ({available})
+                  All
                 </button>
               </div>
             </div>
 
             {/* Custom quantity */}
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Custom Quantity
-              </p>
               <input
                 type="number"
                 min={1}
                 max={available}
                 value={customValue}
                 onChange={handleCustomChange}
-                placeholder={`Enter 1 – ${available}`}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                placeholder={`Or enter 1–${available}`}
+                aria-label="Custom question quantity"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {isAllSelected ? (
-                <>
-                  <HashIcon size={13} />
-                  <span>All questions selected — answered in their original order, no shuffle</span>
-                </>
-              ) : (
-                <>
-                  <ShuffleIcon size={13} />
-                  <span>Questions will be randomly shuffled</span>
-                </>
-              )}
             </div>
           </>
         ) : (
@@ -361,10 +327,6 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
               ) : null}
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <HashIcon size={13} />
-              <span>Questions answered in their original order — no shuffle</span>
-            </div>
           </>
         )}
 
@@ -374,15 +336,12 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
             role="switch"
             aria-checked={lockAnswers}
             onClick={() => setLockAnswers(value => !value)}
-            className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 text-left transition-colors hover:border-primary/40"
+            className="flex w-full items-center justify-between gap-3 border-t border-border pt-4 text-left"
           >
             <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${lockAnswers ? "bg-primary" : "bg-muted"}`}>
               <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${lockAnswers ? "translate-x-6" : "translate-x-1"}`} />
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Lock answer before submitting</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">{lockAnswers ? "Select an option, then confirm it with Lock answer." : "Submit immediately when an option is selected."}</span>
-            </span>
+            <span className="min-w-0 flex-1 text-sm font-medium">Confirm each answer</span>
           </button>
         )}
 
