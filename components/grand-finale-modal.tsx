@@ -120,51 +120,55 @@ export function GrandFinaleModal({
 
         {/* Card */}
         <div className="relative flex w-full flex-col overflow-hidden
-          rounded-t-3xl border border-border bg-card shadow-2xl sm:max-w-lg sm:rounded-3xl"
+          rounded-t-3xl border border-border/70 bg-card shadow-2xl sm:max-w-lg sm:rounded-3xl"
           style={{ maxHeight: "93dvh" }}>
 
-          {/* ── Scrollable body ──────────────────────────────────────────────── */}
-          <div className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 pb-5 pt-6 sm:px-6">
-
-            {/* Header: trophy + title side-by-side */}
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <TrophyIcon size={22} />
-              </div>
+          {/* Celebration hero */}
+          <div className="relative overflow-hidden border-b border-primary/15 bg-gradient-to-br from-primary/25 via-primary/10 to-card px-5 py-6 sm:px-7">
+            <div className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-primary/15 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-10 left-20 h-24 w-24 rounded-full bg-cyan-400/10 blur-xl" />
+            <div className="relative flex items-center justify-between gap-5">
               <div className="min-w-0">
-                <h2 className="text-lg font-bold tracking-tight text-foreground leading-tight">
-                  Trial complete
-                </h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">{accuracyVerdict(accuracy)}</p>
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                  <TrophyIcon size={25} />
+                </div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Session complete</p>
+                <h2 className="mt-1 text-2xl font-black tracking-tight text-foreground">{accuracyVerdict(accuracy)}</h2>
+                <p className="mt-1.5 text-sm text-muted-foreground"><strong className="text-foreground">{correctCount}</strong> of {totalQuestions} answers correct</p>
+              </div>
+              <div
+                className="grid h-28 w-28 shrink-0 place-items-center rounded-full p-[7px] shadow-xl shadow-primary/10"
+                style={{ background: `conic-gradient(var(--primary) ${Math.max(0, Math.min(100, accuracy)) * 3.6}deg, var(--muted) 0deg)` }}
+                aria-label={`${accuracy}% score`}
+              >
+                <div className="grid h-full w-full place-items-center rounded-full border border-border/60 bg-card shadow-inner">
+                  <div className="text-center">
+                    <span className={`block text-3xl font-black leading-none tabular-nums ${accuracyColor(accuracy)}`}>{accuracy}%</span>
+                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Score</span>
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* Primary result */}
-            <div className="flex items-end justify-between rounded-2xl border border-border bg-muted/25 px-5 py-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Score</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground tabular-nums">{correctCount}</span> of {totalQuestions} correct
-                </p>
-              </div>
-              <span className={`text-4xl font-bold leading-none tabular-nums ${accuracyColor(accuracy)}`}>{accuracy}%</span>
-            </div>
+          {/* ── Scrollable body ──────────────────────────────────────────────── */}
+          <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
 
             {/* Performance details */}
-            <div className="grid grid-cols-3 divide-x divide-border rounded-2xl border border-border">
-              <StatCard icon={<CheckIcon size={17} />} label="Correct" value={`${correctCount}`} accent="text-emerald-500" />
-              <StatCard icon={<XIcon size={17} />} label="Missed" value={`${wrongCount}`} accent={wrongCount > 0 ? "text-rose-500" : "text-muted-foreground"} />
-              <StatCard icon={<ClockIcon size={17} />} label="Time" value={formatTime(timeTakenSeconds)} accent="text-foreground" />
+            <div className="grid grid-cols-3 gap-2.5">
+              <StatCard icon={<CheckIcon size={17} />} label="Correct" value={`${correctCount}`} accent="text-emerald-500" surface="border-emerald-500/20 bg-emerald-500/8" />
+              <StatCard icon={<XIcon size={17} />} label="Missed" value={`${wrongCount}`} accent={wrongCount > 0 ? "text-rose-500" : "text-muted-foreground"} surface={wrongCount > 0 ? "border-rose-500/20 bg-rose-500/8" : "border-border bg-muted/30"} />
+              <StatCard icon={<ClockIcon size={17} />} label="Time" value={formatTime(timeTakenSeconds)} accent="text-primary" surface="border-primary/20 bg-primary/8" />
             </div>
 
-            <div className="flex items-center justify-between gap-4 rounded-2xl border border-border px-4 py-3">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Best combo</p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums">{bestStreak > 0 ? `${bestStreak} in a row` : "No streak yet"}</p>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-card p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">🔥 Best combo</p>
+                <p className="mt-1 text-sm font-bold tabular-nums">{bestStreak > 0 ? `${bestStreak} in a row` : "No streak yet"}</p>
               </div>
-              <div className="text-right">
-                <p className="text-xs font-medium text-muted-foreground">Milestone</p>
-                <p className="mt-0.5 text-sm font-semibold">{MILESTONE_LABELS[milestoneTier]}</p>
+              <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-card p-3.5 text-right">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">Milestone</p>
+                <p className="mt-1 text-sm font-bold">{MILESTONE_LABELS[milestoneTier]}</p>
               </div>
             </div>
 
@@ -173,9 +177,9 @@ export function GrandFinaleModal({
               <button
                 type="button"
                 onClick={() => setShowReview(true)}
-                className="flex w-full items-center justify-between gap-2 rounded-xl border border-border
-                  bg-muted/30 px-4 py-2.5 text-sm font-semibold text-foreground
-                  transition-colors hover:bg-muted active:scale-[0.98]"
+                className="group flex w-full items-center justify-between gap-2 rounded-2xl border border-border
+                  bg-card px-4 py-3.5 text-sm font-semibold text-foreground shadow-sm
+                  transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md active:scale-[0.98]"
               >
                 <span className="flex items-center gap-2">
                   <span className="text-base">📋</span>
@@ -184,7 +188,7 @@ export function GrandFinaleModal({
                     {questions.length}
                   </span>
                 </span>
-                <span className="text-muted-foreground">›</span>
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">›</span>
               </button>
             )}
 
@@ -215,12 +219,12 @@ export function GrandFinaleModal({
 
 // ── StatCard ──────────────────────────────────────────────────────────────────
 
-function StatCard({ icon, label, value, accent }: {
-  icon: React.ReactNode; label: string; value: string; accent: string
+function StatCard({ icon, label, value, accent, surface }: {
+  icon: React.ReactNode; label: string; value: string; accent: string; surface: string
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-center px-2 py-3 text-center">
-      <span className={accent}>{icon}</span>
+    <div className={`flex min-w-0 flex-col items-center rounded-2xl border px-2 py-3.5 text-center ${surface}`}>
+      <span className={`grid h-7 w-7 place-items-center rounded-full bg-card/80 ${accent}`}>{icon}</span>
       <span className={`mt-1 text-lg font-bold leading-tight tabular-nums ${accent}`}>{value}</span>
       <span className="mt-0.5 text-[11px] font-medium text-muted-foreground">{label}</span>
     </div>
