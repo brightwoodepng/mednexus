@@ -75,8 +75,8 @@ describe("Group Study persistence and authorization gates", () => {
     expect(route).toContain('["host_paced", "anyone_advances"].includes(navigationMode(room))')
     expect(room).toContain("QuestionNavigator")
     expect(room).toContain("Return to live question")
-    expect(home).toContain("Default (host-paced)")
-    expect(home).toContain("Browse and answer ahead")
+    expect(home).toContain(">Host-paced</option>")
+    expect(home).toContain(">Answer ahead</option>")
   })
 
   it("keeps Group Study out of the dashboard and optimizes the lobby for phones", () => {
@@ -123,7 +123,14 @@ describe("Group Study persistence and authorization gates", () => {
     expect(home).toContain("All disciplines")
     expect(home).not.toContain("Difficulty<select")
     expect(home).toContain("SUGGESTED_QUESTION_COUNTS")
-    expect(home).toContain("Custom amount")
+    expect(home).toContain('aria-label="Custom question count"')
     expect(home).toContain('max={available}')
+  })
+
+  it("keeps advanced room controls inside a compact session-options disclosure", () => {
+    expect(home).toContain("<details")
+    expect(home).toContain("Session options")
+    expect(home.indexOf("Session options")).toBeLessThan(home.indexOf("Navigation<select"))
+    expect(home).toContain("Create room")
   })
 })
