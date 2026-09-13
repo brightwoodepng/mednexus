@@ -7,6 +7,7 @@ import type { ImportExtractionSummary } from "@/lib/import-types"
 import { findImportQuestionDuplicates } from "@/lib/game-question-pool"
 import { importAuthHeaders, importError } from "@/lib/import-client"
 import { parseMednexusText } from "@/lib/mednexus-text-parser"
+import { IMPORT_QUESTION_BOUNDARY, importQuestionIndexAtOffset } from "@/lib/import-question-boundaries"
 import {
   PLAIN_TEXT_IMPORT_CHAR_LIMIT,
   plainTextImportFileType,
@@ -56,7 +57,7 @@ function Spinner({ size = 20 }: { size?: number }) {
 }
 
 // ── Question-block splitter + 25-question batcher ────────────────────────────
-const QUESTION_BOUNDARY = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
+const QUESTION_BOUNDARY = IMPORT_QUESTION_BOUNDARY
 
 function countNumberedQuestions(text: string): number {
   return text
@@ -104,14 +105,13 @@ function splitIntoQuestionBatches(text: string, batchSize = 25): string[] {
 
 // ── Word-count fallback chunker (used when no Q-boundaries found) ─────────────
 function chunkText(text: string, targetWords = 1500): string[] {
-  const Q_BOUNDARY = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/i
   const lines = text.split(/\r?\n/)
   const chunks: string[] = []
   let current = ""
   let wordCount = 0
   for (const line of lines) {
     const words = line.split(/\s+/).filter(Boolean).length
-    if (wordCount >= targetWords && Q_BOUNDARY.test(line.trimStart()) && current) {
+    if (wordCount >= targetWords && QUESTION_BOUNDARY.test(line.trimStart()) && current) {
       chunks.push(current)
       current = ""
       wordCount = 0
@@ -614,12 +614,10 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
         }
 
         const questionImageMap = new Map<number, string>()
-        const questionBoundaryGlobal = /^(?:(?:Question\s+|Q\.?\s*)?\d{1,4}[.):\s]|\(\d{1,4}\))/gim
         for (const match of batch.text.matchAll(/\[IMAGE_(\d+)\]/g)) {
           const imageDataUri = imageMap.get(`IMAGE_${match[1]}`)
           if (!imageDataUri) continue
-          const textBefore = batch.text.slice(0, match.index ?? 0)
-          const questionIndex = Math.max(0, [...textBefore.matchAll(questionBoundaryGlobal)].length - 1)
+          const questionIndex = importQuestionIndexAtOffset(batch.text, match.index ?? 0)
           if (!questionImageMap.has(questionIndex)) questionImageMap.set(questionIndex, imageDataUri)
         }
 
@@ -636,7 +634,11 @@ export function UniversalImporter({ onImport, onClose }: UniversalImporterProps)
             ),
             batch.fallbackDiscipline,
           )
+          const ownMarker = chunkQuestion.vignette.match(/\[IMAGE_(\d+)\]/i)
           question.vignette = question.vignette.replace(/\[IMAGE_\d+\]/gi, "").replace(/\s{2,}/g, " ").trim()
+          if (!question.mediaBase64 && ownMarker) {
+            question.mediaBase64 = imageMap.get(`IMAGE_${ownMarker[1]}`) ?? null
+          }
           if (!question.mediaBase64) question.mediaBase64 = questionImageMap.get(questionIndex) ?? null
           return question
         })
