@@ -60,6 +60,7 @@ interface ActiveQuiz {
   startedAt: number
   setupModule: string
   gamificationEnabled: boolean
+  lockAnswers: boolean
   session: QuizSession
 }
 
@@ -539,6 +540,7 @@ export function MedNexusApp() {
         startedAt: stored.startedAt,
         setupModule: stored.setupModule,
         gamificationEnabled: stored.gamificationEnabled,
+        lockAnswers: stored.lockAnswers,
         session: stored,
       })
     }).catch(() => clearQuizSession(user.uid))
@@ -695,7 +697,7 @@ export function MedNexusApp() {
     </div>
   }
 
-  function handleStartQuiz(selectedQuestions: Question[], gamificationEnabled: boolean) {
+  function handleStartQuiz(selectedQuestions: Question[], gamificationEnabled: boolean, lockAnswers: boolean) {
     if (!pendingQuiz || !user) return
     const startedAt = Date.now()
     const session = createQuizSession({
@@ -706,6 +708,7 @@ export function MedNexusApp() {
       setupModule: pendingQuiz.setupModule,
       mode: globalMode,
       gamificationEnabled,
+      lockAnswers,
       startedAt,
     })
     saveQuizSession(session)
@@ -717,6 +720,7 @@ export function MedNexusApp() {
       startedAt,
       setupModule: pendingQuiz.setupModule,
       gamificationEnabled,
+      lockAnswers,
       session,
     })
     setPendingQuiz(null)

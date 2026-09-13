@@ -106,6 +106,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const [themeOpen, setThemeOpen] = useState(false)
   const [npToast, setNpToast] = useState<{ id: number; amount: number; capped: boolean } | null>(null)
   const [showSwipeHint, setShowSwipeHint] = useState(false)
+  const requiresAnswerLock = mode === "trial" && session.lockAnswers
 
   // Per-question session data for anti-farming payout
   const sessionDataRef   = useRef<{questionId:string;discipline:string;isCorrect:boolean;currentStreak:number}[]>([])
@@ -137,7 +138,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     sataSelected.every(id => sataCorrectAnswers.includes(id))
   const committedAnswer = current ? (answers[current.id] ?? null) : null
   const selected = current
-    ? (mode === "trial" && !isSATA ? (pendingSelections[current.id] ?? committedAnswer) : committedAnswer)
+    ? (requiresAnswerLock && !isSATA ? (pendingSelections[current.id] ?? committedAnswer) : committedAnswer)
     : null
   const isFlagged = current ? progress.flaggedQuestionIds.includes(current.id) : false
   const struckSet = current ? struck[current.id] ?? new Set<string>() : new Set<string>()
@@ -475,18 +476,20 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       return
     }
     if (struckSet.has(optionId)) return
-    if (mode === "trial") {
+    if (mode === "trial" && requiresAnswerLock) {
       if (committedAnswer !== null) return
       setPendingSelections(prev => ({ ...prev, [current.id]: optionId }))
+      return
+    }
+    if (mode === "trial") {
+      commitSingleAnswer(optionId)
       return
     }
     setAnswers(prev => ({ ...prev, [current.id]: optionId }))
   }
 
-  function lockInSingleAnswer() {
+  function commitSingleAnswer(optionId: string) {
     if (mode !== "trial" || isSATA || committedAnswer !== null) return
-    const optionId = pendingSelections[current.id]
-    if (!optionId) return
     setAnswers(prev => ({ ...prev, [current.id]: optionId }))
 
     const isCorrect = optionId === (current.correctAnswer as string)
@@ -509,6 +512,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         setNpToast({ id: Date.now(), ...estimate })
       }
     }
+  }
+
+  function lockInSingleAnswer() {
+    if (!requiresAnswerLock) return
+    const optionId = pendingSelections[current.id]
+    if (optionId) commitSingleAnswer(optionId)
   }
 
   function lockInSata() {
@@ -550,7 +559,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       if (set.has(optionId)) set.delete(optionId)
       else {
         set.add(optionId)
-        if (mode === "trial" && pendingSelections[current.id] === optionId && committedAnswer === null) {
+        if (requiresAnswerLock && pendingSelections[current.id] === optionId && committedAnswer === null) {
           setPendingSelections((selections) => {
             const next = { ...selections }
             delete next[current.id]
@@ -939,7 +948,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             </div>
 
             {/* Trial/Tutor mode: selecting is reversible until explicitly locked. */}
-            {!isSATA && mode === "trial" && !revealed && (
+            {!isSATA && requiresAnswerLock && !revealed && (
               <div className="mt-4">
                 <button
                   type="button"

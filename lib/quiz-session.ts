@@ -15,6 +15,7 @@ export interface QuizSession {
   setupModule: string
   mode: QuizMode
   gamificationEnabled: boolean
+  lockAnswers: boolean
   currentQuestionIndex: number
   answers: Record<string, QuizAnswer>
   struckOptions: Record<string, string[]>
@@ -57,7 +58,7 @@ export function parseQuizSession(raw: string | null, expectedUserId: string): Qu
     if (!value.sataSelections || typeof value.sataSelections !== "object" || !isStringArray(value.sataLockedQuestionIds) || !isStringArray(value.flaggedQuestionIds)) return null
     if (!Number.isFinite(value.startedAt) || value.startedAt! <= 0 || !Number.isFinite(value.durationSeconds) || value.durationSeconds! < 0) return null
     if (value.trialTimerPolicy !== TRIAL_TIMER_POLICY) return null
-    return value as QuizSession
+    return { ...value, lockAnswers: value.lockAnswers !== false } as QuizSession
   } catch {
     return null
   }
@@ -90,7 +91,7 @@ export function restoreQuizSession(session: QuizSession, availableQuestions: Que
   }
 }
 
-export function createQuizSession(input: Pick<QuizSession, "userId" | "moduleName" | "discipline" | "setupModule" | "mode" | "gamificationEnabled"> & { questions: Question[]; startedAt?: number }): QuizSession {
+export function createQuizSession(input: Pick<QuizSession, "userId" | "moduleName" | "discipline" | "setupModule" | "mode" | "gamificationEnabled"> & { questions: Question[]; lockAnswers?: boolean; startedAt?: number }): QuizSession {
   return {
     version: QUIZ_SESSION_VERSION,
     userId: input.userId,
@@ -100,6 +101,7 @@ export function createQuizSession(input: Pick<QuizSession, "userId" | "moduleNam
     setupModule: input.setupModule,
     mode: input.mode,
     gamificationEnabled: input.gamificationEnabled,
+    lockAnswers: input.lockAnswers ?? true,
     currentQuestionIndex: 0,
     answers: {},
     struckOptions: {},

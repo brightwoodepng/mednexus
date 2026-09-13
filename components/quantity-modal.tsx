@@ -13,7 +13,7 @@ interface QuantityModalProps {
   questions: Question[]
   mode?: QuizMode
   onClose: () => void
-  onStart: (questions: Question[], gamificationEnabled: boolean) => void
+  onStart: (questions: Question[], gamificationEnabled: boolean, lockAnswers: boolean) => void
 }
 
 type Step = "setup" | "gamification"
@@ -25,6 +25,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
   const [step, setStep] = useState<Step>("setup")
   const [pendingQuestions, setPendingQuestions] = useState<Question[] | null>(null)
   const [tab, setTab] = useState<Tab>("quantity")
+  const [lockAnswers, setLockAnswers] = useState(true)
 
   // — Quantity tab state —
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
@@ -100,15 +101,16 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
       setStep("gamification")
     } else {
       reset()
-      onStart(result, false)
+      onStart(result, false, false)
     }
   }
 
   function handleGamificationChoice(enabled: boolean) {
     if (!pendingQuestions) return
     const qs = pendingQuestions
+    const requireLock = lockAnswers
     reset()
-    onStart(qs, enabled)
+    onStart(qs, enabled, requireLock)
   }
 
   function reset() {
@@ -120,6 +122,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
     setRangeStart("")
     setRangeEnd("")
     setTab("quantity")
+    setLockAnswers(true)
   }
 
   function handleClose() { reset(); onClose() }
@@ -363,6 +366,24 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
               <span>Questions answered in their original order — no shuffle</span>
             </div>
           </>
+        )}
+
+        {mode === "trial" && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={lockAnswers}
+            onClick={() => setLockAnswers(value => !value)}
+            className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 text-left transition-colors hover:border-primary/40"
+          >
+            <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${lockAnswers ? "bg-primary" : "bg-muted"}`}>
+              <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${lockAnswers ? "translate-x-6" : "translate-x-1"}`} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Lock answer before submitting</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">{lockAnswers ? "Select an option, then confirm it with Lock answer." : "Submit immediately when an option is selected."}</span>
+            </span>
+          </button>
         )}
 
         {/* CTA */}
