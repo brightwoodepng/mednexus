@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { ClipboardList, ShoppingBag } from "lucide-react"
 import { GameLauncherTile } from "@/components/game-launcher-tile"
+import { GameScopeDropdowns, GameQuestionCountDropdown } from "@/components/game-setup-fields"
 import { GameRulesDialog } from "@/components/game-rules-dialog"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
@@ -762,57 +763,6 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
 }
 
 // ── Filter picker (used inside ModeMenu) ──────────────────────────────────────
-function FilterPicker({ catalog, filter, onChange }: {
-  catalog: QuestionCatalogModule[]
-  filter: GameFilter
-  onChange: (f: GameFilter) => void
-}) {
-  const modules = useMemo(() => catalog.map(module => module.name), [catalog])
-  const disciplines = useMemo(() => filter.module === null
-    ? []
-    : catalog.find(module => module.name === filter.module)?.disciplines.map(item => item.name) ?? [],
-  [catalog, filter.module])
-
-  const count = countForCatalog(catalog, filter)
-  const summary = filter.module === null
-    ? `All Questions · ${count} available`
-    : `${filter.module} · ${filter.discipline ?? "Whole Module"} · ${count} available`
-
-  return (
-    <div className="mb-5 rounded-3xl border border-border bg-card p-4">
-      <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Question Scope</p>
-      <div className="space-y-3">
-        <button type="button" onClick={() => onChange(DEFAULT_FILTER)}
-          className={`w-full rounded-2xl border px-3 py-2.5 text-left text-xs font-semibold transition-all ${filter.module === null ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground hover:text-foreground"}`}>
-          All Questions
-        </button>
-        <label className="block">
-          <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Module</span>
-          <select value={filter.module ?? ""} onChange={event => onChange({ module: event.target.value || null, discipline: null })}
-            className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-xs font-semibold text-foreground outline-none focus:border-primary">
-            <option value="">Choose a module</option>
-            {modules.map(module => <option key={module} value={module}>{module}</option>)}
-          </select>
-        </label>
-        {filter.module !== null && (
-          <label className="block">
-            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Discipline</span>
-            <select value={filter.discipline ?? ""} onChange={event => onChange({ module: filter.module, discipline: event.target.value || null })}
-              className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-xs font-semibold text-foreground outline-none focus:border-primary">
-              <option value="">Whole Module</option>
-              {disciplines.map(discipline => <option key={discipline} value={discipline}>{discipline}</option>)}
-            </select>
-          </label>
-        )}
-      </div>
-      <p className="mt-3 rounded-xl bg-primary/8 px-3 py-2 text-center text-[11px] font-semibold text-primary">{summary}</p>
-    </div>
-  )
-}
-
-// ── Shared per-mode menu (start screen) ──────────────────────────────────────
-const GAME_PRESETS = [10, 20, 50, 75, 100, 150] as const
-
 function ModeMenu({ mode, hs, catalog, filter, onFilterChange, onStart, onBack }: {
   mode: ModeConfig; hs: number
   catalog: QuestionCatalogModule[]; filter: GameFilter; onFilterChange: (f: GameFilter) => void
@@ -822,63 +772,10 @@ function ModeMenu({ mode, hs, catalog, filter, onFilterChange, onStart, onBack }
   const minimumQuestions = minimumQuestionsForRewardedGame(mode.id)
   const tooFew = count < minimumQuestions
 
-  // — Quantity selection state —
-  const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
-  const [customValue, setCustomValue] = useState("")
-  const [useCustom, setUseCustom] = useState(false)
+  const [quantity, setQuantity] = useState(0)
+  const [scopeReady, setScopeReady] = useState(false)
   const [starting, setStarting] = useState(false)
-
-  useEffect(() => {
-    if (useCustom) {
-      const selected = Number(customValue)
-      if (selected > count) {
-        setCustomValue(count > 0 ? String(count) : "")
-        setUseCustom(count > 0)
-      }
-    } else if (selectedPreset !== null && selectedPreset > count) {
-      setSelectedPreset(null)
-    }
-  }, [count, customValue, selectedPreset, useCustom])
-
-  function handleFilterChange(nextFilter: GameFilter) {
-    onFilterChange(nextFilter)
-  }
-
-  // "All" is the default: no preset chosen, no custom value
-  const isAllSelected = !useCustom && selectedPreset === null
-
-  function handlePreset(n: number) {
-    if (n > count) return
-    setUseCustom(false)
-    setCustomValue("")
-    setSelectedPreset(prev => prev === n ? null : n)
-  }
-
-  function handleAll() {
-    setUseCustom(false)
-    setCustomValue("")
-    setSelectedPreset(null)
-  }
-
-  function handleCustomChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const v = e.target.value.replace(/[^0-9]/g, "")
-    setCustomValue(v)
-    setUseCustom(v.length > 0)
-    setSelectedPreset(null)
-  }
-
-  function getQty(): number | null {
-    if (useCustom) {
-      const n = parseInt(customValue, 10)
-      if (!isNaN(n) && n > 0) return Math.min(n, count)
-    }
-    if (selectedPreset !== null) return Math.min(selectedPreset, count)
-    return null // null = All
-  }
-
-  const qty = getQty()
-  const startLabel = qty !== null ? `Start — ${qty} Question${qty === 1 ? "" : "s"}` : `Start Game`
-
+  const startLabel = quantity ? `Start — ${quantity} Questions` : "Choose your game setup"
   return (
     <div className="flex min-h-full flex-col p-4 sm:p-8">
       <div className="mx-auto w-full max-w-md sm:max-w-lg">
@@ -895,61 +792,10 @@ function ModeMenu({ mode, hs, catalog, filter, onFilterChange, onStart, onBack }
           )}
         </div>
 
-        {/* Filter picker */}
-        <FilterPicker catalog={catalog} filter={filter} onChange={handleFilterChange} />
-
-        {/* Question Count */}
-        <div className="mb-5 rounded-3xl border border-border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Question Count</p>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-              {count} available
-            </span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            {GAME_PRESETS.map(n => {
-              const enabled = n <= count
-              const active = !useCustom && selectedPreset === n
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  disabled={!enabled}
-                  onClick={() => handlePreset(n)}
-                  className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all
-                    ${active
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : enabled
-                        ? "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted"
-                        : "border-border/40 bg-muted/30 text-muted-foreground/40 cursor-not-allowed"
-                    }`}
-                >
-                  {n}
-                </button>
-              )
-            })}
-            <button
-              type="button"
-              onClick={handleAll}
-              className={`col-span-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all
-                ${isAllSelected
-                  ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                  : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted"
-                }`}
-            >
-              All ({count})
-            </button>
-          </div>
-          <input
-            type="number"
-            min={1}
-            max={count}
-            value={customValue}
-            onChange={handleCustomChange}
-            placeholder={`Custom (1 – ${count})`}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-        </div>
+        <GameScopeDropdowns catalog={catalog} onChange={(next, ready) => {
+          onFilterChange(next); setScopeReady(ready); setQuantity(0)
+        }} />
+        {scopeReady && <GameQuestionCountDropdown key={`${filter.module}:${filter.discipline}`} available={count} onChange={setQuantity} />}
 
         {/* Rules */}
         <div className="mb-5 rounded-3xl border border-border bg-card p-4">
@@ -969,15 +815,6 @@ function ModeMenu({ mode, hs, catalog, filter, onFilterChange, onStart, onBack }
             <p className="font-semibold">
               Only {count} eligible question{count !== 1 ? "s" : ""} available. A rewarded {mode.name} game needs at least {minimumQuestions}.
             </p>
-            {filter.module !== null && filter.discipline !== null && (
-              <button
-                type="button"
-                onClick={() => handleFilterChange({ module: filter.module, discipline: null })}
-                className="mt-3 w-full rounded-xl bg-amber-600 px-3 py-2 font-bold text-white transition-colors hover:bg-amber-700"
-              >
-                Use Whole Module
-              </button>
-            )}
             {filter.module !== null && (
               <p className="mt-2 text-center">Or choose another discipline above.</p>
             )}
@@ -985,10 +822,10 @@ function ModeMenu({ mode, hs, catalog, filter, onFilterChange, onStart, onBack }
         )}
 
         <button
-          type="button" disabled={tooFew || starting} onClick={async () => {
+          type="button" disabled={tooFew || starting || !scopeReady || !quantity} onClick={async () => {
             setStarting(true)
             try {
-              await onStart(getQty() ?? count)
+              await onStart(quantity)
             } finally {
               setStarting(false)
             }

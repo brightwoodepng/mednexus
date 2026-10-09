@@ -26,8 +26,8 @@ export async function POST(req: Request) {
       return fail("INVALID_REQUEST", "Mode and host name are required", 400)
     }
     if (!Array.isArray(body.questionIds) || body.questionIds.length === 0) return fail("NO_ELIGIBLE_QUESTIONS", "No eligible questions selected", 422)
-    if (body.questionIds.length > 200 || body.questionIds.some(id => typeof id !== "string" || !id)) {
-      return fail("INVALID_QUESTION_SELECTION", "Question selection must contain 1 to 200 valid IDs", 400)
+    if (body.questionIds.length > 500 || body.questionIds.some(id => typeof id !== "string" || !id)) {
+      return fail("INVALID_QUESTION_SELECTION", "Question selection must contain 1 to 500 valid IDs", 400)
     }
     const ids = body.questionIds as string[]
     if (new Set(ids).size !== ids.length) return fail("INVALID_QUESTION_SELECTION", "Question selection contains duplicate IDs", 400)
