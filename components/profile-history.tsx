@@ -93,10 +93,10 @@ function ProfileHeader() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex min-h-56 flex-col gap-6 px-6 py-8 md:flex-row md:items-center sm:p-8">
+      <div className="flex flex-col gap-4 p-5 sm:p-6 md:flex-row md:items-center">
 
-        {/* Avatar + Identity: flex-row on all screen sizes */}
-        <div className="flex min-w-0 flex-1 flex-col items-center gap-4 sm:flex-row sm:gap-6">
+        {/* Avatar + identity stay side by side, with wrapping text. */}
+        <div className="flex min-w-0 flex-1 items-center gap-4">
 
           {/* Avatar with frame wrapper and hover-edit overlay */}
           <div
@@ -107,7 +107,7 @@ function ProfileHeader() {
             {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
             <CosmeticFrame cosmeticId={equippedCosmetics.frame} size="profile" motionState="focused" interactionState="focused" className="rounded-full ring-offset-2 ring-offset-card">
               {/* Avatar circle */}
-              <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-primary text-2xl font-bold text-primary-foreground shadow-sm select-none sm:h-28 sm:w-28 sm:text-4xl">
+              <div className="relative flex h-18 w-18 items-center justify-center overflow-hidden rounded-full bg-primary text-2xl font-bold text-primary-foreground shadow-sm select-none sm:h-24 sm:w-24 sm:text-3xl">
                 {avatarImagePath ? (
                   <img
                     src={avatarImagePath}
@@ -126,7 +126,7 @@ function ProfileHeader() {
           </div>
 
           {/* Identity column */}
-          <div className="w-full min-w-0 flex-1 text-center sm:text-left">
+          <div className="w-full min-w-0 flex-1 text-left">
           {editing ? (
             <form onSubmit={saveName} className="mb-1 flex min-w-0 items-center gap-1.5 sm:gap-2">
               <input
@@ -158,10 +158,10 @@ function ProfileHeader() {
             <button
               type="button"
               onClick={startEdit}
-              className="group/name mb-0.5 flex w-full min-w-0 items-center justify-center gap-1.5 text-left sm:justify-start"
+              className="group/name mb-0.5 flex w-full min-w-0 items-center justify-start gap-1.5 text-left"
               aria-label="Edit name"
             >
-              <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight sm:text-3xl">{user?.name ?? "Clinician"}</h1>
+              <h1 className="min-w-0 break-words text-xl font-semibold tracking-tight sm:text-2xl">{user?.name ?? "Clinician"}</h1>
               <PencilIcon size={12} className="text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity" />
             </button>
           )}
@@ -567,7 +567,7 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
   ]
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-5xl space-y-5 pb-8 [overflow-wrap:anywhere] sm:space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-5xl space-y-4 pb-8 [overflow-wrap:anywhere]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Profile &amp; Settings</h2>
@@ -597,7 +597,12 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
         </div>
       </nav>
 
-      {activeTab === "overview" && <UnifiedOverview activeHub={activeHub} />}
+      {activeTab === "overview" && (
+        <div className="min-w-0 space-y-4">
+          <UnifiedOverview activeHub={activeHub} />
+          <OfflineDownloads />
+        </div>
+      )}
       {activeTab === "mcq" && (
         <section className="min-w-0 space-y-5" aria-labelledby="profile-mcq-title">
           <div><h2 id="profile-mcq-title" className="text-lg font-semibold">MCQ activity</h2></div>
@@ -612,7 +617,6 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
         <section className="min-w-0 space-y-5" aria-labelledby="profile-settings-title">
           <div><h2 id="profile-settings-title" className="text-lg font-semibold">Account settings</h2></div>
           <div className="grid min-w-0 items-start gap-4 lg:grid-cols-2"><PrivacySettings /><TutorialSettings /></div>
-          <OfflineDownloads />
         </section>
       )}
     </div>
