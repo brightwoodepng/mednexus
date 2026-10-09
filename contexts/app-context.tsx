@@ -11,6 +11,8 @@ import {
 } from "react"
 import type { HistoryEntry, UserProgress, ExamScore } from "@/lib/types"
 import { updateSrsFromHistory } from "@/lib/srs"
+import type { QuizSession } from "@/lib/quiz-session"
+import { applyPendingMutations, type SyncMutation } from "@/lib/progress-sync"
 import { rememberIndexNumber } from "@/lib/auth-preferences"
 
 export type UserRole = "guest" | "user"
@@ -34,6 +36,8 @@ interface AppContextValue {
   user: AppUser | null
   authReady: boolean
   cloudEnabled: boolean
+  saveActiveQuizSession: (session: QuizSession | null) => void
+  flushProgress: () => Promise<boolean>
   requiresPasswordUpdate: boolean
   progress: UserProgress
   enterApp: (name: string, classLevel: string) => Promise<void>
@@ -152,13 +156,14 @@ function clearExpiredGuestStorage(uid: string) {
   } catch {}
 }
 
-async function getSessionAccount(): Promise<SessionAccount | null> {
+async function getSessionAccount(): Promise<SessionAccount | null | undefined> {
   try {
     const res = await fetch("/api/auth/session", { signal: AbortSignal.timeout(6000) })
-    if (!res.ok) return null
+    if (res.status === 401 || res.status === 403) return null
+    if (!res.ok) return undefined
     return await res.json() as SessionAccount
   } catch {
-    return null
+    return undefined
   }
 }
 
@@ -188,6 +193,7 @@ async function apiGet(auth: AuthHeader, knownVersion?: number): Promise<RemotePr
     const query = Number.isSafeInteger(knownVersion) ? `?version=${knownVersion}` : ""
     const res = await fetch(`/api/sync${query}`, {
       headers,
+      cache: "no-store",
       signal: AbortSignal.timeout(6000),
     })
     if (!res.ok) return null
@@ -201,32 +207,6 @@ async function apiGet(auth: AuthHeader, knownVersion?: number): Promise<RemotePr
   } catch {
     return null
   }
-}
-
-type SyncMutation = {
-  patch?: Partial<Omit<UserProgress, "history" | "examScores" | "totalAnswered" | "totalCorrect">>
-  increments?: { totalAnswered?: number; totalCorrect?: number }
-  events?: { history?: HistoryEntry[]; examScores?: ExamScore[] }
-  deleteHistory?: { mode: "trial" | "exam"; questionIds: string[] }
-}
-
-function applyPendingMutations(remote: UserProgress, mutations: SyncMutation[]): UserProgress {
-  return mutations.reduce((current, mutation) => {
-    const removed = mutation.deleteHistory
-      ? new Set(mutation.deleteHistory.questionIds)
-      : null
-    return {
-      ...current,
-      ...mutation.patch,
-      totalAnswered: current.totalAnswered + (mutation.increments?.totalAnswered ?? 0),
-      totalCorrect: current.totalCorrect + (mutation.increments?.totalCorrect ?? 0),
-      history: [
-        ...(mutation.events?.history ?? []),
-        ...current.history.filter(item => !removed || item.mode !== mutation.deleteHistory?.mode || !removed.has(item.questionId)),
-      ],
-      examScores: [...(mutation.events?.examScores ?? []), ...current.examScores],
-    }
-  }, remote)
 }
 
 type SyncResult = { ok: boolean; version?: number; conflict?: boolean }
@@ -264,6 +244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Updated on login, enterApp, and signOut.
   const tokenRef = useRef<AuthHeader>(null)
   const syncVersionRef = useRef(0)
+  const snapshotVersionRef = useRef<number | undefined>(undefined)
   const pendingMutations = useRef<SyncMutation[]>([])
   const pendingSyncStorageKey = (uid: string) => `mednexus-pending-sync:${uid}`
   const persistPendingMutations = () => {
@@ -274,7 +255,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const restorePendingMutations = (uid: string) => {
     try {
       const stored = JSON.parse(localStorage.getItem(pendingSyncStorageKey(uid)) ?? "[]")
-      pendingMutations.current = Array.isArray(stored) ? stored : []
+      pendingMutations.current = Array.isArray(stored) ? stored.map(item => ({ ...item, mutationId: item.mutationId ?? crypto.randomUUID() })) : []
     } catch { pendingMutations.current = [] }
   }
   const syncVersionStorageKey = (uid: string) => `mednexus-sync-version:${uid}`
@@ -285,49 +266,123 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return Number.isSafeInteger(version) && version >= 0 ? version : undefined
   }
 
+  const syncInFlightRef = useRef<Promise<boolean> | null>(null)
+  const flushProgress = useCallback((): Promise<boolean> => {
+    if (syncInFlightRef.current) return syncInFlightRef.current
+    const owner = userRef.current
+    if (!owner || owner.role !== "user" || !navigator.onLine) return Promise.resolve(false)
+    const auth = tokenRef.current
+    const task = (async () => {
+      while (pendingMutations.current.length && userRef.current?.uid === owner.uid) {
+        // Keep the durable queue intact until the server acknowledges this ID.
+        const mutation = pendingMutations.current[0]
+        let result = await apiPost(owner.name, mutation, syncVersionRef.current, auth)
+        if (userRef.current?.uid !== owner.uid) return false
+        if (result.conflict) {
+          const remote = await apiGet(auth)
+          if (userRef.current?.uid !== owner.uid) return false
+          if (remote) {
+            syncVersionRef.current = remote.version
+            result = await apiPost(owner.name, mutation, remote.version, auth)
+          }
+        }
+        if (userRef.current?.uid !== owner.uid) return false
+        if (!result.ok || result.version === undefined) {
+          setCloudEnabled(false)
+          return false
+        }
+        syncVersionRef.current = result.version
+        if (pendingMutations.current[0] === mutation) pendingMutations.current.shift()
+        persistPendingMutations()
+        try { localStorage.setItem(syncVersionStorageKey(owner.uid), String(result.version)) } catch {}
+      }
+      setCloudEnabled(true)
+      return true
+    })()
+    syncInFlightRef.current = task
+    void task.finally(() => { if (syncInFlightRef.current === task) syncInFlightRef.current = null })
+    return task
+  }, [])
+
   const scheduleSync = useCallback((name: string, mutation: SyncMutation) => {
-    pendingMutations.current.push(mutation)
+    if (userRef.current?.role !== "user") return
+    const queued = { ...mutation, mutationId: crypto.randomUUID() }
+    // Navigation updates replace only an unsent session-only patch.
+    const last = pendingMutations.current.at(-1)
+    if (!syncInFlightRef.current && last?.patch && mutation.patch &&
+        Object.keys(last.patch).length === 1 && Object.keys(mutation.patch).length === 1 &&
+        "savedQuizSession" in last.patch && "savedQuizSession" in mutation.patch) {
+      pendingMutations.current[pendingMutations.current.length - 1] = queued
+    } else pendingMutations.current.push(queued)
     persistPendingMutations()
     if (syncTimer.current) clearTimeout(syncTimer.current)
-    syncTimer.current = setTimeout(async () => {
-      const queued = pendingMutations.current.splice(0)
-      persistPendingMutations()
-      const combined = queued.reduce<SyncMutation>((result, item) => ({
-        patch: { ...result.patch, ...item.patch },
-        increments: {
-          totalAnswered: (result.increments?.totalAnswered ?? 0) + (item.increments?.totalAnswered ?? 0),
-          totalCorrect: (result.increments?.totalCorrect ?? 0) + (item.increments?.totalCorrect ?? 0),
-        },
-        events: {
-          history: [...(result.events?.history ?? []), ...(item.events?.history ?? [])],
-          examScores: [...(result.events?.examScores ?? []), ...(item.events?.examScores ?? [])],
-        },
-        deleteHistory: item.deleteHistory ?? result.deleteHistory,
-      }), {})
-      let result = await apiPost(name, combined, syncVersionRef.current, tokenRef.current)
-      if (result.conflict) {
-        // Rebase the explicit field patch/events once. The server's compare-and-
-        // swap ensures a stale tab never silently replaces a newer summary.
-        const remote = await apiGet(tokenRef.current)
-        if (remote) {
-          syncVersionRef.current = remote.version
-          result = await apiPost(name, combined, remote.version, tokenRef.current)
-        }
-      }
-      if (result.ok && result.version !== undefined) {
-        syncVersionRef.current = result.version
-        const uid = userRef.current?.uid
-        if (uid) {
-          try { localStorage.setItem(syncVersionStorageKey(uid), String(result.version)) } catch {}
-        }
-        setCloudEnabled(true)
-      } else {
-        setCloudEnabled(false)
-        pendingMutations.current.unshift(...queued)
-        persistPendingMutations()
-      }
-    }, 1500)
+    syncTimer.current = setTimeout(() => void flushProgress(), 1000)
+  }, [flushProgress])
+
+  const mutateProgress = useCallback((update: (previous: UserProgress) => UserProgress) => {
+    const next = update(progressRef.current)
+    progressRef.current = next
+    setProgress(next)
   }, [])
+
+  const saveActiveQuizSession = useCallback((session: QuizSession | null) => {
+    const owner = userRef.current
+    if (!owner || (session && session.userId !== owner.uid)) return
+    mutateProgress(previous => {
+      const next = { ...previous, savedQuizSession: session }
+      saveLocal(owner.uid, next)
+      return next
+    })
+    scheduleSync(owner.name, { patch: { savedQuizSession: session } })
+  }, [scheduleSync, mutateProgress])
+
+  useEffect(() => {
+    if (!authReady || user?.role !== "user") return
+    const ownerId = user.uid
+    snapshotVersionRef.current = undefined
+    let cancelled = false
+    let refreshing = false
+    const refreshProgress = async () => {
+      if (refreshing || !navigator.onLine || document.visibilityState === "hidden") return
+      refreshing = true
+      try {
+        await flushProgress()
+        if (cancelled || userRef.current?.uid !== ownerId) return
+        // Compare against the last snapshot applied here, not the version of
+        // our last write: another device may have changed the other fields.
+        const remote = await apiGet(tokenRef.current, snapshotVersionRef.current)
+        if (cancelled || userRef.current?.uid !== ownerId) return
+        if (!remote) { setCloudEnabled(false); return }
+        if (remote.unchanged) { setCloudEnabled(pendingMutations.current.length === 0); return }
+        if (!remote.progress) return
+        snapshotVersionRef.current = remote.version
+        syncVersionRef.current = remote.version
+        const acknowledged = new Set((remote.progress as UserProgress & { _syncMutationIds?: string[] })._syncMutationIds ?? [])
+        pendingMutations.current = pendingMutations.current.filter(m => !m.mutationId || !acknowledged.has(m.mutationId))
+        persistPendingMutations()
+        const next = applyPendingMutations(remote.progress, pendingMutations.current)
+        progressRef.current = next
+        saveLocal(ownerId, next)
+        setProgress(next)
+        setCloudEnabled(pendingMutations.current.length === 0)
+      } finally { refreshing = false }
+    }
+    void refreshProgress()
+    const timer = window.setInterval(() => void refreshProgress(), 15000)
+    window.addEventListener("online", refreshProgress)
+    window.addEventListener("focus", refreshProgress)
+    document.addEventListener("visibilitychange", refreshProgress)
+    const persistOnLeave = () => { persistPendingMutations(); void flushProgress() }
+    window.addEventListener("pagehide", persistOnLeave)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      window.removeEventListener("online", refreshProgress)
+      window.removeEventListener("focus", refreshProgress)
+      document.removeEventListener("visibilitychange", refreshProgress)
+      window.removeEventListener("pagehide", persistOnLeave)
+    }
+  }, [authReady, user?.uid, user?.role, flushProgress])
 
   useEffect(() => {
     async function init() {
@@ -342,7 +397,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Restore auth header from localStorage
         const guestToken = localStorage.getItem(LS_GUEST_TOKEN)
         const userToken = localStorage.getItem(LS_USER_TOKEN)
-        if (guestToken) {
+        if (role === "user") {
+          tokenRef.current = userToken ? { key: "x-session-token", value: userToken } : null
+        } else if (guestToken) {
           tokenRef.current = { key: "x-guest-token", value: guestToken }
         } else if (userToken) {
           tokenRef.current = { key: "x-session-token", value: userToken }
@@ -361,6 +418,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // A registered account is restored only from the HttpOnly cookie.
           // Locally persisted identity and role data are never authoritative.
           const account = await getSessionAccount()
+          if (account === undefined) {
+            setUser({ uid, name, role: "user", sessionVerified: false, status, classLevel, level: classLevel })
+            setProgress(loadLocal(uid))
+            setRequiresPasswordUpdate(needsPwUpdate)
+            setCloudEnabled(false)
+            setAuthReady(true)
+            return
+          }
           if (!account) {
             clearLocalLearnerState(uid)
             tokenRef.current = null
@@ -392,9 +457,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setUser(appUser)
           setProgress(local)
           setRequiresPasswordUpdate(needsPwUpdate)
-          setAuthReady(true)
 
-          const remote = await apiGet(tokenRef.current, storedSyncVersion(account.uid))
+          const remote = await apiGet(tokenRef.current)
           if (remote) {
             syncVersionRef.current = remote.version
             try { localStorage.setItem(syncVersionStorageKey(account.uid), String(remote.version)) } catch {}
@@ -406,6 +470,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
             setUser((current) => current ? { ...current, name: remote.name } : current)
           }
+          setAuthReady(true)
           return
         }
 
@@ -472,7 +537,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener("online", retryPendingSync)
     return () => window.removeEventListener("online", retryPendingSync)
-  }, [scheduleSync])
+  }, [scheduleSync, mutateProgress])
 
   const enterApp = useCallback(async (name: string, classLevel: string) => {
     const trimmed = name.trim() || "Clinician"
@@ -551,6 +616,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // than trusting a role returned to, or persisted by, the client.
       const account = await getSessionAccount()
       const accountUid = account?.uid ?? uid
+      restorePendingMutations(accountUid)
       const local = loadLocal(accountUid)
       const appUser: AppUser = {
         uid: accountUid,
@@ -569,6 +635,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setRequiresPasswordUpdate(!!needsPw)
       setCloudEnabled(false)
 
+      syncVersionRef.current = storedSyncVersion(accountUid) ?? 0
       const remote = await apiGet(tokenRef.current)
       if (remote) {
         syncVersionRef.current = remote.version
@@ -686,11 +753,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updated = { ...u, name: trimmed }
     setUser(updated)
     scheduleSync(trimmed, {})
-  }, [scheduleSync])
+  }, [scheduleSync, mutateProgress])
 
   const toggleFlag = useCallback(
     (questionId: string) => {
-      setProgress((prev) => {
+      mutateProgress((prev) => {
         const has = prev.flaggedQuestionIds.includes(questionId)
         const flaggedQuestionIds = has
           ? prev.flaggedQuestionIds.filter((id) => id !== questionId)
@@ -701,12 +768,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [scheduleSync],
+    [scheduleSync, mutateProgress],
   )
 
   const clearWeakAreas = useCallback(
     (mode: "trial" | "exam") => {
-      setProgress((prev) => {
+      mutateProgress((prev) => {
         // Derive the weak question IDs for this mode (mirrors getWeakAreaQuestions logic)
         const modeHistory = prev.history.filter((e) => e.mode === mode)
         const latestByQuestion = new Map<string, HistoryEntry>()
@@ -730,13 +797,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [scheduleSync],
+    [scheduleSync, mutateProgress],
   )
 
   const recordHistory = useCallback(
     (entries: HistoryEntry[]) => {
       if (entries.length === 0) return
-      setProgress((prev) => {
+      mutateProgress((prev) => {
         const answered = entries.filter((e) => e.selectedOption !== null)
         const correct = entries.filter((e) => e.isCorrect).length
         const next: UserProgress = {
@@ -757,12 +824,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [scheduleSync],
+    [scheduleSync, mutateProgress],
   )
 
   const saveExamScore = useCallback(
     (score: ExamScore) => {
-      setProgress((prev) => {
+      mutateProgress((prev) => {
         const next: UserProgress = {
           ...prev,
           examScores: [score, ...(prev.examScores ?? [])].slice(0, 100),
@@ -772,21 +839,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [scheduleSync],
+    [scheduleSync, mutateProgress],
   )
 
   const markNotificationsRead = useCallback(() => {
-    setProgress((prev) => {
+    mutateProgress((prev) => {
       const now = Date.now()
       const next: UserProgress = { ...prev, notificationsLastRead: now }
       const u = userRef.current
       if (u) { saveLocal(u.uid, next); scheduleSync(u.name, { patch: { notificationsLastRead: now } }) }
       return next
     })
-  }, [scheduleSync])
+  }, [scheduleSync, mutateProgress])
 
   const toggleMuteNotificationType = useCallback((type: string) => {
-    setProgress((prev) => {
+    mutateProgress((prev) => {
       const muted = prev.mutedNotificationTypes ?? []
       const next: UserProgress = {
         ...prev,
@@ -796,10 +863,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (u) { saveLocal(u.uid, next); scheduleSync(u.name, { patch: { mutedNotificationTypes: next.mutedNotificationTypes } }) }
       return next
     })
-  }, [scheduleSync])
+  }, [scheduleSync, mutateProgress])
 
   const toggleFavoriteModule = useCallback((module: string) => {
-    setProgress((prev) => {
+    mutateProgress((prev) => {
       const favs = prev.favoriteModules ?? []
       const next: UserProgress = {
         ...prev,
@@ -809,12 +876,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (u) { saveLocal(u.uid, next); scheduleSync(u.name, { patch: { favoriteModules: next.favoriteModules } }) }
       return next
     })
-  }, [scheduleSync])
+  }, [scheduleSync, mutateProgress])
 
   const value: AppContextValue = {
     user,
     authReady,
     cloudEnabled,
+    saveActiveQuizSession,
+    flushProgress,
     requiresPasswordUpdate,
     progress,
     enterApp,

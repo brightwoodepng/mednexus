@@ -29,7 +29,7 @@ import { useEconomy } from "@/contexts/economy-context"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { useQuestionKeyboardNavigation } from "@/hooks/use-question-keyboard-navigation"
 import { useQuestionSwipeNavigation } from "@/hooks/use-question-swipe-navigation"
-import type { QuizSession } from "@/lib/quiz-session"
+import { unrecordedQuizHistory, type QuizSession } from "@/lib/quiz-session"
 
 function QuestionMediaGallery({ items, className = "" }: { items: QuestionMedia[]; className?: string }) {
   if (!items.length) return null
@@ -93,7 +93,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
   const [index, setIndex] = useState(session.currentQuestionIndex)
   const [answers, setAnswers] = useState<Record<string, string | string[] | null>>(session.answers)
-  const [pendingSelections, setPendingSelections] = useState<Record<string, string>>({})
+  const [pendingSelections, setPendingSelections] = useState<Record<string, string>>(session.pendingSelections ?? {})
   const [struck, setStruck] = useState<Record<string, Set<string>>>(() => Object.fromEntries(Object.entries(session.struckOptions).map(([id, options]) => [id, new Set(options)])))
   const [sataSelections, setSataSelections] = useState<Record<string, string[]>>(session.sataSelections)
   const [sataLocked, setSataLocked] = useState<Set<string>>(() => new Set(session.sataLockedQuestionIds))
@@ -254,6 +254,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     sessionRef.current = {
       ...sessionRef.current,
       currentQuestionIndex: index,
+      pendingSelections,
       answers,
       struckOptions: Object.fromEntries(Object.entries(struck).map(([id, options]) => [id, [...options]])),
       sataSelections,
@@ -261,7 +262,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       flaggedQuestionIds: questions.filter(question => progress.flaggedQuestionIds.includes(question.id)).map(question => question.id),
     }
     onSessionChange(sessionRef.current)
-  }, [answers, index, onSessionChange, progress.flaggedQuestionIds, questions, sataLocked, sataSelections, struck])
+  }, [answers, pendingSelections, index, onSessionChange, progress.flaggedQuestionIds, questions, sataLocked, sataSelections, struck])
 
   const submitBlock = useCallback(async () => {
     const timeTakenMs = Date.now() - startedAt.current
@@ -283,7 +284,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     // finale fires so that weak areas clear even if the user exits without
     // pressing Submit Block. Avoid double-recording here.
     if (!historyRecordedRef.current) {
-      recordHistory(history)
+      recordHistory(unrecordedQuizHistory(sessionRef.current, history))
       historyRecordedRef.current = true
     }
 
@@ -413,7 +414,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           isCorrect: isAnswerCorrect(answers[q.id] ?? null, q.correctAnswer ?? null),
           timestamp: now,
         }))
-        recordHistory(historyEntries)
+        recordHistory(unrecordedQuizHistory(sessionRef.current, historyEntries))
         historyRecordedRef.current = true
       }
       setShowGrandFinale(true)
@@ -639,6 +640,10 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-background md:relative md:inset-auto md:z-auto md:h-full">
+      <div className="shrink-0 border-b border-border bg-card px-4 py-2" aria-label="MCQ progress">
+        <div className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground"><span>{answeredCount} / {questions.length} answered</span><span>{Math.round(answeredCount / questions.length * 100)}%</span></div>
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Questions answered" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={answeredCount}><div className="h-full rounded-full bg-primary" style={{ width: `${answeredCount / questions.length * 100}%` }} /></div>
+      </div>
       {/* Dynamic Streak Engine cheer — Trial Mode + gamification only, dormant otherwise */}
       <StreakCheer event={streakEngine.cheerEvent} onDone={streakEngine.clearCheer} />
 

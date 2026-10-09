@@ -9,6 +9,8 @@ const query = vi.fn(async (sql: string) => {
   throw new Error(`Unexpected query: ${sql}`)
 })
 
+vi.mock("@/lib/progression-notifications", () => ({ triggerProgressionNotifications: vi.fn() }))
+
 vi.mock("@/lib/request-auth", () => ({
   requireRegisteredUser: vi.fn(async () => ({ uid: "learner-1" })),
   unauthorized: () => Response.json({ error: "Unauthorized" }, { status: 401 }),

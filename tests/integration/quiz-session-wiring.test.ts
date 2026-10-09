@@ -14,7 +14,7 @@ describe("quiz session lifecycle wiring", () => {
   it("clears after completion and explicit confirmed abandonment", async () => {
     const app = await readFile("components/mednexus-app.tsx", "utf8")
     expect(app).toContain("clearQuizSession(user.uid)")
-    expect(app).toContain('title="Discard this attempt?"')
+    expect(app).toContain('title="Pause or discard this attempt?"')
     expect(app).toContain('primaryLabel="Resume"')
     expect(app).toContain('secondaryLabel="Discard"')
   })

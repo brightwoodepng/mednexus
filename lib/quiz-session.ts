@@ -1,4 +1,4 @@
-import type { QuizMode, Question } from "@/lib/types"
+import type { QuizMode, Question, HistoryEntry } from "@/lib/types"
 
 export const QUIZ_SESSION_VERSION = 1 as const
 export const TRIAL_TIMER_POLICY = "untimed" as const
@@ -17,11 +17,14 @@ export interface QuizSession {
   gamificationEnabled: boolean
   lockAnswers: boolean
   currentQuestionIndex: number
+  recordedQuestionIds?: string[]
+  pendingSelections?: Record<string, string>
   answers: Record<string, QuizAnswer>
   struckOptions: Record<string, string[]>
   sataSelections: Record<string, string[]>
   sataLockedQuestionIds: string[]
   flaggedQuestionIds: string[]
+  updatedAt?: number
   startedAt: number
   durationSeconds: number
   trialTimerPolicy: typeof TRIAL_TIMER_POLICY
@@ -58,6 +61,10 @@ export function parseQuizSession(raw: string | null, expectedUserId: string): Qu
     if (!value.sataSelections || typeof value.sataSelections !== "object" || !isStringArray(value.sataLockedQuestionIds) || !isStringArray(value.flaggedQuestionIds)) return null
     if (!Number.isFinite(value.startedAt) || value.startedAt! <= 0 || !Number.isFinite(value.durationSeconds) || value.durationSeconds! < 0) return null
     if (value.trialTimerPolicy !== TRIAL_TIMER_POLICY) return null
+    if (value.recordedQuestionIds !== undefined && (!isStringArray(value.recordedQuestionIds) || value.recordedQuestionIds.some(id => !value.questionIds!.includes(id)))) return null
+    if (value.updatedAt !== undefined && (!Number.isFinite(value.updatedAt) || value.updatedAt <= 0)) return null
+    if (value.pendingSelections !== undefined && (!value.pendingSelections || typeof value.pendingSelections !== "object" || Array.isArray(value.pendingSelections) || Object.entries(value.pendingSelections).some(([id, option]) => !value.questionIds!.includes(id) || typeof option !== "string"))) return null
+    if (Array.isArray(value.answers) || Object.entries(value.answers).some(([id, answer]) => !value.questionIds!.includes(id) || !(answer === null || typeof answer === "string" || isStringArray(answer)))) return null
     return { ...value, lockAnswers: value.lockAnswers === true } as QuizSession
   } catch {
     return null
@@ -112,4 +119,25 @@ export function createQuizSession(input: Pick<QuizSession, "userId" | "moduleNam
     durationSeconds: input.mode === "exam" ? input.questions.length * 90 : 0,
     trialTimerPolicy: TRIAL_TIMER_POLICY,
   }
+}
+
+export function unrecordedQuizHistory(session: QuizSession, history: HistoryEntry[]) {
+  const recorded = new Set(session.recordedQuestionIds ?? [])
+  return history.filter(entry => !recorded.has(entry.questionId))
+}
+
+/** Count completed Tutor answers on pause, once, without finalizing rewards. */
+export function checkpointQuizSession(session: QuizSession, questions: Question[], now = Date.now()): { session: QuizSession; history: HistoryEntry[] } {
+  if (session.mode !== "trial") return { session, history: [] }
+  const recorded = new Set(session.recordedQuestionIds ?? [])
+  const completed = questions.filter(question => session.answers[question.id] != null && !recorded.has(question.id))
+  const history: HistoryEntry[] = completed.map(question => {
+    const answer = session.answers[question.id]
+    const correct = question.correctAnswer
+    const isCorrect = Array.isArray(correct) && Array.isArray(answer)
+      ? correct.length === answer.length && answer.every(option => correct.includes(option))
+      : correct != null && answer === correct
+    return { id: `quiz-${session.startedAt}-${question.id}`, questionId: question.id, module: question.module, subject: question.subject, vignetteSnippet: question.vignette.slice(0, 120), mode: session.mode, selectedOption: answer, correctOption: correct, isCorrect, timestamp: now }
+  })
+  return { session: { ...session, recordedQuestionIds: [...recorded, ...completed.map(question => question.id)], updatedAt: now }, history }
 }
