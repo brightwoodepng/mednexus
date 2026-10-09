@@ -40,3 +40,41 @@ test("Profile to Dashboard navigation survives refresh and browser history", asy
   await expect(page).toHaveURL(/\/\?hub=mcq$/)
   await expect(page.getByRole("heading", { name: /good (morning|afternoon|evening)/i })).toBeVisible()
 })
+
+for (const width of [320, 390, 768, 1024, 1440]) {
+  test(`profile sections fit a ${width}px viewport`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await enterAsGuest(page)
+    await page.getByRole("button", { name: "Open account menu" }).click()
+    await page.getByRole("menuitem", { name: "Profile & account" }).click()
+    const sections = page.getByRole("navigation", { name: "Profile sections" })
+    const expectContentToFit = async () => {
+      const overflow = await page.locator("main").evaluate((main) => {
+        const bounds = main.getBoundingClientRect()
+        return Array.from(main.querySelectorAll<HTMLElement>("button, input, article, section, nav, h1, h2, h3, p")).filter((element) => {
+          const rect = element.getBoundingClientRect()
+          return rect.width > 0 && rect.height > 0 && (rect.left < bounds.left - 1 || rect.right > bounds.right + 1)
+        }).map((element) => element.textContent?.slice(0, 80))
+      })
+      expect(overflow).toEqual([])
+    }
+
+    await expect(sections).toBeVisible()
+    await expectContentToFit()
+    await page.getByText("View all 12 clinical ranks", { exact: true }).click()
+    await expectContentToFit()
+    await page.getByLabel("Edit name", { exact: true }).click()
+    await page.getByLabel("Display name", { exact: true }).fill("VeryLongUnbrokenProfileNameForResponsiveLayoutTesting")
+    await page.getByLabel("Save name", { exact: true }).click()
+    await expect(page.getByRole("heading", { name: "VeryLongUnbrokenProfileNameForResponsiveLayoutTesting" })).toBeVisible()
+    await expectContentToFit()
+
+    for (const label of ["MCQ Activity", "Cosmetics", "Settings"]) {
+      const button = sections.getByRole("button", { name: label, exact: true })
+      await button.click()
+      await expect(button).toHaveAttribute("aria-current", "page")
+      await expectContentToFit()
+    }
+    await expect(page.getByRole("heading", { name: "Install & Study Offline" })).toBeVisible()
+  })
+}
