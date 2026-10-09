@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
+import { parseQuizSession } from "@/lib/quiz-session"
 import { triggerProgressionNotifications } from "@/lib/progression-notifications"
 
 const HISTORY_LIMIT = 200
 const EXAM_LIMIT = 100
 const PATCH_FIELDS = new Set([
   "flaggedQuestionIds", "streak", "lastStudyDate", "notificationsLastRead",
-  "mutedNotificationTypes", "favoriteModules", "srsData",
+  "mutedNotificationTypes", "favoriteModules", "srsData", "savedQuizSession",
 ])
 
 type SyncBody = {
+  mutationId?: string
   name?: string
   baseVersion?: number
   patch?: Record<string, unknown>
@@ -30,7 +32,7 @@ async function getFirestore() {
 function jsonWithSize(payload: unknown, context: string, status = 200) {
   const serialized = JSON.stringify(payload)
   console.info(`[sync ${context}] response_bytes=${Buffer.byteLength(serialized)}`)
-  return new NextResponse(serialized, { status, headers: { "content-type": "application/json" } })
+  return new NextResponse(serialized, { status, headers: { "content-type": "application/json", "cache-control": "private, no-store" } })
 }
 
 function cleanPatch(value: unknown) {
@@ -57,7 +59,8 @@ export async function GET(req: NextRequest) {
       )
       if (!versionRes.rows.length) return jsonWithSize({ error: "Not found" }, "GET", 404)
       const version = Number(versionRes.rows[0].version)
-      const knownVersion = Number(req.nextUrl.searchParams.get("version"))
+      const versionParam = req.nextUrl.searchParams.get("version")
+      const knownVersion = versionParam === null ? NaN : Number(versionParam)
       if (Number.isSafeInteger(knownVersion) && knownVersion >= 0 && knownVersion === version) {
         return jsonWithSize({ uid, name: versionRes.rows[0].name, version, unchanged: true }, "GET")
       }
@@ -78,7 +81,8 @@ export async function GET(req: NextRequest) {
       if (!snap.exists) return jsonWithSize({ error: "Not found" }, "GET", 404)
       const data = snap.data()!
       const version = Number(data.progressVersion ?? 0)
-      const knownVersion = Number(req.nextUrl.searchParams.get("version"))
+      const versionParam = req.nextUrl.searchParams.get("version")
+      const knownVersion = versionParam === null ? NaN : Number(versionParam)
       if (Number.isSafeInteger(knownVersion) && knownVersion >= 0 && knownVersion === version) {
         return jsonWithSize({ uid, name: data.name ?? "Clinician", version, unchanged: true }, "GET")
       }
@@ -110,6 +114,13 @@ export async function POST(req: NextRequest) {
     const baseVersion = Number(body.baseVersion)
     if (!Number.isSafeInteger(baseVersion) || baseVersion < 0) return jsonWithSize({ error: "baseVersion is required" }, "POST", 400)
     const patch = cleanPatch(body.patch)
+    const mutationId = body.mutationId
+    if (mutationId !== undefined && (typeof mutationId !== "string" || !mutationId || mutationId.length > 128)) return jsonWithSize({ error: "Invalid mutation ID" }, "POST", 400)
+    if ("savedQuizSession" in patch && patch.savedQuizSession !== null) {
+      const session = parseQuizSession(JSON.stringify(patch.savedQuizSession), uid)
+      if (!session || session.questionIds.length > 5000) return jsonWithSize({ error: "Invalid quiz session" }, "POST", 400)
+      patch.savedQuizSession = session
+    }
     const answeredDelta = Number(body.increments?.totalAnswered ?? 0)
     const correctDelta = Number(body.increments?.totalCorrect ?? 0)
     if (![answeredDelta, correctDelta].every(Number.isSafeInteger)) return jsonWithSize({ error: "Invalid increments" }, "POST", 400)
@@ -124,13 +135,20 @@ export async function POST(req: NextRequest) {
         await client.query("BEGIN")
         await client.query("INSERT INTO mednexus_users (uid, name) VALUES ($1, $2) ON CONFLICT (uid) DO UPDATE SET name = EXCLUDED.name", [uid, body.name ?? "Clinician"])
         await client.query("INSERT INTO mednexus_progress (uid) VALUES ($1) ON CONFLICT (uid) DO NOTHING", [uid])
+        const previous = await client.query("SELECT data, version FROM mednexus_progress WHERE uid = $1 FOR UPDATE", [uid])
+        const acknowledged: string[] = previous.rows[0]?.data?._syncMutationIds ?? []
+        if (mutationId && acknowledged.includes(mutationId)) {
+          await client.query("ROLLBACK")
+          return jsonWithSize({ success: true, version: Number(previous.rows[0].version) }, "POST")
+        }
+        const durablePatch = mutationId ? { ...patch, _syncMutationIds: [...acknowledged, mutationId].slice(-2048) } : patch
         const updated = await client.query(
           `UPDATE mednexus_progress SET data = data || $3::jsonb || jsonb_build_object(
              'totalAnswered', COALESCE((data->>'totalAnswered')::int, 0) + $4::int,
              'totalCorrect', COALESCE((data->>'totalCorrect')::int, 0) + $5::int),
              version = version + 1, updated_at = NOW()
            WHERE uid = $1 AND version = $2 RETURNING version, data`,
-          [uid, baseVersion, JSON.stringify(patch), answeredDelta, correctDelta],
+          [uid, baseVersion, JSON.stringify(durablePatch), answeredDelta, correctDelta],
         )
         if (!updated.rows.length) {
           const current = await client.query("SELECT version FROM mednexus_progress WHERE uid = $1", [uid])
@@ -162,11 +180,15 @@ export async function POST(req: NextRequest) {
       const result = await db.runTransaction(async (tx) => {
         const snap = await tx.get(ref)
         const currentVersion = snap.data()?.progressVersion ?? 0
+        const summary = snap.data()?.progressSummary ?? snap.data()?.progress ?? {}
+        const acknowledged: string[] = summary._syncMutationIds ?? []
+        if (mutationId && acknowledged.includes(mutationId)) return { conflict: false, version: currentVersion, replayed: true }
+        const durablePatch = mutationId ? { ...patch, _syncMutationIds: [...acknowledged, mutationId].slice(-2048) } : patch
         if (currentVersion !== baseVersion) return { conflict: true, version: currentVersion }
         tx.set(ref, { name: body.name ?? "Clinician", progressVersion: currentVersion + 1, progressSummary: {
-          ...(snap.data()?.progressSummary ?? {}), ...patch,
-          totalAnswered: (snap.data()?.progressSummary?.totalAnswered ?? 0) + answeredDelta,
-          totalCorrect: (snap.data()?.progressSummary?.totalCorrect ?? 0) + correctDelta,
+          ...summary, ...durablePatch,
+          totalAnswered: (summary.totalAnswered ?? 0) + answeredDelta,
+          totalCorrect: (summary.totalCorrect ?? 0) + correctDelta,
         }, updatedAt: FieldValue.serverTimestamp() }, { merge: true })
         for (const event of history) tx.set(ref.collection("progressHistory").doc(String(event.id ?? `${event.questionId}:${event.timestamp}`)), {
           payload: event, mode: event.mode, questionId: event.questionId,
@@ -176,7 +198,7 @@ export async function POST(req: NextRequest) {
         return { conflict: false, version: currentVersion + 1 }
       })
       if (result.conflict) return jsonWithSize({ error: "Version conflict", version: result.version }, "POST", 409)
-      if (body.deleteHistory?.questionIds.length) {
+      if (!("replayed" in result && result.replayed) && body.deleteHistory?.questionIds.length) {
         for (let start = 0; start < body.deleteHistory.questionIds.length; start += 30) {
           const ids = body.deleteHistory.questionIds.slice(start, start + 30)
           const snapshots = await ref.collection("progressHistory")

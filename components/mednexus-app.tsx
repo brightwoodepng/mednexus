@@ -43,7 +43,7 @@ import { TheoryVault } from "@/components/theory-vault"
 import { TutorialProvider } from "@/components/onboarding"
 import { abortTheoryDashboardPreload, getRecentTheoryDashboard, preloadTheoryDashboard } from "@/lib/theory-dashboard-client"
 import { clearPersistedTheoryQuestion } from "@/lib/theory-navigation"
-import { clearQuizSession, createQuizSession, loadQuizSession, restoreQuizSession, saveQuizSession, type QuizSession } from "@/lib/quiz-session"
+import { checkpointQuizSession, clearQuizSession, createQuizSession, loadQuizSession, restoreQuizSession, saveQuizSession, type QuizSession } from "@/lib/quiz-session"
 
 interface PendingQuiz {
   questions: Question[]
@@ -436,20 +436,23 @@ function WelcomeModal({ name, onClose }: { name: string; onClose: () => void }) 
   )
 }
 
-function QuizSessionChoice({ title, description, primaryLabel, secondaryLabel, onPrimary, onSecondary }: {
+function QuizSessionChoice({ title, description, primaryLabel, secondaryLabel, onPrimary, onSecondary, tertiaryLabel, onTertiary }: {
   title: string
   description: string
   primaryLabel: string
   secondaryLabel: string
   onPrimary: () => void
   onSecondary: () => void
+  tertiaryLabel?: string
+  onTertiary?: () => void
 }) {
   return <div className="fixed inset-0 z-[200] flex items-center justify-center bg-foreground/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="quiz-session-title">
     <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
       <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><TimerIcon size={24} /></div>
       <h2 id="quiz-session-title" className="text-xl font-bold tracking-tight">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="mt-6 flex flex-col gap-2">
+        {tertiaryLabel && onTertiary && <button type="button" onClick={onTertiary} className="min-h-11 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">{tertiaryLabel}</button>}
         <button type="button" onClick={onSecondary} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted">{secondaryLabel}</button>
         <button type="button" autoFocus onClick={onPrimary} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">{primaryLabel}</button>
       </div>
@@ -459,7 +462,7 @@ function QuizSessionChoice({ title, description, primaryLabel, secondaryLabel, o
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export function MedNexusApp() {
-  const { user, authReady, progress, saveExamScore, requiresPasswordUpdate } = useApp()
+  const { user, authReady, progress, saveExamScore, requiresPasswordUpdate, saveActiveQuizSession, flushProgress, cloudEnabled, recordHistory } = useApp()
   const { loadQuestionSet, loadQuestionsByIds } = useQuestions()
   const { globalMode, setGlobalMode } = useStudyMode()
 
@@ -487,7 +490,11 @@ export function MedNexusApp() {
   const [showWelcome, setShowWelcome] = useState(false)
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
+  const activeQuizRef = useRef<ActiveQuiz | null>(null)
+  activeQuizRef.current = activeQuiz
   const [resumeCandidate, setResumeCandidate] = useState<ActiveQuiz | null>(null)
+  const [resumePromptOpen, setResumePromptOpen] = useState(false)
+  const [savingQuiz, setSavingQuiz] = useState(false)
   const [discardQuizOpen, setDiscardQuizOpen] = useState(false)
   const [offlineBlocked, setOfflineBlocked] = useState(false)
   const restoredForUserRef = useRef<string | null>(null)
@@ -522,16 +529,17 @@ export function MedNexusApp() {
   useEffect(() => {
     if (!authReady || !user || requiresPasswordUpdate) return
     if (user.role === "user" && user.status !== "approved") return
-    if (restoredForUserRef.current === user.uid) return
-    restoredForUserRef.current = user.uid
-    const stored = loadQuizSession(user.uid)
-    if (!stored) return
+    if (activeQuiz) return
+    const stored = progress.savedQuizSession !== undefined ? progress.savedQuizSession : loadQuizSession(user.uid)
+    if (!stored) { setResumeCandidate(null); return }
+    const restoreKey = `${user.uid}:${stored.startedAt}:${stored.updatedAt ?? 0}`
+    if (restoredForUserRef.current === restoreKey) return
+    let cancelled = false
     void loadQuestionsByIds(stored.questionIds).then(loadedQuestions => {
       const restored = restoreQuizSession(stored, loadedQuestions)
-      if (!restored) {
-        clearQuizSession(user.uid)
-        return
-      }
+      if (cancelled || !restored) return
+      restoredForUserRef.current = restoreKey
+      saveQuizSession(stored)
       setResumeCandidate({
         questions: restored.questions,
         moduleName: stored.moduleName,
@@ -543,8 +551,9 @@ export function MedNexusApp() {
         lockAnswers: stored.lockAnswers,
         session: stored,
       })
-    }).catch(() => clearQuizSession(user.uid))
-  }, [authReady, loadQuestionsByIds, requiresPasswordUpdate, user])
+    }).catch(() => { /* Keep the saved attempt when offline or loading fails. */ })
+    return () => { cancelled = true }
+  }, [authReady, loadQuestionsByIds, requiresPasswordUpdate, user, activeQuiz, progress.savedQuizSession])
 
   useEffect(() => {
     const restoreFromLocation = () => {
@@ -584,9 +593,14 @@ export function MedNexusApp() {
   }, [setActiveStudyHub])
 
   const handleQuizSessionChange = useCallback((session: QuizSession) => {
-    saveQuizSession(session)
-    setActiveQuiz(current => current ? { ...current, session } : current)
-  }, [])
+    const current = activeQuizRef.current
+    if (!current || current.session.startedAt !== session.startedAt || current.session.userId !== session.userId) return
+    const updated = { ...session, recordedQuestionIds: current.session.recordedQuestionIds ?? session.recordedQuestionIds, updatedAt: Date.now() }
+    activeQuizRef.current = { ...current, session: updated }
+    saveQuizSession(updated)
+    saveActiveQuizSession(updated)
+    setActiveQuiz(current => current ? { ...current, session: updated } : current)
+  }, [saveActiveQuizSession])
 
   useEffect(() => {
     if (user?.role === "user" && user.status === "approved" && !requiresPasswordUpdate) {
@@ -623,6 +637,7 @@ export function MedNexusApp() {
   const safeScreen = screen
 
   const handleReadyForQuiz = useCallback(async (config: { module: string; discipline: string | null }) => {
+    if (resumeCandidate) { setResumePromptOpen(true); return }
     let questions: Question[]
     let displayName: string
 
@@ -654,7 +669,7 @@ export function MedNexusApp() {
 
     setPendingQuiz({ questions, moduleName: displayName, discipline: config.discipline, setupModule: config.module })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadQuestionSet, progress.history])
+  }, [loadQuestionSet, progress.history, resumeCandidate])
 
   if (!authReady) {
     return (
@@ -712,6 +727,8 @@ export function MedNexusApp() {
       startedAt,
     })
     saveQuizSession(session)
+    saveActiveQuizSession(session)
+    setResumeCandidate(null)
     setActiveQuiz({
       questions: selectedQuestions,
       moduleName: pendingQuiz.moduleName,
@@ -760,8 +777,32 @@ export function MedNexusApp() {
       payoutError,
     })
     if (user) clearQuizSession(user.uid)
+    saveActiveQuizSession(null)
+    setResumeCandidate(null)
     setActiveQuiz(null)
     setScreen("results")
+  }
+
+  async function pauseQuiz() {
+    if (!activeQuiz || savingQuiz) return
+    setSavingQuiz(true)
+    try {
+      const checkpoint = checkpointQuizSession(activeQuiz.session, activeQuiz.questions)
+      recordHistory(checkpoint.history)
+      const saved = checkpoint.session
+      activeQuizRef.current = { ...activeQuiz, session: saved }
+      setActiveQuiz(activeQuizRef.current)
+      saveQuizSession(saved)
+      saveActiveQuizSession(saved)
+      await flushProgress()
+      const latest = activeQuizRef.current ?? { ...activeQuiz, session: saved }
+      setResumeCandidate(latest)
+      activeQuizRef.current = null
+      setResumePromptOpen(false)
+      setDiscardQuizOpen(false)
+      setActiveQuiz(null)
+      handleScreenNavigation("dashboard")
+    } finally { setSavingQuiz(false) }
   }
 
   function exitQuiz() {
@@ -771,8 +812,8 @@ export function MedNexusApp() {
   if (safeScreen === "quiz" && activeQuiz) {
     return (
       <div className="h-screen">
-        <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} gamificationEnabled={activeQuiz.gamificationEnabled} session={activeQuiz.session} onSessionChange={handleQuizSessionChange} onExit={exitQuiz} onReturnToDashboard={() => { clearQuizSession(user.uid); setActiveQuiz(null); handleScreenNavigation("dashboard") }} onComplete={handleQuizComplete} />
-        {discardQuizOpen && <QuizSessionChoice title="Discard this attempt?" description="Your answers and progress will be permanently removed." primaryLabel="Keep studying" secondaryLabel="Discard attempt" onPrimary={() => setDiscardQuizOpen(false)} onSecondary={() => { clearQuizSession(user.uid); setDiscardQuizOpen(false); setActiveQuiz(null); handleScreenNavigation("dashboard") }} />}
+        <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} gamificationEnabled={activeQuiz.gamificationEnabled} session={activeQuiz.session} onSessionChange={handleQuizSessionChange} onExit={exitQuiz} onReturnToDashboard={() => { clearQuizSession(user.uid); saveActiveQuizSession(null); setActiveQuiz(null); handleScreenNavigation("dashboard") }} onComplete={handleQuizComplete} />
+        {discardQuizOpen && <QuizSessionChoice title="Pause or discard this attempt?" description={`${Object.values(activeQuiz.session.answers).filter(answer => answer !== null).length} of ${activeQuiz.questions.length} questions answered. ${activeQuiz.mode === "exam" ? "The exam timer keeps running while you are away." : "Save your place and continue whenever you are ready."}`} tertiaryLabel={savingQuiz ? "Saving progress…" : "Save progress & return to dashboard"} onTertiary={() => void pauseQuiz()} primaryLabel="Keep studying" secondaryLabel="Discard attempt" onPrimary={() => setDiscardQuizOpen(false)} onSecondary={() => { clearQuizSession(user.uid); saveActiveQuizSession(null); setResumeCandidate(null); setDiscardQuizOpen(false); setActiveQuiz(null); handleScreenNavigation("dashboard") }} />}
       </div>
     )
   }
@@ -780,7 +821,7 @@ export function MedNexusApp() {
   return (
     <>
     {offlineBlocked && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/55 p-4"><div role="dialog" aria-modal="true" aria-labelledby="online-required-title" className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 text-center shadow-2xl"><ZapIcon size={28} className="mx-auto text-amber-500"/><h2 id="online-required-title" className="mt-3 text-lg font-bold">Internet connection required</h2><p className="mt-2 text-sm text-muted-foreground">Live assessments, multiplayer, rankings, and the Nexus Store are available when you are online. Your downloaded MCQs and Theory sets still work offline.</p><button type="button" onClick={() => setOfflineBlocked(false)} className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Continue offline</button></div></div>}
-    {resumeCandidate && <QuizSessionChoice title={resumeCandidate.mode === "exam" && Date.now() >= resumeCandidate.session.startedAt + resumeCandidate.session.durationSeconds * 1000 ? "Exam time has expired" : "Continue your saved attempt?"} description={resumeCandidate.mode === "exam" ? "Exam time kept running while you were away. Resume to submit the remaining answers, or discard this attempt." : "Trial Mode is untimed. Your question order, answers, and review state are ready."} primaryLabel="Resume" secondaryLabel="Discard" onPrimary={() => { setActiveQuiz(resumeCandidate); setResumeCandidate(null); setScreen("quiz") }} onSecondary={() => { clearQuizSession(user.uid); setResumeCandidate(null) }} />}
+    {resumeCandidate && resumePromptOpen && <QuizSessionChoice title={resumeCandidate.mode === "exam" && Date.now() >= resumeCandidate.session.startedAt + resumeCandidate.session.durationSeconds * 1000 ? "Exam time has expired" : "Continue your saved attempt?"} description={resumeCandidate.mode === "exam" ? "Exam time kept running while you were away. Resume to submit the remaining answers, or discard this attempt." : "Trial Mode is untimed. Your question order, answers, and review state are ready."} primaryLabel="Resume" secondaryLabel="Discard" onPrimary={() => { setActiveStudyHub("mcq-qbank"); setActiveQuiz(resumeCandidate); setResumeCandidate(null); setResumePromptOpen(false); setScreen("quiz") }} onSecondary={() => { clearQuizSession(user.uid); saveActiveQuizSession(null); setResumeCandidate(null); setResumePromptOpen(false) }} tertiaryLabel="Back to dashboard" onTertiary={() => setResumePromptOpen(false)} />}
     <TutorialProvider activeHub={activeStudyHub} currentScreen={safeScreen} welcomeOpen={showWelcome} onNavigate={handleScreenNavigation} blocked={Boolean(pendingQuiz || activeQuiz || isExamActive || theoryQuestionOpen || themeOpen || importerOpen || creditsOpen || loadActiveRoomSession(user.uid) || loadSoloGameSession(user.uid))}>
     <LearnerWorkspaceShell
       screen={safeScreen}
@@ -811,6 +852,15 @@ export function MedNexusApp() {
       ) : activeStudyHub === "mcq-qbank" && MCQ_HEADER_TITLES[safeScreen] ? <WorkspaceHeaderTitle title={MCQ_HEADER_TITLES[safeScreen]} screen={safeScreen} /> : undefined}
       hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
+          {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && resumeCandidate && (
+            <section className="mb-5 rounded-2xl border border-primary/30 bg-card p-4 sm:p-5" aria-label="Saved MCQ attempt">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0"><h2 className="break-words font-semibold">Continue {resumeCandidate.moduleName}</h2><p className="mt-1 text-sm text-muted-foreground">{Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length} / {resumeCandidate.questions.length} answered · {cloudEnabled && user.role === "user" ? "Synced to your account" : "Saved on this device"}</p></div>
+                <button type="button" onClick={() => setResumePromptOpen(true)} className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Continue attempt</button>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Saved attempt progress" aria-valuemin={0} aria-valuemax={resumeCandidate.questions.length} aria-valuenow={Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length}><div className="h-full rounded-full bg-primary" style={{ width: `${Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length / resumeCandidate.questions.length * 100}%` }} /></div>
+            </section>
+          )}
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); handleScreenNavigation("modules") }} onOpenWeakAreas={() => handleScreenNavigation("weak-areas")} onOpenLiveAssessments={() => handleScreenNavigation("live-assessments")} />
           )}

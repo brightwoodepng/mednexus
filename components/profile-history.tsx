@@ -435,7 +435,8 @@ type ProfileTab = "overview" | "mcq" | "theory" | "cosmetics" | "settings"
 
 function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
   const { progress } = useApp()
-  const { balance, lifetimeXP } = useEconomy()
+  const { balance, lifetimeXP, loginStreak } = useEconomy()
+  const currentStreak = loginStreak ?? progress.streak
   const [theory, setTheory] = useState<TheoryDashboardData | null>(null)
   const isTheory = activeHub === "theory-vault"
 
@@ -463,7 +464,7 @@ function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
   const metrics = [
     { label: "Lifetime XP", value: lifetimeXP.toLocaleString(), tone: "text-violet-400", icon: "XP" },
     { label: "Nexus Points", value: balance.toLocaleString(), tone: "text-amber-400", icon: "NP" },
-    { label: "Current streak", value: `${progress.streak ?? 0} days`, tone: "text-orange-400", icon: "↗" },
+    { label: "Current streak", value: `${currentStreak ?? 0} days`, tone: "text-orange-400", icon: "↗" },
   ]
 
   return (
@@ -515,7 +516,7 @@ function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
           <h3 className="flex items-center gap-2 font-semibold"><Trophy size={17} className="text-violet-400"/>Milestones</h3>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {!isTheory && <Milestone icon={<Target size={17}/>} earned={mcq.attempted >= 20} title="First Twenty" detail="Answer 20 MCQs" progress={`${Math.min(mcq.attempted, 20)}/20`} percent={Math.min(100, mcq.attempted / 20 * 100)} />}
-            <Milestone icon={<CalendarDays size={17}/>} earned={(progress.streak ?? 0) >= 7} title="Week Streak" detail="Study for 7 consecutive days" progress={`${Math.min(progress.streak ?? 0, 7)}/7`} percent={Math.min(100, (progress.streak ?? 0) / 7 * 100)} />
+            <Milestone icon={<CalendarDays size={17}/>} earned={(currentStreak ?? 0) >= 7} title="Week Streak" detail="Study for 7 consecutive days" progress={`${Math.min(currentStreak ?? 0, 7)}/7`} percent={Math.min(100, (currentStreak ?? 0) / 7 * 100)} />
             {isTheory && <Milestone earned={theoryCompleted >= 10} title="Theory Explorer" detail="Read 10 Theory questions" />}
           </div>
         </article>

@@ -35,6 +35,7 @@ export interface EconomyContextValue {
   lifetimeEarned: number
   rankPoints: number
   lifetimeXP: number
+  loginStreak: number | null
   bounties: BountyWithProgress[]
   inventory: Record<string, number>
   equippedCosmetics: EquippedCosmetics
@@ -106,6 +107,10 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const [equippedCosmetics, setEquippedCosmetics]   = useState<EquippedCosmetics>(DEFAULT_COSMETICS)
   const [loading, setLoading]                       = useState(false)
   const [dailyLoginReward, setDailyLoginReward]     = useState<DailyLoginResult | null>(null)
+  const [loginStreak, setLoginStreak] = useState<number | null>(null)
+  const refreshGenerationRef = useRef(0)
+  const currentUserIdRef = useRef(user?.uid)
+  currentUserIdRef.current = user?.uid
   const initializedUserId = useRef<string | null>(null)
 
   const clearDailyLoginReward = useCallback(() => setDailyLoginReward(null), [])
@@ -113,11 +118,14 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const uid = user?.uid
     if (!uid) return
+    const generation = ++refreshGenerationRef.current
     setLoading(true)
     try {
-      const response = await fetch("/api/economy/bootstrap", { headers: economyHeaders() })
+      const response = await fetch("/api/economy/bootstrap", { headers: economyHeaders(), cache: "no-store" })
       if (!response.ok) throw new Error("Economy bootstrap failed")
       const data = await response.json()
+      if (currentUserIdRef.current !== uid || generation !== refreshGenerationRef.current) return
+      if (typeof data.loginStreak === "number") setLoginStreak(data.loginStreak)
       setBalance(data.wallet?.balance ?? 0)
       setLifetimeEarned(data.wallet?.lifetimeEarned ?? 0)
       setRankPoints(data.wallet?.rankPoints ?? 0)
@@ -135,6 +143,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user?.uid && initializedUserId.current !== user.uid) {
       initializedUserId.current = user.uid
+      setLoginStreak(null)
       refresh()
 
       // Fire daily login for registered users (not guests).
@@ -146,8 +155,11 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
           headers: { "Content-Type": "application/json", ...economyHeaders() },
           body:    JSON.stringify({ uid: user.uid }),
         })
-          .then((r) => r.json())
+          .then((r) => r.ok ? r.json() : Promise.reject(new Error("Daily login failed")))
           .then((data: DailyLoginResponse) => {
+            if (currentUserIdRef.current !== user.uid) return
+            if (typeof data.newStreak === "number") setLoginStreak(data.newStreak)
+            void refresh()
             if (!data.alreadyDone && data.earned > 0) {
               setBalance(data.wallet.balance)
               setLifetimeEarned(data.wallet.lifetimeEarned)
@@ -160,8 +172,26 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       }
     } else if (!user?.uid) {
       initializedUserId.current = null
+      setLoginStreak(null)
     }
   }, [user?.uid, refresh])
+
+  useEffect(() => {
+    if (user?.role !== "user") return
+    const refreshVisible = () => {
+      if (navigator.onLine && document.visibilityState !== "hidden") void refresh()
+    }
+    const timer = window.setInterval(refreshVisible, 60000)
+    window.addEventListener("focus", refreshVisible)
+    window.addEventListener("online", refreshVisible)
+    document.addEventListener("visibilitychange", refreshVisible)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener("focus", refreshVisible)
+      window.removeEventListener("online", refreshVisible)
+      document.removeEventListener("visibilitychange", refreshVisible)
+    }
+  }, [user?.role, refresh])
 
   const claimBounty = useCallback(async (bountyId: string) => {
     const uid = user?.uid
@@ -421,7 +451,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
 
   return (
     <EconomyContext.Provider value={{
-      balance, lifetimeEarned, rankPoints, lifetimeXP, bounties, inventory, equippedCosmetics, loading,
+      balance, lifetimeEarned, rankPoints, lifetimeXP, loginStreak, bounties, inventory, equippedCosmetics, loading,
       isItemUsePending, isItemUsed,
       dailyLoginReward, clearDailyLoginReward,
       refresh, claimBounty, purchase, useItem, equipCosmetic, grantDevNP,

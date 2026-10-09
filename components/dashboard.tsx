@@ -110,6 +110,7 @@ const CARD_PALETTES = [
 
 export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOpenLiveAssessments }: DashboardProps) {
   const { user, progress } = useApp()
+  const currentStreak = useEconomy().loginStreak ?? progress.streak
   const { globalMode } = useStudyMode()
   const { isGlassEnabled } = useTheme()
   const { equippedCosmetics, dailyLoginReward, clearDailyLoginReward } = useEconomy()
@@ -228,11 +229,11 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
               <h1 className="mt-0.5 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
               <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
             </div>
-            {progress.streak > 0 && (
+            {currentStreak > 0 && (
               <div className="flex w-fit items-center gap-2 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur-sm sm:flex-col sm:items-center sm:text-center">
                 <span className="text-2xl leading-none">🔥</span>
                 <div>
-                  <p className="text-xl font-bold leading-tight">{progress.streak}</p>
+                  <p className="text-xl font-bold leading-tight">{currentStreak}</p>
                   <p className="text-xs opacity-80">day streak</p>
                 </div>
               </div>
@@ -248,14 +249,14 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
             <StatCard glass={isGlassEnabled} icon="📋" label="Answered" value={trialAnswered} sub="trial questions" color="bg-sky-50 text-sky-700 border-sky-200/80" />
             <StatCard glass={isGlassEnabled} icon="🎯" label="Accuracy" value={`${trialAccuracy}%`} sub={trialAnswered ? `${trialCorrect} correct` : "no data yet"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" />
             <StatCard glass={isGlassEnabled} icon="🚩" label="Flagged" value={progress.flaggedQuestionIds.length} sub="for review" color="bg-amber-50 text-amber-700 border-amber-200/80" />
-            <StatCard glass={isGlassEnabled} icon="🔥" label="Streak" value={`${progress.streak}d`} sub={progress.lastStudyDate ? `last: ${fmtDate(progress.lastStudyDate)}` : "start today!"} color="bg-rose-50 text-rose-700 border-rose-200/80" />
+            <StatCard glass={isGlassEnabled} icon="🔥" label="Streak" value={`${currentStreak}d`} sub={progress.lastStudyDate ? `last: ${fmtDate(progress.lastStudyDate)}` : "start today!"} color="bg-rose-50 text-rose-700 border-rose-200/80" />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
             <StatCard glass={isGlassEnabled} icon="📝" label="Exams Taken" value={examsTaken} sub="mock exams" color="bg-sky-50 text-sky-700 border-sky-200/80" />
             <StatCard glass={isGlassEnabled} icon="🎯" label="Avg Score" value={examsTaken ? `${avgExamScore}%` : "—"} sub={examsTaken ? `across ${examsTaken} exam${examsTaken !== 1 ? "s" : ""}` : "no exams yet"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" />
             <StatCard glass={isGlassEnabled} icon="🏆" label="Best Score" value={examsTaken ? `${bestExamScore}%` : "—"} sub={examsTaken ? "personal best" : "no exams yet"} color="bg-amber-50 text-amber-700 border-amber-200/80" />
-            <StatCard glass={isGlassEnabled} icon="🔥" label="Streak" value={`${progress.streak}d`} sub={progress.lastStudyDate ? `last: ${fmtDate(progress.lastStudyDate)}` : "start today!"} color="bg-rose-50 text-rose-700 border-rose-200/80" />
+            <StatCard glass={isGlassEnabled} icon="🔥" label="Streak" value={`${currentStreak}d`} sub={progress.lastStudyDate ? `last: ${fmtDate(progress.lastStudyDate)}` : "start today!"} color="bg-rose-50 text-rose-700 border-rose-200/80" />
           </div>
         )}
       </section>
@@ -370,6 +371,7 @@ function TrialDashboard({
   onOpenWeakAreas: () => void
 }) {
   const { progress } = useApp()
+  const currentStreak = useEconomy().loginStreak ?? progress.streak
 
   const modules = catalog.map((module) => module.name)
   const weakAreaQuestions = getWeakAreaQuestions(progress.history)
@@ -625,6 +627,7 @@ function ExamDashboard({
   onOpenModules: (module?: string) => void
 }) {
   const { progress } = useApp()
+  const currentStreak = useEconomy().loginStreak ?? progress.streak
   const modules = catalog.map((module) => module.name)
   const examScores = (progress.examScores ?? []).slice(0, 5)
 

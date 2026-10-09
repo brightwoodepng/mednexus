@@ -411,6 +411,7 @@ export interface SrsEntry {
 
 /** Aggregated user progress / global stats. */
 export interface UserProgress {
+  savedQuizSession?: import("@/lib/quiz-session").QuizSession | null
   totalAnswered: number
   totalCorrect: number
   flaggedQuestionIds: string[]

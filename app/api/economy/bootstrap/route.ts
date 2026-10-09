@@ -27,14 +27,19 @@ export async function GET(req: NextRequest) {
 
     const db = countEconomyQueries(pool, metrics)
     const today = TODAY_DATE()
-    const [walletResult, xpResult, bountyResult, inventoryResult, cosmeticsResult, runtimeConfig] = await Promise.all([
+    const [walletResult, xpResult, bountyResult, inventoryResult, cosmeticsResult, runtimeConfig, streakResult] = await Promise.all([
       db.query("SELECT balance, lifetime_earned, rank_points FROM mednexus_season_wallets WHERE user_id=$1 AND season_id=$2", [auth.uid, season.id]),
       db.query("SELECT COALESCE(SUM(amount),0)::int lifetime_xp FROM mednexus_xp_transactions WHERE user_id=$1", [auth.uid]),
       db.query("SELECT bounty_id, progress, claimed FROM mednexus_bounty_progress WHERE season_id=$1 AND uid=$2 AND bounty_date=$3", [season.id, auth.uid, today]),
       db.query("SELECT item_id, quantity FROM mednexus_user_inventory WHERE uid=$1", [auth.uid]),
       db.query("SELECT equipped_title,equipped_frame,equipped_highlight,equipped_avatar FROM mednexus_user_cosmetics WHERE uid=$1", [auth.uid]),
       getActiveEconomyConfig(db),
+      db.query("SELECT login_streak, last_login_date FROM mednexus_registered_users WHERE uid=$1", [auth.uid]),
     ])
+    const login = streakResult.rows[0]
+    const lastLogin = login?.last_login_date ? new Date(login.last_login_date).toISOString().slice(0, 10) : null
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+    const loginStreak = lastLogin === today || lastLogin === yesterday ? Number(login?.login_streak ?? 0) : 0
     const wallet = walletResult.rows[0]
     const bountyProgress = Object.fromEntries(bountyResult.rows.map(row => [row.bounty_id, row]))
     const cosmetics = cosmeticsResult.rows[0] ?? {}
@@ -44,6 +49,7 @@ export async function GET(req: NextRequest) {
       weeklyGoals: [],
       inventory: Object.fromEntries(inventoryResult.rows.map(row => [row.item_id, Number(row.quantity)])),
       equippedCosmetics: { title: cosmetics.equipped_title ?? null, frame: cosmetics.equipped_frame ?? null, highlight: cosmetics.equipped_highlight ?? null, avatar: cosmetics.equipped_avatar ?? null },
+      loginStreak,
       season,
     }, metrics)
   } catch (error) {

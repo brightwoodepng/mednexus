@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import type { Question } from "@/lib/types"
 import {
+  checkpointQuizSession,
+  unrecordedQuizHistory,
   clearQuizSession,
   createQuizSession,
   loadQuizSession,
@@ -68,6 +70,8 @@ describe("persisted quiz sessions", () => {
   it("rejects missing question IDs and malformed or stale versions", () => {
     expect(restoreQuizSession(session(), [question("q1"), question("q3")])).toBeNull()
     expect(parseQuizSession("not-json", "user-a")).toBeNull()
+    expect(parseQuizSession(JSON.stringify({ ...session(), recordedQuestionIds: ["unknown"] }), "user-a")).toBeNull()
+    expect(parseQuizSession(JSON.stringify({ ...session(), pendingSelections: { q1: {} } }), "user-a")).toBeNull()
     expect(parseQuizSession(JSON.stringify({ ...session(), version: 99 }), "user-a")).toBeNull()
   })
 
@@ -86,5 +90,27 @@ describe("persisted quiz sessions", () => {
     expect(loadQuizSession("user-a", storage)).not.toBeNull()
     clearQuizSession("user-a", storage)
     expect(loadQuizSession("user-a", storage)).toBeNull()
+  })
+})
+
+
+describe("paused quiz progress", () => {
+  it("counts only committed Tutor answers and never counts the same checkpoint twice", () => {
+    const questions = [{ ...question("q3"), correctAnswer: "a" }, { ...question("q1"), correctAnswer: ["a", "b"] }, question("q2")]
+    const saved = { ...session(), answers: { q3: "a", q1: ["b", "a"] }, pendingSelections: { q2: "a" } }
+    const checkpoint = checkpointQuizSession(saved, questions, 2000)
+    expect(checkpoint.history).toHaveLength(2)
+    expect(checkpoint.history.every(entry => entry.isCorrect)).toBe(true)
+    expect(checkpoint.session.pendingSelections).toEqual({ q2: "a" })
+    expect(checkpointQuizSession(checkpoint.session, questions, 3000).history).toEqual([])
+    expect(unrecordedQuizHistory(checkpoint.session, checkpoint.history)).toEqual([])
+    expect(parseQuizSession(JSON.stringify(checkpoint.session), "user-a")?.recordedQuestionIds).toEqual(["q3", "q1"])
+  })
+
+  it("keeps Exam answers ungraded until submission and preserves its running timer", () => {
+    const saved = { ...session("exam"), answers: { q3: "a" } }
+    const checkpoint = checkpointQuizSession(saved, [question("q3")], 2000)
+    expect(checkpoint.history).toEqual([])
+    expect(checkpoint.session.startedAt).toBe(saved.startedAt)
   })
 })
