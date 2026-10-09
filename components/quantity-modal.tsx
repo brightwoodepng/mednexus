@@ -11,6 +11,7 @@ interface QuantityModalProps {
   label: string
   sublabel?: string
   questions: Question[]
+  review?: boolean
   mode?: QuizMode
   onClose: () => void
   onStart: (questions: Question[], gamificationEnabled: boolean, lockAnswers: boolean) => void
@@ -21,7 +22,7 @@ type Step = "setup" | "gamification"
 const PRESETS = [10, 20, 50, 75, 100, 150] as const
 type Tab = "quantity" | "range"
 
-export function QuantityModal({ open, label, sublabel, questions, mode, onClose, onStart }: QuantityModalProps) {
+export function QuantityModal({ open, label, sublabel, questions, mode, review = false, onClose, onStart }: QuantityModalProps) {
   const [step, setStep] = useState<Step>("setup")
   const [pendingQuestions, setPendingQuestions] = useState<Question[] | null>(null)
   const [tab, setTab] = useState<Tab>("quantity")
@@ -132,7 +133,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
   const canStart = tab === "quantity" ? (qty !== null && qty > 0) : (rangeSlice !== null && rangeSlice.length > 0)
 
   const startLabel = tab === "quantity"
-    ? (qty !== null ? `Begin ${qty} Question${qty === 1 ? "" : "s"}` : "Begin Quiz")
+    ? (qty !== null ? `${review ? "Review" : "Begin"} ${qty} Question${qty === 1 ? "" : "s"}` : "Begin Quiz")
     : (rangeSlice ? `Begin Q${rangeStart}–Q${rangeEnd} (${rangeSlice.length})` : "Begin Quiz")
 
   // ── Gamification prompt step ──
@@ -152,7 +153,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
           {/* Copy */}
           <div className="space-y-2 text-center">
             <p className="text-sm font-medium text-foreground leading-relaxed">
-              Level up your <span className="font-semibold text-primary">{count}-question</span> session with streaks, milestone rewards, and cheer animations.
+              Level up your <span className="font-semibold text-primary">{count}-question</span> session {review ? "with reading milestones." : "with streaks, milestone rewards, and cheer animations."}
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Prefer a distraction-free environment? Choose <span className="font-medium">No</span> for a clean, focused experience.
@@ -161,7 +162,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
 
           {/* Feature pills */}
           <div className="flex flex-wrap justify-center gap-2">
-            {["🔥 Streaks", "🏆 Milestones", "✨ Cheer Effects"].map((f) => (
+            {(review ? ["📖 Reading milestones"] : ["🔥 Streaks", "🏆 Milestones", "✨ Cheer Effects"]).map((f) => (
               <span key={f} className="rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-xs font-medium text-primary">
                 {f}
               </span>
@@ -330,7 +331,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
           </>
         )}
 
-        {mode === "trial" && (
+        {mode === "trial" && !review && (
           <button
             type="button"
             role="switch"
@@ -363,3 +364,4 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
     </Modal>
   )
 }
+

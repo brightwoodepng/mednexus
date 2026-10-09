@@ -11,6 +11,7 @@ import type { Screen } from "@/lib/view"
 import type { QuizMode, BlockResult, HistoryEntry, Question, ExamScore, TheoryStudyMode } from "@/lib/types"
 import { AuthScreen } from "@/components/auth-screen"
 import { Dashboard } from "@/components/dashboard"
+import { ReviewWorkspace } from "@/components/review-workspace"
 import { ModuleLibrary } from "@/components/module-library"
 import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
@@ -375,6 +376,7 @@ function TheoryStudyModeToggle({ mode, onChange }: { mode: TheoryStudyMode; onCh
 const MCQ_MODE_SCREENS = new Set<Screen>(["dashboard", "modules", "weak-areas"])
 
 const MCQ_HEADER_TITLES: Partial<Record<Screen, string>> = {
+  review: "Review",
   leaderboard: "Rankings",
   "live-assessments": "Live Assessments",
   game: "Game Mode",
@@ -871,7 +873,8 @@ export function MedNexusApp() {
           {safeScreen === "theory-revision" && <TheoryVault key={`theory-revision-${theoryNavigationKey}`} initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-progress" && <TheoryVault key={`theory-progress-${theoryNavigationKey}`} initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-search" && <TheoryVault key={`theory-search-${theoryNavigationKey}`} initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
-          {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
+          {safeScreen === "review" && <ReviewWorkspace onExit={() => handleScreenNavigation("dashboard")} />}
+      {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
           {safeScreen === "leaderboard" && <LeaderboardScreen onNavigate={handleScreenNavigation} />}
@@ -910,3 +913,4 @@ export function MedNexusApp() {
     </>
   )
 }
+

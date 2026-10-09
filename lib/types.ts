@@ -411,6 +411,7 @@ export interface SrsEntry {
 
 /** Aggregated user progress / global stats. */
 export interface UserProgress {
+  savedReviewSession?: import("@/lib/review-session").ReviewSession | null
   savedQuizSession?: import("@/lib/quiz-session").QuizSession | null
   totalAnswered: number
   totalCorrect: number
@@ -519,3 +520,4 @@ export interface AssessmentAnalytics {
   guestCount: number
   registeredCount: number
 }
+

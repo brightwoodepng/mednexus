@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
+import { parseReviewSession } from "@/lib/review-session"
 import { parseQuizSession } from "@/lib/quiz-session"
 import { triggerProgressionNotifications } from "@/lib/progression-notifications"
 
@@ -7,7 +8,7 @@ const HISTORY_LIMIT = 200
 const EXAM_LIMIT = 100
 const PATCH_FIELDS = new Set([
   "flaggedQuestionIds", "streak", "lastStudyDate", "notificationsLastRead",
-  "mutedNotificationTypes", "favoriteModules", "srsData", "savedQuizSession",
+  "mutedNotificationTypes", "favoriteModules", "srsData", "savedQuizSession", "savedReviewSession",
 ])
 
 type SyncBody = {
@@ -121,6 +122,11 @@ export async function POST(req: NextRequest) {
       if (!session || session.questionIds.length > 5000) return jsonWithSize({ error: "Invalid quiz session" }, "POST", 400)
       patch.savedQuizSession = session
     }
+    if ("savedReviewSession" in patch && patch.savedReviewSession !== null) {
+      const session = parseReviewSession(JSON.stringify(patch.savedReviewSession), uid)
+      if (!session) return jsonWithSize({ error: "Invalid review session" }, "POST", 400)
+      patch.savedReviewSession = session
+    }
     const answeredDelta = Number(body.increments?.totalAnswered ?? 0)
     const correctDelta = Number(body.increments?.totalCorrect ?? 0)
     if (![answeredDelta, correctDelta].every(Number.isSafeInteger)) return jsonWithSize({ error: "Invalid increments" }, "POST", 400)
@@ -216,3 +222,4 @@ export async function POST(req: NextRequest) {
     return jsonWithSize({ error: "Server error" }, "POST", 500)
   }
 }
+
