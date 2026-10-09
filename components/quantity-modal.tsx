@@ -25,7 +25,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
   const [step, setStep] = useState<Step>("setup")
   const [pendingQuestions, setPendingQuestions] = useState<Question[] | null>(null)
   const [tab, setTab] = useState<Tab>("quantity")
-  const [lockAnswers, setLockAnswers] = useState(true)
+  const [lockAnswers, setLockAnswers] = useState(false)
 
   // — Quantity tab state —
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
@@ -122,7 +122,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
     setRangeStart("")
     setRangeEnd("")
     setTab("quantity")
-    setLockAnswers(true)
+    setLockAnswers(false)
   }
 
   function handleClose() { reset(); onClose() }
@@ -335,13 +335,17 @@ export function QuantityModal({ open, label, sublabel, questions, mode, onClose,
             type="button"
             role="switch"
             aria-checked={lockAnswers}
+            aria-describedby="answer-lock-hint"
             onClick={() => setLockAnswers(value => !value)}
             className="flex w-full items-center justify-between gap-3 border-t border-border pt-4 text-left"
           >
             <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${lockAnswers ? "bg-primary" : "bg-muted"}`}>
               <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${lockAnswers ? "translate-x-6" : "translate-x-1"}`} />
             </span>
-            <span className="min-w-0 flex-1 text-sm font-medium">Confirm each answer</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">Confirm each answer</span>
+              <span id="answer-lock-hint" className="mt-1 block text-xs text-muted-foreground">Turn on to lock answers before feedback.</span>
+            </span>
           </button>
         )}
 

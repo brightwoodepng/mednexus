@@ -58,7 +58,7 @@ export function parseQuizSession(raw: string | null, expectedUserId: string): Qu
     if (!value.sataSelections || typeof value.sataSelections !== "object" || !isStringArray(value.sataLockedQuestionIds) || !isStringArray(value.flaggedQuestionIds)) return null
     if (!Number.isFinite(value.startedAt) || value.startedAt! <= 0 || !Number.isFinite(value.durationSeconds) || value.durationSeconds! < 0) return null
     if (value.trialTimerPolicy !== TRIAL_TIMER_POLICY) return null
-    return { ...value, lockAnswers: value.lockAnswers !== false } as QuizSession
+    return { ...value, lockAnswers: value.lockAnswers === true } as QuizSession
   } catch {
     return null
   }
@@ -101,7 +101,7 @@ export function createQuizSession(input: Pick<QuizSession, "userId" | "moduleNam
     setupModule: input.setupModule,
     mode: input.mode,
     gamificationEnabled: input.gamificationEnabled,
-    lockAnswers: input.lockAnswers ?? true,
+    lockAnswers: input.lockAnswers ?? false,
     currentQuestionIndex: 0,
     answers: {},
     struckOptions: {},

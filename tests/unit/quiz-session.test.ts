@@ -43,12 +43,14 @@ describe("persisted quiz sessions", () => {
     expect(restored?.questions.map(q => q.id)).toEqual(["q3", "q1", "q2"])
     expect(restored?.remainingSeconds).toBeNull()
     expect(restored?.session.answers).toEqual({ q3: "a" })
-    expect(restored?.session.lockAnswers).toBe(true)
+    expect(restored?.session.lockAnswers).toBe(false)
   })
 
   it("persists the learner's normal-MCQ answer-lock choice", () => {
-    const saved = { ...session(), lockAnswers: false }
-    expect(parseQuizSession(JSON.stringify(saved), "user-a")?.lockAnswers).toBe(false)
+    for (const lockAnswers of [false, true]) {
+      const saved = { ...session(), lockAnswers }
+      expect(parseQuizSession(JSON.stringify(saved), "user-a")?.lockAnswers).toBe(lockAnswers)
+    }
   })
 
   it("counts wall-clock absence against Exam time", () => {
