@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { ClipboardList, ShoppingBag } from "lucide-react"
 import { GameLauncherTile } from "@/components/game-launcher-tile"
+import { GameRulesDialog } from "@/components/game-rules-dialog"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
@@ -1177,6 +1178,8 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
 }) {
   const [category, setCategory] = useState<ModeCategory>("solo")
   const [questsOpen, setQuestsOpen] = useState(false)
+  const [selectedGame, setSelectedGame] = useState<ModeConfig | MultiModeCard | null>(null)
+  const closeGameRules = useCallback(() => setSelectedGame(null), [])
   const { bounties } = useEconomy()
   const questBadgeCount = bounties.filter(b => b.progress >= b.target && !b.claimed).length
 
@@ -1222,7 +1225,7 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
           <div className="mb-3">
             <div className="grid grid-cols-3 items-start gap-x-4 gap-y-5 sm:grid-cols-4 sm:gap-x-6 sm:gap-y-7">
               {MODES.map(m => (
-                <GameLauncherTile key={m.id} id={m.id} name={m.name} bestLabel={m.hsLabel} best={readHs(m.hsKey)} onSelect={() => onSelect(m.id)} />
+                <GameLauncherTile key={m.id} id={m.id} name={m.name} bestLabel={m.hsLabel} best={readHs(m.hsKey)} onSelect={() => setSelectedGame(m)} />
               ))}
             </div>
           </div>
@@ -1233,7 +1236,7 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
           <div className="mb-3">
             <div className="grid grid-cols-3 items-start gap-x-4 gap-y-5 sm:grid-cols-4 sm:gap-x-6 sm:gap-y-7">
               {MULTI_MODES.map(m => (
-                <GameLauncherTile key={m.id} id={m.id} name={m.name} onSelect={() => onSelect(m.id)} />
+                <GameLauncherTile key={m.id} id={m.id} name={m.name} onSelect={() => setSelectedGame(m)} />
               ))}
             </div>
           </div>
@@ -1244,6 +1247,7 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
         </button>
       </div>
       {questsOpen && <QuestsDrawer onClose={() => setQuestsOpen(false)} />}
+      {selectedGame && <GameRulesDialog game={selectedGame} onClose={closeGameRules} onContinue={() => onSelect(selectedGame.id)} />}
     </div>
   )
 }
