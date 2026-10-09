@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react"
 import { ClipboardList, ShoppingBag } from "lucide-react"
+import { GameLauncherTile } from "@/components/game-launcher-tile"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
@@ -1134,51 +1135,6 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
 }
 
 // ── Mode Select Screen ────────────────────────────────────────────────────────
-function ModeCard({ name, icon, gradient, shadow, desc, rules, hsLabel, hsKey, onSelect }: {
-  name: string; icon: string; gradient: string; shadow: string
-  desc: string; rules: string[]; hsLabel?: string; hsKey?: string; onSelect: () => void
-}) {
-  const hs = hsKey ? readHs(hsKey) : 0
-  return (
-    <button
-      type="button" onClick={onSelect}
-      className="group relative overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-left transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/8 hover:scale-[1.01] active:scale-[0.99] sm:p-4"
-    >
-      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient}`} />
-      <div className="flex items-start gap-3">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gradient} shadow-md ${shadow} text-lg sm:h-11 sm:w-11`}>
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <span className="mb-1 block font-bold text-foreground">{name}</span>
-          <p className="text-xs leading-relaxed text-muted-foreground">{desc}</p>
-        </div>
-      </div>
-      <div className="mt-2.5 space-y-1">
-        {rules.map(rule => (
-          <div key={rule} className="flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground">
-            <span className="h-1 w-1 shrink-0 rounded-full bg-primary/40" />
-            {rule}
-          </div>
-        ))}
-      </div>
-      {hs > 0 && hsLabel && (
-        <div className="mt-3.5 flex items-center gap-1.5 rounded-xl bg-muted/70 px-3 py-2">
-          <span className="text-xs">🏆</span>
-          <span className="text-xs text-muted-foreground">{hsLabel}:</span>
-          <span className="text-xs font-bold text-foreground">{hs.toLocaleString()}</span>
-        </div>
-      )}
-      <div className={`mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r ${gradient} py-2 text-xs font-bold text-white shadow-sm transition-opacity group-hover:opacity-90`}>
-        Play
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}>
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </div>
-    </button>
-  )
-}
-
 type ModeCategory = "solo" | "multi"
 
 function QuestsDrawer({ onClose }: { onClose: () => void }) {
@@ -1228,7 +1184,7 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
     <div className="flex min-h-full flex-col p-3 sm:p-5 lg:p-6">
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-4 flex w-full flex-col items-stretch gap-3 sm:mb-3 md:flex-row md:items-center md:justify-between">
-          <div className="hidden min-w-0 items-center gap-2.5 md:flex">
+          <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-500 text-xl shadow-lg shadow-fuchsia-500/20" aria-hidden>🎮</span>
             <h1 className="whitespace-nowrap bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-xl font-black tracking-tight text-transparent md:text-2xl">Game Mode</h1>
           </div>
@@ -1246,14 +1202,14 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
         {/* Category tabs — Solo vs Multiplayer */}
         <div className="mb-3 flex gap-1 rounded-2xl bg-muted p-1">
           <button
-            type="button" onClick={() => setCategory("solo")}
+            type="button" onClick={() => setCategory("solo")} aria-pressed={category === "solo"}
             className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-all ${category === "solo" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
             🧍 Solo Modes
             <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${category === "solo" ? "bg-primary/10 text-primary" : "bg-border/60 text-muted-foreground"}`}>{MODES.length}</span>
           </button>
           <button
-            type="button" onClick={() => setCategory("multi")}
+            type="button" onClick={() => setCategory("multi")} aria-pressed={category === "multi"}
             className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-all ${category === "multi" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
             👥 Multiplayer
@@ -1264,9 +1220,9 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
         {/* Solo modes window */}
         {category === "solo" && (
           <div className="mb-3">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-3 items-start gap-x-4 gap-y-5 sm:grid-cols-4 sm:gap-x-6 sm:gap-y-7">
               {MODES.map(m => (
-                <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
+                <GameLauncherTile key={m.id} id={m.id} name={m.name} bestLabel={m.hsLabel} best={readHs(m.hsKey)} onSelect={() => onSelect(m.id)} />
               ))}
             </div>
           </div>
@@ -1275,9 +1231,9 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
         {/* Multiplayer modes window */}
         {category === "multi" && (
           <div className="mb-3">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-3 items-start gap-x-4 gap-y-5 sm:grid-cols-4 sm:gap-x-6 sm:gap-y-7">
               {MULTI_MODES.map(m => (
-                <ModeCard key={m.id} {...m} onSelect={() => onSelect(m.id)} />
+                <GameLauncherTile key={m.id} id={m.id} name={m.name} onSelect={() => onSelect(m.id)} />
               ))}
             </div>
           </div>
