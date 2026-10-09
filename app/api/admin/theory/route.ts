@@ -81,6 +81,9 @@ export async function GET(request: NextRequest) {
       pool.query(`SELECT q.status,COUNT(*)::int AS count FROM mednexus_theory_questions q
         JOIN mednexus_theory_collections c ON c.id=q.collection_id WHERE c.kind=$1 AND q.deleted_at IS NULL GROUP BY q.status`, [kind]),
       pool.query(`SELECT q.collection_id AS "collectionId",q.module_id AS "moduleId",q.discipline_id AS "disciplineId",q.set_id AS "setId",
+        GROUPING(q.set_id)::int AS "setGrouping",
+        GROUPING(q.module_id)::int AS "moduleGrouping",
+        GROUPING(q.discipline_id)::int AS "disciplineGrouping",
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE q.status='draft')::int AS draft,
         COUNT(*) FILTER (WHERE q.status='published')::int AS live,
@@ -503,4 +506,3 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to delete Theory content." }, { status: 400 })
   }
 }
-

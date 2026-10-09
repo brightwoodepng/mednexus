@@ -21,7 +21,7 @@ const groups: Array<{ label?: string; items: NavigationItem[] }> = [
   { label: "Content", items: [
     { href: "/admin/mcq", label: "MCQ Bank", icon: ListChecks, capability: "mcq" },
     { href: "/admin/theory", label: "Theory Vault", icon: BookOpen, capability: "theory" },
-    { href: "/admin/modules", label: "Modules & Disciplines", icon: Waypoints, capability: "mcq" },
+    { href: "/admin/modules", label: "Modules & Disciplines", icon: Waypoints },
     { href: "/admin/imports-exports", label: "Imports & Exports", icon: FileOutput, capability: "mcq" },
   ] },
   { label: "Assessments", items: [
@@ -195,6 +195,7 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
       {groups.map((group) => (
         <SidebarGroup key={group.label ?? "dashboard"} label={group.label}>
           {group.items.map((item) => {
+            if (item.href === "/admin/modules" && !capabilities.mcq && !capabilities.theory) return null
             if (item.capability && !capabilities[item.capability]) return null
             const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href)
             return (
@@ -275,7 +276,7 @@ export function AdminShell({ capabilities, identity, children }: AdminShellProps
     >
       {groups
         .flatMap((group) => group.items)
-        .filter((item) => !item.capability || capabilities[item.capability])
+        .filter((item) => item.href === "/admin/modules" ? capabilities.mcq || capabilities.theory : !item.capability || capabilities[item.capability])
         .map((item) => {
           const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href)
           const Icon = item.icon
