@@ -21,7 +21,7 @@ import type { Screen } from "@/lib/view"
 import { CosmeticFrame, CosmeticTitle } from "@/components/cosmetics"
 import { TutorialSettings } from "@/components/onboarding/TutorialSettings"
 import { OfflineDownloads } from "@/components/offline-downloads"
-import { CalendarDays, ClipboardList, GraduationCap, LayoutGrid, MoreHorizontal, Palette, Play, Settings, Target, Trophy } from "lucide-react"
+import { CalendarDays, ClipboardList, GraduationCap, LayoutGrid, MoreHorizontal, Palette, Settings, Target, Trophy } from "lucide-react"
 
 // ── Exam Scores ──────────────────────────────────────────────────────────────
 
@@ -93,10 +93,10 @@ function ProfileHeader() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex flex-col gap-4 p-4 md:flex-row md:items-center sm:p-6">
+      <div className="flex min-h-56 flex-col gap-6 px-6 py-8 md:flex-row md:items-center sm:p-8">
 
         {/* Avatar + Identity: flex-row on all screen sizes */}
-        <div className="flex min-w-0 flex-1 flex-row items-center gap-3 sm:gap-4">
+        <div className="flex min-w-0 flex-1 flex-col items-center gap-4 sm:flex-row sm:gap-6">
 
           {/* Avatar with frame wrapper and hover-edit overlay */}
           <div
@@ -107,7 +107,7 @@ function ProfileHeader() {
             {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
             <CosmeticFrame cosmeticId={equippedCosmetics.frame} size="profile" motionState="focused" interactionState="focused" className="rounded-full ring-offset-2 ring-offset-card">
               {/* Avatar circle */}
-              <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-primary text-2xl font-bold text-primary-foreground shadow-sm select-none sm:h-20 sm:w-20 sm:text-3xl">
+              <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-primary text-2xl font-bold text-primary-foreground shadow-sm select-none sm:h-28 sm:w-28 sm:text-4xl">
                 {avatarImagePath ? (
                   <img
                     src={avatarImagePath}
@@ -126,7 +126,7 @@ function ProfileHeader() {
           </div>
 
           {/* Identity column */}
-          <div className="min-w-0 flex-1">
+          <div className="w-full min-w-0 flex-1 text-center sm:text-left">
           {editing ? (
             <form onSubmit={saveName} className="mb-1 flex min-w-0 items-center gap-1.5 sm:gap-2">
               <input
@@ -158,10 +158,10 @@ function ProfileHeader() {
             <button
               type="button"
               onClick={startEdit}
-              className="group/name mb-0.5 flex w-full min-w-0 items-center gap-1.5 text-left"
+              className="group/name mb-0.5 flex w-full min-w-0 items-center justify-center gap-1.5 text-left sm:justify-start"
               aria-label="Edit name"
             >
-              <h1 className="min-w-0 break-words text-lg font-semibold tracking-tight sm:text-xl">{user?.name ?? "Clinician"}</h1>
+              <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight sm:text-3xl">{user?.name ?? "Clinician"}</h1>
               <PencilIcon size={12} className="text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity" />
             </button>
           )}
@@ -169,7 +169,7 @@ function ProfileHeader() {
           {/* Equipped title */}
           {equippedTitleLabel
             ? <p className="max-w-full text-sm text-purple-400 italic font-semibold [&_.reactive-title]:max-w-full [&_.reactive-title\_\_plate]:max-w-full [&_.reactive-title\_\_text]:min-w-0 [&_.reactive-title\_\_text]:whitespace-normal!"><CosmeticTitle cosmeticId={equippedCosmetics.title} size="profile">{equippedTitleLabel}</CosmeticTitle></p>
-            : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
+            : null
           }
           <p className="mt-1 text-sm font-medium text-muted-foreground">{clinicalRank.name}</p>
 
@@ -433,7 +433,7 @@ type TheoryDashboardData = { authenticated: boolean; displayName: string; totals
 
 type ProfileTab = "overview" | "mcq" | "theory" | "cosmetics" | "settings"
 
-function UnifiedOverview({ activeHub, onSelectTab, onNavigate }: { activeHub: StudyHubId; onSelectTab: (tab: ProfileTab) => void; onNavigate: (screen: Screen) => void }) {
+function UnifiedOverview({ activeHub }: { activeHub: StudyHubId }) {
   const { progress } = useApp()
   const { balance, lifetimeXP } = useEconomy()
   const [theory, setTheory] = useState<TheoryDashboardData | null>(null)
@@ -458,18 +458,17 @@ function UnifiedOverview({ activeHub, onSelectTab, onNavigate }: { activeHub: St
   const rankProgress = nextClinicalRank
     ? Math.min(100, Math.max(0, ((lifetimeXP - clinicalRank.minimumXP) / (nextClinicalRank.minimumXP - clinicalRank.minimumXP)) * 100))
     : 100
-  const recentMcq = [...progress.history].sort((a, b) => b.timestamp - a.timestamp).slice(0, 3)
   const theoryCompleted = theory?.totals.completed ?? 0
 
   const metrics = [
-    { label: "Lifetime XP", value: lifetimeXP.toLocaleString(), hint: "All-time experience", tone: "text-violet-400", icon: "XP" },
-    { label: "Nexus Points", value: balance.toLocaleString(), hint: "Available to spend", tone: "text-amber-400", icon: "NP" },
-    { label: "Current streak", value: `${progress.streak ?? 0} days`, hint: "Keep it going", tone: "text-orange-400", icon: "↗" },
+    { label: "Lifetime XP", value: lifetimeXP.toLocaleString(), tone: "text-violet-400", icon: "XP" },
+    { label: "Nexus Points", value: balance.toLocaleString(), tone: "text-amber-400", icon: "NP" },
+    { label: "Current streak", value: `${progress.streak ?? 0} days`, tone: "text-orange-400", icon: "↗" },
   ]
 
   return (
     <section className="min-w-0 space-y-5" aria-labelledby="profile-overview-title">
-      <div><h2 id="profile-overview-title" className="text-lg font-semibold">Learning overview</h2><p className="mt-1 text-sm text-muted-foreground">Your progress, recent study and milestones in one place.</p></div>
+      <div><h2 id="profile-overview-title" className="text-lg font-semibold">Learning overview</h2></div>
       <div className="grid min-w-0 gap-3 md:grid-cols-3">
         {metrics.map((metric) => (
           <div key={metric.label} className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -478,7 +477,7 @@ function UnifiedOverview({ activeHub, onSelectTab, onNavigate }: { activeHub: St
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
                 <p className="break-words text-xl font-bold tabular-nums text-foreground">{metric.value}</p>
-                <p className="text-[11px] text-muted-foreground">{metric.hint}</p>
+                
               </div>
             </div>
           </div>
@@ -512,16 +511,9 @@ function UnifiedOverview({ activeHub, onSelectTab, onNavigate }: { activeHub: St
 
       
 
-      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,.65fr)]">
-        <article className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="mb-4 flex items-center justify-between"><h3 className="flex items-center gap-2 font-semibold"><span className="text-violet-400">◷</span>Recent Activity</h3><button type="button" onClick={() => onSelectTab(isTheory ? "theory" : "mcq")} className="text-xs font-semibold text-primary hover:underline">View all activity →</button></div>
-          {isTheory
-            ? <p className="text-sm text-muted-foreground">{theory?.continueStudying ? `Continue: ${theory.continueStudying.prompt}` : theory?.recentSets?.[0] ? `Recently studied: ${theory.recentSets[0].groupName} · ${theory.recentSets[0].setTitle}` : "No Theory activity yet."}</p>
-            : recentMcq.length > 0 ? <ul className="min-w-0 divide-y divide-border">{recentMcq.map((entry) => <li key={`${entry.questionId}-${entry.timestamp}`} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{entry.module ?? entry.subject ?? "MCQ session"}</p><p className="truncate text-xs text-muted-foreground">{entry.vignetteSnippet}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${entry.isCorrect ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>{entry.isCorrect ? "Correct" : "Review"}</span></li>)}</ul> : <div className="rounded-xl border border-border bg-background/35 px-4 py-6 text-center"><ClipboardList size={24} className="mx-auto text-muted-foreground"/><p className="mt-2 text-sm font-semibold">No recent activity yet</p><p className="mt-1 text-xs text-muted-foreground">Start an MCQ session to see your activity here.</p><button type="button" onClick={() => onNavigate("modules")} className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground"><Play size={13} fill="currentColor"/>Start an MCQ session</button></div>}
-        </article>
-        <article className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div>        <article className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <h3 className="flex items-center gap-2 font-semibold"><Trophy size={17} className="text-violet-400"/>Milestones</h3>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {!isTheory && <Milestone icon={<Target size={17}/>} earned={mcq.attempted >= 20} title="First Twenty" detail="Answer 20 MCQs" progress={`${Math.min(mcq.attempted, 20)}/20`} percent={Math.min(100, mcq.attempted / 20 * 100)} />}
             <Milestone icon={<CalendarDays size={17}/>} earned={(progress.streak ?? 0) >= 7} title="Week Streak" detail="Study for 7 consecutive days" progress={`${Math.min(progress.streak ?? 0, 7)}/7`} percent={Math.min(100, (progress.streak ?? 0) / 7 * 100)} />
             {isTheory && <Milestone earned={theoryCompleted >= 10} title="Theory Explorer" detail="Read 10 Theory questions" />}
@@ -537,7 +529,6 @@ function Milestone({ earned, title, detail, icon, progress, percent = 0 }: { ear
 }
 
 function TheoryProfilePanel({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
-  const { progress } = useApp()
   const [data, setData] = useState<TheoryDashboardData | null>(null)
   useEffect(() => { fetch("/api/theory/dashboard").then((r) => r.ok ? r.json() : null).then(setData).catch(() => setData(null)) }, [])
   const totals = data?.totals ?? { total: 0, completed: 0 }
@@ -548,15 +539,12 @@ function TheoryProfilePanel({ onNavigate }: { onNavigate: (screen: Screen) => vo
     ["Questions read", String(totals.completed)], ["Questions remaining", String(Math.max(0, totals.total - totals.completed))],
     ["Revision queue", String(data?.counts.revision ?? 0)], ["Practice drafts", String(data?.counts.drafts ?? 0)],
   ]
-  const recent = data?.continueStudying ? `Continue: ${data.continueStudying.prompt}` : data?.recentSets?.[0] ? `Recently studied: ${data.recentSets[0].groupName} · ${data.recentSets[0].setTitle}` : "No Theory study activity yet"
   return <section className="min-w-0 space-y-5" aria-labelledby="theory-learning-title">
     <div className="overflow-hidden rounded-2xl border border-teal-500/20 bg-gradient-to-br from-teal-500/10 via-card to-card p-5 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-[.18em] text-teal-700 dark:text-teal-300">Theory Vault</p><h2 id="theory-learning-title" className="mt-2 text-xl font-bold">Theory learning overview</h2><p className="mt-1 text-sm text-muted-foreground">Questions read, deliberate revision and clinical recall — separate from MCQ performance.</p>
+      <p className="text-xs font-bold uppercase tracking-[.18em] text-teal-700 dark:text-teal-300">Theory Vault</p><h2 id="theory-learning-title" className="mt-2 text-xl font-bold">Theory learning overview</h2>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">{cards.map(([label, value]) => <div key={label} className="rounded-xl border border-border/70 bg-background/65 p-3"><p className="text-lg font-bold tabular-nums text-foreground">{value}</p><p className="text-xs font-semibold text-muted-foreground">{label}</p></div>)}</div>
-      <p className="mt-4 rounded-xl bg-background/60 px-3 py-2 text-sm text-muted-foreground">{progress.streak > 0 ? `${progress.streak}-day study streak · ` : ""}{recent}</p>
     </div>
     <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"><h2 className="font-semibold">Study organisation</h2><div className="mt-3 grid gap-2 sm:grid-cols-3"><Stat label="Groups available" value={String(data?.collections.reduce((sum, item) => sum + item.groups, 0) ?? 0)} /><Stat label="Sets available" value={String(data?.collections.reduce((sum, item) => sum + item.sets, 0) ?? 0)} /><Stat label="Bookmarks saved" value={String(data?.counts.bookmarks ?? 0)} /><Stat label="Notes created" value={String(data?.counts.notes ?? 0)} /><Stat label="Revision queue" value={String(data?.counts.revision ?? 0)} /><Stat label="Drafts saved" value={String(data?.counts.drafts ?? 0)} /></div></div>
-    <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"><h2 className="font-semibold">Recent Theory activity</h2><p className="mt-2 text-sm text-muted-foreground">{recent}</p><p className="mt-1 text-sm text-muted-foreground">{data?.recentSets?.[0] ? `${data.recentSets[0].collection} · ${data.recentSets[0].groupName}` : "Complete a review or self-rated practice attempt to build your history."}</p></div>
     <div className="grid gap-2 sm:grid-cols-2">{[["Continue Studying", "theory-dashboard"], ["Browse End of Module", "theory-browse"], ["Browse End of Year", "theory-browse"], ["Open Bookmarks", "theory-bookmarks"], ["Open My Notes", "theory-notes"], ["Open Revision Queue", "theory-revision"], ["View Progress", "theory-progress"]].map(([label, screen]) => <button key={label} type="button" onClick={() => onNavigate(screen as Screen)} className="min-h-11 rounded-xl border border-border px-3 text-sm font-semibold transition hover:border-primary/40 hover:bg-primary/5">{label}</button>)}</div>
   </section>
 }
@@ -576,15 +564,14 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
     { id: "cosmetics", label: "Cosmetics", icon: Palette },
     { id: "settings", label: "Settings", icon: Settings },
   ]
-  const latestActivity = progress.history.length ? formatDate(new Date(Math.max(...progress.history.map(entry => entry.timestamp))).toISOString()) : "Not yet"
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-5xl space-y-5 pb-8 [overflow-wrap:anywhere] sm:space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Profile &amp; Settings</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Manage your account, learning activity and preferences.</p>
-          <p className="mt-2 text-xs text-muted-foreground">Last activity: {latestActivity}</p>
+          
+          
         </div>
         <button type="button" onClick={() => setActiveTab("settings")} aria-label="More profile actions" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted"><MoreHorizontal size={18} /></button>
       </div>
@@ -609,10 +596,10 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
         </div>
       </nav>
 
-      {activeTab === "overview" && <UnifiedOverview activeHub={activeHub} onSelectTab={setActiveTab} onNavigate={onNavigate} />}
+      {activeTab === "overview" && <UnifiedOverview activeHub={activeHub} />}
       {activeTab === "mcq" && (
         <section className="min-w-0 space-y-5" aria-labelledby="profile-mcq-title">
-          <div><h2 id="profile-mcq-title" className="text-lg font-semibold">MCQ activity</h2><p className="mt-1 text-sm text-muted-foreground">Review your answered questions and exam sessions.</p></div>
+          <div><h2 id="profile-mcq-title" className="text-lg font-semibold">MCQ activity</h2></div>
           {progress.history.length === 0 && examScores.length === 0 && <div className="rounded-2xl border border-border bg-card p-6 text-center"><ClipboardList size={24} className="mx-auto text-muted-foreground" /><p className="mt-3 text-sm font-semibold">No MCQ activity yet</p><p className="mt-1 text-sm text-muted-foreground">Your question reviews and exam results will appear here.</p><button type="button" onClick={() => onNavigate("modules")} className="mt-4 min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Start an MCQ session</button></div>}
           <ModuleReviewSection />
           <ExamScores scores={examScores} />
@@ -622,7 +609,7 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
       {activeTab === "cosmetics" && <CosmeticLoadout />}
       {activeTab === "settings" && (
         <section className="min-w-0 space-y-5" aria-labelledby="profile-settings-title">
-          <div><h2 id="profile-settings-title" className="text-lg font-semibold">Account settings</h2><p className="mt-1 text-sm text-muted-foreground">Privacy, guided tours and offline access for this device.</p></div>
+          <div><h2 id="profile-settings-title" className="text-lg font-semibold">Account settings</h2></div>
           <div className="grid min-w-0 items-start gap-4 lg:grid-cols-2"><PrivacySettings /><TutorialSettings /></div>
           <OfflineDownloads />
         </section>
