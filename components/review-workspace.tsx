@@ -1,11 +1,12 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { BookOpen, Check, ChevronLeft, ChevronRight, Grid3X3 } from "lucide-react"
+import { BookOpen, Check, ChevronLeft, ChevronRight, Grid3X3, X } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useQuestions } from "@/contexts/questions-context"
 import { ModuleLibrary } from "@/components/module-library"
 import { QuantityModal } from "@/components/quantity-modal"
+import { Modal } from "@/components/ui/modal"
 import { RichText } from "@/components/rich-text"
 import { parseReviewSession, visitReviewQuestion, type ReviewSession } from "@/lib/review-session"
 import type { Question, QuestionMedia } from "@/lib/types"
@@ -26,6 +27,7 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
+  const [exitOpen, setExitOpen] = useState(false)
   const [navigator, setNavigator] = useState(false)
   const saved = user ? parseReviewSession(JSON.stringify(progress.savedReviewSession ?? null), user.uid) : null
   const button = "rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-40"
@@ -47,12 +49,12 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
     finally { if (owner.current === uid) setBusy(false) }
   }
 
-  function start(questions: Question[], gamificationEnabled: boolean) {
+  function start(questions: Question[]) {
     if (!pending || !user || !questions.length) return
     if (questions.length > 5000) { setError("Choose up to 5,000 questions per review."); setPending(null); return }
     const session: ReviewSession = { version: 1, userId: user.uid, module: pending.module,
       discipline: pending.discipline, questionIds: questions.map(q => q.id), currentIndex: 0,
-      viewedIds: [questions[0].id], gamificationEnabled, updatedAt: Date.now() }
+      viewedIds: [questions[0].id], gamificationEnabled: false, updatedAt: Date.now() }
     saveReviewSession(session); setActive({ session, questions }); setPending(null)
   }
 
@@ -88,24 +90,24 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
     setActive({ ...active, session }); saveReviewSession(session)
   }
 
-  async function leave(finish = false) {
+  async function leave(finish = false, discard = false) {
     if (!active || busy) return
     const uid = user?.uid
     setBusy(true)
-    saveReviewSession(finish ? null : active.session)
+    saveReviewSession(finish || discard ? null : active.session)
     const synced = await flushProgress()
     if (owner.current !== uid) return
-    setBusy(false); setActive(null); setNavigator(false)
+    setBusy(false); setActive(null); setNavigator(false); setExitOpen(false)
     if (finish) setNotice("Review complete!")
     else if (user?.role === "user" && !synced) {
-      window.alert("Saved on this device. Account sync will retry when connected.")
+      window.alert(discard ? "Discarded on this device. Account sync will retry when connected." : "Saved on this device. Account sync will retry when connected.")
       onExit()
     }
     else onExit()
   }
 
   if (!active) return <div className="space-y-5">
-    <div><h1 className="text-2xl font-bold">Review</h1><p className="mt-1 text-sm text-muted-foreground">Read questions with the correct answers and explanations revealed.</p></div>
+    
     {notice && <p role="status" className="rounded-xl bg-primary/10 p-4 text-sm">{notice}</p>}
     {error && <p role="alert" className="rounded-xl bg-destructive/10 p-4 text-sm">{error}</p>}
     {saved && <section className="rounded-2xl border border-border bg-card p-5">
@@ -113,32 +115,31 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
       <button type="button" disabled={busy} onClick={resume} className={button + " mt-4"}>{busy ? "Loading…" : "Resume review"}</button>
       <p className="mt-3 text-xs text-muted-foreground">Starting a new review replaces this saved review.</p>
     </section>}
-    {busy ? <p role="status">Loading questions…</p> : <ModuleLibrary onReadyForQuiz={prepare} />}
+    {busy ? <p role="status">Loading questions…</p> : <ModuleLibrary compact onReadyForQuiz={prepare} />}
     <QuantityModal open={pending !== null} label={pending?.discipline ?? pending?.module ?? ""} sublabel={pending?.discipline ? pending.module : undefined}
-      questions={pending?.questions ?? []} mode="trial" review onClose={() => setPending(null)} onStart={start} />
+      questions={pending?.questions ?? []} review onClose={() => setPending(null)} onStart={start} />
   </div>
 
   const { session, questions } = active
   const question = questions[session.currentIndex]
   const correct = new Set(Array.isArray(question.correctAnswer) ? question.correctAnswer : question.correctAnswer ? [question.correctAnswer] : [])
-  const ratio = session.viewedIds.length / questions.length
-  const milestone = ratio >= 1 ? "🏆 Review complete" : ratio >= .75 ? "✨ Final stretch" : ratio >= .5 ? "🧠 Halfway there" : ratio >= .25 ? "🔥 Warming up" : "📖 Let’s explore"
   return <div className="fixed inset-0 z-[90] flex flex-col bg-background">
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-3 sm:px-6">
       <div className="min-w-0"><p className="flex items-center gap-2 font-bold"><BookOpen size={18} />Review</p>
         <p className="max-w-[60vw] truncate text-xs text-muted-foreground">{session.module}{session.discipline ? " · " + session.discipline : ""}</p></div>
-      <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setNavigator(!navigator)} aria-expanded={navigator} className={button}><Grid3X3 size={16} className="inline mr-2" />Questions</button>
-        <button type="button" onClick={() => leave()} disabled={busy} className={button}>{busy ? "Saving…" : "Save & exit"}</button></div>
+      <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setNavigator(!navigator)} aria-expanded={navigator} className={button + " lg:hidden"}><Grid3X3 size={16} className="inline mr-2" />Questions</button>
+        <button type="button" onClick={() => setExitOpen(true)} disabled={busy} aria-label="Exit review" className="rounded-xl bg-muted p-3 text-foreground"><X size={18} /></button></div>
     </header>
     <div className="flex min-h-0 flex-1">
-      {navigator && <aside aria-label="Question navigator" className="w-28 shrink-0 overflow-y-auto border-r border-border bg-card p-2 sm:w-52 sm:p-4">
+      <aside aria-label="Question navigator" className={(navigator ? "flex" : "hidden lg:flex") + " order-last w-28 shrink-0 flex-col overflow-y-auto border-l border-border bg-card p-2 sm:w-52 sm:p-4"}>
+        <h2 className="mb-3 text-sm font-bold">Question Navigator</h2>
         <p className="mb-3 text-xs text-muted-foreground">Visited questions are highlighted.</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{questions.map((q, i) => <button key={q.id} type="button" aria-label={"Question " + (i + 1)} aria-current={i === session.currentIndex ? "step" : undefined} onClick={() => navigate(i)}
-          className={"rounded-lg py-2 text-sm " + (i === session.currentIndex ? "bg-primary text-primary-foreground" : session.viewedIds.includes(q.id) ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}>{i + 1}</button>)}</div></aside>}
+          className={"rounded-lg py-2 text-sm " + (i === session.currentIndex ? "bg-primary text-primary-foreground" : session.viewedIds.includes(q.id) ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}>{i + 1}</button>)}</div></aside>
       <main id="review-question-scroll" className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
         <article className="mx-auto max-w-3xl space-y-5">
           <p className="text-sm font-semibold text-muted-foreground">Question {session.currentIndex + 1} of {questions.length}</p>
-          {session.gamificationEnabled && <p key={milestone} role="status" className="rounded-xl bg-primary/10 px-4 py-3 font-semibold text-primary">{milestone}</p>}
+
           {question.contextContent && <section className="rounded-xl border border-border bg-muted/30 p-4"><RichText content={question.contextContent} /></section>}
           <section className="rounded-2xl border border-border bg-card p-4 sm:p-6"><RichText content={question.vignette} />
             <Media items={(question.media ?? []).filter(m => m.placement === "stem")} /></section>
@@ -160,5 +161,12 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
       {session.currentIndex === questions.length - 1 ? <button type="button" disabled={busy} onClick={() => leave(true)} className={button}>Finish review</button> :
         <button type="button" disabled={busy} onClick={() => navigate(session.currentIndex + 1)} className={button}>Next <ChevronRight size={16} className="inline" /></button>}
     </footer>
+    <Modal open={exitOpen} onClose={() => { if (!busy) setExitOpen(false) }} title="Leave this review?" widthClass="max-w-sm">
+      <div className="flex flex-col gap-3">
+        <button type="button" disabled={busy} onClick={() => setExitOpen(false)} className={button}>Keep reviewing</button>
+        <button type="button" disabled={busy} onClick={() => leave(false)} className={button}>{busy ? "Saving…" : "Save & continue later"}</button>
+        <button type="button" disabled={busy} onClick={() => leave(false, true)} className="rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground">Discard review</button>
+      </div>
+    </Modal>
   </div>
 }
