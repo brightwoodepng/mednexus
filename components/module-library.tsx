@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, type ReactNode } from "react"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import { useApp } from "@/contexts/app-context"
 import {
@@ -31,6 +31,7 @@ interface ModuleLibraryProps {
   onReadyForQuiz: (config: QuizReadyConfig) => void
   initialModule?: string | null
   compact?: boolean
+  afterControls?: ReactNode
 }
 
 type ViewMode = "module" | "discipline"
@@ -52,7 +53,7 @@ const CARD_PALETTES = [
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function ModuleLibrary({ onReadyForQuiz, initialModule, compact = false }: ModuleLibraryProps) {
+export function ModuleLibrary({ onReadyForQuiz, initialModule, compact = false, afterControls }: ModuleLibraryProps) {
   const { progress, toggleFavoriteModule } = useApp()
   const { catalog, catalogLoading, catalogError, reloadCatalog, loadQuestionSet } = useQuestions()
 
@@ -257,6 +258,8 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule, compact = false }
           </select>
         </div>
       </div>
+
+      {afterControls}
 
       {catalogLoading && catalog.length === 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground" role="status">Loading module catalog…</div>
