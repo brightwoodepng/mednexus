@@ -139,17 +139,17 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
         <article className="mx-auto max-w-3xl space-y-5">
           <p className="text-sm font-semibold text-muted-foreground">Question {session.currentIndex + 1} of {questions.length}</p>
           {session.gamificationEnabled && <p key={milestone} role="status" className="rounded-xl bg-primary/10 px-4 py-3 font-semibold text-primary">{milestone}</p>}
-          {question.contextContent && <section className="rounded-xl border border-border bg-muted/30 p-4"><RichText text={question.contextContent} /></section>}
-          <section className="rounded-2xl border border-border bg-card p-4 sm:p-6"><RichText text={question.vignette} />
+          {question.contextContent && <section className="rounded-xl border border-border bg-muted/30 p-4"><RichText content={question.contextContent} /></section>}
+          <section className="rounded-2xl border border-border bg-card p-4 sm:p-6"><RichText content={question.vignette} />
             <Media items={(question.media ?? []).filter(m => m.placement === "stem")} /></section>
           <div role="list" aria-label="Revealed answers" className="space-y-3">{question.options.map(option => <div role="listitem" key={option.id} className={"flex gap-3 rounded-xl border p-4 " + (correct.has(option.id) ? "border-success/50 bg-success/10" : "border-border bg-card")}>
-            <span className="font-bold">{option.id}.</span><div className="min-w-0 flex-1"><RichText text={option.text} />
+            <span className="font-bold">{option.id}.</span><div className="min-w-0 flex-1"><RichText content={option.text} />
               <Media items={[...(option.media ?? []), ...(question.media ?? []).filter(m => m.placement === "option" && m.optionId === option.id)]} />
               {correct.has(option.id) && <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-success"><Check size={14} />Correct answer</p>}</div></div>)}</div>
           {!correct.size && <p className="text-sm text-muted-foreground">An answer key is not available for this question.</p>}
           <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
             <h2 className="font-bold">Explanation</h2>
-            {question.explanation ? Object.entries({ "Learning objective": question.explanation.objective, "Explanation": question.explanation.details, "Why other options are incorrect": question.explanation.incorrectReasoning }).map(([label, text]) => text ? <div key={label}><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">{label}</h3><RichText text={text} /></div> : null) : <p className="text-sm text-muted-foreground">An explanation is not available for this question.</p>}
+            {question.explanation ? Object.entries({ "Learning objective": question.explanation.objective, "Explanation": question.explanation.details, "Why other options are incorrect": question.explanation.incorrectReasoning }).map(([label, text]) => text ? <div key={label}><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">{label}</h3><RichText content={text} /></div> : null) : <p className="text-sm text-muted-foreground">An explanation is not available for this question.</p>}
             <Media items={(question.media ?? []).filter(m => m.placement === "explanation")} />
           </section>
         </article>
