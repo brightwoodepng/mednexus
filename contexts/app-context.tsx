@@ -11,6 +11,7 @@ import {
 } from "react"
 import type { HistoryEntry, UserProgress, ExamScore } from "@/lib/types"
 import { updateSrsFromHistory } from "@/lib/srs"
+import type { ReviewSession } from "@/lib/review-session"
 import type { QuizSession } from "@/lib/quiz-session"
 import { applyPendingMutations, type SyncMutation } from "@/lib/progress-sync"
 import { rememberIndexNumber } from "@/lib/auth-preferences"
@@ -36,6 +37,7 @@ interface AppContextValue {
   user: AppUser | null
   authReady: boolean
   cloudEnabled: boolean
+  saveReviewSession: (session: ReviewSession | null) => void
   saveActiveQuizSession: (session: QuizSession | null) => void
   flushProgress: () => Promise<boolean>
   requiresPasswordUpdate: boolean
@@ -311,7 +313,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const last = pendingMutations.current.at(-1)
     if (!syncInFlightRef.current && last?.patch && mutation.patch &&
         Object.keys(last.patch).length === 1 && Object.keys(mutation.patch).length === 1 &&
-        "savedQuizSession" in last.patch && "savedQuizSession" in mutation.patch) {
+        (("savedQuizSession" in last.patch && "savedQuizSession" in mutation.patch) ||
+         ("savedReviewSession" in last.patch && "savedReviewSession" in mutation.patch))) {
       pendingMutations.current[pendingMutations.current.length - 1] = queued
     } else pendingMutations.current.push(queued)
     persistPendingMutations()
@@ -324,6 +327,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     progressRef.current = next
     setProgress(next)
   }, [])
+
+  const saveReviewSession = useCallback((session: ReviewSession | null) => {
+    const owner = userRef.current
+    if (!owner || (session && session.userId !== owner.uid)) return
+    mutateProgress(previous => {
+      const next = { ...previous, savedReviewSession: session }
+      saveLocal(owner.uid, next)
+      return next
+    })
+    scheduleSync(owner.name, { patch: { savedReviewSession: session } })
+  }, [scheduleSync, mutateProgress])
 
   const saveActiveQuizSession = useCallback((session: QuizSession | null) => {
     const owner = userRef.current
@@ -882,6 +896,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     user,
     authReady,
     cloudEnabled,
+    saveReviewSession,
     saveActiveQuizSession,
     flushProgress,
     requiresPasswordUpdate,
@@ -909,3 +924,4 @@ export function useApp() {
   if (!ctx) throw new Error("useApp must be used within AppProvider")
   return ctx
 }
+

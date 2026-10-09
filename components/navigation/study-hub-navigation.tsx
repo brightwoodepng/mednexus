@@ -24,6 +24,7 @@ export const STUDY_HUB_NAVIGATION: Record<StudyHubId, readonly HubNavigationItem
   "mcq-qbank": [
     { id: "dashboard", label: "Dashboard", screen: "dashboard", icon: LayoutDashboard, iconColor: "text-primary", bottomNav: true },
     { id: "modules", label: "Study Modules", mobileLabel: "Modules", screen: "modules", icon: LayersIcon, iconColor: "text-primary", bottomNav: true },
+    { id: "review", label: "Review", screen: "review", icon: BookOpen, iconColor: "text-primary" },
     { id: "weak-areas", label: "Weak Areas", screen: "weak-areas", icon: ActivityIcon, iconColor: "text-primary" },
     { id: "live-assessments", label: "Live Assessments", screen: "live-assessments", icon: RadioIcon, iconColor: "text-primary" },
     { id: "game", label: "Game Mode", mobileLabel: "Game", screen: "game", icon: GamepadIcon, iconColor: "text-primary", bottomNav: true },
@@ -45,3 +46,4 @@ export const STUDY_HUB_NAVIGATION: Record<StudyHubId, readonly HubNavigationItem
 export function getHubNavigation(hub: StudyHubId) {
   return STUDY_HUB_NAVIGATION[hub]
 }
+

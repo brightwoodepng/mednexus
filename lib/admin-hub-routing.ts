@@ -30,7 +30,7 @@ export function adminScreenFromUrl(url = typeof window === "undefined" ? "http:/
 }
 
 const URL_BACKED_LEARNER_SCREENS = new Set<Screen>([
-  "dashboard", "modules", "weak-areas", "live-assessments", "game", "store",
+  "dashboard", "review", "modules", "weak-areas", "live-assessments", "game", "store",
   "store-supply", "store-cosmetics", "store-vault", "leaderboard",
   "theory-dashboard", "theory-browse", "theory-bookmarks", "theory-notes",
   "theory-revision", "theory-progress", "theory-search",
@@ -58,3 +58,4 @@ export function learnerScreenUrl(screen: Screen, hub: StudyHubId): string {
   const pathname = screen === defaultScreen ? "/" : `/?screen=${encodeURIComponent(screen)}`
   return withHubContext(pathname, hub)
 }
+
