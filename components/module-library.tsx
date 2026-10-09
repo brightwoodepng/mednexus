@@ -30,6 +30,7 @@ interface QuizReadyConfig {
 interface ModuleLibraryProps {
   onReadyForQuiz: (config: QuizReadyConfig) => void
   initialModule?: string | null
+  compact?: boolean
 }
 
 type ViewMode = "module" | "discipline"
@@ -51,7 +52,7 @@ const CARD_PALETTES = [
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryProps) {
+export function ModuleLibrary({ onReadyForQuiz, initialModule, compact = false }: ModuleLibraryProps) {
   const { progress, toggleFavoriteModule } = useApp()
   const { catalog, catalogLoading, catalogError, reloadCatalog, loadQuestionSet } = useQuestions()
 
@@ -140,6 +141,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
         module={viewingModule}
         catalogModule={viewingCatalogModule}
         coverage={coverage}
+        compact={compact}
         onBack={() => setViewingModule(null)}
         onSelectDiscipline={(disc) => onReadyForQuiz({ module: viewingModule, discipline: disc })}
       />
@@ -159,7 +161,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
       <div className="flex flex-col md:flex-row md:justify-between md:items-center w-full gap-4 mb-6">
 
         {/* Left group: Title + View toggle */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
+        {!compact && <div className="flex flex-col md:flex-row md:items-center gap-4">
 
           {/* Title */}
           <div className="flex items-center gap-2 w-full md:w-auto">
@@ -205,8 +207,10 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
           </div>
         </div>
 
+        }
+
         {/* Right group: Search bar + Sort */}
-        <div className="flex flex-row items-center gap-2 md:gap-4">
+        <div className={"flex flex-row items-center gap-2 md:gap-4" + (compact ? " w-full" : "")}>
 
           {/* Search — flex-1 on mobile so the sort button fits beside it */}
           <div className="relative flex-1 md:w-64 lg:w-auto lg:max-w-md">
@@ -218,6 +222,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-label={view === "module" ? "Search modules" : "Search disciplines"}
               placeholder={view === "module" ? "Search modules…" : "Search disciplines…"}
               className="h-8 w-full rounded-lg border border-border bg-card pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
             />
@@ -234,7 +239,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
               }
             }}
             title={sort === "starred" ? "Starred First" : sort === "az" ? "A → Z" : "Most Questions"}
-            className="md:hidden shrink-0 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className={(compact ? "hidden" : "md:hidden") + " shrink-0 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"}
           >
             <ArrowUpDownIcon size={14} />
           </button>
@@ -243,7 +248,8 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule }: ModuleLibraryPr
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="hidden md:block shrink-0 w-auto px-4 py-2 rounded-lg border border-border bg-card text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+            aria-label="Sort modules"
+            className={(compact ? "block" : "hidden md:block") + " shrink-0 w-auto px-4 py-2 rounded-lg border border-border bg-card text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"}
           >
             {view === "module" && <option value="starred">Starred First</option>}
             <option value="az">A → Z</option>
@@ -447,10 +453,12 @@ function ModuleDrillDown({
   module,
   catalogModule,
   coverage,
+  compact = false,
   onBack,
   onSelectDiscipline,
 }: {
   module:              string
+  compact?:            boolean
   catalogModule:       QuestionCatalogModule
   coverage:            Record<string, { attempted: number; total: number; correct: number }>
   onBack:              () => void
@@ -503,7 +511,7 @@ function ModuleDrillDown({
         </button>
 
         {/* Export JSON — hidden on mobile, visible sm+ */}
-        <button
+        {!compact && <button
           type="button"
           onClick={handleExportJSON}
           disabled={totalInModule === 0}
@@ -511,7 +519,7 @@ function ModuleDrillDown({
         >
           <DownloadIcon size={13} />
           Export JSON
-        </button>
+        </button>}
       </div>
 
       {/* Discipline grid */}

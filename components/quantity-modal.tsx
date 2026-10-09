@@ -97,7 +97,7 @@ export function QuantityModal({ open, label, sublabel, questions, mode, review =
     }
 
     // Trial mode: intercept and show gamification prompt
-    if (mode === "trial") {
+    if (mode === "trial" && !review) {
       setPendingQuestions(result)
       setStep("gamification")
     } else {
