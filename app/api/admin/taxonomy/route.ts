@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     await ensureSchema()
     const result = await pool.query<{ module_name: string; discipline: string; question_count: number }>(
       `SELECT
-         COALESCE(NULLIF(BTRIM(question.value->>'module'), ''), 'Unassigned') AS module_name,
+         COALESCE(NULLIF(BTRIM(question.value->>'module'), ''), NULLIF(BTRIM(question.value->>'subject'), ''), 'Unassigned') AS module_name,
          COALESCE(NULLIF(BTRIM(question.value->>'subject'), ''), 'Unassigned') AS discipline,
          COUNT(*)::int AS question_count
        FROM mednexus_questions source
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       queryStartedAt,
       rowCount: result.rows.length,
       payload: { modules },
-    }, { headers: { "Cache-Control": "private, max-age=60" } })
+    }, { headers: { "Cache-Control": "private, no-store" } })
   } catch (error) {
     console.error("[admin/taxonomy GET]", error)
     return NextResponse.json(
@@ -49,17 +49,38 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const admin = await requireAdminRequest(req, "manage_mcq_content")
   if (!admin) return adminAccessDenied(req)
-  const body = await req.json() as { action?: string; module?: string; discipline?: string; newName?: string; destinationModule?: string; destinationDiscipline?: string; confirm?: boolean }
-  if (!body.confirm) return NextResponse.json({ error: "Confirmation required." }, { status: 400 })
+  let body: { action?: string; module?: string; discipline?: string; newName?: string; destinationModule?: string; destinationDiscipline?: string; confirm?: boolean; allowMerge?: boolean }
+  try {
+    const value = await req.json()
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid request.")
+    body = value
+  } catch { return NextResponse.json({ error: "Send a valid JSON object." }, { status: 400 }) }
+  if (body.confirm !== true) return NextResponse.json({ error: "Confirmation required." }, { status: 400 })
   const action = body.action ?? ""
   if (!["rename_module", "rename_discipline", "move_discipline", "delete_module", "delete_discipline"].includes(action)) return NextResponse.json({ error: "Unsupported taxonomy action." }, { status: 400 })
+  const validName = (value: unknown) => typeof value === "string" && Boolean(value.trim()) && value.trim().length <= 160
+  if (!validName(body.module) || (!["rename_module", "delete_module"].includes(action) && !validName(body.discipline))) {
+    return NextResponse.json({ error: "Choose a valid module and discipline." }, { status: 400 })
+  }
+  if (action.startsWith("rename_") && !validName(body.newName)) return NextResponse.json({ error: "Enter a name of 1–160 characters." }, { status: 400 })
+  if (action === "move_discipline" && (!validName(body.destinationModule) || (body.destinationDiscipline != null && !validName(body.destinationDiscipline)))) return NextResponse.json({ error: "Choose a valid destination." }, { status: 400 })
+  body.module = body.module!.trim()
+  if (body.discipline) body.discipline = body.discipline.trim()
+  if (body.newName) body.newName = body.newName.trim()
+  if (body.destinationModule) body.destinationModule = body.destinationModule.trim()
+  if (body.destinationDiscipline) body.destinationDiscipline = body.destinationDiscipline.trim()
+  if ((action === "rename_module" && body.newName === body.module)
+    || (action === "rename_discipline" && body.newName === body.discipline)
+    || (action === "move_discipline" && body.destinationModule === body.module && (!body.destinationDiscipline || body.destinationDiscipline === body.discipline))) {
+    return NextResponse.json({ error: "Choose a different name or destination." }, { status: 400 })
+  }
   const { default: pool, ensureSchema } = await import("@/lib/db")
   await ensureSchema()
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
     await client.query("SELECT updated_at FROM mednexus_questions WHERE id=1 FOR UPDATE")
-    const match = `COALESCE(NULLIF(BTRIM(item.value->>'module'), ''), 'Unassigned')=$1
+    const match = `COALESCE(NULLIF(BTRIM(item.value->>'module'), ''), NULLIF(BTRIM(item.value->>'subject'), ''), 'Unassigned')=$1
       AND ($2::text IS NULL OR COALESCE(NULLIF(BTRIM(item.value->>'subject'), ''), 'Unassigned')=$2)`
     const discipline = action === "rename_module" || action === "delete_module" ? null : body.discipline ?? null
     const countResult = await client.query<{ count: number }>(
@@ -74,16 +95,27 @@ export async function PATCH(req: NextRequest) {
       if (affected > 0) { await client.query("ROLLBACK"); return NextResponse.json({ error: "This group still contains questions. Reassign them before deletion." }, { status: 409 }) }
     } else {
       if (!affected) { await client.query("ROLLBACK"); return NextResponse.json({ error: "No matching questions were found." }, { status: 404 }) }
+      const destinationModule = action === "rename_module" ? body.newName : action === "move_discipline" ? body.destinationModule : body.module
+      const destinationDiscipline = action === "rename_module" ? null : action === "rename_discipline" ? body.newName : body.destinationDiscipline ?? body.discipline
+      const destination = await client.query<{ count: number }>(
+        `SELECT COUNT(*)::int AS count FROM mednexus_questions source
+         CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) item(value)
+         WHERE source.id=1 AND ${match}`, [destinationModule, destinationDiscipline],
+      )
+      if (Number(destination.rows[0]?.count ?? 0) > 0 && body.allowMerge !== true) {
+        await client.query("ROLLBACK")
+        return NextResponse.json({ error: "The destination group already exists. Confirm combining the groups.", requiresMerge: true }, { status: 409 })
+      }
       if (!body.newName?.trim() && action !== "move_discipline") { await client.query("ROLLBACK"); return NextResponse.json({ error: "A new name is required." }, { status: 400 }) }
       if (action === "move_discipline" && !body.destinationModule?.trim()) { await client.query("ROLLBACK"); return NextResponse.json({ error: "A destination module is required." }, { status: 400 }) }
       const replacement = action === "rename_module"
         ? `jsonb_set(item.value, '{module}', to_jsonb($3::text), true)`
         : action === "rename_discipline"
-          ? `jsonb_set(item.value, '{subject}', to_jsonb($3::text), true)`
-          : `jsonb_set(jsonb_set(item.value, '{module}', to_jsonb($4::text), true),
-              '{subject}', to_jsonb(COALESCE(NULLIF($5::text,''), item.value->>'subject')), true)`
+          ? `jsonb_set(jsonb_set(item.value, '{module}', to_jsonb($1::text), true), '{subject}', to_jsonb($3::text), true)`
+          : `jsonb_set(jsonb_set(item.value, '{module}', to_jsonb($3::text), true),
+              '{subject}', to_jsonb(COALESCE(NULLIF($4::text,''), item.value->>'subject')), true)`
       const updateParameters = action === "move_discipline"
-        ? [body.module, discipline, null, body.destinationModule?.trim() ?? null, body.destinationDiscipline?.trim() ?? null]
+        ? [body.module, discipline, body.destinationModule?.trim() ?? null, body.destinationDiscipline?.trim() ?? null]
         : [body.module, discipline, body.newName?.trim() ?? null]
       await client.query(
         `UPDATE mednexus_questions source

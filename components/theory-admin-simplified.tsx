@@ -51,11 +51,11 @@ function readinessLabel(question: Question) {
   return { label: "Needs a prompt", className: "bg-rose-500/10 text-rose-700 dark:text-rose-300" }
 }
 
-export function TheoryAdminSimplified({ initialTab = "editor", initialKind = "end_of_module", initialStatus = "" }: { initialTab?: Tab; initialKind?: Kind; initialStatus?: Status | "" }) {
+export function TheoryAdminSimplified({ initialTab = "editor", initialKind = "end_of_module", initialStatus = "", initialGroupId = "" }: { initialTab?: Tab; initialKind?: Kind; initialStatus?: Status | ""; initialGroupId?: string }) {
   const [kind, setKind] = useState<Kind>(initialKind)
   const [tab, setTab] = useState<Tab>(initialTab)
   const [data, setData] = useState<AdminData | null>(null)
-  const [groupId, setGroupId] = useState("")
+  const [groupId, setGroupId] = useState(initialGroupId)
   const [setId, setSetId] = useState("")
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState(initialStatus)
@@ -105,7 +105,8 @@ export function TheoryAdminSimplified({ initialTab = "editor", initialKind = "en
   }, [groupId, kind, query, setId, status, tab])
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 180); return () => { window.clearTimeout(timer); requestRef.current?.abort() } }, [load])
-  useEffect(() => { setGroupId(""); setSetId(""); setSelected([]) }, [kind])
+  useEffect(() => { setKind(initialKind) }, [initialKind])
+  useEffect(() => { setGroupId(kind === initialKind ? initialGroupId : ""); setSetId(""); setSelected([]) }, [kind, initialKind, initialGroupId])
   useEffect(() => {
     if (!reviewGroupName || tab !== "editor") return
     const destination = groups.find(group => group.name.localeCompare(reviewGroupName, undefined, { sensitivity: "accent" }) === 0)
@@ -231,4 +232,3 @@ function TrashView({data,kind,busy,change,reload}:{data:AdminData;kind:Kind;busy
   const emptyTrash=async()=>{if(window.prompt("Type DELETE to permanently empty Theory Trash")!=="DELETE")return;await change("PATCH",{action:"empty_trash",kind},"Trash emptied.")}
   return <section className={`${card} overflow-hidden`}><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div><h2 className="text-xl font-bold">Trash</h2><p className="text-sm text-muted-foreground">Items stay here until you permanently delete them.</p></div><button disabled={busy||!totalItems} onClick={()=>void emptyTrash()} className={`${button} bg-destructive text-destructive-foreground disabled:opacity-40`}>Empty trash</button></div><div className="divide-y divide-border">{items.map(item=><article key={`${item.type}-${item.id}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><Trash2 className="text-muted-foreground"/><div className="min-w-0 flex-1"><b className="block truncate">{item.label}</b><span className="text-xs capitalize text-muted-foreground">{item.type} · {item.count} contained question{item.count===1?"":"s"}</span></div><button onClick={()=>void act("restore",item)} className={`${button} border border-border`}><ArchiveRestore size={14}/>Restore</button><button onClick={()=>void act("purge",item)} className={`${button} text-destructive hover:bg-destructive/10`}><Trash2 size={14}/>Delete forever</button></article>)}{imports.map(job=><article key={`import-${job.id}`} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><FileUp className="text-muted-foreground"/><div className="min-w-0 flex-1"><b className="block truncate">{job.sourceName}</b><span className="text-xs text-muted-foreground">Import file · created questions are unaffected</span></div><button onClick={()=>void actImport("restore",job)} className={`${button} border border-border`}><ArchiveRestore size={14}/>Restore</button><button onClick={()=>void actImport("purge",job)} className={`${button} text-destructive hover:bg-destructive/10`}><Trash2 size={14}/>Delete forever</button></article>)}{!totalItems?<p className="p-12 text-center text-sm text-muted-foreground">Trash is empty.</p>:null}</div></section>
 }
-
