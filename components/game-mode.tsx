@@ -908,7 +908,7 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
     <div className="flex min-h-full flex-col p-4 sm:p-6">
       <div className="mx-auto w-full max-w-md sm:max-w-2xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="hidden md:block">
             <h1 className="text-lg font-extrabold tracking-tight text-foreground md:text-xl">Game Mode</h1>
             <p className="hidden text-xs text-muted-foreground md:block">Choose your challenge</p>
           </div>
@@ -1027,7 +1027,7 @@ function ModeSelectScreen({ onSelect, onBack, onOpenStore }: {
     <div className="flex min-h-full flex-col p-3 sm:p-5 lg:p-6">
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-4 flex w-full flex-col items-stretch gap-3 sm:mb-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="hidden min-w-0 items-center gap-2.5 md:flex">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-500 text-xl shadow-lg shadow-fuchsia-500/20" aria-hidden>🎮</span>
             <h1 className="whitespace-nowrap bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-xl font-black tracking-tight text-transparent md:text-2xl">Game Mode</h1>
           </div>
