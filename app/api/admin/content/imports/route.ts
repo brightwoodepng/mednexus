@@ -42,6 +42,50 @@ export async function POST(req: NextRequest) {
   if (!admin) return adminAccessDenied(req)
   if (!Array.isArray(body.drafts) || body.drafts.length === 0 || body.drafts.length > 1000) return NextResponse.json({ error: "Provide 1–1000 parsed drafts." }, { status: 400 })
   const { default: pool } = await import("@/lib/db")
+  if (bank === "mcq") {
+    const client = await pool.connect()
+    try {
+      await client.query("BEGIN")
+      const locked = await client.query("SELECT updated_at FROM mednexus_questions WHERE id=1 FOR UPDATE")
+      if (!locked.rows.length) throw new Error("Question bank is unavailable.")
+      const existing = await client.query(`SELECT question.value->>'id' AS id
+        FROM mednexus_questions source
+        CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data,'[]'::jsonb)) question(value)
+        WHERE source.id=1`)
+      const ids = new Set(existing.rows.map(row => String(row.id)))
+      const errors: Array<{ index: number; message: string }> = Array.isArray(body.errors)
+        ? body.errors.filter((error): error is { index: number; message: string } => Boolean(error && typeof error === "object" && Number.isInteger((error as { index?: unknown }).index) && typeof (error as { message?: unknown }).message === "string"))
+        : []
+      const rejected = new Set(errors.map(error => error.index))
+      const questions: Record<string, unknown>[] = []
+      body.drafts.forEach((draft, index) => {
+        if (rejected.has(index)) return
+        const record = draft && typeof draft === "object" && !Array.isArray(draft) ? draft as Record<string, unknown> : {}
+        const questionId = typeof record.id === "string" ? record.id.trim() : ""
+        if (!questionId || typeof record.vignette !== "string" || !Array.isArray(record.options)) {
+          errors.push({ index, message: "A question ID, stem and options are required." }); return
+        }
+        if (ids.has(questionId)) { errors.push({ index, message: `Duplicate question ID: ${questionId}` }); return }
+        ids.add(questionId)
+        const { importStatus: _status, importIndex: _index, ...question } = record
+        questions.push({ ...question, id: questionId, status: "draft", moduleStatus: "draft", updatedAt: new Date().toISOString() })
+      })
+      if (questions.length) await client.query(`UPDATE mednexus_questions
+        SET data=COALESCE(data,'[]'::jsonb)||$1::jsonb,updated_at=NOW() WHERE id=1`, [JSON.stringify(questions)])
+      const id = `import-${randomUUID()}`
+      await client.query(`INSERT INTO mednexus_content_import_jobs
+        (id,bank,source_name,source_type,status,total_count,valid_count,error_count,validation_errors,draft_payload,created_by,committed_count,committed_at)
+        VALUES($1,'mcq',$2,'parsed','committed',$3,$4,$5,$6::jsonb,'[]'::jsonb,$7,$4,NOW())`,
+        [id, String(body.sourceName || "Imported content").slice(0,255), body.drafts.length, questions.length, errors.length, JSON.stringify(errors), admin.uid])
+      await auditAdmin(client, admin.uid, "import_drafts", "mcq_import", id, { imported: questions.length, errors: errors.length })
+      await client.query("COMMIT")
+      return NextResponse.json({ id, status: "committed", imported: questions.length, totalCount: body.drafts.length, errorCount: errors.length, errors }, { status: 201 })
+    } catch (error) {
+      await client.query("ROLLBACK")
+      console.error("[admin/content/import drafts]", error)
+      return NextResponse.json({ error: "MCQ import failed. No drafts were saved." }, { status: 500 })
+    } finally { client.release() }
+  }
   const draftRecords = body.drafts.map((draft, index) => {
     const record = draft && typeof draft === "object" ? draft as Record<string, unknown> : {}
     return {
@@ -52,22 +96,11 @@ export async function POST(req: NextRequest) {
   })
   const candidateIds = [...new Set(draftRecords.map(item => item.id).filter(Boolean))]
   const existingIds = new Set<string>()
-  if (bank === "mcq") {
-    const bankResult = await pool.query(
-      `SELECT question.value->>'id' AS id
-       FROM mednexus_questions source
-       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(source.data, '[]'::jsonb)) question(value)
-       WHERE source.id=1 AND question.value->>'id' = ANY($1::text[])`,
-      [candidateIds],
-    )
-    for (const question of bankResult.rows) existingIds.add(String(question.id))
-  } else {
-    const theoryResult = await pool.query(
-      "SELECT id FROM mednexus_theory_questions WHERE id = ANY($1::text[])",
-      [candidateIds],
-    )
-    for (const question of theoryResult.rows) existingIds.add(String(question.id))
-  }
+  const theoryResult = await pool.query(
+    "SELECT id FROM mednexus_theory_questions WHERE id = ANY($1::text[])",
+    [candidateIds],
+  )
+  for (const question of theoryResult.rows) existingIds.add(String(question.id))
   const seen = new Set<string>()
   const errors: Array<{ index: number; message: string }> = Array.isArray(body.errors) ? body.errors as Array<{ index: number; message: string }> : []
   const drafts = draftRecords.map(({ record, index, id }) => {
