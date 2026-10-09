@@ -30,13 +30,13 @@ function ExamScores({ scores }: { scores: ExamScore[] }) {
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold text-foreground">Exam History</h2>
         <span className="text-sm text-muted-foreground">{scores.length} session{scores.length !== 1 ? "s" : ""}</span>
       </div>
       <ul className="flex flex-col gap-2">
         {scores.slice(0, 10).map((s) => (
-          <li key={s.id} className="flex items-center gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+          <li key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
               <span className={`text-sm font-bold tabular-nums ${
                 s.score >= 70 ? "text-primary" : s.score >= 50 ? "text-amber-600" : "text-destructive"
@@ -93,7 +93,7 @@ function ProfileHeader() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-6">
+      <div className="flex flex-col gap-4 p-4 md:flex-row md:items-center sm:p-6">
 
         {/* Avatar + Identity: flex-row on all screen sizes */}
         <div className="flex min-w-0 flex-1 flex-row items-center gap-3 sm:gap-4">
@@ -107,7 +107,7 @@ function ProfileHeader() {
             {/* Frame ring wrapper — ring classes are layout-neutral outlines */}
             <CosmeticFrame cosmeticId={equippedCosmetics.frame} size="profile" motionState="focused" interactionState="focused" className="rounded-full ring-offset-2 ring-offset-card">
               {/* Avatar circle */}
-              <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-primary text-2xl font-bold text-primary-foreground shadow-sm select-none sm:h-24 sm:w-24 sm:text-3xl">
+              <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-primary text-2xl font-bold text-primary-foreground shadow-sm select-none sm:h-20 sm:w-20 sm:text-3xl">
                 {avatarImagePath ? (
                   <img
                     src={avatarImagePath}
@@ -133,20 +133,23 @@ function ProfileHeader() {
                 autoFocus
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 sm:w-48 sm:flex-none"
+                aria-label="Display name"
+                className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40"
                 placeholder="Your name"
               />
               <button
                 type="submit"
                 disabled={saving || !draft.trim()}
-                className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50"
+                aria-label="Save name"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50"
               >
                 <CheckIcon size={14} />
               </button>
               <button
                 type="button"
                 onClick={() => setEditing(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
+                aria-label="Cancel name edit"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
               >
                 <XIcon size={14} />
               </button>
@@ -155,17 +158,17 @@ function ProfileHeader() {
             <button
               type="button"
               onClick={startEdit}
-              className="group/name flex items-center gap-1.5 mb-0.5 text-left"
+              className="group/name mb-0.5 flex w-full min-w-0 items-center gap-1.5 text-left"
               aria-label="Edit name"
             >
-              <h1 className="break-words text-lg font-semibold tracking-tight sm:text-xl">{user?.name ?? "Clinician"}</h1>
+              <h1 className="min-w-0 break-words text-lg font-semibold tracking-tight sm:text-xl">{user?.name ?? "Clinician"}</h1>
               <PencilIcon size={12} className="text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity" />
             </button>
           )}
 
           {/* Equipped title */}
           {equippedTitleLabel
-            ? <p className="text-sm text-purple-400 italic font-semibold"><CosmeticTitle cosmeticId={equippedCosmetics.title} size="profile">{equippedTitleLabel}</CosmeticTitle></p>
+            ? <p className="max-w-full text-sm text-purple-400 italic font-semibold [&_.reactive-title]:max-w-full [&_.reactive-title\_\_plate]:max-w-full [&_.reactive-title\_\_text]:min-w-0 [&_.reactive-title\_\_text]:whitespace-normal!"><CosmeticTitle cosmeticId={equippedCosmetics.title} size="profile">{equippedTitleLabel}</CosmeticTitle></p>
             : <p className="text-sm text-purple-400/40 italic">No title equipped</p>
           }
           <p className="mt-1 text-sm font-medium text-muted-foreground">{clinicalRank.name}</p>
@@ -179,7 +182,7 @@ function ProfileHeader() {
         <button
           type="button"
           onClick={signOutUser}
-          className="w-full sm:w-auto shrink-0 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="min-h-11 w-full md:w-auto shrink-0 rounded-xl border border-border px-4 py-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           Sign out
         </button>
@@ -272,7 +275,7 @@ function ModuleReviewSection() {
       )}
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
               <ClipboardListIcon size={16} className="text-primary shrink-0" />
@@ -287,7 +290,7 @@ function ModuleReviewSection() {
           </span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
           {moduleData.map((mod) => {
             const total = mod.questions.length
             const accuracy = total > 0 ? Math.round((mod.correctCount / total) * 100) : 0
@@ -297,11 +300,11 @@ function ModuleReviewSection() {
                 key={mod.module}
                 type="button"
                 onClick={() => setOpenModule(mod.module)}
-                className="group flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 active:scale-[0.99]"
+                className="group flex min-w-0 w-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 active:scale-[0.99]"
               >
                 {/* Title + accuracy badge */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-foreground">{mod.module}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {total} question{total !== 1 ? "s" : ""} answered
@@ -323,8 +326,8 @@ function ModuleReviewSection() {
                 </div>
 
                 {/* Correct / Incorrect counts + CTA */}
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap gap-3">
                     <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                       <CheckIcon size={11} /> {mod.correctCount} correct
                     </span>
@@ -355,7 +358,6 @@ function PrivacySettings() {
   const [saving, setSaving] = useState(false)
 
   // Only available to registered users (not guests)
-  if (!user || user.role !== "user") return null
 
   const authHeaders = (): Record<string, string> => {
     const sessionToken = localStorage.getItem("mednexus-user-token")
@@ -366,11 +368,14 @@ function PrivacySettings() {
 
   // Load current privacy state
   useEffect(() => {
+    if (!user || user.role !== "user") return
     fetch("/api/user/privacy", { headers: authHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setIsPrivate(d.isPrivate ?? false) })
       .catch(() => setIsPrivate(false))
-  }, [user.uid])
+  }, [user?.uid, user?.role])
+
+  if (!user || user.role !== "user") return null
 
   async function toggle() {
     if (!user || isPrivate === null || saving) return
@@ -463,16 +468,16 @@ function UnifiedOverview({ activeHub, onSelectTab, onNavigate }: { activeHub: St
   ]
 
   return (
-    <section className="space-y-4" aria-labelledby="profile-overview-title">
-      <h2 id="profile-overview-title" className="sr-only">Learning overview</h2>
-      <div className="grid gap-3 sm:grid-cols-3">
+    <section className="min-w-0 space-y-5" aria-labelledby="profile-overview-title">
+      <div><h2 id="profile-overview-title" className="text-lg font-semibold">Learning overview</h2><p className="mt-1 text-sm text-muted-foreground">Your progress, recent study and milestones in one place.</p></div>
+      <div className="grid min-w-0 gap-3 md:grid-cols-3">
         {metrics.map((metric) => (
-          <div key={metric.label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div key={metric.label} className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center gap-3">
               <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-black ${metric.tone}`}>{metric.icon}</span>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
-                <p className="truncate text-xl font-bold tabular-nums text-foreground">{metric.value}</p>
+                <p className="break-words text-xl font-bold tabular-nums text-foreground">{metric.value}</p>
                 <p className="text-[11px] text-muted-foreground">{metric.hint}</p>
               </div>
             </div>
@@ -480,31 +485,41 @@ function UnifiedOverview({ activeHub, onSelectTab, onNavigate }: { activeHub: St
         ))}
       </div>
 
-      <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"><h3 className="font-semibold">Clinical Rank Progress</h3><details className="relative w-full sm:w-auto"><summary className="cursor-pointer list-none rounded-full border border-border px-3 py-2 text-center text-xs font-semibold text-foreground">View all 12 clinical ranks →</summary><ol className="absolute right-0 top-11 z-20 grid w-[min(18rem,calc(100vw-3rem))] gap-1 rounded-2xl border border-border bg-card p-3 shadow-2xl">{XP_CONFIG.clinicalRanks.map(rank => <li key={rank.name} className={`rounded-lg px-3 py-2 text-xs ${lifetimeXP >= rank.minimumXP ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}><b>{rank.name}</b><span className="float-right tabular-nums">{rank.minimumXP.toLocaleString()} XP</span></li>)}</ol></details></div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 sm:divide-x sm:divide-border">
-          <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-lg font-black text-primary">#</span><div><p className="text-[11px] text-muted-foreground">Current rank</p><p className="font-bold">{clinicalRank.name}</p><p className="text-[11px] text-muted-foreground">{lifetimeXP.toLocaleString()} XP earned</p></div></div>
-          <div className="flex items-center gap-3 sm:pl-5"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400"><GraduationCap size={18}/></span><div><p className="text-[11px] text-muted-foreground">Next rank</p><p className="font-bold">{nextClinicalRank?.name ?? clinicalRank.name}</p><p className="text-[11px] text-muted-foreground">{nextClinicalRank ? `${Math.max(0, nextClinicalRank.minimumXP - lifetimeXP).toLocaleString()} XP to ${nextClinicalRank.name}` : "Highest rank achieved"}</p></div></div>
+      <article className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+        <h3 className="font-semibold">Clinical Rank Progress</h3>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 md:divide-x md:divide-border">
+          <div className="flex items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-black text-primary">#</span><div className="min-w-0"><p className="text-[11px] text-muted-foreground">Current rank</p><p className="font-bold">{clinicalRank.name}</p><p className="text-[11px] text-muted-foreground">{lifetimeXP.toLocaleString()} XP earned</p></div></div>
+          <div className="flex min-w-0 items-center gap-3 md:pl-5"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400"><GraduationCap size={18}/></span><div className="min-w-0"><p className="text-[11px] text-muted-foreground">Next rank</p><p className="font-bold">{nextClinicalRank?.name ?? clinicalRank.name}</p><p className="text-[11px] text-muted-foreground">{nextClinicalRank ? `${Math.max(0, nextClinicalRank.minimumXP - lifetimeXP).toLocaleString()} XP to ${nextClinicalRank.name}` : "Highest rank achieved"}</p></div></div>
         </div>
         <div className="mt-4 h-3 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Clinical rank progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(rankProgress)}>
           <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-primary transition-[width]" style={{ width: `${rankProgress}%` }} />
         </div>
-        <div className="mt-2 flex justify-between gap-3 text-xs text-muted-foreground">
+        <div className="mt-2 flex flex-wrap justify-between gap-3 text-xs text-muted-foreground">
           <span>{lifetimeXP.toLocaleString()} XP</span>
           <span>{nextClinicalRank ? `${nextClinicalRank.minimumXP.toLocaleString()} XP` : clinicalRank.name}</span>
         </div>
+        <details className="mt-4 rounded-xl border border-border">
+          <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">View all 12 clinical ranks</summary>
+          <ol className="grid min-w-0 gap-2 border-t border-border p-3 sm:grid-cols-2">
+            {XP_CONFIG.clinicalRanks.map(rank => (
+              <li key={rank.name} className={`flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs ${lifetimeXP >= rank.minimumXP ? "bg-primary/10 text-primary" : "bg-muted/30 text-muted-foreground"}`}>
+                <b className="min-w-0">{rank.name}</b><span className="tabular-nums">{rank.minimumXP.toLocaleString()} XP</span>
+              </li>
+            ))}
+          </ol>
+        </details>
       </article>
 
-      <OfflineDownloads />
+      
 
-      <div className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
-        <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,.65fr)]">
+        <article className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="mb-4 flex items-center justify-between"><h3 className="flex items-center gap-2 font-semibold"><span className="text-violet-400">◷</span>Recent Activity</h3><button type="button" onClick={() => onSelectTab(isTheory ? "theory" : "mcq")} className="text-xs font-semibold text-primary hover:underline">View all activity →</button></div>
           {isTheory
             ? <p className="text-sm text-muted-foreground">{theory?.continueStudying ? `Continue: ${theory.continueStudying.prompt}` : theory?.recentSets?.[0] ? `Recently studied: ${theory.recentSets[0].groupName} · ${theory.recentSets[0].setTitle}` : "No Theory activity yet."}</p>
-            : recentMcq.length > 0 ? <ul className="divide-y divide-border">{recentMcq.map((entry) => <li key={`${entry.questionId}-${entry.timestamp}`} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="truncate text-sm font-medium">{entry.module ?? entry.subject ?? "MCQ session"}</p><p className="truncate text-xs text-muted-foreground">{entry.vignetteSnippet}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${entry.isCorrect ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>{entry.isCorrect ? "Correct" : "Review"}</span></li>)}</ul> : <div className="rounded-xl border border-border bg-background/35 px-4 py-6 text-center"><ClipboardList size={24} className="mx-auto text-muted-foreground"/><p className="mt-2 text-sm font-semibold">No recent activity yet</p><p className="mt-1 text-xs text-muted-foreground">Start an MCQ session to see your activity here.</p><button type="button" onClick={() => onNavigate("modules")} className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground"><Play size={13} fill="currentColor"/>Start an MCQ session</button></div>}
+            : recentMcq.length > 0 ? <ul className="min-w-0 divide-y divide-border">{recentMcq.map((entry) => <li key={`${entry.questionId}-${entry.timestamp}`} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{entry.module ?? entry.subject ?? "MCQ session"}</p><p className="truncate text-xs text-muted-foreground">{entry.vignetteSnippet}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${entry.isCorrect ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>{entry.isCorrect ? "Correct" : "Review"}</span></li>)}</ul> : <div className="rounded-xl border border-border bg-background/35 px-4 py-6 text-center"><ClipboardList size={24} className="mx-auto text-muted-foreground"/><p className="mt-2 text-sm font-semibold">No recent activity yet</p><p className="mt-1 text-xs text-muted-foreground">Start an MCQ session to see your activity here.</p><button type="button" onClick={() => onNavigate("modules")} className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground"><Play size={13} fill="currentColor"/>Start an MCQ session</button></div>}
         </article>
-        <article className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <article className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <h3 className="flex items-center gap-2 font-semibold"><Trophy size={17} className="text-violet-400"/>Milestones</h3>
           <div className="mt-4 space-y-3">
             {!isTheory && <Milestone icon={<Target size={17}/>} earned={mcq.attempted >= 20} title="First Twenty" detail="Answer 20 MCQs" progress={`${Math.min(mcq.attempted, 20)}/20`} percent={Math.min(100, mcq.attempted / 20 * 100)} />}
@@ -518,7 +533,7 @@ function UnifiedOverview({ activeHub, onSelectTab, onNavigate }: { activeHub: St
 }
 
 function Milestone({ earned, title, detail, icon, progress, percent = 0 }: { earned: boolean; title: string; detail: string; icon?: React.ReactNode; progress?: string; percent?: number }) {
-  return <div className={`flex items-center gap-3 rounded-xl border p-3 ${earned ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20"}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${earned ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>{earned ? "✓" : icon ?? "○"}</span><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><p className="text-sm font-semibold">{title}</p>{progress && <span className="text-xs font-bold tabular-nums">{progress}</span>}</div><div className="mt-1 flex items-center gap-3"><p className="min-w-0 flex-1 text-xs text-muted-foreground">{detail}</p>{progress && <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }}/></div>}</div></div></div>
+  return <div className={`flex items-center gap-3 rounded-xl border p-3 ${earned ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20"}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${earned ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>{earned ? "✓" : icon ?? "○"}</span><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><p className="text-sm font-semibold">{title}</p>{progress && <span className="text-xs font-bold tabular-nums">{progress}</span>}</div><div className="mt-1 flex flex-wrap items-center gap-2"><p className="min-w-0 flex-1 text-xs text-muted-foreground">{detail}</p>{progress && <div className="h-1.5 w-16 shrink-0 overflow-hidden sm:w-24 rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }}/></div>}</div></div></div>
 }
 
 function TheoryProfilePanel({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
@@ -534,15 +549,15 @@ function TheoryProfilePanel({ onNavigate }: { onNavigate: (screen: Screen) => vo
     ["Revision queue", String(data?.counts.revision ?? 0)], ["Practice drafts", String(data?.counts.drafts ?? 0)],
   ]
   const recent = data?.continueStudying ? `Continue: ${data.continueStudying.prompt}` : data?.recentSets?.[0] ? `Recently studied: ${data.recentSets[0].groupName} · ${data.recentSets[0].setTitle}` : "No Theory study activity yet"
-  return <section className="space-y-5" aria-labelledby="theory-learning-title">
+  return <section className="min-w-0 space-y-5" aria-labelledby="theory-learning-title">
     <div className="overflow-hidden rounded-2xl border border-teal-500/20 bg-gradient-to-br from-teal-500/10 via-card to-card p-5 shadow-sm">
       <p className="text-xs font-bold uppercase tracking-[.18em] text-teal-700 dark:text-teal-300">Theory Vault</p><h2 id="theory-learning-title" className="mt-2 text-xl font-bold">Theory learning overview</h2><p className="mt-1 text-sm text-muted-foreground">Questions read, deliberate revision and clinical recall — separate from MCQ performance.</p>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">{cards.map(([label, value]) => <div key={label} className="rounded-xl border border-border/70 bg-background/65 p-3"><p className="text-lg font-bold tabular-nums text-foreground">{value}</p><p className="text-xs font-semibold text-muted-foreground">{label}</p></div>)}</div>
       <p className="mt-4 rounded-xl bg-background/60 px-3 py-2 text-sm text-muted-foreground">{progress.streak > 0 ? `${progress.streak}-day study streak · ` : ""}{recent}</p>
     </div>
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><h2 className="font-semibold">Study organisation</h2><div className="mt-3 grid gap-2 sm:grid-cols-3"><Stat label="Groups available" value={String(data?.collections.reduce((sum, item) => sum + item.groups, 0) ?? 0)} /><Stat label="Sets available" value={String(data?.collections.reduce((sum, item) => sum + item.sets, 0) ?? 0)} /><Stat label="Bookmarks saved" value={String(data?.counts.bookmarks ?? 0)} /><Stat label="Notes created" value={String(data?.counts.notes ?? 0)} /><Stat label="Revision queue" value={String(data?.counts.revision ?? 0)} /><Stat label="Drafts saved" value={String(data?.counts.drafts ?? 0)} /></div></div>
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><h2 className="font-semibold">Recent Theory activity</h2><p className="mt-2 text-sm text-muted-foreground">{recent}</p><p className="mt-1 text-sm text-muted-foreground">{data?.recentSets?.[0] ? `${data.recentSets[0].collection} · ${data.recentSets[0].groupName}` : "Complete a review or self-rated practice attempt to build your history."}</p></div>
-    <div className="flex flex-wrap gap-2">{[["Continue Studying", "theory-dashboard"], ["Browse End of Module", "theory-browse"], ["Browse End of Year", "theory-browse"], ["Open Bookmarks", "theory-bookmarks"], ["Open My Notes", "theory-notes"], ["Open Revision Queue", "theory-revision"], ["View Progress", "theory-progress"]].map(([label, screen]) => <button key={label} type="button" onClick={() => onNavigate(screen as Screen)} className="min-h-11 rounded-xl border border-border px-3 text-sm font-semibold transition hover:border-primary/40 hover:bg-primary/5">{label}</button>)}</div>
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"><h2 className="font-semibold">Study organisation</h2><div className="mt-3 grid gap-2 sm:grid-cols-3"><Stat label="Groups available" value={String(data?.collections.reduce((sum, item) => sum + item.groups, 0) ?? 0)} /><Stat label="Sets available" value={String(data?.collections.reduce((sum, item) => sum + item.sets, 0) ?? 0)} /><Stat label="Bookmarks saved" value={String(data?.counts.bookmarks ?? 0)} /><Stat label="Notes created" value={String(data?.counts.notes ?? 0)} /><Stat label="Revision queue" value={String(data?.counts.revision ?? 0)} /><Stat label="Drafts saved" value={String(data?.counts.drafts ?? 0)} /></div></div>
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"><h2 className="font-semibold">Recent Theory activity</h2><p className="mt-2 text-sm text-muted-foreground">{recent}</p><p className="mt-1 text-sm text-muted-foreground">{data?.recentSets?.[0] ? `${data.recentSets[0].collection} · ${data.recentSets[0].groupName}` : "Complete a review or self-rated practice attempt to build your history."}</p></div>
+    <div className="grid gap-2 sm:grid-cols-2">{[["Continue Studying", "theory-dashboard"], ["Browse End of Module", "theory-browse"], ["Browse End of Year", "theory-browse"], ["Open Bookmarks", "theory-bookmarks"], ["Open My Notes", "theory-notes"], ["Open Revision Queue", "theory-revision"], ["View Progress", "theory-progress"]].map(([label, screen]) => <button key={label} type="button" onClick={() => onNavigate(screen as Screen)} className="min-h-11 rounded-xl border border-border px-3 text-sm font-semibold transition hover:border-primary/40 hover:bg-primary/5">{label}</button>)}</div>
   </section>
 }
 
@@ -564,22 +579,54 @@ export function ProfileHistory({ activeHub = "mcq-qbank", onNavigate = () => {} 
   const latestActivity = progress.history.length ? formatDate(new Date(Math.max(...progress.history.map(entry => entry.timestamp))).toISOString()) : "Not yet"
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-3 overflow-x-clip px-0 pb-8 sm:space-y-4 sm:px-1">
-      <ProfileHeader />
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <nav className="w-full rounded-2xl border border-primary/20 bg-card p-1.5 shadow-sm lg:w-auto" aria-label="Profile sections">
-          <div className="grid w-full grid-cols-2 gap-1.5 sm:grid-cols-4 lg:min-w-[34rem]">
-            {tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} className={`flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border px-2 text-[11px] font-semibold transition-all sm:px-3 sm:text-xs ${activeTab === tab.id ? "border-cyan-300/60 bg-gradient-to-r from-cyan-500/30 to-primary/25 text-cyan-50 shadow-[0_0_18px_rgba(6,182,212,.18)]" : "border-border bg-background/35 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}><Icon size={16} className="shrink-0"/><span className="truncate">{tab.label}</span></button> })}
-          </div>
-        </nav>
-        <div className="hidden items-center gap-4 lg:flex"><div className="border-l border-border pl-4"><p className="text-xs font-semibold text-foreground">Profile overview</p><p className="text-[11px] text-muted-foreground">Last activity: {latestActivity}</p></div><button type="button" onClick={() => setActiveTab("settings")} aria-label="More profile actions" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-primary hover:bg-muted"><MoreHorizontal size={18}/></button></div>
+    <div className="mx-auto w-full min-w-0 max-w-5xl space-y-5 pb-8 [overflow-wrap:anywhere] sm:space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">Profile &amp; Settings</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Manage your account, learning activity and preferences.</p>
+          <p className="mt-2 text-xs text-muted-foreground">Last activity: {latestActivity}</p>
+        </div>
+        <button type="button" onClick={() => setActiveTab("settings")} aria-label="More profile actions" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted"><MoreHorizontal size={18} /></button>
       </div>
+      <ProfileHeader />
+      <nav className="rounded-2xl border border-border bg-card p-1.5 shadow-sm" aria-label="Profile sections">
+        <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:grid-cols-4">
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                aria-current={activeTab === tab.id ? "page" : undefined}
+                className={`flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-3 ${activeTab === tab.id ? "bg-primary/10 text-primary ring-1 ring-primary/25" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+              >
+                <Icon size={16} className="shrink-0" />
+                <span className="min-w-0 break-words">{tab.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </nav>
 
       {activeTab === "overview" && <UnifiedOverview activeHub={activeHub} onSelectTab={setActiveTab} onNavigate={onNavigate} />}
-      {activeTab === "mcq" && <div className="space-y-6"><ModuleReviewSection /><ExamScores scores={examScores} /></div>}
+      {activeTab === "mcq" && (
+        <section className="min-w-0 space-y-5" aria-labelledby="profile-mcq-title">
+          <div><h2 id="profile-mcq-title" className="text-lg font-semibold">MCQ activity</h2><p className="mt-1 text-sm text-muted-foreground">Review your answered questions and exam sessions.</p></div>
+          {progress.history.length === 0 && examScores.length === 0 && <div className="rounded-2xl border border-border bg-card p-6 text-center"><ClipboardList size={24} className="mx-auto text-muted-foreground" /><p className="mt-3 text-sm font-semibold">No MCQ activity yet</p><p className="mt-1 text-sm text-muted-foreground">Your question reviews and exam results will appear here.</p><button type="button" onClick={() => onNavigate("modules")} className="mt-4 min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Start an MCQ session</button></div>}
+          <ModuleReviewSection />
+          <ExamScores scores={examScores} />
+        </section>
+      )}
       {activeTab === "theory" && <TheoryProfilePanel onNavigate={onNavigate} />}
       {activeTab === "cosmetics" && <CosmeticLoadout />}
-      {activeTab === "settings" && <div className="grid gap-4 lg:grid-cols-2"><PrivacySettings /><TutorialSettings /></div>}
+      {activeTab === "settings" && (
+        <section className="min-w-0 space-y-5" aria-labelledby="profile-settings-title">
+          <div><h2 id="profile-settings-title" className="text-lg font-semibold">Account settings</h2><p className="mt-1 text-sm text-muted-foreground">Privacy, guided tours and offline access for this device.</p></div>
+          <div className="grid min-w-0 items-start gap-4 lg:grid-cols-2"><PrivacySettings /><TutorialSettings /></div>
+          <OfflineDownloads />
+        </section>
+      )}
     </div>
   )
 }
@@ -702,12 +749,12 @@ function CosmeticLoadout() {
       </div>
 
       {/* Slots */}
-      <div className="divide-y divide-border">
+      <div className="grid min-w-0 divide-y divide-border xl:grid-cols-3 xl:divide-x xl:divide-y-0">
         {slots.map(({ type, label, description, items, equipped, getName }) => (
-          <div key={type} className="px-5 py-4">
+          <div key={type} className="min-w-0 p-4 sm:p-5">
 
             {/* Slot header */}
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
                 <p className="text-[11px] text-muted-foreground/60">{description}</p>
@@ -729,7 +776,7 @@ function CosmeticLoadout() {
                   type="button"
                   onClick={() => equipped && handleEquip(type, null)}
                   disabled={savingType === type || !equipped}
-                  className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all disabled:cursor-default disabled:opacity-40 ${
+                  className={`flex min-h-11 max-w-full items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-all disabled:cursor-default disabled:opacity-40 ${
                     !equipped
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border bg-muted/40 text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
@@ -748,14 +795,14 @@ function CosmeticLoadout() {
                       onClick={() => !isEquipped && handleEquip(type, item.id)}
                       disabled={savingType === type || isEquipped}
                       title={item.desc}
-                      className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all disabled:cursor-default ${
+                      className={`flex min-h-11 max-w-full items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-all disabled:cursor-default ${
                         isEquipped
                           ? "border-primary bg-primary/10 text-primary shadow-sm"
                           : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
                       }`}
                     >
                       <span className="text-sm leading-none">{item.icon}</span>
-                      <span>{getName(item)}</span>
+                      <span className="min-w-0 break-words text-left">{getName(item)}</span>
                       {isEquipped && (
                         <span className="ml-0.5 rounded-full bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
                           On
