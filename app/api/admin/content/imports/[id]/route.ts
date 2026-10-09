@@ -48,6 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ success: true, deleted: true })
   }
   if (body.action === "retry") {
+    if (job.status === "committed") return NextResponse.json({ success: true, status: "committed" })
     await pool.query("UPDATE mednexus_content_import_jobs SET status='review',updated_at=NOW() WHERE id=$1", [id])
     await auditAdmin(pool, admin.uid, "retry", `${job.bank}_import`, id)
     return NextResponse.json({ success: true, status: "review" })
