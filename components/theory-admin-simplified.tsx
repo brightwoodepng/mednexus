@@ -150,7 +150,7 @@ export function TheoryAdminSimplified({ initialTab = "editor", initialKind = "en
   if (!data) return <div className={`${card} p-14 text-center text-sm text-muted-foreground`}>{error || "Loading Theory Vault…"}</div>
   return <div className="space-y-4 pb-12">
     <header className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
-      <div><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Content</p><h1 className="mt-1 text-3xl font-bold">Theory question editor</h1><p className="mt-1 text-sm text-muted-foreground">Open a module, choose a set, and make changes directly.</p></div>
+      <div><h1 className="text-3xl font-bold">Theory Question Editor</h1></div>
       <div className="grid grid-cols-2 rounded-xl border border-border bg-muted/40 p-1"><button onClick={() => setKind("end_of_module")} className={`${button} ${kind === "end_of_module" ? "bg-background shadow-sm" : "text-muted-foreground"}`}>End of Module</button><button onClick={() => setKind("end_of_year")} className={`${button} ${kind === "end_of_year" ? "bg-background shadow-sm" : "text-muted-foreground"}`}>End of Year</button></div>
     </header>
     <nav className="flex gap-2 overflow-x-auto rounded-xl border border-border bg-card p-2">{([
