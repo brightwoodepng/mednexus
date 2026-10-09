@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
-import { ClipboardList, ShoppingBag } from "lucide-react"
+import { Award, BookOpen, ClipboardList, LayoutGrid, RotateCcw, Settings2, ShoppingBag } from "lucide-react"
 import { GameLauncherTile } from "@/components/game-launcher-tile"
 import { GameScopeDropdowns, GameQuestionCountDropdown } from "@/components/game-setup-fields"
 import { GameRulesDialog } from "@/components/game-rules-dialog"
@@ -734,27 +734,30 @@ function GameOver({ emoji, headline, scoreLabel, score, stats, isNewHigh, gameRe
           )}
           {payoutData && (
             <div className="mb-5 space-y-3">
-              <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4" aria-label={`${payoutData.xpEarned ?? 0} experience points earned`}>
-                <div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Experience earned</span><strong className="text-xl tabular-nums text-violet-600 dark:text-violet-300">+{payoutData.xpEarned ?? 0} XP</strong></div>
-                {payoutData.xpBreakdown && payoutData.xpBreakdown.length > 0 && <div className="mt-2 space-y-1">{payoutData.xpBreakdown.map(item => <div key={item.label} className="flex justify-between text-xs text-muted-foreground"><span>{item.label}</span><span>+{item.amount} XP</span></div>)}</div>}
-              </div>
+              <section className="rounded-2xl border border-border bg-card p-4 shadow-sm" aria-label={`${payoutData.xpEarned ?? 0} experience points earned`}>
+                <div className="flex items-center gap-3 border-b border-border pb-4">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300"><Award size={19} aria-hidden /></span>
+                  <div className="min-w-0"><p className="text-xs font-semibold text-muted-foreground">Experience earned</p><p className="mt-0.5 text-2xl font-bold tabular-nums text-foreground">+{(payoutData.xpEarned ?? 0).toLocaleString()} XP</p></div>
+                </div>
+                {payoutData.xpBreakdown && payoutData.xpBreakdown.length > 0 && <div className="grid gap-2 pt-4">{payoutData.xpBreakdown.map(item => <div key={item.label} className="flex items-center justify-between gap-4 text-sm"><span className="min-w-0 text-muted-foreground">{item.label}</span><span className="shrink-0 font-semibold tabular-nums text-foreground">+{item.amount.toLocaleString()} XP</span></div>)}</div>}
+              </section>
               <PayoutResult earned={payoutData.earned} breakdown={payoutData.breakdown} bountyUpdates={payoutData.bountyUpdates} />
             </div>
           )}
-          <button type="button" onClick={onReplay} className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-4 text-base font-bold text-white shadow-lg shadow-violet-500/20 transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.99]">
-            Play Again
+          <button type="button" onClick={onReplay} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl from-violet-600 to-fuchsia-600 bg-gradient-to-r hover:opacity-90 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+            <RotateCcw size={17} aria-hidden />Play Again
           </button>
-          <button type="button" onClick={onChangeSetup} className="mt-3 w-full rounded-2xl border border-border py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
-            Change Setup
+          <button type="button" onClick={onChangeSetup} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+            <Settings2 size={17} aria-hidden />Change Setup
           </button>
           {answerHistory && answerHistory.length > 0 && (
             <button type="button" onClick={() => setReviewOpen(true)}
-              className="mt-3 w-full rounded-2xl border border-border py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-              📖 Review Vignettes ({answerHistory.length})
+              className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-teal-700 hover:bg-teal-800 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+              <BookOpen size={17} aria-hidden />Review Vignettes ({answerHistory.length})
             </button>
           )}
-          <button type="button" onClick={onExit} className="mt-3 w-full rounded-2xl py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-            Choose Mode
+          <button type="button" onClick={onExit} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-700 hover:bg-slate-800 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+            <LayoutGrid size={17} aria-hidden />Choose Mode
           </button>
         </div>
       </div>
