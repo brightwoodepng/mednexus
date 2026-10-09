@@ -36,7 +36,7 @@ export function parseSoloGameSession(raw: string | null, userId: string): SoloGa
   try {
     const value = JSON.parse(raw) as SoloGameSession
     if (value.version !== SOLO_GAME_SESSION_VERSION || value.userId !== userId || !MODES.has(value.mode)) return null
-    if (!Array.isArray(value.questionIds) || value.questionIds.length < 1 || value.questionIds.length > 100
+    if (!Array.isArray(value.questionIds) || value.questionIds.length < 1 || value.questionIds.length > 500
       || value.questionIds.some(id => typeof id !== "string") || new Set(value.questionIds).size !== value.questionIds.length) return null
     if (!Number.isInteger(value.currentQuestionIndex) || value.currentQuestionIndex < 0 || value.currentQuestionIndex >= value.questionIds.length) return null
     if (!Array.isArray(value.answeredQuestionIds) || !value.state || typeof value.state !== "object") return null

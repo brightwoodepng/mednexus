@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json() as { questionIds?: unknown; gameOnly?: unknown }
-    const maximum = body.gameOnly === true ? 100 : 500
+    const maximum = 500
     if (!Array.isArray(body.questionIds) || body.questionIds.length < 1 || body.questionIds.length > maximum
       || body.questionIds.some(id => typeof id !== "string" || !id.trim())) {
       return noStore(NextResponse.json({ error: `questionIds must contain 1 to ${maximum} valid IDs` }, { status: 400 }))

@@ -1,5 +1,7 @@
 "use client"
 
+import { GameScopeDropdowns, GameQuestionCountDropdown } from "@/components/game-setup-fields"
+
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import { useApp } from "@/contexts/app-context"
@@ -317,70 +319,6 @@ function AnswerProgress({ players, total }: { players: RoomPlayer[]; total: numb
 }
 
 // ── Filter Picker (reused from game-mode) ─────────────────────────────────────
-function FilterPicker({ catalog, filter, onChange }: { catalog: QuestionCatalogModule[]; filter: GameFilter; onChange: (f: GameFilter) => void }) {
-  const modules = catalog.map(module => module.name)
-  const selectedModule = filter.module ?? (filter.scope === "module" ? filter.value : null)
-  const subjects = catalog.find(module => module.name === selectedModule)?.disciplines.map(item => item.name) ?? []
-  const count = countFilter(catalog, filter)
-  const hasFilter = filter.scope !== "all" && filter.value !== null
-
-  return (
-    <div className="mb-4 rounded-3xl border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Question Scope</p>
-        {hasFilter && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">{count} questions</span>}
-      </div>
-      <p className="mb-2 text-xs font-semibold text-foreground">Module</p>
-      <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">
-          <button type="button" onClick={() => onChange(DEFAULT_FILTER)} className={`rounded-full px-3 py-1.5 text-xs font-medium ${!selectedModule ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>All modules</button>
-          {modules.map(m => (
-            <button key={m} type="button" onClick={() => onChange({ scope: "module", value: m, module: m })}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${selectedModule === m ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
-              {m}
-            </button>
-          ))}
-      </div>
-      {selectedModule && <><p className="mb-2 mt-4 text-xs font-semibold text-foreground">Discipline</p>
-        <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto" role="group" aria-label="Discipline within selected module">
-          <button type="button" onClick={() => onChange({ scope: "module", value: selectedModule, module: selectedModule })} className={`rounded-full px-3 py-1.5 text-xs font-medium ${filter.scope === "module" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>Whole Module</button>
-          {subjects.map(s => (
-            <button key={s} type="button" onClick={() => onChange({ scope: "subject", value: s, module: selectedModule })}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${filter.scope === "subject" && filter.value === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
-              {s}
-            </button>
-          ))}
-        </div>
-      </>}
-      {!selectedModule && <p className="text-center text-xs text-muted-foreground py-2">All {countFilter(catalog, DEFAULT_FILTER)} eligible questions</p>}
-      {hasFilter && (
-        <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-primary/8 px-3 py-2">
-          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-primary">{filter.value}</span>
-          <button type="button" onClick={() => onChange(DEFAULT_FILTER)} className="text-[11px] text-muted-foreground hover:text-foreground shrink-0">✕ Clear</button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Q-count picker ────────────────────────────────────────────────────────────
-const Q_COUNTS = [5, 10, 15, 20, 25, 50, 100]
-
-function QCountPicker({ value, onChange, max }: { value: number; onChange: (n: number) => void; max: number }) {
-  return (
-    <div className="mb-4 rounded-3xl border border-border bg-card p-4">
-      <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Questions per Match</p>
-      <div className="flex flex-wrap gap-2">
-        {Q_COUNTS.map(n => (
-          <button key={n} type="button" onClick={() => onChange(n)} disabled={n > max}
-            className={`rounded-xl px-4 py-2 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-40 ${value === n ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
-            {n}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── NAME INPUT ────────────────────────────────────────────────────────────────
 function NameInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
@@ -1043,18 +981,20 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
   const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
   const { user } = useApp()
   const [filter, setFilter] = useState<GameFilter>(DEFAULT_FILTER)
-  const [qCount, setQCount] = useState(10)
+  const [qCount, setQCount] = useState(0)
+  const [scopeReady, setScopeReady] = useState(false)
   const [hostName, setHostName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const maxQ = Math.max(countFilter(catalog, filter), 5)
+  const maxQ = countFilter(catalog, filter)
   const clampedCount = Math.min(qCount, maxQ)
   const modeLabel = mode === "clash" ? "Multiplayer Clash" : mode === "cohort" ? "Cohort Review" : mode === "djmulti" ? "Double Jeopardy" : "Wager Wars"
   const modeIcon = mode === "clash" ? "⚔️" : mode === "cohort" ? "🎓" : mode === "djmulti" ? "🎲" : "🎰"
   const modeGradient = mode === "clash" ? "from-violet-600 to-fuchsia-600" : mode === "cohort" ? "from-teal-500 to-cyan-500" : mode === "djmulti" ? "from-indigo-500 to-purple-600" : "from-amber-500 to-orange-500"
 
   async function create() {
+    if (!scopeReady || !qCount) { setError("Select a module, discipline and question count."); return }
     if (!hostName.trim()) { setError("Please enter your display name."); return }
     setLoading(true); setError("")
     try {
@@ -1095,12 +1035,17 @@ function CreateRoomScreen({ mode, onCreated, onBack }: {
           <NameInput value={hostName} onChange={setHostName} placeholder="Your display name" />
         </div>
 
-        <FilterPicker catalog={catalog} filter={filter} onChange={setFilter} />
-        <QCountPicker value={clampedCount} onChange={setQCount} max={maxQ} />
+        <GameScopeDropdowns catalog={catalog} onChange={(next, ready) => {
+          setFilter(next.module === null ? DEFAULT_FILTER : next.discipline === null
+            ? { scope: "module", value: next.module, module: next.module }
+            : { scope: "subject", value: next.discipline, module: next.module })
+          setScopeReady(ready); setQCount(0)
+        }} />
+        {scopeReady && <GameQuestionCountDropdown key={`${filter.module}:${filter.value}`} available={maxQ} onChange={setQCount} />}
 
         {error && <div className="mb-3"><ErrorBanner msg={error} /></div>}
 
-        <button type="button" onClick={create} disabled={loading}
+        <button type="button" onClick={create} disabled={loading || !scopeReady || !qCount}
           className={`w-full rounded-2xl bg-gradient-to-r ${modeGradient} py-4 text-base font-bold text-white shadow-lg transition-all hover:opacity-90 disabled:opacity-50`}>
           {loading ? "Creating Room…" : "Create Room"}
         </button>
