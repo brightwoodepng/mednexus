@@ -455,8 +455,8 @@ function QuizSessionChoice({ title, description, primaryLabel, secondaryLabel, o
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
       <div className="mt-6 flex flex-col gap-2">
         {tertiaryLabel && onTertiary && <button type="button" onClick={onTertiary} className="min-h-11 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">{tertiaryLabel}</button>}
-        <button type="button" onClick={onSecondary} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted">{secondaryLabel}</button>
         <button type="button" autoFocus onClick={onPrimary} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">{primaryLabel}</button>
+        <button type="button" onClick={onSecondary} className="min-h-11 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">{secondaryLabel}</button>
       </div>
     </div>
   </div>
@@ -807,6 +807,16 @@ export function MedNexusApp() {
     } finally { setSavingQuiz(false) }
   }
 
+  function resumeSavedAttempt() {
+    if (!resumeCandidate) return
+    setActiveStudyHub("mcq-qbank")
+    setActiveQuiz(resumeCandidate)
+    setResumeCandidate(null)
+    setResumePromptOpen(false)
+    setDiscardQuizOpen(false)
+    setScreen("quiz")
+  }
+
   function exitQuiz() {
     setDiscardQuizOpen(true)
   }
@@ -823,7 +833,7 @@ export function MedNexusApp() {
   return (
     <>
     {offlineBlocked && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/55 p-4"><div role="dialog" aria-modal="true" aria-labelledby="online-required-title" className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 text-center shadow-2xl"><ZapIcon size={28} className="mx-auto text-amber-500"/><h2 id="online-required-title" className="mt-3 text-lg font-bold">Internet connection required</h2><p className="mt-2 text-sm text-muted-foreground">Live assessments, multiplayer, rankings, and the Nexus Store are available when you are online. Your downloaded MCQs and Theory sets still work offline.</p><button type="button" onClick={() => setOfflineBlocked(false)} className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Continue offline</button></div></div>}
-    {resumeCandidate && resumePromptOpen && <QuizSessionChoice title={resumeCandidate.mode === "exam" && Date.now() >= resumeCandidate.session.startedAt + resumeCandidate.session.durationSeconds * 1000 ? "Exam time has expired" : "Continue your saved attempt?"} description={resumeCandidate.mode === "exam" ? "Exam time kept running while you were away. Resume to submit the remaining answers, or discard this attempt." : "Trial Mode is untimed. Your question order, answers, and review state are ready."} primaryLabel="Resume" secondaryLabel="Discard" onPrimary={() => { setActiveStudyHub("mcq-qbank"); setActiveQuiz(resumeCandidate); setResumeCandidate(null); setResumePromptOpen(false); setScreen("quiz") }} onSecondary={() => { clearQuizSession(user.uid); saveActiveQuizSession(null); setResumeCandidate(null); setResumePromptOpen(false) }} tertiaryLabel="Back to dashboard" onTertiary={() => setResumePromptOpen(false)} />}
+    {resumeCandidate && resumePromptOpen && <QuizSessionChoice title={resumeCandidate.mode === "exam" && Date.now() >= resumeCandidate.session.startedAt + resumeCandidate.session.durationSeconds * 1000 ? "Exam time has expired" : "Continue your saved attempt?"} description={resumeCandidate.mode === "exam" ? "Exam time kept running while you were away. Resume to submit the remaining answers, or discard this attempt." : "Trial Mode is untimed. Your question order, answers, and review state are ready."} primaryLabel="Resume" secondaryLabel="Discard" onPrimary={resumeSavedAttempt} onSecondary={() => { clearQuizSession(user.uid); saveActiveQuizSession(null); setResumeCandidate(null); setResumePromptOpen(false) }} tertiaryLabel="Back to dashboard" onTertiary={() => setResumePromptOpen(false)} />}
     <TutorialProvider activeHub={activeStudyHub} currentScreen={safeScreen} welcomeOpen={showWelcome} onNavigate={handleScreenNavigation} blocked={Boolean(pendingQuiz || activeQuiz || isExamActive || theoryQuestionOpen || themeOpen || importerOpen || creditsOpen || loadActiveRoomSession(user.uid) || loadSoloGameSession(user.uid))}>
     <LearnerWorkspaceShell
       screen={safeScreen}
@@ -869,7 +879,7 @@ export function MedNexusApp() {
                     <p className="mt-0.5 text-xs text-white/80">{Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length} of {resumeCandidate.questions.length} questions answered</p>
                   </div>
                 </div>
-                <button type="button" onClick={() => setResumePromptOpen(true)} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-white/90">Continue <span aria-hidden="true">→</span></button>
+                <button type="button" onClick={resumeSavedAttempt} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-white/90">Continue <span aria-hidden="true">→</span></button>
               </div>
               <div className="relative mt-2 h-1 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-label="Saved attempt progress" aria-valuemin={0} aria-valuemax={resumeCandidate.questions.length} aria-valuenow={Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length}><div className="h-full rounded-full bg-white" style={{ width: `${Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length / resumeCandidate.questions.length * 100}%` }} /></div>
             </section>
