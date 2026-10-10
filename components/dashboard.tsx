@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useApp } from "@/contexts/app-context"
 import { useStudyMode } from "@/contexts/study-mode-context"
 import { useTheme } from "@/contexts/theme-context"
@@ -111,7 +111,8 @@ const CARD_PALETTES = [
 export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOpenLiveAssessments }: DashboardProps) {
   const { user, progress } = useApp()
   const currentStreak = useEconomy().loginStreak ?? progress.streak
-  const { globalMode } = useStudyMode()
+  const [statisticsMode, setStatisticsMode] = useState<"trial" | "exam">("trial")
+  const swipeStart = useRef<{ x: number; y: number } | null>(null)
   const { isGlassEnabled } = useTheme()
   const { equippedCosmetics, dailyLoginReward, clearDailyLoginReward } = useEconomy()
   const { questionCount, isLoading: questionsLoading, catalog, catalogLoading, catalogError, reloadCatalog } = useQuestions()
@@ -136,7 +137,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const bestExamScore = examsTaken ? Math.max(...examScores.map((e) => e.score)) : 0
 
   return (
-    <div data-tutorial-anchor="mcq-home" className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
+    <div onTouchStart={event => { swipeStart.current = null; if ((event.target as Element).closest("button, a, input, select, textarea")) return; swipeStart.current = { x: event.touches[0].clientX, y: event.touches[0].clientY } }} onTouchEnd={event => { const start = swipeStart.current; swipeStart.current = null; if (!start || !event.changedTouches.length) return; const dx = event.changedTouches[0].clientX - start.x, dy = event.changedTouches[0].clientY - start.y; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) setStatisticsMode(dx < 0 ? "exam" : "trial") }} data-tutorial-anchor="mcq-home" className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
 
       {!questionsLoading && questionCount === 0 && <section className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-6 text-center"><h2 className="text-lg font-bold">Question bank is currently empty</h2><p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">Practice questions are temporarily unavailable because the live question bank has been intentionally cleared. Please check back after an administrator publishes a reviewed bank.</p></section>}
 
@@ -242,9 +243,9 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
         </div>
       </div>
 
-      {/* Stats row — different cards per mode */}
+      <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold">{statisticsMode === "trial" ? "Trial statistics" : "Exam statistics"}</p><button type="button" onClick={() => setStatisticsMode(statisticsMode === "trial" ? "exam" : "trial")} className="rounded-lg bg-muted px-3 py-2 text-xs font-semibold text-primary">{statisticsMode === "trial" ? "Exam" : "Trial"} <span aria-hidden="true">↔</span></button></div>
       <section>
-        {globalMode === "trial" ? (
+        {statisticsMode === "trial" ? (
           <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
             <StatCard glass={isGlassEnabled} icon="📋" label="Answered" value={trialAnswered} sub="trial questions" color="bg-sky-50 text-sky-700 border-sky-200/80" />
             <StatCard glass={isGlassEnabled} icon="🎯" label="Accuracy" value={`${trialAccuracy}%`} sub={trialAnswered ? `${trialCorrect} correct` : "no data yet"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" />
@@ -253,7 +254,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
-            <StatCard glass={isGlassEnabled} icon="📝" label="Exams Taken" value={examsTaken} sub="mock exams" color="bg-sky-50 text-sky-700 border-sky-200/80" />
+            <StatCard glass={isGlassEnabled} icon="📝" label="Exams Taken" value={examsTaken} sub="exams" color="bg-sky-50 text-sky-700 border-sky-200/80" />
             <StatCard glass={isGlassEnabled} icon="🎯" label="Avg Score" value={examsTaken ? `${avgExamScore}%` : "—"} sub={examsTaken ? `across ${examsTaken} exam${examsTaken !== 1 ? "s" : ""}` : "no exams yet"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" />
             <StatCard glass={isGlassEnabled} icon="🏆" label="Best Score" value={examsTaken ? `${bestExamScore}%` : "—"} sub={examsTaken ? "personal best" : "no exams yet"} color="bg-amber-50 text-amber-700 border-amber-200/80" />
             <StatCard glass={isGlassEnabled} icon="🔥" label="Streak" value={`${currentStreak}d`} sub={progress.lastStudyDate ? `last: ${fmtDate(progress.lastStudyDate)}` : "start today!"} color="bg-rose-50 text-rose-700 border-rose-200/80" />
@@ -270,16 +271,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           Module catalog could not be loaded. <button type="button" className="font-semibold underline" onClick={() => void reloadCatalog()}>Try again</button>
         </div>
       )}
-      {globalMode === "trial" ? (
-        <TrialDashboard
-          catalog={catalog}
-          onReadyForQuiz={onReadyForQuiz}
-          onOpenModules={onOpenModules}
-          onOpenWeakAreas={onOpenWeakAreas}
-        />
-      ) : (
-        <ExamDashboard catalog={catalog} onReadyForQuiz={onReadyForQuiz} onOpenModules={onOpenModules} />
-      )}
+      <TrialDashboard catalog={catalog} onReadyForQuiz={onReadyForQuiz} onOpenModules={onOpenModules} onOpenWeakAreas={onOpenWeakAreas} />
 
     </div>
   )
