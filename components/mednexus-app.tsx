@@ -18,6 +18,7 @@ import { parseReviewSession, type ReviewSession } from "@/lib/review-session"
 import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
+import { DashboardCosmetics } from "@/components/dashboard-cosmetics"
 import { AppearanceModal } from "@/components/appearance-modal"
 import { LiveAssessmentsScreen } from "@/components/live-assessments-screen"
 import { LeaderboardScreen } from "@/components/leaderboard-screen"
@@ -367,7 +368,7 @@ const MCQ_HEADER_TITLES: Partial<Record<Screen, string>> = {
 function WorkspaceHeaderTitle({ title, screen }: { title: string; screen: Screen }) {
   if (screen === "game") return <span className="flex min-w-0 items-center gap-2 md:hidden"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-500 text-base shadow-sm" aria-hidden>🎮</span><span className="truncate bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 bg-clip-text text-lg font-black tracking-tight text-transparent">Game Mode</span></span>
   if (screen.startsWith("store")) return <span className="flex min-w-0 items-center gap-2 md:hidden"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-300"><StoreIcon size={18}/></span><span className="truncate text-lg font-black tracking-tight text-foreground">Nexus Store</span></span>
-  return <span className="flex min-w-0 items-center gap-2 md:hidden">{screen === "leaderboard" && <TrophyIcon size={20} className="shrink-0 text-primary"/>}<span className="truncate text-lg font-black tracking-tight text-foreground">{title}</span></span>
+  return <span className="flex min-w-0 items-center gap-2 md:hidden"><span className="truncate text-lg font-black tracking-tight text-foreground">{title}</span></span>
 }
 
 // ── Welcome Modal ─────────────────────────────────────────────────────────────
@@ -910,6 +911,7 @@ export function MedNexusApp() {
           {safeScreen === "theory-revision" && <TheoryVault key={`theory-revision-${theoryNavigationKey}`} initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-progress" && <TheoryVault key={`theory-progress-${theoryNavigationKey}`} initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-search" && <TheoryVault key={`theory-search-${theoryNavigationKey}`} initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
+          {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && <DashboardCosmetics onOpenStore={() => handleScreenNavigation("store-cosmetics")} />}
           {safeScreen === "review" && <ReviewWorkspace resumeOnOpen={resumeReviewOnOpen} onResumeRequested={() => setResumeReviewOnOpen(false)} initialReview={initialReview} onInitialReviewLoaded={() => setInitialReview(null)} onExit={() => handleScreenNavigation("dashboard")} />}
       {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}

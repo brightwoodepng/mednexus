@@ -69,7 +69,7 @@ export function LearnerWorkspaceShell({
             <div className="min-w-0 flex-1" data-tutorial-anchor="header-workspace-identity">{headerSlot}</div>
           </div>
           {modeControl && <div className="order-last flex w-full justify-end md:order-none md:w-auto">{modeControl}</div>}
-          <LearnerHeaderActions onNavigate={navigate} onOpenAppearance={onOpenAppearance} />
+          <LearnerHeaderActions mobileProfilePill={screen === "dashboard" || screen === "theory-dashboard"} onNavigate={navigate} onOpenAppearance={onOpenAppearance} />
         </header>
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:p-5 md:pb-5 lg:p-8 lg:pb-8">{children}</main>
       </div>

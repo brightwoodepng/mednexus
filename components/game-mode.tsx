@@ -8,6 +8,7 @@ import { GameRulesDialog } from "@/components/game-rules-dialog"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
+import { Stethoscope, FlaskConical, UsersRound } from "lucide-react"
 import { GameArena } from "@/components/game-arena"
 import type { ArenaMode } from "@/lib/game-presentation"
 import { MultiplayerClash, CohortReview, WagerWars, DoubleJeopardyMulti } from "@/components/game-mode-multiplayer"
@@ -18,7 +19,6 @@ import { WalletBadge, DailyBountiesPanel, PayoutResult } from "@/components/econ
 import { buildGameQuestionPool, createQuestionContentFingerprint, deduplicateGameQuestions } from "@/lib/game-question-pool"
 import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { getPersonalBestUpdate } from "@/lib/game-personal-best"
-import { getSuddenDeathOutcome, getSuddenDeathResultTotal } from "@/lib/sudden-death-result"
 import { getMultiplayerRewardRules } from "@/lib/multiplayer-reward-presentation"
 import { clearSoloGameSession, loadSoloGameSession, saveSoloGameSession, type HydratedSoloGameSession, type SoloGameMode } from "@/lib/solo-game-session"
 
@@ -65,13 +65,6 @@ const MODES: ModeConfig[] = [
     desc: "Race the clock — 3 lives, 15s per question, streak multipliers.",
     rules: ["3 lives — wrong or timeout costs 1", "15 seconds per question", "Selected questions appear once per round", "Streak bonuses up to +150 pts"],
     hsKey: "mednexus-hs-rapid", hsLabel: "Best Score",
-  },
-  {
-    id: "sudden", name: "Sudden Death",
-    icon: "💀", gradient: "from-rose-500 to-orange-500", shadow: "shadow-rose-500/20",
-    desc: "One mistake ends everything. How many can you survive?",
-    rules: ["Any wrong answer = instant game over", "20 seconds per question", "Selected questions appear once per round", "Score = questions survived × 100"],
-    hsKey: "mednexus-hs-sudden", hsLabel: "Best Survived",
   },
   {
     id: "timeatk", name: "Time Attack",
@@ -427,7 +420,7 @@ function OptionBtn({ id, text, media, sel, correct, fb, onSel, eliminated = fals
     return (
       <div className="w-full rounded-2xl border-2 border-border/30 bg-muted/20 px-4 py-3.5 text-left text-sm font-medium opacity-35">
         <span className="inline-flex items-center gap-3">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border/30 text-[11px] font-bold text-muted-foreground/50">{id}</span>
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border/30 text-[11px] font-bold text-muted-foreground">{id}</span>
           <span className="line-through text-muted-foreground/40">— eliminated —</span>
         </span>
       </div>
@@ -443,7 +436,7 @@ function OptionBtn({ id, text, media, sel, correct, fb, onSel, eliminated = fals
   } else if (sel) {
     cls += "border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400"
   } else {
-    cls += "border-border bg-card text-muted-foreground/50"
+    cls += "border-border bg-card text-muted-foreground"
   }
   const lblCls =
     fb !== null && correct ? "border-emerald-500 bg-emerald-500 text-white"
@@ -474,9 +467,9 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer, eliminated,
 }) {
   return (
     <GameArena mode={mode} round={round} total={total} outcome={fb} feedbackKey={question.id + ":" + picked} streak={streak} timedOut={fb === "wrong" && picked === null}>
-    <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
+    <div className="flex min-h-full flex-col gap-2 p-0 sm:gap-3 sm:p-0 max-w-3xl mx-auto">
       <div className="game-hud">{hud}</div>
-      <div className="game-question-card relative flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5 sm:p-6">
+      <div className="game-question-card relative flex-1 overflow-y-auto rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="max-w-[200px] truncate rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
             {question.subject}
@@ -848,27 +841,27 @@ function LifelineBar({ onUse50_50, onUseFreeze, onUseSecondOpinion, qty5050, qty
 }) {
   if (qty5050 <= 0 && qtyFreeze <= 0 && qtySecondOpinion <= 0 && !freezeActivated && !secondOpinionActivated) return null
   return (
-    <div className="flex items-center justify-center gap-2 py-0.5">
+    <div className="game-power-ups grid grid-cols-3 gap-1.5">
       {qty5050 > 0 && (
-        <button type="button" onClick={onUse50_50} disabled={disabled5050}
-          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${disabled5050 ? "opacity-40 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-violet-200 dark:border-violet-800/40 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 hover:opacity-80 active:scale-95"}`}>
-          🩺 Consult Attending
+        <button type="button" onClick={onUse50_50} disabled={disabled5050} aria-label="Consult Attending: eliminate two wrong answers" title="Consult Attending: eliminate two wrong answers"
+          className={`flex items-center gap-1.5 min-h-10 justify-center rounded-lg border px-1.5 py-1 text-[11px] font-semibold transition-colors ${disabled5050 ? "opacity-65 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-violet-200 dark:border-violet-800/40 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 hover:opacity-80 active:scale-95"}`}>
+          <Stethoscope size={14} aria-hidden /><span>50/50</span>
           <span className="rounded-full bg-violet-200 dark:bg-violet-800 px-1.5 py-0.5 text-[10px] font-extrabold text-violet-800 dark:text-violet-200">×{qty5050}</span>
         </button>
       )}
       {(qtyFreeze > 0 || freezeActivated) && (
         <button type="button" onClick={onUseFreeze} disabled={disabledFreeze} title="Adds 10 seconds to the current question timer."
           aria-label={freezeActivated ? "Stat Labs activated. 10 seconds added." : "Stat Labs. Adds 10 seconds to the current question timer."}
-          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${disabledFreeze ? "opacity-40 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-cyan-200 dark:border-cyan-800/40 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 hover:opacity-80 active:scale-95"}`}>
-          {freezeActivated ? <span aria-live="polite">✓ +10s added</span> : <>🧪 Stat Labs</>}
+          className={`flex items-center gap-1.5 min-h-10 justify-center rounded-lg border px-1.5 py-1 text-[11px] font-semibold transition-colors ${disabledFreeze ? "opacity-65 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-cyan-200 dark:border-cyan-800/40 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 hover:opacity-80 active:scale-95"}`}>
+          {freezeActivated ? <span aria-live="polite">✓ +10s added</span> : <><FlaskConical size={14} aria-hidden /><span>+10s</span></>}
           {!freezeActivated && <span className="rounded-full bg-cyan-200 dark:bg-cyan-800 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:text-cyan-200">×{qtyFreeze}</span>}
         </button>
       )}
       {(qtySecondOpinion > 0 || secondOpinionActivated) && (
         <button type="button" onClick={onUseSecondOpinion} disabled={disabledSecondOpinion}
           title="Activate before answering. A corrected retry continues play but earns no accuracy or NP credit."
-          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${disabledSecondOpinion ? "opacity-40 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-amber-200 bg-amber-50 text-amber-700 hover:opacity-80 active:scale-95 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400"}`}>
-          {secondOpinionActivated ? "✓ Second Opinion ready" : "👥 Second Opinion"}
+          className={`flex items-center gap-1.5 min-h-10 justify-center rounded-lg border px-1.5 py-1 text-[11px] font-semibold transition-colors ${disabledSecondOpinion ? "opacity-65 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-amber-200 bg-amber-50 text-amber-700 hover:opacity-80 active:scale-95 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400"}`}>
+          {secondOpinionActivated ? "✓ Retry ready" : <><UsersRound size={14} aria-hidden /><span>Retry</span></>}
           {!secondOpinionActivated && <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-800 dark:bg-amber-800 dark:text-amber-200">×{qtySecondOpinion}</span>}
         </button>
       )}
@@ -926,7 +919,7 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 to-fuchsia-500 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-3xl shadow-lg shadow-violet-500/20">👤</div>
             <h2 className="text-lg font-extrabold text-foreground">Solo Training</h2>
-            <p className="mt-1 text-xs text-muted-foreground">5 game modes — Rapid Fire, Sudden Death, Time Attack, Double Jeopardy, Streak Master</p>
+            <p className="mt-1 text-xs text-muted-foreground">4 game modes — Rapid Fire, Time Attack, Double Jeopardy, Streak Master</p>
             <div className="mt-4 flex items-center justify-center gap-1 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-600 py-2.5 text-sm font-bold text-white shadow-sm">
               Start Solo
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}><path d="m9 18 6-6-6-6"/></svg>
@@ -949,7 +942,7 @@ function HeroSplitScreen({ onSolo, onMulti, onBack, onOpenStore }: {
                 value={pin} onChange={e => { setPin(e.target.value.replace(/\D/g, "")); setJoinError("") }}
                 onKeyDown={e => e.key === "Enter" && quickJoin()}
                 placeholder="Quick Join — PIN"
-                className="h-9 flex-1 rounded-xl border border-border bg-background px-3 text-sm font-mono text-center tracking-widest text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/50"
+                className="h-9 flex-1 rounded-xl border border-border bg-background px-3 text-sm font-mono text-center tracking-widest text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
               />
               <button type="button" onClick={quickJoin} disabled={joining}
                 className="h-9 rounded-xl bg-foreground px-3 text-xs font-bold text-background transition-opacity hover:opacity-80 disabled:opacity-50">
@@ -1095,7 +1088,7 @@ function RapidFireMode({ onExit, resume }: { onExit: () => void; resume?: Hydrat
   const saved = resume?.state ?? {}
   const scoring = useSoloScoring("rapid", resume?.scoringSessionId)
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
-  const cfg = MODES[0]
+  const cfg = MODES.find(mode => mode.id === "rapid")!
 
   const [filter, setFilter] = useState<GameFilter>(() => resume ? { module: resume.module, discipline: resume.discipline } : DEFAULT_FILTER)
   const [phase, setPhase] = useState<Phase>(resume ? "playing" : "menu")
@@ -1252,7 +1245,7 @@ function RapidFireMode({ onExit, resume }: { onExit: () => void; resume?: Hydrat
   return (
     <QuestionView mode="rapid" round={qi + 1} total={pool.length} streak={streak} question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
       hud={
-        <div className={`flex flex-col gap-2 rounded-2xl p-2.5 -mx-1 transition-all duration-500 ${
+        <div className={`flex flex-col gap-1.5 rounded-xl p-0 transition-all duration-500 ${
           isHighAlert
             ? "mednexus-high-alert-ring ring-2 ring-amber-500/50 bg-amber-50/40 dark:bg-amber-950/30"
             : ""
@@ -1302,184 +1295,6 @@ function RapidFireMode({ onExit, resume }: { onExit: () => void; resume?: Hydrat
   )
 }
 
-// ── SUDDEN DEATH ──────────────────────────────────────────────────────────────
-const SUDDEN_TIME = 20
-
-function SuddenDeathMode({ onExit, resume }: { onExit: () => void; resume?: HydratedSoloGameSession | null }) {
-  const { gameCatalog: catalog, loadGameQuestionPool } = useQuestions()
-  const saved = resume?.state ?? {}
-  const scoring = useSoloScoring("sudden", resume?.scoringSessionId)
-  const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
-  const cfg = MODES[1]
-
-  const [filter, setFilter] = useState<GameFilter>(() => resume ? { module: resume.module, discipline: resume.discipline } : DEFAULT_FILTER)
-  const [phase, setPhase] = useState<Phase>(resume ? "playing" : "menu")
-  const [survived, setSurvived] = useState(() => restoredNumber(saved, "survived", 0))
-  const [timeLeft, setTimeLeft] = useState(() => resume?.timerDeadline ? Math.max(0, Math.ceil((resume.timerDeadline - Date.now()) / 1000)) : SUDDEN_TIME)
-  const [fb, setFb] = useState<Feedback>(null)
-  const [picked, setPicked] = useState<string | null>(null)
-  const [isNewHigh, setIsNewHigh] = useState(false)
-  const [hs, setHsState] = useState(() => readHs(cfg.hsKey))
-  const [eliminated, setEliminated] = useState<string[]>(() => restoredStrings(saved, "eliminated"))
-  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryEntry[]>(() => restoreAnswerHistory(saved.answerHistory, resume?.questions ?? []))
-  const [lifelineUsedSD, setLifelineUsedSD] = useState(() => restoredBoolean(saved, "lifelineUsed"))
-  const [secondOpinionSD, setSecondOpinionSD] = useState(() => restoredBoolean(saved, "secondOpinionActive"))
-  const [firstAttemptSD, setFirstAttemptSD] = useState<string | null | undefined>(() => typeof saved.firstAttempt === "string" || saved.firstAttempt === null ? saved.firstAttempt : undefined)
-
-  const round = useSoloGameRound(cfg.id, () => endGame(r.current.survived), resume)
-  const { pool, qi } = round
-
-  const r = useRef({ pool: [] as readonly Question[], qi: 0, survived: 0, hs: 0, fb: null as Feedback, phase: "menu" as Phase })
-  r.current = { pool, qi, survived, hs, fb, phase }
-  const doRef = useRef<((c: string | null) => void) | null>(null)
-  const expiryRef = useRef(resume?.answeredQuestionIds.includes(resume.questionIds[resume.currentQuestionIndex]) ? 0 : (resume?.timerDeadline ?? 0))
-
-  usePersistSoloGame({ mode: "sudden", active: phase === "playing", round, scoring,
-    timerDeadline: expiryRef.current, state: { survived, eliminated, answerHistory: compactAnswerHistory(answerHistory),
-      lifelineUsed: lifelineUsedSD, secondOpinionActive: secondOpinionSD, firstAttempt: firstAttemptSD } })
-
-  function endGame(finalSurvived: number) {
-    const { best, isNewHigh } = getPersonalBestUpdate(r.current.hs, finalSurvived)
-    setIsNewHigh(isNewHigh)
-    setHsState(best); writeHs(cfg.hsKey, best)
-    setSurvived(finalSurvived); setPhase("over"); r.current.phase = "over"
-  }
-
-  function doAnswer(c: string | null) {
-    if (r.current.fb !== null || r.current.phase !== "playing") return
-    const q = r.current.pool[r.current.qi]; if (!q) return
-    const right = c !== null && c === q.correctAnswer
-    if (!right && secondOpinionSD && firstAttemptSD === undefined) { setFirstAttemptSD(c); setPicked(c); return }
-    const assisted = firstAttemptSD !== undefined
-    const nfb: Feedback = right ? "correct" : "wrong"
-    setFb(nfb); r.current.fb = nfb; setPicked(c)
-    round.markAnswered(q.id)
-    setAnswerHistory(prev => [...prev, assisted ? { question: q, selected: firstAttemptSD ?? null, secondAttempt: c, assisted: true } : { question: q, selected: c }])
-    if (right) {
-      const ns = assisted ? r.current.survived : r.current.survived + 1; setSurvived(ns); r.current.survived = ns
-      if (r.current.qi + 1 >= r.current.pool.length) {
-        round.finalize("pool_completed", 900)
-        return
-      }
-      round.schedule(() => {
-        if (!round.advanceOrFinalize()) return
-        setFb(null); r.current.fb = null; setPicked(null); setEliminated([])
-        setSecondOpinionSD(false); setFirstAttemptSD(undefined)
-        expiryRef.current = Date.now() + SUDDEN_TIME * 1000
-        setTimeLeft(SUDDEN_TIME)
-      }, 900)
-    } else {
-      round.finalize(c === null ? "timeout" : "incorrect_answer", 900)
-    }
-  }
-  doRef.current = doAnswer
-
-  useEffect(() => {
-    if (phase !== "playing" || fb !== null) return
-    if (expiryRef.current <= 0) expiryRef.current = Date.now() + SUDDEN_TIME * 1000
-    const id = setInterval(() => {
-      if (round.finalizedRef.current) { clearInterval(id); return }
-      const rem = Math.max(0, Math.ceil((expiryRef.current - Date.now()) / 1000))
-      setTimeLeft(rem)
-      if (rem <= 0) { clearInterval(id); doRef.current?.(null) }
-    }, 200)
-    return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, fb, qi])
-
-  async function use50_50() {
-    const q = pool[qi]; if (!q || fb !== null) return
-    const sessionId = await scoring.sessionPromise.current
-    if (!sessionId) return
-    const ok = await consumeItem("lifeline_50_50", { sessionId, questionId: q.id })
-    if (!ok) return
-    setLifelineUsedSD(true)
-    const wrongs = q.options.filter(o => o.id !== q.correctAnswer).map(o => o.id)
-    const toElim = wrongs.sort(() => Math.random() - 0.5).slice(0, Math.max(0, wrongs.length - 1))
-    setEliminated(toElim)
-  }
-
-  async function useFreeze() {
-    const q = pool[qi]
-    if (!q || fb !== null) return
-    const sessionId = await scoring.sessionPromise.current
-    if (!sessionId) return
-    const ok = await consumeItem("lifeline_freeze", { sessionId, questionId: q.id })
-    if (!ok) return
-    setLifelineUsedSD(true)
-    expiryRef.current += 10000
-  }
-  async function useSecondOpinionSD() {
-    const q = pool[qi]; if (!q || fb !== null || firstAttemptSD !== undefined) return
-    const sessionId = await scoring.sessionPromise.current; if (!sessionId) return
-    if (!await consumeItem("lifeline_second_opinion", { sessionId, questionId: q.id })) return
-    setLifelineUsedSD(true); setSecondOpinionSD(true)
-  }
-
-  async function start(qty?: number) {
-    const requestedQuantity = qty ?? round.configuration?.selectedQuantity ?? countForCatalog(catalog, filter)
-    const selection = await loadSoloRoundSelection(loadGameQuestionPool, filter, requestedQuantity, round.configuration?.selectedQuestionIds)
-    if (selection.selected.length === 0) return
-    const p = round.startRound(selection.selected, filter, selection.selectedQuantity, selection.eligiblePoolSize)
-    scoring.begin(p)
-    r.current.pool = p; r.current.qi = 0
-    setSurvived(0); r.current.survived = 0; setTimeLeft(SUDDEN_TIME)
-    setFb(null); r.current.fb = null; setPicked(null)
-    setIsNewHigh(false); setEliminated([]); setAnswerHistory([])
-    setLifelineUsedSD(false)
-    setSecondOpinionSD(false); setFirstAttemptSD(undefined)
-    setPhase("playing"); r.current.phase = "playing"
-    expiryRef.current = Date.now() + SUDDEN_TIME * 1000
-  }
-
-  if (phase === "menu") return <ModeMenu mode={cfg} hs={hs} catalog={catalog} filter={filter} onFilterChange={setFilter} onStart={start} onBack={onExit} />
-  if (phase === "over") {
-    const score = survived * BASE_PTS
-    const total = getSuddenDeathResultTotal(round.completionReason, survived, answerHistory.length)
-    const outcome = getSuddenDeathOutcome(round.completionReason)
-    const headline = round.completionReason === "pool_completed"
-      ? outcome.headline
-      : survived === 0 ? "Out on Question 1!" : outcome.headline
-    return <GameOver emoji={outcome.emoji} headline={headline} scoreLabel="Score" score={score} stats={[{ label: "Survived", value: String(survived) }, { label: "Answered", value: String(total) }, { label: "Best", value: `${hs} questions` }]} isNewHigh={isNewHigh} gameResult={{ mode: "sudden", score, correct: survived, total, bestStreak: survived, isNewHigh, survivedCount: survived, lifelineUsed: lifelineUsedSD }} answerHistory={answerHistory} sessionPromise={scoring.sessionPromise.current} configuration={round.configuration} completionReason={round.completionReason} onReplay={() => start()} onChangeSetup={() => setPhase("menu")} onExit={onExit} />
-  }
-  const q = pool[qi]; if (!q) return null
-  const pct = (timeLeft / SUDDEN_TIME) * 100
-  const tc = timeLeft <= 5 ? "bg-rose-500" : timeLeft <= 10 ? "bg-amber-500" : "bg-rose-400"
-  const qty5050 = inventory["lifeline_50_50"] ?? 0
-  const qtyFreeze = inventory["lifeline_freeze"] ?? 0
-  const qtySecondOpinionSD = inventory["lifeline_second_opinion"] ?? 0
-
-  return (
-    <QuestionView mode="sudden" round={qi + 1} total={pool.length} streak={survived} question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
-      hud={
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5">
-              <span className="text-sm">💀</span>
-              <span className="text-xs font-bold text-rose-600 dark:text-rose-400">Survived: {survived}</span>
-            </div>
-            <div className="flex-1" />
-            <p className="text-xl font-extrabold tabular-nums text-foreground">{(survived * BASE_PTS).toLocaleString()}</p>
-          </div>
-          <div className="relative h-2 overflow-hidden rounded-full bg-muted">
-            <div className={`absolute inset-y-0 left-0 rounded-full transition-all duration-200 ease-linear ${tc}`} style={{ width: `${pct}%` }} />
-          </div>
-          <div className="flex items-center justify-between px-0.5">
-            <span className={`text-xs font-bold tabular-nums ${timeLeft <= 5 ? "text-rose-600" : "text-muted-foreground"}`}>{timeLeft}s</span>
-            <span className="text-[11px] font-semibold text-rose-500/70">One wrong = game over</span>
-          </div>
-          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} qtySecondOpinion={qtySecondOpinionSD} onUse50_50={use50_50} onUseFreeze={useFreeze} onUseSecondOpinion={useSecondOpinionSD}
-            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
-            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
-            disabledSecondOpinion={fb !== null || firstAttemptSD !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
-            freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionSD} />
-        </div>
-      }
-      footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>}
-    />
-  )
-}
-
 // ── TIME ATTACK ───────────────────────────────────────────────────────────────
 const TIMEATK_START = 90
 
@@ -1488,7 +1303,7 @@ function TimeAttackMode({ onExit, resume }: { onExit: () => void; resume?: Hydra
   const saved = resume?.state ?? {}
   const scoring = useSoloScoring("timeatk", resume?.scoringSessionId)
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
-  const cfg = MODES[2]
+  const cfg = MODES.find(mode => mode.id === "timeatk")!
 
   const [filter, setFilter] = useState<GameFilter>(() => resume ? { module: resume.module, discipline: resume.discipline } : DEFAULT_FILTER)
   const [phase, setPhase] = useState<Phase>(resume ? "playing" : "menu")
@@ -1812,9 +1627,9 @@ function DoubleJeopardyMode({ onExit, resume }: { onExit: () => void; resume?: H
   if (djPhase === "wager") {
     return (
       <GameArena mode="double" round={qi + 1} total={pool.length}>
-      <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
+      <div className="flex min-h-full flex-col gap-2 p-0 sm:gap-3 sm:p-0 max-w-3xl mx-auto">
         {/* HUD */}
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
+        <div className="game-hud flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2">
           <span className="text-sm font-bold text-muted-foreground">Q {qi + 1}/{pool.length}</span>
           <div className="flex-1" />
           <div className="flex items-center gap-1.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 px-3 py-1">
@@ -1824,7 +1639,7 @@ function DoubleJeopardyMode({ onExit, resume }: { onExit: () => void; resume?: H
         </div>
 
         {/* Vignette */}
-        <div className="flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5">
+        <div className="game-question-card flex-1 overflow-y-auto rounded-2xl border border-border bg-card p-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">{q.subject}</span>
             {q.module && <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground">{q.module}</span>}
@@ -1833,17 +1648,17 @@ function DoubleJeopardyMode({ onExit, resume }: { onExit: () => void; resume?: H
         </div>
 
         {/* Bet panel */}
-        <div className="rounded-3xl border border-indigo-200 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/30 p-4">
+        <div className="game-wager-panel rounded-xl border border-border bg-muted/40 p-3">
           <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-indigo-700 dark:text-indigo-400">
             🎲 Place Your Wager — Options reveal after!
           </p>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {DJ_BETS.map(bet => {
               const amount = Math.max(10, Math.floor(bank * bet.pct))
               return (
                 <button key={bet.label} type="button" onClick={() => placeBet(bet.pct)}
-                  className={`flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br ${bet.color} px-4 py-3.5 text-white shadow-md ${bet.shadow} transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]`}>
-                  <span className="text-xl">{bet.icon}</span>
+                  className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-card px-2 py-2 text-foreground hover:border-primary hover:bg-primary/10">
+                  
                   <span className="text-sm font-extrabold">{bet.label}</span>
                   <span className="text-xs font-semibold opacity-90">+/− {amount.toLocaleString()} pts</span>
                 </button>
@@ -1863,7 +1678,7 @@ function DoubleJeopardyMode({ onExit, resume }: { onExit: () => void; resume?: H
     <QuestionView mode="double" round={qi + 1} total={pool.length} streak={0} question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
       hud={
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
+          <div className="game-hud flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2">
             <span className="text-sm font-bold text-muted-foreground">Q {qi + 1}/{pool.length}</span>
             <div className="flex-1" />
             {wager > 0 && (
@@ -1896,7 +1711,7 @@ function StreakMasterMode({ onExit, resume }: { onExit: () => void; resume?: Hyd
   const saved = resume?.state ?? {}
   const scoring = useSoloScoring("streak", resume?.scoringSessionId)
   const { inventory, useItem: consumeItem, isItemUsePending, isItemUsed } = useEconomy()
-  const cfg = MODES[3]
+  const cfg = MODES.find(mode => mode.id === "streak")!
 
   const [filter, setFilter] = useState<GameFilter>(() => resume ? { module: resume.module, discipline: resume.discipline } : DEFAULT_FILTER)
   const [phase, setPhase] = useState<Phase>(resume ? "playing" : "menu")
@@ -2006,6 +1821,7 @@ function StreakMasterMode({ onExit, resume }: { onExit: () => void; resume?: Hyd
   return (
     <QuestionView mode="streak" round={qi + 1} total={pool.length} streak={streak} question={q} fb={fb} picked={picked} onAnswer={doAnswer}
       hud={
+        <div className="flex flex-col gap-2">
         <div className={`flex items-center gap-3 rounded-2xl p-2 -mx-1 transition-all duration-500 ${
           isHighAlert ? "mednexus-high-alert-ring ring-2 ring-amber-500/50 bg-amber-50/40 dark:bg-amber-950/30" : ""
         }`}>
@@ -2037,15 +1853,17 @@ function StreakMasterMode({ onExit, resume }: { onExit: () => void; resume?: Hyd
             <p className="text-sm font-extrabold tabular-nums text-foreground">{totalQ}</p>
           </div>
         </div>
-      }
-      footer={
-        <div className="flex flex-col gap-2">
           <LifelineBar qty5050={qty5050sm} qtyFreeze={0} qtySecondOpinion={qtySecondOpinionSM}
             onUse50_50={use50_50sm} onUseFreeze={() => {}} onUseSecondOpinion={useSecondOpinionSM}
             disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
             disabledFreeze={true}
             disabledSecondOpinion={fb !== null || firstAttemptSM !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
             secondOpinionActivated={secondOpinionSM} />
+        </div>
+      }
+      footer={
+        <div className="flex flex-col gap-2">
+
           <div className="flex items-center gap-2">
           <button type="button" onClick={finishGame} disabled={fb !== null} className="flex-1 rounded-2xl bg-gradient-to-r from-amber-400 to-rose-500 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-50">
             Finish Game
@@ -2065,7 +1883,7 @@ export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenSt
   const { user } = useApp()
   const { gameCatalog, gameCatalogLoading, reloadGameCatalog, loadQuestionsByIds } = useQuestions()
   const roomResumeRef = useRef(loadActiveRoomSession(user?.uid))
-  const savedSoloRef = useRef(user ? loadSoloGameSession(user.uid) : null)
+  const savedSoloRef = useRef((() => { const saved = user ? loadSoloGameSession(user.uid) : null; return saved?.mode === "sudden" ? null : saved })())
   const [soloResume, setSoloResume] = useState<HydratedSoloGameSession | null | undefined>(savedSoloRef.current ? undefined : null)
   // Auto-resume an in-progress multiplayer match on mount (e.g. after a page
   // refresh) instead of forcing the player back through mode selection.
@@ -2113,14 +1931,13 @@ export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenSt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMode])
 
-  const soloMode = activeMode === "rapid" || activeMode === "sudden" || activeMode === "timeatk" || activeMode === "streak" || activeMode === "double"
+  const soloMode = activeMode === "rapid" || activeMode === "timeatk" || activeMode === "streak" || activeMode === "double"
   if (activeMode && (gameCatalogLoading || gameCatalog.length === 0 || (soloMode && savedSoloRef.current && soloResume === undefined))) {
     return <div className="flex min-h-[50vh] items-center justify-center text-sm font-semibold text-muted-foreground">Loading question options…</div>
   }
 
 
   if (activeMode === "rapid") return <RapidFireMode resume={soloResume?.mode === "rapid" ? soloResume : null} onExit={handleSoloExit} />
-  if (activeMode === "sudden") return <SuddenDeathMode resume={soloResume?.mode === "sudden" ? soloResume : null} onExit={handleSoloExit} />
   if (activeMode === "timeatk") return <TimeAttackMode resume={soloResume?.mode === "timeatk" ? soloResume : null} onExit={handleSoloExit} />
   if (activeMode === "streak") return <StreakMasterMode resume={soloResume?.mode === "streak" ? soloResume : null} onExit={handleSoloExit} />
   if (activeMode === "double") return <DoubleJeopardyMode resume={soloResume?.mode === "double" ? soloResume : null} onExit={handleSoloExit} />

@@ -48,7 +48,7 @@ export function GameArena({ mode, round, total, outcome = null, feedbackKey, str
         <div className="flex min-w-0 items-center gap-3">
           <span className="game-mode-emblem" aria-hidden="true">{theme.icon}</span>
           <div className="min-w-0"><h1 className="break-words text-base font-black tracking-tight sm:text-xl">{theme.title}</h1>
-            <p className="hidden text-xs text-muted-foreground sm:block">{theme.mission}</p></div>
+            </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button type="button" className="game-feedback-toggle" aria-label={preferences.sound ? "Mute game sounds" : "Enable game sounds"} aria-pressed={preferences.sound} onClick={() => toggle("sound")}>{preferences.sound ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>
@@ -59,11 +59,11 @@ export function GameArena({ mode, round, total, outcome = null, feedbackKey, str
         <span className="text-[10px] font-bold uppercase tracking-widest">Round {round}<span className="opacity-50"> / {total}</span></span>
         <div className="game-round-meter"><div style={{ width: Math.min(100, Math.max(0, (round - (outcome ? 0 : 1)) / Math.max(1, total) * 100)) + "%" }} /></div>
       </div>
-      <div className={"game-feedback-line " + (outcome ? "game-feedback-" + outcome : "")} role="status" aria-live="polite" aria-atomic="true">
+      {outcome && <div className={"game-feedback-line " + (outcome ? "game-feedback-" + outcome : "")} role="status" aria-live="polite" aria-atomic="true">
         <span aria-hidden="true">{outcome === "correct" ? "✦" : outcome === "wrong" ? "↻" : "◆"}</span>
         <span>{outcome === "correct" ? (streak >= 3 ? theme.correct + " · " + streak + " combo!" : theme.correct) : outcome === "wrong" ? (timedOut ? "Time’s up!" : theme.wrong) : theme.mission}</span>
         {outcome === "correct" && <Sparkles size={16} aria-hidden />}
-      </div>
+      </div>}
       <div className="game-arena-content">{children}</div>
       {outcome === "correct" && celebration > 0 && <div key={celebration} className="game-celebration" aria-hidden="true">
         {Array.from({ length: 12 }, (_, i) => <i key={i} style={{ "--burst-x": (i - 5.5) * 24 + "px", "--burst-turn": i * 39 + "deg", animationDelay: (i % 3) * .035 + "s", background: i % 2 ? theme.accent : theme.glow } as CSSProperties} />)}

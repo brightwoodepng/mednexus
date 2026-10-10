@@ -1,282 +1,47 @@
 "use client"
 
-/**
- * AppearanceModal — Appearance settings panel housed inside a GlassCard.
- *
- * Structure:
- *   • Custom backdrop (blur + dim overlay)
- *   • GlassCard dialog panel (auto-adapts glass ↔ solid from global state)
- *     ├─ Sticky header  — "Appearance" title + X close button
- *     ├─ Subtitle
- *     ├─ Liquid Glass full-width toggle card
- *     ├─ Light themes grid  (Clinical Light, Ocean Breeze, Sandstone, Rose Quartz, Solar Flare)
- *     └─ Dark themes grid   (Classic Dark, Midnight Purple)
- */
-
-import { useEffect } from "react"
-import { GlassCard } from "@/components/ui/glass-card"
+import { useEffect, useRef, useState } from "react"
+import { Sun, Moon, Check, X } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
-import { THEMES, type ThemeId, type ThemeMeta } from "@/lib/themes"
-import { XIcon, CheckIcon, SparklesIcon } from "@/components/icons"
-import { cn } from "@/lib/utils"
+import { THEMES } from "@/lib/themes"
 
-// ── Theme subsets ─────────────────────────────────────────────────────────────
-
-const LIGHT_IDS: ThemeId[] = [
-  "clinical-light",
-  "ocean-breeze",
-  "sandstone",
-  "rose-quartz",
-  "solar-flare",
-]
-const DARK_IDS: ThemeId[] = ["classic-dark", "midnight-purple", "forest-night", "nebula"]
-
-const LIGHT_THEMES = THEMES.filter((t) => LIGHT_IDS.includes(t.id))
-const DARK_THEMES = THEMES.filter((t) => DARK_IDS.includes(t.id))
-
-// ── Props ─────────────────────────────────────────────────────────────────────
-
-interface AppearanceModalProps {
-  open: boolean
-  onClose: () => void
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
-
-export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
-  const { activeTheme, setActiveTheme, isGlassEnabled, setIsGlassEnabled } =
-    useTheme()
-
-  // Escape key + scroll lock
+export function AppearanceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { activeTheme, setActiveTheme, isGlassEnabled, setIsGlassEnabled } = useTheme()
+  const [mode, setMode] = useState<"light" | "dark">("light")
+  const panel = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
+    setMode(THEMES.find(theme => theme.id === activeTheme)?.mode ?? "light")
+  }, [open, activeTheme])
+  useEffect(() => {
+    if (!open) return
+    const previousFocus = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    panel.current?.querySelector<HTMLButtonElement>("button")?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+      if (event.key !== "Tab") return
+      const controls = panel.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")
+      if (!controls?.length) return
+      const first = controls[0], last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
     }
     document.addEventListener("keydown", onKey)
-    document.body.style.overflow = "hidden"
-    return () => {
-      document.removeEventListener("keydown", onKey)
-      document.body.style.overflow = ""
-    }
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = previousOverflow; previousFocus?.focus() }
   }, [open, onClose])
-
   if (!open) return null
-
-  return (
-    <div
-      data-tutorial-anchor="appearance-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Appearance"
-    >
-      {/* Backdrop */}
-      <button
-        type="button"
-        aria-label="Close dialog"
-        onClick={onClose}
-        className="absolute inset-0 bg-foreground/40 backdrop-blur-sm animate-in fade-in"
-      />
-
-      {/* ── GlassCard panel ───────────────────────────────────────────────── */}
-      <GlassCard className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border border-border animate-ios-sheet">
-
-        {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-4 backdrop-blur-md bg-card/70">
-          <h2 className="text-lg font-semibold">Appearance</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <XIcon size={20} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-4 sm:p-6">
-          {/* Subtitle */}
-          <p className="mb-6 text-sm text-muted-foreground">
-            Choose a theme and visual style. Changes apply instantly and are saved
-            on this device.
-          </p>
-
-          {/* ── Liquid Glass toggle ─────────────────────────────────────────── */}
-          <div className="mb-6 overflow-hidden rounded-2xl border border-border">
-            <button
-              type="button"
-              onClick={() => setIsGlassEnabled(!isGlassEnabled)}
-              className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-muted/30"
-            >
-              {/* Liquid Glass icon */}
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-border bg-primary/10 text-primary shadow-sm">
-                <SparklesIcon size={28} />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold">Liquid Glass</p>
-                  {isGlassEnabled && (
-                    <ActiveBadge />
-                  )}
-                </div>
-                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
-                  Frosted glass sidebar and cards — works with any theme.
-                </p>
-              </div>
-
-              {/* Toggle switch */}
-              <ToggleSwitch on={isGlassEnabled} />
-            </button>
-          </div>
-
-          {/* ── Theme grids ─────────────────────────────────────────────────── */}
-          <ThemeSection
-            label="☀️  Light"
-            themes={LIGHT_THEMES}
-            active={activeTheme}
-            onSelect={setActiveTheme}
-          />
-          <ThemeSection
-            label="🌙  Dark"
-            themes={DARK_THEMES}
-            active={activeTheme}
-            onSelect={setActiveTheme}
-          />
-        </div>
-      </GlassCard>
+  return <div data-tutorial-anchor="appearance-modal" role="dialog" aria-modal="true" aria-labelledby="appearance-heading" className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-6">
+    <button type="button" aria-label="Close appearance" onClick={onClose} className="absolute inset-0 bg-black/45" />
+    <div ref={panel} className="relative flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
+      <header className="flex items-center justify-between border-b border-border px-4 py-3"><div><h2 id="appearance-heading" className="text-base font-bold">Appearance</h2><p className="mt-0.5 text-xs text-muted-foreground">Your theme, saved on this device.</p></div><button type="button" onClick={onClose} aria-label="Close" className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted"><X size={18}/></button></header>
+      <div className="p-4 pb-2"><div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" aria-label="Theme categories">{(["light", "dark"] as const).map(group => <button key={group} type="button" aria-pressed={mode === group} onClick={() => setMode(group)} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold ${mode === group ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>{group === "light" ? <Sun size={16}/> : <Moon size={16}/>} {group === "light" ? "Light themes" : "Dark themes"}</button>)}</div></div>
+      <div data-tutorial-anchor="appearance-theme-grid" className="grid grid-cols-2 gap-3 overflow-y-auto p-4 pt-2">{THEMES.filter(theme => theme.mode === mode).map(theme => <button key={theme.id} type="button" aria-pressed={activeTheme === theme.id} onClick={() => { setActiveTheme(theme.id); window.dispatchEvent(new CustomEvent("mednexus:tutorial-theme-selected", { detail: { themeId: theme.id } })) }} className={`min-w-0 overflow-hidden rounded-xl border text-left ${activeTheme === theme.id ? "border-primary ring-2 ring-primary/25" : "border-border hover:border-primary/50"}`}>
+        <div className="relative flex h-16 items-end gap-1.5 p-2.5 sm:h-20" style={{ background: theme.swatch.bg }} aria-hidden="true"><div className="h-full w-4 rounded" style={{ background: theme.swatch.primary }}/><div className="flex h-full flex-1 flex-col justify-center gap-1.5 rounded-lg p-2" style={{ background: theme.swatch.surface }}><div className="h-1.5 w-3/4 rounded" style={{ background: theme.swatch.primary }}/><div className="h-1.5 w-1/2 rounded" style={{ background: theme.swatch.primary, opacity: .35 }}/></div>{activeTheme === theme.id && <span className="absolute right-2 top-2 rounded-full bg-primary p-1 text-primary-foreground"><Check size={12}/></span>}</div>
+        <div className="p-2.5"><span className="block text-xs font-bold sm:text-sm">{theme.name}</span><span className="mt-1 block text-[11px] leading-snug text-muted-foreground">{theme.description}</span></div>
+      </button>)}</div>
+      <footer className="flex items-center justify-between gap-3 border-t border-border p-4"><div><p className="text-sm font-semibold">Liquid Glass</p><p className="text-xs text-muted-foreground">Frosted surfaces with your theme.</p></div><button type="button" role="switch" aria-checked={isGlassEnabled} aria-label="Liquid Glass" onClick={() => setIsGlassEnabled(!isGlassEnabled)} className={`relative h-7 w-12 shrink-0 rounded-full ${isGlassEnabled ? "bg-primary" : "bg-muted-foreground/30"}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-white ${isGlassEnabled ? "right-1" : "left-1"}`} /></button></footer>
     </div>
-  )
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-/** Three overlapping circles showing bg → surface → primary. */
-function ThemeCircles({ swatch }: { swatch: ThemeMeta["swatch"] }) {
-  return (
-    <div className="relative h-12 w-14 shrink-0">
-      {/* bg — largest, leftmost */}
-      <div
-        className="absolute left-0 top-1/2 h-11 w-11 -translate-y-1/2 rounded-full border-2 border-white/25 shadow-sm"
-        style={{ background: swatch.bg }}
-      />
-      {/* surface — medium, overlapping centre */}
-      <div
-        className="absolute left-[14px] top-1/2 h-9 w-9 -translate-y-1/2 rounded-full border-2 border-white/25 shadow-sm"
-        style={{ background: swatch.surface }}
-      />
-      {/* primary — smallest, rightmost */}
-      <div
-        className="absolute right-0 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full border-2 border-white/30 shadow"
-        style={{ background: swatch.primary }}
-      />
-    </div>
-  )
-}
-
-
-/** "On" badge shown next to an active item label. */
-function ActiveBadge() {
-  return (
-    <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-      <CheckIcon size={10} /> On
-    </span>
-  )
-}
-
-/** Animated toggle pill. */
-function ToggleSwitch({ on }: { on: boolean }) {
-  return (
-    <div
-      className={cn(
-        "relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200",
-        on ? "bg-primary" : "bg-muted-foreground/30",
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200",
-          on ? "translate-x-5" : "translate-x-0.5",
-        )}
-      />
-    </div>
-  )
-}
-
-/** Labelled grid of theme cards. */
-function ThemeSection({
-  label,
-  themes,
-  active,
-  onSelect,
-}: {
-  label: string
-  themes: ThemeMeta[]
-  active: ThemeId
-  onSelect: (id: ThemeId) => void
-}) {
-  return (
-    <div className="mb-6">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        {label}
-      </p>
-      <div data-tutorial-anchor="appearance-theme-grid" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {themes.map((t) => (
-          <ThemeCard
-            key={t.id}
-            theme={t}
-            isActive={active === t.id}
-            onSelect={onSelect}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/** Single selectable theme card with overlapping-circles preview. */
-function ThemeCard({
-  theme,
-  isActive,
-  onSelect,
-}: {
-  theme: ThemeMeta
-  isActive: boolean
-  onSelect: (id: ThemeId) => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => { onSelect(theme.id); window.dispatchEvent(new CustomEvent("mednexus:tutorial-theme-selected", { detail: { themeId: theme.id } })) }}
-      className={cn(
-        "group flex items-center gap-3 rounded-2xl border p-3.5 text-left transition-all",
-        isActive
-          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-          : "border-border hover:border-primary/40 hover:bg-muted/40",
-      )}
-    >
-      {/* Overlapping circles preview */}
-      <ThemeCircles swatch={theme.swatch} />
-
-      {/* Text */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <h3 className="text-sm font-semibold">{theme.name}</h3>
-          {isActive && <ActiveBadge />}
-        </div>
-        <p className="mt-0.5 text-pretty text-xs leading-snug text-muted-foreground">
-          {theme.description}
-        </p>
-      </div>
-
-      {/* Checkmark (active only) */}
-      {isActive && (
-        <div className="shrink-0 text-primary">
-          <CheckIcon size={16} />
-        </div>
-      )}
-    </button>
-  )
+  </div>
 }

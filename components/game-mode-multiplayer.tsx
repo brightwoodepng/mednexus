@@ -198,7 +198,7 @@ function MultiOptionBtn({ id, text, sel, correct, revealed, onSel, disabled, col
   } else if (sel) {
     cls += "border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400"
   } else {
-    cls += "border-border bg-card text-muted-foreground/50"
+    cls += "border-border bg-card text-muted-foreground"
   }
 
   return (
@@ -460,7 +460,7 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeav
   }, [room.currentQi, room.phase, myAnswer, q.correctAnswer]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
+    <div className="flex min-h-full flex-col gap-2 p-0 sm:gap-3 sm:p-0 max-w-2xl mx-auto">
       {/* HUD bar */}
       <div className="game-hud flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
         <span className="text-xs font-bold text-muted-foreground">Q {room.currentQi + 1}/{room.questionPool.length}</span>
@@ -1111,7 +1111,7 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
   const displayBalance = isQuestionPhase && myWager !== null ? myBalance - myWager : myBalance
 
   return (
-    <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
+    <div className="flex min-h-full flex-col gap-2 p-0 sm:gap-3 sm:p-0 max-w-2xl mx-auto">
       {/* HUD bar */}
       <div className="game-hud flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
         <span className="text-xs font-bold text-muted-foreground">Q {room.currentQi + 1}/{room.questionPool.length}</span>
@@ -1341,7 +1341,7 @@ function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvan
   const revealed = room.phase === "reveal"
 
   return (
-    <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
+    <div className="flex min-h-full flex-col gap-2 p-0 sm:gap-3 sm:p-0 max-w-2xl mx-auto">
       {/* HUD bar */}
       <div className="game-hud flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
         <span className="text-xs font-bold text-muted-foreground">Q {room.currentQi + 1}/{room.questionPool.length}</span>
@@ -1400,20 +1400,20 @@ function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvan
             <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-0.5">Waiting for all players to wager…</p>
           </div>
         ) : (
-          <div className="rounded-3xl border border-indigo-200 dark:border-indigo-800/40 bg-indigo-50 dark:bg-indigo-950/30 p-4">
+          <div className="game-wager-panel rounded-xl border border-border bg-muted/40 p-3">
             <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-indigo-700 dark:text-indigo-400">
               🎲 Place Your Wager
             </p>
             <p className="mb-3 text-center text-[11px] text-muted-foreground">
               Bank: <strong className="text-foreground">{myBank.toLocaleString()} pts</strong>
             </p>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {DJ_MULTI_BETS.map(bet => {
                 const amount = Math.max(10, Math.floor(myBank * bet.pct))
                 return (
                   <button key={bet.label} type="button" onClick={() => onWager(amount)}
-                    className={`flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br ${bet.color} px-4 py-3.5 text-white shadow-md ${bet.shadow} transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]`}>
-                    <span className="text-xl">{bet.icon}</span>
+                    className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-card px-2 py-2 text-foreground hover:border-primary hover:bg-primary/10">
+                    
                     <span className="text-sm font-extrabold">{bet.label}</span>
                     <span className="text-xs font-semibold opacity-90">+/− {amount.toLocaleString()} pts</span>
                   </button>
