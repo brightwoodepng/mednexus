@@ -17,7 +17,7 @@ function Media({ items }: { items: QuestionMedia[] }) {
       {item.caption && <figcaption className="mt-1 text-xs text-muted-foreground">{item.caption}</figcaption>}</figure>)}</div>
 }
 
-export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded }: { onExit: () => void; onInitialReviewLoaded?: () => void; initialReview?: { session: ReviewSession; questions: Question[] } | null }) {
+export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, resumeOnOpen = false, onResumeRequested }: { onExit: () => void; onInitialReviewLoaded?: () => void; resumeOnOpen?: boolean; onResumeRequested?: () => void; initialReview?: { session: ReviewSession; questions: Question[] } | null }) {
   const { user, progress, saveReviewSession, flushProgress } = useApp()
   const { loadQuestionSet, loadQuestionsByIds } = useQuestions()
   const owner = useRef(user?.uid)
@@ -41,6 +41,14 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded }
     setExplanationOpen(true)
     setNavigator(window.matchMedia("(min-width: 1024px)").matches)
   }, [initialReview, user?.uid, onInitialReviewLoaded])
+  const requestedResume = useRef(false)
+  useEffect(() => {
+    if (!resumeOnOpen) { requestedResume.current = false; return }
+    if (!saved || requestedResume.current) return
+    requestedResume.current = true
+    void resume()
+    onResumeRequested?.()
+  }, [resumeOnOpen, user?.uid, progress.savedReviewSession, onResumeRequested])
   useEffect(() => {
     if (active) document.getElementById("review-question-scroll")?.scrollTo({ top: 0 })
   }, [active?.session.currentIndex])

@@ -102,7 +102,7 @@ export function GroupStudyHome() {
 
   return <main className="relative min-h-screen overflow-hidden bg-background text-foreground"><div className="pointer-events-none absolute -left-32 top-20 h-80 w-80 rounded-full bg-primary/[0.06] blur-3xl"/><div className="pointer-events-none absolute -right-40 top-1/3 h-96 w-96 rounded-full bg-primary/[0.04] blur-3xl"/><div className="relative mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
     <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/10 via-primary/[0.04] to-transparent p-4 md:hidden"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"><Users size={18}/></span><div><p className="text-sm font-bold">Study better together</p><p className="mt-0.5 text-xs text-muted-foreground">Create a focused session or join your study group.</p></div></div>
-    <p className="hidden text-sm text-muted-foreground md:block">Create a focused session or join your study group.</p>
+
 
     {error && <div role="alert" className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
     <div className="mt-4 grid gap-4 md:mt-6 md:grid-cols-[1.5fr_1fr] md:gap-5">
