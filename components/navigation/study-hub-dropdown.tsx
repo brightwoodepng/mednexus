@@ -1,14 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { BookOpenIcon, ChevronDownIcon, LockKeyholeIcon, ScrollTextIcon, StethoscopeIcon } from "lucide-react"
+import { ChevronDownIcon } from "lucide-react"
 import { getStudyHubMenuOptions, STUDY_HUBS, type StudyHubId } from "@/components/study-hub-switcher"
 import { useTheme } from "@/contexts/theme-context"
 
 function HubIcon({ hub, size = 16 }: { hub: StudyHubId; size?: number }) {
-  if (hub === "osce-hub") return <StethoscopeIcon size={size} aria-hidden />
-  if (hub === "theory-vault") return <ScrollTextIcon size={size} aria-hidden />
-  return <BookOpenIcon size={size} aria-hidden />
+  return <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center leading-none" style={{ fontSize: size + 3 }}>{hub === "osce-hub" ? "🩺" : hub === "theory-vault" ? "📖" : "📚"}</span>
 }
 
 /** Per-hub colour classes for the icon container in the trigger button. */
@@ -96,18 +94,19 @@ export function StudyHubDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${triggerCls}`}
+        aria-label={`Switch study workspace, current: ${activeHubDef.name}`}
+        className={`flex w-full items-center gap-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${triggerCls}`}
       >
         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${hubIconClasses(activeHub).bg} ${hubIconClasses(activeHub).text}`}>
           <HubIcon hub={activeHub} size={18} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-sidebar-foreground">{activeHubDef.name}</span>
-          <span className="block truncate text-[11px] text-sidebar-foreground/55">Switch study workspace</span>
+          <span className="block truncate text-[11px] font-medium text-primary">Switch workspace</span>
         </span>
         <ChevronDownIcon
-          size={13}
-          className={`shrink-0 text-sidebar-foreground/50 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          size={18}
+          className={`shrink-0 rounded-md bg-primary/10 p-0.5 text-primary transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           aria-hidden
         />
       </button>
@@ -126,7 +125,7 @@ export function StudyHubDropdown({
             }`
             const content = <>
               <span className={`shrink-0 ${hub.available ? hubIconClasses(hub.id).text : "text-muted-foreground"}`}>
-                {hub.available ? <HubIcon hub={hub.id} size={18} /> : <LockKeyholeIcon size={18} aria-hidden />}
+                {hub.available ? <HubIcon hub={hub.id} size={18} /> : <span aria-hidden="true" className="text-lg">🔒</span>}
               </span>
               <span className="min-w-0 flex-1 leading-tight">{hub.name}</span>
               {!hub.available && (
@@ -183,7 +182,7 @@ export function StudyHubDropdownIcon({
   }, [open])
 
   return <div ref={ref} className="relative">
-    <button type="button" onClick={() => setOpen((value) => !value)} title={activeHubDef.name} aria-label={`Study hub: ${activeHubDef.name}`} aria-haspopup="menu" aria-expanded={open} className={`flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-primary transition-colors ${isGlassEnabled ? "glass-pill-hover" : "border border-sidebar-border hover:bg-sidebar-accent"}`}><HubIcon hub={activeHub} size={16} /></button>
+    <button type="button" onClick={() => setOpen((value) => !value)} title={`Switch workspace: ${activeHubDef.name}`} aria-label={`Switch study workspace, current: ${activeHubDef.name}`} aria-haspopup="menu" aria-expanded={open} className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-sidebar-primary transition-colors ${isGlassEnabled ? "glass-pill-hover" : "border border-sidebar-border hover:bg-sidebar-accent"}`}><HubIcon hub={activeHub} size={18} /><ChevronDownIcon size={10} aria-hidden="true" className="absolute bottom-0.5 right-0.5 text-primary" /></button>
     {open && <div role="menu" className={`absolute left-full top-0 z-50 ml-2 w-56 overflow-hidden rounded-xl ${isGlassEnabled ? "glass-card" : "border border-sidebar-border bg-card shadow-xl"}`}>
       {menuOptions.map((hub) => <button key={hub.id} role="menuitem" type="button" disabled={!hub.available} onClick={() => { if (!hub.available) return; onSelect(hub.id); setOpen(false) }} className={`flex min-h-11 w-full items-center gap-3 px-3 text-left text-sm font-medium ${hub.available ? "hover:bg-sidebar-accent" : "cursor-not-allowed text-muted-foreground"}`}><HubIcon hub={hub.id} size={17} /><span className="flex-1">{hub.name}</span>{!hub.available && <span className="text-[10px] font-bold uppercase">Coming Soon</span>}</button>)}
     </div>}

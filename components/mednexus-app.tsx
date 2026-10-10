@@ -876,7 +876,7 @@ export function MedNexusApp() {
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <h2 className="break-words text-sm font-bold leading-snug sm:text-base">Continue {resumeCandidate.moduleName}</h2>
+                    <h2 className="break-words text-sm font-bold leading-snug sm:text-base">Continue trial · {resumeCandidate.moduleName}</h2>
                     <p className="mt-0.5 text-xs text-white/80">{Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length} of {resumeCandidate.questions.length} questions answered</p>
                   </div>
                 </div>
@@ -886,14 +886,14 @@ export function MedNexusApp() {
             </section>
           )}
           {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && savedDashboardReview && (
-            <section className="relative mb-4 overflow-hidden rounded-2xl border border-emerald-400/40 bg-emerald-500 px-4 py-3 text-white shadow-lg sm:px-5" aria-label="Saved review">
+            <section className="relative mb-4 overflow-hidden rounded-2xl border border-violet-400/40 bg-violet-600 px-4 py-3 text-white shadow-lg sm:px-5" aria-label="Saved review">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">📖</span>
                   <div className="min-w-0"><h2 className="break-words text-sm font-bold leading-snug sm:text-base">Continue review · {savedDashboardReview.module}</h2>
                     <p className="mt-0.5 text-xs text-white/80">{savedDashboardReview.viewedIds.length} of {savedDashboardReview.questionIds.length} questions reviewed</p></div>
                 </div>
-                <button type="button" onClick={() => { setInitialReview(null); setResumeReviewOnOpen(true); handleScreenNavigation("review") }} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-700 shadow-sm hover:bg-white/90">Continue <span aria-hidden="true">→</span></button>
+                <button type="button" onClick={() => { setInitialReview(null); setResumeReviewOnOpen(true); handleScreenNavigation("review") }} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold text-violet-700 shadow-sm hover:bg-white/90">Continue <span aria-hidden="true">→</span></button>
               </div>
               <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-label="Saved review progress" aria-valuemin={0} aria-valuemax={savedDashboardReview.questionIds.length} aria-valuenow={savedDashboardReview.viewedIds.length}><div className="h-full rounded-full bg-white" style={{ width: `${savedDashboardReview.viewedIds.length / savedDashboardReview.questionIds.length * 100}%` }} /></div>
             </section>
