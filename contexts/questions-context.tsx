@@ -22,6 +22,7 @@ import {
 // Invalidate the local cache so modules.ts picks up fresh questions
 import { saveActiveQuestions } from "@/lib/custom-questions"
 import { deleteOfflinePack, listOfflinePacks, loadMcqPack, mcqPackId, saveMcqPack, type OfflinePack } from "@/lib/offline-storage"
+import { createAutomaticModuleCache } from "@/lib/automatic-module-cache"
 
 const QUESTION_PAGE_SIZE = 25
 const PAGE_CONCURRENCY = 4
@@ -266,6 +267,22 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const questionSetLoadId = useRef(0)
   const catalogLoadId = useRef(0)
   const sessionOwner = useRef<string | undefined>(undefined)
+  const automaticModules = useRef<ReturnType<typeof createAutomaticModuleCache> | null>(null)
+  if (!automaticModules.current) automaticModules.current = createAutomaticModuleCache({
+    read: (owner, module) => loadMcqPack(owner, module),
+    fetch: async (owner, module) => {
+      if (sessionOwner.current !== owner) return null
+      const result = await fetchFromDb({ module }, new AbortController().signal)
+      return sessionOwner.current === owner && result.questions !== null
+        ? { questions: result.questions, updatedAt: result.updatedAt } : null
+    },
+    save: async (owner, module, content) => {
+      await saveMcqPack(owner, module, content.questions, content.updatedAt)
+      const packs = await listOfflinePacks(owner)
+      if (sessionOwner.current === owner) setOfflinePacks(packs)
+    },
+    online: () => typeof navigator === "undefined" || navigator.onLine,
+  })
 
   useEffect(() => () => {
     catalogRequest.current?.abort()
@@ -359,6 +376,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
       catalogLoadId.current++
       questionSetLoadId.current++
       questionSetCache.current.clear()
+      automaticModules.current?.clear()
       questionsRef.current = []
       persistedQuestionsRef.current = []
       setQuestions([])
@@ -395,6 +413,21 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
     questionSetRequest.current?.abort()
     const loadId = ++questionSetLoadId.current
     const owner = userId
+    if (owner && filter.module) {
+      setIsLoading(true)
+      try {
+        const content = await automaticModules.current!.load(owner, filter.module)
+        const loaded = content.questions.filter(question => (!filter.discipline || question.subject === filter.discipline)
+          && (!filter.topic || (question as Question & { topic?: string }).topic === filter.topic || question.tags?.[0] === filter.topic))
+        if (loadId === questionSetLoadId.current && sessionOwner.current === owner) {
+          persist(loaded, true)
+          if (content.updatedAt) setLastUpdated(new Date(content.updatedAt))
+        }
+        return sessionOwner.current === owner ? loaded : []
+      } finally {
+        if (loadId === questionSetLoadId.current && sessionOwner.current === owner) setIsLoading(false)
+      }
+    }
     const cacheKey = filter.module ? `${owner}\u0000${filter.module}\u0000${filter.discipline ?? "*"}\u0000${filter.topic ?? "*"}` : null
     if (cacheKey && questionSetCache.current.has(cacheKey)) {
       setIsLoading(false)
@@ -447,6 +480,7 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
       const result = await fetchFromDb({ module }, controller.signal)
       if (!result.questions) return { ok: false, error: "The module could not be downloaded." }
       await saveMcqPack(userId, module, result.questions, result.updatedAt)
+      automaticModules.current?.invalidate(userId, module)
       questionSetCache.current.set(`${userId}\u0000${module}\u0000*\u0000*`, result.questions)
       await refreshOfflinePacks()
       return { ok: true }
@@ -458,12 +492,14 @@ export function QuestionsProvider({ children }: { children: ReactNode }) {
   const removeDownloadedModule = useCallback(async (module: string) => {
     if (!userId) return
     await deleteOfflinePack(mcqPackId(userId, module))
+    automaticModules.current?.invalidate(userId, module)
     questionSetCache.current.delete(`${userId}\u0000${module}\u0000*\u0000*`)
     await refreshOfflinePacks()
   }, [refreshOfflinePacks, userId])
 
   const removeOfflinePack = useCallback(async (id: string) => {
     await deleteOfflinePack(id)
+    automaticModules.current?.clear()
     await refreshOfflinePacks()
   }, [refreshOfflinePacks])
 

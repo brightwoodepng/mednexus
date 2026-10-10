@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, type ReactNode } from "react"
+import { useState, useMemo, useEffect, type ReactNode } from "react"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import { useApp } from "@/contexts/app-context"
 import {
@@ -61,6 +61,10 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule, compact = false, 
   const [viewingModule, setViewingModule ] = useState<string | null>(initialModule ?? null)
   const [search,        setSearch        ] = useState("")
   const [sort,          setSort          ] = useState<SortKey>("starred")
+
+  useEffect(() => {
+    if (viewingModule) void loadQuestionSet({ module: viewingModule }).catch(() => {})
+  }, [viewingModule, loadQuestionSet])
 
   const modules   = catalog.map((module) => module.name)
   const coverage  = getDisciplineCoverage(progress.history)
@@ -279,7 +283,7 @@ export function ModuleLibrary({ onReadyForQuiz, initialModule, compact = false, 
           allModules={modules}
           coverage={coverage}
           favorites={favorites}
-          onOpen={(module) => { setViewingModule(module); void loadQuestionSet({ module }) }}
+          onOpen={setViewingModule}
           onToggleFav={toggleFavoriteModule}
           catalog={catalog}
         />
