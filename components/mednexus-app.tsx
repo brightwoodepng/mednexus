@@ -855,12 +855,22 @@ export function MedNexusApp() {
       hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
           {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && resumeCandidate && (
-            <section className="mb-5 rounded-2xl border border-primary/30 bg-card p-4 sm:p-5" aria-label="Saved MCQ attempt">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0"><h2 className="break-words font-semibold">Continue {resumeCandidate.moduleName}</h2><p className="mt-1 text-sm text-muted-foreground">{Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length} / {resumeCandidate.questions.length} answered · {cloudEnabled && user.role === "user" ? "Synced to your account" : "Saved on this device"}</p></div>
-                <button type="button" onClick={() => setResumePromptOpen(true)} className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Continue attempt</button>
+            <section className="relative mb-5 overflow-hidden rounded-2xl border border-primary/40 bg-primary px-5 py-4 text-primary-foreground shadow-lg sm:rounded-3xl sm:px-6 sm:py-5" aria-label="Saved MCQ attempt">
+              <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/[0.07]" />
+              <div className="pointer-events-none absolute -bottom-8 right-24 h-20 w-20 rounded-full bg-white/[0.05]" />
+              <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20" aria-hidden="true"><span className="text-lg">📖</span></div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase tracking-widest opacity-80">Pick up where you left off</p>
+                    <h2 className="mt-0.5 break-words text-base font-bold leading-snug">Continue {resumeCandidate.moduleName}</h2>
+                    {resumeCandidate.discipline && <p className="mt-0.5 break-words text-xs opacity-80">{resumeCandidate.discipline}</p>}
+                    <p className="mt-1 text-xs opacity-80">{Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length} / {resumeCandidate.questions.length} answered · {cloudEnabled && user.role === "user" ? "Synced to your account" : "Saved on this device"}</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setResumePromptOpen(true)} className="flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-white/90 sm:min-h-0">Continue attempt <span aria-hidden="true">→</span></button>
               </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Saved attempt progress" aria-valuemin={0} aria-valuemax={resumeCandidate.questions.length} aria-valuenow={Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length}><div className="h-full rounded-full bg-primary" style={{ width: `${Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length / resumeCandidate.questions.length * 100}%` }} /></div>
+              <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-label="Saved attempt progress" aria-valuemin={0} aria-valuemax={resumeCandidate.questions.length} aria-valuenow={Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length}><div className="h-full rounded-full bg-white" style={{ width: `${Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length / resumeCandidate.questions.length * 100}%` }} /></div>
             </section>
           )}
           {safeScreen === "dashboard" && (
