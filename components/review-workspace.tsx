@@ -27,6 +27,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
   const [pending, setPending] = useState<{ module: string; discipline: string | null; questions: Question[] } | null>(null)
   const [active, setActive] = useState<{ session: ReviewSession; questions: Question[] } | null>(null)
   const [themeOpen, setThemeOpen] = useState(false)
+  const [resuming, setResuming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
@@ -81,6 +82,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
   async function resume() {
     if (!saved || !user) return
     const uid = user.uid
+    setResuming(true)
     setBusy(true); setError(""); setNotice("")
     try {
       const questions: Question[] = []
@@ -102,7 +104,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
       saveReviewSession(session); setActive({ session, questions: ordered as Question[] })
       setExplanationOpen(true); setNavigator(window.matchMedia("(min-width: 1024px)").matches)
     } catch (e) { if (owner.current === uid) setError(e instanceof Error ? e.message : "Could not resume review.") }
-    finally { if (owner.current === uid) setBusy(false) }
+    finally { if (owner.current === uid) { setBusy(false); setResuming(false) } }
   }
 
   function navigate(index: number) {
@@ -129,6 +131,8 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
   }
 
   useQuestionKeyboardNavigation({ enabled: Boolean(active) && !busy && !exitOpen && !themeOpen, onPrevious: () => { if (active && active.session.currentIndex > 0) navigate(active.session.currentIndex - 1) }, onNext: () => { if (active && active.session.currentIndex + 1 < active.questions.length) navigate(active.session.currentIndex + 1) } })
+
+  if (!active && (resumeOnOpen || resuming)) return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background"><p role="status" className="font-semibold text-muted-foreground">Resuming review…</p></div>
 
   if (!active) return <div className="space-y-5">
     
@@ -175,7 +179,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
           {question.contextContent && <section className="rounded-xl border border-border bg-muted/30 p-4"><RichText content={question.contextContent} /></section>}
           <section className="rounded-2xl border border-border bg-card p-4 sm:p-6"><RichText content={question.vignette} />
             <Media items={(question.media ?? []).filter(m => m.placement === "stem")} /></section>
-          <div role="list" aria-label="Revealed answers" className="space-y-3">{question.options.map(option => <div role="listitem" key={option.id} className={"flex gap-3 rounded-xl border p-4 " + (correct.has(option.id) ? "border-success/50 bg-success/10" : "border-border bg-card")}>
+          <div role="list" aria-label="Revealed answers" className="space-y-3">{question.options.map(option => <div role="listitem" key={option.id} className={"flex gap-3 rounded-xl border p-4 " + (correct.has(option.id) ? "border-success/50 bg-success/25 dark:bg-success/30" : "border-border bg-card")}>
             <span className="font-bold">{option.id}.</span><div className="min-w-0 flex-1"><RichText content={option.text} />
               <Media items={[...(option.media ?? []), ...(question.media ?? []).filter(m => m.placement === "option" && m.optionId === option.id)]} />
 </div></div>)}</div>
