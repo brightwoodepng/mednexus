@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, Grid3X3, X } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useQuestions } from "@/contexts/questions-context"
 import { ModuleLibrary } from "@/components/module-library"
@@ -91,6 +91,7 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
     if (!active || busy) return
     const session = visitReviewQuestion(active.session, index)
     setActive({ ...active, session }); saveReviewSession(session)
+    if (!window.matchMedia("(min-width: 1024px)").matches) setNavigator(false)
   }
 
   async function leave(finish = false, discard = false) {
@@ -135,16 +136,17 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
       <div className="min-w-0"><p className="flex items-center gap-2 font-bold"><BookOpen size={18} />Review</p>
         <p className="max-w-[60vw] truncate text-xs text-muted-foreground">{session.module}{session.discipline ? " · " + session.discipline : ""}</p></div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setExitOpen(true)} disabled={busy} aria-label="Exit review" className="rounded-xl bg-muted p-3 text-foreground"><X size={18} /></button></div>
+        <button type="button" onClick={() => { setNavigator(false); setExitOpen(true) }} disabled={busy} aria-label="Exit review" className="rounded-xl bg-muted p-3 text-foreground"><X size={18} /></button></div>
     </header>
     <div className="relative flex min-h-0 flex-1">
       <button type="button" onClick={() => setNavigator(!navigator)} aria-expanded={navigator} aria-controls="review-question-navigator" aria-label={navigator ? "Hide question navigator" : "Show question navigator"} title={navigator ? "Hide question navigator" : "Show question navigator"}
-        className={"absolute top-1/2 z-20 flex h-14 w-8 -translate-y-1/2 items-center justify-center rounded-l-xl border border-r-0 border-border bg-card text-primary shadow-md " + (navigator ? "right-[min(16rem,85vw)] lg:right-60" : "right-0")}>
+        className={"absolute top-1/2 z-20 hidden h-14 w-8 lg:flex -translate-y-1/2 items-center justify-center rounded-l-xl border border-r-0 border-border bg-card text-primary shadow-md " + (navigator ? "right-[min(16rem,85vw)] lg:right-60" : "right-0")}>
         {navigator ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
       </button>
-      <aside id="review-question-navigator" aria-label="Question navigator" className={(navigator ? "flex" : "hidden") + " absolute inset-y-0 right-0 z-10 order-last w-64 max-w-[85vw] shrink-0 flex-col overflow-y-auto border-l border-border bg-card p-4 shadow-xl lg:static lg:w-60 lg:shadow-none"}>
+      {navigator && <button type="button" aria-label="Close question navigator" onClick={() => setNavigator(false)} className="absolute inset-0 z-10 bg-black/40 lg:hidden" />}
+      <aside id="review-question-navigator" aria-label="Question navigator" className={(navigator ? "flex" : "hidden") + " absolute inset-x-4 bottom-4 z-20 order-last max-h-[75%] shrink-0 flex-col overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-xl sm:inset-x-auto sm:right-4 sm:w-80 lg:static lg:w-60 lg:max-h-none lg:rounded-none lg:border-0 lg:border-l lg:shadow-none"}>
         <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-sm font-bold">Question navigator</h2></div>
-        <div className="grid grid-cols-4 gap-2">{questions.map((q, i) => <button key={q.id} type="button" aria-label={"Question " + (i + 1)} aria-current={i === session.currentIndex ? "step" : undefined} onClick={() => { navigate(i); if (!window.matchMedia("(min-width: 1024px)").matches) setNavigator(false) }}
+        <div className="grid grid-cols-4 gap-2">{questions.map((q, i) => <button key={q.id} type="button" aria-label={"Question " + (i + 1)} aria-current={i === session.currentIndex ? "step" : undefined} onClick={() => navigate(i)}
           className={"rounded-lg py-2 text-sm " + (i === session.currentIndex ? "bg-primary text-primary-foreground" : session.viewedIds.includes(q.id) ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}>{i + 1}</button>)}</div></aside>
       <main id="review-question-scroll" className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
         <article className="mx-auto max-w-3xl space-y-5">
@@ -168,10 +170,11 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
         </article>
       </main>
     </div>
-    <footer className="flex justify-between gap-3 border-t border-border bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-      <button type="button" disabled={busy || session.currentIndex === 0} onClick={() => navigate(session.currentIndex - 1)} className={button}><ChevronLeft size={16} className="inline" /> Previous</button>
-      {session.currentIndex === questions.length - 1 ? <button type="button" disabled={busy} onClick={() => leave(true)} className={button}>Finish review</button> :
-        <button type="button" disabled={busy} onClick={() => navigate(session.currentIndex + 1)} className={button}>Next <ChevronRight size={16} className="inline" /></button>}
+    <footer className="relative z-30 flex justify-between gap-2 border-t border-border bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
+      <button type="button" disabled={busy || session.currentIndex === 0} onClick={() => navigate(session.currentIndex - 1)} className={button.replace("px-4", "px-2").replace("text-sm", "text-xs") + " sm:px-4 sm:text-sm"}><ChevronLeft size={16} className="inline" /> Previous</button>
+      <button type="button" onClick={() => setNavigator(!navigator)} aria-expanded={navigator} aria-controls="review-question-navigator" aria-label={navigator ? "Hide question navigator" : "Show question navigator"} className="flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 text-sm font-semibold text-primary lg:hidden"><Grid3X3 size={16} /><span className="hidden min-[360px]:inline">Navigator</span></button>
+      {session.currentIndex === questions.length - 1 ? <button type="button" disabled={busy} onClick={() => { setNavigator(false); void leave(true) }} className={button.replace("px-4", "px-2").replace("text-sm", "text-xs") + " sm:px-4 sm:text-sm"}>Finish review</button> :
+        <button type="button" disabled={busy} onClick={() => navigate(session.currentIndex + 1)} className={button.replace("px-4", "px-2").replace("text-sm", "text-xs") + " sm:px-4 sm:text-sm"}>Next <ChevronRight size={16} className="inline" /></button>}
     </footer>
     <Modal open={exitOpen} onClose={() => { if (!busy) setExitOpen(false) }} title="Leave this review?" widthClass="max-w-sm">
       <div className="flex flex-col gap-3">
