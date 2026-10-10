@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, Grid3X3, X } from "lucide-react"
+import { BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Grid3X3, X } from "lucide-react"
 import { AppearanceModal } from "@/components/appearance-modal"
 import { useQuestionKeyboardNavigation } from "@/hooks/use-question-keyboard-navigation"
 import { useApp } from "@/contexts/app-context"
@@ -25,7 +25,8 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
   const owner = useRef(user?.uid)
   owner.current = user?.uid
   const [pending, setPending] = useState<{ module: string; discipline: string | null; questions: Question[] } | null>(null)
-  const [active, setActive] = useState<{ session: ReviewSession; questions: Question[] } | null>(null)
+  const [active, setActive] = useState<{ session: ReviewSession; questions: Question[] } | null>(initialReview ?? null)
+  const [resuming, setResuming] = useState(resumeOnOpen)
   const [themeOpen, setThemeOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -47,7 +48,8 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
   const requestedResume = useRef(false)
   useEffect(() => {
     if (!resumeOnOpen) { requestedResume.current = false; return }
-    if (!saved || requestedResume.current) return
+    if (!saved) { setResuming(false); onResumeRequested?.(); return }
+    if (requestedResume.current) return
     requestedResume.current = true
     void resume()
     onResumeRequested?.()
@@ -81,7 +83,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
   async function resume() {
     if (!saved || !user) return
     const uid = user.uid
-    setBusy(true); setError(""); setNotice("")
+    setResuming(true); setBusy(true); setError(""); setNotice("")
     try {
       const questions: Question[] = []
       for (let i = 0; i < saved.questionIds.length; i += 500) {
@@ -102,7 +104,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
       saveReviewSession(session); setActive({ session, questions: ordered as Question[] })
       setExplanationOpen(true); setNavigator(window.matchMedia("(min-width: 1024px)").matches)
     } catch (e) { if (owner.current === uid) setError(e instanceof Error ? e.message : "Could not resume review.") }
-    finally { if (owner.current === uid) setBusy(false) }
+    finally { if (owner.current === uid) { setBusy(false); setResuming(false) } }
   }
 
   function navigate(index: number) {
@@ -130,6 +132,8 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
 
   useQuestionKeyboardNavigation({ enabled: Boolean(active) && !busy && !exitOpen && !themeOpen, onPrevious: () => { if (active && active.session.currentIndex > 0) navigate(active.session.currentIndex - 1) }, onNext: () => { if (active && active.session.currentIndex + 1 < active.questions.length) navigate(active.session.currentIndex + 1) } })
 
+  if (!active && (resuming || (resumeOnOpen && saved))) return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background"><p role="status" className="text-sm text-muted-foreground">Loading saved review…</p></div>
+
   if (!active) return <div className="space-y-5">
     
     {notice && <p role="status" className="rounded-xl bg-primary/10 p-4 text-sm">{notice}</p>}
@@ -138,7 +142,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
     <ModuleLibrary compact onReadyForQuiz={prepare} afterControls={saved ? (
       <section aria-label="Saved review" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold">Continue review</h2>
+          <h2 className="text-sm font-semibold">Continue Review</h2>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{saved.module}{saved.discipline ? " · " + saved.discipline : ""} · {saved.currentIndex + 1}/{saved.questionIds.length}</p>
         </div>
         <button type="button" disabled={busy} onClick={resume} className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-40">{busy ? "Loading…" : "Resume review"}</button>
@@ -175,8 +179,8 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
           {question.contextContent && <section className="rounded-xl border border-border bg-muted/30 p-4"><RichText content={question.contextContent} /></section>}
           <section className="rounded-2xl border border-border bg-card p-4 sm:p-6"><RichText content={question.vignette} />
             <Media items={(question.media ?? []).filter(m => m.placement === "stem")} /></section>
-          <div role="list" aria-label="Revealed answers" className="space-y-3">{question.options.map(option => <div role="listitem" key={option.id} className={"flex gap-3 rounded-xl border p-4 " + (correct.has(option.id) ? "border-success/50 bg-success/10" : "border-border bg-card")}>
-            <span className="font-bold">{option.id}.</span><div className="min-w-0 flex-1"><RichText content={option.text} />
+          <div role="list" aria-label="Revealed answers" className="space-y-3">{question.options.map(option => <div role="listitem" key={option.id} className={"flex gap-3 rounded-xl border p-4 " + (correct.has(option.id) ? "border-success/50 bg-success/20" : "border-border bg-card")}>
+            <span className="font-bold">{option.id}.</span><div className="min-w-0 flex-1">{correct.has(option.id) && <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-success"><Check size={16} />Correct answer</p>}<RichText content={option.text} />
               <Media items={[...(option.media ?? []), ...(question.media ?? []).filter(m => m.placement === "option" && m.optionId === option.id)]} />
 </div></div>)}</div>
           {!correct.size && <p className="text-sm text-muted-foreground">An answer key is not available for this question.</p>}

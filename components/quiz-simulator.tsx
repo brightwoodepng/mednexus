@@ -102,6 +102,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const [calcOpen, setCalcOpen] = useState(false)
   const [labsOpen, setLabsOpen] = useState(false)
   const [focusNavOpen, setFocusNavOpen] = useState(false)
+  useEffect(() => {
+    if (!focusNavOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setFocusNavOpen(false) }
+    window.addEventListener("keydown", closeOnEscape)
+    return () => window.removeEventListener("keydown", closeOnEscape)
+  }, [focusNavOpen])
   const [showGrandFinale, setShowGrandFinale] = useState(false)
   const [themeOpen, setThemeOpen] = useState(false)
   const [npToast, setNpToast] = useState<{ id: number; amount: number; capped: boolean } | null>(null)
@@ -699,31 +705,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             <XIcon size={20} />
           </button>
 
-            {/* Center: navigator pill — visually prominent so users know it's tappable */}
-          <button
-            type="button"
-            onClick={() => setFocusNavOpen((v) => !v)}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-muted/60 px-3 py-2 text-sm font-semibold tabular-nums transition-colors hover:bg-muted active:bg-muted"
-          >
-            {/* mini grid icon */}
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-primary">
-              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-            </svg>
-            <span>Q {index + 1} / {questions.length}</span>
-            <ChevronDownIcon size={13} className="text-muted-foreground" />
-          </button>
+          <div className="flex flex-1 items-center justify-end gap-2">
+            {mode === "exam" && <span className="text-sm font-semibold tabular-nums">{formatTime(timeLeft)}</span>}
+            <button type="button" onClick={() => setCalcOpen(true)} aria-label="Calculator" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><CalculatorIcon size={20} /></button>
+            <button type="button" onClick={() => setLabsOpen(true)} aria-label="Lab Values" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><FlaskIcon size={20} /></button>
+          </div>
 
-          {/* Right: Flag + Theme toggle */}
-          <button
-            type="button"
-            onClick={() => toggleFlag(current.id)}
-            aria-pressed={isFlagged}
-            className={`flex min-h-10 min-w-10 items-center justify-center rounded-xl transition-colors ${isFlagged ? "bg-warning/10 text-warning" : "text-muted-foreground hover:bg-muted active:bg-muted"}`}
-            aria-label={isFlagged ? "Unflag question" : "Flag question"}
-          >
-            <FlagIcon size={20} />
-          </button>
           <button
             type="button"
             onClick={() => setThemeOpen(true)}
@@ -786,15 +773,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
           <ToolButton label="Calc" onClick={() => setCalcOpen(true)}>
             <CalculatorIcon size={17} />
           </ToolButton>
-          <button
-            type="button"
-            onClick={() => toggleFlag(current.id)}
-            aria-pressed={isFlagged}
-            className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors sm:gap-1.5 sm:px-2.5 ${isFlagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-          >
-            <FlagIcon size={17} />
-            <span className="hidden sm:inline">{isFlagged ? "Flagged" : "Flag"}</span>
-          </button>
+
         </div>
       </header>
 
@@ -826,7 +805,8 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             className={`flex-1 touch-pan-y px-4 pt-5 pb-6 sm:px-6 sm:pt-8 sm:pb-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}
             {...questionSwipeHandlers}
           >
-            <div className="mb-3">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <button type="button" onClick={() => toggleFlag(current.id)} aria-pressed={isFlagged} aria-label={isFlagged ? "Unflag question" : "Flag question"} className={`order-last ml-auto flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold ${isFlagged ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground hover:text-foreground"}`}><FlagIcon size={17} />{isFlagged ? "Flagged" : "Flag"}</button>
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Question {index + 1} of {questions.length}
               </span>
@@ -1054,61 +1034,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         />
       </div>
 
-      {/* ── Mobile focus-mode sticky bottom bar (hidden on md+) ── */}
-      <div className="shrink-0 border-t border-border bg-card px-3 py-2 md:hidden">
-        <div className="flex items-center justify-between gap-2">
-
-          {/* Left: Prev */}
-          <button
-            type="button"
-            onClick={() => setIndex((i) => Math.max(0, i - 1))}
-            disabled={index === 0}
-            className="flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-muted active:bg-muted disabled:opacity-40"
-          >
-            <ChevronLeftIcon size={18} />
-            <span>Prev</span>
-          </button>
-
-          {/* Center: icon-only tool cluster — Labs + Calc only */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setLabsOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
-              aria-label="Lab Values"
-            >
-              <FlaskIcon size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCalcOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
-              aria-label="Calculator"
-            >
-              <CalculatorIcon size={18} />
-            </button>
-          </div>
-
-          {/* Right: Next / Submit */}
-          {index === questions.length - 1 ? (
-            <button
-              type="button"
-              onClick={submitBlock}
-              className="flex items-center gap-1 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
-            >
-              <CheckIcon size={16} />
-              <span>Submit</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIndex((i) => Math.min(questions.length - 1, i + 1))}
-              className="flex items-center gap-1 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
-            >
-              <span>Next</span>
-              <ChevronRightIcon size={18} />
-            </button>
-          )}
+      {/* Mobile navigation: equal-width controls */}
+      <div className="shrink-0 border-t border-border bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+        <div className="grid grid-cols-3 gap-2">
+          <button type="button" onClick={() => setIndex(i => Math.max(0, i - 1))} disabled={index === 0} className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-xl border border-border px-1 text-xs font-semibold hover:bg-muted disabled:opacity-40"><ChevronLeftIcon size={16} />Previous</button>
+          <button type="button" onClick={() => setFocusNavOpen(v => !v)} aria-expanded={focusNavOpen} aria-controls="trial-question-navigator" aria-label="Question navigator" className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-xl bg-primary/10 px-1 text-xs font-semibold text-primary"><span>Q {index + 1}/{questions.length}</span><ChevronDownIcon size={14} /></button>
+          <button type="button" onClick={index === questions.length - 1 ? submitBlock : () => setIndex(i => Math.min(questions.length - 1, i + 1))} className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-xl bg-primary px-1 text-xs font-semibold text-primary-foreground">{index === questions.length - 1 ? <>Submit<CheckIcon size={16} /></> : <>Next<ChevronRightIcon size={16} /></>}</button>
         </div>
       </div>
 
@@ -1144,9 +1075,10 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         )}
       </div>
 
-      {/* ── Mobile: full-screen question navigator (slide up from bottom) ── */}
+      {/* ── Mobile: dismissible question navigator overlay ── */}
       {focusNavOpen && (
-        <div className="fixed inset-0 z-[70] flex flex-col bg-background animate-in slide-in-from-bottom duration-250 md:hidden">
+        <div className="fixed inset-0 z-[70] flex items-end bg-black/40 md:hidden" onClick={() => setFocusNavOpen(false)}>
+          <div id="trial-question-navigator" role="dialog" aria-modal="true" aria-label="Question navigator" onClick={event => event.stopPropagation()} className="flex max-h-[80dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-background pb-[env(safe-area-inset-bottom)] shadow-xl animate-in slide-in-from-bottom duration-200">
           {/* Nav header */}
           <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3.5">
             <div>
@@ -1202,6 +1134,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
               </span>
               Flagged
             </div>
+          </div>
           </div>
         </div>
       )}

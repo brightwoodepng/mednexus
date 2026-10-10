@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useApp } from "@/contexts/app-context"
-import { useStudyMode } from "@/contexts/study-mode-context"
+import { useQuestionSwipeNavigation } from "@/hooks/use-question-swipe-navigation"
 import { useTheme } from "@/contexts/theme-context"
 import { useEconomy } from "@/contexts/economy-context"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
@@ -111,7 +111,8 @@ const CARD_PALETTES = [
 export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOpenLiveAssessments }: DashboardProps) {
   const { user, progress } = useApp()
   const currentStreak = useEconomy().loginStreak ?? progress.streak
-  const { globalMode } = useStudyMode()
+  const [statsMode, setStatsMode] = useState<"trial" | "exam">("trial")
+  const statsSwipeHandlers = useQuestionSwipeNavigation({ onPrevious: () => setStatsMode("trial"), onNext: () => setStatsMode("exam") })
   const { isGlassEnabled } = useTheme()
   const { equippedCosmetics, dailyLoginReward, clearDailyLoginReward } = useEconomy()
   const { questionCount, isLoading: questionsLoading, catalog, catalogLoading, catalogError, reloadCatalog } = useQuestions()
@@ -136,7 +137,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
   const bestExamScore = examsTaken ? Math.max(...examScores.map((e) => e.score)) : 0
 
   return (
-    <div data-tutorial-anchor="mcq-home" className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
+    <div {...statsSwipeHandlers} data-tutorial-anchor="mcq-home" className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
 
       {!questionsLoading && questionCount === 0 && <section className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-6 text-center"><h2 className="text-lg font-bold">Question bank is currently empty</h2><p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">Practice questions are temporarily unavailable because the live question bank has been intentionally cleared. Please check back after an administrator publishes a reviewed bank.</p></section>}
 
@@ -243,8 +244,14 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
       </div>
 
       {/* Stats row — different cards per mode */}
-      <section>
-        {globalMode === "trial" ? (
+      <section className="touch-pan-y" aria-label="Study statistics">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex gap-1 rounded-xl bg-muted p-1" aria-label="Statistics view">
+            {(["trial", "exam"] as const).map(mode => <button key={mode} type="button" aria-pressed={statsMode === mode} onClick={() => setStatsMode(mode)} className={`min-h-10 rounded-lg px-4 text-sm font-semibold ${statsMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{mode === "trial" ? "Trial" : "Exams"}</button>)}
+          </div>
+          <p className="text-xs text-muted-foreground">Swipe to switch stats</p>
+        </div>
+        {statsMode === "trial" ? (
           <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
             <StatCard glass={isGlassEnabled} icon="📋" label="Answered" value={trialAnswered} sub="trial questions" color="bg-sky-50 text-sky-700 border-sky-200/80" />
             <StatCard glass={isGlassEnabled} icon="🎯" label="Accuracy" value={`${trialAccuracy}%`} sub={trialAnswered ? `${trialCorrect} correct` : "no data yet"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" />
@@ -253,7 +260,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
-            <StatCard glass={isGlassEnabled} icon="📝" label="Exams Taken" value={examsTaken} sub="mock exams" color="bg-sky-50 text-sky-700 border-sky-200/80" />
+            <StatCard glass={isGlassEnabled} icon="📝" label="Exams Taken" value={examsTaken} sub="completed exams" color="bg-sky-50 text-sky-700 border-sky-200/80" />
             <StatCard glass={isGlassEnabled} icon="🎯" label="Avg Score" value={examsTaken ? `${avgExamScore}%` : "—"} sub={examsTaken ? `across ${examsTaken} exam${examsTaken !== 1 ? "s" : ""}` : "no exams yet"} color="bg-emerald-50 text-emerald-700 border-emerald-200/80" />
             <StatCard glass={isGlassEnabled} icon="🏆" label="Best Score" value={examsTaken ? `${bestExamScore}%` : "—"} sub={examsTaken ? "personal best" : "no exams yet"} color="bg-amber-50 text-amber-700 border-amber-200/80" />
             <StatCard glass={isGlassEnabled} icon="🔥" label="Streak" value={`${currentStreak}d`} sub={progress.lastStudyDate ? `last: ${fmtDate(progress.lastStudyDate)}` : "start today!"} color="bg-rose-50 text-rose-700 border-rose-200/80" />
@@ -270,16 +277,12 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
           Module catalog could not be loaded. <button type="button" className="font-semibold underline" onClick={() => void reloadCatalog()}>Try again</button>
         </div>
       )}
-      {globalMode === "trial" ? (
-        <TrialDashboard
-          catalog={catalog}
-          onReadyForQuiz={onReadyForQuiz}
-          onOpenModules={onOpenModules}
-          onOpenWeakAreas={onOpenWeakAreas}
-        />
-      ) : (
-        <ExamDashboard catalog={catalog} onReadyForQuiz={onReadyForQuiz} onOpenModules={onOpenModules} />
-      )}
+      <TrialDashboard
+        catalog={catalog}
+        onReadyForQuiz={onReadyForQuiz}
+        onOpenModules={onOpenModules}
+        onOpenWeakAreas={onOpenWeakAreas}
+      />
 
     </div>
   )

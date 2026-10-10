@@ -216,7 +216,7 @@ export function TrialReviewPanel({ questions, answers, onBack, subtitle }: Props
                         key={opt.id}
                         className={`flex items-start gap-2.5 rounded-lg px-3 py-2 text-sm border ${
                           optCorrect
-                            ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/40"
+                            ? "bg-emerald-100 border-emerald-200 dark:bg-emerald-900/40 dark:border-emerald-800/40"
                             : wrongPick
                               ? "bg-destructive/5 border-destructive/20"
                               : "border-transparent"
@@ -244,7 +244,7 @@ export function TrialReviewPanel({ questions, answers, onBack, subtitle }: Props
                           <RichText content={opt.text} className="inline" />
                           {optCorrect && (
                             <span className="ml-2 text-[10px] font-bold uppercase tracking-wide opacity-70">
-                              ✓ Correct{sata ? " choice" : ""}
+                              ✓ Correct answer{sata ? " choice" : ""}
                             </span>
                           )}
                           {wrongPick && (
