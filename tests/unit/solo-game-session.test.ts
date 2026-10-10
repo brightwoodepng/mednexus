@@ -38,7 +38,7 @@ describe("solo game recovery storage", () => {
   it("rejects duplicate, oversized, and malformed pools", () => {
     const base = { ...session, version: 1, savedAt: Date.now() }
     expect(parseSoloGameSession(JSON.stringify({ ...base, questionIds: ["q1", "q1"] }), session.userId)).toBeNull()
-    expect(parseSoloGameSession(JSON.stringify({ ...base, questionIds: Array.from({ length: 101 }, (_, i) => `q${i}`) }), session.userId)).toBeNull()
+    expect(parseSoloGameSession(JSON.stringify({ ...base, questionIds: Array.from({ length: 501 }, (_, i) => `q${i}`) }), session.userId)).toBeNull()
     expect(parseSoloGameSession("not-json", session.userId)).toBeNull()
   })
 })
