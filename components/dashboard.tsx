@@ -230,7 +230,7 @@ export function Dashboard({ onReadyForQuiz, onOpenModules, onOpenWeakAreas, onOp
               <p className="mt-2 max-w-xs text-sm opacity-75 text-pretty">{motivation}</p>
             </div>
             {currentStreak > 0 && (
-              <div className="flex w-fit items-center gap-2 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur-sm sm:flex-col sm:items-center sm:text-center">
+              <div className="hidden w-fit items-center gap-2 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur-sm lg:flex lg:flex-col lg:items-center lg:text-center">
                 <span className="text-2xl leading-none">🔥</span>
                 <div>
                   <p className="text-xl font-bold leading-tight">{currentStreak}</p>
