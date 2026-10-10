@@ -27,15 +27,25 @@ export function useQuestionKeyboardNavigation({
   enabled = true,
   onPrevious,
   onNext,
+  onOptionNavigate,
+  onOptionConfirm,
 }: {
   enabled?: boolean
   onPrevious: () => void
   onNext: () => void
+  onOptionNavigate?: (direction: -1 | 1) => void
+  onOptionConfirm?: () => void
 }) {
   useEffect(() => {
     if (!enabled) return
 
     function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"]')) return
+      if ((event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === "Enter") && shouldNavigateQuestions({ ...event, key: "ArrowRight", altKey: event.altKey, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey, target: event.target })) {
+        if (event.key === "Enter") { if (onOptionConfirm && !(event.target as Element)?.closest?.("button, a")) { event.preventDefault(); onOptionConfirm() } }
+        else if (onOptionNavigate) { event.preventDefault(); onOptionNavigate(event.key === "ArrowUp" ? -1 : 1) }
+        return
+      }
       if (!shouldNavigateQuestions(event)) return
       event.preventDefault()
       if (event.key === "ArrowLeft") onPrevious()
@@ -44,5 +54,5 @@ export function useQuestionKeyboardNavigation({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [enabled, onNext, onPrevious])
+  }, [enabled, onNext, onPrevious, onOptionNavigate, onOptionConfirm])
 }

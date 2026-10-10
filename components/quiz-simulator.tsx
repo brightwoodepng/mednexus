@@ -106,6 +106,8 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
   const [themeOpen, setThemeOpen] = useState(false)
   const [npToast, setNpToast] = useState<{ id: number; amount: number; capped: boolean } | null>(null)
   const [showSwipeHint, setShowSwipeHint] = useState(false)
+  const [keyboardOption, setKeyboardOption] = useState<string | null>(null)
+  useEffect(() => { setKeyboardOption(null) }, [index])
   const requiresAnswerLock = mode === "trial" && session.lockAnswers
 
   // Per-question session data for anti-farming payout
@@ -157,6 +159,16 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
     enabled: questionNavigationEnabled,
     onPrevious: goToPreviousQuestion,
     onNext: goToNextQuestion,
+    onOptionNavigate: direction => {
+      if (!current || revealed || isLocked) return
+      const options = current.options.filter(option => !struckSet.has(option.id))
+      if (!options.length) return
+      const at = options.findIndex(option => option.id === keyboardOption)
+      const next = at < 0 ? (direction === 1 ? 0 : options.length - 1) : (at + direction + options.length) % options.length
+      setKeyboardOption(options[next].id)
+      document.querySelector<HTMLElement>(`[data-answer-option="${options[next].id}"]`)?.focus()
+    },
+    onOptionConfirm: () => { if (keyboardOption) confirmKeyboardOption(keyboardOption) },
   })
 
   const dismissSwipeHint = useCallback(() => {
@@ -462,6 +474,11 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
         This block has no questions.
       </div>
     )
+  }
+
+  function confirmKeyboardOption(optionId: string) {
+    if (requiresAnswerLock && !isSATA && pendingSelections[current.id] === optionId) lockInSingleAnswer()
+    else selectOption(optionId)
   }
 
   function selectOption(optionId: string) {
@@ -878,12 +895,14 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
                   return (
                     <div
                       key={opt.id}
+                      data-answer-option={opt.id}
+                      onFocus={() => setKeyboardOption(opt.id)}
                       role="checkbox"
                       aria-checked={isSataSelected}
                       tabIndex={isLocked ? -1 : 0}
                       onClick={() => selectOption(opt.id)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectOption(opt.id) }
+                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); confirmKeyboardOption(opt.id) }
                       }}
                       className={`flex min-h-14 items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${isLocked ? "cursor-default" : "cursor-pointer active:scale-[0.99]"} ${stateClass}`}
                     >
@@ -918,13 +937,15 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
                 return (
                   <div
                     key={opt.id}
+                    data-answer-option={opt.id}
+                    onFocus={() => setKeyboardOption(opt.id)}
                     role="button"
                     tabIndex={0}
                     onClick={() => selectOption(opt.id)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectOption(opt.id) }
+                      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); confirmKeyboardOption(opt.id) }
                     }}
-                    className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border p-3.5 text-left transition-all active:scale-[0.99] ${stateClass} ${isStruck ? "opacity-50" : ""}`}
+                    className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border p-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 text-left transition-all active:scale-[0.99] ${stateClass} ${isStruck ? "opacity-50" : ""}`}
                   >
                     <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
                       revealed && isCorrect ? "border-success bg-success text-success-foreground"

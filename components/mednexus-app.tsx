@@ -468,6 +468,9 @@ export function MedNexusApp() {
   const [pendingEditorImport, setPendingEditorImport] = useState<import("@/lib/types").Question[] | null>(null)
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
+  const [preparingQuiz, setPreparingQuiz] = useState(false)
+  const preparingQuizRef = useRef(false)
+  const [quizSetupError, setQuizSetupError] = useState("")
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
   const [resumeReviewOnOpen, setResumeReviewOnOpen] = useState(false)
   const [selectedStudyMode, setSelectedStudyMode] = useState<QuizMode | "review" | null>(null)
@@ -623,6 +626,10 @@ export function MedNexusApp() {
   const savedDashboardReview = user ? parseReviewSession(JSON.stringify(progress.savedReviewSession ?? null), user.uid) : null
 
   const handleReadyForQuiz = useCallback(async (config: { module: string; discipline: string | null }) => {
+    if (preparingQuizRef.current) return
+    preparingQuizRef.current = true
+    setPreparingQuiz(true); setQuizSetupError("")
+    try {
     let questions: Question[]
     let displayName: string
 
@@ -654,6 +661,8 @@ export function MedNexusApp() {
 
     setSelectedStudyMode(null)
     setPendingQuiz({ questions, moduleName: displayName, discipline: config.discipline, setupModule: config.module })
+    } catch (error) { setQuizSetupError(error instanceof Error ? error.message : "Unable to load questions. Please try again.") }
+    finally { preparingQuizRef.current = false; setPreparingQuiz(false) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadQuestionSet, progress.history, resumeCandidate])
 
@@ -912,6 +921,8 @@ export function MedNexusApp() {
           {safeScreen === "store-vault" && <NexusStoreVaultPage onBack={() => handleScreenNavigation("store")} />}
           {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} earnedXP={lastResult.earnedXP} payoutError={lastResult.payoutError} onReturn={() => handleScreenNavigation("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
     </LearnerWorkspaceShell>
+      {preparingQuiz && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/70 backdrop-blur-sm"><p role="status" className="rounded-xl bg-card p-5 font-semibold shadow-lg">Loading questions…</p></div>}
+      <Modal open={Boolean(quizSetupError)} onClose={() => setQuizSetupError("")} title="Unable to open questions"><p role="alert">{quizSetupError}</p></Modal>
       <Modal open={pendingQuiz !== null && selectedStudyMode === null} onClose={() => setPendingQuiz(null)} title="How would you like to study?" widthClass="max-w-sm">
         <p className="mb-4 text-sm text-muted-foreground">{pendingQuiz?.moduleName}{pendingQuiz?.discipline ? " · " + pendingQuiz.discipline : ""}</p>
         <div className="grid gap-3">
