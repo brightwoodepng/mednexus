@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { BookOpen, Check, ChevronLeft, ChevronRight, Grid3X3, X } from "lucide-react"
+import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, Grid3X3, X } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useQuestions } from "@/contexts/questions-context"
 import { ModuleLibrary } from "@/components/module-library"
@@ -29,10 +29,11 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
   const [notice, setNotice] = useState("")
   const [exitOpen, setExitOpen] = useState(false)
   const [navigator, setNavigator] = useState(false)
+  const [explanationOpen, setExplanationOpen] = useState(true)
   const saved = user ? parseReviewSession(JSON.stringify(progress.savedReviewSession ?? null), user.uid) : null
   const button = "rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-40"
 
-  useEffect(() => { setActive(null); setPending(null); setError(""); setNotice("") }, [user?.uid])
+  useEffect(() => { setActive(null); setPending(null); setError(""); setNotice(""); setExplanationOpen(true); setNavigator(false) }, [user?.uid])
   useEffect(() => {
     if (active) document.getElementById("review-question-scroll")?.scrollTo({ top: 0 })
   }, [active?.session.currentIndex])
@@ -56,6 +57,7 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
       discipline: pending.discipline, questionIds: questions.map(q => q.id), currentIndex: 0,
       viewedIds: [questions[0].id], gamificationEnabled: false, updatedAt: Date.now() }
     saveReviewSession(session); setActive({ session, questions }); setPending(null)
+    setExplanationOpen(true); setNavigator(window.matchMedia("(min-width: 1024px)").matches)
   }
 
   async function resume() {
@@ -80,6 +82,7 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
       if (ordered.some(q => !q)) throw new Error("Some saved questions are unavailable. Your progress is still saved; retry when they are available.")
       const session = visitReviewQuestion(saved, saved.currentIndex)
       saveReviewSession(session); setActive({ session, questions: ordered as Question[] })
+      setExplanationOpen(true); setNavigator(window.matchMedia("(min-width: 1024px)").matches)
     } catch (e) { if (owner.current === uid) setError(e instanceof Error ? e.message : "Could not resume review.") }
     finally { if (owner.current === uid) setBusy(false) }
   }
@@ -131,14 +134,13 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-3 sm:px-6">
       <div className="min-w-0"><p className="flex items-center gap-2 font-bold"><BookOpen size={18} />Review</p>
         <p className="max-w-[60vw] truncate text-xs text-muted-foreground">{session.module}{session.discipline ? " · " + session.discipline : ""}</p></div>
-      <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setNavigator(!navigator)} aria-expanded={navigator} className={button + " lg:hidden"}><Grid3X3 size={16} className="inline mr-2" />Questions</button>
+      <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setNavigator(!navigator)} aria-expanded={navigator} aria-controls="review-question-navigator" aria-label={navigator ? "Hide question navigator" : "Show question navigator"} className={button}><Grid3X3 size={16} className="inline sm:mr-2" /><span className="hidden sm:inline">Question navigator</span></button>
         <button type="button" onClick={() => setExitOpen(true)} disabled={busy} aria-label="Exit review" className="rounded-xl bg-muted p-3 text-foreground"><X size={18} /></button></div>
     </header>
-    <div className="flex min-h-0 flex-1">
-      <aside aria-label="Question navigator" className={(navigator ? "flex" : "hidden lg:flex") + " order-last w-28 shrink-0 flex-col overflow-y-auto border-l border-border bg-card p-2 sm:w-52 sm:p-4"}>
-        <h2 className="mb-3 text-sm font-bold">Question Navigator</h2>
-        <p className="mb-3 text-xs text-muted-foreground">Visited questions are highlighted.</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{questions.map((q, i) => <button key={q.id} type="button" aria-label={"Question " + (i + 1)} aria-current={i === session.currentIndex ? "step" : undefined} onClick={() => navigate(i)}
+    <div className="relative flex min-h-0 flex-1">
+      <aside id="review-question-navigator" aria-label="Question navigator" className={(navigator ? "flex" : "hidden") + " absolute inset-y-0 right-0 z-10 order-last w-64 max-w-[85vw] shrink-0 flex-col overflow-y-auto border-l border-border bg-card p-4 shadow-xl lg:static lg:w-60 lg:shadow-none"}>
+        <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-sm font-bold">Question navigator</h2><button type="button" onClick={() => setNavigator(false)} aria-label="Close question navigator" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground"><X size={16} /></button></div>
+        <div className="grid grid-cols-4 gap-2">{questions.map((q, i) => <button key={q.id} type="button" aria-label={"Question " + (i + 1)} aria-current={i === session.currentIndex ? "step" : undefined} onClick={() => { navigate(i); if (!window.matchMedia("(min-width: 1024px)").matches) setNavigator(false) }}
           className={"rounded-lg py-2 text-sm " + (i === session.currentIndex ? "bg-primary text-primary-foreground" : session.viewedIds.includes(q.id) ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground")}>{i + 1}</button>)}</div></aside>
       <main id="review-question-scroll" className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
         <article className="mx-auto max-w-3xl space-y-5">
@@ -150,12 +152,14 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
           <div role="list" aria-label="Revealed answers" className="space-y-3">{question.options.map(option => <div role="listitem" key={option.id} className={"flex gap-3 rounded-xl border p-4 " + (correct.has(option.id) ? "border-success/50 bg-success/10" : "border-border bg-card")}>
             <span className="font-bold">{option.id}.</span><div className="min-w-0 flex-1"><RichText content={option.text} />
               <Media items={[...(option.media ?? []), ...(question.media ?? []).filter(m => m.placement === "option" && m.optionId === option.id)]} />
-              {correct.has(option.id) && <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-success"><Check size={14} />Correct answer</p>}</div></div>)}</div>
+</div></div>)}</div>
           {!correct.size && <p className="text-sm text-muted-foreground">An answer key is not available for this question.</p>}
           <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
-            <h2 className="font-bold">Explanation</h2>
+            <h2><button type="button" onClick={() => setExplanationOpen(!explanationOpen)} aria-expanded={explanationOpen} aria-controls="review-explanation" className="flex min-h-11 w-full items-center justify-between gap-3 text-left font-bold">Explanation<ChevronDown size={18} className={explanationOpen ? "rotate-180" : ""} /></button></h2>
+            {explanationOpen && <div id="review-explanation" className="space-y-4">
             {question.explanation ? Object.entries({ "Learning objective": question.explanation.objective, "Explanation": question.explanation.details, "Why other options are incorrect": question.explanation.incorrectReasoning }).map(([label, text]) => text ? <div key={label}><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">{label}</h3><RichText content={text} /></div> : null) : <p className="text-sm text-muted-foreground">An explanation is not available for this question.</p>}
             <Media items={(question.media ?? []).filter(m => m.placement === "explanation")} />
+            </div>}
           </section>
         </article>
       </main>
