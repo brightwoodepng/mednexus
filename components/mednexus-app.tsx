@@ -864,7 +864,10 @@ export function MedNexusApp() {
                       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
                     </span>
                   </div>
-                  <h2 className="min-w-0 break-words text-sm font-bold leading-snug sm:text-base">{resumeCandidate.moduleName}</h2>
+                  <div className="min-w-0">
+                    <h2 className="break-words text-sm font-bold leading-snug sm:text-base">Continue {resumeCandidate.moduleName}</h2>
+                    <p className="mt-0.5 text-xs text-white/80">{Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length} of {resumeCandidate.questions.length} questions answered</p>
+                  </div>
                 </div>
                 <button type="button" onClick={() => setResumePromptOpen(true)} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-white/90">Continue <span aria-hidden="true">→</span></button>
               </div>
