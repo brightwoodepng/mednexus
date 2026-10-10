@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
  * All three are gated by the caller — this hook is unconditional;
  * the consumer decides when to call `triggerError()`.
  */
-export function useErrorFeedback() {
+export function useErrorFeedback({ haptics = true }: { haptics?: boolean } = {}) {
   const [isShaking, setIsShaking] = useState(false)
   const [isFlashing, setIsFlashing] = useState(false)
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -34,7 +34,7 @@ export function useErrorFeedback() {
 
   const triggerError = useCallback(() => {
     // Haptics — double-pulse: 100ms on, 50ms off, 100ms on
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    if (haptics && typeof navigator !== "undefined" && "vibrate" in navigator) {
       try { navigator.vibrate([100, 50, 100]) } catch { /* silently ignore */ }
     }
 
@@ -58,7 +58,7 @@ export function useErrorFeedback() {
     flashTimer.current = setTimeout(() => {
       if (mounted.current) setIsFlashing(false)
     }, 500)
-  }, [])
+  }, [haptics])
 
   return { triggerError, isShaking, isFlashing }
 }

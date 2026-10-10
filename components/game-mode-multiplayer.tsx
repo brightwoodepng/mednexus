@@ -7,6 +7,8 @@ import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-c
 import { useApp } from "@/contexts/app-context"
 import { multiplayerApi, MultiplayerApiError } from "@/lib/multiplayer-api"
 import { RichText } from "@/components/rich-text"
+import { GameArena } from "@/components/game-arena"
+import { revealedGameOutcome } from "@/lib/game-presentation"
 import { useErrorFeedback } from "@/hooks/use-error-feedback"
 import { saveActiveRoomSession, loadActiveRoomSession, clearActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy, type PayoutResponse } from "@/contexts/economy-context"
@@ -188,7 +190,7 @@ function MultiOptionBtn({ id, text, sel, correct, revealed, onSel, disabled, col
   id: string; text: string; sel: boolean; correct: boolean; revealed: boolean
   onSel: () => void; disabled: boolean; colorIndex: number
 }) {
-  let cls = "w-full rounded-2xl border-2 px-4 py-3.5 text-left text-sm font-medium transition-all duration-200 "
+  let cls = "game-answer-option w-full rounded-2xl border-2 px-4 py-3.5 text-left text-sm font-medium transition-all duration-200 "
   if (!revealed) {
     cls += sel ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5 active:scale-[0.98]"
   } else if (correct) {
@@ -200,10 +202,10 @@ function MultiOptionBtn({ id, text, sel, correct, revealed, onSel, disabled, col
   }
 
   return (
-    <button type="button" disabled={disabled || revealed} onClick={onSel} className={cls}>
+    <button type="button" disabled={disabled || revealed} onClick={onSel} data-answer-state={revealed && correct ? "correct" : revealed && sel ? "wrong" : "ready"} className={cls}>
       <span className="inline-flex items-center gap-3">
-        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${OPTION_COLORS[colorIndex]}`}>
-          {OPTION_ICONS[colorIndex]}
+        <span className={`game-answer-symbol flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${OPTION_COLORS[colorIndex % OPTION_COLORS.length]}`}>
+          {OPTION_ICONS[colorIndex % OPTION_ICONS.length]}
         </span>
         <span className="flex-1">{id}. {text}</span>
         {revealed && correct && <span className="text-emerald-500">✓</span>}
@@ -222,18 +224,18 @@ function BuzzerSquares({ options, onAnswer, answered, revealed }: {
 }) {
   return (
     <div className="grid grid-cols-2 gap-3 p-3">
-      {options.slice(0, 4).map((opt, i) => (
+      {options.map((opt, i) => (
         <button
           key={opt.id} type="button"
           disabled={answered !== null || revealed}
           onClick={() => onAnswer(opt.id, opt.text)}
           className={`relative flex h-32 flex-col items-center justify-center gap-2 rounded-3xl text-white text-xl font-extrabold shadow-lg transition-all active:scale-95
-            ${OPTION_COLORS[i]}
+            ${OPTION_COLORS[i % OPTION_COLORS.length]}
             ${answered === opt.id ? "ring-4 ring-white ring-offset-2 scale-95" : ""}
             ${answered !== null && answered !== opt.id ? "opacity-50" : ""}
             ${revealed ? "opacity-60 cursor-not-allowed" : "hover:brightness-110"}`}
         >
-          <span className="text-3xl">{OPTION_ICONS[i]}</span>
+          <span className="text-3xl">{OPTION_ICONS[i % OPTION_ICONS.length]}</span>
           <span>{opt.id}</span>
         </button>
       ))}
@@ -447,20 +449,20 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeav
   const allAnswered = room.players.length > 0 && room.players.every(p => p.answer !== null)
 
   // ── Error feedback ──────────────────────────────────────────────────────────
-  const { triggerError, isShaking, isFlashing } = useErrorFeedback()
+  const { triggerError, isShaking, isFlashing } = useErrorFeedback({ haptics: false })
   const prevQiRef = useRef(room.currentQi)
   const prevAnswerCorrectRef = useRef<boolean | null>(null)
   useEffect(() => {
     const qiChanged = room.currentQi !== prevQiRef.current
     if (qiChanged) { prevQiRef.current = room.currentQi; prevAnswerCorrectRef.current = null; return }
-    if (myLastAnswerCorrect === false && prevAnswerCorrectRef.current === null) triggerError()
-    prevAnswerCorrectRef.current = myLastAnswerCorrect
-  }, [room.currentQi, myLastAnswerCorrect]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (room.phase === "reveal" && q.correctAnswer && myAnswer !== q.correctAnswer && prevAnswerCorrectRef.current === null) triggerError()
+    prevAnswerCorrectRef.current = room.phase === "reveal" ? myAnswer === q.correctAnswer : null
+  }, [room.currentQi, room.phase, myAnswer, q.correctAnswer]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
       {/* HUD bar */}
-      <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
+      <div className="game-hud flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
         <span className="text-xs font-bold text-muted-foreground">Q {room.currentQi + 1}/{room.questionPool.length}</span>
         <div className="flex-1" />
         {me && <span className="tabular-nums text-sm font-extrabold text-foreground">{me.score.toLocaleString()} pts</span>}
@@ -500,7 +502,7 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeav
       {/* Question card */}
       {!revealed && (
         <>
-          <div className={`relative flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5 ${isShaking ? "animate-error-shake" : ""}`}>
+          <div className={`game-question-card relative flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5 ${isShaking ? "animate-error-shake" : ""}`}>
             {isFlashing && <div className="pointer-events-none absolute inset-0 z-10 rounded-3xl bg-rose-500/[0.13] backdrop-blur-[6px]" />}
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">{q.subject}</span>
@@ -509,7 +511,7 @@ function QuestionHUD({ room, myId, isHost, onAnswer, onAdvance, onFinish, onLeav
             <RichText content={q.vignette} className="text-sm text-foreground sm:text-base" />
           </div>
 
-          <div className="grid gap-2">
+          <div className="game-answer-grid">
             {q.options.map((opt, i) => (
               <MultiOptionBtn
                 key={opt.id} id={opt.id} text={opt.text}
@@ -602,15 +604,15 @@ function CohortHostHUD({ room, onAdvance, onFinish, onLeave, timeLeftMs, isPress
         <>
           {/* Split-screen: vignette on left + live Top 10 on right */}
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-4">
-            <div className="lg:col-span-3 rounded-3xl border-2 border-primary/20 bg-card p-6">
+            <div className="game-question-card lg:col-span-3 rounded-3xl border-2 border-primary/20 bg-card p-6">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
               </div>
               <RichText content={q.vignette} className="text-lg font-medium text-foreground sm:text-xl" />
               <div className="mt-5 grid grid-cols-2 gap-3">
                 {q.options.map((opt, i) => (
-                  <div key={opt.id} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-white font-bold ${OPTION_COLORS[i]}`}>
-                    <span className="text-xl">{OPTION_ICONS[i]}</span>
+                  <div key={opt.id} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-white font-bold ${OPTION_COLORS[i % OPTION_COLORS.length]}`}>
+                    <span className="text-xl">{OPTION_ICONS[i % OPTION_ICONS.length]}</span>
                     <span className="text-sm">{opt.id}. {opt.text}</span>
                   </div>
                 ))}
@@ -656,7 +658,7 @@ function CohortPlayerHUD({ room, myId, onAnswer, onLeave, timeLeftMs, isPressure
   return (
     <div className="flex min-h-full flex-col gap-4 p-4 max-w-sm sm:max-w-md mx-auto">
       {/* Personal stats */}
-      <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+      <div className="game-hud flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
         <div className="flex-1">
           <p className="text-xs text-muted-foreground">Your Score</p>
           <p className="text-xl font-extrabold tabular-nums text-foreground">{me?.score.toLocaleString() ?? 0}</p>
@@ -1088,15 +1090,15 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
   const myAnswer = me?.answer ?? null
 
   // ── Error feedback ──────────────────────────────────────────────────────────
-  const { triggerError, isShaking, isFlashing } = useErrorFeedback()
+  const { triggerError, isShaking, isFlashing } = useErrorFeedback({ haptics: false })
   const prevQiRef = useRef(room.currentQi)
   const prevAnswerCorrectRef = useRef<boolean | null>(null)
   useEffect(() => {
     const qiChanged = room.currentQi !== prevQiRef.current
     if (qiChanged) { prevQiRef.current = room.currentQi; prevAnswerCorrectRef.current = null; return }
-    if (myLastAnswerCorrect === false && prevAnswerCorrectRef.current === null) triggerError()
-    prevAnswerCorrectRef.current = myLastAnswerCorrect
-  }, [room.currentQi, myLastAnswerCorrect]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (room.phase === "reveal" && q.correctAnswer && myAnswer !== q.correctAnswer && prevAnswerCorrectRef.current === null) triggerError()
+    prevAnswerCorrectRef.current = room.phase === "reveal" ? myAnswer === q.correctAnswer : null
+  }, [room.currentQi, room.phase, myAnswer, q.correctAnswer]) // eslint-disable-line react-hooks/exhaustive-deps
   const myWager = me?.wagerAmount ?? null
   const myBalance = me?.balance ?? 1000
   const isSpectator = me?.isSpectator ?? false
@@ -1111,7 +1113,7 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
   return (
     <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
       {/* HUD bar */}
-      <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
+      <div className="game-hud flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
         <span className="text-xs font-bold text-muted-foreground">Q {room.currentQi + 1}/{room.questionPool.length}</span>
         <div className="flex-1" />
         {isWagerPhase && (
@@ -1149,7 +1151,7 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
       )}
 
       {/* Vignette — always visible; options hidden by server during wager phase */}
-      <div className={`relative rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-amber-300/60 dark:border-amber-700/40" : "border-primary/20"} ${isShaking ? "animate-error-shake" : ""}`}>
+      <div className={`game-question-card relative rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-amber-300/60 dark:border-amber-700/40" : "border-primary/20"} ${isShaking ? "animate-error-shake" : ""}`}>
         {isFlashing && <div className="pointer-events-none absolute inset-0 z-10 rounded-3xl bg-rose-500/[0.13] backdrop-blur-[6px]" />}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
@@ -1204,7 +1206,7 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
       {/* ── QUESTION PHASE: answer options ── */}
       {isQuestionPhase && (
         <>
-          <div className="grid gap-2">
+          <div className="game-answer-grid">
             {q.options.map((opt, i) => (
               <MultiOptionBtn
                 key={opt.id} id={opt.id} text={opt.text}
@@ -1240,7 +1242,7 @@ function WagerHUD({ room, myId, isHost, onWager, onAnswer, onAdvance, onFinish, 
       {/* ── REVEAL PHASE ── */}
       {revealed && (
         <>
-          <div className="grid gap-2">
+          <div className="game-answer-grid">
             {q.options.map((opt, i) => (
               <MultiOptionBtn
                 key={opt.id} id={opt.id} text={opt.text}
@@ -1322,15 +1324,15 @@ function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvan
   const myAnswer = me?.answer ?? null
 
   // ── Error feedback ──────────────────────────────────────────────────────────
-  const { triggerError, isShaking, isFlashing } = useErrorFeedback()
+  const { triggerError, isShaking, isFlashing } = useErrorFeedback({ haptics: false })
   const prevQiRef = useRef(room.currentQi)
   const prevAnswerCorrectRef = useRef<boolean | null>(null)
   useEffect(() => {
     const qiChanged = room.currentQi !== prevQiRef.current
     if (qiChanged) { prevQiRef.current = room.currentQi; prevAnswerCorrectRef.current = null; return }
-    if (myLastAnswerCorrect === false && prevAnswerCorrectRef.current === null) triggerError()
-    prevAnswerCorrectRef.current = myLastAnswerCorrect
-  }, [room.currentQi, myLastAnswerCorrect]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (room.phase === "reveal" && q.correctAnswer && myAnswer !== q.correctAnswer && prevAnswerCorrectRef.current === null) triggerError()
+    prevAnswerCorrectRef.current = room.phase === "reveal" ? myAnswer === q.correctAnswer : null
+  }, [room.currentQi, room.phase, myAnswer, q.correctAnswer]) // eslint-disable-line react-hooks/exhaustive-deps
   const myWager = me?.wagerAmount ?? null
   const myBank = me?.balance ?? 500
   const isSpectator = me?.isSpectator ?? false
@@ -1341,7 +1343,7 @@ function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvan
   return (
     <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
       {/* HUD bar */}
-      <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
+      <div className="game-hud flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5">
         <span className="text-xs font-bold text-muted-foreground">Q {room.currentQi + 1}/{room.questionPool.length}</span>
         <div className="flex-1" />
         {isWagerPhase && (
@@ -1377,7 +1379,7 @@ function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvan
       )}
 
       {/* Vignette card */}
-      <div className={`relative rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-indigo-300/60 dark:border-indigo-700/40" : "border-primary/20"} ${isShaking ? "animate-error-shake" : ""}`}>
+      <div className={`game-question-card relative rounded-3xl border-2 bg-card p-5 ${isWagerPhase ? "border-indigo-300/60 dark:border-indigo-700/40" : "border-primary/20"} ${isShaking ? "animate-error-shake" : ""}`}>
         {isFlashing && <div className="pointer-events-none absolute inset-0 z-10 rounded-3xl bg-rose-500/[0.13] backdrop-blur-[6px]" />}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{q.subject}</span>
@@ -1431,7 +1433,7 @@ function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvan
       {/* ── QUESTION PHASE ── */}
       {isQuestionPhase && (
         <>
-          <div className="grid gap-2">
+          <div className="game-answer-grid">
             {q.options.map((opt, i) => (
               <MultiOptionBtn
                 key={opt.id} id={opt.id} text={opt.text}
@@ -1467,7 +1469,7 @@ function DoubleJeopardyMultiHUD({ room, myId, isHost, onWager, onAnswer, onAdvan
       {/* ── REVEAL PHASE ── */}
       {revealed && (
         <>
-          <div className="grid gap-2">
+          <div className="game-answer-grid">
             {q.options.map((opt, i) => (
               <MultiOptionBtn
                 key={opt.id} id={opt.id} text={opt.text}
@@ -1791,9 +1793,17 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
     return <FinalResults room={room} myId={myId} onExit={onExit} answerHistory={answerHistory} />
   }
 
+  const player = room.players.find(p => p.id === myId)
+  const revealedQuestion = room.questionPool[room.currentQi]
+  const outcome = room.mode === "cohort" && isCohortHost ? null :
+    revealedGameOutcome(room.phase === "reveal", player?.answer ?? null, revealedQuestion?.correctAnswer)
+  const arena = (content: React.ReactNode) => <GameArena mode={room.mode} round={room.currentQi + 1}
+    total={room.questionPool.length} outcome={outcome} feedbackKey={room.pin + ":" + room.currentQi}
+    streak={player?.streak ?? 0}>{content}</GameArena>
+
   // Wager Wars — single HUD handles wager/question/reveal phases
   if (room.mode === "wager") {
-    return (
+    return arena(
       <WagerHUD
         room={room}
         myId={myId}
@@ -1812,7 +1822,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
 
   // Double Jeopardy Multiplayer — percentage-based wagers, no timer
   if (room.mode === "djmulti") {
-    return (
+    return arena(
       <DoubleJeopardyMultiHUD
         room={room}
         myId={myId}
@@ -1829,7 +1839,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
 
   // Playing phase (question or reveal)
   if (room.mode === "cohort" && isCohortHost) {
-    return (
+    return arena(
       <CohortHostHUD
         room={room}
         onAdvance={handleAdvance}
@@ -1842,7 +1852,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   }
 
   if (room.mode === "cohort" && !isCohortHost) {
-    return (
+    return arena(
       <CohortPlayerHUD
         room={room}
         myId={myId}
@@ -1855,7 +1865,7 @@ function GameRoomController({ pin, myId, isHost, isCohortHost, mode, onExit }: {
   }
 
   // Clash (host and players share same HUD)
-  return (
+  return arena(
     <QuestionHUD
       room={room}
       myId={myId}
@@ -2095,3 +2105,5 @@ export function WagerWars({ onExit }: { onExit: () => void }) {
 
   return <GameRoomController pin={pin} myId={myId} isHost={isHost} isCohortHost={false} mode="wager" onExit={onExit} />
 }
+
+

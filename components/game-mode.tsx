@@ -8,7 +8,8 @@ import { GameRulesDialog } from "@/components/game-rules-dialog"
 import { useQuestions, type QuestionCatalogModule } from "@/contexts/questions-context"
 import type { Question } from "@/lib/types"
 import { RichText } from "@/components/rich-text"
-import { useErrorFeedback } from "@/hooks/use-error-feedback"
+import { GameArena } from "@/components/game-arena"
+import type { ArenaMode } from "@/lib/game-presentation"
 import { MultiplayerClash, CohortReview, WagerWars, DoubleJeopardyMulti } from "@/components/game-mode-multiplayer"
 import { loadActiveRoomSession } from "@/lib/multiplayer-session"
 import { useEconomy } from "@/contexts/economy-context"
@@ -433,7 +434,7 @@ function OptionBtn({ id, text, media, sel, correct, fb, onSel, eliminated = fals
     )
   }
 
-  let cls = "w-full rounded-2xl border-2 px-4 py-3.5 text-left text-sm font-medium transition-all duration-200 "
+  let cls = "game-answer-option w-full rounded-2xl border-2 px-4 py-3.5 text-left text-sm font-medium transition-all duration-200 "
   if (fb === null) {
     cls += sel ? "border-primary bg-primary/10 text-foreground"
       : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5 active:scale-[0.98]"
@@ -451,10 +452,12 @@ function OptionBtn({ id, text, media, sel, correct, fb, onSel, eliminated = fals
     : "border-border text-muted-foreground"
 
   return (
-    <button type="button" disabled={fb !== null} onClick={onSel} className={cls}>
+    <button type="button" disabled={fb !== null} onClick={onSel} data-answer-state={fb && correct ? "correct" : fb && sel ? "wrong" : "ready"} className={cls}>
       <span className="inline-flex items-center gap-3">
-        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold ${lblCls}`}>{id}</span>
+        <span className={`game-answer-symbol flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold ${lblCls}`}>{id}</span>
         <span>{text}</span>
+        {fb && correct && <span className="ml-auto font-black" aria-label="Correct answer">✓</span>}
+        {fb && sel && !correct && <span className="ml-auto font-black" aria-label="Incorrect answer">✕</span>}
       </span>
       <QuestionMediaGallery media={media} label={`Option ${id} image`} />
     </button>
@@ -462,29 +465,18 @@ function OptionBtn({ id, text, media, sel, correct, fb, onSel, eliminated = fals
 }
 
 // ── Shared question layout ────────────────────────────────────────────────────
-function QuestionView({ question, fb, picked, onAnswer, hud, footer, eliminated }: {
+function QuestionView({ question, fb, picked, onAnswer, hud, footer, eliminated, mode, round, total, streak = 0 }: {
+  mode: ArenaMode; round: number; total: number; streak?: number
   question: Question; fb: Feedback; picked: string | null
   onAnswer: (id: string) => void
   hud: React.ReactNode; footer?: React.ReactNode
   eliminated?: Set<string>
 }) {
-  const { triggerError, isShaking, isFlashing } = useErrorFeedback()
-  const prevFbRef = useRef<Feedback | null>(null)
-
-  // Game Mode: error feedback is always active (no gamification gate)
-  useEffect(() => {
-    if (fb === "wrong" && prevFbRef.current !== "wrong") triggerError()
-    prevFbRef.current = fb
-  }, [fb]) // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
+    <GameArena mode={mode} round={round} total={total} outcome={fb} feedbackKey={question.id + ":" + picked} streak={streak} timedOut={fb === "wrong" && picked === null}>
     <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
-      {hud}
-      <div className={`relative flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5 sm:p-6 ${isShaking ? "animate-error-shake" : ""}`}>
-        {/* Glassmorphic error flash overlay */}
-        {isFlashing && (
-          <div className="pointer-events-none absolute inset-0 z-10 rounded-3xl bg-rose-500/[0.13] backdrop-blur-[6px]" />
-        )}
+      <div className="game-hud">{hud}</div>
+      <div className="game-question-card relative flex-1 overflow-y-auto rounded-3xl border border-border bg-card p-5 sm:p-6">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="max-w-[200px] truncate rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
             {question.subject}
@@ -502,7 +494,7 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer, eliminated 
           label="Question image"
         />
       </div>
-      <div className="grid gap-2">
+      <div className="game-answer-grid">
         {question.options.map(opt => (
           <OptionBtn
             key={opt.id} id={opt.id} text={opt.text}
@@ -518,6 +510,7 @@ function QuestionView({ question, fb, picked, onAnswer, hud, footer, eliminated 
       </div>
       {footer}
     </div>
+    </GameArena>
   )
 }
 
@@ -1257,7 +1250,7 @@ function RapidFireMode({ onExit, resume }: { onExit: () => void; resume?: Hydrat
   const isHighAlert = streak >= 5
 
   return (
-    <QuestionView question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
+    <QuestionView mode="rapid" round={qi + 1} total={pool.length} streak={streak} question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
       hud={
         <div className={`flex flex-col gap-2 rounded-2xl p-2.5 -mx-1 transition-all duration-500 ${
           isHighAlert
@@ -1457,7 +1450,7 @@ function SuddenDeathMode({ onExit, resume }: { onExit: () => void; resume?: Hydr
   const qtySecondOpinionSD = inventory["lifeline_second_opinion"] ?? 0
 
   return (
-    <QuestionView question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
+    <QuestionView mode="sudden" round={qi + 1} total={pool.length} streak={survived} question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
       hud={
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
@@ -1632,7 +1625,7 @@ function TimeAttackMode({ onExit, resume }: { onExit: () => void; resume?: Hydra
   const tc = timeLeft <= 10 ? "bg-rose-500" : timeLeft <= 25 ? "bg-amber-500" : "bg-cyan-500"
 
   return (
-    <QuestionView question={q} fb={fb} picked={picked} onAnswer={doAnswer}
+    <QuestionView mode="timeatk" round={qi + 1} total={pool.length} streak={0} question={q} fb={fb} picked={picked} onAnswer={doAnswer}
       hud={
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
@@ -1818,6 +1811,7 @@ function DoubleJeopardyMode({ onExit, resume }: { onExit: () => void; resume?: H
   // WAGER phase — show vignette, hide options
   if (djPhase === "wager") {
     return (
+      <GameArena mode="double" round={qi + 1} total={pool.length}>
       <div className="flex min-h-full flex-col gap-3 p-3 sm:gap-4 sm:p-5 max-w-2xl mx-auto">
         {/* HUD */}
         <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
@@ -1860,12 +1854,13 @@ function DoubleJeopardyMode({ onExit, resume }: { onExit: () => void; resume?: H
 
         <button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>
       </div>
+      </GameArena>
     )
   }
 
   // ANSWERING / FEEDBACK phase — show options
   return (
-    <QuestionView question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
+    <QuestionView mode="double" round={qi + 1} total={pool.length} streak={0} question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
       hud={
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
@@ -2009,7 +2004,7 @@ function StreakMasterMode({ onExit, resume }: { onExit: () => void; resume?: Hyd
   const isHighAlert = streak >= 5
 
   return (
-    <QuestionView question={q} fb={fb} picked={picked} onAnswer={doAnswer}
+    <QuestionView mode="streak" round={qi + 1} total={pool.length} streak={streak} question={q} fb={fb} picked={picked} onAnswer={doAnswer}
       hud={
         <div className={`flex items-center gap-3 rounded-2xl p-2 -mx-1 transition-all duration-500 ${
           isHighAlert ? "mednexus-high-alert-ring ring-2 ring-amber-500/50 bg-amber-50/40 dark:bg-amber-950/30" : ""
@@ -2136,3 +2131,5 @@ export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenSt
 
   return <ModeSelectScreen onSelect={setActiveMode} onBack={onExit} onOpenStore={onOpenStore} />
 }
+
+
