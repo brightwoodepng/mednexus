@@ -339,7 +339,7 @@ function ModuleGrid({
         return (
           <div
             key={mod}
-            className={`group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
+            className={`group relative touch-manipulation overflow-hidden rounded-2xl border border-border bg-card shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
           >
             {/* Colour top bar */}
             <div
@@ -418,7 +418,7 @@ function DisciplineGrid({
             key={`${mod}::${discipline}`}
             type="button"
             onClick={() => onSelect(mod, discipline)}
-            className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
+            className={`group relative touch-manipulation overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${palette.ring}`}
           >
             {/* Colour top bar */}
             <div
@@ -432,7 +432,7 @@ function DisciplineGrid({
               </div>
               <ArrowRightIcon
                 size={16}
-                className="mt-1 shrink-0 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+                className="mt-1 shrink-0 transition-transform [@media(hover:hover)]:group-hover:translate-x-0.5"
                 style={{ color: palette.bar }}
               />
             </div>
@@ -532,7 +532,7 @@ function ModuleDrillDown({
         <button
           type="button"
           onClick={() => onSelectDiscipline(null)}
-          className="group relative overflow-hidden rounded-2xl border-2 border-primary/25 bg-primary/8 p-5 text-left shadow-sm ring-0 transition-all hover:border-primary/50 hover:shadow-md hover:ring-2 hover:ring-primary/30 active:scale-[0.98]"
+          className="group relative touch-manipulation overflow-hidden rounded-2xl border-2 border-primary/25 bg-primary/8 p-5 text-left shadow-sm ring-0 transition-all hover:border-primary/50 hover:shadow-md hover:ring-2 hover:ring-primary/30 active:scale-[0.98]"
         >
           <div className="mb-4 flex items-start justify-between">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
@@ -540,7 +540,7 @@ function ModuleDrillDown({
             </div>
             <ArrowRightIcon
               size={18}
-              className="mt-0.5 text-primary opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+              className="mt-0.5 text-primary transition-transform [@media(hover:hover)]:group-hover:translate-x-0.5"
             />
           </div>
           <h3 className="font-bold text-foreground">All Disciplines</h3>
@@ -557,7 +557,7 @@ function ModuleDrillDown({
               key={disc}
               type="button"
               onClick={() => onSelectDiscipline(disc)}
-              className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`}
+              className={`group relative touch-manipulation overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-sm ring-0 transition-all hover:shadow-md hover:ring-2 active:scale-[0.98] ${dPalette.ring}`}
             >
               <div
                 className="pointer-events-none absolute left-0 right-0 top-0 h-1 opacity-80"
@@ -569,7 +569,7 @@ function ModuleDrillDown({
                 </div>
                 <ArrowRightIcon
                   size={18}
-                  className="mt-0.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+                  className="mt-0.5 transition-transform [@media(hover:hover)]:group-hover:translate-x-0.5"
                   style={{ color: dPalette.bar }}
                 />
               </div>

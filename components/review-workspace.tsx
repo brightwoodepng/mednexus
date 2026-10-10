@@ -2,6 +2,8 @@
 
 import { useRef, useState, useEffect } from "react"
 import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, Grid3X3, X } from "lucide-react"
+import { AppearanceModal } from "@/components/appearance-modal"
+import { useQuestionKeyboardNavigation } from "@/hooks/use-question-keyboard-navigation"
 import { useApp } from "@/contexts/app-context"
 import { useQuestions } from "@/contexts/questions-context"
 import { ModuleLibrary } from "@/components/module-library"
@@ -24,6 +26,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
   owner.current = user?.uid
   const [pending, setPending] = useState<{ module: string; discipline: string | null; questions: Question[] } | null>(null)
   const [active, setActive] = useState<{ session: ReviewSession; questions: Question[] } | null>(null)
+  const [themeOpen, setThemeOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
@@ -125,6 +128,8 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
     else onExit()
   }
 
+  useQuestionKeyboardNavigation({ enabled: Boolean(active) && !busy && !exitOpen && !themeOpen, onPrevious: () => { if (active && active.session.currentIndex > 0) navigate(active.session.currentIndex - 1) }, onNext: () => { if (active && active.session.currentIndex + 1 < active.questions.length) navigate(active.session.currentIndex + 1) } })
+
   if (!active) return <div className="space-y-5">
     
     {notice && <p role="status" className="rounded-xl bg-primary/10 p-4 text-sm">{notice}</p>}
@@ -150,7 +155,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card p-3 sm:px-6">
       <div className="min-w-0"><p className="flex items-center gap-2 font-bold"><BookOpen size={18} />Review</p>
         <p className="max-w-[60vw] truncate text-xs text-muted-foreground">{session.module}{session.discipline ? " · " + session.discipline : ""}</p></div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setThemeOpen(true)} aria-label="Appearance" className="flex h-11 w-11 items-center justify-center rounded-xl text-xl hover:bg-muted"><span aria-hidden="true">🎨</span></button>
         <button type="button" onClick={() => { setNavigator(false); setExitOpen(true) }} disabled={busy} aria-label="Exit review" className="rounded-xl bg-muted p-3 text-foreground"><X size={18} /></button></div>
     </header>
     <div className="relative flex min-h-0 flex-1">
@@ -191,6 +196,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
       {session.currentIndex === questions.length - 1 ? <button type="button" disabled={busy} onClick={() => { setNavigator(false); void leave(true) }} className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-xl bg-primary px-1 text-xs font-semibold text-primary-foreground disabled:opacity-40 sm:gap-2 sm:px-3 sm:text-sm">Finish review</button> :
         <button type="button" disabled={busy} onClick={() => navigate(session.currentIndex + 1)} className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-xl bg-primary px-1 text-xs font-semibold text-primary-foreground disabled:opacity-40 sm:gap-2 sm:px-3 sm:text-sm">Next <ChevronRight size={16} className="shrink-0" /></button>}
     </footer>
+    <AppearanceModal open={themeOpen} onClose={() => setThemeOpen(false)} />
     <Modal open={exitOpen} onClose={() => { if (!busy) setExitOpen(false) }} title="Leave this review?" widthClass="max-w-sm">
       <div className="flex flex-col gap-3">
         <button type="button" disabled={busy} onClick={() => setExitOpen(false)} className={button}>Keep reviewing</button>
