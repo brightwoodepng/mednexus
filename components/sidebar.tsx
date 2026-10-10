@@ -150,15 +150,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
           {(activeStudyHub === "mcq-qbank" || activeStudyHub === "theory-vault") && <SidebarNavLink active={groupStudyActive} href="/group-study" onClick={openGroupStudy} icon={<Users size={17} className="text-primary" />} label="Group Study" />}
         </div>
 
-        <div className="mt-4 border-t border-sidebar-border pt-4 md:hidden">
-          <div data-tutorial-anchor="drawer-appearance"><NavButton
-            glass={isGlassEnabled}
-            active={false}
-            onClick={() => { onCloseMobile(); onOpenThemes() }}
-            icon={<PaletteIcon size={17} className="text-primary" />}
-            label="Appearance"
-          /></div>
-        </div>
+
 
       </div>
 
