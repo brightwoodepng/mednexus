@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
-import { DEFAULT_THEME, type ThemeId } from "@/lib/themes"
+import { DEFAULT_THEME, THEMES, type ThemeId } from "@/lib/themes"
 
 const STORAGE_KEY = "mednexus-theme"
 const GLASS_STORAGE_KEY = "mednexus-glass"
@@ -38,7 +38,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setGlassState(true)
       localStorage.setItem(STORAGE_KEY, DEFAULT_THEME)
       localStorage.setItem(GLASS_STORAGE_KEY, "true")
-    } else if (storedTheme) {
+    } else if (storedTheme && THEMES.some(theme => theme.id === storedTheme)) {
       setThemeState(storedTheme as ThemeId)
       setGlassState(storedGlass === "true")
     } else {
@@ -49,6 +49,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // ── Apply activeTheme to <html data-theme="…"> ────────────────────────────
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", activeTheme)
+    const dark = THEMES.find(theme => theme.id === activeTheme)?.mode === "dark"
+    document.documentElement.classList.toggle("dark", dark)
+    document.documentElement.setAttribute("data-mode", dark ? "dark" : "light")
   }, [activeTheme])
 
   // ── Apply isGlassEnabled to <html data-glass="true"> — independent effect ──

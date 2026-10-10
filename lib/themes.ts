@@ -8,6 +8,10 @@ export type ThemeId =
   | "forest-night"
   | "solar-flare"
   | "nebula"
+  | "mint-paper"
+  | "lavender-day"
+  | "graphite"
+  | "deep-ocean"
 
 export interface ThemeMeta {
   id: ThemeId
@@ -91,6 +95,10 @@ export const THEMES: ThemeMeta[] = [
     swatch: { bg: "#1a112b", surface: "#211637", primary: "#e8429e" },
     accent: "#e8429e",
   },
+  { id: "mint-paper", name: "Mint Paper", description: "Soft mint with crisp teal details.", mode: "light", swatch: { bg: "#effaf5", surface: "#ffffff", primary: "#0f766e" }, accent: "#0f766e" },
+  { id: "lavender-day", name: "Lavender Day", description: "Pale lavender with rich violet accents.", mode: "light", swatch: { bg: "#f5f3ff", surface: "#ffffff", primary: "#6d28d9" }, accent: "#6d28d9" },
+  { id: "graphite", name: "Graphite", description: "Charcoal surfaces with soft lilac details.", mode: "dark", swatch: { bg: "#17181c", surface: "#24252b", primary: "#c4b5fd" }, accent: "#c4b5fd" },
+  { id: "deep-ocean", name: "Deep Ocean", description: "Midnight blue with clear sky accents.", mode: "dark", swatch: { bg: "#0b1829", surface: "#13263b", primary: "#7dd3fc" }, accent: "#7dd3fc" },
 ]
 
 export const DEFAULT_THEME: ThemeId = "clinical-light"
