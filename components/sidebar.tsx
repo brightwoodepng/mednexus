@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { User, Users } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { useTheme } from "@/contexts/theme-context"
 import { ChevronLeftIcon, ChevronRightIcon, LogOutIcon, PaletteIcon, StethoscopeIcon, LayoutDashboardIcon } from "@/components/icons"
@@ -18,6 +17,8 @@ import { learnerHomeScreen, learnerScreenUrl } from "@/lib/admin-hub-routing"
 import { getWeakAreaQuestions } from "@/lib/modules"
 
 interface SidebarProps { screen: Screen; onNavigate: (screen: Screen) => void; onSelectStudyHub: (hub: StudyHubId) => void; onOpenThemes: () => void; onOpenImporter?: () => void; mobileOpen: boolean; onCloseMobile: () => void; onReadyForQuiz: (config: { module: string; discipline: string | null }) => void; onSelectModule: (module: string) => void; collapsed: boolean; onCollapse: () => void; onExpand: () => void }
+
+const navigationEmoji: Record<string, string> = { dashboard: "🏠", modules: "📚", "weak-areas": "🩺", "live-assessments": "📡", game: "🎮", store: "🛍️", leaderboard: "🏆", "theory-dashboard": "🏠", "theory-browse": "📖", "theory-bookmarks": "🔖", "theory-notes": "📝", "theory-revision": "🔄", "theory-progress": "📈", "theory-search": "🔎", profile: "👤" }
 
 function roleLabel(role: string | undefined) {
   if (role === "admin") return "Admin"
@@ -135,19 +136,18 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
         </p>
         <div className="flex flex-col gap-0.5" data-tutorial-anchor={mobileOpen ? "drawer-navigation" : "desktop-navigation"}>
           {navigation.map((item) => {
-            const Icon = item.id === "profile" ? User : item.icon
             return (
               <div data-tutorial-anchor={`${mobileOpen ? "drawer" : "desktop"}-nav-${item.id}`}><NavButton
                 key={item.id}
                 glass={isGlassEnabled}
                 active={!groupStudyActive && screen === item.screen}
                 onClick={() => nav(item.screen)}
-                icon={<Icon size={17} className={item.iconColor} />}
+                icon={<span aria-hidden="true" className="shrink-0 text-lg">{navigationEmoji[item.id] ?? "📚"}</span>}
                 label={item.label}
               /></div>
             )
           })}
-          {(activeStudyHub === "mcq-qbank" || activeStudyHub === "theory-vault") && <SidebarNavLink active={groupStudyActive} href="/group-study" onClick={openGroupStudy} icon={<Users size={17} className="text-primary" />} label="Group Study" />}
+          {(activeStudyHub === "mcq-qbank" || activeStudyHub === "theory-vault") && <SidebarNavLink active={groupStudyActive} href="/group-study" onClick={openGroupStudy} icon={<span aria-hidden="true" className="text-lg">👥</span>} label="Group Study" />}
         </div>
 
 
@@ -178,7 +178,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
             aria-label="Sign out"
             className="shrink-0 rounded-lg p-1.5 text-sidebar-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive"
           >
-            <LogOutIcon size={15} />
+            <span aria-hidden="true" className="text-base">🚪</span>
           </button></span>
         </div>
 
@@ -189,7 +189,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
             onClick={onCloseMobile}
             className="flex min-h-9 items-center gap-2.5 rounded-xl px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
           >
-            <LayoutDashboardIcon size={14} />
+            <span aria-hidden="true" className="text-base">🛠️</span>
             Admin Console
           </Link>
         )}
@@ -211,14 +211,13 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
       <StudyHubDropdownIcon activeHub={activeStudyHub} onSelect={onSelectStudyHub} />
       <div className="my-1 h-px w-6 bg-sidebar-border/60" />
       {navigation.map((item) => {
-        const Icon = item.id === "profile" ? User : item.icon
         return (
           <IconButton key={item.id} glass={isGlassEnabled} active={!groupStudyActive && screen === item.screen} onClick={() => nav(item.screen)} label={item.label}>
-            <Icon size={18} className={item.iconColor} />
+            <span aria-hidden="true" className="text-lg">{navigationEmoji[item.id] ?? "📚"}</span>
           </IconButton>
         )
       })}
-      {(activeStudyHub === "mcq-qbank" || activeStudyHub === "theory-vault") && <Link href="/group-study" onClick={openGroupStudy} title="Group Study" aria-label="Group Study" aria-current={groupStudyActive ? "page" : undefined} className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${groupStudyActive ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}><Users size={18} className="text-primary" /></Link>}
+      {(activeStudyHub === "mcq-qbank" || activeStudyHub === "theory-vault") && <Link href="/group-study" onClick={openGroupStudy} title="Group Study" aria-label="Group Study" aria-current={groupStudyActive ? "page" : undefined} className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${groupStudyActive ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}><span aria-hidden="true" className="text-lg">👥</span></Link>}
       {/* User avatar at bottom of compact rail */}
       <div className="mt-auto flex flex-col items-center gap-2 pb-1">
         <div className="h-px w-6 bg-sidebar-border/60" />

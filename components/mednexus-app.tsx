@@ -14,7 +14,7 @@ import { Dashboard } from "@/components/dashboard"
 import { ReviewWorkspace } from "@/components/review-workspace"
 import { ModuleLibrary } from "@/components/module-library"
 import { Modal } from "@/components/ui/modal"
-import type { ReviewSession } from "@/lib/review-session"
+import { parseReviewSession, type ReviewSession } from "@/lib/review-session"
 import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
@@ -469,6 +469,7 @@ export function MedNexusApp() {
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
+  const [resumeReviewOnOpen, setResumeReviewOnOpen] = useState(false)
   const [selectedStudyMode, setSelectedStudyMode] = useState<QuizMode | "review" | null>(null)
   const [initialReview, setInitialReview] = useState<{ session: ReviewSession; questions: Question[] } | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
@@ -554,7 +555,7 @@ export function MedNexusApp() {
   }, [activeStudyHub, screen])
 
   const handleScreenNavigation = useCallback((nextScreen: Screen) => {
-    if (nextScreen !== "review") setInitialReview(null)
+    if (nextScreen !== "review") { setInitialReview(null); setResumeReviewOnOpen(false) }
     if (typeof navigator !== "undefined" && !navigator.onLine && ONLINE_ONLY_SCREENS.has(nextScreen)) {
       setOfflineBlocked(true)
       return
@@ -619,6 +620,7 @@ export function MedNexusApp() {
   }, [user])
 
   const safeScreen = screen
+  const savedDashboardReview = user ? parseReviewSession(JSON.stringify(progress.savedReviewSession ?? null), user.uid) : null
 
   const handleReadyForQuiz = useCallback(async (config: { module: string; discipline: string | null }) => {
     let questions: Question[]
@@ -817,7 +819,7 @@ export function MedNexusApp() {
     return (
       <div className="h-screen">
         <QuizSimulator questions={activeQuiz.questions} moduleName={activeQuiz.moduleName} mode={activeQuiz.mode} gamificationEnabled={activeQuiz.gamificationEnabled} session={activeQuiz.session} onSessionChange={handleQuizSessionChange} onExit={exitQuiz} onReturnToDashboard={() => { clearQuizSession(user.uid); saveActiveQuizSession(null); setActiveQuiz(null); handleScreenNavigation("dashboard") }} onComplete={handleQuizComplete} />
-        {discardQuizOpen && <QuizSessionChoice title="Pause or discard this attempt?" description={`${Object.values(activeQuiz.session.answers).filter(answer => answer !== null).length} of ${activeQuiz.questions.length} questions answered. ${activeQuiz.mode === "exam" ? "The exam timer keeps running while you are away." : "Save your place and continue whenever you are ready."}`} tertiaryLabel={savingQuiz ? "Saving progress…" : "Save progress & return to dashboard"} onTertiary={() => void pauseQuiz()} primaryLabel="Keep studying" secondaryLabel="Discard attempt" onPrimary={() => setDiscardQuizOpen(false)} onSecondary={() => { clearQuizSession(user.uid); saveActiveQuizSession(null); setResumeCandidate(null); setDiscardQuizOpen(false); setActiveQuiz(null); handleScreenNavigation("dashboard") }} />}
+        {discardQuizOpen && <QuizSessionChoice title="Pause or discard this attempt?" description={`${Object.values(activeQuiz.session.answers).filter(answer => answer !== null).length} of ${activeQuiz.questions.length} questions answered. ${activeQuiz.mode === "exam" ? "The exam timer keeps running while you are away." : "Save your place and continue whenever you are ready."}`} tertiaryLabel={activeQuiz.mode === "trial" ? (savingQuiz ? "Saving progress…" : "Save progress & return to dashboard") : undefined} onTertiary={activeQuiz.mode === "trial" ? () => void pauseQuiz() : undefined} primaryLabel="Keep studying" secondaryLabel="Discard attempt" onPrimary={() => setDiscardQuizOpen(false)} onSecondary={() => { clearQuizSession(user.uid); saveActiveQuizSession(null); setResumeCandidate(null); setDiscardQuizOpen(false); setActiveQuiz(null); handleScreenNavigation("dashboard") }} />}
       </div>
     )
   }
@@ -854,7 +856,7 @@ export function MedNexusApp() {
       ) : activeStudyHub === "mcq-qbank" && MCQ_HEADER_TITLES[safeScreen] ? <WorkspaceHeaderTitle title={MCQ_HEADER_TITLES[safeScreen]} screen={safeScreen} /> : undefined}
       hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
-          {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && resumeCandidate && (
+          {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && resumeCandidate?.mode === "trial" && (
             <section className="relative mb-4 overflow-hidden rounded-2xl border border-emerald-400/40 bg-emerald-500 px-4 py-3 text-white shadow-lg sm:px-5" aria-label="Saved MCQ attempt">
               <div className="relative flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -874,6 +876,19 @@ export function MedNexusApp() {
               <div className="relative mt-2 h-1 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-label="Saved attempt progress" aria-valuemin={0} aria-valuemax={resumeCandidate.questions.length} aria-valuenow={Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length}><div className="h-full rounded-full bg-white" style={{ width: `${Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length / resumeCandidate.questions.length * 100}%` }} /></div>
             </section>
           )}
+          {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && savedDashboardReview && (
+            <section className="relative mb-4 overflow-hidden rounded-2xl border border-emerald-400/40 bg-emerald-500 px-4 py-3 text-white shadow-lg sm:px-5" aria-label="Saved review">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">📖</span>
+                  <div className="min-w-0"><h2 className="break-words text-sm font-bold leading-snug sm:text-base">Continue review · {savedDashboardReview.module}</h2>
+                    <p className="mt-0.5 text-xs text-white/80">{savedDashboardReview.viewedIds.length} of {savedDashboardReview.questionIds.length} questions reviewed</p></div>
+                </div>
+                <button type="button" onClick={() => { setInitialReview(null); setResumeReviewOnOpen(true); handleScreenNavigation("review") }} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-700 shadow-sm hover:bg-white/90">Continue <span aria-hidden="true">→</span></button>
+              </div>
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-label="Saved review progress" aria-valuemin={0} aria-valuemax={savedDashboardReview.questionIds.length} aria-valuenow={savedDashboardReview.viewedIds.length}><div className="h-full rounded-full bg-white" style={{ width: `${savedDashboardReview.viewedIds.length / savedDashboardReview.questionIds.length * 100}%` }} /></div>
+            </section>
+          )}
           {safeScreen === "dashboard" && (
             <Dashboard onReadyForQuiz={handleReadyForQuiz} onOpenModules={(mod) => { setModulesInitialModule(mod ?? null); handleScreenNavigation("modules") }} onOpenWeakAreas={() => handleScreenNavigation("weak-areas")} onOpenLiveAssessments={() => handleScreenNavigation("live-assessments")} />
           )}
@@ -884,7 +899,7 @@ export function MedNexusApp() {
           {safeScreen === "theory-revision" && <TheoryVault key={`theory-revision-${theoryNavigationKey}`} initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-progress" && <TheoryVault key={`theory-progress-${theoryNavigationKey}`} initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-search" && <TheoryVault key={`theory-search-${theoryNavigationKey}`} initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
-          {safeScreen === "review" && <ReviewWorkspace initialReview={initialReview} onInitialReviewLoaded={() => setInitialReview(null)} onExit={() => handleScreenNavigation("dashboard")} />}
+          {safeScreen === "review" && <ReviewWorkspace resumeOnOpen={resumeReviewOnOpen} onResumeRequested={() => setResumeReviewOnOpen(false)} initialReview={initialReview} onInitialReviewLoaded={() => setInitialReview(null)} onExit={() => handleScreenNavigation("dashboard")} />}
       {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}

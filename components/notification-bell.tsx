@@ -40,7 +40,7 @@ async function fetchUnreadCount(): Promise<number> {
   }
 }
 
-export function NotificationBell({ borderless = false }: { borderless?: boolean } = {}) {
+export function NotificationBell({ borderless = false, realistic = false }: { borderless?: boolean; realistic?: boolean } = {}) {
   const { notificationOpen: isOpen, setNotificationOpen: setIsOpen, notificationUnreadCount: unreadCount, setNotificationUnreadCount: setUnreadCount } = useApplicationShell()
 
   const lastRefreshAt = useRef(0)
@@ -93,7 +93,7 @@ export function NotificationBell({ borderless = false }: { borderless?: boolean 
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
         className={"relative flex h-9 w-9 items-center justify-center rounded-xl bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" + (borderless ? "" : " border border-border")}
       >
-        <BellIcon size={18} />
+        {realistic ? <span aria-hidden="true" className="text-lg">🔔</span> : <BellIcon size={18} />}
         {unreadCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white ring-2 ring-background">
             {unreadCount > 9 ? "9+" : unreadCount}
