@@ -687,31 +687,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
       {/* ── Mobile focus-mode top bar (hidden on md+) ── */}
       <header className="flex shrink-0 flex-col border-b border-border bg-card md:hidden">
-        {/* Row 1: Exit | Progress | Theme */}
-        <div className="flex items-center gap-2 px-3 py-2">
-          {/* Exit */}
-          <button
-            type="button"
-            onClick={() => { void waitForPendingPayout().then(onExit) }}
-            className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-muted"
-            aria-label="Exit session"
-          >
-            <XIcon size={20} />
-          </button>
-
-          <div className="flex flex-1 items-center justify-center gap-2">
-            <button type="button" onClick={() => setCalcOpen(true)} aria-label="Calculator" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><CalculatorIcon size={20} /></button>
-            <button type="button" onClick={() => setLabsOpen(true)} aria-label="Lab Values" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><FlaskIcon size={20} /></button>
-          </div>
-          {/* Appearance */}
-          <button
-            type="button"
-            onClick={() => setThemeOpen(true)}
-            className="flex min-h-10 min-w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
-            aria-label="Appearance"
-          >
-            <span aria-hidden="true" className="text-xl">🎨</span>
-          </button>
+        {/* Compact tools row; exit stays at the far right. */}
+        <div className="flex items-center gap-1 px-3 py-1">
+          <button type="button" onClick={() => setThemeOpen(true)} aria-label="Appearance" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><PaletteIcon size={18} /></button>
+          <button type="button" onClick={() => setLabsOpen(true)} aria-label="Lab Values" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><FlaskIcon size={18} /></button>
+          <button type="button" onClick={() => setCalcOpen(true)} aria-label="Calculator" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><CalculatorIcon size={18} /></button>
+          <button type="button" onClick={() => { void waitForPendingPayout().then(onExit) }} aria-label="Exit session" className="ml-auto flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"><XIcon size={18} /></button>
         </div>
 
         {/* Row 2: Module name + mode badge + milestone tag */}
@@ -730,17 +711,14 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       </header>
 
       {/* ── Desktop top bar (hidden on mobile) ── */}
-      <header className="hidden shrink-0 items-center gap-1 border-b border-border bg-card px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3 md:flex">
-        <button
-          type="button"
-          onClick={() => { void waitForPendingPayout().then(onExit) }}
-          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <XIcon size={18} />
-          <span className="hidden sm:inline">Exit</span>
-        </button>
-
-        <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
+      <header className="hidden shrink-0 items-center gap-2 border-b border-border bg-card px-4 py-1 md:flex">
+        <div className="flex shrink-0 items-center gap-1">
+          <ToolButton label="Appearance" onClick={() => setThemeOpen(true)}><PaletteIcon size={17} /></ToolButton>
+          <ToolButton label="Labs" onClick={() => setLabsOpen(true)}><FlaskIcon size={17} /></ToolButton>
+          <ToolButton label="Calc" onClick={() => setCalcOpen(true)}><CalculatorIcon size={17} /></ToolButton>
+          <button type="button" onClick={() => toggleFlag(current.id)} aria-pressed={isFlagged} aria-label={isFlagged ? "Unflag question" : "Flag question"} className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${isFlagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}><FlagIcon size={17} /></button>
+        </div>
+        <div className="h-5 w-px bg-border" />
 
         <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
           <BookOpenIcon size={15} className="shrink-0 text-primary" />
@@ -760,21 +738,7 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
               <span className="text-xs sm:text-sm">{formatTime(timeLeft)}</span>
             </div>
           )}
-          <ToolButton label="Labs" onClick={() => setLabsOpen(true)}>
-            <FlaskIcon size={17} />
-          </ToolButton>
-          <ToolButton label="Calc" onClick={() => setCalcOpen(true)}>
-            <CalculatorIcon size={17} />
-          </ToolButton>
-          <button
-            type="button"
-            onClick={() => toggleFlag(current.id)}
-            aria-pressed={isFlagged}
-            className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors sm:gap-1.5 sm:px-2.5 ${isFlagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-          >
-            <FlagIcon size={17} />
-            <span className="hidden sm:inline">{isFlagged ? "Flagged" : "Flag"}</span>
-          </button>
+          <button type="button" onClick={() => { void waitForPendingPayout().then(onExit) }} aria-label="Exit session" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"><XIcon size={18} /></button>
         </div>
       </header>
 
@@ -807,9 +771,12 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             {...questionSwipeHandlers}
           >
             <div className="mb-3">
+              <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Question {index + 1} of {questions.length}
               </span>
+              <button type="button" onClick={() => toggleFlag(current.id)} aria-pressed={isFlagged} aria-label={isFlagged ? "Unflag question" : "Flag question"} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl md:hidden ${isFlagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-muted"}`}><FlagIcon size={18} /></button>
+              </div>
               {showSwipeHint && (
                 <div role="status" aria-live="polite" className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground md:hidden">
                   <ChevronLeftIcon size={14} aria-hidden="true" />
@@ -820,7 +787,6 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             </div>
 
             <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
-              <div className="mb-3 flex justify-end md:hidden"><button type="button" onClick={() => toggleFlag(current.id)} aria-pressed={isFlagged} aria-label={isFlagged ? "Unflag question" : "Flag question"} className={`flex h-10 w-10 items-center justify-center rounded-xl ${isFlagged ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground"}`}><FlagIcon size={18} /></button></div>
               <RichText content={current.vignette} className="text-[15px] text-foreground text-pretty sm:text-base" />
             </section>
 

@@ -866,24 +866,24 @@ export function MedNexusApp() {
       hideBottomNavigation={isExamActive || (activeStudyHub === "theory-vault" && theoryQuestionOpen)}
     >
           {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && resumeCandidate?.mode === "trial" && (
-            <section className="relative mb-4 overflow-hidden rounded-2xl border border-emerald-400/40 bg-emerald-500 px-4 py-3 text-white shadow-lg sm:px-5" aria-label="Saved MCQ attempt">
+            <section className="relative mb-4 overflow-hidden rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-foreground shadow-sm sm:px-5" aria-label="Saved MCQ attempt">
               <div className="relative flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20" aria-hidden="true">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/15" aria-hidden="true">
                     <span className="relative flex h-2.5 w-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75 motion-reduce:animate-none" />
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75 motion-reduce:animate-none" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
                     </span>
                   </div>
                   <div className="min-w-0">
                     <h2 className="break-words text-sm font-bold leading-snug sm:text-base">Continue Trial</h2>
                     <p className="mt-0.5 break-words text-sm font-semibold">{resumeCandidate.moduleName}</p>
-                    <p className="mt-0.5 text-xs text-white/80">{Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length} of {resumeCandidate.questions.length} questions answered</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length} of {resumeCandidate.questions.length} questions answered</p>
                   </div>
                 </div>
-                <button type="button" onClick={resumeSavedAttempt} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-700 shadow-sm transition-colors hover:bg-white/90">Continue <span aria-hidden="true">→</span></button>
+                <button type="button" onClick={resumeSavedAttempt} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">Continue <span aria-hidden="true">→</span></button>
               </div>
-              <div className="relative mt-2 h-1 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-label="Saved attempt progress" aria-valuemin={0} aria-valuemax={resumeCandidate.questions.length} aria-valuenow={Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length}><div className="h-full rounded-full bg-white" style={{ width: `${Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length / resumeCandidate.questions.length * 100}%` }} /></div>
+              <div className="relative mt-2 h-1 overflow-hidden rounded-full bg-primary/15" role="progressbar" aria-label="Saved attempt progress" aria-valuemin={0} aria-valuemax={resumeCandidate.questions.length} aria-valuenow={Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length}><div className="h-full rounded-full bg-primary" style={{ width: `${Object.values(resumeCandidate.session.answers).filter(answer => answer !== null).length / resumeCandidate.questions.length * 100}%` }} /></div>
             </section>
           )}
           {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && savedDashboardReview && (
@@ -895,7 +895,7 @@ export function MedNexusApp() {
                     <p className="mt-0.5 break-words text-sm font-semibold">{savedDashboardReview.module}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{savedDashboardReview.viewedIds.length} of {savedDashboardReview.questionIds.length} questions reviewed</p></div>
                 </div>
-                <button type="button" onClick={() => { setInitialReview(null); setResumeReviewOnOpen(true); handleScreenNavigation("review") }} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow-sm hover:bg-primary/90">Continue <span aria-hidden="true">→</span></button>
+                <button type="button" onClick={() => { setInitialReview(null); setResumeReviewOnOpen(true); handleScreenNavigation("review") }} className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-foreground px-3 py-2 text-sm font-bold text-background shadow-sm hover:bg-foreground/85">Continue <span aria-hidden="true">→</span></button>
               </div>
               <div className="mt-2 h-1 overflow-hidden rounded-full bg-primary/15" role="progressbar" aria-label="Saved review progress" aria-valuemin={0} aria-valuemax={savedDashboardReview.questionIds.length} aria-valuenow={savedDashboardReview.viewedIds.length}><div className="h-full rounded-full bg-primary" style={{ width: `${savedDashboardReview.viewedIds.length / savedDashboardReview.questionIds.length * 100}%` }} /></div>
             </section>
