@@ -19,6 +19,8 @@ import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
 import { DashboardCosmetics } from "@/components/dashboard-cosmetics"
+import { DashboardGames } from "@/components/dashboard-games"
+import type { FeaturedGameId } from "@/lib/daily-games"
 import { AppearanceModal } from "@/components/appearance-modal"
 import { LiveAssessmentsScreen } from "@/components/live-assessments-screen"
 import { LeaderboardScreen } from "@/components/leaderboard-screen"
@@ -448,6 +450,7 @@ export function MedNexusApp() {
   const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
+  const [featuredGameMode, setFeaturedGameMode] = useState<FeaturedGameId | null>(null)
   const [platformConfig, setPlatformConfig] = useState<{
     registrationEnabled: boolean
     guestAccessEnabled: boolean
@@ -570,6 +573,7 @@ export function MedNexusApp() {
       setTheoryNavigationKey(current => current + 1)
     }
     window.history.pushState({}, "", learnerScreenUrl(nextScreen, activeStudyHub))
+    if (nextScreen !== "game") setFeaturedGameMode(null)
     setScreen(nextScreen)
   }, [activeStudyHub])
 
@@ -911,6 +915,7 @@ export function MedNexusApp() {
           {safeScreen === "theory-revision" && <TheoryVault key={`theory-revision-${theoryNavigationKey}`} initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-progress" && <TheoryVault key={`theory-progress-${theoryNavigationKey}`} initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-search" && <TheoryVault key={`theory-search-${theoryNavigationKey}`} initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
+          {safeScreen === "dashboard" && <DashboardGames onSelect={mode => { setFeaturedGameMode(mode); handleScreenNavigation("game") }} onOpenGames={() => { setFeaturedGameMode(null); handleScreenNavigation("game") }} />}
           {(safeScreen === "dashboard" || safeScreen === "theory-dashboard") && <DashboardCosmetics onOpenStore={() => handleScreenNavigation("store-cosmetics")} />}
           {safeScreen === "review" && <ReviewWorkspace resumeOnOpen={resumeReviewOnOpen} onResumeRequested={() => setResumeReviewOnOpen(false)} initialReview={initialReview} onInitialReviewLoaded={() => setInitialReview(null)} onExit={() => handleScreenNavigation("dashboard")} />}
       {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
@@ -918,7 +923,7 @@ export function MedNexusApp() {
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
           {safeScreen === "leaderboard" && <LeaderboardScreen onNavigate={handleScreenNavigation} />}
           {safeScreen === "live-assessments" && <LiveAssessmentsScreen onExamActiveChange={setIsExamActive} />}
-          {safeScreen === "game" && <GameMode onExit={() => handleScreenNavigation("dashboard")} onOpenStore={() => handleScreenNavigation("store")} />}
+          {safeScreen === "game" && <GameMode initialMode={featuredGameMode} onExit={() => handleScreenNavigation("dashboard")} onOpenStore={() => handleScreenNavigation("store")} />}
           {safeScreen === "store" && <NexusStoreHub onNavigate={handleScreenNavigation} />}
           {safeScreen === "store-supply" && <NexusStoreSupplyPage onBack={() => handleScreenNavigation("store")} />}
           {safeScreen === "store-cosmetics" && <NexusStoreCosmeticsPage onBack={() => handleScreenNavigation("store")} />}

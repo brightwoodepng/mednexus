@@ -458,15 +458,15 @@ function OptionBtn({ id, text, media, sel, correct, fb, onSel, eliminated = fals
 }
 
 // ── Shared question layout ────────────────────────────────────────────────────
-function QuestionView({ question, fb, picked, onAnswer, hud, footer, eliminated, mode, round, total, streak = 0 }: {
+function QuestionView({ question, fb, picked, onAnswer, hud, footer, tools, eliminated, mode, round, total, streak = 0 }: {
   mode: ArenaMode; round: number; total: number; streak?: number
   question: Question; fb: Feedback; picked: string | null
   onAnswer: (id: string) => void
-  hud: React.ReactNode; footer?: React.ReactNode
+  hud: React.ReactNode; footer?: React.ReactNode; tools?: React.ReactNode
   eliminated?: Set<string>
 }) {
   return (
-    <GameArena mode={mode} round={round} total={total} outcome={fb} feedbackKey={question.id + ":" + picked} streak={streak} timedOut={fb === "wrong" && picked === null}>
+    <GameArena mode={mode} round={round} total={total} outcome={fb} feedbackKey={question.id + ":" + picked} streak={streak} timedOut={fb === "wrong" && picked === null} tools={tools}>
     <div className="flex min-h-full flex-col gap-2 p-0 sm:gap-3 sm:p-0 max-w-3xl mx-auto">
       <div className="game-hud">{hud}</div>
       <div className="game-question-card relative flex-1 overflow-y-auto rounded-2xl border border-border bg-card p-4 sm:p-5">
@@ -841,10 +841,10 @@ function LifelineBar({ onUse50_50, onUseFreeze, onUseSecondOpinion, qty5050, qty
 }) {
   if (qty5050 <= 0 && qtyFreeze <= 0 && qtySecondOpinion <= 0 && !freezeActivated && !secondOpinionActivated) return null
   return (
-    <div className="game-power-ups grid grid-cols-3 gap-1.5">
+    <div className="game-power-ups flex items-center gap-1">
       {qty5050 > 0 && (
         <button type="button" onClick={onUse50_50} disabled={disabled5050} aria-label="Consult Attending: eliminate two wrong answers" title="Consult Attending: eliminate two wrong answers"
-          className={`flex items-center gap-1.5 min-h-10 justify-center rounded-lg border px-1.5 py-1 text-[11px] font-semibold transition-colors ${disabled5050 ? "opacity-65 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-violet-200 dark:border-violet-800/40 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 hover:opacity-80 active:scale-95"}`}>
+          className={`flex items-center gap-1.5 min-h-9 justify-center rounded-xl border px-1.5 py-1 text-[11px] font-semibold transition-colors ${disabled5050 ? "opacity-65 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-violet-200 dark:border-violet-800/40 bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 hover:opacity-80 active:scale-95"}`}>
           <Stethoscope size={14} aria-hidden /><span>50/50</span>
           <span className="rounded-full bg-violet-200 dark:bg-violet-800 px-1.5 py-0.5 text-[10px] font-extrabold text-violet-800 dark:text-violet-200">×{qty5050}</span>
         </button>
@@ -852,7 +852,7 @@ function LifelineBar({ onUse50_50, onUseFreeze, onUseSecondOpinion, qty5050, qty
       {(qtyFreeze > 0 || freezeActivated) && (
         <button type="button" onClick={onUseFreeze} disabled={disabledFreeze} title="Adds 10 seconds to the current question timer."
           aria-label={freezeActivated ? "Stat Labs activated. 10 seconds added." : "Stat Labs. Adds 10 seconds to the current question timer."}
-          className={`flex items-center gap-1.5 min-h-10 justify-center rounded-lg border px-1.5 py-1 text-[11px] font-semibold transition-colors ${disabledFreeze ? "opacity-65 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-cyan-200 dark:border-cyan-800/40 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 hover:opacity-80 active:scale-95"}`}>
+          className={`flex items-center gap-1.5 min-h-9 justify-center rounded-xl border px-1.5 py-1 text-[11px] font-semibold transition-colors ${disabledFreeze ? "opacity-65 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-cyan-200 dark:border-cyan-800/40 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 hover:opacity-80 active:scale-95"}`}>
           {freezeActivated ? <span aria-live="polite">✓ +10s added</span> : <><FlaskConical size={14} aria-hidden /><span>+10s</span></>}
           {!freezeActivated && <span className="rounded-full bg-cyan-200 dark:bg-cyan-800 px-1.5 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:text-cyan-200">×{qtyFreeze}</span>}
         </button>
@@ -860,7 +860,7 @@ function LifelineBar({ onUse50_50, onUseFreeze, onUseSecondOpinion, qty5050, qty
       {(qtySecondOpinion > 0 || secondOpinionActivated) && (
         <button type="button" onClick={onUseSecondOpinion} disabled={disabledSecondOpinion}
           title="Activate before answering. A corrected retry continues play but earns no accuracy or NP credit."
-          className={`flex items-center gap-1.5 min-h-10 justify-center rounded-lg border px-1.5 py-1 text-[11px] font-semibold transition-colors ${disabledSecondOpinion ? "opacity-65 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-amber-200 bg-amber-50 text-amber-700 hover:opacity-80 active:scale-95 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400"}`}>
+          className={`flex items-center gap-1.5 min-h-9 justify-center rounded-xl border px-1.5 py-1 text-[11px] font-semibold transition-colors ${disabledSecondOpinion ? "opacity-65 cursor-not-allowed border-border bg-muted text-muted-foreground" : "border-amber-200 bg-amber-50 text-amber-700 hover:opacity-80 active:scale-95 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400"}`}>
           {secondOpinionActivated ? "✓ Retry ready" : <><UsersRound size={14} aria-hidden /><span>Retry</span></>}
           {!secondOpinionActivated && <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-800 dark:bg-amber-800 dark:text-amber-200">×{qtySecondOpinion}</span>}
         </button>
@@ -1244,6 +1244,13 @@ function RapidFireMode({ onExit, resume }: { onExit: () => void; resume?: Hydrat
 
   return (
     <QuestionView mode="rapid" round={qi + 1} total={pool.length} streak={streak} question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
+      tools={
+          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} qtySecondOpinion={qtySecondOpinion} onUse50_50={use50_50} onUseFreeze={useFreeze} onUseSecondOpinion={useSecondOpinion}
+            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
+            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
+            disabledSecondOpinion={fb !== null || firstAttempt !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
+            freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionActive} />
+      }
       hud={
         <div className={`flex flex-col gap-1.5 rounded-xl p-0 transition-all duration-500 ${
           isHighAlert
@@ -1283,11 +1290,7 @@ function RapidFireMode({ onExit, resume }: { onExit: () => void; resume?: Hydrat
             <span className={`text-xs font-bold tabular-nums ${timeLeft <= 5 ? "text-rose-500" : isHighAlert ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{timeLeft}s</span>
             {msg ? <span className={`text-xs font-bold ${isHighAlert ? "text-rose-500 animate-pulse" : "text-amber-600 dark:text-amber-400"}`}>{msg}</span> : bonus > 0 && fb === null ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">+{BASE_PTS + bonus} if correct</span> : null}
           </div>
-          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} qtySecondOpinion={qtySecondOpinion} onUse50_50={use50_50} onUseFreeze={useFreeze} onUseSecondOpinion={useSecondOpinion}
-            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
-            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
-            disabledSecondOpinion={fb !== null || firstAttempt !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
-            freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionActive} />
+
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>}
@@ -1441,6 +1444,13 @@ function TimeAttackMode({ onExit, resume }: { onExit: () => void; resume?: Hydra
 
   return (
     <QuestionView mode="timeatk" round={qi + 1} total={pool.length} streak={0} question={q} fb={fb} picked={picked} onAnswer={doAnswer}
+      tools={
+          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} qtySecondOpinion={qtySecondOpinionTA} onUse50_50={use50_50} onUseFreeze={useFreeze} onUseSecondOpinion={useSecondOpinionTA}
+            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
+            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
+            disabledSecondOpinion={fb !== null || firstAttemptTA !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
+            freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionTA} />
+      }
       hud={
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
@@ -1460,11 +1470,7 @@ function TimeAttackMode({ onExit, resume }: { onExit: () => void; resume?: Hydra
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">✓ +100 pts +3s</span>
             <span className="text-xs text-rose-500 font-semibold">✗ −5s</span>
           </div>
-          <LifelineBar qty5050={qty5050} qtyFreeze={qtyFreeze} qtySecondOpinion={qtySecondOpinionTA} onUse50_50={use50_50} onUseFreeze={useFreeze} onUseSecondOpinion={useSecondOpinionTA}
-            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
-            disabledFreeze={fb !== null || isItemUsePending("lifeline_freeze", q.id) || isItemUsed("lifeline_freeze", q.id)}
-            disabledSecondOpinion={fb !== null || firstAttemptTA !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
-            freezeActivated={isItemUsed("lifeline_freeze", q.id)} secondOpinionActivated={secondOpinionTA} />
+
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>}
@@ -1676,6 +1682,10 @@ function DoubleJeopardyMode({ onExit, resume }: { onExit: () => void; resume?: H
   // ANSWERING / FEEDBACK phase — show options
   return (
     <QuestionView mode="double" round={qi + 1} total={pool.length} streak={0} question={q} fb={fb} picked={picked} onAnswer={doAnswer} eliminated={new Set(eliminated)}
+      tools={
+          <LifelineBar qty5050={qty5050dj} qtyFreeze={0} onUse50_50={use50_50dj} onUseFreeze={() => {}}
+            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)} disabledFreeze={true} />
+      }
       hud={
         <div className="flex flex-col gap-2">
           <div className="game-hud flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2">
@@ -1696,8 +1706,7 @@ function DoubleJeopardyMode({ onExit, resume }: { onExit: () => void; resume?: H
               </span>
             </div>
           </div>
-          <LifelineBar qty5050={qty5050dj} qtyFreeze={0} onUse50_50={use50_50dj} onUseFreeze={() => {}}
-            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)} disabledFreeze={true} />
+
         </div>
       }
       footer={<button type="button" onClick={onExit} className="py-1 text-center text-xs text-muted-foreground transition-colors hover:text-foreground">Save & Exit</button>}
@@ -1820,6 +1829,14 @@ function StreakMasterMode({ onExit, resume }: { onExit: () => void; resume?: Hyd
 
   return (
     <QuestionView mode="streak" round={qi + 1} total={pool.length} streak={streak} question={q} fb={fb} picked={picked} onAnswer={doAnswer}
+      tools={
+          <LifelineBar qty5050={qty5050sm} qtyFreeze={0} qtySecondOpinion={qtySecondOpinionSM}
+            onUse50_50={use50_50sm} onUseFreeze={() => {}} onUseSecondOpinion={useSecondOpinionSM}
+            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
+            disabledFreeze={true}
+            disabledSecondOpinion={fb !== null || firstAttemptSM !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
+            secondOpinionActivated={secondOpinionSM} />
+      }
       hud={
         <div className="flex flex-col gap-2">
         <div className={`flex items-center gap-3 rounded-2xl p-2 -mx-1 transition-all duration-500 ${
@@ -1853,12 +1870,7 @@ function StreakMasterMode({ onExit, resume }: { onExit: () => void; resume?: Hyd
             <p className="text-sm font-extrabold tabular-nums text-foreground">{totalQ}</p>
           </div>
         </div>
-          <LifelineBar qty5050={qty5050sm} qtyFreeze={0} qtySecondOpinion={qtySecondOpinionSM}
-            onUse50_50={use50_50sm} onUseFreeze={() => {}} onUseSecondOpinion={useSecondOpinionSM}
-            disabled5050={fb !== null || eliminated.length > 0 || isItemUsePending("lifeline_50_50", q.id) || isItemUsed("lifeline_50_50", q.id)}
-            disabledFreeze={true}
-            disabledSecondOpinion={fb !== null || firstAttemptSM !== undefined || isItemUsePending("lifeline_second_opinion", q.id) || isItemUsed("lifeline_second_opinion", q.id)}
-            secondOpinionActivated={secondOpinionSM} />
+
         </div>
       }
       footer={
@@ -1879,11 +1891,12 @@ function StreakMasterMode({ onExit, resume }: { onExit: () => void; resume?: Hyd
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
-export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenStore?: () => void }) {
+export function GameMode({ onExit, onOpenStore, initialMode }: { onExit: () => void; onOpenStore?: () => void; initialMode?: "rapid" | "timeatk" | "streak" | "double" | null }) {
   const { user } = useApp()
   const { gameCatalog, gameCatalogLoading, reloadGameCatalog, loadQuestionsByIds } = useQuestions()
   const roomResumeRef = useRef(loadActiveRoomSession(user?.uid))
   const savedSoloRef = useRef((() => { const saved = user ? loadSoloGameSession(user.uid) : null; return saved?.mode === "sudden" ? null : saved })())
+  const [featuredGame, setFeaturedGame] = useState(() => initialMode && !roomResumeRef.current && !savedSoloRef.current ? MODES.find(game => game.id === initialMode) ?? null : null)
   const [soloResume, setSoloResume] = useState<HydratedSoloGameSession | null | undefined>(savedSoloRef.current ? undefined : null)
   // Auto-resume an in-progress multiplayer match on mount (e.g. after a page
   // refresh) instead of forcing the player back through mode selection.
@@ -1945,6 +1958,8 @@ export function GameMode({ onExit, onOpenStore }: { onExit: () => void; onOpenSt
   if (activeMode === "cohort") return <CohortReview onExit={() => setActiveMode(null)} />
   if (activeMode === "wager") return <WagerWars onExit={() => setActiveMode(null)} />
   if (activeMode === "djmulti") return <DoubleJeopardyMulti onExit={() => setActiveMode(null)} />
+
+  if (featuredGame) return <><ModeSelectScreen onSelect={setActiveMode} onBack={onExit} onOpenStore={onOpenStore} /><GameRulesDialog game={featuredGame} onClose={() => setFeaturedGame(null)} onContinue={() => { setActiveMode(featuredGame.id); setFeaturedGame(null) }} /></>
 
   return <ModeSelectScreen onSelect={setActiveMode} onBack={onExit} onOpenStore={onOpenStore} />
 }

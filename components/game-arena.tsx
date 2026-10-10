@@ -6,9 +6,9 @@ import { GAME_PRESENTATION, type ArenaMode, type GameOutcome } from "@/lib/game-
 import { GAME_FEEDBACK_KEY, readGameFeedbackPreferences, unlockGameAudio, playGameFeedback } from "@/lib/game-feedback"
 import "./game-arena.css"
 
-export function GameArena({ mode, round, total, outcome = null, feedbackKey, streak = 0, timedOut = false, children }: {
+export function GameArena({ mode, round, total, outcome = null, feedbackKey, streak = 0, timedOut = false, tools, children }: {
   mode: ArenaMode; round: number; total: number; outcome?: GameOutcome; feedbackKey?: string
-  streak?: number; timedOut?: boolean; children: ReactNode
+  streak?: number; timedOut?: boolean; tools?: ReactNode; children: ReactNode
 }) {
   const theme = GAME_PRESENTATION[mode]
   const [preferences, setPreferences] = useState({ sound: true, haptics: true })
@@ -50,7 +50,8 @@ export function GameArena({ mode, round, total, outcome = null, feedbackKey, str
           <div className="min-w-0"><h1 className="break-words text-base font-black tracking-tight sm:text-xl">{theme.title}</h1>
             </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="game-arena-tools">
+          {tools}
           <button type="button" className="game-feedback-toggle" aria-label={preferences.sound ? "Mute game sounds" : "Enable game sounds"} aria-pressed={preferences.sound} onClick={() => toggle("sound")}>{preferences.sound ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>
           <button type="button" className="game-feedback-toggle" aria-label={preferences.haptics ? "Disable game haptics" : "Enable game haptics"} aria-pressed={preferences.haptics} onClick={() => toggle("haptics")}><Vibrate size={17} /></button>
         </div>
