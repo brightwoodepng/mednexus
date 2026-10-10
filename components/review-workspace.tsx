@@ -17,7 +17,7 @@ function Media({ items }: { items: QuestionMedia[] }) {
       {item.caption && <figcaption className="mt-1 text-xs text-muted-foreground">{item.caption}</figcaption>}</figure>)}</div>
 }
 
-export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
+export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded }: { onExit: () => void; onInitialReviewLoaded?: () => void; initialReview?: { session: ReviewSession; questions: Question[] } | null }) {
   const { user, progress, saveReviewSession, flushProgress } = useApp()
   const { loadQuestionSet, loadQuestionsByIds } = useQuestions()
   const owner = useRef(user?.uid)
@@ -34,6 +34,13 @@ export function ReviewWorkspace({ onExit }: { onExit: () => void }) {
   const button = "rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-40"
 
   useEffect(() => { setActive(null); setPending(null); setError(""); setNotice(""); setExplanationOpen(true); setNavigator(false) }, [user?.uid])
+  useEffect(() => {
+    if (!initialReview || initialReview.session.userId !== user?.uid) return
+    setActive(initialReview)
+    onInitialReviewLoaded?.()
+    setExplanationOpen(true)
+    setNavigator(window.matchMedia("(min-width: 1024px)").matches)
+  }, [initialReview, user?.uid, onInitialReviewLoaded])
   useEffect(() => {
     if (active) document.getElementById("review-question-scroll")?.scrollTo({ top: 0 })
   }, [active?.session.currentIndex])

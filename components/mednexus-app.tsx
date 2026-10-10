@@ -13,6 +13,8 @@ import { AuthScreen } from "@/components/auth-screen"
 import { Dashboard } from "@/components/dashboard"
 import { ReviewWorkspace } from "@/components/review-workspace"
 import { ModuleLibrary } from "@/components/module-library"
+import { Modal } from "@/components/ui/modal"
+import type { ReviewSession } from "@/lib/review-session"
 import { QuantityModal } from "@/components/quantity-modal"
 import { QuizSimulator } from "@/components/quiz-simulator"
 import { ResultsScreen } from "@/components/results-screen"
@@ -343,29 +345,6 @@ function RejectedScreen() {
 }
 
 // ── Study Mode Toggle ─────────────────────────────────────────────────────────
-function StudyModeToggle({ globalMode, setGlobalMode }: { globalMode: QuizMode; setGlobalMode: (mode: QuizMode) => void }) {
-  return (
-    <div data-tutorial-anchor="mcq-mode" className="flex items-center rounded-xl border border-border bg-muted p-0.5">
-      <button
-        type="button"
-        onClick={() => setGlobalMode("trial")}
-        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all ${globalMode === "trial" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-      >
-        <ZapIcon size={13} />
-        <span>Trial</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => setGlobalMode("exam")}
-        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all ${globalMode === "exam" ? "bg-amber-500 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-      >
-        <TimerIcon size={13} />
-        <span>Exam</span>
-      </button>
-    </div>
-  )
-}
-
 function TheoryStudyModeToggle({ mode, onChange }: { mode: TheoryStudyMode; onChange: (mode: TheoryStudyMode) => void }) {
   return <div role="group" aria-label="Theory study mode" className="grid grid-cols-2 rounded-xl border-2 border-primary/25 bg-muted/60 p-1 md:hidden">
     <button type="button" aria-pressed={mode === "review"} onClick={() => onChange("review")} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${mode === "review" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Review</button>
@@ -373,9 +352,8 @@ function TheoryStudyModeToggle({ mode, onChange }: { mode: TheoryStudyMode; onCh
   </div>
 }
 
-const MCQ_MODE_SCREENS = new Set<Screen>(["dashboard", "modules", "weak-areas"])
-
 const MCQ_HEADER_TITLES: Partial<Record<Screen, string>> = {
+  modules: "Module library",
   review: "Review",
   leaderboard: "Rankings",
   "live-assessments": "Live Assessments",
@@ -464,7 +442,7 @@ function QuizSessionChoice({ title, description, primaryLabel, secondaryLabel, o
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export function MedNexusApp() {
-  const { user, authReady, progress, saveExamScore, requiresPasswordUpdate, saveActiveQuizSession, flushProgress, cloudEnabled, recordHistory } = useApp()
+  const { user, authReady, progress, saveExamScore, requiresPasswordUpdate, saveActiveQuizSession, flushProgress, cloudEnabled, recordHistory, saveReviewSession } = useApp()
   const { loadQuestionSet, loadQuestionsByIds } = useQuestions()
   const { globalMode, setGlobalMode } = useStudyMode()
 
@@ -491,6 +469,8 @@ export function MedNexusApp() {
   const [creditsOpen, setCreditsOpen] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const [pendingQuiz, setPendingQuiz] = useState<PendingQuiz | null>(null)
+  const [selectedStudyMode, setSelectedStudyMode] = useState<QuizMode | "review" | null>(null)
+  const [initialReview, setInitialReview] = useState<{ session: ReviewSession; questions: Question[] } | null>(null)
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null)
   const activeQuizRef = useRef<ActiveQuiz | null>(null)
   activeQuizRef.current = activeQuiz
@@ -574,6 +554,7 @@ export function MedNexusApp() {
   }, [activeStudyHub, screen])
 
   const handleScreenNavigation = useCallback((nextScreen: Screen) => {
+    if (nextScreen !== "review") setInitialReview(null)
     if (typeof navigator !== "undefined" && !navigator.onLine && ONLINE_ONLY_SCREENS.has(nextScreen)) {
       setOfflineBlocked(true)
       return
@@ -588,6 +569,7 @@ export function MedNexusApp() {
   }, [activeStudyHub])
 
   const handleStudyHubNavigation = useCallback((hub: StudyHubId) => {
+    setInitialReview(null)
     const homeScreen = learnerHomeScreen(hub)
     setActiveStudyHub(hub)
     setScreen(homeScreen)
@@ -639,7 +621,6 @@ export function MedNexusApp() {
   const safeScreen = screen
 
   const handleReadyForQuiz = useCallback(async (config: { module: string; discipline: string | null }) => {
-    if (resumeCandidate) { setResumePromptOpen(true); return }
     let questions: Question[]
     let displayName: string
 
@@ -669,6 +650,7 @@ export function MedNexusApp() {
       displayName = config.module
     }
 
+    setSelectedStudyMode(null)
     setPendingQuiz({ questions, moduleName: displayName, discipline: config.discipline, setupModule: config.module })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadQuestionSet, progress.history, resumeCandidate])
@@ -715,7 +697,17 @@ export function MedNexusApp() {
   }
 
   function handleStartQuiz(selectedQuestions: Question[], gamificationEnabled: boolean, lockAnswers: boolean) {
-    if (!pendingQuiz || !user) return
+    if (!pendingQuiz || !user || !selectedStudyMode || !selectedQuestions.length) return
+    if (selectedStudyMode === "review") {
+      const session: ReviewSession = { version: 1, userId: user.uid, module: pendingQuiz.moduleName,
+        discipline: pendingQuiz.discipline, questionIds: selectedQuestions.map(q => q.id), currentIndex: 0,
+        viewedIds: [selectedQuestions[0].id], gamificationEnabled: false, updatedAt: Date.now() }
+      saveReviewSession(session)
+      setInitialReview({ session, questions: selectedQuestions })
+      setPendingQuiz(null)
+      handleScreenNavigation("review")
+      return
+    }
     const startedAt = Date.now()
     const session = createQuizSession({
       userId: user.uid,
@@ -723,7 +715,7 @@ export function MedNexusApp() {
       moduleName: pendingQuiz.moduleName,
       discipline: pendingQuiz.discipline,
       setupModule: pendingQuiz.setupModule,
-      mode: globalMode,
+      mode: selectedStudyMode,
       gamificationEnabled,
       lockAnswers,
       startedAt,
@@ -735,7 +727,7 @@ export function MedNexusApp() {
       questions: selectedQuestions,
       moduleName: pendingQuiz.moduleName,
       discipline: pendingQuiz.discipline,
-      mode: globalMode,
+      mode: selectedStudyMode,
       startedAt,
       setupModule: pendingQuiz.setupModule,
       gamificationEnabled,
@@ -840,9 +832,7 @@ export function MedNexusApp() {
       onNavigate={handleScreenNavigation}
       onSelectStudyHub={handleStudyHubNavigation}
       onOpenAppearance={() => setThemeOpen(true)}
-      modeControl={activeStudyHub === "mcq-qbank" && MCQ_MODE_SCREENS.has(safeScreen)
-        ? <StudyModeToggle globalMode={globalMode} setGlobalMode={setGlobalMode} />
-        : activeStudyHub === "theory-vault" && theoryQuestionOpen
+      modeControl={activeStudyHub === "theory-vault" && theoryQuestionOpen
           ? <TheoryStudyModeToggle mode={theoryStudyMode} onChange={setTheoryStudyMode} />
           : undefined}
       headerSlot={activeStudyHub === "theory-vault" && !theoryQuestionOpen ? (
@@ -894,7 +884,7 @@ export function MedNexusApp() {
           {safeScreen === "theory-revision" && <TheoryVault key={`theory-revision-${theoryNavigationKey}`} initialView="Revision Queue" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-progress" && <TheoryVault key={`theory-progress-${theoryNavigationKey}`} initialView="Progress" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
           {safeScreen === "theory-search" && <TheoryVault key={`theory-search-${theoryNavigationKey}`} initialView="Search" externalQuery={theorySearchQuery} onExternalQueryChange={setTheorySearchQuery} onQuestionViewChange={setTheoryQuestionOpen} studyMode={theoryStudyMode} onStudyModeChange={setTheoryStudyMode} />}
-          {safeScreen === "review" && <ReviewWorkspace onExit={() => handleScreenNavigation("dashboard")} />}
+          {safeScreen === "review" && <ReviewWorkspace initialReview={initialReview} onInitialReviewLoaded={() => setInitialReview(null)} onExit={() => handleScreenNavigation("dashboard")} />}
       {safeScreen === "modules" && <ModuleLibrary onReadyForQuiz={handleReadyForQuiz} initialModule={modulesInitialModule} />}
           {safeScreen === "weak-areas" && <WeakAreasScreen onReadyForQuiz={handleReadyForQuiz} mode={globalMode} />}
           {safeScreen === "profile" && <ProfileHistory activeHub={activeStudyHub} onNavigate={handleScreenNavigation} />}
@@ -907,12 +897,25 @@ export function MedNexusApp() {
           {safeScreen === "store-vault" && <NexusStoreVaultPage onBack={() => handleScreenNavigation("store")} />}
           {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} earnedXP={lastResult.earnedXP} payoutError={lastResult.payoutError} onReturn={() => handleScreenNavigation("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
     </LearnerWorkspaceShell>
+      <Modal open={pendingQuiz !== null && selectedStudyMode === null} onClose={() => setPendingQuiz(null)} title="How would you like to study?" widthClass="max-w-sm">
+        <p className="mb-4 text-sm text-muted-foreground">{pendingQuiz?.moduleName}{pendingQuiz?.discipline ? " · " + pendingQuiz.discipline : ""}</p>
+        <div className="grid gap-3">
+          {([{ mode: "trial", title: "Trial", description: "Untimed practice with answer feedback." },
+            { mode: "exam", title: "Exam", description: "Timed practice with results at the end." },
+            { mode: "review", title: "Review", description: "Read revealed answers and explanations." }] as const).map(option =>
+            <button key={option.mode} type="button" onClick={() => { if (option.mode !== "review" && resumeCandidate) { setPendingQuiz(null); setResumePromptOpen(true); return }; setSelectedStudyMode(option.mode); if (option.mode !== "review") setGlobalMode(option.mode) }} className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10">
+              <span className="block font-bold">{option.title}</span><span className="mt-1 block text-xs text-muted-foreground">{option.description}</span>
+            </button>)}
+        </div>
+      </Modal>
       <QuantityModal
-        open={pendingQuiz !== null}
+        key={selectedStudyMode ?? "choose-mode"}
+        open={pendingQuiz !== null && selectedStudyMode !== null}
         label={pendingQuiz?.discipline ?? pendingQuiz?.moduleName ?? ""}
         sublabel={pendingQuiz?.discipline ? pendingQuiz.moduleName : undefined}
         questions={pendingQuiz?.questions ?? []}
-        mode={globalMode}
+        mode={selectedStudyMode === "review" ? undefined : selectedStudyMode ?? globalMode}
+        review={selectedStudyMode === "review"}
         onClose={() => setPendingQuiz(null)}
         onStart={handleStartQuiz}
       />
