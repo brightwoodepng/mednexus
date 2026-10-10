@@ -1,11 +1,11 @@
 .game-arena {
   --game-ink: color-mix(in srgb, var(--game-accent) 35%, var(--foreground));
-  min-height: 100%; isolation: isolate; padding: 8px;
+  min-height: 100%; isolation: isolate; padding: 6px;
   background: radial-gradient(ellipse at 10% 0%, color-mix(in srgb, var(--game-accent) 12%, transparent), transparent 55%),
     radial-gradient(ellipse at 100% 70%, color-mix(in srgb, var(--game-glow) 8%, transparent), transparent 50%);
 }
 .game-arena-inner { position: relative; max-width: 900px; margin: 0 auto; }
-.game-arena-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 0 8px; }
+.game-arena-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 0 6px; }
 .game-mode-emblem { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; font-size: 19px; border-radius: 10px; background: linear-gradient(135deg, var(--game-accent), var(--game-glow)); box-shadow: 0 6px 20px color-mix(in srgb, var(--game-accent) 25%, transparent); }
 .game-feedback-toggle { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--muted-foreground); }
 .game-feedback-toggle[aria-pressed=true] { color: var(--game-ink); background: color-mix(in srgb, var(--game-accent) 8%, var(--card)); }
@@ -19,7 +19,7 @@
 .dark .game-feedback-correct { color: #6ee7b7; }
 .dark .game-feedback-wrong { color: #fda4af; }
 .game-arena-content > div { max-width: none; padding: 0; gap: 10px; }
-.game-hud { border: 1px solid color-mix(in srgb, var(--game-accent) 25%, var(--border)); border-radius: 12px; background: color-mix(in srgb, var(--game-accent) 5%, var(--card)); padding: 8px; box-shadow: none; }
+.game-hud { border: 1px solid color-mix(in srgb, var(--game-accent) 25%, var(--border)); border-radius: 16px; background: color-mix(in srgb, var(--game-accent) 5%, var(--card)); padding: 8px; box-shadow: none; }
 .game-question-card { border-color: color-mix(in srgb, var(--game-accent) 20%, var(--border)); border-top: 3px solid var(--game-accent); box-shadow: 0 12px 35px color-mix(in srgb, var(--game-accent) 6%, transparent); }
 .game-answer-grid { display: grid; gap: 10px; }
 .game-answer-option { position: relative; min-height: 50px; border-radius: 12px; box-shadow: 0 4px 0 color-mix(in srgb, var(--game-accent) 14%, var(--border)); transition: transform .15s, box-shadow .15s, background .15s; }
@@ -43,10 +43,10 @@
 .game-arena[data-game-arena=clash] .game-question-card { background: linear-gradient(145deg, var(--card), color-mix(in srgb, var(--game-glow) 4%, var(--card))); }
 
 /* Keep controls compact and readable in the selected app theme. */
-.game-arena-content .game-hud { padding: 8px !important; border-radius: 12px; box-shadow: none; }
+.game-arena-content .game-hud { padding: 6px 8px !important; border-radius: 16px; box-shadow: none; }
 .game-arena-content .game-question-card { padding: 14px !important; border-radius: 16px; }
 .game-power-ups { min-width: 0; }
-.game-power-ups button { min-width: 0; flex-wrap: wrap; line-height: 1.2; }
+.game-power-ups button { min-width: 0; white-space: nowrap; line-height: 1.2; }
 .game-power-ups button:not(:disabled) { background: var(--card); color: var(--foreground); border-color: var(--border); }
 .game-power-ups button:disabled { opacity: .65; }
 .game-answer-option { padding: 12px; text-align: left; }
@@ -54,4 +54,16 @@
 .game-answer-option > span { width: 100%; }
 .game-arena button.bg-gradient-to-r { background: var(--primary); color: var(--primary-foreground); }
 .game-arena button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-@media (min-width: 768px) { .game-power-ups { max-width: 440px; align-self: flex-end; width: 100%; } }
+.game-arena-header { flex-wrap: wrap; }
+.game-arena-tools { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-left: auto; max-width: 100%; }
+.game-power-ups { flex-wrap: wrap; justify-content: flex-end; }
+.game-power-ups button { min-height: 34px; border-radius: 12px; }
+.game-hud .game-hud { padding: 0 !important; border: 0; background: transparent; }
+.game-arena-content { margin-top: 6px; }
+.game-question-card, .game-answer-option, .game-wager-panel { border-radius: 16px; }
+@media (max-width: 479px) {
+  .game-arena-tools { flex-wrap: wrap; }
+  .game-mode-emblem { width: 28px; height: 28px; font-size: 16px; border-radius: 9px; }
+  .game-arena-header h1 { font-size: 14px; }
+  .game-power-ups button { font-size: 10px; }
+}

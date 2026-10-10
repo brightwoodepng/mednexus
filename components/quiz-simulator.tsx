@@ -657,9 +657,9 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-background md:relative md:inset-auto md:z-auto md:h-full">
-      <div className="shrink-0 border-b border-border bg-card px-4 py-2" aria-label="MCQ progress">
+      <div className="shrink-0 border-b border-border bg-card px-4 py-1.5" aria-label="MCQ progress">
         <div className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground"><span>{answeredCount} / {questions.length} answered</span><span>{Math.round(answeredCount / questions.length * 100)}%</span></div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Questions answered" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={answeredCount}><div className="h-full rounded-full bg-primary" style={{ width: `${answeredCount / questions.length * 100}%` }} /></div>
+        <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Questions answered" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={answeredCount}><div className="h-full rounded-full bg-primary" style={{ width: `${answeredCount / questions.length * 100}%` }} /></div>
       </div>
       {/* Dynamic Streak Engine cheer — Trial Mode + gamification only, dormant otherwise */}
       <StreakCheer event={streakEngine.cheerEvent} onDone={streakEngine.clearCheer} />
@@ -688,26 +688,13 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
       {/* ── Mobile focus-mode top bar (hidden on md+) ── */}
       <header className="flex shrink-0 flex-col border-b border-border bg-card md:hidden">
         {/* Compact tools row; exit stays at the far right. */}
-        <div className="flex items-center gap-1 px-3 py-1">
-          <button type="button" onClick={() => setThemeOpen(true)} aria-label="Appearance" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><PaletteIcon size={18} /></button>
-          <button type="button" onClick={() => setLabsOpen(true)} aria-label="Lab Values" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><FlaskIcon size={18} /></button>
-          <button type="button" onClick={() => setCalcOpen(true)} aria-label="Calculator" className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><CalculatorIcon size={18} /></button>
-          <button type="button" onClick={() => { void waitForPendingPayout().then(onExit) }} aria-label="Exit session" className="ml-auto flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"><XIcon size={18} /></button>
+        <div className="flex items-center gap-1 px-3 py-0.5">
+          <button type="button" onClick={() => setThemeOpen(true)} aria-label="Appearance" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"><PaletteIcon size={18} /></button>
+          <button type="button" onClick={() => setLabsOpen(true)} aria-label="Lab Values" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"><FlaskIcon size={18} /></button>
+          <button type="button" onClick={() => setCalcOpen(true)} aria-label="Calculator" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"><CalculatorIcon size={18} /></button>
+          <button type="button" onClick={() => { void waitForPendingPayout().then(onExit) }} aria-label="Exit session" className="ml-auto flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"><XIcon size={18} /></button>
         </div>
 
-        {/* Row 2: Module name + mode badge + milestone tag */}
-        <div className="flex items-center gap-2 border-t border-border/50 px-4 py-1.5">
-          <BookOpenIcon size={13} className="shrink-0 text-primary" />
-          <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-foreground">
-            {moduleName}
-          </span>
-          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-            {mode === "trial" ? "Tutor" : "Exam"}
-          </span>
-          {milestoneTier > 0 && (
-            <MilestoneTag key={milestoneTier} tier={milestoneTier as 1 | 2 | 3} />
-          )}
-        </div>
       </header>
 
       {/* ── Desktop top bar (hidden on mobile) ── */}
@@ -767,15 +754,15 @@ export function QuizSimulator({ questions, moduleName, mode, gamificationEnabled
             <div className="pointer-events-none absolute inset-0 z-10 bg-rose-500/[0.12]" />
           )}
           <div
-            className={`flex-1 touch-pan-y px-4 pt-5 pb-6 sm:px-6 sm:pt-8 sm:pb-8 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}
+            className={`flex-1 touch-pan-y px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 ${current.contextId ? "" : "mx-auto w-full max-w-3xl"}`}
             {...questionSwipeHandlers}
           >
-            <div className="mb-3">
-              <div className="flex items-center justify-between gap-2">
+            <div className="mb-1.5">
+              <div className="flex min-h-9 items-center justify-between gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Question {index + 1} of {questions.length}
               </span>
-              <button type="button" onClick={() => toggleFlag(current.id)} aria-pressed={isFlagged} aria-label={isFlagged ? "Unflag question" : "Flag question"} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl md:hidden ${isFlagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-muted"}`}><FlagIcon size={18} /></button>
+              <button type="button" onClick={() => toggleFlag(current.id)} aria-pressed={isFlagged} aria-label={isFlagged ? "Unflag question" : "Flag question"} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg md:hidden ${isFlagged ? "bg-warning/15 text-warning" : "text-muted-foreground hover:bg-muted"}`}><FlagIcon size={18} /></button>
               </div>
               {showSwipeHint && (
                 <div role="status" aria-live="polite" className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground md:hidden">

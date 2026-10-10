@@ -96,7 +96,7 @@ export function Sidebar({ screen, onNavigate, onSelectStudyHub, onOpenThemes, mo
       <div className="flex min-h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-3.5">
         <div className="flex items-center gap-3 min-w-0">
           {/* Logo mark — gradient square */}
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/90 to-teal-500 text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/20">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/90 to-teal-500 text-primary-foreground">
             <StethoscopeIcon size={17} />
           </span>
           <div className="min-w-0">
