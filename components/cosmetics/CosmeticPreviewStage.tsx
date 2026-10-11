@@ -3,7 +3,7 @@
 import { useState, type CSSProperties, type PointerEvent } from "react"
 import { AvatarImage } from "@/components/avatar-image"
 import { STORE_ITEMS, TITLE_LABELS } from "@/lib/economy"
-import { CosmeticHighlight } from "./cosmetics"
+import { CosmeticFrame, CosmeticHighlight } from "./cosmetics"
 import { getCosmeticPresentation } from "./registry"
 import type { CosmeticMotionState, CosmeticSize } from "./types"
 
@@ -68,12 +68,12 @@ export function CosmeticPreviewStage({ avatarId, frameId, highlightId, titleId, 
 
   const person = (
     <div className={`flex items-center ${context === "profile" ? "flex-col text-center" : "gap-3"}`}>
-      <div
-        className={`relative flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br ${avatar?.gradient ?? "from-cyan-500 to-violet-600"} ${frameClass} ${context === "profile" || context === "winner" ? "h-20 w-20 rounded-3xl" : context === "compact" ? "h-10 w-10 rounded-xl" : "h-14 w-14 rounded-2xl"}`}
-        style={{ transform: "translate(var(--preview-pointer-x, 0), var(--preview-pointer-y, 0))", transition: "transform 180ms ease-out" }}
+      <CosmeticFrame cosmeticId={frame?.id} size={size} motionState={effectiveMotion} reducedMotion={reducedMotion}
+        className={`relative flex shrink-0 items-center justify-center bg-gradient-to-br ${avatar?.gradient ?? "from-cyan-500 to-violet-600"} ${frameClass} ${context === "profile" || context === "winner" ? "h-20 w-20 rounded-3xl" : context === "compact" ? "h-10 w-10 rounded-xl" : "h-14 w-14 rounded-2xl"}`}
+        wrapperProps={{ style: { transform: "translate(var(--preview-pointer-x, 0), var(--preview-pointer-y, 0))", transition: "transform 180ms ease-out" } }}
       >
-        {avatar?.imagePath ? <AvatarImage avatarId={avatar.id} fallback={avatar.icon} eager className="h-full w-full object-cover" /> : <span className="text-2xl">{avatar?.icon ?? "🧑‍⚕️"}</span>}
-      </div>
+        {avatar?.imagePath ? <AvatarImage avatarId={avatar.id} fallback={avatar.icon} eager className="h-full w-full rounded-[inherit] object-cover" /> : <span className="text-2xl">{avatar?.icon ?? "🧑‍⚕️"}</span>}
+      </CosmeticFrame>
       <div className={context === "profile" ? "mt-3" : "min-w-0"}>
         <div className={`flex flex-wrap items-center ${context === "profile" ? "justify-center" : ""} gap-2`}>
           <span className={`${context === "winner" ? "text-xl" : "text-sm"} truncate font-extrabold`}>{displayName}</span>

@@ -1,3 +1,4 @@
+import { getCosmeticParts, quoteCosmeticBundle } from "@/lib/cosmetic-bundles"
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { requireRegisteredUser, unauthorized } from "@/lib/request-auth"
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
         [uid, season.id]
       )
       const balance = walletRows[0]?.balance ?? 0
-      if (balance < purchase.price) {
+      if (!item.bundleItemIds && balance < purchase.price) {
         await client.query("ROLLBACK")
         return NextResponse.json({ error: "Insufficient balance" }, { status: 400 })
       }
@@ -93,6 +94,48 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: item.maxQuantity === 1 ? "Already owned" : "Inventory limit reached" }, { status: 400 })
       }
 
+      let chargedPrice = purchase.price
+      const grantedInventory: Record<string, number> = { [itemId]: resultingQuantity }
+      let grantedComponents: string[] = []
+      if (item.bundleItemIds) {
+        const components = getCosmeticParts(item, STORE_ITEMS).sort((a, b) => a.id.localeCompare(b.id))
+        const owned: Record<string, number> = {}
+        for (const component of components) {
+          if (!isStoreItemPurchasable(component)) {
+            await client.query("ROLLBACK")
+            return NextResponse.json({ error: "Bundle component unavailable" }, { status: 409 })
+          }
+          await client.query(
+            `INSERT INTO mednexus_user_inventory (uid, item_id, quantity, acquired_season_id)
+             VALUES ($1, $2, 0, $3) ON CONFLICT (uid, item_id) DO NOTHING`,
+            [uid, component.id, season.id],
+          )
+          const { rows } = await client.query(
+            "SELECT quantity FROM mednexus_user_inventory WHERE uid = $1 AND item_id = $2 FOR UPDATE",
+            [uid, component.id],
+          )
+          owned[component.id] = Number(rows[0]?.quantity ?? 0)
+        }
+        const quote = quoteCosmeticBundle(item, owned, STORE_ITEMS)
+        if (!quote.missing.length) {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "All bundle items already owned" }, { status: 400 })
+        }
+        chargedPrice = quote.price
+        if (balance < chargedPrice) {
+          await client.query("ROLLBACK")
+          return NextResponse.json({ error: "Insufficient balance" }, { status: 400 })
+        }
+        for (const component of quote.missing) {
+          await client.query(
+            "UPDATE mednexus_user_inventory SET quantity = $3 WHERE uid = $1 AND item_id = $2",
+            [uid, component.id, 1],
+          )
+          grantedInventory[component.id] = 1
+        }
+        grantedComponents = quote.missing.map(component => component.id)
+      }
+
       await client.query(
         "UPDATE mednexus_user_inventory SET quantity = $3 WHERE uid = $1 AND item_id = $2",
         [uid, itemId, resultingQuantity],
@@ -101,7 +144,7 @@ export async function POST(req: NextRequest) {
       await client.query(
         `UPDATE mednexus_season_wallets SET balance = balance - $2, updated_at = NOW()
           WHERE user_id = $1 AND season_id = $3`,
-        [uid, purchase.price, season.id]
+        [uid, chargedPrice, season.id]
       )
       await client.query(
         `INSERT INTO mednexus_np_transactions
@@ -111,16 +154,17 @@ export async function POST(req: NextRequest) {
           `np-${crypto.randomUUID()}`,
           uid,
           crypto.randomUUID(),
-          -purchase.price,
+          -chargedPrice,
           JSON.stringify({
             itemId: item.id,
             unitQuantity: purchase.quantity,
-            unitPrice: purchase.price / purchase.quantity,
-            totalPrice: purchase.price,
+            unitPrice: chargedPrice / purchase.quantity,
+            totalPrice: chargedPrice,
             bundleId: purchase.id,
             resultingInventoryQuantity: resultingQuantity,
-            price: purchase.price,
-            catalogPrice: purchase.price,
+            price: chargedPrice,
+            catalogPrice: item.price,
+            grantedComponents,
             economyVersion: ECONOMY_CONFIG.economyVersion,
             catalogVersion: ECONOMY_CONFIG.catalogVersion,
             storeCategory: (ECONOMY_CONFIG.store.catalog as Record<string, { productGroup: string }>)[item.id]?.productGroup ?? "uncategorized",
@@ -134,11 +178,11 @@ export async function POST(req: NextRequest) {
         [uid, season.id]
       )
       await client.query("COMMIT")
-      await notifyUser(pool, { id:`store-${season.id}-${uid}-${itemId}-${purchase.id}-${resultingQuantity}`, userId:uid, type:"store", message:`Purchase confirmed: ${purchase.quantity} × ${item.name} for ${purchase.price} NP.`, actionUrl:"/?hub=store", actionLabel:"View store" }).catch(error => console.error("[store notification]", error))
+      await notifyUser(pool, { id:`store-${season.id}-${uid}-${itemId}-${purchase.id}-${resultingQuantity}`, userId:uid, type:"store", message:`Purchase confirmed: ${purchase.quantity} × ${item.name} for ${chargedPrice} NP.`, actionUrl:"/?hub=store", actionLabel:"View store" }).catch(error => console.error("[store notification]", error))
       return economyJson("economy.purchase", {
         ok: true,
         wallet: { balance: Number(newWallet[0].balance), lifetimeEarned: Number(newWallet[0].lifetime_earned), rankPoints: Number(newWallet[0].rank_points) },
-        inventory: { [itemId]: resultingQuantity },
+        inventory: grantedInventory,
         balance: Number(newWallet[0].balance),
         // Kept for compatibility with clients deployed before the wallet response was expanded.
         newBalance: Number(newWallet[0].balance),
