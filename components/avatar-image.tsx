@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { getAvatarManifestEntry } from "@/lib/avatar-manifest"
 
@@ -14,6 +14,7 @@ interface AvatarImageProps {
 /** Renders manifest-backed avatar artwork with stable dimensions and an accessible fallback. */
 export function AvatarImage({ avatarId, className, eager = false, fallback }: AvatarImageProps) {
   const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [avatarId])
   const avatar = getAvatarManifestEntry(avatarId)
   const fallbackLabel = fallback ?? avatar?.fallbackIcon ?? "Avatar"
 
@@ -28,6 +29,7 @@ export function AvatarImage({ avatarId, className, eager = false, fallback }: Av
       width={avatar.width}
       height={avatar.height}
       quality={avatar.quality}
+      unoptimized={avatar.sourceAsset.endsWith(".svg")}
       priority={eager}
       alt={avatar.altLabel}
       className={className}

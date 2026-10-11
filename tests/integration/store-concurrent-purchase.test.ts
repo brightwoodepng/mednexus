@@ -1,3 +1,4 @@
+import { ECONOMY_CONFIG } from "@/lib/economy-config"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const state = {
@@ -120,7 +121,7 @@ describe("store purchase concurrency", () => {
       unitPrice: 225,
       totalPrice: 675,
       bundleId: "bundle_3",
-      catalogVersion: "3.0.0",
+      catalogVersion: ECONOMY_CONFIG.catalogVersion,
       resultingInventoryQuantity: 3,
     })
   })

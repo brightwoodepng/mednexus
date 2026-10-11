@@ -1,3 +1,4 @@
+import { ARTIST_AVATARS } from "@/lib/artist-avatars"
 /**
  * Versioned, server-authoritative Nexus Point economy.
  *
@@ -16,6 +17,7 @@ export type EarningMode =
 export type StoreProductGroup =
   | "basic_consumable"
   | "strong_consumable"
+  | "cosmetic_bundle"
   | "basic_cosmetic"
   | "premium_cosmetic"
   | "prestige_cosmetic"
@@ -92,8 +94,8 @@ export type EconomyConfig = {
 }
 
 export const ECONOMY_CONFIG = {
-  economyVersion: "3.0.0",
-  catalogVersion: "3.0.0",
+  economyVersion: "3.1.0",
+  catalogVersion: "3.1.0",
   timezone: "UTC",
   enabledEarningModes: {
     mcq_trial_tutor: true, mcq_exam: true, mcq_solo_game: true,
@@ -173,6 +175,7 @@ export const ECONOMY_CONFIG = {
     },
     dailyIncome: { casual: 300, active: 900 },
     priceBands: {
+      cosmetic_bundle: { minimum: 1_000, maximum: 5_000 },
       basic_consumable: { minimum: 150, maximum: 300 },
       strong_consumable: { minimum: 400, maximum: 600 },
       basic_cosmetic: { minimum: 1_000, maximum: 2_500 },
@@ -183,6 +186,11 @@ export const ECONOMY_CONFIG = {
     // Only consumables with authenticated inventory consumption and implemented
     // gameplay behavior belong in this sellable catalog.
     catalog: {
+      ...Object.fromEntries(ARTIST_AVATARS.map(avatar => [avatar.id, { price: avatar.price, productGroup: "basic_cosmetic" as const }])),
+      bundle_peeps_amani_gold: { price: 2210, productGroup: "cosmetic_bundle" },
+      bundle_peeps_ama_neon: { price: 3655, productGroup: "cosmetic_bundle" },
+      bundle_adventurer_nova_gold: { price: 2720, productGroup: "cosmetic_bundle" },
+      bundle_adventurer_luna_neon: { price: 3655, productGroup: "cosmetic_bundle" },
       lifeline_50_50: {
         price: 450, productGroup: "strong_consumable", maxInventory: 10,
         purchaseOptions: [{ id: "single", quantity: 1, price: 450 }, { id: "bundle_3", quantity: 3, price: 1_200 }],

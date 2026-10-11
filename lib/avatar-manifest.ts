@@ -1,3 +1,4 @@
+import { ARTIST_AVATARS } from "@/lib/artist-avatars"
 import type { CosmeticRarity } from "@/lib/economy"
 
 export type AvatarPreviewBackground = "light" | "dark" | "neutral"
@@ -41,6 +42,7 @@ const avatar = (
 
 /** Canonical asset and presentation metadata for every purchasable avatar. */
 export const AVATAR_MANIFEST = {
+  ...Object.fromEntries(ARTIST_AVATARS.map(item => [item.id, { id: item.id, sourceAsset: `/avatars/artists/${item.id}.svg`, width: 256, height: 256, quality: 82, focalPoint: { x: 0.5, y: 0.5 }, altLabel: `${item.name}, an illustrated ${item.collection} portrait`, rarity: item.rarity, previewBackgroundPreference: "neutral" as const, fallbackIcon: item.name.slice(0, 2) }])),
   avatar_scrub_tech: avatar("avatar_scrub_tech", "scrubs", "Clinician wearing blue surgical scrubs", "rare", "light", "ST"),
   avatar_coffee_drip: avatar("avatar_coffee_drip", "coffee-iv", "Coffee-filled intravenous drip bag", "rare", "light", "CD"),
   avatar_lab_rat: avatar("avatar_lab_rat", "lab-rat", "Laboratory rat wearing goggles and a white coat", "epic", "neutral", "LR"),

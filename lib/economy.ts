@@ -1,3 +1,4 @@
+import { ARTIST_AVATARS } from "@/lib/artist-avatars"
 import { ECONOMY_CONFIG, type EconomyConfig, type StoreProductGroup } from "@/lib/economy-config"
 // ── Economy constants shared between API and frontend ──────────────────────────
 
@@ -125,6 +126,9 @@ export interface StoreItem {
   collection?: string
   upgradeAnnouncement?: string
   imagePath?: string
+  /** A cosmetic bundle grants each component once, in the purchase transaction. */
+  bundleItemIds?: readonly string[]
+  bundleDiscountPercent?: number
   /** Server-authoritative behavior and availability for Supply Closet items. */
   supply?: {
     effectType: "eliminate_wrong_answers" | "add_time" | "second_attempt"
@@ -142,6 +146,11 @@ export interface StoreItem {
  * purchase-permission signal.
  */
 export const COSMETIC_CATALOG_METADATA = {
+  ...Object.fromEntries(ARTIST_AVATARS.map(avatar => [avatar.id, { status: "active" as const, rarity: avatar.rarity, sortOrder: avatar.sortOrder, previewTheme: avatar.style, collection: avatar.collection, releasedAt: "2026-10-11" }])),
+  bundle_peeps_amani_gold: { status: "active", rarity: "rare", sortOrder: 300, previewTheme: "artist-bundle", collection: "Open Peeps" },
+  bundle_peeps_ama_neon: { status: "active", rarity: "rare", sortOrder: 301, previewTheme: "artist-bundle", collection: "Open Peeps" },
+  bundle_adventurer_nova_gold: { status: "active", rarity: "rare", sortOrder: 302, previewTheme: "artist-bundle", collection: "Adventurer" },
+  bundle_adventurer_luna_neon: { status: "active", rarity: "rare", sortOrder: 303, previewTheme: "artist-bundle", collection: "Adventurer" },
   title_pre_med: { status: "active", rarity: "common", sortOrder: 10, previewTheme: "clinical-slate" },
   title_intern: { status: "active", rarity: "common", sortOrder: 20, previewTheme: "clinical-blue" },
   title_fellow: { status: "active", rarity: "rare", sortOrder: 30, previewTheme: "research-fuchsia" },
@@ -826,7 +835,13 @@ const STORE_ITEM_DEFINITIONS: Omit<StoreItem, "price" | "productGroup">[] = [
 ]
 
 
-export const STORE_ITEMS: StoreItem[] = STORE_ITEM_DEFINITIONS.map((item) => {
+export const STORE_ITEMS: StoreItem[] = [...STORE_ITEM_DEFINITIONS,
+  ...ARTIST_AVATARS.map(avatar => ({ id: avatar.id, name: avatar.name, desc: `${avatar.collection} portrait, assembled from artist-drawn parts.`, icon: avatar.name.slice(0, 2), category: "cosmetic" as const, maxQuantity: 1, gradient: "from-muted to-card", cosmeticType: "avatar" as const, imagePath: `/avatars/artists/${avatar.id}.svg` })),
+  { id: "bundle_peeps_amani_gold", name: "Amani · Golden Ratio", desc: "A matching avatar and frame. Save 15% on the pieces you do not own.", icon: "✦", category: "cosmetic" as const, maxQuantity: 1, gradient: "from-muted to-card", bundleItemIds: ["avatar_peeps_amani", "frame_gold"], bundleDiscountPercent: 15 },
+  { id: "bundle_peeps_ama_neon", name: "Ama · Neon Pulse", desc: "A matching avatar and frame. Save 15% on the pieces you do not own.", icon: "✦", category: "cosmetic" as const, maxQuantity: 1, gradient: "from-muted to-card", bundleItemIds: ["avatar_peeps_ama", "frame_neon"], bundleDiscountPercent: 15 },
+  { id: "bundle_adventurer_nova_gold", name: "Nova · Golden Ratio", desc: "A matching avatar and frame. Save 15% on the pieces you do not own.", icon: "✦", category: "cosmetic" as const, maxQuantity: 1, gradient: "from-muted to-card", bundleItemIds: ["avatar_adventurer_nova", "frame_gold"], bundleDiscountPercent: 15 },
+  { id: "bundle_adventurer_luna_neon", name: "Luna · Neon Pulse", desc: "A matching avatar and frame. Save 15% on the pieces you do not own.", icon: "✦", category: "cosmetic" as const, maxQuantity: 1, gradient: "from-muted to-card", bundleItemIds: ["avatar_adventurer_luna", "frame_neon"], bundleDiscountPercent: 15 },
+].map((item) => {
   const catalogEntry = ECONOMY_CONFIG.store.catalog[item.id as keyof typeof ECONOMY_CONFIG.store.catalog]
   if (!catalogEntry) throw new Error(`Missing store catalog configuration: ${item.id}`)
   const cosmeticMetadata = item.category === "cosmetic"
