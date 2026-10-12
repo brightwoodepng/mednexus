@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { AdminBulkPromotion } from "@/components/admin-bulk-promotion"
 import { ALL_LEVELS } from "@/lib/levels"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -283,6 +284,7 @@ function RegisteredTable() {
 
   return (
     <>
+      <AdminBulkPromotion onComplete={() => void fetchUsers()} />
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-4">
