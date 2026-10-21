@@ -1,10 +1,11 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
-import { DEFAULT_THEME, THEMES, type ThemeId } from "@/lib/themes"
+import { DEFAULT_THEME, THEMES, THEME_DEFAULT_VERSION, resolveInitialTheme, type ThemeId } from "@/lib/themes"
 
 const STORAGE_KEY = "mednexus-theme"
 const GLASS_STORAGE_KEY = "mednexus-glass"
+const DEFAULT_VERSION_KEY = "mednexus-theme-default-version"
 
 // Legacy liquid-glass theme IDs that may be in localStorage from before this was a toggle
 const LEGACY_GLASS_THEMES = ["liquid-glass-light", "liquid-glass-dark"]
@@ -29,21 +30,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    const storedTheme = localStorage.getItem(STORAGE_KEY)
-    const storedGlass = localStorage.getItem(GLASS_STORAGE_KEY)
-
-    if (storedTheme && LEGACY_GLASS_THEMES.includes(storedTheme)) {
-      // Migrate: old liquid-glass theme → default color theme + glass ON
-      setThemeState(DEFAULT_THEME)
-      setGlassState(true)
-      localStorage.setItem(STORAGE_KEY, DEFAULT_THEME)
-      localStorage.setItem(GLASS_STORAGE_KEY, "true")
-    } else if (storedTheme && THEMES.some(theme => theme.id === storedTheme)) {
-      setThemeState(storedTheme as ThemeId)
-      setGlassState(storedGlass === "true")
-    } else {
-      setGlassState(storedGlass === "true")
-    }
+    try {
+      const storedTheme = localStorage.getItem(STORAGE_KEY)
+      const storedGlass = localStorage.getItem(GLASS_STORAGE_KEY)
+      const nextTheme = resolveInitialTheme(storedTheme, localStorage.getItem(DEFAULT_VERSION_KEY))
+      setThemeState(nextTheme)
+      const glass = Boolean(storedTheme && LEGACY_GLASS_THEMES.includes(storedTheme)) || storedGlass === "true"
+      setGlassState(glass)
+      // Write the theme first so interrupted migrations safely retry.
+      localStorage.setItem(STORAGE_KEY, nextTheme)
+      localStorage.setItem(DEFAULT_VERSION_KEY, THEME_DEFAULT_VERSION)
+      if (storedTheme && LEGACY_GLASS_THEMES.includes(storedTheme)) localStorage.setItem(GLASS_STORAGE_KEY, "true")
+    } catch { /* Deep Ocean remains the default when storage is unavailable. */ }
   }, [])
 
   // ── Apply activeTheme to <html data-theme="…"> ────────────────────────────
