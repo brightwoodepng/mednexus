@@ -132,7 +132,7 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
 
   useQuestionKeyboardNavigation({ enabled: Boolean(active) && !busy && !exitOpen && !themeOpen, onPrevious: () => { if (active && active.session.currentIndex > 0) navigate(active.session.currentIndex - 1) }, onNext: () => { if (active && active.session.currentIndex + 1 < active.questions.length) navigate(active.session.currentIndex + 1) } })
 
-  if (!active && (resumeOnOpen || resuming)) return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background"><p role="status" className="font-semibold text-muted-foreground">Resuming review…</p></div>
+  if (!active && ((resumeOnOpen && saved) || resuming)) return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-background"><p role="status" className="font-semibold text-muted-foreground">Resuming review…</p></div>
 
   if (!active) return <div className="space-y-5">
     

@@ -450,6 +450,8 @@ export function MedNexusApp() {
   const { globalMode, setGlobalMode } = useStudyMode()
 
   const [screen, setScreen] = useState<Screen>("dashboard")
+  const [navigationReady, setNavigationReady] = useState(false)
+  const [quizRestoreError, setQuizRestoreError] = useState("")
   const [featuredGameMode, setFeaturedGameMode] = useState<FeaturedGameId | null>(null)
   const [platformConfig, setPlatformConfig] = useState<{
     registrationEnabled: boolean
@@ -502,6 +504,17 @@ export function MedNexusApp() {
     payoutError?: string
   } | null>(null)
 
+  // Keep completed results in this tab so a refresh can render the same page.
+  useEffect(() => {
+    if (!user || screen !== "results" || lastResult) return
+    try {
+      const raw = sessionStorage.getItem(`mednexus:last-result:${user.uid}`)
+      if (!raw) return
+      const cached = JSON.parse(raw)
+      if (cached && cached.result && Array.isArray(cached.questions) && cached.answers && typeof cached.moduleName === "string") setLastResult(cached)
+    } catch { /* Storage may be unavailable; keep the results destination visible. */ }
+  }, [user?.uid, screen, lastResult])
+
   useEffect(() => {
     fetch("/api/platform/config")
       .then((response) => response.json())
@@ -521,16 +534,20 @@ export function MedNexusApp() {
     if (user.role === "user" && user.status !== "approved") return
     if (activeQuiz) return
     const stored = progress.savedQuizSession !== undefined ? progress.savedQuizSession : loadQuizSession(user.uid)
-    if (!stored) { setResumeCandidate(null); return }
+    if (!stored) { setResumeCandidate(null); if (learnerScreenFromUrl() === "quiz") setQuizRestoreError("No saved attempt is available on this account."); return }
     const restoreKey = `${user.uid}:${stored.startedAt}:${stored.updatedAt ?? 0}`
-    if (restoredForUserRef.current === restoreKey) return
+    if (restoredForUserRef.current === restoreKey) {
+      if (screen === "quiz" && resumeCandidate) { setActiveQuiz(resumeCandidate); setResumeCandidate(null) }
+      return
+    }
     let cancelled = false
     void loadQuestionsByIds(stored.questionIds).then(loadedQuestions => {
       const restored = restoreQuizSession(stored, loadedQuestions)
-      if (cancelled || !restored) return
+      if (cancelled) return
+      if (!restored) { setQuizRestoreError("This saved attempt could not be restored."); return }
       restoredForUserRef.current = restoreKey
       saveQuizSession(stored)
-      setResumeCandidate({
+      const candidate: ActiveQuiz = {
         questions: restored.questions,
         moduleName: stored.moduleName,
         discipline: stored.discipline,
@@ -540,26 +557,29 @@ export function MedNexusApp() {
         gamificationEnabled: stored.gamificationEnabled,
         lockAnswers: stored.lockAnswers,
         session: stored,
-      })
-    }).catch(() => { /* Keep the saved attempt when offline or loading fails. */ })
+      }
+      if (learnerScreenFromUrl() === "quiz") {
+        setQuizRestoreError("")
+        setActiveQuiz(candidate)
+        setScreen("quiz")
+      } else setResumeCandidate(candidate)
+    }).catch(() => { if (!cancelled) setQuizRestoreError("Could not restore your attempt. Reconnect and refresh to try again; your progress is still saved.") })
     return () => { cancelled = true }
-  }, [authReady, loadQuestionsByIds, requiresPasswordUpdate, user, activeQuiz, progress.savedQuizSession])
+  }, [authReady, loadQuestionsByIds, requiresPasswordUpdate, user, activeQuiz, progress.savedQuizSession, screen])
 
   useEffect(() => {
     const restoreFromLocation = () => {
       const hub = studyHubFromUrl()
       setActiveStudyHub(hub)
-      setScreen(learnerScreenFromUrl())
+      const restoredScreen = learnerScreenFromUrl()
+      setScreen(restoredScreen)
+      setResumeReviewOnOpen(restoredScreen === "review")
+      setNavigationReady(true)
     }
     restoreFromLocation()
     window.addEventListener("popstate", restoreFromLocation)
     return () => window.removeEventListener("popstate", restoreFromLocation)
   }, [setActiveStudyHub])
-
-  useEffect(() => {
-    if (activeStudyHub === "theory-vault" && !screen.startsWith("theory-") && !["profile", "user-management", "broadcast"].includes(screen)) setScreen("theory-dashboard")
-    if (activeStudyHub === "mcq-qbank" && screen.startsWith("theory-")) setScreen("dashboard")
-  }, [activeStudyHub, screen])
 
   const handleScreenNavigation = useCallback((nextScreen: Screen) => {
     if (nextScreen !== "review") { setInitialReview(null); setResumeReviewOnOpen(false) }
@@ -617,16 +637,6 @@ export function MedNexusApp() {
     }
   }, [authReady, requiresPasswordUpdate, user?.role, user?.status, user?.uid])
 
-  // Global auto-rejoin: if a multiplayer match was in progress when the app
-  // was refreshed/reloaded, jump straight back into the Game screen instead
-  // of leaving the player stranded on the dashboard. GameMode itself reads
-  // the same cached session to auto-select clash/cohort and skip the lobby.
-  useEffect(() => {
-    if (user && (loadActiveRoomSession(user.uid) || loadSoloGameSession(user.uid))) {
-      setScreen("game")
-    }
-  }, [user])
-
   const safeScreen = screen
   const savedDashboardReview = user ? parseReviewSession(JSON.stringify(progress.savedReviewSession ?? null), user.uid) : null
 
@@ -671,7 +681,7 @@ export function MedNexusApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadQuestionSet, progress.history, resumeCandidate])
 
-  if (!authReady) {
+  if (!authReady || !navigationReady) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -751,6 +761,7 @@ export function MedNexusApp() {
       session,
     })
     setPendingQuiz(null)
+    window.history.pushState({}, "", learnerScreenUrl("quiz", "mcq-qbank"))
     setScreen("quiz")
   }
 
@@ -774,7 +785,7 @@ export function MedNexusApp() {
     for (const entry of history) {
       answers[entry.questionId] = entry.selectedOption
     }
-    setLastResult({
+    const completedResult = {
       result,
       moduleName: activeQuiz.moduleName,
       discipline: activeQuiz.discipline,
@@ -785,7 +796,15 @@ export function MedNexusApp() {
       earnedNP,
       earnedXP,
       payoutError,
-    })
+    }
+    setLastResult(completedResult)
+    if (user) {
+      try {
+        sessionStorage.removeItem(`mednexus:last-result:${user.uid}`)
+        sessionStorage.setItem(`mednexus:last-result:${user.uid}`, JSON.stringify(completedResult))
+      } catch { /* The completed result remains available until this tab reloads. */ }
+    }
+    window.history.replaceState({}, "", learnerScreenUrl("results", "mcq-qbank"))
     if (user) clearQuizSession(user.uid)
     saveActiveQuizSession(null)
     setResumeCandidate(null)
@@ -822,11 +841,19 @@ export function MedNexusApp() {
     setResumeCandidate(null)
     setResumePromptOpen(false)
     setDiscardQuizOpen(false)
+    window.history.pushState({}, "", learnerScreenUrl("quiz", "mcq-qbank"))
     setScreen("quiz")
   }
 
   function exitQuiz() {
     setDiscardQuizOpen(true)
+  }
+
+  if (safeScreen === "quiz" && !activeQuiz) {
+    return <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
+      <p role={quizRestoreError ? "alert" : "status"}>{quizRestoreError || "Restoring your attempt…"}</p>
+      {quizRestoreError && <button type="button" onClick={() => handleScreenNavigation("dashboard")} className="rounded-xl bg-primary px-4 py-3 text-primary-foreground">Back to dashboard</button>}
+    </div>
   }
 
   if (safeScreen === "quiz" && activeQuiz) {
@@ -928,6 +955,7 @@ export function MedNexusApp() {
           {safeScreen === "store-supply" && <NexusStoreSupplyPage onBack={() => handleScreenNavigation("store")} />}
           {safeScreen === "store-cosmetics" && <NexusStoreCosmeticsPage onBack={() => handleScreenNavigation("store")} />}
           {safeScreen === "store-vault" && <NexusStoreVaultPage onBack={() => handleScreenNavigation("store")} />}
+          {safeScreen === "results" && !lastResult && <p role="status">The results for this attempt are unavailable on this device.</p>}
           {safeScreen === "results" && lastResult && <ResultsScreen result={lastResult.result} moduleName={lastResult.moduleName} mode={lastResult.mode} questions={lastResult.questions} answers={lastResult.answers} earnedNP={lastResult.earnedNP} earnedXP={lastResult.earnedXP} payoutError={lastResult.payoutError} onReturn={() => handleScreenNavigation("dashboard")} onRetry={() => { if (lastResult.lastSetup) handleReadyForQuiz(lastResult.lastSetup) }} />}
     </LearnerWorkspaceShell>
       {preparingQuiz && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/70 backdrop-blur-sm"><p role="status" className="rounded-xl bg-card p-5 font-semibold shadow-lg">Loading questions…</p></div>}
