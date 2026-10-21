@@ -10,7 +10,7 @@ describe("learner URL routing", () => {
 
   it("gives every ordinary MCQ destination a refresh-safe canonical URL", () => {
     const screens: Screen[] = [
-      "dashboard", "modules", "weak-areas", "leaderboard", "live-assessments",
+      "dashboard", "quiz", "results", "review", "modules", "weak-areas", "leaderboard", "live-assessments",
       "game", "store", "store-supply", "store-cosmetics", "store-vault",
     ]
 
@@ -32,6 +32,12 @@ describe("learner URL routing", () => {
       const url = learnerScreenUrl(screen, "theory-vault")
       expect(url).toContain("hub=theory")
       expect(learnerScreenFromUrl(`https://mednexus.test${url}`)).toBe(screen)
+    }
+  })
+
+  it("keeps shared destinations in Theory Vault after refresh", () => {
+    for (const screen of ["store", "store-cosmetics", "leaderboard", "profile"] as Screen[]) {
+      expect(learnerScreenFromUrl(`https://mednexus.test${learnerScreenUrl(screen, "theory-vault")}`)).toBe(screen)
     }
   })
 
