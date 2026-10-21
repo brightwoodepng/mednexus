@@ -178,7 +178,9 @@ export function ReviewWorkspace({ onExit, initialReview, onInitialReviewLoaded, 
 
           {question.contextContent && <section className="rounded-xl border border-border bg-muted/30 p-4"><RichText content={question.contextContent} /></section>}
           <section className="rounded-2xl border border-border bg-card p-4 sm:p-6"><RichText content={question.vignette} />
-            <Media items={(question.media ?? []).filter(m => m.placement === "stem")} /></section>
+            <Media items={(question.media ?? []).filter(m => m.placement === "stem")} />
+            {question.mediaBase64 && <img src={question.mediaBase64} alt="Question image" className="mt-4 h-auto w-full rounded-lg border border-border object-contain md:max-h-80 md:w-auto md:max-w-full" />}
+          </section>
           <div role="list" aria-label="Revealed answers" className="space-y-3">{question.options.map(option => <div role="listitem" key={option.id} className={"flex gap-3 rounded-xl border p-4 " + (correct.has(option.id) ? "border-success/50 bg-success/25 dark:bg-success/30" : "border-border bg-card")}>
             <span className="font-bold">{option.id}.</span><div className="min-w-0 flex-1"><RichText content={option.text} />
               <Media items={[...(option.media ?? []), ...(question.media ?? []).filter(m => m.placement === "option" && m.optionId === option.id)]} />

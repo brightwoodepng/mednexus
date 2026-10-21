@@ -932,7 +932,7 @@ export function MedNexusApp() {
     </LearnerWorkspaceShell>
       {preparingQuiz && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/70 backdrop-blur-sm"><p role="status" className="rounded-xl bg-card p-5 font-semibold shadow-lg">Loading questions…</p></div>}
       <Modal open={Boolean(quizSetupError)} onClose={() => setQuizSetupError("")} title="Unable to open questions"><p role="alert">{quizSetupError}</p></Modal>
-      <Modal open={pendingQuiz !== null && selectedStudyMode === null} onClose={() => setPendingQuiz(null)} title="How would you like to study?" widthClass="max-w-sm">
+      <Modal open={pendingQuiz !== null && selectedStudyMode === null} onClose={() => setPendingQuiz(null)} title="How would you like to study?" widthClass="max-w-sm" animated={false}>
         <p className="mb-4 text-sm text-muted-foreground">{pendingQuiz?.moduleName}{pendingQuiz?.discipline ? " · " + pendingQuiz.discipline : ""}</p>
         <div className="grid gap-3">
           {([{ mode: "trial", title: "Trial", description: "Untimed practice with answer feedback." },
