@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { DEFAULT_THEME } from '@/lib/themes'
 import { WorkspaceProviders } from '@/components/workspace-providers'
 
 export const metadata: Metadata = {
@@ -54,6 +55,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-theme={DEFAULT_THEME}
+      data-mode="dark"
+      className="dark"
       suppressHydrationWarning
     >
       <body className="overflow-x-hidden font-sans antialiased text-foreground">

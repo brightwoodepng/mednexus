@@ -101,4 +101,11 @@ export const THEMES: ThemeMeta[] = [
   { id: "deep-ocean", name: "Deep Ocean", description: "Midnight blue with clear sky accents.", mode: "dark", swatch: { bg: "#0b1829", surface: "#13263b", primary: "#7dd3fc" }, accent: "#7dd3fc" },
 ]
 
-export const DEFAULT_THEME: ThemeId = "clinical-light"
+export const DEFAULT_THEME: ThemeId = "deep-ocean"
+
+// Apply the new default once on each existing browser, then honour later choices.
+export const THEME_DEFAULT_VERSION = "deep-ocean-v1"
+export function resolveInitialTheme(storedTheme: string | null, defaultVersion: string | null): ThemeId {
+  if (defaultVersion !== THEME_DEFAULT_VERSION) return DEFAULT_THEME
+  return THEMES.some(theme => theme.id === storedTheme) ? storedTheme as ThemeId : DEFAULT_THEME
+}
